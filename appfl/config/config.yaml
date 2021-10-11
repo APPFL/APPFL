@@ -1,0 +1,8 @@
+defaults:
+  - _self_
+  - dataset: mnist
+  - model: cnn
+  - fed: fedavg
+  - optim: sgd
+
+device: 'cpu'
