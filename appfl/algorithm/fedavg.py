@@ -26,10 +26,10 @@ class FedAvgServer(BaseServer):
 
         for k, state in local_states.items():
             for key in self.model.state_dict().keys():
-                if k == 0:
-                    update_state[key] = state[key] / self.num_clients
-                else:
+                if key in update_state.keys():
                     update_state[key] += state[key] / self.num_clients
+                else:
+                    update_state[key] = state[key] / self.num_clients
 
         self.model.load_state_dict(update_state)
 
@@ -76,7 +76,7 @@ class FedAvgClient(BaseClient):
         optimizer = self.optimizer(self.model.parameters(), **self.optimizer_args)
 
         for i in range(self.num_local_epochs):
-            log.info(f"[Client ID: {self.id+1: 03}, Local epoch: {i+1: 04}]")
+            log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
             for data, target in self.dataloader:
                 data = data.to(self.device)
                 target = target.to(self.device)
