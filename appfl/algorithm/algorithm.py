@@ -21,8 +21,11 @@ class BaseServer:
 This implements a base class for client.
 """
 class BaseClient:
-    def __init__(self, model, optimizer, optimizer_args, local_epoch, dataset, device):
+    def __init__(self, id, model, optimizer, optimizer_args, dataloader, device):
+        self.id = id
         self.model = model
+        self.optimizer = optimizer
+        self.optimizer_args = optimizer_args
         self.dataloader = dataloader
         self.device = device
 
