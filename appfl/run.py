@@ -15,11 +15,11 @@ from algorithm.fedavg import *
 from models import *
 
 
-def run_server():
+def run_server(cfg: DictConfig):
     pass
 
 
-def run_client():
+def run_client(cfg: DictConfig):
     # sampler = DistributedSampler(train_data)
     pass
 
@@ -34,9 +34,7 @@ def run_serial(cfg: DictConfig):
         raise NameError("distributed dataset.")
     else:
         train_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-            "./datasets", **cfg.dataset.args,
-            train=True,
-            transform=ToTensor()
+            "./datasets", **cfg.dataset.args, train=True, transform=ToTensor()
         )
         local_data_size = int(len(train_data) / num_clients)
         how_to_split = [local_data_size for i in range(num_clients)]
@@ -49,24 +47,28 @@ def run_serial(cfg: DictConfig):
 
     if cfg.validation == True:
         test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-            "./datasets", **cfg.dataset.args,
-            train=False,
-            transform=ToTensor()
+            "./datasets", **cfg.dataset.args, train=False, transform=ToTensor()
         )
-        server_dataloader = DataLoader(test_data, num_workers=0, batch_size=cfg.batch_size)
+        server_dataloader = DataLoader(
+            test_data, num_workers=0, batch_size=cfg.batch_size
+        )
     else:
         server_dataloader = None
 
-    server = eval(cfg.fed.servername)(model, num_clients, cfg.device, dataloader=server_dataloader)
+    server = eval(cfg.fed.servername)(
+        model, num_clients, cfg.device, dataloader=server_dataloader
+    )
     clients = [
         eval(cfg.fed.clientname)(
             k,
             model,
             optimizer,
             cfg.optim.args,
-            DataLoader(datasets[k], num_workers=0, batch_size=cfg.batch_size, shuffle=True),
+            DataLoader(
+                datasets[k], num_workers=0, batch_size=cfg.batch_size, shuffle=True
+            ),
             cfg.device,
-            **cfg.fed.args
+            **cfg.fed.args,
         )
         for k in range(num_clients)
     ]

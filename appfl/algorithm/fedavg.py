@@ -1,4 +1,5 @@
 import logging
+
 log = logging.getLogger(__name__)
 
 from collections import OrderedDict
@@ -7,6 +8,7 @@ from .algorithm import BaseServer, BaseClient
 import torch
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
+
 
 class FedAvgServer(BaseServer):
     def __init__(self, model, num_clients, device, dataloader=None):
@@ -52,14 +54,18 @@ class FedAvgServer(BaseServer):
         # FIXME: do we need to sent the model to cpu again?
         # self.model.to("cpu")
         test_loss = test_loss / len(self.dataloader)
-        accuracy = 100. * correct / len(self.dataloader.dataset)
+        accuracy = 100.0 * correct / len(self.dataloader.dataset)
 
         return test_loss, accuracy
 
 
 class FedAvgClient(BaseClient):
-    def __init__(self, id, model, optimizer, optimizer_args, dataloader, device, **kwargs):
-        super(FedAvgClient, self).__init__(id, model, optimizer, optimizer_args, dataloader, device)
+    def __init__(
+        self, id, model, optimizer, optimizer_args, dataloader, device, **kwargs
+    ):
+        super(FedAvgClient, self).__init__(
+            id, model, optimizer, optimizer_args, dataloader, device
+        )
         self.loss_fn = CrossEntropyLoss()
         self.__dict__.update(kwargs)
 
@@ -70,9 +76,7 @@ class FedAvgClient(BaseClient):
         optimizer = self.optimizer(self.model.parameters(), **self.optimizer_args)
 
         for i in range(self.num_local_epochs):
-            log.info(
-                f"[Client ID: {self.id+1: 03}, Local epoch: {i+1: 04}]"
-            )
+            log.info(f"[Client ID: {self.id+1: 03}, Local epoch: {i+1: 04}]")
             for data, target in self.dataloader:
                 data = data.to(self.device)
                 target = target.to(self.device)

@@ -1,8 +1,8 @@
 import copy
 
-"""
-This implements a base class for server.
-"""
+"""This implements a base class for server."""
+
+
 class BaseServer:
     def __init__(self, model, num_clients, device):
         self.model = model
@@ -17,9 +17,9 @@ class BaseServer:
         return copy.deepcopy(self.model)
 
 
-"""
-This implements a base class for client.
-"""
+"""This implements a base class for client."""
+
+
 class BaseClient:
     def __init__(self, id, model, optimizer, optimizer_args, dataloader, device):
         self.id = id
