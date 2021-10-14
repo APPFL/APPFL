@@ -164,9 +164,13 @@ def run_serial(cfg: DictConfig):
     optimizer = eval(cfg.optim.classname)
 
     if cfg.validation == True:
-        test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-            "./datasets", **cfg.dataset.args, train=False, transform=ToTensor()
-        )
+        if cfg.dataset.torchvision == True:
+            test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
+                "./datasets", **cfg.dataset.args, train=False, transform=ToTensor()
+            )
+        else:
+            raise NotImplementedError
+
         server_dataloader = DataLoader(
             test_data, num_workers=0, batch_size=cfg.batch_size
         )
@@ -193,8 +197,12 @@ def run_serial(cfg: DictConfig):
     local_states = OrderedDict()
 
     for t in range(num_epochs):
+        global_state = server.model.state_dict()
+        for client in clients:
+            client.model.load_state_dict(global_state)
+
         for k, client in enumerate(clients):
-            client.model = server.get_model()
+            client.model.load_state_dict(global_state)
             client.update()
             local_states[k] = client.model.state_dict()
 
