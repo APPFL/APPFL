@@ -85,3 +85,5 @@ class FedAvgClient(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
                 optimizer.step()
+
+        # self.model.to("cpu")

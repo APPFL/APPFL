@@ -21,6 +21,9 @@ def run_server(cfg: DictConfig, comm):
     comm_rank = comm.Get_rank()
     num_clients = cfg.num_clients
 
+    # FIXME: I think it's ok for server to use cpu only.
+    device = "cpu"
+
     model = eval(cfg.model.classname)(**cfg.model.args)
 
     if cfg.validation == True:
@@ -39,15 +42,20 @@ def run_server(cfg: DictConfig, comm):
 
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
-        model, num_clients, cfg.device, dataloader=dataloader
+        model, num_clients, device, dataloader=dataloader
     )
 
     do_continue = True
     local_states = OrderedDict()
     for t in range(cfg.num_epochs):
-        my_model = server.get_model()
         do_continue = comm.bcast(do_continue, root=0)
-        my_model = comm.bcast(my_model, root=0)
+
+        # We need to load the model on cpu, before communicating.
+        # Otherwise, out-of-memeory error from GPU
+        server.model.to("cpu")
+        global_state = server.model.state_dict()
+        global_state = comm.bcast(global_state, root=0)
+
         gathered_states = comm.gather(None, root=0)
         for i, states in enumerate(gathered_states):
             if states is not None:
@@ -72,8 +80,11 @@ def run_client(cfg: DictConfig, comm):
     num_clients = cfg.num_clients
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
 
-    if comm_rank == 1:
-        print(num_client_groups)
+    # We assume to have as many GPUs as the number of MPI processes.
+    if cfg.device == "cuda":
+        device = f"cuda:{comm_rank-1}"
+    else:
+        device = cfg.device
 
     model = eval(cfg.model.classname)(**cfg.model.args)
     optimizer = eval(cfg.optim.classname)
@@ -105,7 +116,7 @@ def run_client(cfg: DictConfig, comm):
             optimizer,
             cfg.optim.args,
             dataloaders[i],
-            cfg.device,
+            device,
             **cfg.fed.args,
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
@@ -114,10 +125,18 @@ def run_client(cfg: DictConfig, comm):
     do_continue = comm.bcast(None, root=0)
     local_states = OrderedDict()
     while do_continue:
-        model_update = comm.bcast(None, root=0)
+        global_state = comm.bcast(None, root=0)
+
+        # assign the globl state to the clients first (to avoid potential shallow copy)
         for client in clients:
-            client.model = model_update
+            client.model.load_state_dict(global_state)
+
+        for client in clients:
             client.update()
+
+            # We need to load the model on cpu, before communicating.
+            # Otherwise, out-of-memeory error from GPU
+            client.model.to("cpu")
             local_states[client.id] = client.model.state_dict()
 
         comm.gather(local_states, root=0)
@@ -201,8 +220,6 @@ def main(cfg: DictConfig):
         else:
             run_client(cfg, comm)
     else:
-        print("torch.distributed is not available")
-        # run_serial(model, dataloader)
         run_serial(cfg)
 
 
