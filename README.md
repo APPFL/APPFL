@@ -16,7 +16,7 @@ The configuration of APPFL can be found in `appfl/config` directory, where you c
 Example of serial run to train MINIST can be done by
 
 ```
-python appfl/run.py num_clienst=3 num_epochs=10 device=cpu
+python appfl/run.py num_clients=3 num_epochs=10 device=cpu
 ```
 
 where arguments `num_clients`, `num_epochs`, and `device` are optional to change their default values.
