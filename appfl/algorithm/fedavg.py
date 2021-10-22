@@ -11,8 +11,10 @@ from torch.utils.data import DataLoader
 
 
 class FedAvgServer(BaseServer):
-    def __init__(self, model, num_clients, device, dataloader=None):
+    def __init__(self, model, num_clients, device, dataloader=None, **kwargs):
         super(FedAvgServer, self).__init__(model, num_clients, device)
+        
+        self.__dict__.update(kwargs) 
 
         self.dataloader = dataloader
         if self.dataloader is not None:
@@ -21,7 +23,7 @@ class FedAvgServer(BaseServer):
             self.loss_fn = None
 
     # update global model
-    def update(self, local_states: OrderedDict):
+    def update(self, global_state: OrderedDict , local_states: OrderedDict):
         update_state = OrderedDict()
 
         for k, state in local_states.items():
@@ -68,6 +70,7 @@ class FedAvgClient(BaseClient):
         )
         self.loss_fn = CrossEntropyLoss()
         self.__dict__.update(kwargs)
+        self.id = id
 
     # update local model
     def update(self):
@@ -75,15 +78,24 @@ class FedAvgClient(BaseClient):
         self.model.to(self.device)
         optimizer = self.optimizer(self.model.parameters(), **self.optimizer_args)
 
+        # for name, param in self.model.named_parameters():
+        #     if name == "fc2.bias":
+        #         print("Sub: id=", self.id, " initial_pt=", param.data)
+
         for i in range(self.num_local_epochs):
             log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
-            for data, target in self.dataloader:
+            
+            for data, target in self.dataloader:                
                 data = data.to(self.device)
-                target = target.to(self.device)
+                target = target.to(self.device)                
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
-                loss.backward()
+                loss.backward()                
                 optimizer.step()
 
+        # for name, param in self.model.named_parameters():
+        #     if name =="fc2.bias":
+        #         print("Sub: id=", self.id, " next_pt=", param.data)
+        
         # self.model.to("cpu")

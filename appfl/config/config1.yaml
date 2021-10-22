@@ -2,11 +2,11 @@ defaults:
   - _self_
   - dataset: mnist
   - model: cnn
-  - fed: fedavg
+  - fed: iadmm
   - optim: sgd
 
-num_epochs: 1
-batch_size: 64
+num_epochs: 1000
+batch_size: 15000
 device: 'cpu'
 
 num_clients: 4

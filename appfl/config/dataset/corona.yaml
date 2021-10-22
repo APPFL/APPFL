@@ -4,6 +4,3 @@ torchvision: True
 distributed: False
 args:
   download: True
-size:
-  in_features: 1
-  num_classes: 10  

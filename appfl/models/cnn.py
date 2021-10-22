@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class CNN(nn.Module):
-    def __init__(self, in_features=1, num_classes=10):
+    def __init__(self, in_features, num_classes):
         super().__init__()
         self.conv1 = nn.Conv2d(
             in_features, 32, kernel_size=5, padding=0, stride=1, bias=True

@@ -1,9 +1,9 @@
-type: mnist
-classname: MNIST
+type: cifar10
+classname: CIFAR10
 torchvision: True
 distributed: False
 args:
   download: True
 size:
-  in_features: 1
+  in_features: 3
   num_classes: 10  

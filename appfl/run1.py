@@ -14,8 +14,8 @@ from omegaconf import DictConfig
 
 import copy
 
-from algorithm.fedavg import *
 from algorithm.iadmm import *
+from algorithm.fedavg import *
 from models.cnn import *
 from models.cnn1 import *
 
@@ -46,12 +46,23 @@ def run_server(cfg: DictConfig, comm):
      
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
-        model, num_clients, device, dataloader=dataloader
+        copy.deepcopy(model), 
+        num_clients, 
+        device, 
+        dataloader=dataloader, 
+        **cfg.fed.args
     )
+
+    if cfg.validation == True:
+        test_loss, accuracy = server.validation()
+        log.info(
+            f"[Round: {0: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
+        )
   
     do_continue = True
     local_states = OrderedDict()    
     
+
     for t in range(cfg.num_epochs):
         do_continue = comm.bcast(do_continue, root=0)
 
@@ -59,8 +70,8 @@ def run_server(cfg: DictConfig, comm):
         # Otherwise, out-of-memeory error from GPU
         server.model.to("cpu")
         global_state = server.model.state_dict()    
-        
-        print("Master: global_state=", global_state["fc2.bias"])
+         
+        # print("Master: global_state=", global_state["fc2.bias"])
 
         global_state = comm.bcast(global_state, root=0)
  
@@ -70,9 +81,9 @@ def run_server(cfg: DictConfig, comm):
             if states is not None:
                 for sid, state in states.items():                    
                     local_states[sid] = state 
-                    print("Master: sid=", sid, " local_state=", local_states[sid]["fc2.bias"])
+                    # print("Master: sid=", sid, " local_state=", local_states[sid]["fc2.bias"])
 
-        server.update(local_states)
+        server.update(global_state, local_states)
 
         if cfg.validation == True:
             test_loss, accuracy = server.validation()
@@ -149,9 +160,6 @@ def run_client(cfg: DictConfig, comm):
         # assign the globl state to the clients first (to avoid potential shallow copy)
         for client in clients:
             client.model.load_state_dict(global_state)
-         
-        for client in clients:
-
             client.update()         
             # We need to load the model on cpu, before communicating.
             # Otherwise, out-of-memeory error from GPU
@@ -159,8 +167,8 @@ def run_client(cfg: DictConfig, comm):
             local_states[client.id] = client.model.state_dict()
             
 
-        for client in clients:            
-            print("Sub: id=", client.id, " after_local_state=", local_states[client.id]["fc2.bias"])
+        # for client in clients:            
+        #     print("Sub: id=", client.id, " send_local_state=", local_states[client.id]["fc2.bias"])
         
         comm.gather(local_states, root=0)
         do_continue = comm.bcast(None, root=0)
@@ -237,7 +245,7 @@ def run_serial(cfg: DictConfig):
             )
 
 
-@hydra.main(config_path="config", config_name="config")
+@hydra.main(config_path="config", config_name="config1")
 def main(cfg: DictConfig):
 
     comm = MPI.COMM_WORLD
@@ -265,4 +273,4 @@ if __name__ == "__main__":
 # To run CUDA-aware MPI:
 # mpiexec -np 3 --mca opal_cuda_support 1 python appfl/run.py
 
-# mpiexec -np 3 python appfl/run.py
+# mpiexec -np 3 python appfl/run1.py
