@@ -5,9 +5,9 @@ defaults:
   - fed: fedavg
   - optim: sgd
 
-num_epochs: 2
+num_epochs: 1
 batch_size: 64
-device: 'cuda'
+device: 'cpu'
 
 num_clients: 4
 validation: True

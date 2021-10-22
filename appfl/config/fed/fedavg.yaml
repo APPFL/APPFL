@@ -2,4 +2,4 @@ type: fedavg
 servername: FedAvgServer
 clientname: FedAvgClient
 args:
-  num_local_epochs: 3
+  num_local_epochs: 1
