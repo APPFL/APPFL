@@ -7,7 +7,18 @@ defaults:
 
 num_epochs: 2
 batch_size: 64
-device: 'cuda'
+device: 'cpu'
 
-num_clients: 4
+num_clients: 1
 validation: True
+
+operator:
+  id: 1
+
+server:
+  id: 1
+  host: localhost
+  port: 50051
+
+client:
+  id: 1
