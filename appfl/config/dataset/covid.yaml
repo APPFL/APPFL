@@ -1,0 +1,13 @@
+type: covid
+classname: COVID
+torchvision: False
+train: CovidTrain
+test: CovidTest
+distributed: False
+
+size:
+  in_features: 3
+  num_classes: 7    
+
+
+

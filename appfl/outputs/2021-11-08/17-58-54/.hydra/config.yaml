@@ -1,0 +1,31 @@
+num_epochs: 10
+batch_size: 64
+device: cpu
+num_clients: 4
+validation: true
+dataset:
+  type: covid
+  classname: COVID
+  torchvision: false
+  train: CovidTrain
+  test: CovidTest
+  distributed: false
+  size:
+    in_features: 3
+    num_classes: 7
+model:
+  type: cnn1
+  classname: CNN1
+fed:
+  type: fedavg
+  servername: FedAvgServer
+  clientname: FedAvgClient
+  args:
+    num_local_epochs: 10
+optim:
+  type: sgd
+  classname: SGD
+  args:
+    lr: 0.01
+    momentum: 0.9
+    weight_decay: 1.0e-05

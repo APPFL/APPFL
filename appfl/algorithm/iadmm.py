@@ -120,27 +120,33 @@ class IADMMClient(BaseClient):
         # print("Sub: id=", self.id, " global_state=", self.global_state["fc2.bias"]) 
         # print("Sub: id=", self.id, " local_state=", self.local_state["fc2.bias"]) 
         
-        ## Gradient of the local point
-        self.model.load_state_dict(self.local_state)
-        for name, param in self.model.named_parameters():            
-            self.local_grad[name] = torch.zeros_like(param.data)                
-        tmpcnt=0
-        for data, target in self.dataloader:                
-            tmpcnt+=1
-            data = data.to(self.device)
-            target = target.to(self.device)                                    
-            output = self.model(data)
-            loss = self.loss_fn(output, target)
-            loss.backward()            
-            
+
+        for _ in range(self.num_local_epochs):
+            ## Gradient of the local point
+            self.model.load_state_dict(self.local_state)
+            for name, param in self.model.named_parameters():            
+                self.local_grad[name] = torch.zeros_like(param.data)                
+            tmpcnt=0
+            for data, target in self.dataloader:                
+                tmpcnt+=1
+                data = data.to(self.device)
+                target = target.to(self.device)                                    
+                output = self.model(data)
+                loss = self.loss_fn(output, target)
+                loss.backward()            
+                
+                for name, param in self.model.named_parameters():
+                    self.local_grad[name] += param.grad
+    
+            # print("Sub: id=", self.id, " local_grad=", self.local_grad["fc2.bias"])
+    
+            ## Update local
             for name, param in self.model.named_parameters():
-                self.local_grad[name] += param.grad
- 
-        # print("Sub: id=", self.id, " local_grad=", self.local_grad["fc2.bias"])
- 
-        ## Update local
-        for name, param in self.model.named_parameters():
-            self.local_state[name] = self.global_state[name] + (1.0/self.penalty) * ( self.dual_state[name] - self.local_grad[name] )
+                self.local_state[name] = self.global_state[name] + (1.0/self.penalty) * ( self.dual_state[name] - self.local_grad[name] )
+        
+        
+        
+        
         ## Update dual
         # print("Sub: id=", self.id, " dual=", self.dual_state["fc2.bias"][0], " global=", self.global_state["fc2.bias"][0], " local=",self.local_state["fc2.bias"][0])
         for name, param in self.model.named_parameters():
