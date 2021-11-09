@@ -1,7 +1,9 @@
 defaults:
   - _self_
-  - dataset: mnist
-  - model: cnn
+  # - dataset: mnist
+  # - dataset: cifar10
+  - dataset: covid
+  - model: cnn1
   - fed: iadmm
   - optim: sgd
 

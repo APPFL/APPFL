@@ -9,7 +9,9 @@ class CNN(nn.Module):
             in_features, 32, kernel_size=5, padding=0, stride=1, bias=True
         )
         self.conv2 = nn.Conv2d(32, 64, kernel_size=5, padding=0, stride=1, bias=True)
-        self.fc1 = nn.Linear(1024, 512)
+        
+        self.fc1 = nn.Linear(1024, 512)  # in_features == 1
+        # self.fc1 = nn.Linear(1600, 512) # in_features == 3
         self.fc2 = nn.Linear(512, num_classes)
 
         self.act = nn.ReLU(inplace=True)
