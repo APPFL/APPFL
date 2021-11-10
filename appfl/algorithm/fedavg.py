@@ -77,11 +77,7 @@ class FedAvgClient(BaseClient):
         self.model.train()
         self.model.to(self.device)
         optimizer = self.optimizer(self.model.parameters(), **self.optimizer_args)
-
-        # for name, param in self.model.named_parameters():
-        #     if name == "fc2.bias":
-        #         print("Sub: id=", self.id, " initial_pt=", param.data)
-
+ 
         for i in range(self.num_local_epochs):
             log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
             
@@ -93,9 +89,5 @@ class FedAvgClient(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()                
                 optimizer.step()
-
-        # for name, param in self.model.named_parameters():
-        #     if name =="fc2.bias":
-        #         print("Sub: id=", self.id, " next_pt=", param.data)
-        
+ 
         # self.model.to("cpu")
