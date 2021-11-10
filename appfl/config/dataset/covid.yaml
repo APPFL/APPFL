@@ -8,6 +8,7 @@ distributed: False
 size:
   in_features: 3
   num_classes: 7    
+  pixel: 32
 
 
 
