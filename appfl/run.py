@@ -12,13 +12,12 @@ from mpi4py import MPI
 import hydra
 from omegaconf import DictConfig
 
-
 import copy
 
 from algorithm.iadmm import *
 from algorithm.fedavg import *
-from models.cnn import *
 from models.cnn1 import *
+from models.cnn2 import *
 from read.covid import *
 
 def run_server(cfg: DictConfig, comm):
@@ -35,22 +34,19 @@ def run_server(cfg: DictConfig, comm):
     if cfg.validation == True:
         if cfg.dataset.torchvision == True:
             test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-                f"../../../../../datasets",
+                f"../../../datasets",
                 **cfg.dataset.args,
                 train=False,
                 transform=ToTensor(),                         
             )            
             dataloader = DataLoader(test_data, batch_size=cfg.batch_size)
-        else:
-            dataset = CovidTest()			
-            dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
-
-            # raise NotImplementedError
+        else:       
+            dataset = eval(cfg.dataset.test)(**cfg.dataset.size)
+            dataloader = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=False)
     else:
-        dataloader = None
+        dataloader = None 
 
-    
-    # # TODO: do we want to use root as a client?
+    # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
         copy.deepcopy(model), 
         num_clients, 
@@ -67,27 +63,20 @@ def run_server(cfg: DictConfig, comm):
   
     do_continue = True
     local_states = OrderedDict()    
-    
-
     for t in range(cfg.num_epochs):
         do_continue = comm.bcast(do_continue, root=0)
 
         # We need to load the model on cpu, before communicating.
         # Otherwise, out-of-memeory error from GPU
         server.model.to("cpu")
-        global_state = server.model.state_dict()    
-         
-        # print("Master: global_state=", global_state["fc2.bias"])
-
-        global_state = comm.bcast(global_state, root=0)
- 
+        global_state = server.model.state_dict()             
+        global_state = comm.bcast(global_state, root=0) 
         gathered_states = comm.gather(None, root=0)
 
         for i, states in enumerate(gathered_states):            
             if states is not None:
                 for sid, state in states.items():                    
-                    local_states[sid] = state 
-                    # print("Master: sid=", sid, " local_state=", local_states[sid]["fc2.bias"])
+                    local_states[sid] = state                     
 
         server.update(global_state, local_states)
 
@@ -117,51 +106,36 @@ def run_client(cfg: DictConfig, comm):
     model = eval(cfg.model.classname)(**cfg.dataset.size)
     optimizer = eval(cfg.optim.classname)
 
+    ## Get Data
     if cfg.dataset.torchvision == True:
         train_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-            f"../../../../../datasets",
+            f"../../../datasets",
             **cfg.dataset.args,
             train=True,
             transform=ToTensor(),            
-        )
-        
-        dataloaders = [
-            DataLoader(
-                train_data,
-                batch_size=cfg.batch_size,   
-                shuffle=False,                  
-                sampler=DistributedSampler(
-                    train_data, num_replicas=num_clients, rank=cid
-                ),
-            )
-            for cid in num_client_groups[comm_rank - 1]
-        ]
-        
-    else:
-        dataset = CovidTrain()			
-        dataloaders = [
-            DataLoader(
-                dataset,
-                batch_size=cfg.batch_size,   
-                shuffle=False,                  
-                sampler=DistributedSampler(
-                    dataset, num_replicas=num_clients, rank=cid
-                ),
-            )
-            for cid in num_client_groups[comm_rank - 1]
-        ]
-        
-        
-        # raise NotImplementedError
-       
+        )        
+    else:        
+        train_data = eval(cfg.dataset.train)(**cfg.dataset.size)
+     
+    ## Batch size        
+    if cfg.fed.type == "fedavg":
+        batchsize = cfg.batch_size
+    if cfg.fed.type == "iadmm":
+        batchsize = len(train_data)
     
-    # for i, cid in enumerate(num_client_groups[comm_rank - 1]):
-    #     for imgs, labels in dataloaders[i]:      
-    #         print("rank=", comm_rank, " id=", i, " Batch of images has shape: ", imgs.shape)    
-    #         print("rank=", comm_rank, " id=", i, " Batch of labels has shape: ", labels.shape)  
-            
-
-
+    ## Load Data
+    dataloaders = [
+        DataLoader(
+            train_data,
+            batch_size=batchsize,   
+            shuffle=False,                  
+            sampler=DistributedSampler(
+                train_data, num_replicas=num_clients, rank=cid
+            ),
+        )
+        for cid in num_client_groups[comm_rank - 1]
+    ]        
+         
     clients = [
         eval(cfg.fed.clientname)(
             cid,
@@ -175,26 +149,22 @@ def run_client(cfg: DictConfig, comm):
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
     
-
     do_continue = comm.bcast(None, root=0)
     local_states = OrderedDict()
 
     while do_continue:
         global_state = comm.bcast(None, root=0)
-
+        
         # assign the globl state to the clients first (to avoid potential shallow copy)
         for client in clients:
-            client.model.load_state_dict(global_state)
+            client.model.load_state_dict(global_state)            
             client.update()         
+            
             # We need to load the model on cpu, before communicating.
             # Otherwise, out-of-memeory error from GPU
             client.model.to("cpu")
             local_states[client.id] = client.model.state_dict()
             
-
-        # for client in clients:            
-        #     print("Sub: id=", client.id, " send_local_state=", local_states[client.id]["fc2.bias"])
-        
         comm.gather(local_states, root=0)
         do_continue = comm.bcast(None, root=0)
 
@@ -274,13 +244,11 @@ def run_serial(cfg: DictConfig):
 def main(cfg: DictConfig):
  
     comm = MPI.COMM_WORLD
-
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
  
     torch.manual_seed(1)
-
-
+ 
     if comm_size > 1:
         if comm_rank == 0:
             run_server(cfg, comm)
@@ -288,9 +256,7 @@ def main(cfg: DictConfig):
             run_client(cfg, comm)
     else:
         run_serial(cfg)
-
-    print("------Done------rank=", comm_rank)
-
+ 
 
 if __name__ == "__main__":
     main()
