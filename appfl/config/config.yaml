@@ -1,14 +1,15 @@
 
 defaults:
   - _self_
-  - dataset: mnist  ## mnist, cifar10, covid  
+  - dataset: mnist   ## mnist, cifar10, covid  
   - model: cnn1      ## cnn1, cnn2  
-  - fed: iadmm     ## fedavg, iadmm
+  - fed: fedavg      ## fedavg, iadmm
   - optim: sgd
-  
-num_epochs: 10
-batch_size: 64
-device: 'cpu'
 
-num_clients: 4
+device: 'cpu'
 validation: True
+
+num_epochs: 2
+batch_size: 64
+num_clients: 4
+
