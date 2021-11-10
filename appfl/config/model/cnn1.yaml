@@ -1,5 +1,2 @@
 type: cnn1
 classname: CNN1
-# args:
-#   in_features: 1
-#   num_classes: 10
