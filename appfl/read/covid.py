@@ -7,10 +7,10 @@ from torch.utils.data import Dataset, DataLoader
 import csv
 
 class CovidTrain(Dataset):
-    def __init__(self): 
-        self.imgs_path = "../../../../../datasets/COVID/Coronahack-Chest-XRay-Dataset/train/"        
+    def __init__(self, in_features, num_classes, pixel): 
+        self.imgs_path = "../../../datasets/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"        
         self.data = []
-        with open("../../../../../datasets/COVID/Chest_xray_Corona_Metadata.csv", 'r') as file:
+        with open("../../../datasets/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:
             csvreader = csv.reader(file)
             header = next(csvreader)
             for row in csvreader:
@@ -28,12 +28,9 @@ class CovidTrain(Dataset):
         tmpcnt = 0
         for class_name in class_name_list:
             self.class_map[class_name] = tmpcnt
-            tmpcnt += 1 
-        # print(self.class_map)
-        
-        ## jpg file size consistency? 
+            tmpcnt += 1  
 
-        self.img_dim   = (32, 32)  
+        self.img_dim   = (pixel, pixel)  
 
 
     def __len__(self):
@@ -49,13 +46,12 @@ class CovidTrain(Dataset):
         class_id = torch.tensor(class_id)
         return img_tensor, class_id
 
-
 class CovidTest(Dataset):
-    def __init__(self): 
+    def __init__(self, in_features, num_classes, pixel): 
         
-        self.imgs_path = "../../../../../datasets/COVID/Coronahack-Chest-XRay-Dataset/test/"
+        self.imgs_path = "../../../datasets/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
         self.data = []
-        with open("../../../../../datasets/COVID/Chest_xray_Corona_Metadata.csv", 'r') as file:
+        with open("../../../datasets/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:
             csvreader = csv.reader(file)
             header = next(csvreader)
             for row in csvreader:                
@@ -74,18 +70,14 @@ class CovidTest(Dataset):
         for class_name in class_name_list:
             self.class_map[class_name] = tmpcnt
             tmpcnt += 1 
-        # print(self.class_map)
         
-        ## jpg file size consistency? 
-
-        self.img_dim   = (32, 32)  
-
+        self.img_dim   = (pixel, pixel)  
 
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
-        img_path, class_name = self.data[idx]        
+        img_path, class_name = self.data[idx]         
         img = cv2.imread(img_path)        
         img = cv2.resize(img, self.img_dim)        
         class_id = self.class_map[class_name]        
