@@ -7,3 +7,4 @@ args:
 size:
   in_features: 3
   num_classes: 10  
+  pixel: 32
