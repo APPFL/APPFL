@@ -23,8 +23,11 @@ from read.covid import *
 def run_server(cfg: DictConfig, comm):
 
     ## Print and Write Results  
-    dir = "../../../results"  
-    filename = "Result_%s_%s_%s"%(cfg.dataset.type, cfg.model.type, cfg.fed.type)
+    dir = "../../../results"    
+    filename = "Result_%s_%s_%s"%(cfg.dataset.type, cfg.model.type, cfg.fed.type)    
+    if cfg.fed.type == "iadmm":  
+        filename = "Result_%s_%s_%s(rho=%s)"%(cfg.dataset.type, cfg.model.type, cfg.fed.type, cfg.fed.args.penalty)
+    
     file_ext = ".txt"
     file = dir+"/%s%s"%(filename,file_ext)
     uniq = 1
@@ -43,8 +46,7 @@ def run_server(cfg: DictConfig, comm):
                 "TestAvgLoss",
                 "TestAccuracy"                
             )
-        )
-    print(title, end="")
+        )    
     outfile.write(title)
 
     ## Start    
@@ -118,7 +120,7 @@ def run_server(cfg: DictConfig, comm):
         results = (
             "%12d %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n"
             % (
-                t,
+                t+1,
                 LocalUpdate_time,
                 GlobalUpdate_time,
                 PerIter_time,
@@ -127,6 +129,7 @@ def run_server(cfg: DictConfig, comm):
                 accuracy                 
             )
         )
+        print(title, end="")
         print(results, end="")
         outfile.write(results)
 
@@ -136,11 +139,12 @@ def run_server(cfg: DictConfig, comm):
     outfile.write("Device=%s \n"%(cfg.device))
     outfile.write("#Nodes=%s \n"%(comm_size))
     outfile.write("Instance=%s \n"%(cfg.dataset.type))
+    outfile.write("#Clients=%s \n"%(num_clients))    
     outfile.write("Model=%s \n"%(cfg.model.type))
     outfile.write("Algorithm=%s \n"%(cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
-    outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))
-    if cfg.model.type == "iadmm":
+    outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
+    if cfg.fed.type == "iadmm":
         outfile.write("ADMM Penalty=%s \n"%(cfg.fed.args.penalty))
 
     outfile.close()
@@ -320,5 +324,5 @@ if __name__ == "__main__":
 # To run CUDA-aware MPI:
 # mpiexec -np 3 --mca opal_cuda_support 1 python appfl/run.py
 
-# mpiexec -np 3 python appfl/run.py
-# mpiexec -np 3 python ./run.py
+# mpiexec -np 5 python appfl/run.py
+# mpiexec -np 5 python ./run.py
