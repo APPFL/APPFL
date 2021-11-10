@@ -13,7 +13,7 @@ import hydra
 from omegaconf import DictConfig
 
 import copy
-
+import time
 from algorithm.iadmm import *
 from algorithm.fedavg import *
 from models.cnn1 import *
@@ -22,6 +22,32 @@ from read.covid import *
 
 def run_server(cfg: DictConfig, comm):
 
+    ## Print and Write Results  
+    dir = "../../../results"  
+    filename = "Result_%s_%s_%s"%(cfg.dataset.type, cfg.model.type, cfg.fed.type)
+    file_ext = ".txt"
+    file = dir+"/%s%s"%(filename,file_ext)
+    uniq = 1
+    while os.path.exists(file):
+        file = dir+"/%s_%d%s"%(filename, uniq, file_ext)
+        uniq += 1
+    outfile = open(file,"w")
+    title = (
+            "%12s %12s %12s %12s %12s %12s %12s \n"
+            % (
+                "Iter",                
+                "Local[s]",
+                "Global[s]",
+                "Iter[s]",
+                "Elapsed[s]",
+                "TestAvgLoss",
+                "TestAccuracy"                
+            )
+        )
+    print(title, end="")
+    outfile.write(title)
+
+    ## Start    
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
     num_clients = cfg.num_clients
@@ -53,41 +79,71 @@ def run_server(cfg: DictConfig, comm):
         device, 
         dataloader=dataloader, 
         **cfg.fed.args
-    )
+    ) 
 
-    if cfg.validation == True:
-        test_loss, accuracy = server.validation()
-        log.info(
-            f"[Round: {0: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
-        )
-  
     do_continue = True
     local_states = OrderedDict()    
+    start_time = time.time()
     for t in range(cfg.num_epochs):
+        PerIter_start = time.time()
         do_continue = comm.bcast(do_continue, root=0)
 
         # We need to load the model on cpu, before communicating.
         # Otherwise, out-of-memeory error from GPU
         server.model.to("cpu")
-        global_state = server.model.state_dict()             
-        global_state = comm.bcast(global_state, root=0) 
+        global_state = server.model.state_dict()        
+        
+        LocalUpdate_start = time.time()     
+        global_state = comm.bcast(global_state, root=0)         
         gathered_states = comm.gather(None, root=0)
+        LocalUpdate_time = time.time() - LocalUpdate_start
 
+        GlobalUpdate_start = time.time()
         for i, states in enumerate(gathered_states):            
             if states is not None:
                 for sid, state in states.items():                    
-                    local_states[sid] = state                     
-
+                    local_states[sid] = state                           
         server.update(global_state, local_states)
+        GlobalUpdate_time = time.time() - GlobalUpdate_start
 
         if cfg.validation == True:
             test_loss, accuracy = server.validation()
             log.info(
                 f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
             )
+        PerIter_time = time.time() - PerIter_start
+        Elapsed_time = time.time() - start_time
+        
+        ##
+        results = (
+            "%12d %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n"
+            % (
+                t,
+                LocalUpdate_time,
+                GlobalUpdate_time,
+                PerIter_time,
+                Elapsed_time,
+                test_loss,
+                accuracy                 
+            )
+        )
+        print(results, end="")
+        outfile.write(results)
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
+ 
+    outfile.write("Device=%s \n"%(cfg.device))
+    outfile.write("#Nodes=%s \n"%(comm_size))
+    outfile.write("Instance=%s \n"%(cfg.dataset.type))
+    outfile.write("Model=%s \n"%(cfg.model.type))
+    outfile.write("Algorithm=%s \n"%(cfg.fed.type))
+    outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
+    outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))
+    if cfg.model.type == "iadmm":
+        outfile.write("ADMM Penalty=%s \n"%(cfg.fed.args.penalty))
+
+    outfile.close()
 
 
 def run_client(cfg: DictConfig, comm):
@@ -103,8 +159,8 @@ def run_client(cfg: DictConfig, comm):
     else:
         device = cfg.device
 
-    model = eval(cfg.model.classname)(**cfg.dataset.size)
-    optimizer = eval(cfg.optim.classname)
+    model = eval(cfg.model.classname)(**cfg.dataset.size)    
+    optimizer = eval(cfg.optim.classname)         
 
     ## Get Data
     if cfg.dataset.torchvision == True:
@@ -120,7 +176,7 @@ def run_client(cfg: DictConfig, comm):
     ## Batch size        
     if cfg.fed.type == "fedavg":
         batchsize = cfg.batch_size
-    if cfg.fed.type == "iadmm":
+    if cfg.fed.type == "iadmm":  ## TO DO: advance techniques (e.g., utilizing batch)
         batchsize = len(train_data)
     
     ## Load Data
@@ -135,7 +191,7 @@ def run_client(cfg: DictConfig, comm):
         )
         for cid in num_client_groups[comm_rank - 1]
     ]        
-         
+    
     clients = [
         eval(cfg.fed.clientname)(
             cid,
