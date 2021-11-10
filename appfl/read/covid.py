@@ -3,14 +3,17 @@ import cv2
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-
+import os
+import tarfile
 import csv
 
 class CovidTrain(Dataset):
     def __init__(self, in_features, num_classes, pixel): 
-        self.imgs_path = "../../../datasets/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"        
+        dir = "../../../datasets"
+
+        self.imgs_path = dir+"/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"        
         self.data = []
-        with open("../../../datasets/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:
+        with open(dir+"/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:
             csvreader = csv.reader(file)
             header = next(csvreader)
             for row in csvreader:
@@ -48,10 +51,10 @@ class CovidTrain(Dataset):
 
 class CovidTest(Dataset):
     def __init__(self, in_features, num_classes, pixel): 
-        
-        self.imgs_path = "../../../datasets/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
+        dir = "../../../datasets"
+        self.imgs_path = dir+"/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
         self.data = []
-        with open("../../../datasets/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:
+        with open(dir+"/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:
             csvreader = csv.reader(file)
             header = next(csvreader)
             for row in csvreader:                
