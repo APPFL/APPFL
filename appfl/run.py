@@ -11,7 +11,7 @@ from mpi4py import MPI
 
 import hydra
 from omegaconf import DictConfig
-
+from gpuinfo import GPUInfo
 import copy
 import time
 from algorithm.iadmm import *
@@ -56,7 +56,7 @@ def run_server(cfg: DictConfig, comm):
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
-
+    
     model = eval(cfg.model.classname)(**cfg.dataset.size)
      
     if cfg.validation == True:
@@ -93,6 +93,7 @@ def run_server(cfg: DictConfig, comm):
         # We need to load the model on cpu, before communicating.
         # Otherwise, out-of-memeory error from GPU
         server.model.to("cpu")
+        
         global_state = server.model.state_dict()        
         
         LocalUpdate_start = time.time()     
@@ -302,7 +303,7 @@ def run_serial(cfg: DictConfig):
 
 @hydra.main(config_path="config", config_name="config")
 def main(cfg: DictConfig):
- 
+    
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -316,13 +317,11 @@ def main(cfg: DictConfig):
             run_client(cfg, comm)
     else:
         run_serial(cfg)
- 
-
+  
 if __name__ == "__main__":
     main()
 
 # To run CUDA-aware MPI:
-# mpiexec -np 3 --mca opal_cuda_support 1 python appfl/run.py
+# mpiexec -np 5 --mca opal_cuda_support 1 python ./run.py
 
-# mpiexec -np 5 python appfl/run.py
 # mpiexec -np 5 python ./run.py

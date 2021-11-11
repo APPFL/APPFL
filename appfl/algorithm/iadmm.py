@@ -45,7 +45,6 @@ class IADMMServer(BaseServer):
                 tmp += local_states[i][name] - (1.0/self.penalty) * self.dual_states[i][name] 
             global_state[name] = tmp / self.num_clients
 
-        # print("updated_global_state=", global_state["fc2.bias"])
         self.model.load_state_dict(global_state)
  
     # NOTE: this is only for testing purpose.
@@ -87,6 +86,7 @@ class IADMMClient(BaseClient):
 
         self.id = id
         
+        self.model.to(device)
         self.global_state = OrderedDict()        
         self.local_state = OrderedDict()
         self.dual_state = OrderedDict()        
@@ -124,8 +124,8 @@ class IADMMClient(BaseClient):
                 for name, param in self.model.named_parameters():
                     self.local_grad[name] = param.grad
             
-            ## Update local
-            for name, param in self.model.named_parameters():
+            ## Update local            
+            for name, param in self.model.named_parameters():                
                 self.local_state[name] = self.global_state[name] + (1.0/self.penalty) * ( self.dual_state[name] - self.local_grad[name] )
         
         ## Update dual        
