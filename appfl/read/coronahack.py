@@ -7,9 +7,9 @@ import os
 import tarfile
 import csv
 
-class CovidTrain(Dataset):
+class CoronahackTrain(Dataset):
     def __init__(self, in_features, num_classes, pixel): 
-        dir = "../../../datasets"
+        dir = "../../../datasets/Coronahack"
 
         self.imgs_path = dir+"/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"        
         self.data = []
@@ -49,9 +49,9 @@ class CovidTrain(Dataset):
         class_id = torch.tensor(class_id)
         return img_tensor, class_id
 
-class CovidTest(Dataset):
+class CoronahackTest(Dataset):
     def __init__(self, in_features, num_classes, pixel): 
-        dir = "../../../datasets"
+        dir = "../../../datasets/Coronahack"
         self.imgs_path = dir+"/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
         self.data = []
         with open(dir+"/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:

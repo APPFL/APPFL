@@ -11,5 +11,3 @@ CASE_NUM=`printf %1d $SLURM_ARRAY_TASK_ID`
 
 mpiexec -np 5 --mca opal_cuda_support 1 python ./run.py dataset=mnist model=cnn1 fed=fedavg
 mpiexec -np 5 --mca opal_cuda_support 1 python ./run.py dataset=mnist model=cnn1 fed=iadmm
-mpiexec -np 5 --mca opal_cuda_support 1 python ./run.py dataset=cifar10 model=cnn1 fed=fedavg
-mpiexec -np 5 --mca opal_cuda_support 1 python ./run.py dataset=cifar10 model=cnn1 fed=iadmm
