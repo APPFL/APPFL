@@ -1,8 +1,8 @@
-type: covid
-classname: COVID
+type: coronahack
+classname: Coronahack
 torchvision: False
-train: CovidTrain
-test: CovidTest
+train: CoronahackTrain
+test: CoronahackTest
 distributed: False
 
 size:

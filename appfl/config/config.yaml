@@ -3,10 +3,10 @@ defaults:
   - _self_
   - dataset: mnist   ## mnist, cifar10, covid  
   - model: cnn1      ## cnn1, cnn2  
-  - fed: fedavg      ## fedavg, iadmm
+  - fed: iadmm      ## fedavg, iadmm
   - optim: sgd
 
-device: 'cpu'
+device: 'cuda'      ## cuda, cpu
 validation: True
 
 num_epochs: 2

@@ -130,3 +130,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+appfl/datasets/cifar-10-batches-py/data_batch_4
