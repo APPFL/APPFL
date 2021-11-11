@@ -1,7 +1,7 @@
 
 defaults:
   - _self_
-  - dataset: mnist   ## mnist, cifar10, covid  
+  - dataset: mnist   ## mnist, cifar10, coronahack, femnist  
   - model: cnn1      ## cnn1, cnn2  
   - fed: iadmm      ## fedavg, iadmm
   - optim: sgd
