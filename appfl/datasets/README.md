@@ -11,6 +11,6 @@ Example. MNIST
 ## FEMNIST
 - ```mkdir FEMNIST``` in this directory
 - ```Git clone https://github.com/TalwalkarLab/leaf.git```
-- In ```leaf/data/femnist```, follow the instruction in https://github.com/TalwalkarLab/leaf/tree/master/data/femnist
-- As an example, do ```./preprocess.sh -s niid --sf 0.05 -k 0 -t sample``` which downloads a small-sized dataset (#training data=36708, #features=784, #classes=62, #clients=195)
+- Follow the instruction in https://github.com/TalwalkarLab/leaf/tree/master/data/femnist
+- As an example, in ```leaf/data/femnist```, do ```./preprocess.sh -s niid --sf 0.05 -k 0 -t sample``` which downloads a small-sized dataset (#training data=36708, #features=784, #classes=62, #clients=195)
 - In a newly generated directory ```leaf/data/femnist/data```, copy the two directories ```train``` and ```test``` and paste them in ```appfl/datasets/FEMNIST```
