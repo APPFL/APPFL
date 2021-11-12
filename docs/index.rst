@@ -8,17 +8,14 @@ APPFL: Argonne Privacy-Preserving Federated Learning
 
 .. automodule:: appfl
 
-Quick Start
------------
-
 Table of Contents
 -----------------
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-   
+   :maxdepth: 1
+
    install/index
+   tutorials/index
 
 Indices and tables
 ------------------

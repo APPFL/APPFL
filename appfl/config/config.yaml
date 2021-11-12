@@ -1,3 +1,6 @@
+# A main configuration file
+
+# Each field has its own configuration file.
 defaults:
   - _self_
   - dataset: mnist
@@ -5,12 +8,24 @@ defaults:
   - fed: fedavg
   - optim: sgd
 
+# Number of training epochs
 num_epochs: 2
-batch_size: 64
+
+# Size of each training batch
+batch_size: 16
+
+# Compute device
 device: 'cpu'
 
+# Number of learning clients
 num_clients: 1
+
+# Indication of whether to validate or not
 validation: True
+
+#
+# gRPC configutations
+#
 
 operator:
   id: 1
