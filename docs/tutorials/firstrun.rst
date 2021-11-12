@@ -7,7 +7,7 @@ You should be ready to run the first example for APPFL. The first example can be
 
     $ python appfl/run
 
-You can run it in parallel:
+You can run it in parallel using MPI (assuming that all clients are trained in the same cluster):
 
 .. code-block:: console
 
@@ -23,4 +23,4 @@ The APPFL run is defined in and reads the following configuration file:
     :language: YAML
     :caption: Configuration file: appfl/config/config.yaml
 
-Please find the detail systax for the configuration file in `Hydra <https://hydra.cc>`_.
+Please find details about the syntax for the configuration file in `Hydra <https://hydra.cc>`_.

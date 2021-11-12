@@ -7,3 +7,4 @@ We present a collection of tutorials for APPFL framework.
     :maxdepth: 1
 
     firstrun
+    run_grpc
