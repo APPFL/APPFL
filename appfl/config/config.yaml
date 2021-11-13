@@ -1,15 +1,24 @@
-
 defaults:
   - _self_
-  - dataset: mnist   ## mnist, cifar10, coronahack, femnist  
-  - model: cnn1      ## cnn1, cnn2  
-  - fed: iadmm      ## fedavg, iadmm
+  - dataset: mnist
+  - model: cnn
+  - fed: fedavg
   - optim: sgd
-
-device: 'cuda'      ## cuda, cpu
-validation: True
 
 num_epochs: 2
 batch_size: 64
-num_clients: 4
+device: 'cpu'
 
+num_clients: 1
+validation: True
+
+operator:
+  id: 1
+
+server:
+  id: 1
+  host: localhost
+  port: 50051
+
+client:
+  id: 1
