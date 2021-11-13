@@ -332,6 +332,8 @@ def main(cfg: DictConfig):
             run_client(cfg, comm)
     else:
         run_serial(cfg)
+    
+    print("------DONE------", comm_rank)
   
 if __name__ == "__main__":
     main()
