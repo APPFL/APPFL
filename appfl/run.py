@@ -11,14 +11,15 @@ from mpi4py import MPI
 
 import hydra
 from omegaconf import DictConfig
-from gpuinfo import GPUInfo
+
 import copy
 import time
 from algorithm.iadmm import *
 from algorithm.fedavg import *
 from models.cnn1 import *
 from models.cnn2 import *
-from read.covid import *
+from read.coronahack import *
+from read.femnist import *
 
 def run_server(cfg: DictConfig, comm):
 

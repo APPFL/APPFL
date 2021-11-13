@@ -7,7 +7,7 @@ defaults:
 
 num_epochs: 2
 batch_size: 64
-device: 'cpu'
+device: 'cpu'       ## cuda, cpu
 
 num_clients: 1
 validation: True

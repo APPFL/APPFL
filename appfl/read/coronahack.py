@@ -9,11 +9,11 @@ import csv
 
 class CoronahackTrain(Dataset):
     def __init__(self, in_features, num_classes, pixel): 
-        dir = "../../../datasets/Coronahack"
+        dir = "../../../datasets/Coronahack/archive"
 
-        self.imgs_path = dir+"/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"        
+        self.imgs_path = dir+"/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"        
         self.data = []
-        with open(dir+"/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:
+        with open(dir+"/Chest_xray_Corona_Metadata.csv", 'r') as file:
             csvreader = csv.reader(file)
             header = next(csvreader)
             for row in csvreader:
@@ -51,10 +51,10 @@ class CoronahackTrain(Dataset):
 
 class CoronahackTest(Dataset):
     def __init__(self, in_features, num_classes, pixel): 
-        dir = "../../../datasets/Coronahack"
-        self.imgs_path = dir+"/archive/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
+        dir = "../../../datasets/Coronahack/archive"
+        self.imgs_path = dir+"/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
         self.data = []
-        with open(dir+"/archive/Chest_xray_Corona_Metadata.csv", 'r') as file:
+        with open(dir+"/Chest_xray_Corona_Metadata.csv", 'r') as file:
             csvreader = csv.reader(file)
             header = next(csvreader)
             for row in csvreader:                
