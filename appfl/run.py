@@ -61,17 +61,23 @@ def run_server(cfg: DictConfig, comm):
     model = eval(cfg.model.classname)(**cfg.dataset.size)
      
     if cfg.validation == True:
-        if cfg.dataset.torchvision == True:
-            test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-                f"../../../datasets",
-                **cfg.dataset.args,
-                train=False,
-                transform=ToTensor(),                         
-            )            
-            dataloader = DataLoader(test_data, batch_size=cfg.batch_size)
-        else:       
-            dataset = eval(cfg.dataset.test)(**cfg.dataset.size)
-            dataloader = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=False)
+        if cfg.dataset.distributed == False:
+            if cfg.dataset.torchvision == True:
+                test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
+                    f"../../../datasets",
+                    **cfg.dataset.args,
+                    train=False,
+                    transform=ToTensor(),                         
+                )                        
+            else:       
+                test_data = eval(cfg.dataset.test)(**cfg.dataset.size)
+
+            dataloader = DataLoader(test_data, batch_size=cfg.batch_size, shuffle=False)
+        else:
+            test_data = eval(cfg.dataset.test)(**cfg.dataset.size)
+            num_clients = test_data.num_clients
+            dataloader = test_data.dataloader
+ 
     else:
         dataloader = None 
 
@@ -157,9 +163,9 @@ def run_client(cfg: DictConfig, comm):
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
     num_clients = cfg.num_clients
-    num_client_groups = np.array_split(range(num_clients), comm_size - 1)
- 
-    # We assume to have as many GPUs as the number of MPI processes.
+    num_client_groups = np.array_split(range(num_clients), comm_size - 1)            
+     
+    ## We assume to have as many GPUs as the number of MPI processes.
     if cfg.device == "cuda":
         device = f"cuda:{comm_rank-1}"
     else:
@@ -168,35 +174,43 @@ def run_client(cfg: DictConfig, comm):
     model = eval(cfg.model.classname)(**cfg.dataset.size)    
     optimizer = eval(cfg.optim.classname)         
 
-    ## Get Data
-    if cfg.dataset.torchvision == True:
-        train_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-            f"../../../datasets",
-            **cfg.dataset.args,
-            train=True,
-            transform=ToTensor(),            
-        )        
-    else:        
-        train_data = eval(cfg.dataset.train)(**cfg.dataset.size)
-     
-    ## Batch size        
-    if cfg.fed.type == "fedavg":
-        batchsize = cfg.batch_size
-    if cfg.fed.type == "iadmm":  ## TO DO: advance techniques (e.g., utilizing batch)
-        batchsize = len(train_data)
-    
-    ## Load Data
-    dataloaders = [
-        DataLoader(
-            train_data,
-            batch_size=batchsize,   
-            shuffle=False,                  
-            sampler=DistributedSampler(
-                train_data, num_replicas=num_clients, rank=cid
-            ),
-        )
-        for cid in num_client_groups[comm_rank - 1]
-    ]        
+    dataloaders = []
+    if cfg.dataset.distributed == False:             
+        if cfg.dataset.torchvision == True:
+            train_data = eval("torchvision.datasets." + cfg.dataset.classname)(
+                f"../../../datasets",
+                **cfg.dataset.args,
+                train=True,
+                transform=ToTensor(),            
+            )        
+        else:        
+            train_data = eval(cfg.dataset.train)(**cfg.dataset.size)
+
+        ## TO DO: advance techniques (e.g., utilizing batch)
+        if cfg.fed.type == "iadmm":  
+            cfg.batch_size = len(train_data)     
+
+        for cid in num_client_groups[comm_rank - 1]:
+            dataloaders.append(
+                DataLoader(
+                    train_data,
+                    batch_size=cfg.batch_size,   
+                    shuffle=False,                  
+                    sampler=DistributedSampler(
+                        train_data, num_replicas=num_clients, rank=cid
+                    )
+                )
+            )
+               
+    else:
+        train_data = eval(cfg.dataset.train)(**cfg.dataset.size)        
+
+        num_clients = train_data.num_clients
+        num_client_groups = np.array_split(range(num_clients), comm_size - 1)        
+        
+        for i, cid in enumerate(num_client_groups[comm_rank - 1]):  
+            dataloaders.append([train_data.dataloader[cid]])
+        
     
     clients = [
         eval(cfg.fed.clientname)(
@@ -238,7 +252,7 @@ def run_serial(cfg: DictConfig):
 
     if cfg.dataset.torchvision == True:
         train_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-            "./datasets", **cfg.dataset.args, train=True, transform=ToTensor()
+            "../../../datasets", **cfg.dataset.args, train=True, transform=ToTensor()
         )
         local_data_size = int(len(train_data) / num_clients)
         how_to_split = [local_data_size for i in range(num_clients)]
