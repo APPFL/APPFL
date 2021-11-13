@@ -1,8 +1,8 @@
 defaults:
   - _self_
-  - dataset: mnist
-  - model: cnn
-  - fed: fedavg
+  - dataset: mnist  ## mnist, cifar10, coronahack, femnist
+  - model: cnn1     ## cnn1, cnn2
+  - fed: fedavg     ## fedavg, iadmm
   - optim: sgd
 
 num_epochs: 2
