@@ -1,0 +1,11 @@
+type: femnist
+classname: FEMNIST
+torchvision: False
+distributed: True
+train: FEMNISTTrain
+test: FEMNISTTest
+
+size:
+  in_features: 1
+  num_classes: 62  
+  pixel: 28
