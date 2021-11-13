@@ -111,7 +111,7 @@ class IADMMClient(BaseClient):
             self.global_state[name] = copy.deepcopy(param.data)        
         
         for i in range(self.num_local_epochs):
-            log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
+            # log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
             ## Gradient of the local point
             self.model.load_state_dict(self.local_state)
             for name, param in self.model.named_parameters():            
