@@ -133,3 +133,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 appfl/datasets/cifar-10-batches-py/data_batch_4
+appfl/config/config.yaml
+appfl/config/fedavg.yaml
+appfl/config/iadmm.yaml
