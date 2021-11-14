@@ -2,6 +2,7 @@ appfl/datasets/*
 appfl/outputs/*
 appfl/results/*
 appfl/Slurm_outputs/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
