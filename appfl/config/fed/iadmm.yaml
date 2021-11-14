@@ -3,5 +3,5 @@ servername: IADMMServer
 clientname: IADMMClient
 
 args:
-  num_local_epochs: 2
+  num_local_epochs: 10
   penalty: 10.0     ##  

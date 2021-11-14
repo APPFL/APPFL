@@ -5,7 +5,7 @@ defaults:
   - fed: fedavg     ## fedavg, iadmm
   - optim: sgd
 
-num_epochs: 2
+num_epochs: 1
 batch_size: 64
 device: 'cpu'       ## cuda, cpu
 
