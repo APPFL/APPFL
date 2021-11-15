@@ -8,3 +8,5 @@ We present a collection of tutorials for APPFL framework.
 
     firstrun
     run_grpc
+    feeding_data
+    feeding_algo
