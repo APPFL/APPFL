@@ -1,5 +1,6 @@
-datasets/*
-outputs/*
+appfl/datasets/*
+appfl/outputs/*
+appfl/results/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
