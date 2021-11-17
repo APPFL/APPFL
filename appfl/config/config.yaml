@@ -4,7 +4,7 @@
 defaults:
   - _self_
   - dataset: mnist
-  - model: cnn
+  - model: cnn1
   - fed: fedavg
   - optim: sgd
 
