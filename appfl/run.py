@@ -6,6 +6,10 @@ from torch.utils import data
 from torch.utils.data.distributed import DistributedSampler
 import torchvision
 from torchvision.transforms import ToTensor
+
+import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
+
 import numpy as np
 from mpi4py import MPI
 
@@ -93,6 +97,7 @@ def run_server(cfg: DictConfig, comm):
     do_continue = True
     local_states = OrderedDict()    
     start_time = time.time()
+    BestAccuracy = 0.0
     for t in range(cfg.num_epochs):
         PerIter_start = time.time()
         do_continue = comm.bcast(do_continue, root=0)
@@ -118,6 +123,8 @@ def run_server(cfg: DictConfig, comm):
 
         if cfg.validation == True:
             test_loss, accuracy = server.validation()
+            if accuracy > BestAccuracy:
+                BestAccuracy = accuracy
             log.info(
                 f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
             )
@@ -152,6 +159,9 @@ def run_server(cfg: DictConfig, comm):
     outfile.write("Algorithm=%s \n"%(cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
+    outfile.write("Elapsed_time=%s \n"%(Elapsed_time))  
+    outfile.write("BestAccuracy=%s \n"%(BestAccuracy))      
+    
     if cfg.fed.type == "iadmm":
         outfile.write("ADMM Penalty=%s \n"%(cfg.fed.args.penalty))
 
