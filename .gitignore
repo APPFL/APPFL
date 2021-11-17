@@ -1,8 +1,6 @@
 appfl/datasets/*
 appfl/outputs/*
 appfl/results/*
-appfl/Slurm_outputs/*
-appfl/config/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -133,10 +131,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-<<<<<<< HEAD
-=======
-appfl/datasets/cifar-10-batches-py/data_batch_4
-appfl/config/config.yaml
-appfl/config/fedavg.yaml
-appfl/config/iadmm.yaml
->>>>>>> 2d63668dc4632742ae15b6568b469e0631510457
