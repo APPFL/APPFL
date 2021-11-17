@@ -20,6 +20,8 @@ We also need to install the following python packages:
 
     $ pip install hydra-core --upgrade
     $ pip install mpi4py --upgrade
+    $ pip install matplotlib --upgrade
+    $ pip install tensorboard --upgrade
 
 Optionally, you can install Jupyter Notebook.
 
