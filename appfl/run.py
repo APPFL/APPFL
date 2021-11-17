@@ -272,13 +272,14 @@ def run_serial(cfg: DictConfig):
         raise NotImplementedError
 
     # print(cfg.model.classname)
-    model = eval(cfg.model.classname)(**cfg.model.args)
+    # model = eval(cfg.model.classname)(**cfg.model.args)
+    model = eval(cfg.model.classname)(**cfg.dataset.size)    
     optimizer = eval(cfg.optim.classname)
 
     if cfg.validation == True:
         if cfg.dataset.torchvision == True:
             test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-                "./datasets", **cfg.dataset.args, train=False, transform=ToTensor()
+                "../../../datasets", **cfg.dataset.args, train=False, transform=ToTensor()
             )
         else:
             raise NotImplementedError
@@ -295,7 +296,7 @@ def run_serial(cfg: DictConfig):
     clients = [
         eval(cfg.fed.clientname)(
             k,
-            model,
+            copy.deepcopy(model),            
             optimizer,
             cfg.optim.args,
             DataLoader(
@@ -318,7 +319,7 @@ def run_serial(cfg: DictConfig):
             client.update()
             local_states[k] = client.model.state_dict()
 
-        server.update(local_states)
+        server.update(global_state, local_states)
         if cfg.validation == True:
             test_loss, accuracy = server.validation()
             log.info(
