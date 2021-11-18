@@ -302,9 +302,7 @@ def run_serial(cfg: DictConfig):
         datasets = data.random_split(train_data, how_to_split)
     else:
         raise NotImplementedError
-
-    # print(cfg.model.classname)
-    # model = eval(cfg.model.classname)(**cfg.model.args)
+    
     model = eval(cfg.model.classname)(**cfg.dataset.size)    
     optimizer = eval(cfg.optim.classname)
 
@@ -353,7 +351,7 @@ def run_serial(cfg: DictConfig):
 
         server.update(global_state, local_states)
         if cfg.validation == True:
-            test_loss, accuracy = server.validation()
+            test_loss, accuracy = validation(server)
             log.info(
                 f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
             )
