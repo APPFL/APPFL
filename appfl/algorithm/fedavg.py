@@ -32,46 +32,7 @@ class FedAvgServer(BaseServer):
                 else:
                     global_state[key] = state[key] / self.num_clients
 
-        self.model.load_state_dict(global_state)        
-        # update_state = OrderedDict()
-
-        # for k, state in local_states.items():
-        #     for key in self.model.state_dict().keys():
-        #         if key in update_state.keys():
-        #             update_state[key] += state[key] / self.num_clients
-        #         else:
-        #             update_state[key] = state[key] / self.num_clients
-
-        # self.model.load_state_dict(update_state)
-    
-    # NOTE: this is only for testing purpose.
-    def validation(self):
-        if self.loss_fn is None or self.dataloader is None:
-            return 0.0, 0.0
-
-        self.model.to(self.device)
-        self.model.eval()
-        test_loss = 0
-        correct = 0
-        tmpcnt=0; tmptotal=0
-        with torch.no_grad():
-            for img, target in self.dataloader:
-                tmpcnt+=1; tmptotal+=len(target)
-                img = img.to(self.device)
-                target = target.to(self.device)
-                logits = self.model(img)                
-                test_loss += self.loss_fn(logits, target).item()
-                pred = logits.argmax(dim=1, keepdim=True)
-                correct += pred.eq(target.view_as(pred)).sum().item()
-
-        # FIXME: do we need to sent the model to cpu again?
-        # self.model.to("cpu")
-        
-        test_loss = test_loss / tmpcnt
-        accuracy = 100.0 * correct / tmptotal
-
-        return test_loss, accuracy
-
+        self.model.load_state_dict(global_state)             
 
 class FedAvgClient(BaseClient):
     def __init__(

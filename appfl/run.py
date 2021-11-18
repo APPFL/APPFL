@@ -7,9 +7,6 @@ from torch.utils.data.distributed import DistributedSampler
 import torchvision
 from torchvision.transforms import ToTensor
 
-import matplotlib.pyplot as plt
-from torch.utils.tensorboard import SummaryWriter
-
 import numpy as np
 from mpi4py import MPI
 
@@ -24,6 +21,40 @@ from models.cnn1 import *
 from models.cnn2 import *
 from read.coronahack import *
 from read.femnist import *
+
+def validation(self):
+            
+    if self.dataloader is not None:
+        self.loss_fn = CrossEntropyLoss()
+    else:
+        self.loss_fn = None
+
+    if self.loss_fn is None or self.dataloader is None:
+        return 0.0, 0.0
+
+    self.model.to(self.device)
+    self.model.eval()
+    test_loss = 0
+    correct = 0
+    tmpcnt=0; tmptotal=0
+    with torch.no_grad():
+        for img, target in self.dataloader:
+            tmpcnt+=1; tmptotal+=len(target)
+            img = img.to(self.device)
+            target = target.to(self.device)
+            logits = self.model(img)                
+            test_loss += self.loss_fn(logits, target).item()
+            pred = logits.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+    # FIXME: do we need to sent the model to cpu again?
+    # self.model.to("cpu")
+    
+    test_loss = test_loss / tmpcnt
+    accuracy = 100.0 * correct / tmptotal
+
+    return test_loss, accuracy
+
 
 def run_server(cfg: DictConfig, comm):
 
@@ -121,8 +152,9 @@ def run_server(cfg: DictConfig, comm):
         server.update(global_state, local_states)
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
-        if cfg.validation == True:
-            test_loss, accuracy = server.validation()
+        if cfg.validation == True:            
+            test_loss, accuracy = validation(server)
+
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
             log.info(
@@ -159,7 +191,7 @@ def run_server(cfg: DictConfig, comm):
     outfile.write("Algorithm=%s \n"%(cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
-    outfile.write("Elapsed_time=%s \n"%(Elapsed_time))  
+    outfile.write("Elapsed_time=%s \n"%(round(Elapsed_time,2)))  
     outfile.write("BestAccuracy=%s \n"%(BestAccuracy))      
     
     if cfg.fed.type == "iadmm":
