@@ -1,9 +1,12 @@
 
 import os
+from typing import Union
+
 from collections import OrderedDict
 import torch.nn as nn
 from torch.optim import *
 from torch.utils import data
+from torch.utils.data import Dataset
 from torch.utils.data.distributed import DistributedSampler
 import torchvision
 from torchvision.transforms import ToTensor
@@ -22,8 +25,41 @@ import time
 from .algorithm.iadmm import *
 from .algorithm.fedavg import *
 
+def validation(self):
+            
+    if self.dataloader is not None:
+        self.loss_fn = CrossEntropyLoss()
+    else:
+        self.loss_fn = None
 
-def run_serial(cfg: DictConfig, model: nn.Module, train_data, test_data=None):
+    if self.loss_fn is None or self.dataloader is None:
+        return 0.0, 0.0
+
+    self.model.to(self.device)
+    self.model.eval()
+    test_loss = 0
+    correct = 0
+    tmpcnt=0; tmptotal=0
+    with torch.no_grad():
+        for img, target in self.dataloader:
+            tmpcnt+=1; tmptotal+=len(target)
+            img = img.to(self.device)
+            target = target.to(self.device)
+            logits = self.model(img)                
+            test_loss += self.loss_fn(logits, target).item()
+            pred = logits.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+    # FIXME: do we need to sent the model to cpu again?
+    # self.model.to("cpu")
+    
+    test_loss = test_loss / tmpcnt
+    accuracy = 100.0 * correct / tmptotal
+
+    return test_loss, accuracy
+
+
+def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data: Union[Dataset, None]):
 
     num_clients = cfg.num_clients
     num_epochs = cfg.num_epochs
@@ -74,7 +110,7 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data, test_data=None):
 
         server.update(global_state, local_states)
         if cfg.validation == True:
-            test_loss, accuracy = server.validation()
+            test_loss, accuracy = validation(server)
             log.info(
                 f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
             )
