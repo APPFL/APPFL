@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
+DataSet_name = "FEMNIST" 
 num_channel = 1    # 1 if gray, 3 if color
 num_classes = 62   # number of the image classes 
 num_pixel   = 28   # image size = (num_pixel, num_pixel)
@@ -151,9 +152,9 @@ def main(cfg: DictConfig):
  
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, test_dataset)
+            rt.run_server(cfg, comm, model, test_dataset, len(train_datasets), DataSet_name)
         else:
-            rt.run_client(cfg, comm, model, train_datasets)
+            rt.run_client(cfg, comm, model, train_datasets, len(train_datasets))
 
         print("------DONE------", comm_rank)
     else:
