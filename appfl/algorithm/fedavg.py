@@ -49,12 +49,12 @@ class FedAvgClient(BaseClient):
         for i in range(self.num_local_epochs):
             # log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
             
-            for data, target in self.dataloader:                
+            for data, target in self.dataloader:  
                 data = data.to(self.device)
                 target = target.to(self.device)                
                 optimizer.zero_grad()
-                output = self.model(data)
-                loss = self.loss_fn(output, target)
+                output = self.model(data)                
+                loss = self.loss_fn(output, target)                                
                 loss.backward()                
                 optimizer.step()
  
