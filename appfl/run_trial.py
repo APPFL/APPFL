@@ -99,13 +99,13 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
         )
 
  
-def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset):
+def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_clients: int, DataSet_name: str ):
 
     ## Print and Write Results  
     dir = "../../../results"    
-    filename = "Result_%s_%s_%s"%(cfg.dataset.type, cfg.model.type, cfg.fed.type)    
+    filename = "Result_%s_%s"%(DataSet_name, cfg.fed.type)    
     if cfg.fed.type == "iadmm":  
-        filename = "Result_%s_%s_%s(rho=%s)"%(cfg.dataset.type, cfg.model.type, cfg.fed.type, cfg.fed.args.penalty)
+        filename = "Result_%s_%s(rho=%s)"%(DataSet_name, cfg.fed.type, cfg.fed.args.penalty)
     
     file_ext = ".txt"
     file = dir+"/%s%s"%(filename,file_ext)
@@ -131,7 +131,7 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset):
     ## Start    
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
-    num_clients = cfg.num_clients
+    
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
@@ -209,14 +209,13 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset):
  
     outfile.write("Device=%s \n"%(cfg.device))
     outfile.write("#Nodes=%s \n"%(comm_size))
-    outfile.write("Instance=%s \n"%(cfg.dataset.type))
-    outfile.write("#Clients=%s \n"%(num_clients))    
-    outfile.write("Model=%s \n"%(cfg.model.type))
+    outfile.write("Dataset=%s \n"%(DataSet_name))
+    outfile.write("#Clients=%s \n"%(num_clients))        
     outfile.write("Algorithm=%s \n"%(cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
-    outfile.write("Elapsed_time=%s \n"%(round(Elapsed_time,2)))  
-    outfile.write("BestAccuracy=%s \n"%(BestAccuracy))      
+    outfile.write("Elapsed_time[s]=%s \n"%(round(Elapsed_time,2)))  
+    outfile.write("BestAccuracy[%]=%s \n"%(BestAccuracy))      
     
     if cfg.fed.type == "iadmm":
         outfile.write("ADMM Penalty=%s \n"%(cfg.fed.args.penalty))
@@ -224,11 +223,10 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset):
     outfile.close()
 
 
-def run_client(cfg: DictConfig, comm, model: nn.Module, train_data: Dataset):
+def run_client(cfg: DictConfig, comm, model: nn.Module, train_data: Dataset, num_clients: int):
 
     comm_size = comm.Get_size()
-    comm_rank = comm.Get_rank()
-    num_clients = cfg.num_clients
+    comm_rank = comm.Get_rank()    
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)            
      
     ## We assume to have as many GPUs as the number of MPI processes.
@@ -239,6 +237,10 @@ def run_client(cfg: DictConfig, comm, model: nn.Module, train_data: Dataset):
        
     optimizer = eval(cfg.optim.classname)         
     
+    ## TO DO: advance techniques (e.g., utilizing batch)
+    if cfg.fed.type == "iadmm":  
+        cfg.batch_size = len(train_data)     
+
     clients = [
         eval(cfg.fed.clientname)(
             cid,

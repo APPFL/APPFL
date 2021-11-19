@@ -4,4 +4,4 @@ clientname: IADMMClient
 
 args:
   num_local_epochs: 2
-  penalty: 10.0     ##  
+  penalty: 20.0     ##  

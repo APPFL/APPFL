@@ -2,10 +2,8 @@
 
 # Each field has its own configuration file.
 defaults:
-  - _self_
-  - dataset: mnist
-  - model: cnn1
-  - fed: fedavg
+  - _self_  
+  - fed: iadmm
   - optim: sgd
 
 # Number of training epochs
@@ -16,9 +14,6 @@ batch_size: 16
 
 # Compute device
 device: 'cpu'
-
-# Number of learning clients
-num_clients: 1
 
 # Indication of whether to validate or not
 validation: True

@@ -1,7 +1,7 @@
 appfl/Slurm_outputs/*
-appfl/datasets/*
-appfl/outputs/*
-appfl/results/*
+
+examples/outputs/*
+examples/results/*
 examples/datasets/*
 examples/outputs/*
 outputs/*
