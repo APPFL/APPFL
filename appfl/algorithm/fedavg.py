@@ -11,16 +11,11 @@ from torch.utils.data import DataLoader
 
 
 class FedAvgServer(BaseServer):
-    def __init__(self, model, num_clients, device, dataloader=None, **kwargs):
+    def __init__(self, model, num_clients, device, **kwargs):
         super(FedAvgServer, self).__init__(model, num_clients, device)
         
         self.__dict__.update(kwargs) 
 
-        self.dataloader = dataloader
-        if self.dataloader is not None:
-            self.loss_fn = CrossEntropyLoss()
-        else:
-            self.loss_fn = None
 
     # update global model
     def update(self, global_state: OrderedDict , local_states: OrderedDict):
