@@ -65,6 +65,12 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
             cfg.device,
             **cfg.fed.args
         )
+    
+    batchsize={}  
+    for k in range(num_clients):            
+        batchsize[k] = cfg.batch_size
+        if cfg.fed.type == "iadmm":        
+            batchsize[k] = len(train_data[k])
 
         
     clients = [
@@ -74,7 +80,7 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
             optimizer,
             cfg.optim.args,
             DataLoader(
-                train_data[k], num_workers=0, batch_size=cfg.batch_size, shuffle=False
+                train_data[k], num_workers=0, batch_size=batchsize[k], shuffle=False
             ),
             cfg.device,
             **cfg.fed.args,
