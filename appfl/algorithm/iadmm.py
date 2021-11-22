@@ -16,7 +16,7 @@ class IADMMServer(BaseServer):
         
         self.__dict__.update(kwargs) 
 
-        self.num_clients = num_clients
+        self.num_clients = num_clients        
 
         self.dual_states = OrderedDict()        
         for i in range(num_clients):
