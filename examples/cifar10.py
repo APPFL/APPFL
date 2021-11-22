@@ -1,70 +1,63 @@
 import sys
 
 sys.path.append("..")
-
+import time
+start_time = time.time()
 ## User-defined datasets
+import json
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-import torchvision
-from torchvision.transforms import ToTensor
 
 DataSet_name = "CIFAR10" 
+num_clients = 4
 num_channel = 3    # 1 if gray, 3 if color
 num_classes = 10   # number of the image classes 
 num_pixel   = 32   # image size = (num_pixel, num_pixel)
-num_clients = 4
 
-# (1) Train Datasets for every clients
-class CIFAR10_Train(Dataset):
-    def __init__(self, train_data_image, train_data_class): 
-        self.train_data_image = train_data_image
-        self.train_data_class = train_data_class                
-    def __len__(self):
-        return len(self.train_data_class)
-    def __getitem__(self, idx):
-        return self.train_data_image[idx], self.train_data_class[idx]
+dir = "../datasets/ProcessedData/%s_Clients_%s"%(DataSet_name,num_clients)
 
-
-train_data_raw = torchvision.datasets.CIFAR10(
-    f"../datasets",
-    download=True,
-    train=True,
-    transform=ToTensor(),
-)
-train_data_image={}  
-train_data_class={}  
-
-
-split_train_data_raw= np.array_split(range(len(train_data_raw)), num_clients)   
-
-for i in range(num_clients):
-    train_data_image[i] = []
-    train_data_class[i] = []
-    for idx in split_train_data_raw[i]:
-        train_data_image[i].append(train_data_raw[idx][0])
-        train_data_class[i].append(train_data_raw[idx][1])
+class Test(Dataset):
+    def __init__(self,dir):                             
         
-    train_data_class[i] = torch.tensor(train_data_class[i])
+        with open("%s/all_test_data.json"%(dir)) as f:    
+            test_data_raw = json.load(f)    
 
-train_datasets=[]; 
-for client in train_data_image.keys():
-    train_datasets.append(CIFAR10_Train(train_data_image[client], train_data_class[client]))
+        self.test_data_image = torch.FloatTensor(test_data_raw["x"])
+        self.test_data_class = torch.tensor(test_data_raw["y"])     
+
+    def __len__(self):
+        return len(self.test_data_class)
     
-num_clients = len(train_datasets)
+    def __getitem__(self, idx):
+        return self.test_data_image[idx], self.test_data_class[idx]
 
-# (2) Test Dataset for the server
-test_dataset = torchvision.datasets.CIFAR10(
-    f"../datasets",
-    download=True,
-    train=False,
-    transform=ToTensor(),
-)
-  
+class Train(Dataset):
+    def __init__(self,dir,client):                             
+        
+        with open("%s/all_train_data_client_%s.json"%(dir, client)) as f:    
+            test_data_raw = json.load(f)    
 
-# (3) Check if "DataLoader" from PyTorch works.
+        self.test_data_image = torch.FloatTensor(test_data_raw["x"])
+        self.test_data_class = torch.tensor(test_data_raw["y"])     
+
+    def __len__(self):
+        return len(self.test_data_class)
+    
+    def __getitem__(self, idx):
+        return self.test_data_image[idx], self.test_data_class[idx]
+
+## Load Datasets 
+test_dataset = Test(dir) 
+train_datasets=[]; 
+for client in range(num_clients):    
+    train_datasets.append(Train(dir,client))
+    
+
+## Check if "DataLoader" from PyTorch works.
 train_dataloader = DataLoader(train_datasets[0], batch_size=64, shuffle=False)    
-for image, class_id in train_dataloader:    
+for image, class_id in train_dataloader:
+    # print("image=", image.shape, " class_id=", class_id.shape)
     assert(image.shape[0] == class_id.shape[0])
     assert(image.shape[1] == num_channel)
     assert(image.shape[2] == num_pixel)
@@ -72,6 +65,7 @@ for image, class_id in train_dataloader:
 
 test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=False)    
 for image, class_id in test_dataloader:
+    # print("image=", image.shape, " class_id=", class_id.shape)
     assert(image.shape[0] == class_id.shape[0])
     assert(image.shape[1] == num_channel)
     assert(image.shape[2] == num_pixel)
@@ -117,11 +111,9 @@ class CNN(nn.Module):
         x = self.fc2(x)
         return x
 
-
 model = CNN(num_channel, num_classes, num_pixel)
 
-print("----------Loaded Datasets and Model----------")
-print("----------Check train_datasets, test_dataset, num_clients----------")
+print("----------Loaded Datasets and Model----------Elapsed Time=",time.time()-start_time )
 
 ## train
 import appfl.run_trial as rt
@@ -150,7 +142,7 @@ def main(cfg: DictConfig):
             for _, cid in enumerate(num_client_groups[comm_rank - 1]):
 
                 ## TO DO: advance techniques (e.g., utilizing batch)
-                if cfg.fed.type == "iadmm":  
+                if cfg.fed.type == "iadmm":                      
                     cfg.batch_size = len(train_datasets[cid])
                 
                 clients_dataloaders.append(
