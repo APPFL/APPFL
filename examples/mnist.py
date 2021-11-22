@@ -3,18 +3,20 @@ import sys
 sys.path.append("..")
 
 ## User-defined datasets
-import json
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+import torchvision
+from torchvision.transforms import ToTensor
 
-DataSet_name = "FEMNIST" 
+DataSet_name = "MNIST" 
 num_channel = 1    # 1 if gray, 3 if color
-num_classes = 62   # number of the image classes 
+num_classes = 10   # number of the image classes 
 num_pixel   = 28   # image size = (num_pixel, num_pixel)
+num_clients = 4
 
 # (1) Train Datasets for every clients
-class FEMNIST_Train(Dataset):
+class MNIST_Train(Dataset):
     def __init__(self, train_data_image, train_data_class): 
         self.train_data_image = train_data_image
         self.train_data_class = train_data_class                
@@ -23,62 +25,46 @@ class FEMNIST_Train(Dataset):
     def __getitem__(self, idx):
         return self.train_data_image[idx], self.train_data_class[idx]
 
-train_data_raw={}  
+
+train_data_raw = torchvision.datasets.MNIST(
+    f"../datasets",
+    download=True,
+    train=True,
+    transform=ToTensor(),
+)
 train_data_image={}  
 train_data_class={}  
-for idx in range(36):            
-    with open("../datasets/FEMNIST/train/all_data_%s_niid_05_keep_0_train_9.json"%(idx)) as f:    
-        train_data_raw[idx] = json.load(f)    
-    for client in train_data_raw[idx]["users"]:    
-        train_data_image[client] = []        
+
+
+split_train_data_raw= np.array_split(range(len(train_data_raw)), num_clients)   
+
+for i in range(num_clients):
+    train_data_image[i] = []
+    train_data_class[i] = []
+    for idx in split_train_data_raw[i]:
+        train_data_image[i].append(train_data_raw[idx][0])
+        train_data_class[i].append(train_data_raw[idx][1])
         
-        for image_data in train_data_raw[idx]["user_data"][client]["x"]:                    
-            image_data = np.asarray(image_data)
-            image_data.resize(28,28)   
-            train_data_image[client].append([image_data])
-                        
-        train_data_image[client] = torch.FloatTensor(train_data_image[client])
-        train_data_class[client] = torch.tensor(train_data_raw[idx]["user_data"][client]["y"])
-  
+    train_data_class[i] = torch.tensor(train_data_class[i])
+
 train_datasets=[]; 
 for client in train_data_image.keys():
-    train_datasets.append(FEMNIST_Train(train_data_image[client], train_data_class[client]))
+    train_datasets.append(MNIST_Train(train_data_image[client], train_data_class[client]))
     
 num_clients = len(train_datasets)
 
 # (2) Test Dataset for the server
-class FEMNIST_Test(Dataset):
-    def __init__(self): 
-        
-        test_data_raw={}  
-        test_data_image=[] 
-        test_data_class=[] 
-        for idx in range(36):            
-            with open("../datasets/FEMNIST/test/all_data_%s_niid_05_keep_0_test_9.json"%(idx)) as f:    
-                test_data_raw[idx] = json.load(f)    
-            for client in test_data_raw[idx]["users"]:                                
-                for image_data in test_data_raw[idx]["user_data"][client]["x"]:                    
-                    image_data = np.asarray(image_data)
-                    image_data.resize(28,28)   
-                    test_data_image.append([image_data])
-
-                for class_data in test_data_raw[idx]["user_data"][client]["y"]:                          
-                    test_data_class.append(class_data)
-
-
-        self.test_data_image = torch.FloatTensor(test_data_image)
-        self.test_data_class = torch.tensor(test_data_class)     
-
-    def __len__(self):
-        return len(self.test_data_class)
-    def __getitem__(self, idx):
-        return self.test_data_image[idx], self.test_data_class[idx]
-
-test_dataset = FEMNIST_Test()
+test_dataset = torchvision.datasets.MNIST(
+    f"../datasets",
+    download=True,
+    train=False,
+    transform=ToTensor(),
+)
+  
 
 # (3) Check if "DataLoader" from PyTorch works.
 train_dataloader = DataLoader(train_datasets[0], batch_size=64, shuffle=False)    
-for image, class_id in train_dataloader:
+for image, class_id in train_dataloader:    
     assert(image.shape[0] == class_id.shape[0])
     assert(image.shape[1] == num_channel)
     assert(image.shape[2] == num_pixel)
@@ -137,7 +123,6 @@ model = CNN(num_channel, num_classes, num_pixel)
 print("----------Loaded Datasets and Model----------")
 print("----------Check train_datasets, test_dataset, num_clients----------")
 
-
 ## train
 import appfl.run_trial as rt
 import hydra
@@ -185,8 +170,8 @@ if __name__ == "__main__":
 
 
 # To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./femnist.py
+# mpiexec -np 5 --mca opal_cuda_support 1 python ./mnist.py
 # To run MPI:
-# mpiexec -np 5 python ./femnist.py
+# mpiexec -np 5 python ./mnist.py
 # To run:
-# python ./femnist.py
+# python ./mnist.py

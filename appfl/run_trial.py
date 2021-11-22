@@ -60,9 +60,13 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
     server_dataloader = DataLoader(test_data, num_workers=0, batch_size=cfg.batch_size, shuffle=False)
 
     server = eval(cfg.fed.servername)(
-            copy.deepcopy(model), num_clients, cfg.device
+            copy.deepcopy(model), 
+            num_clients, 
+            cfg.device,
+            **cfg.fed.args
         )
 
+        
     clients = [
         eval(cfg.fed.clientname)(
             k,
@@ -83,8 +87,8 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
 
     for t in range(num_epochs):
         global_state = server.model.state_dict()
-        for client in clients:
-            client.model.load_state_dict(global_state)
+        # for client in clients:
+        #     client.model.load_state_dict(global_state)
 
         for k, client in enumerate(clients):            
             client.model.load_state_dict(global_state)
@@ -99,10 +103,12 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
         )
 
  
-def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_clients: int, DataSet_name: str ):
+def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, num_clients: int, DataSet_name: str ):
 
     ## Print and Write Results  
-    dir = "../../../results"    
+    dir = "../../../results" 
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)            
     filename = "Result_%s_%s"%(DataSet_name, cfg.fed.type)    
     if cfg.fed.type == "iadmm":  
         filename = "Result_%s_%s(rho=%s)"%(DataSet_name, cfg.fed.type, cfg.fed.args.penalty)
@@ -127,6 +133,7 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_
             )
         )    
     outfile.write(title)
+    print(title, end="")
 
     ## Start    
     comm_size = comm.Get_size()
@@ -135,16 +142,14 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
-     
-    server_dataloader = DataLoader(test_data, num_workers=0, batch_size=cfg.batch_size, shuffle=False)
 
+    server_dataloader = DataLoader(test_dataset, num_workers=0, batch_size=cfg.batch_size, shuffle=False)
 
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
         copy.deepcopy(model), 
         num_clients, 
-        device, 
-        dataloader=server_dataloader, 
+        device,         
         **cfg.fed.args
     ) 
     
@@ -152,7 +157,7 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_
     do_continue = True
     local_states = OrderedDict()    
     start_time = time.time()
-    BestAccuracy = 0.0
+    BestAccuracy = 0.0    
     for t in range(cfg.num_epochs):
         PerIter_start = time.time()
         do_continue = comm.bcast(do_continue, root=0)
@@ -181,9 +186,9 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_
 
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-            log.info(
-                f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
-            )
+            # log.info(
+            #     f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
+            # )
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
         
@@ -199,8 +204,7 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_
                 test_loss,
                 accuracy                 
             )
-        )
-        print(title, end="")
+        )        
         print(results, end="")
         outfile.write(results)
 
@@ -214,8 +218,8 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_
     outfile.write("Algorithm=%s \n"%(cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
-    outfile.write("Elapsed_time[s]=%s \n"%(round(Elapsed_time,2)))  
-    outfile.write("BestAccuracy[%]=%s \n"%(BestAccuracy))      
+    outfile.write("Elapsed_time=%s \n"%(round(Elapsed_time,2)))  
+    outfile.write("BestAccuracy=%s \n"%(BestAccuracy))      
     
     if cfg.fed.type == "iadmm":
         outfile.write("ADMM Penalty=%s \n"%(cfg.fed.args.penalty))
@@ -223,11 +227,11 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_data: Dataset, num_
     outfile.close()
 
 
-def run_client(cfg: DictConfig, comm, model: nn.Module, train_data: Dataset, num_clients: int):
+def run_client(cfg: DictConfig, comm, model: nn.Module, clients_dataloaders: DataLoader, num_client_groups: list):
 
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()    
-    num_client_groups = np.array_split(range(num_clients), comm_size - 1)            
+    
      
     ## We assume to have as many GPUs as the number of MPI processes.
     if cfg.device == "cuda":
@@ -236,20 +240,14 @@ def run_client(cfg: DictConfig, comm, model: nn.Module, train_data: Dataset, num
         device = cfg.device
        
     optimizer = eval(cfg.optim.classname)         
-    
-    ## TO DO: advance techniques (e.g., utilizing batch)
-    if cfg.fed.type == "iadmm":  
-        cfg.batch_size = len(train_data)     
-
+        
     clients = [
         eval(cfg.fed.clientname)(
             cid,
             copy.deepcopy(model),            
             optimizer,
             cfg.optim.args,
-            DataLoader(
-                train_data[cid], num_workers=0, batch_size=cfg.batch_size, shuffle=False
-            ),
+            clients_dataloaders[i],            
             device,
             **cfg.fed.args,
         )
