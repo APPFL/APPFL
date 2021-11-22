@@ -2,10 +2,10 @@ appfl/Slurm_outputs/*
 
 examples/outputs/*
 examples/results/*
-examples/datasets/*
 examples/outputs/*
 outputs/*
-datasets/*
+datasets/RawData/*
+datasets/ProcessedData/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
