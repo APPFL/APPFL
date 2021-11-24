@@ -22,6 +22,10 @@ test_data_raw = torchvision.datasets.CIFAR10(
 num_clients = 4  ## Any Integer
 
 ## Output Directories
+dir0="./ProcessedData"
+if os.path.isdir(dir0) == False:
+    os.mkdir(dir0)    
+    
 dir = "./ProcessedData/CIFAR10_Clients_{}".format(num_clients) 
 if os.path.isdir(dir) == False:
     os.mkdir(dir)    
