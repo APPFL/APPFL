@@ -9,4 +9,5 @@ We present a collection of tutorials for APPFL framework.
     firstrun
     run_grpc
     datasets
-    feeding_algo
+    examples
+    algorithms
