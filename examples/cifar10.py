@@ -116,7 +116,7 @@ model = CNN(num_channel, num_classes, num_pixel)
 print("----------Loaded Datasets and Model----------Elapsed Time=",time.time()-start_time )
 
 ## train
-import appfl.run_trial as rt
+import appfl.run as rt
 import hydra
 from omegaconf import DictConfig
 from mpi4py import MPI
