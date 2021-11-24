@@ -1,35 +1,29 @@
 
 import os
+
 from collections import OrderedDict
+import torch.nn as nn
 from torch.optim import *
-from torch.utils import data
-from torch.utils.data.distributed import DistributedSampler
-import torchvision
-from torchvision.transforms import ToTensor
+
+from torch.utils.data import Dataset, DataLoader
 
 import numpy as np
-from mpi4py import MPI
 
-import hydra
 from omegaconf import DictConfig
 
 import copy
 import time
-from algorithm.iadmm import *
-from algorithm.fedavg import *
-from models.cnn1 import *
-from models.cnn2 import *
-from read.coronahack import *
-from read.femnist import *
+from .algorithm.iadmm import *
+from .algorithm.fedavg import *
 
-def validation(self):
+def validation(self, dataloader):
             
-    if self.dataloader is not None:
+    if dataloader is not None:
         self.loss_fn = CrossEntropyLoss()
     else:
         self.loss_fn = None
 
-    if self.loss_fn is None or self.dataloader is None:
+    if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
     self.model.to(self.device)
@@ -38,11 +32,11 @@ def validation(self):
     correct = 0
     tmpcnt=0; tmptotal=0
     with torch.no_grad():
-        for img, target in self.dataloader:
+        for img, target in dataloader:
             tmpcnt+=1; tmptotal+=len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            logits = self.model(img)                
+            logits = self.model(img) 
             test_loss += self.loss_fn(logits, target).item()
             pred = logits.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -56,13 +50,74 @@ def validation(self):
     return test_loss, accuracy
 
 
-def run_server(cfg: DictConfig, comm):
+def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data: Dataset):
+
+    num_clients = len(train_data)
+    num_epochs = cfg.num_epochs
+
+    optimizer = eval(cfg.optim.classname)
+
+    server_dataloader = DataLoader(test_data, num_workers=0, batch_size=cfg.batch_size, shuffle=False)
+
+    server = eval(cfg.fed.servername)(
+            copy.deepcopy(model), 
+            num_clients, 
+            cfg.device,
+            **cfg.fed.args
+        )
+    
+    batchsize={}  
+    for k in range(num_clients):            
+        batchsize[k] = cfg.batch_size
+        if cfg.fed.type == "iadmm":        
+            batchsize[k] = len(train_data[k])
+
+        
+    clients = [
+        eval(cfg.fed.clientname)(
+            k,
+            copy.deepcopy(model),
+            optimizer,
+            cfg.optim.args,
+            DataLoader(
+                train_data[k], num_workers=0, batch_size=batchsize[k], shuffle=False
+            ),
+            cfg.device,
+            **cfg.fed.args,
+        )
+        for k in range(num_clients)
+    ]
+ 
+
+    local_states = OrderedDict()
+
+    for t in range(num_epochs):
+        global_state = server.model.state_dict()
+        # for client in clients:
+        #     client.model.load_state_dict(global_state)
+
+        for k, client in enumerate(clients):            
+            client.model.load_state_dict(global_state)
+            client.update()
+            local_states[k] = client.model.state_dict()
+
+        server.update(global_state, local_states)
+    
+        test_loss, accuracy = validation(server, server_dataloader)
+        log.info(
+            f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
+        )
+
+ 
+def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, num_clients: int, DataSet_name: str ):
 
     ## Print and Write Results  
-    dir = "../../../results"    
-    filename = "Result_%s_%s_%s"%(cfg.dataset.type, cfg.model.type, cfg.fed.type)    
+    dir = "../../../results" 
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)            
+    filename = "Result_%s_%s"%(DataSet_name, cfg.fed.type)    
     if cfg.fed.type == "iadmm":  
-        filename = "Result_%s_%s_%s(rho=%s)"%(cfg.dataset.type, cfg.model.type, cfg.fed.type, cfg.fed.args.penalty)
+        filename = "Result_%s_%s(rho=%s)"%(DataSet_name, cfg.fed.type, cfg.fed.args.penalty)
     
     file_ext = ".txt"
     file = dir+"/%s%s"%(filename,file_ext)
@@ -84,51 +139,31 @@ def run_server(cfg: DictConfig, comm):
             )
         )    
     outfile.write(title)
+    print(title, end="")
 
     ## Start    
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
-    num_clients = cfg.num_clients
+    
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
-    
-    model = eval(cfg.model.classname)(**cfg.dataset.size)
-     
-    if cfg.validation == True:
-        if cfg.dataset.distributed == False:
-            if cfg.dataset.torchvision == True:
-                test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-                    f"../../../datasets",
-                    **cfg.dataset.args,
-                    train=False,
-                    transform=ToTensor(),                         
-                )                        
-            else:       
-                test_data = eval(cfg.dataset.test)(**cfg.dataset.size)
 
-            dataloader = DataLoader(test_data, batch_size=cfg.batch_size, shuffle=False)
-        else:
-            test_data = eval(cfg.dataset.test)(**cfg.dataset.size)
-            num_clients = test_data.num_clients
-            dataloader = test_data.dataloader
- 
-    else:
-        dataloader = None 
+    server_dataloader = DataLoader(test_dataset, num_workers=0, batch_size=cfg.batch_size, shuffle=False)
 
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
         copy.deepcopy(model), 
         num_clients, 
-        device, 
-        dataloader=dataloader, 
+        device,         
         **cfg.fed.args
     ) 
+    
 
     do_continue = True
     local_states = OrderedDict()    
     start_time = time.time()
-    BestAccuracy = 0.0
+    BestAccuracy = 0.0    
     for t in range(cfg.num_epochs):
         PerIter_start = time.time()
         do_continue = comm.bcast(do_continue, root=0)
@@ -153,13 +188,13 @@ def run_server(cfg: DictConfig, comm):
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
         if cfg.validation == True:            
-            test_loss, accuracy = validation(server)
+            test_loss, accuracy = validation(server, server_dataloader)
 
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-            log.info(
-                f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
-            )
+            # log.info(
+            #     f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
+            # )
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
         
@@ -175,8 +210,7 @@ def run_server(cfg: DictConfig, comm):
                 test_loss,
                 accuracy                 
             )
-        )
-        print(title, end="")
+        )        
         print(results, end="")
         outfile.write(results)
 
@@ -185,9 +219,8 @@ def run_server(cfg: DictConfig, comm):
  
     outfile.write("Device=%s \n"%(cfg.device))
     outfile.write("#Nodes=%s \n"%(comm_size))
-    outfile.write("Instance=%s \n"%(cfg.dataset.type))
-    outfile.write("#Clients=%s \n"%(num_clients))    
-    outfile.write("Model=%s \n"%(cfg.model.type))
+    outfile.write("Dataset=%s \n"%(DataSet_name))
+    outfile.write("#Clients=%s \n"%(num_clients))        
     outfile.write("Algorithm=%s \n"%(cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
@@ -200,73 +233,34 @@ def run_server(cfg: DictConfig, comm):
     outfile.close()
 
 
-def run_client(cfg: DictConfig, comm):
+def run_client(cfg: DictConfig, comm, model: nn.Module, clients_dataloaders: DataLoader, num_client_groups: list):
 
     comm_size = comm.Get_size()
-    comm_rank = comm.Get_rank()
-    num_clients = cfg.num_clients
-    num_client_groups = np.array_split(range(num_clients), comm_size - 1)            
+    comm_rank = comm.Get_rank()    
+    
      
     ## We assume to have as many GPUs as the number of MPI processes.
     if cfg.device == "cuda":
         device = f"cuda:{comm_rank-1}"
     else:
         device = cfg.device
-
-    model = eval(cfg.model.classname)(**cfg.dataset.size)    
+       
     optimizer = eval(cfg.optim.classname)         
-
-    dataloaders = []
-    if cfg.dataset.distributed == False:             
-        if cfg.dataset.torchvision == True:
-            train_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-                f"../../../datasets",
-                **cfg.dataset.args,
-                train=True,
-                transform=ToTensor(),            
-            )        
-        else:        
-            train_data = eval(cfg.dataset.train)(**cfg.dataset.size)
-
-        ## TO DO: advance techniques (e.g., utilizing batch)
-        if cfg.fed.type == "iadmm":  
-            cfg.batch_size = len(train_data)     
-
-        for cid in num_client_groups[comm_rank - 1]:
-            dataloaders.append(
-                DataLoader(
-                    train_data,
-                    batch_size=cfg.batch_size,   
-                    shuffle=False,                  
-                    sampler=DistributedSampler(
-                        train_data, num_replicas=num_clients, rank=cid
-                    )
-                )
-            )
-               
-    else:
-        train_data = eval(cfg.dataset.train)(**cfg.dataset.size)        
-
-        num_clients = train_data.num_clients
-        num_client_groups = np.array_split(range(num_clients), comm_size - 1)        
         
-        for i, cid in enumerate(num_client_groups[comm_rank - 1]):  
-            dataloaders.append([train_data.dataloader[cid]])
-        
-    
     clients = [
         eval(cfg.fed.clientname)(
             cid,
             copy.deepcopy(model),            
             optimizer,
             cfg.optim.args,
-            dataloaders[i],
+            clients_dataloaders[i],            
             device,
             **cfg.fed.args,
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
-    
+     
+
     do_continue = comm.bcast(None, root=0)
     local_states = OrderedDict()
 
@@ -286,100 +280,3 @@ def run_client(cfg: DictConfig, comm):
         comm.gather(local_states, root=0)
         do_continue = comm.bcast(None, root=0)
 
-
-def run_serial(cfg: DictConfig):
-
-    num_clients = cfg.num_clients
-    num_epochs = cfg.num_epochs
-
-    if cfg.dataset.torchvision == True:
-        train_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-            "../../../datasets", **cfg.dataset.args, train=True, transform=ToTensor()
-        )
-        local_data_size = int(len(train_data) / num_clients)
-        how_to_split = [local_data_size for i in range(num_clients)]
-        how_to_split[-1] += len(train_data) - sum(how_to_split)
-        datasets = data.random_split(train_data, how_to_split)
-    else:
-        raise NotImplementedError
-    
-    model = eval(cfg.model.classname)(**cfg.dataset.size)    
-    optimizer = eval(cfg.optim.classname)
-
-    if cfg.validation == True:
-        if cfg.dataset.torchvision == True:
-            test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-                "../../../datasets", **cfg.dataset.args, train=False, transform=ToTensor()
-            )
-        else:
-            raise NotImplementedError
-
-        server_dataloader = DataLoader(
-            test_data, num_workers=0, batch_size=cfg.batch_size
-        )
-    else:
-        server_dataloader = None
-
-    server = eval(cfg.fed.servername)(
-        model, num_clients, cfg.device, dataloader=server_dataloader
-    )
-    clients = [
-        eval(cfg.fed.clientname)(
-            k,
-            copy.deepcopy(model),            
-            optimizer,
-            cfg.optim.args,
-            DataLoader(
-                datasets[k], num_workers=0, batch_size=cfg.batch_size, shuffle=True
-            ),
-            cfg.device,
-            **cfg.fed.args,
-        )
-        for k in range(num_clients)
-    ]
-    local_states = OrderedDict()
-
-    for t in range(num_epochs):
-        global_state = server.model.state_dict()
-        for client in clients:
-            client.model.load_state_dict(global_state)
-
-        for k, client in enumerate(clients):
-            client.model.load_state_dict(global_state)
-            client.update()
-            local_states[k] = client.model.state_dict()
-
-        server.update(global_state, local_states)
-        if cfg.validation == True:
-            test_loss, accuracy = validation(server)
-            log.info(
-                f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
-            )
-
-
-@hydra.main(config_path="config", config_name="config")
-def main(cfg: DictConfig):
-    
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
- 
-    torch.manual_seed(1)
- 
-    if comm_size > 1:
-        if comm_rank == 0:
-            run_server(cfg, comm)
-        else:
-            run_client(cfg, comm)
-    else:
-        run_serial(cfg)
-    
-    print("------DONE------", comm_rank)
-  
-if __name__ == "__main__":
-    main()
-
-# To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./run.py
-
-# mpiexec -np 5 python ./run.py
