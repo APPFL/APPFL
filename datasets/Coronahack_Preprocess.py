@@ -99,6 +99,10 @@ test_data_raw=CoronahackTest(num_pixel)
 
  
 ## Output Directories
+dir0="./ProcessedData"
+if os.path.isdir(dir0) == False:
+    os.mkdir(dir0)    
+
 dir = "./ProcessedData/Coronahack_Clients_{}".format(num_clients) 
 if os.path.isdir(dir) == False:
     os.mkdir(dir)    
