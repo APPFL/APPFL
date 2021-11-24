@@ -1,8 +1,9 @@
-appfl/Slurm_outputs/*
-
+appfl/config/optim/*
+appfl/config/fed/*
+appfl/config/*
+Slurm_outputs/*
 examples/outputs/*
 examples/results/*
-examples/outputs/*
 outputs/*
 datasets/RawData/*
 datasets/ProcessedData/*
@@ -140,3 +141,5 @@ appfl/.DS_Store
 examples/.DS_Store
 .gitignore
 .DS_Store
+examples/run.sh
+examples/run.sh
