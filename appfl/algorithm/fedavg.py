@@ -18,11 +18,11 @@ class FedAvgServer(BaseServer):
 
 
     # update global model
-    def update(self, global_state: OrderedDict , local_states: OrderedDict):
+    def update(self, global_state: OrderedDict, local_states: OrderedDict):
         update_state = OrderedDict()
         for k, state in local_states.items():
             for key in self.model.state_dict().keys():
-                if key in global_state.keys():
+                if key in update_state.keys():
                     update_state[key] += state[key] / self.num_clients
                 else:
                     update_state[key] = state[key] / self.num_clients
