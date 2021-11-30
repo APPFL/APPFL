@@ -36,16 +36,16 @@ class Train(Dataset):
     def __init__(self,dir,client):                             
         
         with open("%s/all_train_data_client_%s.json"%(dir, client)) as f:    
-            test_data_raw = json.load(f)    
+            train_data_raw = json.load(f)    
 
-        self.test_data_image = torch.FloatTensor(test_data_raw["x"])
-        self.test_data_class = torch.tensor(test_data_raw["y"])     
+        self.train_data_image = torch.FloatTensor(train_data_raw["x"])
+        self.train_data_class = torch.tensor(train_data_raw["y"])     
 
     def __len__(self):
-        return len(self.test_data_class)
+        return len(self.train_data_class)
     
     def __getitem__(self, idx):
-        return self.test_data_image[idx], self.test_data_class[idx]
+        return self.train_data_image[idx], self.train_data_class[idx]
 
 ## Load Datasets 
 test_dataset = Test(dir) 
@@ -146,7 +146,7 @@ def main(cfg: DictConfig):
                     cfg.batch_size = len(train_datasets[cid])
                 
                 clients_dataloaders.append(
-                    DataLoader( train_datasets[cid], num_workers=0, batch_size=cfg.batch_size, shuffle=False)
+                    DataLoader( train_datasets[cid], num_workers=0, batch_size=cfg.batch_size, shuffle=False )
                 )
             
             rt.run_client(cfg, comm, model, clients_dataloaders, num_client_groups)
