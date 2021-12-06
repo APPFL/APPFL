@@ -4,29 +4,30 @@ from torchvision.transforms import ToTensor
 import os
 import json
 
+Instance = "CIFAR10"   ## Example: MNIST, CIFAR10
+num_clients = 10     ## Example: 4, 10 (Any integer)
+ 
 
-train_data_raw = torchvision.datasets.CIFAR10(
+train_data_raw = eval("torchvision.datasets."+Instance)(
     f"./RawData",
     download=True,
     train=True,
     transform=ToTensor()
 )
 
-test_data_raw = torchvision.datasets.CIFAR10(
+test_data_raw = eval("torchvision.datasets."+Instance)(
     f"./RawData",
     download=True,
     train=False,
     transform=ToTensor()
-)
-
-num_clients = 4  ## Any Integer
+) 
 
 ## Output Directories
 dir0="./ProcessedData"
 if os.path.isdir(dir0) == False:
     os.mkdir(dir0)    
     
-dir = "./ProcessedData/CIFAR10_Clients_{}".format(num_clients) 
+dir = "./ProcessedData/MNIST_Clients_{}".format(num_clients) 
 if os.path.isdir(dir) == False:
     os.mkdir(dir)    
 
@@ -35,7 +36,7 @@ out_test_file  = dir+"/all_test_data.json"
 all_test_data = {}
 all_test_data["x"] = []
 all_test_data["y"] = []
-for idx in range(len(test_data_raw)):        
+for idx in range(len(test_data_raw)):    
     all_test_data["x"].append( test_data_raw[idx][0].tolist() )
     all_test_data["y"].append( test_data_raw[idx][1] )
 with open(out_test_file, 'w') as outfile:
