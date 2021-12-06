@@ -57,7 +57,12 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
 
     optimizer = eval(cfg.optim.classname)
 
-    server_dataloader = DataLoader(test_data, num_workers=0, batch_size=cfg.batch_size, shuffle=False)
+    server_dataloader = DataLoader(
+        test_data, 
+        num_workers=0, 
+        batch_size=cfg.test_data_batch_size, 
+        shuffle=cfg.test_data_shuffle
+        )
 
     server = eval(cfg.fed.servername)(
             copy.deepcopy(model), 
@@ -68,7 +73,7 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
     
     batchsize={}  
     for k in range(num_clients):            
-        batchsize[k] = cfg.batch_size
+        batchsize[k] = cfg.train_data_batch_size
         if cfg.fed.type == "iadmm":        
             batchsize[k] = len(train_data[k])
 
@@ -80,7 +85,10 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
             optimizer,
             cfg.optim.args,
             DataLoader(
-                train_data[k], num_workers=0, batch_size=batchsize[k], shuffle=False
+                train_data[k], 
+                num_workers=0, 
+                batch_size=batchsize[k], 
+                shuffle=cfg.train_data_shuffle
             ),
             cfg.device,
             **cfg.fed.args,
@@ -110,9 +118,9 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
 
  
 def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, num_clients: int, DataSet_name: str ):
-
+    
     ## Print and Write Results  
-    dir = "../../../results" 
+    dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)            
     filename = "Result_%s_%s"%(DataSet_name, cfg.fed.type)    
@@ -144,12 +152,16 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, n
     ## Start    
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
-    
-
+ 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
 
-    server_dataloader = DataLoader(test_dataset, num_workers=0, batch_size=cfg.batch_size, shuffle=False)
+    server_dataloader = DataLoader(
+        test_dataset, 
+        num_workers=0, 
+        batch_size=cfg.test_data_batch_size, 
+        shuffle=cfg.test_data_shuffle
+        )
 
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
@@ -233,10 +245,28 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, n
     outfile.close()
 
 
-def run_client(cfg: DictConfig, comm, model: nn.Module, clients_dataloaders: DataLoader, num_client_groups: list):
+def run_client(cfg: DictConfig, comm, model: nn.Module, train_datasets: Dataset, num_clients: int):
 
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()    
+
+    num_client_groups = np.array_split(range(num_clients), comm_size - 1)            
+
+    clients_dataloaders=[]
+    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
+
+        ## TO DO: advance techniques (e.g., utilizing batch)
+        if cfg.fed.type == "iadmm":                      
+            cfg.train_data_batch_size = len(train_datasets[cid])
+        
+        clients_dataloaders.append(
+            DataLoader( 
+            train_datasets[cid], 
+            num_workers=0, 
+            batch_size=cfg.train_data_batch_size, 
+            shuffle=cfg.train_data_shuffle
+            )
+        )    
     
      
     ## We assume to have as many GPUs as the number of MPI processes.
