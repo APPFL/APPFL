@@ -169,8 +169,7 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, n
         num_clients, 
         device,         
         **cfg.fed.args
-    ) 
-    
+    )     
 
     do_continue = True
     local_states = OrderedDict()    
@@ -250,25 +249,6 @@ def run_client(cfg: DictConfig, comm, model: nn.Module, train_datasets: Dataset,
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()    
 
-    num_client_groups = np.array_split(range(num_clients), comm_size - 1)            
-
-    clients_dataloaders=[]
-    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-
-        ## TO DO: advance techniques (e.g., utilizing batch)
-        if cfg.fed.type == "iadmm":                      
-            cfg.train_data_batch_size = len(train_datasets[cid])
-        
-        clients_dataloaders.append(
-            DataLoader( 
-            train_datasets[cid], 
-            num_workers=0, 
-            batch_size=cfg.train_data_batch_size, 
-            shuffle=cfg.train_data_shuffle
-            )
-        )    
-    
-     
     ## We assume to have as many GPUs as the number of MPI processes.
     if cfg.device == "cuda":
         device = f"cuda:{comm_rank-1}"
@@ -276,19 +256,62 @@ def run_client(cfg: DictConfig, comm, model: nn.Module, train_datasets: Dataset,
         device = cfg.device
        
     optimizer = eval(cfg.optim.classname)         
+
+    num_client_groups = np.array_split(range(num_clients), comm_size - 1)           
+
+    batchsize={}
+    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
+        batchsize[cid] = cfg.train_data_batch_size
+        if cfg.fed.type == "iadmm":                      
+            batchsize[cid] = len(train_datasets[cid])
         
+
     clients = [
         eval(cfg.fed.clientname)(
             cid,
             copy.deepcopy(model),            
             optimizer,
             cfg.optim.args,
-            clients_dataloaders[i],            
+            DataLoader( 
+                train_datasets[cid], 
+                num_workers=0, 
+                batch_size=batchsize[cid], 
+                shuffle=cfg.train_data_shuffle
+            ),
             device,
             **cfg.fed.args,
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
-    ]
+    ] 
+
+    # clients_dataloaders=[]
+    # for _, cid in enumerate(num_client_groups[comm_rank - 1]):
+
+    #     ## TO DO: advance techniques (e.g., utilizing batch)
+    #     if cfg.fed.type == "iadmm":                      
+    #         cfg.train_data_batch_size = len(train_datasets[cid])
+        
+    #     clients_dataloaders.append(
+    #         DataLoader( 
+    #         train_datasets[cid], 
+    #         num_workers=0, 
+    #         batch_size=cfg.train_data_batch_size, 
+    #         shuffle=cfg.train_data_shuffle
+    #         )
+    #     )   
+
+    # clients = [
+    #     eval(cfg.fed.clientname)(
+    #         cid,
+    #         copy.deepcopy(model),            
+    #         optimizer,
+    #         cfg.optim.args,
+    #         clients_dataloaders[i],            
+    #         device,
+    #         **cfg.fed.args,
+    #     )
+    #     for i, cid in enumerate(num_client_groups[comm_rank - 1])
+    # ]
      
 
     do_continue = comm.bcast(None, root=0)

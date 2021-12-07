@@ -21,7 +21,6 @@ train_datasets, test_dataset = ReadDataset(DataSet_name, num_clients, num_channe
 
 ## User-defined model
 from examples.cnn import *
- 
 model = CNN(num_channel, num_classes, num_pixel)
 
 print("----------Loaded Datasets and Model----------Elapsed Time=",time.time()-start_time )
