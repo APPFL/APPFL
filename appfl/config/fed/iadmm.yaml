@@ -1,0 +1,7 @@
+type: iadmm
+servername: IADMMServer
+clientname: IADMMClient
+
+args:
+  num_local_epochs: 10
+  penalty: 20.0     ##  
