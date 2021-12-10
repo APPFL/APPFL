@@ -74,5 +74,36 @@ print("----------Loaded Datasets and Model----------Elapsed Time=",time.time()-s
 
 ## Run
 import appfl.run as rt
-rt.main() 
+import hydra
+from mpi4py import MPI
+from omegaconf import DictConfig
+
+
+@hydra.main(config_path="../appfl/config", config_name="config")
+def main(cfg: DictConfig):
+    
+    comm = MPI.COMM_WORLD
+    comm_rank = comm.Get_rank()
+    comm_size = comm.Get_size()
  
+    torch.manual_seed(1)
+ 
+    if comm_size > 1:
+        if comm_rank == 0:            
+            rt.run_server(cfg, comm, model, test_dataset, num_clients, DataSet_name)
+        else:                        
+            rt.run_client(cfg, comm, model, train_datasets, num_clients)
+        print("------DONE------", comm_rank)
+    else:
+        rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
+
+if __name__ == "__main__":
+    main()
+
+
+# To run CUDA-aware MPI:
+# mpiexec -np 5 --mca opal_cuda_support 1 python ./femnist.py
+# To run MPI:
+# mpiexec -np 5 python ./femnist.py
+# To run:
+# python ./femnist.py
