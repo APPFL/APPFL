@@ -1,19 +1,30 @@
 Preprocessing datasets
 ======================
 
-In a federated learning setting, a server utilizes a **testing dataset** to evaluate a global model parameter contributed by multiple clients, each of which conducts learning using its own **training dataset**.
+Our APPFL framework reads datasets, each of which is stored in a ``json`` file with the following dictionary format:
 
-The APPFL framework reads datasets in a ``json`` format.
+.. code-block:: console
+      
+   {  
+   "x": [ [data input 1], [data input 2], ..., [data input N] ], 
+   "y": [ data label 1, data label 2, ..., data label N ]  
+   }
 
-- In a ``datasets/PreprocessedData/[DatasetName]_Clients_[#Clients]`` directory, we store datasets with the following form: 
+Therefore, the users of our APPFL framework should *preprocess their raw dataset* to create the ``json`` files with the above dictionary format. After preprocessing, the users will 
+create  
 
-    - Testing dataset for **a server**: ``all_test_data.json`` 
-    - Training dataset for **a client "i"**: ``all_train_data_client_${i}.json`` 
+- ``all_test_data.json`` (a testing dataset for **a server**) and 
+- ``all_train_data_client_${i}.json`` (a set of training datasets where "i" represents **a client "i"**), 
 
-    Note: each ``json`` file has a form of ``{"x": [ a list of data inputs ], "y": [ a list of data labels ] }``.
+and store the ``json`` files in a ``datasets/PreprocessedData/[DatasetName]_Clients_[#Clients]`` directory, where "DatasetName" and "#Clients" are determined by the users. 
 
-To obtain the datasets with the above form, preprocessing raw datasets is required.
 
+.. In a federated learning, a server utilizes a **testing dataset** to evaluate a global model parameter updated *iteratively* based on local model parameters trained by multiple clients using their own **training dataset**.
+
+
+Examples of preprocessing
+-------------------------
+ 
 - In a ``datasets/RawData`` directory, store the raw datasets.
 - Construct ``[DatasetName]_Preprocess.py`` that converts "the raw datasets" to "the preprocessed datasets"
 
