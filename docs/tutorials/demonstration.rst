@@ -1,10 +1,13 @@
-Demonstration
-================
+How to train a custom model
+===========================
 
-To run our APPFL framework, ``a user-defined dataset`` and ``a user-defined model`` are required. In this section we explain how to run our APPFL framework using ``FEMNIST`` dataset and ``Convolutional Neural Network (CNN)`` model. 
+To run our APPFL framework, *user-defined* dataset and model are required. In this section we explain how to run our APPFL framework using **FEMNIST** dataset and **Convolutional Neural Network (CNN)** model. 
+
+Prerequisites
+-------------
 
 Download datasets
------------------
+^^^^^^^^^^^^^^^^^
 
 - Git clone ``https://github.com/TalwalkarLab/leaf.git``
 
@@ -19,7 +22,8 @@ Download datasets
 - In a newly generated directory ``leaf/data/femnist/data``, copy the two directories ``train`` and ``test`` and paste them in a ``datasets/RawData/FEMNIST`` directory.
  
 Preprocess datasets
--------------------
+^^^^^^^^^^^^^^^^^^^
+
 Our APPFL framework reads datasets, each of which is stored in a ``json`` file with the following dictionary format:
 
 .. code-block:: console
@@ -41,16 +45,26 @@ To preprocess the FEMNIST dataset, we have created ``datasets/FEMNIST_Preprocess
 
 .. code-block:: console
       
-   ``all_test_data.json``
-   ``all_train_data_client_0.json``
-   ``all_train_data_client_1.json``
+   all_test_data.json
+   all_train_data_client_0.json
+   all_train_data_client_1.json
    ...
-   ``all_train_data_client_202.json``
+   all_train_data_client_202.json
 
 and stores them in a ``datasets/PreprocessedData/FEMNIST_Clients_203`` directory.
+
+Creating a custom dataset for your data
+---------------------------------------
+
+``torch.utils.data.Dataset``
+
+.. literalinclude:: /../examples/ReadDataset.py
+    :lines: 1-33
+
  
-Construct a model
------------------
+Creating a cutrom model
+-----------------------
+
 The users of our APPFL framework can create a machine learning model trained by multiple clients. See ``examples/cnn.py`` as an example, a CNN model with the following structure:
 
 .. code-block:: python     
