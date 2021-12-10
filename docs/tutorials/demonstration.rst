@@ -135,19 +135,19 @@ To run our APPFL framework using ``FEMNIST`` and ``CNN``, the users should creat
  
 # To run ``run_serial`` using a CPU:
 
->>> python ./femnist.py device=cpu fed=fedavg num_epochs=10 fed.args.num_local_epochs=5 
+>>> python examples/femnist.py device=cpu fed=fedavg num_epochs=10 fed.args.num_local_epochs=5 
 
 # To run ``run_serial`` using a GPU:
 
->>> python ./femnist.py device=cuda fed=fedavg num_epochs=10 fed.args.num_local_epochs=5 
+>>> python examples/femnist.py device=cuda fed=fedavg num_epochs=10 fed.args.num_local_epochs=5 
 
 # To run ``run_server`` using a CPU and ``run_client`` using 4 CPUs:
 
->>> mpiexec -np 5 python ./femnist.py device=cpu fed=fedavg num_epochs=10 fed.args.num_local_epochs=5
+>>> mpiexec -np 5 python examples/femnist.py device=cpu fed=fedavg num_epochs=10 fed.args.num_local_epochs=5
 
 # To run ``run_server`` using a GPU and ``run_client`` using 4 GPUs:
 
->>> mpiexec -np 5 --mca opal_cuda_support 1 python ./femnist.py device=cuda fed=fedavg num_epochs=10 fed.args.num_local_epochs=5
+>>> mpiexec -np 5 --mca opal_cuda_support 1 python examples/femnist.py device=cuda fed=fedavg num_epochs=10 fed.args.num_local_epochs=5
 
 
 Note that the above commands run the APPFL framework by using the Federated Averaging (FedAvg) algorithm with 10 communication rounds and 5 local updates.
