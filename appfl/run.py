@@ -12,44 +12,10 @@ from omegaconf import DictConfig
 
 import copy
 import time
-from .utils import *
+from .misc.utils import *
 from .algorithm.iadmm import *
 from .algorithm.fedavg import *
-
-def validation(self, dataloader):
-            
-    if dataloader is not None:
-        self.loss_fn = CrossEntropyLoss()
-    else:
-        self.loss_fn = None
-
-    if self.loss_fn is None or dataloader is None:
-        return 0.0, 0.0
-
-    self.model.to(self.device)
-    self.model.eval()
-    test_loss = 0
-    correct = 0
-    tmpcnt=0; tmptotal=0
-    with torch.no_grad():
-        for img, target in dataloader:
-            tmpcnt+=1; tmptotal+=len(target)
-            img = img.to(self.device)
-            target = target.to(self.device)
-            logits = self.model(img) 
-            test_loss += self.loss_fn(logits, target).item()
-            pred = logits.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
-
-    # FIXME: do we need to sent the model to cpu again?
-    # self.model.to("cpu")
-    
-    test_loss = test_loss / tmpcnt
-    accuracy = 100.0 * correct / tmptotal
-
-    return test_loss, accuracy
-
-
+ 
 def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data: Dataset, DataSet_name: str):
 
     outfile = print_write_result_title(cfg, DataSet_name)
@@ -196,7 +162,7 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, n
 
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-\
+
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
         

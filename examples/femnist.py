@@ -8,8 +8,7 @@ start_time = time.time()
 import json
 import numpy as np
 import torch
-from torch.utils.data import Dataset
-from appfl.data import *
+from appfl.misc.data import *
 
 DataSet_name = "FEMNIST" 
 num_clients = 203
@@ -37,10 +36,10 @@ for idx in range(36):
         for data_label in test_data_raw[idx]["user_data"][client]["y"]: 
             test_data_label.append(data_label)            
 
-test_dataset = Dataset(
-                        torch.FloatTensor(test_data_input), 
-                        torch.tensor(test_data_label) 
-                        )
+test_dataset = LoadDataset(
+torch.FloatTensor(test_data_input), 
+torch.tensor(test_data_label)
+)
 
 # training data for multiple clients
 train_data_raw={}  
@@ -58,11 +57,11 @@ for idx in range(36):
             train_data_input_resize.append([data_input])
 
         train_datasets.append( 
-            Dataset(
-            torch.FloatTensor(train_data_input_resize), 
-            torch.tensor(train_data_raw[idx]["user_data"][client]["y"])
-            ) 
-            )
+        LoadDataset(
+        torch.FloatTensor(train_data_input_resize), 
+        torch.tensor(train_data_raw[idx]["user_data"][client]["y"])
+        ) 
+        )
                 
 data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)        
                  
