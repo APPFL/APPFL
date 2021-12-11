@@ -4,15 +4,11 @@ appfl/.DS_Store
 appfl/config/optim/*
 appfl/config/fed/*
 appfl/config/*
-Slurm_outputs/*
 examples/.DS_Store
 examples/outputs/*
 examples/results/*
-examples/run.sh
-examples/run1.sh
-examples/run2.sh
-examples/run3.sh
-examples/run4.sh
+examples/*.sh
+examples/Slurm_outputs/*
 outputs/*
 datasets/RawData/*
 datasets/ProcessedData/*
