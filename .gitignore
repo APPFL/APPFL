@@ -9,9 +9,12 @@ examples/outputs/*
 examples/results/*
 examples/*.sh
 examples/Slurm_outputs/*
-outputs/*
-datasets/RawData/*
-datasets/ProcessedData/*
+datasets/RawData/cifar-10-batches-py
+datasets/RawData/Coronahack
+datasets/RawData/FEMNIST
+datasets/RawData/MNIST
+datasets/RawData/cifar-10-python.tar.gz
+datasets/PreprocessedData/Coronahack_Clients_4
  
 
 
