@@ -12,6 +12,7 @@ from omegaconf import DictConfig
 
 import copy
 import time
+from .utils import *
 from .algorithm.iadmm import *
 from .algorithm.fedavg import *
 
@@ -47,75 +48,6 @@ def validation(self, dataloader):
     accuracy = 100.0 * correct / tmptotal
 
     return test_loss, accuracy
-
-
-def print_write_result_title(cfg: DictConfig, DataSet_name: str ):
-    ## Print and Write Results  
-    dir = cfg.result_dir
-    if os.path.isdir(dir) == False:
-        os.mkdir(dir)            
-    filename = "Result_%s_%s"%(DataSet_name, cfg.fed.type)    
-    if cfg.fed.type == "iadmm":  
-        filename = "Result_%s_%s(rho=%s)"%(DataSet_name, cfg.fed.type, cfg.fed.args.penalty)
-    
-    file_ext = ".txt"
-    file = dir+"/%s%s"%(filename,file_ext)
-    uniq = 1
-    while os.path.exists(file):
-        file = dir+"/%s_%d%s"%(filename, uniq, file_ext)
-        uniq += 1
-    outfile = open(file,"w")
-    title = (
-            "%12s %12s %12s %12s %12s %12s %12s \n"
-            % (
-                "Iter",                
-                "Local[s]",
-                "Global[s]",
-                "Iter[s]",
-                "Elapsed[s]",
-                "TestAvgLoss",
-                "TestAccuracy"                
-            )
-        )    
-    outfile.write(title)
-    print(title, end="")
-    return outfile
-
-
-def print_write_result_iteration(outfile, t,LocalUpdate_time, GlobalUpdate_time, PerIter_time, Elapsed_time,test_loss,accuracy):    
-    results = (
-                "%12d %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n"
-                % (
-                    t+1,
-                    LocalUpdate_time,
-                    GlobalUpdate_time,
-                    PerIter_time,
-                    Elapsed_time,
-                    test_loss,
-                    accuracy                 
-                )
-            )        
-    print(results, end="")
-    outfile.write(results)
-    return outfile
-
-
-def print_write_result_summary(cfg: DictConfig, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy):
-
-    outfile.write("Device=%s \n"%(cfg.device))
-    outfile.write("#Nodes=%s \n"%(comm_size))
-    outfile.write("Dataset=%s \n"%(DataSet_name))
-    outfile.write("#Clients=%s \n"%(num_clients))        
-    outfile.write("Algorithm=%s \n"%(cfg.fed.type))
-    outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
-    outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
-    outfile.write("Elapsed_time=%s \n"%(round(Elapsed_time,2)))  
-    outfile.write("BestAccuracy=%s \n"%(BestAccuracy))      
-    
-    if cfg.fed.type == "iadmm":
-        outfile.write("ADMM Penalty=%s \n"%(cfg.fed.args.penalty))
-
-    outfile.close()
 
 
 def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data: Dataset, DataSet_name: str):
@@ -169,57 +101,46 @@ def run_serial(cfg: DictConfig, model: nn.Module, train_data: Dataset, test_data
 
     local_states = OrderedDict()
 
+    start_time = time.time()
+    BestAccuracy = 0.0    
     for t in range(num_epochs):
-        global_state = server.model.state_dict()
-        # for client in clients:
-        #     client.model.load_state_dict(global_state)
+        PerIter_start = time.time()
 
+        global_state = server.model.state_dict()
+        LocalUpdate_start = time.time()     
         for k, client in enumerate(clients):            
             client.model.load_state_dict(global_state)
             client.update()
             local_states[k] = client.model.state_dict()
+        LocalUpdate_time = time.time() - LocalUpdate_start
 
+        GlobalUpdate_start = time.time()
         server.update(global_state, local_states)
-    
-        test_loss, accuracy = validation(server, server_dataloader)
-        log.info(
-            f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
-        )
+        GlobalUpdate_time = time.time() - GlobalUpdate_start
+        
+        if cfg.validation == True:            
+            test_loss, accuracy = validation(server, server_dataloader)
 
+            if accuracy > BestAccuracy:
+                BestAccuracy = accuracy    
+        
+        PerIter_time = time.time() - PerIter_start
+        Elapsed_time = time.time() - start_time
+
+        outfile = print_write_result_iteration(
+                outfile,
+                t,LocalUpdate_time, GlobalUpdate_time, 
+                PerIter_time, Elapsed_time,
+                test_loss,accuracy
+                )   
+
+
+    print_write_result_summary(cfg, outfile, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy)    
+        
  
 def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, num_clients: int, DataSet_name: str ):
     
     outfile = print_write_result_title(cfg, DataSet_name)
-
-    ## Print and Write Results  
-    # dir = cfg.result_dir
-    # if os.path.isdir(dir) == False:
-    #     os.mkdir(dir)            
-    # filename = "Result_%s_%s"%(DataSet_name, cfg.fed.type)    
-    # if cfg.fed.type == "iadmm":  
-    #     filename = "Result_%s_%s(rho=%s)"%(DataSet_name, cfg.fed.type, cfg.fed.args.penalty)
-    
-    # file_ext = ".txt"
-    # file = dir+"/%s%s"%(filename,file_ext)
-    # uniq = 1
-    # while os.path.exists(file):
-    #     file = dir+"/%s_%d%s"%(filename, uniq, file_ext)
-    #     uniq += 1
-    # outfile = open(file,"w")
-    # title = (
-    #         "%12s %12s %12s %12s %12s %12s %12s \n"
-    #         % (
-    #             "Iter",                
-    #             "Local[s]",
-    #             "Global[s]",
-    #             "Iter[s]",
-    #             "Elapsed[s]",
-    #             "TestAvgLoss",
-    #             "TestAccuracy"                
-    #         )
-    #     )    
-    # outfile.write(title)
-    # print(title, end="")
 
     ## Start    
     comm_size = comm.Get_size()
@@ -275,33 +196,16 @@ def run_server(cfg: DictConfig, comm, model: nn.Module, test_dataset: Dataset, n
 
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-            # log.info(
-            #     f"[Round: {t+1: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
-            # )
+\
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
         
-        ##
         outfile = print_write_result_iteration(
                 outfile,
                 t,LocalUpdate_time, GlobalUpdate_time, 
                 PerIter_time, Elapsed_time,
                 test_loss,accuracy
-                )
-        # results = (
-        #     "%12d %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n"
-        #     % (
-        #         t+1,
-        #         LocalUpdate_time,
-        #         GlobalUpdate_time,
-        #         PerIter_time,
-        #         Elapsed_time,
-        #         test_loss,
-        #         accuracy                 
-        #     )
-        # )        
-        # print(results, end="")
-        # outfile.write(results)
+                )         
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
@@ -348,37 +252,7 @@ def run_client(cfg: DictConfig, comm, model: nn.Module, train_datasets: Dataset,
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
     ] 
-
-    # clients_dataloaders=[]
-    # for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-
-    #     ## TO DO: advance techniques (e.g., utilizing batch)
-    #     if cfg.fed.type == "iadmm":                      
-    #         cfg.train_data_batch_size = len(train_datasets[cid])
-        
-    #     clients_dataloaders.append(
-    #         DataLoader( 
-    #         train_datasets[cid], 
-    #         num_workers=0, 
-    #         batch_size=cfg.train_data_batch_size, 
-    #         shuffle=cfg.train_data_shuffle
-    #         )
-    #     )   
-
-    # clients = [
-    #     eval(cfg.fed.clientname)(
-    #         cid,
-    #         copy.deepcopy(model),            
-    #         optimizer,
-    #         cfg.optim.args,
-    #         clients_dataloaders[i],            
-    #         device,
-    #         **cfg.fed.args,
-    #     )
-    #     for i, cid in enumerate(num_client_groups[comm_rank - 1])
-    # ]
-     
-
+ 
     do_continue = comm.bcast(None, root=0)
     local_states = OrderedDict()
 
