@@ -110,7 +110,7 @@ for i in range(num_clients):
 data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)
 
 ## User-defined model
-from examples.cnn import *
+from examples.models.cnn import *
 
 model = CNN(num_channel, num_classes, num_pixel)
 
