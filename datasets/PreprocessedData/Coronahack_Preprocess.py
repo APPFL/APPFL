@@ -14,7 +14,7 @@ import csv
 
 class CoronahackTrain():
     def __init__(self, pixel): 
-        dir = "./RawData/Coronahack/archive"
+        dir = "../RawData/Coronahack/archive"
 
         self.imgs_path = dir+"/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"        
         self.data = []
@@ -56,7 +56,7 @@ class CoronahackTrain():
 
 class CoronahackTest():
     def __init__(self, pixel): 
-        dir = "./RawData/Coronahack/archive"
+        dir = "../RawData/Coronahack/archive"
         self.imgs_path = dir+"/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
         self.data = []
         with open(dir+"/Chest_xray_Corona_Metadata.csv", 'r') as file:
@@ -99,11 +99,8 @@ test_data_raw=CoronahackTest(num_pixel)
 
  
 ## Output Directories
-dir0="./ProcessedData"
-if os.path.isdir(dir0) == False:
-    os.mkdir(dir0)    
 
-dir = "./ProcessedData/Coronahack_Clients_{}".format(num_clients) 
+dir = "./Coronahack_Clients_{}".format(num_clients) 
 if os.path.isdir(dir) == False:
     os.mkdir(dir)    
 
