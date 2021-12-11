@@ -20,52 +20,21 @@ Download datasets
     - # of pixels = 28 * 28
 
 - In a newly generated directory ``leaf/data/femnist/data``, copy the two directories ``train`` and ``test`` and paste them in a ``datasets/RawData/FEMNIST`` directory.
- 
-Preprocess datasets
-^^^^^^^^^^^^^^^^^^^
-
-Our APPFL framework reads datasets, each of which is stored in a ``json`` file with the following dictionary format:
-
-.. code-block:: console
-      
-   {  
-   "x": [ [data input 1], [data input 2], ..., [data input N] ], 
-   "y": [ data label 1, data label 2, ..., data label N ]  
-   }
-
-Therefore, the users of our APPFL framework should *preprocess their raw dataset* to create the ``json`` files with the above dictionary format. After preprocessing, the users will 
-create  
-
-- ``all_test_data.json`` (a testing dataset for **a server**) and 
-- ``all_train_data_client_${i}.json`` (a set of training datasets where "i" represents **a client "i"**), 
-
-and store the ``json`` files in a ``datasets/PreprocessedData/[DatasetName]_Clients_[#Clients]`` directory, where "DatasetName" and "#Clients" are determined by the users. 
-
-To preprocess the FEMNIST dataset, we have created ``datasets/FEMNIST_Preprocess.py`` which produces a set of 204 json files
-
-.. code-block:: console
-      
-   all_test_data.json
-   all_train_data_client_0.json
-   all_train_data_client_1.json
-   ...
-   all_train_data_client_202.json
-
-and stores them in a ``datasets/PreprocessedData/FEMNIST_Clients_203`` directory.
+    
 
 Creating a custom dataset for your data
 ---------------------------------------
 
-``torch.utils.data.Dataset``
+Our APPFL framework takes a dataset expressed by ``torch`` tensors.
 
-.. literalinclude:: /../examples/ReadDataset.py
-    :lines: 1-33
+.. literalinclude:: /../appfl/data.py
+    :lines: 6-15
 
- 
-Creating a cutrom model
+
+Creating a custom model
 -----------------------
 
-The users of our APPFL framework can create a machine learning model trained by multiple clients. See ``examples/cnn.py`` as an example, a CNN model with the following structure:
+The users of our APPFL framework can create a machine learning model trained by multiple clients. See ``examples/models/cnn.py`` as an example, a CNN model with the following structure:
 
 .. code-block:: python     
 
@@ -117,7 +86,54 @@ To run our APPFL framework using ``FEMNIST`` and ``CNN``, the users should creat
     num_classes = 62   # number of the image classes 
     num_pixel   = 28   # image size = (num_pixel, num_pixel)
 
-    train_datasets, test_dataset = ReadDataset(DataSet_name, num_clients, num_channel, num_pixel)
+    dir = "../datasets/RawData/%s" % (DataSet_name)
+
+    # test data for a server
+    test_data_raw = {}
+    test_data_input = []
+    test_data_label = []
+    for idx in range(36):
+        with open("%s/test/all_data_%s_niid_05_keep_0_test_9.json" % (dir, idx)) as f:
+            test_data_raw[idx] = json.load(f)
+
+        for client in test_data_raw[idx]["users"]:
+
+            for data_input in test_data_raw[idx]["user_data"][client]["x"]:
+                data_input = np.asarray(data_input)
+                data_input.resize(28, 28)
+                test_data_input.append([data_input])
+
+            for data_label in test_data_raw[idx]["user_data"][client]["y"]:
+                test_data_label.append(data_label)
+
+    test_dataset = Dataset(
+        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+    )
+
+    # training data for multiple clients
+    train_data_raw = {}
+    train_datasets = []
+    for idx in range(36):
+        with open("%s/train/all_data_%s_niid_05_keep_0_train_9.json" % (dir, idx)) as f:
+            train_data_raw[idx] = json.load(f)
+
+        for client in train_data_raw[idx]["users"]:
+
+            train_data_input_resize = []
+            for data_input in train_data_raw[idx]["user_data"][client]["x"]:
+                data_input = np.asarray(data_input)
+                data_input.resize(28, 28)
+                train_data_input_resize.append([data_input])
+
+            train_datasets.append(
+                Dataset(
+                    torch.FloatTensor(train_data_input_resize),
+                    torch.tensor(train_data_raw[idx]["user_data"][client]["y"]),
+                )
+            )
+
+    data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)
+
 
 2. Load the model
 
