@@ -4,7 +4,7 @@ import os
 from collections import OrderedDict
 import torch.nn as nn
 from torch.optim import *
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
 import numpy as np
 
@@ -12,6 +12,7 @@ from omegaconf import DictConfig
 
 import copy
 import time
+from .misc.data import Dataset
 from .misc.utils import *
 from .algorithm.iadmm import *
 from .algorithm.fedavg import *

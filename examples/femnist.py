@@ -36,7 +36,7 @@ for idx in range(36):
         for data_label in test_data_raw[idx]["user_data"][client]["y"]: 
             test_data_label.append(data_label)            
 
-test_dataset = LoadDataset(
+test_dataset = Dataset(
 torch.FloatTensor(test_data_input), 
 torch.tensor(test_data_label)
 )
@@ -57,7 +57,7 @@ for idx in range(36):
             train_data_input_resize.append([data_input])
 
         train_datasets.append( 
-        LoadDataset(
+        Dataset(
         torch.FloatTensor(train_data_input_resize), 
         torch.tensor(train_data_raw[idx]["user_data"][client]["y"])
         ) 
