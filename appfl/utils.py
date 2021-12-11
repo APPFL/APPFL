@@ -34,7 +34,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str ):
     return outfile
 
 
-def print_write_result_iteration(outfile, t,LocalUpdate_time, GlobalUpdate_time, PerIter_time, Elapsed_time,test_loss,accuracy):    
+def print_write_result_iteration(outfile, t, LocalUpdate_time, GlobalUpdate_time, PerIter_time, Elapsed_time,test_loss,accuracy):    
     results = (
                 "%12d %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n"
                 % (
@@ -55,14 +55,14 @@ def print_write_result_iteration(outfile, t,LocalUpdate_time, GlobalUpdate_time,
 def print_write_result_summary(cfg: DictConfig, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy):
 
     outfile.write("Device=%s \n"%(cfg.device))
-    outfile.write("#Nodes=%s \n"%(comm_size))
+    outfile.write("#Processors=%s \n"%(comm_size))
     outfile.write("Dataset=%s \n"%(DataSet_name))
     outfile.write("#Clients=%s \n"%(num_clients))        
     outfile.write("Algorithm=%s \n"%(cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
     outfile.write("Elapsed_time=%s \n"%(round(Elapsed_time,2)))  
-    outfile.write("BestAccuracy=%s \n"%(BestAccuracy))      
+    outfile.write("BestAccuracy=%s \n"%(round(BestAccuracy,2))      
     
     if cfg.fed.type == "iadmm":
         outfile.write("ADMM Penalty=%s \n"%(cfg.fed.args.penalty))
