@@ -1,13 +1,47 @@
+import torch 
 import os
 from omegaconf import DictConfig
+
+def validation(self, dataloader):
+            
+    if dataloader is not None:
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+    else:
+        self.loss_fn = None
+
+    if self.loss_fn is None or dataloader is None:
+        return 0.0, 0.0
+
+    self.model.to(self.device)
+    self.model.eval()
+    test_loss = 0
+    correct = 0
+    tmpcnt=0; tmptotal=0
+    with torch.no_grad():
+        for img, target in dataloader:
+            tmpcnt+=1; tmptotal+=len(target)
+            img = img.to(self.device)
+            target = target.to(self.device)
+            logits = self.model(img) 
+            test_loss += self.loss_fn(logits, target).item()
+            pred = logits.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+    # FIXME: do we need to sent the model to cpu again?
+    # self.model.to("cpu")
+    
+    test_loss = test_loss / tmpcnt
+    accuracy = 100.0 * correct / tmptotal
+
+    return test_loss, accuracy
 
 def print_write_result_title(cfg: DictConfig, DataSet_name: str ):
     ## Print and Write Results  
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)            
-    filename = "Result_%s_%s"%(DataSet_name, cfg.fed.type)    
-    if cfg.fed.type == "iadmm":  
+    filename = "Result_%s_%s"%(DataSet_name, cfg.fed.type)        
+    if cfg.fed.type == "iadmm":
         filename = "Result_%s_%s(rho=%s)"%(DataSet_name, cfg.fed.type, cfg.fed.args.penalty)
     
     file_ext = ".txt"
@@ -62,7 +96,7 @@ def print_write_result_summary(cfg: DictConfig, outfile, comm_size, DataSet_name
     outfile.write("Comm_Rounds=%s \n"%(cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n"%(cfg.fed.args.num_local_epochs))    
     outfile.write("Elapsed_time=%s \n"%(round(Elapsed_time,2)))  
-    outfile.write("BestAccuracy=%s \n"%(round(BestAccuracy,2))      
+    outfile.write("BestAccuracy=%s \n"%(round(BestAccuracy,2)))      
     
     if cfg.fed.type == "iadmm":
         outfile.write("ADMM Penalty=%s \n"%(cfg.fed.args.penalty))

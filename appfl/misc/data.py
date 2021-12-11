@@ -1,7 +1,7 @@
 import torch
 from torch.utils import data
 
-class Dataset(data.Dataset):
+class LoadDataset(data.Dataset):
     def __init__(self, data_input: torch.FloatTensor, data_label: torch.Tensor):
         self.data_input = data_input
         self.data_label = data_label
