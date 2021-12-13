@@ -15,6 +15,7 @@ datasets/RawData/FEMNIST
 datasets/RawData/MNIST
 datasets/RawData/cifar-10-python.tar.gz
 datasets/PreprocessedData/Coronahack_Clients_4
+outputs/*
  
 
 
