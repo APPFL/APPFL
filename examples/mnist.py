@@ -22,7 +22,7 @@ num_pixel   = 28   # image size = (num_pixel, num_pixel)
 
 # test data for a server
 test_data_raw = eval("torchvision.datasets."+DataSet_name)(
-    f"../datasets/RawData",
+    f"./datasets/RawData",
     download=True,
     train=False,
     transform=ToTensor()
@@ -41,7 +41,7 @@ test_dataset = Dataset(
 
 # training data for multiple clients
 train_data_raw = eval("torchvision.datasets."+DataSet_name)(
-    f"../datasets/RawData",
+    f"./datasets/RawData",
     download=True,
     train=True,
     transform=ToTensor()

@@ -20,7 +20,7 @@ num_channel = 3    # 1 if gray, 3 if color
 num_classes = 7   # number of the image classes
 num_pixel = 32   # image size = (num_pixel, num_pixel)
 
-dir = "../datasets/ProcessedData/%s_Clients_%s" % (DataSet_name, num_clients)
+dir = "./datasets/ProcessedData/%s_Clients_%s" % (DataSet_name, num_clients)
 
 # test data for a server
 with open("%s/all_test_data.json"%(dir)) as f:    
