@@ -10,6 +10,7 @@ start_time = time.time()
 import json
 import numpy as np
 import torch
+torch.manual_seed(1)
 from appfl.misc.data import *
 
 DataSet_name = "FEMNIST"
@@ -18,7 +19,7 @@ num_channel = 1  # 1 if gray, 3 if color
 num_classes = 62  # number of the image classes
 num_pixel = 28  # image size = (num_pixel, num_pixel)
 
-dir = "../datasets/RawData/%s" % (DataSet_name)
+dir = "./datasets/RawData/%s" % (DataSet_name)
 
 # test data for a server
 test_data_raw = {}
@@ -89,8 +90,6 @@ def main(cfg: DictConfig):
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
-
-    torch.manual_seed(1)
 
     if comm_size > 1:
         if comm_rank == 0:

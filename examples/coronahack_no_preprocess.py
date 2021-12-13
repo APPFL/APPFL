@@ -21,7 +21,7 @@ num_channel = 3    # 1 if gray, 3 if color
 num_classes = 7   # number of the image classes
 num_pixel = 32   # image size = (num_pixel, num_pixel)
 
-dir = "../datasets/RawData/%s/archive" % (DataSet_name)
+dir = "./datasets/RawData/%s/archive" % (DataSet_name)
 
 
 class Coronahack():
