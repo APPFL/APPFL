@@ -10,7 +10,6 @@ start_time = time.time()
 import json
 import numpy as np
 import torch
-torch.manual_seed(1)
 from appfl.misc.data import *
 
 DataSet_name = "FEMNIST"
