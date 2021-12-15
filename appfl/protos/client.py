@@ -3,14 +3,14 @@ import numpy as np
 
 import grpc
 
-from protos.federated_learning_pb2 import Header
-from protos.federated_learning_pb2 import DataBuffer
-from protos.federated_learning_pb2 import JobRequest
-from protos.federated_learning_pb2 import LearningResults
-from protos.federated_learning_pb2 import TensorRequest
-from protos.federated_learning_pb2 import TensorRecord
-from protos.federated_learning_pb2_grpc import FederatedLearningStub
-from protos import utils
+from .federated_learning_pb2 import Header
+from .federated_learning_pb2 import DataBuffer
+from .federated_learning_pb2 import JobRequest
+from .federated_learning_pb2 import LearningResults
+from .federated_learning_pb2 import TensorRequest
+from .federated_learning_pb2 import TensorRecord
+from .federated_learning_pb2_grpc import FederatedLearningStub
+from . import utils
 
 class FLClient():
     def __init__(self, client_id, server_uri):

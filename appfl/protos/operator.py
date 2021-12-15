@@ -9,48 +9,37 @@ from torch.nn import CrossEntropyLoss
 import torchvision
 from torchvision.transforms import ToTensor
 
-from models import CNN
 import numpy as np
+import copy
 
-from algorithm import utils
-from protos.federated_learning_pb2 import Job
+from appfl.misc.utils import *
+from appfl.algorithm.iadmm import *
+from appfl.algorithm.fedavg import *
+from .federated_learning_pb2 import Job
 
 class FLOperator():
-    def __init__(self, cfg):
+    def __init__(self, cfg, model, test_dataset, num_clients):
         self.logger = logging.getLogger(__name__)
         self.operator_id = cfg.operator.id
-        self.num_clients = cfg.num_clients
+        self.cfg = cfg
+        self.num_clients = num_clients
         self.num_epochs = cfg.num_epochs
         self.round_number = 1
-
-        if cfg.validation == True:
-            if cfg.dataset.torchvision == True:
-                test_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-                    f"./datasets/0",
-                    **cfg.dataset.args,
-                    train=False,
-                    transform=ToTensor(),
-                )
-                dataloader = DataLoader(test_data, batch_size=cfg.batch_size)
-            else:
-                raise NotImplementedError
-        else:
-            dataloader = None
-
+        self.best_accuracy = 0.0
         self.device = "cpu"
-        self.dataloader = dataloader
-        if self.dataloader is not None:
-            self.loss_fn = CrossEntropyLoss()
-        else:
-            self.loss_fn = None
-
-        self.model = eval(cfg.model.classname)(**cfg.model.args)
-        self.validate_model = cfg.validation
         self.client_states = {}
-        self.servicer = None
+        self.client_learning_status = {}
+        self.servicer = None # Takes care of communication via gRPC
+
+        self.dataloader = DataLoader(test_dataset,
+                                     num_workers=0,
+                                     batch_size=cfg.test_data_batch_size,
+                                     shuffle=cfg.test_data_shuffle)
+        self.fed_server = eval(cfg.fed.servername)(
+            copy.deepcopy(model), num_clients, self.device, **cfg.fed.args)
 
     def get_tensor(self, name):
-        return np.array(self.model.state_dict()[name]) if name in self.model.state_dict() else None
+        return np.array(self.fed_server.model.state_dict()[name]) if name in self.fed_server.model.state_dict() else None
 
     def get_job(self):
         job_todo = Job.TRAIN
@@ -60,29 +49,21 @@ class FLOperator():
 
     def update_weights(self):
         self.logger.info(f"[Round: {self.round_number: 04}] Updating model weights")
+        self.fed_server.update(self.fed_server.model.state_dict(), self.client_states)
 
-        aggr_state = {}
-        for c in range(0,self.num_clients):
-            for k,v in self.client_states[(c+1,self.round_number)].items():
-                if k in aggr_state:
-                    aggr_state[k] += v / self.num_clients
-                else:
-                    aggr_state[k] = v / self.num_clients
+        if self.cfg.validation == True:
+            test_loss, accuracy = validation(self.fed_server, self.dataloader)
 
-        new_state = {}
-        for k in self.model.state_dict():
-            new_state[k] = torch.from_numpy(aggr_state[k])
-        self.model.load_state_dict(new_state)
+            if accuracy > self.best_accuracy:
+                self.best_accuracy = accuracy
 
-        if self.validate_model:
-            test_loss, accuracy = utils.validation(self.model, self.loss_fn, self.dataloader, self.device)
             self.logger.info(
-                f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%"
+                f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%, Best Accuracy: {self.best_accuracy:.2f}%"
             )
         self.round_number += 1
 
     def is_round_finished(self):
-        return all((c+1,self.round_number) in self.client_states for c in range(0,self.num_clients))
+        return all((c+1,self.round_number) in self.client_learning_status for c in range(0,self.num_clients))
 
     def send_learning_results(self, client_id, round_number, tensor_list):
         results = {}
@@ -91,8 +72,9 @@ class FLOperator():
             shape = tuple(tensor.data_shape)
             flat = np.frombuffer(tensor.data_bytes, dtype=np.float32)
             nparray = np.reshape(flat, newshape=shape, order='C')
-            results[name] = nparray
-        self.client_states[(client_id,round_number)] = results
+            results[name] = torch.from_numpy(nparray)
+        self.client_states[client_id] = results
+        self.client_learning_status[(client_id,round_number)] = True
 
         if self.is_round_finished():
             self.logger.info(f"[Round: {self.round_number: 04}] Finished; all clients have sent their results.")

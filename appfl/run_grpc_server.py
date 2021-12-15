@@ -1,16 +1,19 @@
+import torch.nn as nn
 import hydra
 from omegaconf import DictConfig
 
-import protos.server
-import protos.operator
+from .protos import server
+from .protos import operator
+from .misc.data import Dataset
 
-@hydra.main(config_path="config", config_name="config")
-def run_server(cfg: DictConfig) -> None:
-    operator = protos.operator.FLOperator(cfg)
-    operator.servicer = protos.server.FLServicer(cfg.server.id, str(cfg.server.port), operator)
+def run_server(cfg: DictConfig,
+               rank: int,
+               model: nn.Module,
+               test_dataset: Dataset,
+               num_clients: int,
+               DataSet_name: str) -> None:
+    op = operator.FLOperator(cfg, model, test_dataset, num_clients)
+    op.servicer = server.FLServicer(cfg.server.id, str(cfg.server.port), op)
 
     print("Starting the server to listen to requests from clients . . .")
-    protos.server.serve(operator.servicer)
-
-if __name__ == "__main__":
-    run_server()
+    server.serve(op.servicer)
