@@ -138,19 +138,35 @@ $$
 where $\lambda_p$ is a dual vector associated with a consensus constraint $w=z_p$ and $\rho$ is an ADMM penalty parameter which should be fine-tuned.
 
 
-In the inexact ADMM algorithm, the first-taylor approximation is applied on the function yielding
+In the inexact ADMM algorithm, the first-taylor approximation is applied yielding
 $$
 \begin{aligned}
-& z^{t+1}_p \leftarrow \argmin_{z_p} \ \Big\langle \frac{1}{I}  \sum_{i \in \mathcal{I}_p}  \nabla f_{i} (z_p^t; x_{i}, y_{i}), z_p \Big\rangle - \langle \lambda^t_p, z_p \rangle +  \frac{\rho^t}{2} \|w^{t+1}-z_p\|^2, \ \forall p \in [P], \\
-& z^{t+1}_p = w^{t+1} + \frac{1}{\rho^t} \Big(\lambda^t_p - \frac{1}{I} \sum_{i \in \mathcal{I}_p} \nabla f_i(z_p^t; x_i, y_i) \Big)
+& z^{t+1}_p \leftarrow \argmin_{z_p} \ \Big\langle \frac{1}{I}  \sum_{i \in \mathcal{I}_p}  \nabla f_{i} (z_p^t; x_{i}, y_{i}), z_p \Big\rangle - \langle \lambda^t_p, z_p \rangle +  \frac{\rho^t}{2} \|w^{t+1}-z_p\|^2.
 \end{aligned}
 $$
+Therefore,
+$$
+z^{t+1}_p = w^{t+1} + \frac{1}{\rho^t} \Big(\lambda^t_p - \frac{1}{I} \sum_{i \in \mathcal{I}_p} \nabla f_i(z_p^t; x_i, y_i) \Big).
+$$
 
-Within the context of IADMM, $\bar{\Delta}^t_p$ can be computed as follows:
+For every clients $p \in [P]$ and iteration $t$, a Laplacian noise vector $\tilde{\xi}^t_p$ sampled from $\text{Lap}(\tilde{\xi}^t_p; \bar{\Delta}^t_p/\bar{\epsilon})$ is added to the true output $z^{t+1}_p$, where $\bar{\Delta}^t_p$ should satisfy
+$$
+\bar{\Delta}^t_p \geq \max_{\mathcal{D}'_p \in \overline{\mathcal{D}}_p} \| z^{t+1}_p(\mathcal{D}_p) - z^{t+1}_p(\mathcal{D}'_p) \|_1,
+$$
+where $\overline{\mathcal{D}}_p$ is a collection of $\mathcal{D}'_p$ differing a single data point from $\mathcal{D}_p$.
+
+Consider
+$$
+\overline{\mathcal{D}}_p := \Big\{ \mathcal{D}_{pj} = \{ (x_i,y_i)_{i \in \mathcal{I}_p \setminus \{j\} } \}   : j \in \mathcal{I}_p \Big\}. 
+$$
+By this construction, we have
 $$
 \begin{aligned}
 \bar{\Delta}^t_p 
-& = \max_{\mathcal{D}'_p \in \overline{\mathcal{D}}_p} \Big\| \Big( w^{t+1} + \frac{1}{\rho^t} \Big(\lambda^t_p - \frac{1}{I} \sum_{i \in \mathcal{I}_p} \nabla f_i(z_p^t; x_i, y_i) \Big) \Big) - \Big( w^{t+1} + \frac{1}{\rho^t} \Big(\lambda^t_p - \frac{1}{I} \sum_{i \in \mathcal{I}_p} \nabla f_i(z_p^t; x'_i, y'_i) \Big) \Big) \Big\|_1 \\
-& = \frac{1}{\rho^t I} \max_{i \in \mathcal{I}_p} \Big\|  \nabla f_i(z^t_p; x_i, y_i) - \nabla f_i(z^t_p; x'_i, y'_i) \Big\|_1.
+& \geq \max_{j \in \mathcal{I}_p} \| z^{t+1}_p(\mathcal{D}_p) - z^{t+1}_p(\mathcal{D}_{pj}) \|_1 \\
+& = \frac{1}{I \rho^t} \max_{j \in \mathcal{I}_p} \Big\| -   \nabla f_j (z^t_p; x_j, y_j)   \Big\|_1 .
 \end{aligned}
 $$
+
+Important Note:
+In both algorithms (i.e., FedAvg and IADMM), a gradient at a specific point is computed for every iteration. This information can be **reused** for computing $\bar{\Delta}^t_p$.
