@@ -1,7 +1,7 @@
 import numpy as np
 
-from protos.federated_learning_pb2 import DataBuffer
-from protos.federated_learning_pb2 import TensorRecord
+from .federated_learning_pb2 import DataBuffer
+from .federated_learning_pb2 import TensorRecord
 
 def construct_tensor_record(name, nparray):
     return TensorRecord(name=name, data_shape=list(nparray.shape), data_bytes=nparray.tobytes(order='C'))

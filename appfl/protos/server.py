@@ -2,16 +2,16 @@ from concurrent import futures
 import logging
 
 import grpc
-from protos.federated_learning_pb2 import MessageStatus
-from protos.federated_learning_pb2 import Job
-from protos.federated_learning_pb2 import JobResponse
-from protos.federated_learning_pb2 import LearningResults
-from protos.federated_learning_pb2 import Acknowledgment
-from protos import utils
-import protos.federated_learning_pb2_grpc
+from .federated_learning_pb2 import MessageStatus
+from .federated_learning_pb2 import Job
+from .federated_learning_pb2 import JobResponse
+from .federated_learning_pb2 import LearningResults
+from .federated_learning_pb2 import Acknowledgment
+from . import utils
+from . import federated_learning_pb2_grpc
 
 
-class FLServicer(protos.federated_learning_pb2_grpc.FederatedLearningServicer):
+class FLServicer(federated_learning_pb2_grpc.FederatedLearningServicer):
     def __init__(self, servicer_id, port, operator):
         self.servicer_id = servicer_id
         self.port = port
@@ -48,7 +48,7 @@ class FLServicer(protos.federated_learning_pb2_grpc.FederatedLearningServicer):
 
 def serve(servicer):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    protos.federated_learning_pb2_grpc.add_FederatedLearningServicer_to_server(servicer, server)
+    federated_learning_pb2_grpc.add_FederatedLearningServicer_to_server(servicer, server)
     server.add_insecure_port('[::]:' + servicer.port)
     server.start()
     server.wait_for_termination()
