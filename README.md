@@ -2,12 +2,6 @@
 
 APPFL is a privacy-preserving federated learning framework that provides an infrastructure to implement algorithmic components for federated learning.
 
-## Requirements
-
-- PyTorch 1.9.1+
-- Hydra 1.1+
-- mpi4py
-
 ## How to run
 
 APPFL can run in either serial or parallel with MPI on CPU/GPU architectures.
