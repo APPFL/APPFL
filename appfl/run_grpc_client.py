@@ -31,8 +31,7 @@ def update_model_state(comm, model, round_number):
 def run_client(cfg           : DictConfig,
                comm_rank     : int,
                model         : nn.Module,
-               train_dataset : Dataset,
-               batch_size    : int) -> None:
+               train_dataset : Dataset) -> None:
     logger = logging.getLogger(__name__)
     uri = cfg.server.host + ':' + str(cfg.server.port)
 
@@ -41,6 +40,11 @@ def run_client(cfg           : DictConfig,
         device = f"cuda:{comm_rank-1}"
     else:
         device = cfg.device
+
+    if cfg.fed.type == "iadmm":
+        batch_size = len(train_dataset)
+    else:
+        batch_size = cfg.train_data_batch_size
 
     optimizer = eval(cfg.optim.classname)
     fed_client = eval(cfg.fed.clientname)(
