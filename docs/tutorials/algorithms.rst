@@ -1,9 +1,9 @@
-Feeding Algorithm
-=================
+Incorporating your algorithm
+============================
 
 In a federated learning setting, a server updates a global model parameter based on the local model parameters updated by multiple clients.
 
-How to feed an algorithm into our framework APPFL?
+How to incorporate your algorithm into our framework APPFL?
 
 1. Create classes for the global and local updates in ``appfl/algorithm``
 2. Create a configuration file that specifies the algorithm in ``appfl/config/fed``
