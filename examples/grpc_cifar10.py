@@ -13,6 +13,8 @@ from torchvision.transforms import ToTensor
 from appfl.misc.data import *
 from examples.models.cnn import *
 import appfl.run as rt
+import appfl.run_grpc_server as grpc_server
+import appfl.run_grpc_client as grpc_client
 import hydra
 from mpi4py import MPI
 from omegaconf import DictConfig
@@ -108,9 +110,10 @@ def main(cfg: DictConfig):
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, test_dataset, num_clients, DataSet_name)
+            grpc_server.run_server(cfg, comm_rank, model, test_dataset, num_clients, DataSet_name)
         else:
-            rt.run_client(cfg, comm, model, train_datasets, num_clients)
+            time.sleep(5)
+            grpc_client.run_client(cfg, comm_rank, model, train_datasets[comm_rank-1])
         print("------DONE------", comm_rank)
     else:
         rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
