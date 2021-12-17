@@ -2,32 +2,18 @@
 
 APPFL is a privacy-preserving federated learning framework that provides an infrastructure to implement algorithmic components for federated learning.
 
-## Requirements
+Basically, all algorithms are implemented under the `appfl` directory.
+Currently, we support two algorithms for federated learning: federated averaging and inexact ADMM.
+You could find more details about them in `appfl/algorithm` directory.
 
-- PyTorch 1.9.1+
-- Hydra 1.1+
-- mpi4py
+For communications between server and clients, we support MPI and gRPC communication protocols.
+MPI is for cluster environment, and gRPC can be used when we have clients on remote or mixed platforms.
+More details on our gRPC protocols can be found in the `appfl/protos` directory.
 
-## How to run
+We are in progress to add privacy-preserving features, which will be available in the `appfl/privacy` directory.
 
-APPFL can run in either serial or parallel with MPI on CPU/GPU architectures.
-The configuration of APPFL can be found in `appfl/config` directory, where you can configure algorithm, model, privacy, compute architecture, etc.
-
-Example of serial run to train MINIST can be done by
-
-```
-python appfl/run.py num_clients=3 num_epochs=10 device=cpu
-```
-
-where arguments `num_clients`, `num_epochs`, and `device` are optional to change their default values.
-
-Its parallel run can be done by
-
-```
-mpiexec -np 3 --mca opal_cuda_support 1 python appfl/run.py
-```
-
-where `--mca opal_cuda_support 1` is optional to run CUDA-aware MPI.
+The `examples` directory introduces how one can perform federated learning using our package.
+We have currently tested MNIST, CIFAR10, FEMNISt, and Coronahack.
 
 ## Acknowledgements
 

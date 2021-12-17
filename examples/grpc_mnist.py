@@ -13,20 +13,21 @@ from torchvision.transforms import ToTensor
 from appfl.misc.data import *
 from examples.models.cnn import *
 import appfl.run as rt
+import appfl.run_grpc_server as grpc_server
+import appfl.run_grpc_client as grpc_client
 import hydra
 from mpi4py import MPI
 from omegaconf import DictConfig
 
-DataSet_name = "CIFAR10"
+DataSet_name = "MNIST"
 num_clients = 4
-num_channel = 3    # 1 if gray, 3 if color
+num_channel = 1    # 1 if gray, 3 if color
 num_classes = 10   # number of the image classes
-num_pixel   = 32   # image size = (num_pixel, num_pixel)
+num_pixel   = 28   # image size = (num_pixel, num_pixel)
 
 def get_data(comm : MPI.COMM_WORLD):
     comm_rank = comm.Get_rank()
 
-    # Root download the data if not already available.
     if comm_rank == 0:
         # test data for a server
         test_data_raw = eval("torchvision.datasets."+DataSet_name)(
@@ -92,6 +93,7 @@ def get_model(comm : MPI.COMM_WORLD):
 ## Run
 @hydra.main(config_path="../appfl/config", config_name="config")
 def main(cfg: DictConfig):
+
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -108,9 +110,11 @@ def main(cfg: DictConfig):
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, test_dataset, num_clients, DataSet_name)
+            grpc_server.run_server(cfg, comm_rank, model, test_dataset, num_clients, DataSet_name)
         else:
-            rt.run_client(cfg, comm, model, train_datasets, num_clients)
+            # Give server some time to launch.
+            time.sleep(5)
+            grpc_client.run_client(cfg, comm_rank, model, train_datasets[comm_rank-1])
         print("------DONE------", comm_rank)
     else:
         rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)

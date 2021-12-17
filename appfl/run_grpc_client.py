@@ -3,20 +3,23 @@ from omegaconf import DictConfig
 
 from collections import OrderedDict
 import torch
+import torch.nn as nn
 from torch.optim import *
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 import torchvision
 from torchvision.transforms import ToTensor
-import numpy as np
 
-from algorithm.fedavg import *
-from models import *
+import copy
+import numpy as np
 import logging
 import time
 
-from protos.federated_learning_pb2 import Job
-import protos.client
+from .protos.federated_learning_pb2 import Job
+from .protos.client import FLClient
+from .misc.data import Dataset
+from .algorithm.iadmm import *
+from .algorithm.fedavg import *
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -25,54 +28,60 @@ def update_model_state(comm, model, round_number):
         new_state[name] = torch.from_numpy(nparray)
     model.load_state_dict(new_state)
 
-@hydra.main(config_path="config", config_name="config")
-def run_client(cfg: DictConfig) -> None:
+def run_client(cfg           : DictConfig,
+               comm_rank     : int,
+               model         : nn.Module,
+               train_dataset : Dataset) -> None:
     logger = logging.getLogger(__name__)
-    comm_rank = cfg.client.id
     uri = cfg.server.host + ':' + str(cfg.server.port)
 
-    if cfg.dataset.torchvision == True:
-        train_data = eval("torchvision.datasets." + cfg.dataset.classname)(
-            "./datasets", **cfg.dataset.args, train=True, transform=ToTensor()
-        )
-        dataloader = DataLoader(train_data, num_workers=0, batch_size=cfg.batch_size, shuffle=True)
+    ## We assume to have as many GPUs as the number of MPI processes.
+    if cfg.device == "cuda":
+        device = f"cuda:{comm_rank-1}"
     else:
-        raise NotImplementedError
+        device = cfg.device
 
-    model = eval(cfg.model.classname)(**cfg.model.args)
+    if cfg.fed.type == "iadmm":
+        batch_size = len(train_dataset)
+    else:
+        batch_size = cfg.train_data_batch_size
+
     optimizer = eval(cfg.optim.classname)
-
-    client = eval(cfg.fed.clientname)(
+    fed_client = eval(cfg.fed.clientname)(
         comm_rank,
-        model,
+        copy.deepcopy(model),
         optimizer,
         cfg.optim.args,
-        dataloader,
-        cfg.device,
-        **cfg.fed.args
-    )
+        DataLoader(train_dataset,
+                   num_workers=0,
+                   batch_size=batch_size,
+                   shuffle=cfg.train_data_shuffle),
+        device,
+        **cfg.fed.args)
 
     # Synchronize model parameters with server.
-    comm = protos.client.FLClient(comm_rank, uri)
+    comm = FLClient(comm_rank, uri)
     cur_round_number, job_todo = comm.get_job(Job.INIT)
     prev_round_number = 0
 
     while job_todo != Job.QUIT:
         if job_todo == Job.TRAIN:
             if prev_round_number != cur_round_number:
-                update_model_state(comm, client.model, cur_round_number)
+                logger.info(f"[Client ID: {comm_rank: 03} Round #: {cur_round_number: 03}] Start training")
+                update_model_state(comm, fed_client.model, cur_round_number)
                 prev_round_number = cur_round_number
 
-                client.update()
-                comm.send_learning_results(client.model.state_dict(), cur_round_number)
-                logger.info(f"[Client ID: {comm_rank: 03}] Trained and sent results back to the server")
+                fed_client.update()
+                comm.send_learning_results(fed_client.model.state_dict(), cur_round_number)
+                logger.info(f"[Client ID: {comm_rank: 03} Round #: {cur_round_number: 03}] Trained and sent results back to the server")
             else:
-                logger.info(f"[Client ID: {comm_rank: 03}] Waiting for next job")
+                logger.info(f"[Client ID: {comm_rank: 03} Round #: {cur_round_number: 03}] Waiting for next job")
                 time.sleep(5)
         cur_round_number, job_todo = comm.get_job(job_todo)
         if job_todo == Job.QUIT:
+            logger.info(f"[Client ID: {comm_rank: 03} Round #: {cur_round_number: 03}] Quitting")
             # Update with the most recent weights before exit.
-            update_model_state(comm, client.model, cur_round_number)
+            update_model_state(comm, fed_client.model, cur_round_number)
 
 if __name__ == "__main__":
     run_client()
