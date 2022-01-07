@@ -59,7 +59,9 @@ def main(cfg: DictConfig):
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
-    torch.manual_seed(1)
+    ## Reproducibility
+    torch.manual_seed(1)    
+    torch.backends.cudnn.deterministic=True
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)

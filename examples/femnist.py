@@ -1,4 +1,5 @@
 import sys
+import os
 
 sys.path.insert(0, "..")
 
@@ -22,7 +23,7 @@ num_channel = 1  # 1 if gray, 3 if color
 num_classes = 62  # number of the image classes
 num_pixel = 28  # image size = (num_pixel, num_pixel)
 
-dir = "./datasets/RawData/%s" % (DataSet_name)
+dir = os.getcwd() + "/datasets/RawData/%s" % (DataSet_name)
 
 def get_data(comm : MPI.COMM_WORLD):
     # test data for a server
@@ -84,6 +85,10 @@ def main(cfg: DictConfig):
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
+
+    ## Reproducibility
+    torch.manual_seed(1)    
+    torch.backends.cudnn.deterministic=True
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
