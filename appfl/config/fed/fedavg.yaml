@@ -4,4 +4,7 @@ clientname: FedAvgClient
 
 args:  
   num_local_epochs: 10
+  # Gradient Clipping
+  clip_value: 1000
+  clip_norm: 1
   

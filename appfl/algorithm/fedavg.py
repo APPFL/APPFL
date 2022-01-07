@@ -45,7 +45,7 @@ class FedAvgClient(BaseClient):
         self.model.train()
         self.model.to(self.device)
         optimizer = self.optimizer(self.model.parameters(), **self.optimizer_args)
-
+        
         for i in range(self.num_local_epochs):
             # log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
 
@@ -54,8 +54,16 @@ class FedAvgClient(BaseClient):
                 target = target.to(self.device)
                 optimizer.zero_grad()
                 output = self.model(data)
-                loss = self.loss_fn(output, target)
+                loss = self.loss_fn(output, target)                
                 loss.backward()
+                if self.clip_value != "inf":                           
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                
+
                 optimizer.step()
+                
+        
+                
 
         # self.model.to("cpu")
+
+
