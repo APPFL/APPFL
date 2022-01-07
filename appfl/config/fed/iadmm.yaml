@@ -4,4 +4,7 @@ clientname: IADMMClient
 
 args:
   num_local_epochs: 10
-  penalty: 20.0     ##  
+  # Gradient Clipping
+  clip_value: 1000
+  clip_norm: 1
+  penalty: 20.0     
