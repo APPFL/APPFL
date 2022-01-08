@@ -5,6 +5,8 @@ clientname: FedAvgClient
 args:  
   num_local_epochs: 10
   # Gradient Clipping
-  clip_value: 1000
+  clip_value: inf
   clip_norm: 1
+  # Privacy budget
+  epsilon: inf
   

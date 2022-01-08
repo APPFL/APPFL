@@ -9,7 +9,6 @@ import torch
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 
-
 class FedAvgServer(BaseServer):
     def __init__(self, model, num_clients, device, **kwargs):
         super(FedAvgServer, self).__init__(model, num_clients, device)
@@ -60,8 +59,21 @@ class FedAvgClient(BaseClient):
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                
 
                 optimizer.step()
+
+        if self.epsilon != "inf":                
+            ## Sensitivity using the clipping value        
+            Sensitivity_value = 2.0 * self.clip_value * self.optimizer_args.lr                
+            for name, param in self.model.named_parameters():                       
+                mean  = torch.zeros_like(param.data)
+                scale = torch.zeros_like(param.data) + ( Sensitivity_value / self.epsilon )
+                m = torch.distributions.laplace.Laplace( mean, scale )                    
+                param.data += m.sample()        
                 
         
+        # local_state = OrderedDict()
+        # for name, param in self.model.named_parameters():                       
+        #     local_state[name] = param.data
+        # self.model.load_state_dict(local_state)
                 
 
         # self.model.to("cpu")
