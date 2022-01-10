@@ -3,8 +3,18 @@ servername: IADMMServer
 clientname: IADMMClient
 
 args:
-  num_local_epochs: 10
+  num_local_epochs: 10  
+  
+  # ADMM penalty
+  penalty: 100.0     
+
+  # Privacy
+  privacy: False
+  scale_value: 0.01
+  epsilon: inf
+
   # Gradient Clipping
-  clip_value: 1000
+  clip_value: inf
   clip_norm: 1
-  penalty: 20.0     
+  
+  

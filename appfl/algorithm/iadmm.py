@@ -94,26 +94,28 @@ class IADMMClient(BaseClient):
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
                 loss.backward()
-                
-                c_bar = 1.0
-                if self.clip_value != "inf":                    
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                
-                    
-                    grads=[]
-                    for param in self.model.parameters():
-                        grads.append(param.grad.view(-1))
-                    grads = torch.cat(grads)                    
-                    c_bar = torch.norm(grads, p=self.clip_norm).item()/self.clip_value
 
-                # print("c_bar=", c_bar)
                 for name, param in self.model.named_parameters():
-                    self.local_grad[name] = param.grad * c_bar * len(self.dataloader.dataset)
+                    self.local_grad[name] = param.grad 
 
             ## Update local
             for name, param in self.model.named_parameters():
                 self.local_state[name] = self.global_state[name] + (
                     1.0 / self.penalty
                 ) * (self.dual_state[name] - self.local_grad[name])
+
+        ## Differential Privacy
+        if self.privacy == True:            
+            # Note: Scale_value = Sensitivity_value / self.epsilon            
+            
+            Scale_value = self.scale_value             
+
+            for name, param in self.model.named_parameters():                       
+                mean  = torch.zeros_like(param.data)
+                scale = torch.zeros_like(param.data) + Scale_value
+                m = torch.distributions.laplace.Laplace( mean, scale )                    
+                self.local_grad[name]  += m.sample()                            
+    
 
         ## Update dual
         for name, param in self.model.named_parameters():
