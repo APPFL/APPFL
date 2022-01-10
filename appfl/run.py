@@ -190,7 +190,7 @@ def run_server(
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
-
+    
     print_write_result_summary(
         cfg, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
