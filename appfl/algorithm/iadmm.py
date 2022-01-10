@@ -114,7 +114,7 @@ class IADMMClient(BaseClient):
                 mean  = torch.zeros_like(param.data)
                 scale = torch.zeros_like(param.data) + Scale_value
                 m = torch.distributions.laplace.Laplace( mean, scale )                    
-                self.local_grad[name]  += m.sample()                            
+                self.local_state[name] += m.sample()                            
     
 
         ## Update dual
