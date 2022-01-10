@@ -54,27 +54,20 @@ class FedAvgClient(BaseClient):
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)                
-                loss.backward()
-                if self.clip_value != "inf":                           
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                
-
+                loss.backward()                
                 optimizer.step()
+        
+        ## Differential Privacy
+        if self.privacy == True:            
+            # Note: Scale_value = Sensitivity_value / self.epsilon            
+            
+            Scale_value = self.scale_value             
 
-        if self.epsilon != "inf":                
-            ## Sensitivity using the clipping value        
-            Sensitivity_value = 2.0 * self.clip_value * self.optimizer_args.lr                
             for name, param in self.model.named_parameters():                       
                 mean  = torch.zeros_like(param.data)
-                scale = torch.zeros_like(param.data) + ( Sensitivity_value / self.epsilon )
+                scale = torch.zeros_like(param.data) + Scale_value
                 m = torch.distributions.laplace.Laplace( mean, scale )                    
-                param.data += m.sample()        
-                
-        
-        # local_state = OrderedDict()
-        # for name, param in self.model.named_parameters():                       
-        #     local_state[name] = param.data
-        # self.model.load_state_dict(local_state)
-                
+                param.data += m.sample()         
 
         # self.model.to("cpu")
 
