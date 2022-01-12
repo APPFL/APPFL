@@ -10,7 +10,7 @@ args:
 
   # Privacy
   privacy: False
-  scale_value: 0.01
+  scale_value: 0
   epsilon: inf
 
   # Gradient Clipping
