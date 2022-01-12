@@ -98,11 +98,11 @@ class IADMMClient(BaseClient):
                 for name, param in self.model.named_parameters():
                     self.local_grad[name] = param.grad 
 
-            ## Update local
-            for name, param in self.model.named_parameters():
-                self.local_state[name] = self.global_state[name] + (
-                    1.0 / self.penalty
-                ) * (self.dual_state[name] - self.local_grad[name])
+                ## Update local
+                for name, param in self.model.named_parameters():
+                    self.local_state[name] = self.global_state[name] + (
+                        1.0 / self.penalty
+                    ) * (self.dual_state[name] - self.local_grad[name])
 
         ## Differential Privacy
         if self.privacy == True:            
