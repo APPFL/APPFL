@@ -117,7 +117,7 @@ def print_write_result_summary(
     outfile.write("Comm_Rounds=%s \n" % (cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n" % (cfg.fed.args.num_local_epochs))
     outfile.write("Privacy=%s \n" % (cfg.fed.args.privacy))
-    outfile.write("Scale_value=%s \n" % (cfg.fed.args.scale_value)    
+    outfile.write("Scale_value=%s \n" % (cfg.fed.args.scale_value)) 
     outfile.write("Elapsed_time=%s \n" % (round(Elapsed_time, 2)))
     outfile.write("BestAccuracy=%s \n" % (round(BestAccuracy, 2)))
 
