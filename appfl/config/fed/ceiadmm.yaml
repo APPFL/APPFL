@@ -1,0 +1,20 @@
+type: ceiadmm
+servername: CEIADMMServer
+clientname: CEIADMMClient
+
+args:
+  num_local_epochs: 10  
+  
+  # ADMM penalty
+  learning_rate: 0.01  
+
+  # Privacy
+  privacy: False
+  scale_value: 0
+  epsilon: inf
+
+  # Gradient Clipping
+  clip_value: inf
+  clip_norm: 1
+  
+  

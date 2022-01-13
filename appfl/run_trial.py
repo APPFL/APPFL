@@ -146,8 +146,9 @@ def run_server(
     Num_Data = comm.gather(0, root=0)
     Total_Num_Data = sum(Num_Data)
     comm.bcast(Total_Num_Data, root=0)
-    weights = comm.gather(0, root=0)
     
+    gathered_weights = comm.gather(0, root=0)
+    weights = gathered_weights[1]
 
     do_continue = True
     local_states = OrderedDict()
@@ -181,7 +182,9 @@ def run_server(
                 for sid, state in states.items():
                     dual_states[sid] = state
 
-        server.update(global_state, local_states, dual_states)
+
+
+        server.update(global_state, local_states, weights, dual_states)
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
         if cfg.validation == True:
@@ -277,10 +280,10 @@ def run_client(
         for client in clients:
             client.model.load_state_dict(global_state)
             local_states[client.id], dual_states[client.id] = client.update()
-
+            
             # We need to load the model on cpu, before communicating.
             # Otherwise, out-of-memeory error from GPU
-            client.model.to("cpu")
+            client.model.to("cpu")            
             
             # local_states[client.id] = client.model.state_dict()
             
