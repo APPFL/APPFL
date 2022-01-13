@@ -190,7 +190,7 @@ def run_server(
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
-
+    
     print_write_result_summary(
         cfg, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
@@ -216,8 +216,8 @@ def run_client(
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         batchsize[cid] = cfg.train_data_batch_size
-        if cfg.fed.type == "iadmm":
-            batchsize[cid] = len(train_datasets[cid])
+        # if cfg.fed.type == "iadmm":
+        #     batchsize[cid] = len(train_datasets[cid])
 
     clients = [
         eval(cfg.fed.clientname)(

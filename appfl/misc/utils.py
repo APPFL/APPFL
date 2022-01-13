@@ -44,11 +44,13 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    filename = "Result_%s_%s" % (DataSet_name, cfg.fed.type)
+    filename = "Result_%s_%s_Privacy_%s_ScaleVal_%s" % (DataSet_name, cfg.fed.type, cfg.fed.args.privacy, cfg.fed.args.scale_value)
     if cfg.fed.type == "iadmm":
-        filename = "Result_%s_%s(rho=%s)" % (
+        filename = "Result_%s_%s_Privacy_%s_ScaleVal_%s(rho=%s)" % (
             DataSet_name,
             cfg.fed.type,
+            cfg.fed.args.privacy, 
+            cfg.fed.args.scale_value,
             cfg.fed.args.penalty,
         )
 
@@ -114,6 +116,8 @@ def print_write_result_summary(
     outfile.write("Algorithm=%s \n" % (cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n" % (cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n" % (cfg.fed.args.num_local_epochs))
+    outfile.write("Privacy=%s \n" % (cfg.fed.args.privacy))
+    outfile.write("Scale_value=%s \n" % (cfg.fed.args.scale_value)) 
     outfile.write("Elapsed_time=%s \n" % (round(Elapsed_time, 2)))
     outfile.write("BestAccuracy=%s \n" % (round(BestAccuracy, 2)))
 

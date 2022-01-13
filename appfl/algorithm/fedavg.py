@@ -9,7 +9,6 @@ import torch
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 
-
 class FedAvgServer(BaseServer):
     def __init__(self, model, num_clients, device, **kwargs):
         super(FedAvgServer, self).__init__(model, num_clients, device)
@@ -45,7 +44,7 @@ class FedAvgClient(BaseClient):
         self.model.train()
         self.model.to(self.device)
         optimizer = self.optimizer(self.model.parameters(), **self.optimizer_args)
-
+        
         for i in range(self.num_local_epochs):
             # log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
 
@@ -54,8 +53,22 @@ class FedAvgClient(BaseClient):
                 target = target.to(self.device)
                 optimizer.zero_grad()
                 output = self.model(data)
-                loss = self.loss_fn(output, target)
-                loss.backward()
+                loss = self.loss_fn(output, target)                
+                loss.backward()                
                 optimizer.step()
+        
+        ## Differential Privacy
+        if self.privacy == True:            
+            # Note: Scale_value = Sensitivity_value / self.epsilon            
+            
+            Scale_value = self.scale_value             
+
+            for name, param in self.model.named_parameters():                       
+                mean  = torch.zeros_like(param.data)
+                scale = torch.zeros_like(param.data) + Scale_value
+                m = torch.distributions.laplace.Laplace( mean, scale )                    
+                param.data += m.sample()         
 
         # self.model.to("cpu")
+
+
