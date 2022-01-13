@@ -64,13 +64,11 @@ class IADMMClient(BaseClient):
         self.model.to(device)
         self.global_state = OrderedDict()
         self.local_state = OrderedDict()
-        self.dual_state = OrderedDict()
-        self.local_grad = OrderedDict()
+        self.dual_state = OrderedDict()        
         for name, param in model.named_parameters():
             self.global_state[name] = param.data
             self.local_state[name] = param.data
-            self.dual_state[name] = torch.zeros_like(param.data)
-            self.local_grad[name] = torch.zeros_like(param.data)
+            self.dual_state[name] = torch.zeros_like(param.data)            
 
     # update local model
     def update(self):
@@ -81,28 +79,20 @@ class IADMMClient(BaseClient):
         for name, param in self.model.named_parameters():
             self.global_state[name] = copy.deepcopy(param.data)
 
-        for i in range(self.num_local_epochs):
-            # log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
-            ## Gradient of the local point
-            self.model.load_state_dict(self.local_state)
-            for name, param in self.model.named_parameters():
-                self.local_grad[name] = torch.zeros_like(param.data)
-
+        for i in range(self.num_local_epochs):            
             for data, target in self.dataloader:
+                self.model.load_state_dict(self.local_state)                
                 data = data.to(self.device)
                 target = target.to(self.device)
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
-                for name, param in self.model.named_parameters():
-                    self.local_grad[name] = param.grad 
-
                 ## Update local
                 for name, param in self.model.named_parameters():
                     self.local_state[name] = self.global_state[name] + (
                         1.0 / self.penalty
-                    ) * (self.dual_state[name] - self.local_grad[name])
+                    ) * (self.dual_state[name] - param.grad)
 
         ## Differential Privacy
         if self.privacy == True:            
