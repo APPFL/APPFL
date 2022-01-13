@@ -1,4 +1,5 @@
 import logging
+from typing import Dict
 
 log = logging.getLogger(__name__)
 
@@ -26,24 +27,33 @@ class CEIADMMServer(BaseServer):
                 self.dual_states[i][name] = torch.zeros_like(param.data)
 
     # update global model
-    def update(self, global_state: OrderedDict, local_states: OrderedDict, dual_states: OrderedDict):
+    def update(self, global_state: OrderedDict, local_states: OrderedDict, weights: Dict, dual_states: OrderedDict):
 
-        ## Update dual
-        for name, param in self.model.named_parameters():
-            for i in range(self.num_clients):
-                self.dual_states[i][name] = self.dual_states[i][name] + self.penalty * (
-                    global_state[name] - local_states[i][name]
-                )
+        # for i in range(self.num_clients):
 
+        #     temp_local = []; temp_dual=[]
+        #     for name, param in self.model.named_parameters():
+        #         temp_local.append( local_states[i][name].view(-1) )
+        #         temp_dual.append( dual_states[i][name].view(-1) )
+        #     temp_local = torch.cat(temp_local)
+        #     temp_dual = torch.cat(temp_dual)
+        #     print("client=", i, " weights=", weights[i], " temp_local=", temp_local, " temp_dual=", temp_dual)
+        print("self.learning_rate=", self.learning_rate)
         ## Update global
         for name, param in self.model.named_parameters():
             tmp = 0.0
             for i in range(self.num_clients):
-                tmp += (
-                    local_states[i][name]
-                    - (1.0 / self.penalty) * self.dual_states[i][name]
-                )
-            global_state[name] = tmp / self.num_clients
+                tmp += weights[i] * local_states[i][name] + self.learning_rate * dual_states[i][name]
+
+            global_state[name] = tmp
+        # for name, param in self.model.named_parameters():
+        #     tmp = 0.0
+        #     for i in range(self.num_clients):
+        #         tmp += (
+        #             local_states[i][name]
+        #             - (1.0 / self.penalty) * self.dual_states[i][name]
+        #         )
+        #     global_state[name] = tmp / self.num_clients
 
         self.model.load_state_dict(global_state)
 

@@ -2,7 +2,6 @@
 .DS_Store
 appfl/.DS_Store
 appfl/config/optim/*
-appfl/config/*
 examples/.DS_Store
 examples/outputs/*
 examples/results/*
