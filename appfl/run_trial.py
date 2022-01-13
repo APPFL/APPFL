@@ -47,7 +47,7 @@ def run_serial(
     batchsize = {}
     for k in range(num_clients):
         batchsize[k] = cfg.train_data_batch_size
-        if cfg.fed.type == "iadmm":
+        if cfg.fed.type == "ceiadmm":
             batchsize[k] = len(train_data[k])
 
     clients = [
