@@ -2,7 +2,6 @@
 .DS_Store
 appfl/.DS_Store
 appfl/config/optim/*
-appfl/config/fed/*
 appfl/config/*
 examples/.DS_Store
 examples/outputs/*
@@ -148,3 +147,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+appfl/privacy/library.py
