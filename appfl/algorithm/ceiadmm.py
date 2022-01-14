@@ -60,9 +60,13 @@ class CEIADMMClient(BaseClient_Trial):
     def update(self):
         self.model.train()
         self.model.to(self.device)
-
-        penalty = self.weight/self.learning_rate
-
+        
+        penalty = self.penalty
+        if self.penalty == 0:
+            penalty = self.weight/self.learning_rate         
+        
+        r = self.proximity
+        
         ## Global state
         for name, param in self.model.named_parameters():
             self.global_state[name] = copy.deepcopy(param.data)
@@ -78,7 +82,11 @@ class CEIADMMClient(BaseClient_Trial):
 
                 ## Update local and dual
                 for name, param in self.model.named_parameters():
-                    self.local_state[name] = self.local_state[name] - ( penalty*(self.local_state[name]-self.global_state[name]) + self.weight*param.grad + self.dual_state[name]) /  (self.weight + penalty)
+                    
+                    grad = param.grad * self.weight * len(target) / len(self.dataloader.dataset)
+
+                    self.local_state[name] = self.local_state[name] - ( penalty*(self.local_state[name]-self.global_state[name]) + grad + self.dual_state[name]) /  (self.weight * r + penalty)
+
                     self.dual_state[name] = self.dual_state[name] + penalty*(self.local_state[name]-self.global_state[name])
                     
         ## Differential Privacy
