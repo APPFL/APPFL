@@ -24,7 +24,7 @@ def run_serial(
     train_data: Dataset,
     test_data: Dataset,
     DataSet_name: str,
-):
+    ):
 
     outfile = print_write_result_title(cfg, DataSet_name)
 
@@ -142,14 +142,21 @@ def run_server(
         copy.deepcopy(model), num_clients, device, **cfg.fed.args
     )
 
-    # 
-    Num_Data = comm.gather(0, root=0)
-    Total_Num_Data = sum(Num_Data)
-    comm.bcast(Total_Num_Data, root=0)
+    # Data and Weight
+    Num_Data = comm.gather(0, root=0)        
+    total_num_data = 0
+    for rank in range(1,comm_size):        
+        for val in Num_Data[rank].values():
+            total_num_data += val
     
-    gathered_weights = comm.gather(0, root=0)
-    weights = gathered_weights[1]
-
+    weights={}
+    for rank in range(1,comm_size):
+        weight={}
+        for key in Num_Data[rank].keys():
+            weight[key]= Num_Data[rank][key] / total_num_data        
+            weights[key] = weight[key]
+        comm.send(weight, dest=rank)
+    
     do_continue = True
     local_states = OrderedDict()
     dual_states = OrderedDict()
@@ -175,15 +182,13 @@ def run_server(
         for i, states in enumerate(gathered_local_states):
             if states is not None:
                 for sid, state in states.items():
-                    local_states[sid] = state
+                    local_states[sid] = state 
 
         for i, states in enumerate(gathered_dual_states):
             if states is not None:
                 for sid, state in states.items():
-                    dual_states[sid] = state
-
-
-
+                    dual_states[sid] = state 
+                    
         server.update(global_state, local_states, weights, dual_states)
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
@@ -232,22 +237,19 @@ def run_client(
 
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
 
-    # Total Data
-    num_data = 0
+    # Data and Weight
+    num_data = {}
     for i, cid in enumerate(num_client_groups[comm_rank - 1]):
-        num_data += len(train_datasets[cid])
-    comm.gather(num_data, root=0)
-    total_num_data = comm.bcast(None, root=0)
-
-    batchsize = {}; weight = {}
+        num_data[cid] = len(train_datasets[cid])
+    comm.gather(num_data, root=0)    
+    weight = comm.recv(source=0) 
+             
+    batchsize = {}; 
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        batchsize[cid] = cfg.train_data_batch_size
-        weight[cid] = len(train_datasets[cid]) / total_num_data
+        batchsize[cid] = cfg.train_data_batch_size               
         if cfg.fed.type == "ceiadmm":
             batchsize[cid] = len(train_datasets[cid])
     
-    comm.gather(weight, root=0)
-
     clients = [
         eval(cfg.fed.clientname)(
             cid,
@@ -266,28 +268,32 @@ def run_client(
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
-
-     
-    
+ 
     do_continue = comm.bcast(None, root=0)
     local_states = OrderedDict()
-    dual_states  = OrderedDict()
-
+    dual_states  = OrderedDict()    
     while do_continue:
         global_state = comm.bcast(None, root=0)
 
         # assign the globl state to the clients first (to avoid potential shallow copy)
-        for client in clients:
-            client.model.load_state_dict(global_state)
+        for client in clients:        
+            client.model.load_state_dict(global_state)                        
+
             local_states[client.id], dual_states[client.id] = client.update()
             
             # We need to load the model on cpu, before communicating.
             # Otherwise, out-of-memeory error from GPU
             client.model.to("cpu")            
-            
-            # local_states[client.id] = client.model.state_dict()
-            
-            
+            for name in local_states[client.id]:                
+                local_states[client.id][name] = local_states[client.id][name].to(torch.device("cpu"))
+                dual_states[client.id][name] = dual_states[client.id][name].to(torch.device("cpu"))
+                        
         comm.gather(local_states, root=0)
         comm.gather(dual_states, root=0)
+
+        for client in clients:   
+            for name in local_states[client.id]:                
+                local_states[client.id][name] = local_states[client.id][name].to(device)
+                dual_states[client.id][name] = dual_states[client.id][name].to(device)
+            
         do_continue = comm.bcast(None, root=0)
