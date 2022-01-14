@@ -18,43 +18,19 @@ class CEIADMMServer(BaseServer):
 
         self.__dict__.update(kwargs)
 
-        self.num_clients = num_clients
-
-        self.dual_states = OrderedDict()
-        for i in range(num_clients):
-            self.dual_states[i] = OrderedDict()
-            for name, param in model.named_parameters():
-                self.dual_states[i][name] = torch.zeros_like(param.data)
+        self.num_clients = num_clients 
 
     # update global model
     def update(self, global_state: OrderedDict, local_states: OrderedDict, weights: Dict, dual_states: OrderedDict):
-
-        # for i in range(self.num_clients):
-
-        #     temp_local = []; temp_dual=[]
-        #     for name, param in self.model.named_parameters():
-        #         temp_local.append( local_states[i][name].view(-1) )
-        #         temp_dual.append( dual_states[i][name].view(-1) )
-        #     temp_local = torch.cat(temp_local)
-        #     temp_dual = torch.cat(temp_dual)
-        #     print("client=", i, " weights=", weights[i], " temp_local=", temp_local, " temp_dual=", temp_dual)
-        print("self.learning_rate=", self.learning_rate)
+        
         ## Update global
         for name, param in self.model.named_parameters():
             tmp = 0.0
-            for i in range(self.num_clients):
+            for i in range(self.num_clients):                
                 tmp += weights[i] * local_states[i][name] + self.learning_rate * dual_states[i][name]
 
             global_state[name] = tmp
-        # for name, param in self.model.named_parameters():
-        #     tmp = 0.0
-        #     for i in range(self.num_clients):
-        #         tmp += (
-        #             local_states[i][name]
-        #             - (1.0 / self.penalty) * self.dual_states[i][name]
-        #         )
-        #     global_state[name] = tmp / self.num_clients
-
+        
         self.model.load_state_dict(global_state)
 
 
