@@ -53,6 +53,15 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
             cfg.fed.args.scale_value,
             cfg.fed.args.penalty,
         )
+    if cfg.fed.type == "ceiadmm":
+        filename = "Result_%s_%s_Privacy_%s_ScaleVal_%s(rho=%s,prox=%s)" % (
+            DataSet_name,
+            cfg.fed.type,
+            cfg.fed.args.privacy, 
+            cfg.fed.args.scale_value,
+            cfg.fed.args.penalty,
+            cfg.fed.args.proximity
+        )        
 
     file_ext = ".txt"
     file = dir + "/%s%s" % (filename, file_ext)
