@@ -1,10 +1,13 @@
-name: Publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+name: Publish to TestPyPI
 
-on: push
+on:
+  push:
+    branches:
+      - 'mark/packaging'
 
 jobs:
   build-n-publish:
-    name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+    name: Build and publish to TestPyPI
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@master
@@ -26,7 +29,7 @@ jobs:
         --wheel
         --outdir dist/
         .
-    - name: Publish distribution 📦 to Test PyPI
+    - name: Publish distribution to Test PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
