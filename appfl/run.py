@@ -174,13 +174,12 @@ def run_server(
         LocalUpdate_time = time.time() - LocalUpdate_start
  
         GlobalUpdate_start = time.time()
-        model_info = server.update(comm_size, num_client_groups, model_info, local_states)
+        model_info = server.update(t, comm_size, num_client_groups, model_info, local_states)
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
         if cfg.validation == True:
             test_loss, accuracy = validation(server, server_dataloader)            
-
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
         Validation_time = time.time() - Validation_start

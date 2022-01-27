@@ -42,7 +42,7 @@ class ICEADMMServer(BaseServer):
 
         return model_info
     
-    def update(self, comm_size, num_client_groups, model_info: OrderedDict, local_states: OrderedDict):
+    def update(self, t, comm_size, num_client_groups, model_info: OrderedDict, local_states: OrderedDict):
 
         primal_recover_from_local_states(self, local_states)
         dual_recover_from_local_states(self, local_states)
@@ -60,7 +60,7 @@ class ICEADMMServer(BaseServer):
                 self.primal_states[i][name] = self.primal_states[i][name].to(self.device)
                 self.dual_states[i][name] = self.dual_states[i][name].to(self.device)                
 
-                tmp += (penalty[i]/total_penalty) * self.primal_states[i][name] + (1.0/total_penalty) * self.dual_states[i][name]
+                tmp += (penalty[i]/total_penalty) * self.primal_states[i][name] + (1.0/total_penalty) * self.dual_states[i][name]                
  
             global_state[name] = tmp
         
@@ -125,6 +125,7 @@ class ICEADMMClient(BaseClient):
                 
                 ## STEP: Update primal and dual
                 coefficient = self.weight * len(target) / len(self.dataloader.dataset)
+                
                 for name, param in self.model.named_parameters():
                     
                     grad = param.grad * coefficient
@@ -133,8 +134,9 @@ class ICEADMMClient(BaseClient):
 
                     self.dual_state[name] = self.dual_state[name] + penalty*(self.primal_state[name]-self.global_state[name])
                 
+                    
 
- 
+                    
         ## Differential Privacy
         if self.privacy == True:            
             # Note: Scale_value = Sensitivity_value / self.epsilon            

@@ -11,7 +11,7 @@ from torch.optim import *
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 import copy
-
+import math
 
 class IIADMMServer(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
@@ -29,7 +29,14 @@ class IIADMMServer(BaseServer):
             for name, param in model.named_parameters():
                 self.dual_states[i][name] = torch.zeros_like(param.data)
         
+        self.local_state_prev = OrderedDict()
+        self.local_state = OrderedDict()
+        for i in range(num_clients):
+            self.local_state_prev[i] = OrderedDict()
+            self.local_state[i] = OrderedDict()
 
+        self.residual = OrderedDict()
+        
     def initial_model_info(self, comm_size, num_client_groups):
 
         model_info = OrderedDict()
@@ -42,10 +49,15 @@ class IIADMMServer(BaseServer):
 
         return model_info
      
-    def update(self, comm_size, num_client_groups, model_info: OrderedDict, local_states: OrderedDict):
+    def update(self, t, comm_size, num_client_groups, model_info: OrderedDict, local_states: OrderedDict):
         
         primal_recover_from_local_states(self, local_states)
         global_state = self.model.state_dict()
+
+        penalty={}   
+        for rank in range(1,comm_size):            
+            for _, cid in enumerate(num_client_groups[rank-1]):
+                penalty[cid] = model_info[rank]['penalty'][cid]
 
         ## Update dual
         for name, param in self.model.named_parameters():
@@ -54,7 +66,7 @@ class IIADMMServer(BaseServer):
                 self.primal_states[i][name] =  self.primal_states[i][name].to(self.device)
                 
 
-                self.dual_states[i][name] = self.dual_states[i][name] + self.penalty * (
+                self.dual_states[i][name] = self.dual_states[i][name] + penalty[i] * (
                     global_state[name] - self.primal_states[i][name]
                 )
 
@@ -75,11 +87,6 @@ class IIADMMServer(BaseServer):
         for rank in range(1,comm_size):            
             model_info[rank]['global_state'] = copy.deepcopy(global_state)          
 
-        ## TODO: residual calculation + adaptive penalty
-        # for rank in range(1,comm_size):            
-        #     for _, cid in enumerate(num_client_groups[rank-1]):
-        #         model_info[rank]['penalty'][cid]= self.penalty 
-        
         return model_info
         
 
@@ -138,6 +145,8 @@ class IIADMMClient(BaseClient):
                 coefficient = 1
                 if self.coeff_grad == True:
                     coefficient = self.weight * len(target) / len(self.dataloader.dataset)
+                    # coefficient = self.weight  ## NOTE: BATCH + FEMNIST, rho=0.07
+
                 iiadmm_step(self, coefficient, penalty, optimizer)
                 
         ## Update dual

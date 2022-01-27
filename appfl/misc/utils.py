@@ -46,11 +46,12 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         os.mkdir(dir)
     filename = "Result_%s_%s_Batch_%s_Privacy_%s_ScaleVal_%s" % (DataSet_name, cfg.fed.type, cfg.batch_training, cfg.fed.args.privacy, cfg.fed.args.scale_value)
     if cfg.fed.type == "iiadmm":
-        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_Privacy_%s_ScaleVal_%s(rho=%s)" % (
+        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_CoeffGrad_%s_Privacy_%s_ScaleVal_%s(rho=%s)" % (
             DataSet_name,
             cfg.fed.type,
             cfg.batch_training,
             cfg.fed.args.accum_grad,
+            cfg.fed.args.coeff_grad,
             cfg.fed.args.privacy, 
             cfg.fed.args.scale_value,
             cfg.fed.args.penalty,
