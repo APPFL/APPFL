@@ -4,57 +4,97 @@ log = logging.getLogger(__name__)
 
 from collections import OrderedDict
 from .algorithm import BaseServer, BaseClient
+from .misc import *
 
 import torch
+from torch.optim import *
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
+import copy
 
 class FedAvgServer(BaseServer):
-    def __init__(self, model, num_clients, device, **kwargs):
-        super(FedAvgServer, self).__init__(model, num_clients, device)
+    def __init__(self, weights, model, num_clients, device, **kwargs):
+        super(FedAvgServer, self).__init__(weights, model, num_clients, device)
 
         self.__dict__.update(kwargs)
+        self.num_clients = num_clients 
+        self.weights = weights
 
-    # update global model
-    def update(self, global_state: OrderedDict, local_states: OrderedDict):
-        update_state = OrderedDict()
-        for k, state in local_states.items():
-            for key in self.model.state_dict().keys():
-                if key in update_state.keys():
-                    update_state[key] += state[key] / self.num_clients
-                else:
-                    update_state[key] = state[key] / self.num_clients
+        self.primal_states = OrderedDict()                
+        for i in range(num_clients):
+            self.primal_states[i] = OrderedDict()
+            
 
-        self.model.load_state_dict(update_state)
+    def initial_model_info(self, comm_size, num_client_groups):
+
+        model_info = OrderedDict()
+        for rank in range(1,comm_size):
+            model_info[rank] = OrderedDict()
+            model_info[rank]['global_state'] = copy.deepcopy(self.model.state_dict())
+            
+        return model_info        
+
+    def update(self, comm_size, num_client_groups, model_info: OrderedDict, local_states: OrderedDict):
+        
+        primal_recover_from_local_states(self, local_states)
+        
+        global_state = OrderedDict()
+        for name, param in self.model.named_parameters():
+            tmp = 0.0
+            for i in range(self.num_clients):                
+                tmp += self.weights[i] * self.primal_states[i][name]                                                   
+                                 
+            global_state[name] = tmp
+
+        ## model correction
+        self.model.load_state_dict(global_state)
+
+        for rank in range(1,comm_size):            
+            model_info[rank]['global_state'] = copy.deepcopy(global_state)      
+        
+        return model_info
 
 
 class FedAvgClient(BaseClient):
     def __init__(
-        self, id, model, optimizer, optimizer_args, dataloader, device, **kwargs
+        self, id, weight, model, dataloader, device, **kwargs
     ):
         super(FedAvgClient, self).__init__(
-            id, model, optimizer, optimizer_args, dataloader, device
+            id, weight, model, dataloader, device
         )
         self.loss_fn = CrossEntropyLoss()
         self.__dict__.update(kwargs)
         self.id = id
 
-    # update local model
-    def update(self):
+        self.model.to(device)
+        self.global_state = OrderedDict()        
+        for name, param in model.named_parameters():
+            self.global_state[name] = param.data            
+                
+    def update(self, cid, model_info):
+
         self.model.train()
         self.model.to(self.device)
-        optimizer = self.optimizer(self.model.parameters(), **self.optimizer_args)
-        
-        for i in range(self.num_local_epochs):
-            # log.info(f"[Client ID: {self.id: 03}, Local epoch: {i+1: 04}]")
 
+        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+
+        ## Fix global state            
+        for name, param in self.model.named_parameters():
+            self.global_state[name] = copy.deepcopy(model_info['global_state'][name].to(self.device))
+        
+        self.model.load_state_dict(self.global_state)   
+        
+        for i in range(self.num_local_epochs):            
             for data, target in self.dataloader:
+                
                 data = data.to(self.device)
                 target = target.to(self.device)
+
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)                
                 loss.backward()                
+                
                 optimizer.step()
         
         ## Differential Privacy
@@ -69,6 +109,10 @@ class FedAvgClient(BaseClient):
                 m = torch.distributions.laplace.Laplace( mean, scale )                    
                 param.data += m.sample()         
 
-        # self.model.to("cpu")
-
-
+        ## Update local_state
+        self.local_state = OrderedDict()
+        self.local_state['primal'] = OrderedDict()        
+        for name, param in self.model.named_parameters():             
+            self.local_state['primal'][name] = copy.deepcopy(param.data)            
+         
+        return self.local_state

@@ -1,3 +1,4 @@
+from cmath import nan
 import os
 
 from collections import OrderedDict
@@ -13,9 +14,10 @@ import copy
 import time
 from .misc.data import Dataset
 from .misc.utils import *
-from .algorithm.iadmm import *
+ 
 from .algorithm.fedavg import *
-
+from .algorithm.iceadmm import *
+from .algorithm.iiadmm import *
 
 def run_serial(
     cfg: DictConfig,
@@ -23,14 +25,12 @@ def run_serial(
     train_data: Dataset,
     test_data: Dataset,
     DataSet_name: str,
-):
+    ):
 
     outfile = print_write_result_title(cfg, DataSet_name)
 
     num_clients = len(train_data)
     num_epochs = cfg.num_epochs
-
-    optimizer = eval(cfg.optim.classname)
 
     server_dataloader = DataLoader(
         test_data,
@@ -46,15 +46,13 @@ def run_serial(
     batchsize = {}
     for k in range(num_clients):
         batchsize[k] = cfg.train_data_batch_size
-        if cfg.fed.type == "iadmm":
+        if cfg.batch_training == False:                    
             batchsize[k] = len(train_data[k])
 
     clients = [
         eval(cfg.fed.clientname)(
             k,
-            copy.deepcopy(model),
-            optimizer,
-            cfg.optim.args,
+            copy.deepcopy(model),            
             DataLoader(
                 train_data[k],
                 num_workers=0,
@@ -125,6 +123,7 @@ def run_server(
     ## Start
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
+    num_client_groups = np.array_split(range(num_clients), comm_size - 1)
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
@@ -136,13 +135,28 @@ def run_server(
         shuffle=cfg.test_data_shuffle,
     )
 
+    # Training Data and Weight
+    Num_Data = comm.gather(0, root=0)        
+    total_num_data = 0
+    for rank in range(1,comm_size):        
+        for val in Num_Data[rank].values():
+            total_num_data += val    
+    weights={}
+    for rank in range(1,comm_size):
+        weight={}
+        for key in Num_Data[rank].keys():
+            weight[key]= Num_Data[rank][key] / total_num_data        
+            weights[key] = weight[key]
+        comm.send(weight, dest=rank)
+    
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
-        copy.deepcopy(model), num_clients, device, **cfg.fed.args
+        weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
     )
+   
+    model_info = server.initial_model_info(comm_size, num_client_groups)
 
-    do_continue = True
-    local_states = OrderedDict()
+    do_continue = True    
     start_time = time.time()
     BestAccuracy = 0.0
     for t in range(cfg.num_epochs):
@@ -153,27 +167,23 @@ def run_server(
         # Otherwise, out-of-memeory error from GPU
         server.model.to("cpu")
 
-        global_state = server.model.state_dict()
-
-        LocalUpdate_start = time.time()
-        global_state = comm.bcast(global_state, root=0)
-        gathered_states = comm.gather(None, root=0)
+        LocalUpdate_start = time.time()                
+        for rank in range(1,comm_size):                        
+            comm.send(model_info[rank], dest=rank)             
+        local_states = comm.gather(None, root=0)     
         LocalUpdate_time = time.time() - LocalUpdate_start
-
+ 
         GlobalUpdate_start = time.time()
-        for i, states in enumerate(gathered_states):
-            if states is not None:
-                for sid, state in states.items():
-                    local_states[sid] = state
-        server.update(global_state, local_states)
+        model_info = server.update(comm_size, num_client_groups, model_info, local_states)
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
+        Validation_start = time.time()
         if cfg.validation == True:
-            test_loss, accuracy = validation(server, server_dataloader)
+            test_loss, accuracy = validation(server, server_dataloader)            
 
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-
+        Validation_time = time.time() - Validation_start
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
 
@@ -182,11 +192,15 @@ def run_server(
             t,
             LocalUpdate_time,
             GlobalUpdate_time,
+            Validation_time,
             PerIter_time,
             Elapsed_time,
             test_loss,
             accuracy,
         )
+
+        if np.isnan(test_loss) == True:             
+            break
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
@@ -209,49 +223,48 @@ def run_client(
     else:
         device = cfg.device
 
-    optimizer = eval(cfg.optim.classname)
-
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
 
-    batchsize = {}
+    # Data and Weight
+    num_data = {}
+    for i, cid in enumerate(num_client_groups[comm_rank - 1]):
+        num_data[cid] = len(train_datasets[cid])
+    comm.gather(num_data, root=0)    
+    weight = comm.recv(source=0) 
+             
+    batchsize = {}; 
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        batchsize[cid] = cfg.train_data_batch_size
-        # if cfg.fed.type == "iadmm":
-        #     batchsize[cid] = len(train_datasets[cid])
-
+        batchsize[cid] = cfg.train_data_batch_size               
+        if cfg.batch_training == False:        
+            batchsize[cid] = len(train_datasets[cid])
+    
     clients = [
         eval(cfg.fed.clientname)(
             cid,
-            copy.deepcopy(model),
-            optimizer,
-            cfg.optim.args,
+            weight[cid],
+            copy.deepcopy(model),      
             DataLoader(
                 train_datasets[cid],
                 num_workers=0,
                 batch_size=batchsize[cid],
                 shuffle=cfg.train_data_shuffle,
             ),
-            device,
+            device,            
             **cfg.fed.args,
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
-
+ 
     do_continue = comm.bcast(None, root=0)
-    local_states = OrderedDict()
 
-    while do_continue:
-        global_state = comm.bcast(None, root=0)
+    local_states = OrderedDict()    
+    
+    while do_continue:        
+        model_info = comm.recv(source=0)
 
-        # assign the globl state to the clients first (to avoid potential shallow copy)
-        for client in clients:
-            client.model.load_state_dict(global_state)
-            client.update()
-
-            # We need to load the model on cpu, before communicating.
-            # Otherwise, out-of-memeory error from GPU
-            client.model.to("cpu")
-            local_states[client.id] = client.model.state_dict()
-
+        for client in clients:                    
+            local_states[client.id] = client.update(client.id, model_info)
+         
         comm.gather(local_states, root=0)
+ 
         do_continue = comm.bcast(None, root=0)

@@ -1,6 +1,0 @@
-type: sgd
-classname: SGD
-args:
-  lr: 0.01
-  momentum: 0.9
-  weight_decay: 1e-5
