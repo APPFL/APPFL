@@ -1,0 +1,27 @@
+type: iceadmm
+servername: ICEADMMServer
+clientname: ICEADMMClient
+
+args:
+  num_local_epochs: 10  
+
+  accum_grad: True
+  
+  # Optimizer for a gradient calculation (esp., to use zero.grad)
+  optim: SGD
+  optim_args:    
+    lr: 0.01
+    # momentum: 0.9
+    # weight_decay: 1e-5
+
+  # ADMM parameters  
+  penalty: 0
+  proximity: 0
+
+  # Privacy
+  privacy: False
+  scale_value: 0
+  epsilon: inf
+ 
+  
+  
