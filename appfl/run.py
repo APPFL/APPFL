@@ -14,10 +14,11 @@ import copy
 import time
 from .misc.data import Dataset
 from .misc.utils import *
- 
+
 from .algorithm.fedavg import *
 from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
+
 
 def run_serial(
     cfg: DictConfig,
@@ -25,12 +26,16 @@ def run_serial(
     train_data: Dataset,
     test_data: Dataset,
     DataSet_name: str,
-    ):
+):
 
     outfile = print_write_result_title(cfg, DataSet_name)
 
     num_clients = len(train_data)
     num_epochs = cfg.num_epochs
+
+    total_num_data = 0
+    for i in range(num_clients):
+        total_num_data += len(train_data[i])
 
     server_dataloader = DataLoader(
         test_data,
@@ -46,13 +51,13 @@ def run_serial(
     batchsize = {}
     for k in range(num_clients):
         batchsize[k] = cfg.train_data_batch_size
-        if cfg.batch_training == False:                    
+        if cfg.batch_training == False:
             batchsize[k] = len(train_data[k])
 
     clients = [
         eval(cfg.fed.clientname)(
             k,
-            copy.deepcopy(model),            
+            copy.deepcopy(model),
             DataLoader(
                 train_data[k],
                 num_workers=0,
@@ -135,28 +140,39 @@ def run_server(
         shuffle=cfg.test_data_shuffle,
     )
 
-    # Training Data and Weight
-    Num_Data = comm.gather(0, root=0)        
+    """
+    Receive the number of data for every clients
+    Compute the total_number of data
+    Compute weight[client] = #Data[client] / total_num_data
+        (fedavg)            "weight_info" is needed for updating global_state
+        (iceadmm+iiadmm)    "weight_info" is needed for local_training        
+    """
+    Num_Data = comm.gather(0, root=0)
     total_num_data = 0
-    for rank in range(1,comm_size):        
+    for rank in range(1, comm_size):
         for val in Num_Data[rank].values():
-            total_num_data += val    
-    weights={}
-    for rank in range(1,comm_size):
-        weight={}
+            total_num_data += val
+    weights = {}
+    for rank in range(1, comm_size):
+        weight = {}
         for key in Num_Data[rank].keys():
-            weight[key]= Num_Data[rank][key] / total_num_data        
+            weight[key] = Num_Data[rank][key] / total_num_data
             weights[key] = weight[key]
         comm.send(weight, dest=rank)
-    
+
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
     )
-   
+
+    """
+    Initialize "model_info"
+        (fedavg)            model_info = {global_state}
+        (iceadmm+iiadmm)    model_info = {global_state, penalty}                
+    """
     model_info = server.initial_model_info(comm_size, num_client_groups)
 
-    do_continue = True    
+    do_continue = True
     start_time = time.time()
     BestAccuracy = 0.0
     for t in range(cfg.num_epochs):
@@ -167,19 +183,39 @@ def run_server(
         # Otherwise, out-of-memeory error from GPU
         server.model.to("cpu")
 
-        LocalUpdate_start = time.time()                
-        for rank in range(1,comm_size):                        
-            comm.send(model_info[rank], dest=rank)             
-        local_states = comm.gather(None, root=0)     
+        LocalUpdate_start = time.time()
+        """
+        Send "model_info" to clients:        
+            (fedavg)            model_info = {global_state}
+            (iceadmm+iiadmm)    model_info = {global_state, penalty}            
+        """
+        for rank in range(1, comm_size):
+            comm.send(model_info[rank], dest=rank)
+
+        """
+        Gather "local_states" from clients 
+            (fedavg+iiadmm)     local_states = {primal_state}
+            (iceadmm)           local_states = {primal_state, dual_state}            
+        """
+        local_states = comm.gather(None, root=0)
+
         LocalUpdate_time = time.time() - LocalUpdate_start
- 
+
         GlobalUpdate_start = time.time()
-        model_info = server.update(t, comm_size, num_client_groups, model_info, local_states)
+        """
+        Update "model_info"
+            (fedavg)     update global_state
+            (iceadmm)    update global_state, TODO: residual_calculation, adaptive_penalty
+            (iiadmm)     update global_state, TODO: residual_calculation, adaptive_penalty
+        """
+        model_info = server.update(
+            t, comm_size, num_client_groups, model_info, local_states
+        )
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
         if cfg.validation == True:
-            test_loss, accuracy = validation(server, server_dataloader)            
+            test_loss, accuracy = validation(server, server_dataloader)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
         Validation_time = time.time() - Validation_start
@@ -198,12 +234,12 @@ def run_server(
             accuracy,
         )
 
-        if np.isnan(test_loss) == True:             
+        if np.isnan(test_loss) == True:
             break
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
-    
+
     print_write_result_summary(
         cfg, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
@@ -224,46 +260,60 @@ def run_client(
 
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
 
-    # Data and Weight
+    """
+    Send the number of data to a server
+    Receive "weight_info" from a server    
+        (fedavg)            "weight_info" is not needed as of now.
+        (iceadmm+iiadmm)    "weight_info" is needed for constructing coefficients of the loss_function         
+    """
     num_data = {}
     for i, cid in enumerate(num_client_groups[comm_rank - 1]):
         num_data[cid] = len(train_datasets[cid])
-    comm.gather(num_data, root=0)    
-    weight = comm.recv(source=0) 
-             
-    batchsize = {}; 
+    comm.gather(num_data, root=0)
+    weight = comm.recv(source=0)
+
+    batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        batchsize[cid] = cfg.train_data_batch_size               
-        if cfg.batch_training == False:        
+        batchsize[cid] = cfg.train_data_batch_size
+        if cfg.batch_training == False:
             batchsize[cid] = len(train_datasets[cid])
-    
+
     clients = [
         eval(cfg.fed.clientname)(
             cid,
             weight[cid],
-            copy.deepcopy(model),      
+            copy.deepcopy(model),
             DataLoader(
                 train_datasets[cid],
                 num_workers=0,
                 batch_size=batchsize[cid],
                 shuffle=cfg.train_data_shuffle,
             ),
-            device,            
+            device,
             **cfg.fed.args,
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
- 
+
     do_continue = comm.bcast(None, root=0)
 
-    local_states = OrderedDict()    
-    
-    while do_continue:        
+    local_states = OrderedDict()
+
+    while do_continue:
+        """
+        Receive "model_info"
+        """
         model_info = comm.recv(source=0)
 
-        for client in clients:                    
+        """
+        Update "local_states" based on "model_info"
+        """
+        for client in clients:
             local_states[client.id] = client.update(client.id, model_info)
-         
+
+        """
+        Send "local_states" to a server
+        """
         comm.gather(local_states, root=0)
- 
+
         do_continue = comm.bcast(None, root=0)

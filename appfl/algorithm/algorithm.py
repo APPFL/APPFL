@@ -1,7 +1,7 @@
 import copy
 
 """This implements a base class for server."""
- 
+
 
 class BaseServer:
     def __init__(self, weights, model, num_clients, device):
@@ -17,11 +17,15 @@ class BaseServer:
     def get_model(self):
         return copy.deepcopy(self.model)
 
+
+"""This implements a base class for clients."""
+
+
 class BaseClient:
     def __init__(self, id, weight, model, dataloader, device):
         self.id = id
         self.weight = weight
-        self.model = model        
+        self.model = model
         self.dataloader = dataloader
         self.device = device
 
@@ -31,4 +35,3 @@ class BaseClient:
 
     def get_model(self):
         return self.model.state_dict()
-
