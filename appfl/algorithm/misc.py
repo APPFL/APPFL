@@ -16,6 +16,11 @@ def dual_recover_from_local_states(self, local_states):
             for sid, state in states.items():
                 self.dual_states[sid] = copy.deepcopy(state["dual"])
 
+def penalty_recover_from_local_states(self, local_states):
+    for i, states in enumerate(local_states):
+        if states is not None:
+            for sid, state in states.items():
+                self.penalty[sid] = copy.deepcopy(state["penalty"][sid])
 
 """Functions for clients."""
 
@@ -35,7 +40,7 @@ def optimizer_setting(self):
     return momentum, weight_decay, dampening, nesterov
 
 
-def iiadmm_step(self, coefficient, penalty, optimizer):
+def iiadmm_step(self, coefficient, optimizer):
 
     momentum, weight_decay, dampening, nesterov = optimizer_setting(self)
 
@@ -58,6 +63,21 @@ def iiadmm_step(self, coefficient, penalty, optimizer):
                 grad = buf
 
         ## Update primal
-        self.primal_state[name] = self.global_state[name] + (1.0 / penalty) * (
+        self.primal_state[name] = self.global_state[name] + (1.0 / self.penalty) * (
             self.dual_state[name] - grad
+        )
+
+def iceadmm_step(self, coefficient):
+    for name, param in self.model.named_parameters():
+
+        grad = param.grad * coefficient
+        ## Update primal
+        self.primal_state[name] = self.primal_state[name] - (
+            self.penalty * (self.primal_state[name] - self.global_state[name])
+            + grad
+            + self.dual_state[name]
+        ) / (self.weight * self.proximity + self.penalty)
+        ## Update dual
+        self.dual_state[name] = self.dual_state[name] + self.penalty * (
+            self.primal_state[name] - self.global_state[name]
         )

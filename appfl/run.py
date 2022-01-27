@@ -16,7 +16,7 @@ from .misc.data import Dataset
 from .misc.utils import *
 
 from .algorithm.fedavg import *
-from .algorithm.iceadmm import *
+# from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
 
 
@@ -140,13 +140,6 @@ def run_server(
         shuffle=cfg.test_data_shuffle,
     )
 
-    """
-    Receive the number of data for every clients
-    Compute the total_number of data
-    Compute weight[client] = #Data[client] / total_num_data
-        (fedavg)            "weight_info" is needed for updating global_state
-        (iceadmm+iiadmm)    "weight_info" is needed for local_training        
-    """
     Num_Data = comm.gather(0, root=0)
     total_num_data = 0
     for rank in range(1, comm_size):
@@ -163,14 +156,7 @@ def run_server(
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
-    )
-
-    """
-    Initialize "model_info"
-        (fedavg)            model_info = {global_state}
-        (iceadmm+iiadmm)    model_info = {global_state, penalty}                
-    """
-    model_info = server.initial_model_info(comm_size, num_client_groups)
+    ) 
 
     do_continue = True
     start_time = time.time()
@@ -183,34 +169,15 @@ def run_server(
         # Otherwise, out-of-memeory error from GPU
         server.model.to("cpu")
 
+        global_state = server.model.state_dict()
+
         LocalUpdate_start = time.time()
-        """
-        Send "model_info" to clients:        
-            (fedavg)            model_info = {global_state}
-            (iceadmm+iiadmm)    model_info = {global_state, penalty}            
-        """
-        for rank in range(1, comm_size):
-            comm.send(model_info[rank], dest=rank)
-
-        """
-        Gather "local_states" from clients 
-            (fedavg+iiadmm)     local_states = {primal_state}
-            (iceadmm)           local_states = {primal_state, dual_state}            
-        """
+        global_state = comm.bcast(global_state, root=0)
         local_states = comm.gather(None, root=0)
-
         LocalUpdate_time = time.time() - LocalUpdate_start
 
-        GlobalUpdate_start = time.time()
-        """
-        Update "model_info"
-            (fedavg)     update global_state
-            (iceadmm)    update global_state, TODO: residual_calculation, adaptive_penalty
-            (iiadmm)     update global_state, TODO: residual_calculation, adaptive_penalty
-        """
-        model_info = server.update(
-            t, comm_size, num_client_groups, model_info, local_states
-        )
+        GlobalUpdate_start = time.time()        
+        server.update(local_states)
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
@@ -300,20 +267,15 @@ def run_client(
     local_states = OrderedDict()
 
     while do_continue:
-        """
-        Receive "model_info"
-        """
-        model_info = comm.recv(source=0)
+        """ Receive "global_state" """    
+        global_state = comm.bcast(None, root=0)
 
-        """
-        Update "local_states" based on "model_info"
-        """
-        for client in clients:
-            local_states[client.id] = client.update(client.id, model_info)
+        """ Update "local_states" based on "global_state" """        
+        for client in clients:          
+            client.model.load_state_dict(global_state)
+            local_states[client.id] = client.update()
 
-        """
-        Send "local_states" to a server
-        """
+        """ Send "local_states" to a server """                
         comm.gather(local_states, root=0)
 
         do_continue = comm.bcast(None, root=0)
