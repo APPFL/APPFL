@@ -6,6 +6,7 @@ args:
   num_local_epochs: 10  
 
   accum_grad: True
+  coeff_grad: True
   
   # Optimizer for a gradient calculation (esp., to use zero.grad)
   optim: SGD
