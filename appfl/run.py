@@ -236,7 +236,8 @@ def run_client(
         batchsize[cid] = cfg.train_data_batch_size               
         if cfg.batch_training == False:        
             batchsize[cid] = len(train_datasets[cid])
-    
+   
+
     clients = [
         eval(cfg.fed.clientname)(
             cid,
