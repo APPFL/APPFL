@@ -31,7 +31,7 @@ class ICEADMMServer(BaseServer):
 
     def update(self, local_states: OrderedDict):
         
-        """Inputs"""
+        """ Inputs """
         global_state = self.model.state_dict()
         primal_recover_from_local_states(self, local_states)
         dual_recover_from_local_states(self, local_states)
@@ -84,7 +84,7 @@ class ICEADMMClient(BaseClient):
         self.residual['primal'] = 0
         self.residual['dual'] = 0            
 
-    def update(self, cid, model_info):
+    def update(self):
 
         self.model.train()
         self.model.to(self.device)
