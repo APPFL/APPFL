@@ -34,7 +34,7 @@ class FedAvgServer(BaseServer):
             
         return model_info        
 
-    def update(self, comm_size, num_client_groups, model_info: OrderedDict, local_states: OrderedDict):
+    def update(self, t, comm_size, num_client_groups, model_info: OrderedDict, local_states: OrderedDict):
         
         primal_recover_from_local_states(self, local_states)
         
@@ -42,7 +42,9 @@ class FedAvgServer(BaseServer):
         for name, param in self.model.named_parameters():
             tmp = 0.0
             for i in range(self.num_clients):                
-                tmp += self.weights[i] * self.primal_states[i][name]                                                   
+                self.primal_states[i][name] = self.primal_states[i][name].to(self.device)
+
+                tmp += self.weights[i] * self.primal_states[i][name]
                                  
             global_state[name] = tmp
 
