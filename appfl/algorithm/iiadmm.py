@@ -27,77 +27,46 @@ class IIADMMServer(BaseServer):
         for i in range(num_clients):
             self.primal_states[i] = OrderedDict()
             self.dual_states[i] = OrderedDict()
+            ## dual computation at local
             for name, param in model.named_parameters():
                 self.dual_states[i][name] = torch.zeros_like(param.data)
+        
+        self.penalty = OrderedDict()
 
-        self.local_state_prev = OrderedDict()
-        self.local_state = OrderedDict()
-        for i in range(num_clients):
-            self.local_state_prev[i] = OrderedDict()
-            self.local_state[i] = OrderedDict()
-
-        self.residual = OrderedDict()
-
-    def initial_model_info(self, comm_size, num_client_groups):
-
-        model_info = OrderedDict()
-        for rank in range(1, comm_size):
-            model_info[rank] = OrderedDict()
-            model_info[rank]["global_state"] = copy.deepcopy(self.model.state_dict())
-            model_info[rank]["penalty"] = OrderedDict()
-            for _, cid in enumerate(num_client_groups[rank - 1]):
-                model_info[rank]["penalty"][cid] = self.penalty
-
-        return model_info
-
-    def update(
-        self,
-        t,
-        comm_size,
-        num_client_groups,
-        model_info: OrderedDict,
-        local_states: OrderedDict,
-    ):
-        """Inputs"""
-        primal_recover_from_local_states(self, local_states)
+    def update(self, local_states: OrderedDict):
+    
+        """ Inputs """
         global_state = self.model.state_dict()
+        primal_recover_from_local_states(self, local_states)        
+        penalty_recover_from_local_states(self, local_states)        
 
-        penalty = {}
-        for rank in range(1, comm_size):
-            for _, cid in enumerate(num_client_groups[rank - 1]):
-                penalty[cid] = model_info[rank]["penalty"][cid]
+        # for i in range(self.num_clients):
+        #     print("self.penalty[",i,"]=", self.penalty[i])
 
         """ Outputs """
         for name, param in self.model.named_parameters():
             tmp = 0.0
             for i in range(self.num_clients):
+
                 ## change device
                 self.primal_states[i][name] = self.primal_states[i][name].to(
                     self.device
                 )
                 ## dual
-                self.dual_states[i][name] = self.dual_states[i][name] + penalty[i] * (
+                self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[i] * (
                     global_state[name] - self.primal_states[i][name]
                 )
                 ## computation
                 tmp += (
                     self.primal_states[i][name]
-                    - (1.0 / self.penalty) * self.dual_states[i][name]
+                    - (1.0 / self.penalty[i]) * self.dual_states[i][name]
                 )
 
             global_state[name] = tmp / self.num_clients
 
-        """
-        model update
-        """
-        ## "self.model" update for a validation
+        """ model update """        
         self.model.load_state_dict(global_state)
-
-        ## "model_info" update for local_training
-        for rank in range(1, comm_size):
-            model_info[rank]["global_state"] = copy.deepcopy(global_state)
-
-        return model_info
+ 
 
 
 class IIADMMClient(BaseClient):
@@ -108,35 +77,46 @@ class IIADMMClient(BaseClient):
         self.__dict__.update(kwargs)
         self.id = id
 
-        self.model.to(device)
+        self.model.to(device)                
         self.global_state = OrderedDict()
         self.primal_state = OrderedDict()
         self.dual_state = OrderedDict()
-        for name, param in model.named_parameters():
-            self.global_state[name] = param.data
+        for name, param in model.named_parameters():            
             self.primal_state[name] = param.data
             self.dual_state[name] = torch.zeros_like(param.data)
+        
+        self.penalty = kwargs['penalty']        
+        self.residual = OrderedDict()
+        self.residual['primal'] = 0
+        self.residual['dual'] = 0
 
-    def update(self, cid, model_info):
+    def update(self):
 
         self.model.train()
         self.model.to(self.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
-        """ Inputs """
-        penalty = model_info["penalty"][cid]
-        ## change device
+        """ Inputs """        
         for name, param in self.model.named_parameters():
-            self.global_state[name] = copy.deepcopy(
-                model_info["global_state"][name].to(self.device)
-            )
+            self.global_state[name] = copy.deepcopy(param.data)
+        
+        
+        ## TODO: residual_calculation + adaptive_penalty
+        ## Option 1: change penalty for every comm. round
+        if self.residual['primal'] == 0 and self.residual['dual'] == 0:
+            self.penalty = self.penalty
+        # else:
+
 
         """ Multiple local update """
         for i in range(self.num_local_epochs):
-            for data, target in self.dataloader:
+            for data, target in self.dataloader:           
 
                 self.model.load_state_dict(self.primal_state)
+
+                ## TODO: residual_calculation + adaptive_penalty 
+                ## Option 2: change penalty for every local iteration                
 
                 data = data.to(self.device)
                 target = target.to(self.device)
@@ -151,17 +131,19 @@ class IIADMMClient(BaseClient):
                 ## STEP: Update primal
                 coefficient = 1
                 if self.coeff_grad == True:
-                    coefficient = (
-                        self.weight * len(target) / len(self.dataloader.dataset)
-                    )
+                    
+                    # coefficient = (
+                    #     self.weight * len(target) / len(self.dataloader.dataset)
+                    # )
 
-                    # coefficient = self.weight  ## NOTE: BATCH + FEMNIST, rho=0.07
+                    coefficient = self.weight  ## NOTE: BATCH + FEMNIST, rho=0.07
 
-                iiadmm_step(self, coefficient, penalty, optimizer)
+                iiadmm_step(self, coefficient, optimizer)
+ 
 
         ## Update dual
         for name, param in self.model.named_parameters():
-            self.dual_state[name] = self.dual_state[name] + penalty * (
+            self.dual_state[name] = self.dual_state[name] + self.penalty * (
                 self.global_state[name] - self.primal_state[name]
             )
 
@@ -179,8 +161,12 @@ class IIADMMClient(BaseClient):
 
         """ Update local_state """
         self.local_state = OrderedDict()
-        self.local_state["primal"] = OrderedDict()
+        
+        self.local_state["primal"] = OrderedDict()        
         for name, param in self.model.named_parameters():
             self.local_state["primal"][name] = copy.deepcopy(self.primal_state[name])
+        
+        self.local_state["penalty"] = OrderedDict()
+        self.local_state["penalty"][self.id] = self.penalty
 
         return self.local_state

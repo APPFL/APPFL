@@ -27,38 +27,19 @@ class ICEADMMServer(BaseServer):
             self.primal_states[i] = OrderedDict()
             self.dual_states[i] = OrderedDict()
 
-    def initial_model_info(self, comm_size, num_client_groups):
+        self.penalty = OrderedDict()
 
-        model_info = OrderedDict()
-        for rank in range(1, comm_size):
-            model_info[rank] = OrderedDict()
-            model_info[rank]["global_state"] = copy.deepcopy(self.model.state_dict())
-            model_info[rank]["penalty"] = OrderedDict()
-            for _, cid in enumerate(num_client_groups[rank - 1]):
-                model_info[rank]["penalty"][cid] = self.penalty
-
-        return model_info
-
-    def update(
-        self,
-        t,
-        comm_size,
-        num_client_groups,
-        model_info: OrderedDict,
-        local_states: OrderedDict,
-    ):
-
+    def update(self, local_states: OrderedDict):
+        
         """Inputs"""
+        global_state = self.model.state_dict()
         primal_recover_from_local_states(self, local_states)
         dual_recover_from_local_states(self, local_states)
-        global_state = self.model.state_dict()
+        penalty_recover_from_local_states(self, local_states)        
 
         total_penalty = 0
-        penalty = {}
-        for rank in range(1, comm_size):
-            for _, cid in enumerate(num_client_groups[rank - 1]):
-                penalty[cid] = model_info[rank]["penalty"][cid]
-                total_penalty += model_info[rank]["penalty"][cid]
+        for i in range(self.num_clients):
+            total_penalty += self.penalty[i]
 
         """ Outputs """
         for name, param in self.model.named_parameters():
@@ -70,23 +51,15 @@ class ICEADMMServer(BaseServer):
                 )
                 self.dual_states[i][name] = self.dual_states[i][name].to(self.device)
                 ## computation
-                tmp += (penalty[i] / total_penalty) * self.primal_states[i][name] + (
+                tmp += (self.penalty[i] / total_penalty) * self.primal_states[i][name] + (
                     1.0 / total_penalty
                 ) * self.dual_states[i][name]
 
             global_state[name] = tmp
 
-        """
-        model update
-        """
-        ## "self.model" update for a validation
+        """ model update """                
         self.model.load_state_dict(global_state)
 
-        ## "model_info" update for local_training
-        for rank in range(1, comm_size):
-            model_info[rank]["global_state"] = copy.deepcopy(global_state)
-
-        return model_info
 
 
 class ICEADMMClient(BaseClient):
@@ -101,10 +74,15 @@ class ICEADMMClient(BaseClient):
         self.global_state = OrderedDict()
         self.primal_state = OrderedDict()
         self.dual_state = OrderedDict()
-        for name, param in model.named_parameters():
-            self.global_state[name] = param.data
+        for name, param in model.named_parameters():            
             self.primal_state[name] = param.data
             self.dual_state[name] = torch.zeros_like(param.data)
+
+        self.penalty = kwargs['penalty']      
+        self.proximity = kwargs['proximity']      
+        self.residual = OrderedDict()
+        self.residual['primal'] = 0
+        self.residual['dual'] = 0            
 
     def update(self, cid, model_info):
 
@@ -113,20 +91,26 @@ class ICEADMMClient(BaseClient):
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
-        penalty = model_info["penalty"][cid]
-        r = self.proximity
-
-        ## Fix global state
+        """ Inputs """        
         for name, param in self.model.named_parameters():
-            self.global_state[name] = copy.deepcopy(
-                model_info["global_state"][name].to(self.device)
-            )
+            self.global_state[name] = copy.deepcopy(param.data)
 
-        ## Multiple local update
+
+        ## TODO: residual_calculation + adaptive_penalty
+        ## Option 1: change penalty for every comm. round
+        if self.residual['primal'] == 0 and self.residual['dual'] == 0:
+            self.penalty = self.penalty
+        # else:
+
+        
+        """ Multiple local update """
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
 
                 self.model.load_state_dict(self.primal_state)
+
+                ## TODO: residual_calculation + adaptive_penalty 
+                ## Option 2: change penalty for every local iteration                
 
                 data = data.to(self.device)
                 target = target.to(self.device)
@@ -139,21 +123,12 @@ class ICEADMMClient(BaseClient):
                 loss.backward()
 
                 ## STEP: Update primal and dual
-                coefficient = self.weight * len(target) / len(self.dataloader.dataset)
+                coefficient = 1
+                if self.coeff_grad == True:
+                    coefficient = self.weight * len(target) / len(self.dataloader.dataset)
 
-                for name, param in self.model.named_parameters():
+                iceadmm_step(self, coefficient)
 
-                    grad = param.grad * coefficient
-
-                    self.primal_state[name] = self.primal_state[name] - (
-                        penalty * (self.primal_state[name] - self.global_state[name])
-                        + grad
-                        + self.dual_state[name]
-                    ) / (self.weight * r + penalty)
-
-                    self.dual_state[name] = self.dual_state[name] + penalty * (
-                        self.primal_state[name] - self.global_state[name]
-                    )
 
         """ Differential Privacy """
         if self.privacy == True:
@@ -174,5 +149,8 @@ class ICEADMMClient(BaseClient):
         for name, param in self.model.named_parameters():
             self.local_state["primal"][name] = copy.deepcopy(self.primal_state[name])
             self.local_state["dual"][name] = copy.deepcopy(self.dual_state[name])
+        
+        self.local_state["penalty"] = OrderedDict()
+        self.local_state["penalty"][self.id] = self.penalty
 
         return self.local_state
