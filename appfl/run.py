@@ -16,7 +16,7 @@ from .misc.data import Dataset
 from .misc.utils import *
 
 from .algorithm.fedavg import *
-# from .algorithm.iceadmm import *
+from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
 
 
