@@ -125,18 +125,18 @@ class ICEADMMClient(BaseClient):
 
         return self.local_state
 
-def iceadmm_step(self,coefficient,global_state):
-    for name, param in self.model.named_parameters():
+    def iceadmm_step(self,coefficient,global_state):
+        for name, param in self.model.named_parameters():
 
-        grad = param.grad * coefficient
-        ## Update primal
-        self.primal_state[name] = self.primal_state[name] - (
-            self.penalty * (self.primal_state[name] - global_state[name])
-            + grad
-            + self.dual_state[name]
-        ) / (self.weight * self.proximity + self.penalty)
-        ## Update dual
-        self.dual_state[name] = self.dual_state[name] + self.penalty * (
-            self.primal_state[name] - global_state[name]
-        )
+            grad = param.grad * coefficient
+            ## Update primal
+            self.primal_state[name] = self.primal_state[name] - (
+                self.penalty * (self.primal_state[name] - global_state[name])
+                + grad
+                + self.dual_state[name]
+            ) / (self.weight * self.proximity + self.penalty)
+            ## Update dual
+            self.dual_state[name] = self.dual_state[name] + self.penalty * (
+                self.primal_state[name] - global_state[name]
+            )
 
