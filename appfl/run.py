@@ -144,14 +144,23 @@ def run_server(
     total_num_data = 0
     for rank in range(1, comm_size):
         for val in Num_Data[rank].values():
-            total_num_data += val
-    weights = {}
-    for rank in range(1, comm_size):
-        weight = {}
-        for key in Num_Data[rank].keys():
-            weight[key] = Num_Data[rank][key] / total_num_data
-            weights[key] = weight[key]
-        comm.send(weight, dest=rank)
+            total_num_data += val    
+    for rank in range(1, comm_size):        
+        for key in Num_Data[rank].keys():            
+            Num_Data[rank][key] / total_num_data        
+
+    weight=[]; weights = {}
+    for rank in range(comm_size):
+        if rank == 0:
+            weight.append(0)
+        else:
+            temp = {}
+            for key in Num_Data[rank].keys():
+                temp[key]       = Num_Data[rank][key] / total_num_data
+                weights[key]    = temp[key]
+            weight.append(temp)
+    
+    weight = comm.scatter(weight, root = 0)
 
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
@@ -236,8 +245,10 @@ def run_client(
     num_data = {}
     for i, cid in enumerate(num_client_groups[comm_rank - 1]):
         num_data[cid] = len(train_datasets[cid])
-    comm.gather(num_data, root=0)
-    weight = comm.recv(source=0)
+    comm.gather(num_data, root=0)        
+    weight = None
+    weight = comm.scatter(weight, root = 0)
+    
 
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
