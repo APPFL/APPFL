@@ -28,19 +28,19 @@ class BaseServer:
         return copy.deepcopy(self.model)
     
     def primal_recover_from_local_states(self, local_states):
-        for _, states in enumerate(local_states):
+        for _, states in enumerate(local_states):            
             if states is not None:
                 for sid, state in states.items():
                     self.primal_states[sid] = copy.deepcopy(state["primal"])
 
     def dual_recover_from_local_states(self, local_states):
-        for i, states in enumerate(local_states):
+        for _, states in enumerate(local_states):
             if states is not None:
                 for sid, state in states.items():
                     self.dual_states[sid] = copy.deepcopy(state["dual"])
 
     def penalty_recover_from_local_states(self, local_states):
-        for i, states in enumerate(local_states):
+        for _, states in enumerate(local_states):
             if states is not None:
                 for sid, state in states.items():                    
                     self.penalty[sid] = copy.deepcopy(state["penalty"][sid])        
