@@ -148,46 +148,46 @@ class IIADMMClient(BaseClient):
         return self.local_state
 
 
-def optimizer_setting(self):
-    momentum = 0
-    if "momentum" in self.optim_args.keys():
-        momentum = self.optim_args.momentum
-    weight_decay = 0
-    if "weight_decay" in self.optim_args.keys():
-        weight_decay = self.optim_args.weight_decay
-    dampening = 0
-    if "dampening" in self.optim_args.keys():
-        dampening = self.optim_args.dampening
-    nesterov = False
+    def optimizer_setting(self):
+        momentum = 0
+        if "momentum" in self.optim_args.keys():
+            momentum = self.optim_args.momentum
+        weight_decay = 0
+        if "weight_decay" in self.optim_args.keys():
+            weight_decay = self.optim_args.weight_decay
+        dampening = 0
+        if "dampening" in self.optim_args.keys():
+            dampening = self.optim_args.dampening
+        nesterov = False
 
-    return momentum, weight_decay, dampening, nesterov
+        return momentum, weight_decay, dampening, nesterov
 
 
-def iiadmm_step(self, coefficient, global_state, optimizer):
+    def iiadmm_step(self, coefficient, global_state, optimizer):
 
-    momentum, weight_decay, dampening, nesterov = optimizer_setting(self)
+        momentum, weight_decay, dampening, nesterov = optimizer_setting(self)
 
-    for name, param in self.model.named_parameters():
+        for name, param in self.model.named_parameters():
 
-        grad = copy.deepcopy(param.grad * coefficient)
+            grad = copy.deepcopy(param.grad * coefficient)
 
-        if weight_decay != 0:
-            grad.add_(weight_decay, self.primal_state[name])
-        if momentum != 0:
-            param_state = optimizer.state[param]
-            if "momentum_buffer" not in param_state:
-                buf = param_state["momentum_buffer"] = grad.clone()
-            else:
-                buf = param_state["momentum_buffer"]
-                buf.mul_(momentum).add_(1 - dampening, grad)
-            if nesterov:
-                grad = self.grad[name].add(momentum, buf)
-            else:
-                grad = buf
+            if weight_decay != 0:
+                grad.add_(weight_decay, self.primal_state[name])
+            if momentum != 0:
+                param_state = optimizer.state[param]
+                if "momentum_buffer" not in param_state:
+                    buf = param_state["momentum_buffer"] = grad.clone()
+                else:
+                    buf = param_state["momentum_buffer"]
+                    buf.mul_(momentum).add_(1 - dampening, grad)
+                if nesterov:
+                    grad = self.grad[name].add(momentum, buf)
+                else:
+                    grad = buf
 
-        ## Update primal
-        self.primal_state[name] = global_state[name] + (1.0 / self.penalty) * (
-            self.dual_state[name] - grad
-        )
+            ## Update primal
+            self.primal_state[name] = global_state[name] + (1.0 / self.penalty) * (
+                self.dual_state[name] - grad
+            )
 
 
