@@ -16,8 +16,8 @@ args:
     # weight_decay: 1e-5
 
   # ADMM parameters  
-  penalty: 0
-  proximity: 0
+  init_penalty: 0
+  init_proximity: 0
 
   # Privacy
   privacy: False

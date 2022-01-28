@@ -16,7 +16,7 @@ args:
     # weight_decay: 1e-5
 
   # ADMM penalty
-  penalty: 100.0     
+  init_penalty: 100.0     
 
   # Privacy
   privacy: False
