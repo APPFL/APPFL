@@ -1,19 +1,14 @@
-# APPFL
+# APPFL: Argonne Privacy-Preserving Federated Learning
 
-APPFL is a privacy-preserving federated learning framework that provides an infrastructure to implement algorithmic components for federated learning.
+[![Documentation Status](https://readthedocs.org/projects/appfl/badge/?version=latest)](https://appfl.readthedocs.io/en/latest/?badge=latest)
 
-Basically, all algorithms are implemented under the `appfl` directory.
-Currently, we support two algorithms for federated learning: federated averaging and inexact ADMM.
-You could find more details about them in `appfl/algorithm` directory.
+APPFL is an open-source software framework that allows research communities to implement, test, and validate various ideas for privacy-preserving federated learning (PPFL).
+With this framework, developers and/or users can
+- train a user-defined neural network model on **decentralized data with differential privacy**,
+- **simulate** various PPFL algorithms on high-performance computing (HPC) architecture with MPI,
+- implement **user-defined PPFL algorithms** in a plug-and-play manner.
 
-For communications between server and clients, we support MPI and gRPC communication protocols.
-MPI is for cluster environment, and gRPC can be used when we have clients on remote or mixed platforms.
-More details on our gRPC protocols can be found in the `appfl/protos` directory.
-
-We are in progress to add privacy-preserving features, which will be available in the `appfl/privacy` directory.
-
-The `examples` directory introduces how one can perform federated learning using our package.
-We have currently tested MNIST, CIFAR10, FEMNISt, and Coronahack.
+Such algorithmic components include federated learning (FL) algorithm, privacy technique, communication protocol, FL model to train, and data.
 
 ## Acknowledgements
 
