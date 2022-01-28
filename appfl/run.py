@@ -33,18 +33,15 @@ def run_serial(
     num_clients = len(train_data)
     num_epochs = cfg.num_epochs
 
-    """ weight calculation """
-    
+    """ weight calculation """    
     total_num_data = 0    
     for k in range(num_clients):
         total_num_data += len( train_data[k] )
-        
+
     weights={}
     for k in range(num_clients):        
-        weights[k]      = len(train_data[k]) / total_num_data
-        print(weights[k])  
-    print(weights)
-
+        weights[k] = len(train_data[k]) / total_num_data
+        
     server_dataloader = DataLoader(
         test_data,
         num_workers=0,
@@ -52,74 +49,80 @@ def run_serial(
         shuffle=cfg.test_data_shuffle,
     )
 
-    # server = eval(cfg.fed.servername)(
-    #     copy.deepcopy(model), num_clients, cfg.device, **cfg.fed.args
-    # )
+    server = eval(cfg.fed.servername)(
+        weights, copy.deepcopy(model), num_clients, cfg.device, **cfg.fed.args
+    )
 
-    # batchsize = {}
-    # for k in range(num_clients):
-    #     batchsize[k] = cfg.train_data_batch_size
-    #     if cfg.batch_training == False:
-    #         batchsize[k] = len(train_data[k])
+    batchsize = {}
+    for k in range(num_clients):
+        batchsize[k] = cfg.train_data_batch_size
+        if cfg.batch_training == False:
+            batchsize[k] = len(train_data[k])
 
-    # clients = [
-    #     eval(cfg.fed.clientname)(
-    #         k,
-    #         copy.deepcopy(model),
-    #         DataLoader(
-    #             train_data[k],
-    #             num_workers=0,
-    #             batch_size=batchsize[k],
-    #             shuffle=cfg.train_data_shuffle,
-    #         ),
-    #         cfg.device,
-    #         **cfg.fed.args,
-    #     )
-    #     for k in range(num_clients)
-    # ]
+    clients = [
+        eval(cfg.fed.clientname)(
+            k,
+            weights[k],
+            copy.deepcopy(model),
+            DataLoader(
+                train_data[k],
+                num_workers=0,
+                batch_size=batchsize[k],
+                shuffle=cfg.train_data_shuffle,
+            ),
+            cfg.device,
+            **cfg.fed.args,
+        )
+        for k in range(num_clients)
+    ]
 
-    # local_states = OrderedDict()
+    local_states = []
+    local_state = OrderedDict()
+    local_state[0] = OrderedDict()
 
-    # start_time = time.time()
-    # BestAccuracy = 0.0
-    # for t in range(num_epochs):
-    #     PerIter_start = time.time()
+    start_time = time.time()
+    BestAccuracy = 0.0
+    for t in range(num_epochs):
+        PerIter_start = time.time()
 
-    #     global_state = server.model.state_dict()
-    #     LocalUpdate_start = time.time()
-    #     for k, client in enumerate(clients):
-    #         client.model.load_state_dict(global_state)
-    #         client.update()
-    #         local_states[k] = client.model.state_dict()
-    #     LocalUpdate_time = time.time() - LocalUpdate_start
+        global_state = server.model.state_dict()
+        LocalUpdate_start = time.time()
+        for k, client in enumerate(clients):            
+            client.model.load_state_dict(global_state)                        
+            local_state[0][k] = client.update()      
+        
+        local_states.append(local_state[0])   
+ 
+        LocalUpdate_time = time.time() - LocalUpdate_start
+        
+        GlobalUpdate_start = time.time()
+        server.update(local_states)
+        GlobalUpdate_time = time.time() - GlobalUpdate_start
 
-    #     GlobalUpdate_start = time.time()
-    #     server.update(global_state, local_states)
-    #     GlobalUpdate_time = time.time() - GlobalUpdate_start
+        Validation_start = time.time()
+        if cfg.validation == True:
+            test_loss, accuracy = validation(server, server_dataloader)
+            if accuracy > BestAccuracy:
+                BestAccuracy = accuracy
+        Validation_time = time.time() - Validation_start
+        PerIter_time = time.time() - PerIter_start
+        Elapsed_time = time.time() - start_time
 
-    #     if cfg.validation == True:
-    #         test_loss, accuracy = validation(server, server_dataloader)
+        outfile = print_write_result_iteration(
+            outfile,
+            t,
+            LocalUpdate_time,
+            GlobalUpdate_time,
+            Validation_time,
+            PerIter_time,
+            Elapsed_time,
+            test_loss,
+            accuracy,
+        )
 
-    #         if accuracy > BestAccuracy:
-    #             BestAccuracy = accuracy
-
-    #     PerIter_time = time.time() - PerIter_start
-    #     Elapsed_time = time.time() - start_time
-
-    #     outfile = print_write_result_iteration(
-    #         outfile,
-    #         t,
-    #         LocalUpdate_time,
-    #         GlobalUpdate_time,
-    #         PerIter_time,
-    #         Elapsed_time,
-    #         test_loss,
-    #         accuracy,
-    #     )
-
-    # print_write_result_summary(
-    #     cfg, outfile, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
-    # )
+    print_write_result_summary(
+        cfg, outfile, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
+    )
 
 
 def run_server(
