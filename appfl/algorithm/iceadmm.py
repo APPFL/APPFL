@@ -110,7 +110,8 @@ class ICEADMMClient(BaseClient):
                 coefficient = 1
                 if self.coeff_grad == True:
                     coefficient = self.weight * len(target) / len(self.dataloader.dataset)                
-                iceadmm_step(self, coefficient, global_state)    
+                
+                self.iceadmm_step(coefficient, global_state)    
  
         """ Differential Privacy  """
         if self.privacy == True:
