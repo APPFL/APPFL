@@ -34,18 +34,23 @@ def run_serial(
     num_epochs = cfg.num_epochs
 
     """ weight calculation """
+    
+    total_num_data = 0    
+    for k in range(num_clients):
+        total_num_data += len( train_data[k] )
+        
+    weights={}
+    for k in range(num_clients):        
+        weights[k]      = len(train_data[k]) / total_num_data
+        print(weights[k])  
+    print(weights)
 
-
-    # total_num_data = 0
-    # for i in range(num_clients):
-    #     total_num_data += len(train_data[i])
-
-    # server_dataloader = DataLoader(
-    #     test_data,
-    #     num_workers=0,
-    #     batch_size=cfg.test_data_batch_size,
-    #     shuffle=cfg.test_data_shuffle,
-    # )
+    server_dataloader = DataLoader(
+        test_data,
+        num_workers=0,
+        batch_size=cfg.test_data_batch_size,
+        shuffle=cfg.test_data_shuffle,
+    )
 
     # server = eval(cfg.fed.servername)(
     #     copy.deepcopy(model), num_clients, cfg.device, **cfg.fed.args
@@ -152,10 +157,7 @@ def run_server(
     total_num_data = 0
     for rank in range(1, comm_size):
         for val in Num_Data[rank].values():
-            total_num_data += val    
-    for rank in range(1, comm_size):        
-        for key in Num_Data[rank].keys():            
-            Num_Data[rank][key] / total_num_data        
+            total_num_data += val             
     
     weight=[]; weights = {}
     for rank in range(comm_size):
