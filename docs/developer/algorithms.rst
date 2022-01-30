@@ -1,5 +1,5 @@
-Incorporating your algorithm
-============================
+How to add new algorithms
+=========================
 
 In a federated learning setting, a server updates a global model parameter based on the local model parameters updated by multiple clients.
 

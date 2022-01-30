@@ -8,18 +8,27 @@ APPFL: Argonne Privacy-Preserving Federated Learning
 
 .. automodule:: appfl
 
+
 Table of Contents
 -----------------
 
 .. toctree::
    :maxdepth: 1
+   :titlesonly:
+   :caption: Getting Started
 
    install/index
    tutorials/index
 
-Indices and tables
-------------------
+.. toctree::
+   :maxdepth: 1
+   :titlesonly:
+   :caption: For Developers
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   developer/algorithms
+   README
+
+
+Acknowledgement
+---------------
+This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357.
