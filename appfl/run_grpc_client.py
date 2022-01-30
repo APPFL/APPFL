@@ -15,11 +15,13 @@ import numpy as np
 import logging
 import time
 
+from appfl.algorithm.fedavg import *
+from appfl.algorithm.iceadmm import *
+from appfl.algorithm.iiadmm import *
+
 from .protos.federated_learning_pb2 import Job
 from .protos.client import FLClient
 from .misc.data import Dataset
-from .algorithm.iadmm import *
-from .algorithm.fedavg import *
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -34,24 +36,36 @@ def run_client(cfg           : DictConfig,
                train_dataset : Dataset) -> None:
     logger = logging.getLogger(__name__)
     uri = cfg.server.host + ':' + str(cfg.server.port)
+    cid = comm_rank - 1
 
     ## We assume to have as many GPUs as the number of MPI processes.
     if cfg.device == "cuda":
-        device = f"cuda:{comm_rank-1}"
+        device = f"cuda:{cid}"
     else:
         device = cfg.device
 
-    if cfg.fed.type == "iadmm":
-        batch_size = len(train_dataset)
-    else:
-        batch_size = cfg.train_data_batch_size
+    batch_size = cfg.train_data_batch_size
+    if cfg.batch_training == False:
+        batchsize = len(train_dataset)
 
-    optimizer = eval(cfg.optim.classname)
+    comm = FLClient(cid, uri, max_message_size=cfg.max_message_size)
+
+    # Try up to 10 times to retrieve its weight from a server.
+    weight = -1.0
+    for _ in range(10):
+        weight = comm.get_weight(len(train_dataset))
+        if weight >= 0.0:
+            break
+        time.sleep(5)
+
+    if weight < 0.0:
+        logger.info(f"[Client ID: {cid: 03} weight retrieval failed.")
+        return
+
     fed_client = eval(cfg.fed.clientname)(
-        comm_rank,
+        cid,
+        weight,
         copy.deepcopy(model),
-        optimizer,
-        cfg.optim.args,
         DataLoader(train_dataset,
                    num_workers=0,
                    batch_size=batch_size,
@@ -59,27 +73,37 @@ def run_client(cfg           : DictConfig,
         device,
         **cfg.fed.args)
 
-    # Synchronize model parameters with server.
-    comm = FLClient(comm_rank, uri)
+    # Start federated learning.
     cur_round_number, job_todo = comm.get_job(Job.INIT)
     prev_round_number = 0
+    learning_time = 0.0
+    send_time = 0.0
+    cumul_learning_time = 0.0
 
     while job_todo != Job.QUIT:
         if job_todo == Job.TRAIN:
             if prev_round_number != cur_round_number:
-                logger.info(f"[Client ID: {comm_rank: 03} Round #: {cur_round_number: 03}] Start training")
+                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Start training")
                 update_model_state(comm, fed_client.model, cur_round_number)
                 prev_round_number = cur_round_number
 
-                fed_client.update()
-                comm.send_learning_results(fed_client.model.state_dict(), cur_round_number)
-                logger.info(f"[Client ID: {comm_rank: 03} Round #: {cur_round_number: 03}] Trained and sent results back to the server")
+                time_start = time.time()
+                local_state = fed_client.update()
+                time_end = time.time()
+                learning_time = time_end - time_start
+                cumul_learning_time += learning_time
+                time_start = time.time()
+                comm.send_learning_results(local_state["penalty"], local_state["primal"], local_state["dual"], cur_round_number)
+                time_end = time.time()
+                send_time = time_end - time_start
+                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Trained (Elapsed %.4f) and sent results back to the server (Elapsed %.4f)", learning_time, send_time)
             else:
-                logger.info(f"[Client ID: {comm_rank: 03} Round #: {cur_round_number: 03}] Waiting for next job")
+                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Waiting for next job")
                 time.sleep(5)
         cur_round_number, job_todo = comm.get_job(job_todo)
         if job_todo == Job.QUIT:
-            logger.info(f"[Client ID: {comm_rank: 03} Round #: {cur_round_number: 03}] Quitting")
+            logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Quitting... Learning %.4f Sending %.4f Receiving %.4f Job %.4f Total %.4f",
+                        cumul_learning_time, comm.time_send_results, comm.time_get_tensor, comm.time_get_job, comm.get_comm_time())
             # Update with the most recent weights before exit.
             update_model_state(comm, fed_client.model, cur_round_number)
 
