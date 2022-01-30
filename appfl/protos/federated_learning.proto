@@ -3,6 +3,7 @@ syntax = "proto3";
 service FederatedLearning {
     rpc GetJob(JobRequest) returns (JobResponse) {}
     rpc GetTensorRecord(TensorRequest) returns (TensorRecord) {}
+    rpc GetWeight(WeightRequest) returns (WeightResponse) {}
     rpc SendLearningResults(stream DataBuffer) returns (Acknowledgment) {}
 }
 
@@ -19,7 +20,7 @@ message DataBuffer {
 
 enum Job {
     INIT   = 0;
-    UPDATE = 1;
+    WEIGHT = 1;
     TRAIN  = 2;
     QUIT   = 3;
 }
@@ -48,7 +49,9 @@ message JobResponse {
 message LearningResults {
     Header                header       = 1;
     uint32                round_number = 2;
-    repeated TensorRecord tensors      = 3;
+    float                 penalty      = 3;
+    repeated TensorRecord primal       = 4;
+    repeated TensorRecord dual         = 5;
 }
 
 message TensorRequest {
@@ -61,4 +64,14 @@ message TensorRecord {
     string         name       = 1;
     repeated int32 data_shape = 2;
     bytes          data_bytes = 3;
+}
+
+message WeightRequest {
+    Header header = 1;
+    uint32 size   = 2;
+}
+
+message WeightResponse {
+    Header header = 1;
+    float  weight = 2;
 }
