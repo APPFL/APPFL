@@ -27,10 +27,6 @@ Creating a custom dataset for your data
 
 Our APPFL framework takes a dataset expressed by ``torch`` tensors.
 
-.. literalinclude:: /../appfl/data.py
-    :lines: 6-15
-
-
 Creating a custom model
 -----------------------
 

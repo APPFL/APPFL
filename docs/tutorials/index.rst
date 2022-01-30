@@ -11,4 +11,3 @@ We present a collection of tutorials for APPFL framework.
     demonstration
     datasets
     examples
-    algorithms
