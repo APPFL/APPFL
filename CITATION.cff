@@ -10,15 +10,15 @@ message: >-
   metadata from this file.
 type: software
 authors:
+  - given-names: Minseok
+    family-names: Ryu
+    email: mryu@anl.gov
+    affiliation: Argonne National Laboratory
   - given-names: Kibaek
     family-names: Kim
     email: kimk@anl.gov
     affiliation: Argonne National Laboratory
     orcid: 'https://orcid.org/0000-0002-5820-6533'
-  - given-names: Minseok
-    family-names: Ryu
-    email: mryu@anl.gov
-    affiliation: Argonne National Laboratory
   - given-names: Youngdae
     family-names: Kim
     email: youngdae@anl.gov
