@@ -10,11 +10,11 @@ import torch
 import torchvision
 from torchvision.transforms import ToTensor
 
-from appfl.misc.data import *
+from src.appfl.misc.data import *
 from examples.models.cnn import *
-import appfl.run as rt
-import appfl.run_grpc_server as grpc_server
-import appfl.run_grpc_client as grpc_client
+import src.appfl.run as rt
+import src.appfl.run_grpc_server as grpc_server
+import src.appfl.run_grpc_client as grpc_client
 import hydra
 from mpi4py import MPI
 from omegaconf import DictConfig
@@ -91,7 +91,7 @@ def get_model(comm : MPI.COMM_WORLD):
     return model
 
 ## Run
-@hydra.main(config_path="../appfl/config", config_name="config")
+@hydra.main(config_path="../src/appfl/config", config_name="config")
 def main(cfg: DictConfig):
 
     comm = MPI.COMM_WORLD
