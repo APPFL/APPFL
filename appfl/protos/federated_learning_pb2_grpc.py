@@ -24,6 +24,11 @@ class FederatedLearningStub(object):
                 request_serializer=federated__learning__pb2.TensorRequest.SerializeToString,
                 response_deserializer=federated__learning__pb2.TensorRecord.FromString,
                 )
+        self.GetWeight = channel.unary_unary(
+                '/FederatedLearning/GetWeight',
+                request_serializer=federated__learning__pb2.WeightRequest.SerializeToString,
+                response_deserializer=federated__learning__pb2.WeightResponse.FromString,
+                )
         self.SendLearningResults = channel.stream_unary(
                 '/FederatedLearning/SendLearningResults',
                 request_serializer=federated__learning__pb2.DataBuffer.SerializeToString,
@@ -41,6 +46,12 @@ class FederatedLearningServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetTensorRecord(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetWeight(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -64,6 +75,11 @@ def add_FederatedLearningServicer_to_server(servicer, server):
                     servicer.GetTensorRecord,
                     request_deserializer=federated__learning__pb2.TensorRequest.FromString,
                     response_serializer=federated__learning__pb2.TensorRecord.SerializeToString,
+            ),
+            'GetWeight': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWeight,
+                    request_deserializer=federated__learning__pb2.WeightRequest.FromString,
+                    response_serializer=federated__learning__pb2.WeightResponse.SerializeToString,
             ),
             'SendLearningResults': grpc.stream_unary_rpc_method_handler(
                     servicer.SendLearningResults,
@@ -109,6 +125,22 @@ class FederatedLearning(object):
         return grpc.experimental.unary_unary(request, target, '/FederatedLearning/GetTensorRecord',
             federated__learning__pb2.TensorRequest.SerializeToString,
             federated__learning__pb2.TensorRecord.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetWeight(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/FederatedLearning/GetWeight',
+            federated__learning__pb2.WeightRequest.SerializeToString,
+            federated__learning__pb2.WeightResponse.FromString,
             options, channel_credentials,
             call_credentials, compression, wait_for_ready, timeout, metadata)
 

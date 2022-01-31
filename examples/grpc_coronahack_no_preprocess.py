@@ -139,16 +139,15 @@ def main(cfg: DictConfig):
     )
 
     if comm_size > 1:
+        # Try to launch both a server and clients.
         if comm_rank == 0:
             grpc_server.run_server(cfg, comm_rank, model, test_dataset, num_clients, DataSet_name)
         else:
-            # Give server some time to launch.
-            time.sleep(5)
             grpc_client.run_client(cfg, comm_rank, model, train_datasets[comm_rank-1])
         print("------DONE------", comm_rank)
     else:
-        rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
-
+        # Just launch a server.
+        grpc_server.run_server(cfg, comm_rank, model, test_dataset, num_clients, DataSet_name)
 
 if __name__ == "__main__":
     main()
