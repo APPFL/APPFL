@@ -44,15 +44,29 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    filename = "Result_%s_%s_Privacy_%s_ScaleVal_%s" % (DataSet_name, cfg.fed.type, cfg.fed.args.privacy, cfg.fed.args.scale_value)
-    if cfg.fed.type == "iadmm":
-        filename = "Result_%s_%s_Privacy_%s_ScaleVal_%s(rho=%s)" % (
+    filename = "Result_%s_%s_Batch_%s_Privacy_%s_ScaleVal_%s" % (DataSet_name, cfg.fed.type, cfg.batch_training, cfg.fed.args.privacy, cfg.fed.args.scale_value)
+    if cfg.fed.type == "iiadmm":
+        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_CoeffGrad_%s_Privacy_%s_ScaleVal_%s(rho=%s)" % (
             DataSet_name,
             cfg.fed.type,
+            cfg.batch_training,
+            cfg.fed.args.accum_grad,
+            cfg.fed.args.coeff_grad,
             cfg.fed.args.privacy, 
             cfg.fed.args.scale_value,
-            cfg.fed.args.penalty,
+            cfg.fed.args.init_penalty,
         )
+    if cfg.fed.type == "iceadmm":
+        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_Privacy_%s_ScaleVal_%s(rho=%s,prox=%s)" % (
+            DataSet_name,
+            cfg.fed.type,
+            cfg.batch_training,
+            cfg.fed.args.accum_grad,
+            cfg.fed.args.privacy, 
+            cfg.fed.args.scale_value,
+            cfg.fed.args.init_penalty,
+            cfg.fed.args.init_proximity
+        )        
 
     file_ext = ".txt"
     file = dir + "/%s%s" % (filename, file_ext)
@@ -61,10 +75,11 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         file = dir + "/%s_%d%s" % (filename, uniq, file_ext)
         uniq += 1
     outfile = open(file, "w")
-    title = "%12s %12s %12s %12s %12s %12s %12s \n" % (
+    title = "%12s %12s %12s %12s %12s %12s %12s %12s \n" % (
         "Iter",
         "Local[s]",
         "Global[s]",
+        "Valid[s]",
         "Iter[s]",
         "Elapsed[s]",
         "TestAvgLoss",
@@ -80,15 +95,17 @@ def print_write_result_iteration(
     t,
     LocalUpdate_time,
     GlobalUpdate_time,
+    Validation_time,
     PerIter_time,
     Elapsed_time,
     test_loss,
     accuracy,
 ):
-    results = "%12d %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n" % (
+    results = "%12d %12.2f %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n" % (
         t + 1,
         LocalUpdate_time,
         GlobalUpdate_time,
+        Validation_time,
         PerIter_time,
         Elapsed_time,
         test_loss,
@@ -120,8 +137,6 @@ def print_write_result_summary(
     outfile.write("Scale_value=%s \n" % (cfg.fed.args.scale_value)) 
     outfile.write("Elapsed_time=%s \n" % (round(Elapsed_time, 2)))
     outfile.write("BestAccuracy=%s \n" % (round(BestAccuracy, 2)))
-
-    if cfg.fed.type == "iadmm":
-        outfile.write("ADMM Penalty=%s \n" % (cfg.fed.args.penalty))
+ 
 
     outfile.close()
