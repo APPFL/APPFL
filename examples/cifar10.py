@@ -12,9 +12,9 @@ import torch
 import torchvision
 from torchvision.transforms import ToTensor
 
-from appfl.misc.data import *
+from src.appfl.misc.data import *
 from examples.models.cnn import *
-import appfl.run as rt
+import src.appfl.run as rt
 import hydra
 from mpi4py import MPI
 from omegaconf import DictConfig
@@ -94,7 +94,7 @@ def get_model(comm : MPI.COMM_WORLD):
     return model
 
 ## Run
-@hydra.main(config_path="../appfl/config", config_name="config")
+@hydra.main(config_path="../src/appfl/config", config_name="config")
 def main(cfg: DictConfig):
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
