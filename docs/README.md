@@ -14,6 +14,12 @@ To this end, we need to install the following packages:
 pip install sphinx sphinx-book-theme myst-parser
 ```
 
+We use `nbsphinx` to add Jupyter notebooks to the doc, which requires `pandoc` package. This pakcage may need to be manually installed from conda.
+
+```shell
+conda install -c conda-forge pandoc
+```
+
 ## Build
 
 The build command for documentation is:
