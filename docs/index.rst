@@ -26,8 +26,8 @@ Table of Contents
    :titlesonly:
    :caption: Users Guide
    
-   users/model
-   users/demonstration
+   users/user_model
+   users/user_data
 
 .. toctree::
    :maxdepth: 1
