@@ -1,7 +1,8 @@
 .gitignore
 .DS_Store
-appfl/.DS_Store
-appfl/config/optim/*
+src/appfl/.DS_Store
+src/appfl/config/optim/*
+src/appfl/algorithm/mryu.py
 examples/.DS_Store
 examples/outputs/*
 examples/results/*
