@@ -1,8 +1,5 @@
 import sys
 import os
-
-sys.path.insert(0, "..")
-
 import time
 
 ## User-defined datasets
@@ -12,9 +9,9 @@ import torch
 import torchvision
 from torchvision.transforms import ToTensor
 
-from src.appfl.misc.data import *
-from examples.models.cnn import *
-import src.appfl.run as rt
+from appfl.misc.data import *
+from models.cnn import *
+import appfl.run as rt
 import hydra
 from mpi4py import MPI
 from omegaconf import DictConfig
@@ -127,8 +124,8 @@ if __name__ == "__main__":
 
 
 # To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./mnist.py
+# mpiexec -np 5 --mca opal_cuda_support 1 python ./cifar10.py
 # To run MPI:
-# mpiexec -np 5 python ./mnist.py
+# mpiexec -np 5 python ./cifar10.py
 # To run:
-# python ./mnist.py
+# python ./cifar10.py
