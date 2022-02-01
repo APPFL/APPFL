@@ -4,6 +4,16 @@ Examples
 This describes the examples given in ``examples`` directory.
 
 
+Package dependencies
+--------------------
+
+First we need to make sure that all the dependent packages are installed before running the examples. This can be done by
+
+.. code-block:: console
+
+    $ pip install "appfl[examples]"
+
+
 User-defined model
 ------------------
 
