@@ -1,7 +1,4 @@
 import sys
-
-sys.path.insert(0, "..")
-
 import time
 
 ## User-defined datasets
@@ -11,7 +8,7 @@ import torchvision
 from torchvision.transforms import ToTensor
 
 from appfl.misc.data import *
-from examples.models.cnn import *
+from models.cnn import *
 import appfl.run as rt
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
@@ -91,7 +88,7 @@ def get_model(comm : MPI.COMM_WORLD):
     return model
 
 ## Run
-@hydra.main(config_path="../appfl/config", config_name="config")
+@hydra.main(config_path="../src/appfl/config", config_name="config")
 def main(cfg: DictConfig):
 
     comm = MPI.COMM_WORLD
@@ -121,11 +118,3 @@ def main(cfg: DictConfig):
 
 if __name__ == "__main__":
     main()
-
-
-# To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./mnist.py
-# To run MPI:
-# mpiexec -np 5 python ./mnist.py
-# To run:
-# python ./mnist.py

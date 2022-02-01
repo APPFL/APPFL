@@ -1,9 +1,6 @@
 
 import sys
 import os
-
-sys.path.insert(0, "..")
-
 import time
 
 ## User-defined datasets
@@ -12,7 +9,7 @@ import numpy as np
 import torch
 
 from appfl.misc.data import *
-from examples.models.cnn import *
+from models.cnn import *
 import appfl.run as rt
 import hydra
 from mpi4py import MPI
@@ -53,7 +50,7 @@ def get_model(comm : MPI.COMM_WORLD):
     return model
 
 ## Run
-@hydra.main(config_path="../appfl/config", config_name="config")
+@hydra.main(config_path="../src/appfl/config", config_name="config")
 def main(cfg: DictConfig):
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
