@@ -2,8 +2,8 @@
 
 # Each field has its own configuration file.
 defaults:
-  - _self_  
-  - fed: fedavg  
+  - _self_
+  - fed: fedavg
 
 # Number of training epochs
 num_epochs: 2
@@ -18,7 +18,7 @@ test_data_batch_size: 64
 test_data_shuffle: False
 
 # Results directory
-result_dir: "../../../results" 
+result_dir: "../../../results"
 
 # Compute device
 device: 'cpu'
@@ -29,6 +29,9 @@ validation: True
 #
 # gRPC configutations
 #
+
+# 10 MB for gRPC maximum message size
+max_message_size: 10485760
 
 operator:
   id: 1

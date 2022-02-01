@@ -22,7 +22,7 @@ class FedAvgServer(BaseServer):
         """ Inputs for the global model update """
         global_state = OrderedDict()
         super(FedAvgServer, self).primal_recover_from_local_states(local_states)
-        
+
 
         """ global_state calculation """
         for name, _ in self.model.named_parameters():
@@ -43,10 +43,10 @@ class FedAvgServer(BaseServer):
 
 class FedAvgClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(FedAvgClient, self).__init__(id, weight, model, dataloader, device)        
-        self.__dict__.update(kwargs)        
+        super(FedAvgClient, self).__init__(id, weight, model, dataloader, device)
+        self.__dict__.update(kwargs)
         self.loss_fn = CrossEntropyLoss()
- 
+
     def update(self):
 
         self.model.train()
@@ -54,9 +54,9 @@ class FedAvgClient(BaseClient):
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
-        """ Inputs for the local model update """         
+        """ Inputs for the local model update """
         ## "global_state" from a server is already stored in 'self.model'
-        
+
         """ Multiple local update """
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
@@ -70,15 +70,18 @@ class FedAvgClient(BaseClient):
                 loss.backward()
 
                 optimizer.step()
-        
+
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
         """ Differential Privacy  """
         if self.privacy == True:
             super(FedAvgClient, self).laplace_mechanism_output_perturb()
- 
+
         """ Update local_state """
         self.local_state = OrderedDict()
         self.local_state["primal"] = copy.deepcopy(self.primal_state)
+        self.local_state["dual"] = OrderedDict()
+        self.local_state["penalty"] = OrderedDict()
+        self.local_state["penalty"][self.id] = 0.0
 
         return self.local_state
