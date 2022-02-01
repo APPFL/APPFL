@@ -13,7 +13,7 @@ Table of Contents
 -----------------
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :titlesonly:
    :caption: Getting Started
 
@@ -22,15 +22,17 @@ Table of Contents
    examples/index
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :titlesonly:
    :caption: Users Guide
    
    users/user_model
    users/user_data
+   users/user_config
+   users/user_train
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :titlesonly:
    :caption: Developers Guide
 
