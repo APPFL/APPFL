@@ -1,8 +1,5 @@
 import sys
 import os
-
-sys.path.insert(0, "..")
-
 import time
 
 ## User-defined datasets
@@ -12,9 +9,9 @@ import torch
 import torchvision
 from torchvision.transforms import ToTensor
 
-from src.appfl.misc.data import *
-from examples.models.cnn import *
-import src.appfl.run as rt
+from appfl.misc.data import *
+from models.cnn import *
+import appfl.run as rt
 import hydra
 from mpi4py import MPI
 from omegaconf import DictConfig
