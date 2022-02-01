@@ -15,6 +15,7 @@ examples/datasets/RawData/MNIST
 examples/datasets/RawData/cifar-10-python.tar.gz
 examples/datasets/PreprocessedData/Coronahack_Clients_4
 outputs/*
+_data
  
 
 

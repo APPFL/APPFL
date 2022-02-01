@@ -47,6 +47,7 @@ setuptools.setup(
             "sphinx",
             "sphinx-book-theme",
             "myst-parser",
+            "nbsphinx",
             "twine",
             "build",
             "black",
