@@ -12,3 +12,5 @@ The configuration of the framework is set in:
 * :mod:`appfl.config`: configuration for running the framework
 
 """
+
+from appfl import *

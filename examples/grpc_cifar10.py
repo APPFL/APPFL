@@ -1,7 +1,4 @@
 import sys
-
-sys.path.insert(0, "..")
-
 import time
 
 ## User-defined datasets
@@ -92,7 +89,7 @@ def get_model(comm : MPI.COMM_WORLD):
     return model
 
 ## Run
-@hydra.main(config_path="../appfl/config", config_name="config")
+@hydra.main(config_path="../src/appfl/config", config_name="config")
 def main(cfg: DictConfig):
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
@@ -121,11 +118,3 @@ def main(cfg: DictConfig):
 
 if __name__ == "__main__":
     main()
-
-
-# To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./mnist.py
-# To run MPI:
-# mpiexec -np 5 python ./mnist.py
-# To run:
-# python ./mnist.py
