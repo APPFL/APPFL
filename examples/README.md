@@ -24,8 +24,9 @@ Below shows how to execute the MNIST example.
 For other examples, replace the file name with an appropriate example name.
 
 ### MPI communication
+
 ```bash
-$ mpiexec -n 5 python mnist.py
+mpiexec -n 5 python mnist.py
 ```
 
 ### gRPC communication
@@ -34,19 +35,19 @@ For gRPC communication, we launch multiple MPI processes as well for simulation 
 Note that our gPRC implementation itself does not require any MPI communication.
 
 ```bash
-$ mpiexec -n 5 python grpc_mnist.py
+mpiexec -n 5 python grpc_mnist.py
 ```
 
 ## FEMNIST
 
 ### MPI communication
+
 ```bash
-$ mpiexec -n 204 python femnist.py
+mpiexec -n 204 python femnist.py
 ```
 
 ### gRPC communication
+
 ```bash
-$ mpiexec -n 204 python grpc_femnist.py
+mpiexec -n 204 python grpc_femnist.py
 ```
-
-
