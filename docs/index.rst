@@ -19,11 +19,20 @@ Table of Contents
 
    install/index
    tutorials/index
+   examples/index
 
 .. toctree::
    :maxdepth: 1
    :titlesonly:
-   :caption: For Developers
+   :caption: Users Guide
+   
+   users/model
+   users/demonstration
+
+.. toctree::
+   :maxdepth: 1
+   :titlesonly:
+   :caption: Developers Guide
 
    developer/algorithms
    README
