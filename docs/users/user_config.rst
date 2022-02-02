@@ -29,11 +29,14 @@ Main configuration
     :language: YAML
     :caption: Configuration file: src/appfl/config/config.yaml
 
-This is the main configuration file ``config.yaml``. 
-Most keys are self-explanatory. 
+This is the main configuration file ``config.yaml``.
+Most keys are self-explanatory.
 
 * Key ``defaults.fed`` sets the choice of algorithms. The value should be set as one of the file names (e.g., ``fedavg``, ``iceadmm``, ``iiadmm``).
-* gRPC
+* gRPC section sets the environment for running gRPC.
+    - ``max_message_size``: the maximum size of data to be sent or received in a single RPC call, default 10 MB. If the size of weights for a single neuron is larger than 10 MB, you need to increase this value.
+    - ``host``: the URL of a server
+    - ``port``: the port number of a server
 
 
 Algorithm configuration
