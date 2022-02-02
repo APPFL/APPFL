@@ -30,6 +30,10 @@ If you want to even minimize the installation of package dependencies, you can u
 
     $ pip install appfl
 
+.. note::
+
+    ``torch`` may need to be updated manually to supprt CUDA. Please check GPU support in `PyTorch <pytorch.org>`_.
+
 Developer installation
 ----------------------
 
