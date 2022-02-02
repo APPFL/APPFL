@@ -21,6 +21,9 @@ If you want to run it in parallel using MPI (assuming that all clients are train
 
     $ mpiexec -np 2 python mnist.py
 
+.. note::
+
+    ``mpiexec`` may need to specify additional argument to use CUDA: ``--mca opal_cuda_support 1``
 
 Our first run is training MNIST in a federated learning setting with the default configuration setting given in ``src/appfl/config/config.yaml``.
 We learn more about :ref:`How to set configuration`.
