@@ -69,12 +69,7 @@ class FedAvgClient(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
-                print("self.clip_value=", self.clip_value)                 
-                print("self.clip_norm=", self.clip_norm)           
-
-                if self.clip_value != "inf":          
-                    print("self.clip_value=", self.clip_value)                 
-                    print("self.clip_norm=", self.clip_norm)                 
+                if self.clip_value != "inf":                                              
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                
 
                 optimizer.step()
