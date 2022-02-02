@@ -74,15 +74,14 @@ class FedAvgClient(BaseClient):
 
                 optimizer.step()
 
-        self.primal_state = copy.deepcopy(self.model.state_dict())
+        self.primal_state = copy.deepcopy(self.model.state_dict()) 
 
         """ Differential Privacy  """
-        if self.privacy == True:
+        if self.epsilon != "inf":
             sensitivity = 0
             if self.clip_value != "inf":                           
                 sensitivity = 2.0 * self.clip_value * self.optim_args.lr 
-            scale_value = sensitivity / self.epsilon
-            print("sensitivity=", sensitivity, " eps=", self.epsilon)
+            scale_value = sensitivity / self.epsilon            
             super(FedAvgClient, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """
