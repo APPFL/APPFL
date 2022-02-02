@@ -13,10 +13,12 @@ args:
     weight_decay: 1e-5
 
   # Privacy
-  privacy: False
+  privacy: False  
   scale_value: 0
   epsilon: inf
 
-  
-  
+  # Gradient Clipping
+  clip_value: 1
+  clip_norm: 1
+
 
