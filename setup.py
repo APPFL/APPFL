@@ -40,7 +40,6 @@ setuptools.setup(
         "numpy",
         'torch >= 1.9.1',
         'hydra-core',
-        'mpi4py',
     ],
     extras_require={
         "dev": [
@@ -61,6 +60,7 @@ setuptools.setup(
         "examples": [
             "opencv-python",
             "torchvision",
+            'mpi4py',
         ],
     },
 )
