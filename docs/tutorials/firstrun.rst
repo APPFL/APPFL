@@ -1,14 +1,15 @@
-Your first run: MNIST
-=====================
+Our first run: MNIST
+====================
 
-You should be ready to run the first example for APPFL. 
-First, change the directory to `examples` directory.
+We should be ready to run the first example for APPFL. 
+We first make sure that the dependencies are install and change the directory to `examples` directory.
 
 .. code-block:: console
 
+    $ pip install "appfl[examples]"
     $ cd examples
 
-The first example can be simply done by this:
+The first example can be simply run by this:
 
 .. code-block:: console
 
@@ -21,13 +22,5 @@ If you want to run it in parallel using MPI (assuming that all clients are train
     $ mpiexec -np 2 python mnist.py
 
 
-What did you just run?
-----------------------
-
-The APPFL run is defined in and reads the following configuration file:
-
-.. literalinclude:: /../src/appfl/config/config.yaml
-    :language: YAML
-    :caption: Configuration file: src/appfl/config/config.yaml
-
-Please find details about the syntax for the configuration file in `Hydra <https://hydra.cc>`_.
+Our first run is training MNIST in a federated learning setting with the default configuration setting given in ``src/appfl/config/config.yaml``.
+We learn more about :ref:`How to set configuration`.
