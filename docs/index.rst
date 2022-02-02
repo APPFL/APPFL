@@ -29,6 +29,7 @@ Table of Contents
    users/user_model
    users/user_data
    users/user_config
+   users/user_simulation
    users/user_train
 
 .. toctree::
