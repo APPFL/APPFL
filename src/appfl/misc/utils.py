@@ -44,28 +44,25 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    filename = "Result_%s_%s_Batch_%s_Privacy_%s_ScaleVal_%s" % (DataSet_name, cfg.fed.type, cfg.batch_training, cfg.fed.args.privacy, cfg.fed.args.scale_value)
+    filename = "Result_%s_%s_Batch_%s_PrivEps_%s" % (DataSet_name, cfg.fed.type, cfg.batch_training, cfg.fed.args.epsilon)
     if cfg.fed.type == "iiadmm":
-        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_CoeffGrad_%s_Privacy_%s_ScaleVal_%s(rho=%s)" % (
+        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_CoeffGrad_%s_Penalty=%s_PrivEps_%s" % (
             DataSet_name,
             cfg.fed.type,
             cfg.batch_training,
             cfg.fed.args.accum_grad,
             cfg.fed.args.coeff_grad,
-            cfg.fed.args.privacy, 
-            cfg.fed.args.scale_value,
             cfg.fed.args.init_penalty,
+            cfg.fed.args.epsilon,            
         )
     if cfg.fed.type == "iceadmm":
-        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_Privacy_%s_ScaleVal_%s(rho=%s,prox=%s)" % (
+        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_Penalty=%s_PrivEps_%s" % (
             DataSet_name,
             cfg.fed.type,
             cfg.batch_training,
             cfg.fed.args.accum_grad,
-            cfg.fed.args.privacy, 
-            cfg.fed.args.scale_value,
             cfg.fed.args.init_penalty,
-            cfg.fed.args.init_proximity
+            cfg.fed.args.epsilon,
         )        
 
     file_ext = ".txt"
@@ -133,8 +130,7 @@ def print_write_result_summary(
     outfile.write("Algorithm=%s \n" % (cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n" % (cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n" % (cfg.fed.args.num_local_epochs))
-    outfile.write("Privacy=%s \n" % (cfg.fed.args.privacy))
-    outfile.write("Scale_value=%s \n" % (cfg.fed.args.scale_value)) 
+    outfile.write("PrivEps=%s \n" % (cfg.fed.args.epsilon))    
     outfile.write("Elapsed_time=%s \n" % (round(Elapsed_time, 2)))
     outfile.write("BestAccuracy=%s \n" % (round(BestAccuracy, 2)))
  
