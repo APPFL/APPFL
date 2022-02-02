@@ -6,7 +6,7 @@ We make and update the documentation based on [Sphinx](https://www.sphinx-doc.or
 So we can use both reStructuredText and Markdown files.
 We use [Sphinx Book Theme](https://sphinx-book-theme.readthedocs.io/en/latest/index.html).
 
-## Installation
+## Required packages
 
 To this end, we need to install the following packages:
 
@@ -20,7 +20,7 @@ We use `nbsphinx` to add Jupyter notebooks to the doc, which requires `pandoc` p
 conda install -c conda-forge pandoc
 ```
 
-## Build
+## Build document
 
 The build command for documentation is:
 
