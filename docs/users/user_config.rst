@@ -5,22 +5,7 @@ All runs use `OmegaConf <https://omegaconf.readthedocs.io/>`_, an YAML based hie
 We define the configuration variables and their default values in YAML files located at ``src/appfl/config/*``.
 
 We recommend to use `Hydra <https://hydra.cc>`_ that can read and load the configuration files to the ``OmegaConf.DictConfig`` object.
-The following code block can be used without much modification:
-
-.. code-block:: python
-
-    import appfl.run as ppfl
-    import hydra
-    from omegaconf import DictConfig
-
-    # Define model, train_data (for each client), and test_data
-
-    @hydra.main(config_path="./config", config_name="config")
-    def main(cfg: DictConfig):
-        ppfl.run_serial(cfg, model, train_data, test_data, "example")
-
-    if __name__ == "__main__":
-        main()
+Please see the example codes in :ref:`How to simulate PPFL`.
 
 Main configuration
 ------------------
@@ -32,8 +17,8 @@ Main configuration
 This is the main configuration file ``config.yaml``.
 Most keys are self-explanatory.
 
-* Key ``defaults.fed`` sets the choice of algorithms. The value should be set as one of the file names (e.g., ``fedavg``, ``iceadmm``, ``iiadmm``).
-* gRPC section sets the environment for running gRPC.
+- Key ``defaults.fed`` sets the choice of algorithms. The value should be set as one of the file names (e.g., ``fedavg``, ``iceadmm``, ``iiadmm``).
+- gRPC section sets the environment for running gRPC.
     - ``max_message_size``: the maximum size of data to be sent or received in a single RPC call, default 10 MB. If the size of weights for a single neuron is larger than 10 MB, you need to increase this value.
     - ``host``: the URL of a server
     - ``port``: the port number of a server
