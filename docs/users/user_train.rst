@@ -1,6 +1,36 @@
 How to train PPFL
 =================
 
+.. code-block:: python
+
+    import appfl.run_grpc_server as grpc_server
+
+    @hydra.main(config_path="./config", config_name="config")
+    def main(cfg: DictConfig):
+        model = ...     # user-defined model
+        test_data = ... # user-defined test data
+
+        grpc_server.run_server(cfg, server_id, model, test_data, num_clients, "my_appfl")
+
+    if __name__ == "__main__":
+        main()
+
+
+.. code-block:: python
+
+    import appfl.run_grpc_client as grpc_client
+
+    @hydra.main(config_path="./config", config_name="config")
+    def main(cfg: DictConfig):
+        model = ...      # user-defined model
+        train_data = ... # user-defined train data
+
+        grpc_client.run_client(cfg, client_id, model, train_data)
+
+    if __name__ == "__main__":
+        main()
+
+
 gRPC
 ----
 
