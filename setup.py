@@ -38,7 +38,7 @@ setuptools.setup(
     python_requires=">=3.6",
     install_requires=[
         "numpy",
-        'torch >= 1.9.1',
+        'torch',
         'hydra-core',
     ],
     extras_require={
