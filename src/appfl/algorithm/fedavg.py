@@ -69,13 +69,26 @@ class FedAvgClient(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
+                print("self.clip_value=", self.clip_value)                 
+                print("self.clip_norm=", self.clip_norm)           
+
+                if self.clip_value != "inf":          
+                    print("self.clip_value=", self.clip_value)                 
+                    print("self.clip_norm=", self.clip_norm)                 
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                
+
                 optimizer.step()
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
         """ Differential Privacy  """
         if self.privacy == True:
-            super(FedAvgClient, self).laplace_mechanism_output_perturb()
+            sensitivity = 0
+            if self.clip_value != "inf":                           
+                sensitivity = 2.0 * self.clip_value * self.optim_args.lr 
+            scale_value = sensitivity / self.epsilon
+            print("sensitivity=", sensitivity, " eps=", self.epsilon)
+            super(FedAvgClient, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """
         self.local_state = OrderedDict()
