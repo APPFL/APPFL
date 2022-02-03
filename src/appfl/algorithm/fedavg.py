@@ -41,7 +41,7 @@ class FedAvgServer(BaseServer):
         """ model update """
         self.model.load_state_dict(global_state)
 
-        return prim_res, 0
+        return prim_res, 0, 0, 0
 
 class FedAvgClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
