@@ -1,6 +1,0 @@
-type: mnist
-classname: MNIST
-torchvision: True
-distributed: False
-args:
-  download: True

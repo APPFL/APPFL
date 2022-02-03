@@ -1,33 +1,14 @@
-# APPFL
+# APPFL: Argonne Privacy-Preserving Federated Learning
 
-APPFL is a privacy-preserving federated learning framework that provides an infrastructure to implement algorithmic components for federated learning.
+[![Documentation Status](https://readthedocs.org/projects/appfl/badge/?version=latest)](https://appfl.readthedocs.io/en/latest/?badge=latest)
 
-## Requirements
+APPFL is an open-source software framework that allows research communities to implement, test, and validate various ideas for privacy-preserving federated learning (PPFL).
+With this framework, developers and/or users can
+- train a user-defined neural network model on **decentralized data with differential privacy**,
+- **simulate** various PPFL algorithms on high-performance computing (HPC) architecture with MPI,
+- implement **user-defined PPFL algorithms** in a plug-and-play manner.
 
-- PyTorch 1.9.1+
-- Hydra 1.1+
-- mpi4py
-
-## How to run
-
-APPFL can run in either serial or parallel with MPI on CPU/GPU architectures.
-The configuration of APPFL can be found in `appfl/config` directory, where you can configure algorithm, model, privacy, compute architecture, etc.
-
-Example of serial run to train MINIST can be done by
-
-```
-python appfl/run.py num_clienst=3 num_epochs=10 device=cpu
-```
-
-where arguments `num_clients`, `num_epochs`, and `device` are optional to change their default values.
-
-Its parallel run can be done by
-
-```
-mpiexec -np 3 --mca opal_cuda_support 1 python appfl/run.py
-```
-
-where `--mca opal_cuda_support 1` is optional to run CUDA-aware MPI.
+Such algorithmic components include federated learning (FL) algorithm, privacy technique, communication protocol, FL model to train, and data.
 
 ## Acknowledgements
 
