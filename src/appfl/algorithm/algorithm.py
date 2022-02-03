@@ -76,10 +76,7 @@ class BaseClient:
         - scale_value = sensitivty/epsilon, where sensitivity is determined by data, algorithm.
     """        
 
-    def laplace_mechanism_output_perturb(self):
-        # Note: Scale_value = Sensitivity_value / self.epsilon
-
-        scale_value = self.scale_value
+    def laplace_mechanism_output_perturb(self,scale_value):       
 
         for name, param in self.model.named_parameters():
             mean = torch.zeros_like(param.data)
