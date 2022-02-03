@@ -9,6 +9,12 @@ class ICEADMM:
     args: DictConfig = OmegaConf.create(
         {
             "num_local_epochs": 1,
+
+            # Training Data Batch Info
+            "batch_training": False,
+            "train_data_batch_size": 8,
+            "train_data_shuffle": False,
+
             "accum_grad": True,
             "coeff_grad": True,
 
@@ -20,8 +26,21 @@ class ICEADMM:
                 # "weight_decay": 1e-5,
             },
 
-            # ADMM parameters  
+            ## Penalty
             "init_penalty": 100.0,
+
+            ## Adaptive penalty
+            ## Residual balancing (see (3.13) in "Distributed Optimization and Statistical Learning via the ADMM")
+            ## penalty = penalty*(tau) if prim_res > (mu)*dual_res
+            ## penalty = penalty/(tau) if dual_res > (mu)*prim_res
+            "residual_balancing": {
+                "res_on": True,
+                "res_on_every_update": True,
+                "tau": 2,
+                "mu": 2,
+            },
+
+            ## Proximal term
             "init_proximity": 0,
 
             ## Differential Privacy 
