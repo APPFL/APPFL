@@ -18,6 +18,7 @@ from .algorithm.fedavg import *
 from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
 
+from mpi4py import MPI
 
 def run_serial(
     cfg: DictConfig,
@@ -26,6 +27,15 @@ def run_serial(
     test_data: Dataset,
     DataSet_name: str,
 ):
+    """Run serial simulation of PPFL.
+
+    Args:
+        cfg (DictConfig): the configuration for this run
+        model (nn.Module): neural network model to train
+        train_data (Dataset): training data
+        test_data (Dataset): testing data
+        DataSet_name (str): dataset name
+    """
 
     outfile = print_write_result_title(cfg, DataSet_name)
 
@@ -126,12 +136,22 @@ def run_serial(
 
 def run_server(
     cfg: DictConfig,
-    comm,
+    comm: MPI.Comm,
     model: nn.Module,
     test_dataset: Dataset,
     num_clients: int,
     DataSet_name: str,
 ):
+    """Run PPFL simulation server that aggregates and updates the global parameters of model
+
+    Args:
+        cfg (DictConfig): the configuration for this run
+        comm: MPI communicator
+        model (nn.Module): neural network model to train
+        test_data (Dataset): testing data
+        num_clients (int): the number of clients used in PPFL simulation
+        DataSet_name (str): dataset name
+    """
 
     outfile = print_write_result_title(cfg, DataSet_name)
 
@@ -234,8 +254,17 @@ def run_server(
 
 
 def run_client(
-    cfg: DictConfig, comm, model: nn.Module, train_datasets: Dataset, num_clients: int
+    cfg: DictConfig, comm: MPI.Comm, model: nn.Module, train_data: Dataset, num_clients: int
 ):
+    """Run PPFL simulation clients, each of which updates its own local parameters of model
+
+    Args:
+        cfg (DictConfig): the configuration for this run
+        comm: MPI communicator
+        model (nn.Module): neural network model to train
+        train_data (Dataset): testing data
+        num_clients (int): the number of clients used in PPFL simulation
+    """
 
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
@@ -256,7 +285,7 @@ def run_client(
     """
     num_data = {}
     for i, cid in enumerate(num_client_groups[comm_rank - 1]):
-        num_data[cid] = len(train_datasets[cid])
+        num_data[cid] = len(train_data[cid])
     comm.gather(num_data, root=0)        
     weight = None
     weight = comm.scatter(weight, root = 0)
@@ -266,7 +295,7 @@ def run_client(
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         batchsize[cid] = cfg.train_data_batch_size
         if cfg.batch_training == False:
-            batchsize[cid] = len(train_datasets[cid])
+            batchsize[cid] = len(train_data[cid])
 
     clients = [
         eval(cfg.fed.clientname)(
@@ -274,7 +303,7 @@ def run_client(
             weight[cid],
             copy.deepcopy(model),
             DataLoader(
-                train_datasets[cid],
+                train_data[cid],
                 num_workers=0,
                 batch_size=batchsize[cid],
                 shuffle=cfg.train_data_shuffle,

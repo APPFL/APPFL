@@ -1,4 +1,4 @@
-How to define a model
+User-defined model
 =====================
 
 User-defined models can be anything derived from ``torch.nn.Module``.
