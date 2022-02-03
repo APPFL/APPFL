@@ -130,7 +130,8 @@ def print_write_result_summary(
     outfile.write("Algorithm=%s \n" % (cfg.fed.type))
     outfile.write("Comm_Rounds=%s \n" % (cfg.num_epochs))
     outfile.write("Local_Epochs=%s \n" % (cfg.fed.args.num_local_epochs))
-    outfile.write("PrivEps=%s \n" % (cfg.fed.args.epsilon))    
+    outfile.write("DP_Eps=%s \n" % (cfg.fed.args.epsilon))    
+    outfile.write("Clipping=%s \n" % (cfg.fed.args.clip_value))    
     outfile.write("Elapsed_time=%s \n" % (round(Elapsed_time, 2)))
     outfile.write("BestAccuracy=%s \n" % (round(BestAccuracy, 2)))
  

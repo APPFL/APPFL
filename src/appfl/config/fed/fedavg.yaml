@@ -13,13 +13,15 @@ args:
     weight_decay: 1e-5
 
   ## Differential Privacy 
-  #  epsilon: "inf"'  (non-private)
-  #  Stronger privacy as epsilon decreases
-  epsilon: 1
+  ##  epsilon: False  (non-private)
+  ##  epsilon: 1      (stronger privacy as the value decreases)
+  ##  epsilon: 0.05   
+  epsilon: False
 
   ## Gradient Clipping
-  # clip_value: "inf"
-  clip_value: 1
+  ## clip_value: False (no-clipping)
+  ## clip_value: 10    (clipping)
+  ## clip_value: 1  
+  clip_value: False
   clip_norm: 1
-
 
