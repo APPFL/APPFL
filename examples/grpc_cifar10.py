@@ -1,20 +1,16 @@
-import sys
 import time
 
-## User-defined datasets
 import numpy as np
 import torch
 import torchvision
 from torchvision.transforms import ToTensor
 
+from appfl.config import *
 from appfl.misc.data import *
-from examples.models.cnn import *
-import appfl.run as rt
+from models.cnn import *
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
-import hydra
 from mpi4py import MPI
-from omegaconf import DictConfig
 
 DataSet_name = "CIFAR10"
 num_clients = 4
@@ -88,9 +84,7 @@ def get_model(comm : MPI.COMM_WORLD):
     model = CNN(num_channel, num_classes, num_pixel)
     return model
 
-## Run
-@hydra.main(config_path="../src/appfl/config", config_name="config")
-def main(cfg: DictConfig):
+def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -104,6 +98,9 @@ def main(cfg: DictConfig):
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
+
+    # read default configuration
+    cfg = OmegaConf.structured(Config)
 
     if comm_size > 1:
         # Try to launch both a server and clients.
