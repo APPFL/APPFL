@@ -72,6 +72,9 @@ class ICEADMMClient(BaseClient):
 
         self.penalty = kwargs['init_penalty']      
         self.proximity = kwargs['init_proximity']      
+
+        self.is_first_iter = 1
+
         self.residual = OrderedDict()
         self.residual['primal'] = 0
         self.residual['dual'] = 0            
@@ -85,6 +88,11 @@ class ICEADMMClient(BaseClient):
 
         """ Inputs for the local model update """         
         global_state = copy.deepcopy(self.model.state_dict())        
+
+        """ Residual Calculation """
+        prim_res = super(ICEADMMClient, self).primal_residual_at_client(global_state)
+        dual_res = super(ICEADMMClient, self).dual_residual_at_client()                
+        print(self.id, " prim_res=",prim_res, " dual_res=",dual_res)
 
         ## TODO: residual_calculation + adaptive_penalty
         ## Option 1: change penalty for every comm. round
