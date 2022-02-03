@@ -8,15 +8,10 @@ from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = IIADMM()
+    fed: Any = FedAvg()
 
     # Number of training epochs
     num_epochs: int = 2
-
-    # Training Data Batch Info
-    batch_training: bool = False
-    train_data_batch_size: int = 64
-    train_data_shuffle: bool = False
 
     # Testing Data Batch Info
     test_data_batch_size: int = 64
@@ -38,7 +33,7 @@ class Config:
     # 10 MB for gRPC maximum message size
     max_message_size: int = 10485760
 
-    client: DictConfig = OmegaConf.create({"id": 1})
+    operator: DictConfig = OmegaConf.create({"id": 1})
     server: DictConfig = OmegaConf.create(
         {
             "id": 1,

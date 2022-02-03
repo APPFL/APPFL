@@ -9,10 +9,16 @@ class IIADMM:
     args: DictConfig = OmegaConf.create(
         {
             "num_local_epochs": 1,
-            "accum_grad": True,
-            "coeff_grad": True,
 
-            # Optimizer for a gradient calculation (esp., to use zero.grad)
+            # Training Data Batch Info
+            "batch_training": False,
+            "train_data_batch_size": 8,
+            "train_data_shuffle": False,
+
+            "accum_grad": True,
+            "coeff_grad": False,
+
+            ## Optimizer for a gradient calculation (esp., to use zero.grad)
             "optim": "SGD",
             "optim_args": {
                 "lr": 0.01,
@@ -20,8 +26,19 @@ class IIADMM:
                 # "weight_decay": 1e-5,
             },
 
-            # ADMM penalty
+            # Penalty
             "init_penalty": 100.0,
+
+            ## Adaptive penalty
+            ## Residual balancing (see (3.13) in "Distributed Optimization and Statistical Learning via the ADMM")
+            ## penalty = penalty*(tau) if prim_res > (mu)*dual_res
+            ## penalty = penalty/(tau) if dual_res > (mu)*prim_res
+            "residual_balancing": {
+                "res_on": False,
+                "res_on_every_update": False,
+                "tau": 1.1,
+                "mu": 10,
+            },
 
             ## Differential Privacy 
             ##  epsilon: False  (non-private)
