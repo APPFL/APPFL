@@ -19,7 +19,6 @@ Table of Contents
 
    install/index
    tutorials/index
-   examples/index
 
 .. toctree::
    :maxdepth: 2
@@ -29,7 +28,7 @@ Table of Contents
    users/user_run
    users/user_model
    users/user_data
-   users/user_config
+   notebooks/how_to_config
 
 .. toctree::
    :maxdepth: 2

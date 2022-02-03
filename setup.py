@@ -39,6 +39,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         'torch',
+        'mpi4py',
         'omegaconf',
     ],
     extras_require={
@@ -60,7 +61,6 @@ setuptools.setup(
         "examples": [
             "opencv-python",
             "torchvision",
-            'mpi4py',
         ],
     },
 )

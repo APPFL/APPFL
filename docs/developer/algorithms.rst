@@ -1,38 +1,92 @@
 How to add new algorithms
 =========================
 
-In a federated learning setting, a server updates a global model parameter based on the local model parameters updated by multiple clients.
+Suppose that we are adding the configuration for our new algorithm.
+New algorithm should be implemented as two classes for server and client. 
+Implementation of the new classes should be derived from the following two base classes:
 
-How to incorporate your algorithm into our framework APPFL?
+.. autoclass:: appfl.algorithm.BaseServer
+    :members:
 
-1. Create classes for the global and local updates in ``appfl/algorithm``
-2. Create a configuration file that specifies the algorithm in ``appfl/config/fed``
-3. Global update is conducted in a ``run_server`` function in ``appfl/run.py``
+.. autoclass:: appfl.algorithm.BaseClient
+    :members:
 
-Code snippet:
+Example: NewAlgo
+----------------
 
-.. code-block:: python     
+Here we give some simple example.
 
-    server.update(global_state, local_states)
+Core algorithm class
+++++++++++++++++++++
 
-4. Local update is conducted in a ``run_client`` function in ``appfl/run.py``
+We first create classes for the global and local updates in ``appfl/algorithm``:
 
-Code snippet:
+- See two classes ``NewAlgoServer`` and ``NewAlgoClient`` in ``newalgo.py``
+- In ``NewAlgoServer``, the ``update`` function conducts a global update by averaging the local model parameters sent from multiple clients
+- In ``NewAlgoClient``, the ``update`` function conducts a local update and send the resulting local model parameters to the server
 
-.. code-block:: python     
+This is an example code:
 
-    client.update()   
+.. code-block:: python
+    :caption: Example code for ``src/appfl/algorithm/newalgo.py``
 
- 
-**Example. Federated Averaging (FedAvg)** 
+    from .algorithm import BaseServer, BaseClient
 
-1. Create classes for the global and local updates in ``appfl/algorithm``
+    class NewAlgoServer(BaseServer):
+        def __init__(self, weights, model, num_clients, device, **kwargs):
+            super(NewAlgoServer, self).__init__(weights, model, num_clients, device)
+            self.__dict__.update(kwargs)
+            # Any additional initialization
 
-   - See two classes ``FedAvgServer`` and ``FedAvgClient`` in ``fedavg.py``
-   - In ``FedAvgServer``, the ``update`` function conducts a global update by averaging the local model parameters sent from multiple clients
-   - In ``FedAvgClient``, the ``update`` function conducts a local update and send the resulting local model parameters to the server
+        def update(self, local_states: OrderedDict):
+            # Implement new client update function
 
-2. Create a configuration file that specifies the algorithm in ``appfl/config/fed``
+    class NewAlgoClient(BaseClient):
+        def __init__(self, id, weight, model, dataloader, device, **kwargs):
+            super(NewAlgoClient, self).__init__(id, weight, model, dataloader, device)
+            self.__dict__.update(kwargs)
+            # Any additional initialization
 
-   - The algorithm is specified in ``fedavg.yaml``
+        def update(self):
+            # Implement new client update function
+
+
+Configuration dataclass
++++++++++++++++++++++++
+
+The new algorithm also needs to set up some configurations. This can be done by adding new dataclass under ``appfl.config.fed``.
+Let's say we add ``src/appfl/config/fed/newalgo.py`` file to implement the datacass as follows:
+
+.. code-block:: python
+    :caption: Example code for ``src/appfl/config/fed/newalgo.py``
+
+    from dataclasses import dataclass
+    from omegaconf import DictConfig, OmegaConf
+
+    @dataclass
+    class NewAlgo:
+        type: str = "newalgo"
+        servername: str = "NewAlgoServer"
+        clientname: str = "NewAlgoClient"
+        args: DictConfig = OmegaConf.create(
+            {
+                # add new arguments
+            }
+        )
+
+
+Then, we need to add the following line to the main configuration file ``config.py``.
+
+.. code-block:: python
+
+    from .fed.new_algorithm import *
+
+
+This is the main configuration class in ``src/appfl/config/config.py``.
+Each algorithm, specified in ``Config.fed``, can be configured in the dataclasses at ``appfl.config.fed.*``.
+
+.. literalinclude:: /../src/appfl/config/config.py
+    :language: python
+    :linenos:
+    :caption: The main configuration class
 

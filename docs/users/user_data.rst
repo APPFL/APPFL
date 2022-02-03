@@ -1,4 +1,4 @@
-How to define local dataset
+User-defined dataset
 ===========================
 
 User-defined dataset can be any class derived from ``torch.utils.data``.

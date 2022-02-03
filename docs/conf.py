@@ -31,6 +31,15 @@ author = 'Argonne National Laboratory'
 # ones.
 extensions = [
         'sphinx.ext.autodoc',
+        'sphinx.ext.napoleon',
+        'sphinx.ext.viewcode',
+        'sphinx.ext.autosummary',
+        'sphinx.ext.todo',
+        'sphinx.ext.doctest',
+        'sphinx.ext.intersphinx',
+        'sphinx.ext.coverage',
+        'sphinx.ext.mathjax',
+        'sphinx.ext.ifconfig',
         'sphinx.ext.autosectionlabel',
         'myst_parser',
         'sphinx_book_theme',
