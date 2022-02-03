@@ -1,5 +1,4 @@
 from cmath import nan
-import os
 
 from collections import OrderedDict
 import torch.nn as nn
