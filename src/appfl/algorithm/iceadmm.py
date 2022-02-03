@@ -16,19 +16,25 @@ class ICEADMMServer(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
         super(ICEADMMServer, self).__init__(weights, model, num_clients, device)
         self.__dict__.update(kwargs)        
+
+        self.is_first_iter = 1
          
     def update(self, local_states: OrderedDict):
         
         """ Inputs for the global model update"""
-        global_state = self.model.state_dict()
+        global_state = copy.deepcopy(self.model.state_dict())
         super(ICEADMMServer, self).primal_recover_from_local_states(local_states)
         super(ICEADMMServer, self).dual_recover_from_local_states(local_states)
         super(ICEADMMServer, self).penalty_recover_from_local_states(local_states)
 
+        """ residual calculation """
+        prim_res = super(ICEADMMServer, self).primal_residual_at_server(global_state)  
+        dual_res = super(ICEADMMServer, self).dual_residual_at_server()  
+        
         total_penalty = 0
         for i in range(self.num_clients):
             total_penalty += self.penalty[i]
-
+        
         """ global_state calculation """
         for name, param in self.model.named_parameters():
             tmp = 0.0
@@ -48,7 +54,7 @@ class ICEADMMServer(BaseServer):
         """ model update """                
         self.model.load_state_dict(global_state)
 
-
+        return prim_res, dual_res, min(self.penalty.values()), max(self.penalty.values())
 
 class ICEADMMClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
@@ -66,9 +72,7 @@ class ICEADMMClient(BaseClient):
 
         self.penalty = kwargs['init_penalty']      
         self.proximity = kwargs['init_proximity']      
-        self.residual = OrderedDict()
-        self.residual['primal'] = 0
-        self.residual['dual'] = 0            
+        self.is_first_iter = 1       
 
     def update(self):
 
@@ -80,11 +84,11 @@ class ICEADMMClient(BaseClient):
         """ Inputs for the local model update """         
         global_state = copy.deepcopy(self.model.state_dict())        
 
-        ## TODO: residual_calculation + adaptive_penalty
-        ## Option 1: change penalty for every comm. round
-        if self.residual['primal'] == 0 and self.residual['dual'] == 0:
-            self.penalty = self.penalty
-        # else:
+        """ Adaptive Penalty (Residual Balancing) """   
+        if self.residual_balancing.res_on == True:
+            prim_res = super(ICEADMMClient, self).primal_residual_at_client(global_state)
+            dual_res = super(ICEADMMClient, self).dual_residual_at_client()                           
+            super(ICEADMMClient, self).residual_balancing(prim_res,dual_res)                
 
         
         """ Multiple local update """
@@ -93,8 +97,10 @@ class ICEADMMClient(BaseClient):
 
                 self.model.load_state_dict(self.primal_state)
 
-                ## TODO: residual_calculation + adaptive_penalty 
-                ## Option 2: change penalty for every local iteration                
+                if self.residual_balancing.res_on == True and self.residual_balancing.res_on_every_update == True:                
+                    prim_res = super(ICEADMMClient, self).primal_residual_at_client(global_state)
+                    dual_res = super(ICEADMMClient, self).dual_residual_at_client()                
+                    super(ICEADMMClient, self).residual_balancing(prim_res,dual_res)   
 
                 data = data.to(self.device)
                 target = target.to(self.device)
