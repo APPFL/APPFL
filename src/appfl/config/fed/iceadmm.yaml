@@ -8,7 +8,7 @@ args:
   accum_grad: True
   coeff_grad: True
   
-  # Optimizer for a gradient calculation (esp., to use zero.grad)
+  ## Optimizer for a gradient calculation (esp., to use zero.grad)
   optim: SGD
   optim_args:    
     lr: 0.01
@@ -19,10 +19,17 @@ args:
   init_penalty: 100.0
   init_proximity: 0
 
-  # Privacy
-  privacy: False
-  scale_value: 0
-  epsilon: inf
- 
+  ## Differential Privacy 
+  ##  epsilon: False  (non-private)
+  ##  epsilon: 1      (stronger privacy as the value decreases)
+  ##  epsilon: 0.05   
+  epsilon: False
+
+  ## Gradient Clipping
+  ## clip_value: False (no-clipping)
+  ## clip_value: 10    (clipping)
+  ## clip_value: 1  
+  clip_value: False
+  clip_norm: 1
   
   
