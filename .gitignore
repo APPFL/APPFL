@@ -1,5 +1,22 @@
-datasets/*
+.gitignore
+.DS_Store
+src/appfl/.DS_Store
+src/appfl/config/optim/*
+src/appfl/algorithm/mryu.py
+examples/.DS_Store
+examples/outputs/*
+examples/results/*
+examples/*.sh
+examples/Slurm_outputs/*
+examples/datasets/RawData/cifar-10-batches-py
+examples/datasets/RawData/Coronahack
+examples/datasets/RawData/FEMNIST
+examples/datasets/RawData/MNIST
+examples/datasets/RawData/cifar-10-python.tar.gz
+examples/datasets/PreprocessedData/Coronahack_Clients_4
 outputs/*
+ 
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -130,3 +147,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+appfl/privacy/library.py
+examples/femnist_test_swing.py
+examples/mnist_test_swing.py
