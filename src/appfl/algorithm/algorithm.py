@@ -57,7 +57,7 @@ class BaseServer:
         primal_res = torch.sqrt(primal_res).item()          
         return primal_res
 
-    def dual_residual_at_server(self, global_state):
+    def dual_residual_at_server(self):
         dual_res = 0
         if self.is_first_iter == 1:
             for i in range(self.num_clients):

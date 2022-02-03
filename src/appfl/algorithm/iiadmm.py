@@ -37,7 +37,7 @@ class IIADMMServer(BaseServer):
 
         """ residual calculation """
         prim_res = super(IIADMMServer, self).primal_residual_at_server(global_state)  
-        dual_res = super(IIADMMServer, self).dual_residual_at_server(global_state)  
+        dual_res = super(IIADMMServer, self).dual_residual_at_server()  
 
 
         """ global_state calculation """
