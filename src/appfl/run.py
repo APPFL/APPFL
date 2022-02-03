@@ -199,7 +199,7 @@ def run_server(
         LocalUpdate_time = time.time() - LocalUpdate_start
 
         GlobalUpdate_start = time.time()        
-        server.update(local_states)
+        prim_res, dual_res, rho_min, rho_max = server.update(local_states)
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
@@ -221,6 +221,10 @@ def run_server(
             Elapsed_time,
             test_loss,
             accuracy,
+            prim_res, 
+            dual_res,
+            rho_min, 
+            rho_max,
         )
 
         if np.isnan(test_loss) == True:
@@ -265,8 +269,8 @@ def run_client(
 
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        batchsize[cid] = cfg.train_data_batch_size
-        if cfg.batch_training == False:
+        batchsize[cid] = cfg.fed.args.train_data_batch_size
+        if cfg.fed.args.batch_training == False:
             batchsize[cid] = len(train_datasets[cid])
 
     clients = [
@@ -278,7 +282,7 @@ def run_client(
                 train_datasets[cid],
                 num_workers=0,
                 batch_size=batchsize[cid],
-                shuffle=cfg.train_data_shuffle,
+                shuffle=cfg.fed.args.train_data_shuffle,
             ),
             device,
             **cfg.fed.args,
