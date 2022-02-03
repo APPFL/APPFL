@@ -131,7 +131,15 @@ class BaseClient:
                 dual_res += torch.sum( torch.square( temp ) )
             dual_res = torch.sqrt(dual_res).item()          
                             
-        return dual_res        
+        return dual_res    
+
+    def residual_balancing(self,prim_res,dual_res):
+
+        if prim_res > self.residual_balancing.mu * dual_res:
+            self.penalty = self.penalty * self.residual_balancing.tau
+        if dual_res > self.residual_balancing.mu * prim_res:
+            self.penalty = self.penalty / self.residual_balancing.tau
+        
 
     """ 
     Differential Privacy 

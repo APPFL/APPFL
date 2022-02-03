@@ -64,7 +64,7 @@ class IIADMMServer(BaseServer):
         """ model update """
         self.model.load_state_dict(global_state)
 
-        return prim_res, dual_res
+        return prim_res, dual_res, min(self.penalty.values()), max(self.penalty.values())
 
 
 
@@ -72,7 +72,7 @@ class IIADMMClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
         super(IIADMMClient, self).__init__(id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
-        self.loss_fn = CrossEntropyLoss()
+        self.loss_fn = CrossEntropyLoss()        
 
         """
         At initial, (1) primal_state = global_state, (2) dual_state = 0
@@ -83,9 +83,7 @@ class IIADMMClient(BaseClient):
             self.dual_state[name] = torch.zeros_like(param.data)
 
         self.penalty = kwargs['init_penalty']
-        self.residual = OrderedDict()
-        self.residual['primal'] = 0
-        self.residual['dual'] = 0
+        self.is_first_iter = 1        
 
     def update(self):
 
@@ -97,17 +95,11 @@ class IIADMMClient(BaseClient):
         """ Inputs for the local model update """
         global_state = copy.deepcopy(self.model.state_dict())
 
-        """ Residual Calculation """
-        prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
-        dual_res = super(IIADMMClient, self).dual_residual_at_client()                
-        print(self.id, " prim_res=",prim_res, " dual_res=",dual_res)
-
-        ## TODO: residual_calculation + adaptive_penalty
-        ## Option 1: change penalty for every comm. round
-        if self.residual['primal'] == 0 and self.residual['dual'] == 0:
-            self.penalty = self.penalty
-        # else:
-
+        """ Adaptive Penalty (Residual Balancing) """   
+        if self.residual_balancing.res_on == True:
+            prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
+            dual_res = super(IIADMMClient, self).dual_residual_at_client()                        
+            super(IIADMMClient, self).residual_balancing(prim_res,dual_res)                
 
         """ Multiple local update """
         for i in range(self.num_local_epochs):
@@ -115,8 +107,10 @@ class IIADMMClient(BaseClient):
 
                 self.model.load_state_dict(self.primal_state)
 
-                ## TODO: residual_calculation + adaptive_penalty
-                ## Option 2: change penalty for every local iteration
+                if self.residual_balancing.res_on == True and self.residual_balancing.res_on_every_update == True:                
+                    prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
+                    dual_res = super(IIADMMClient, self).dual_residual_at_client()                        
+                    super(IIADMMClient, self).residual_balancing(prim_res,dual_res)                
 
                 data = data.to(self.device)
                 target = target.to(self.device)
