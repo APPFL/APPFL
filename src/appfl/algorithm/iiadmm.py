@@ -130,11 +130,9 @@ class IIADMMClient(BaseClient):
                 coefficient = 1
                 if self.coeff_grad == True:
 
-                    # coefficient = (
-                    #     self.weight * len(target) / len(self.dataloader.dataset)
-                    # )
-
-                    coefficient = self.weight  ## NOTE: BATCH + FEMNIST, rho=0.07
+                    coefficient = (
+                        self.weight * len(target) / len(self.dataloader.dataset)
+                    )
 
                 self.iiadmm_step(coefficient, global_state, optimizer)
 
@@ -162,8 +160,17 @@ class IIADMMClient(BaseClient):
         return self.local_state
 
     def iiadmm_step(self, coefficient, global_state, optimizer):
-
-        momentum, weight_decay, dampening, nesterov = self.optimizer_setting()
+        
+        momentum = 0
+        if "momentum" in self.optim_args.keys():
+            momentum = self.optim_args.momentum
+        weight_decay = 0
+        if "weight_decay" in self.optim_args.keys():
+            weight_decay = self.optim_args.weight_decay
+        dampening = 0
+        if "dampening" in self.optim_args.keys():
+            dampening = self.optim_args.dampening
+        nesterov = False
 
         for name, param in self.model.named_parameters():
 
@@ -188,17 +195,4 @@ class IIADMMClient(BaseClient):
                 self.dual_state[name] - grad
             )
 
-
-    def optimizer_setting(self):
-        momentum = 0
-        if "momentum" in self.optim_args.keys():
-            momentum = self.optim_args.momentum
-        weight_decay = 0
-        if "weight_decay" in self.optim_args.keys():
-            weight_decay = self.optim_args.weight_decay
-        dampening = 0
-        if "dampening" in self.optim_args.keys():
-            dampening = self.optim_args.dampening
-        nesterov = False
-
-        return momentum, weight_decay, dampening, nesterov
+ 
