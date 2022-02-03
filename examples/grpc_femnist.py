@@ -1,22 +1,15 @@
-import sys
-
-sys.path.insert(0, "..")
-
 import time
 
-## User-defined datasets
 import json
 import numpy as np
 import torch
 
-from src.appfl.misc.data import *
-from examples.models.cnn import *
-import src.appfl.run as rt
-import src.appfl.run_grpc_server as grpc_server
-import src.appfl.run_grpc_client as grpc_client
-import hydra
+from appfl.config import *
+from appfl.misc.data import *
+from models.cnn import *
+import appfl.run_grpc_server as grpc_server
+import appfl.run_grpc_client as grpc_client
 from mpi4py import MPI
-from omegaconf import DictConfig
 
 DataSet_name = "FEMNIST"
 num_clients = 203
@@ -26,7 +19,8 @@ num_pixel = 28  # image size = (num_pixel, num_pixel)
 
 dir = "./datasets/RawData/%s" % (DataSet_name)
 
-def get_data(comm : MPI.COMM_WORLD):
+
+def get_data(comm: MPI.COMM_WORLD):
     # test data for a server
     test_data_raw = {}
     test_data_input = []
@@ -75,14 +69,13 @@ def get_data(comm : MPI.COMM_WORLD):
     return train_datasets, test_dataset
 
 
-def get_model(comm : MPI.COMM_WORLD):
+def get_model(comm: MPI.COMM_WORLD):
     ## User-defined model
     model = CNN(num_channel, num_classes, num_pixel)
     return model
 
-## Run
-@hydra.main(config_path="../src/appfl/config", config_name="config")
-def main(cfg: DictConfig):
+
+def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -95,26 +88,26 @@ def main(cfg: DictConfig):
         time.time() - start_time,
     )
 
+    # read default configuration
+    cfg = OmegaConf.structured(Config)
+
     if comm_size > 1:
         # Try to launch both a server and clients.
         if comm_rank == 0:
-            grpc_server.run_server(cfg, comm_rank, model, test_dataset, num_clients, DataSet_name)
+            grpc_server.run_server(
+                cfg, comm_rank, model, test_dataset, num_clients, DataSet_name
+            )
         else:
             # Give server some time to launch.
             time.sleep(5)
-            grpc_client.run_client(cfg, comm_rank, model, train_datasets[comm_rank-1])
+            grpc_client.run_client(cfg, comm_rank, model, train_datasets[comm_rank - 1])
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.
-        grpc_server.run_server(cfg, comm_rank, model, test_dataset, num_clients, DataSet_name)
+        grpc_server.run_server(
+            cfg, comm_rank, model, test_dataset, num_clients, DataSet_name
+        )
+
 
 if __name__ == "__main__":
     main()
-
-
-# To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./femnist.py
-# To run MPI:
-# mpiexec -np 5 python ./femnist.py
-# To run:
-# python ./femnist.py

@@ -1,13 +1,8 @@
 import logging
 from collections import OrderedDict
-import hydra
-from omegaconf import DictConfig
 
 import torch
 from torch.utils.data import DataLoader
-from torch.nn import CrossEntropyLoss
-import torchvision
-from torchvision.transforms import ToTensor
 
 import numpy as np
 import copy
