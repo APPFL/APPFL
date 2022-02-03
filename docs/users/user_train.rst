@@ -1,5 +1,5 @@
-How to train PPFL
-=================
+Training PPFL
+=============
 
 .. code-block:: python
 
