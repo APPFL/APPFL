@@ -16,14 +16,20 @@ class ICEADMMServer(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
         super(ICEADMMServer, self).__init__(weights, model, num_clients, device)
         self.__dict__.update(kwargs)        
+
+        self.is_first_iter = 1
          
     def update(self, local_states: OrderedDict):
         
         """ Inputs for the global model update"""
-        global_state = self.model.state_dict()
+        global_state = copy.deepcopy(self.model.state_dict())
         super(ICEADMMServer, self).primal_recover_from_local_states(local_states)
         super(ICEADMMServer, self).dual_recover_from_local_states(local_states)
         super(ICEADMMServer, self).penalty_recover_from_local_states(local_states)
+
+        """ residual calculation """
+        prim_res = super(ICEADMMServer, self).primal_residual_at_server(global_state)  
+        dual_res = super(ICEADMMServer, self).dual_residual_at_server(global_state)  
 
         total_penalty = 0
         for i in range(self.num_clients):
@@ -48,7 +54,7 @@ class ICEADMMServer(BaseServer):
         """ model update """                
         self.model.load_state_dict(global_state)
 
-
+        return prim_res, dual_res
 
 class ICEADMMClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
