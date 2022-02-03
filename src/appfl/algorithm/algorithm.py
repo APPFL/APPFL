@@ -16,9 +16,13 @@ class BaseServer:
         self.penalty = OrderedDict()
         self.primal_states = OrderedDict()
         self.dual_states = OrderedDict()
+        self.primal_states_curr = OrderedDict()
+        self.primal_states_prev = OrderedDict()
         for i in range(num_clients):
             self.primal_states[i] = OrderedDict()
             self.dual_states[i] = OrderedDict()
+            self.primal_states_curr[i] = OrderedDict()
+            self.primal_states_prev[i] = OrderedDict()
 
     # update global model
     def update(self):
@@ -43,8 +47,42 @@ class BaseServer:
         for _, states in enumerate(local_states):
             if states is not None:
                 for sid, state in states.items():                    
-                    self.penalty[sid] = copy.deepcopy(state["penalty"][sid])        
+                    self.penalty[sid] = copy.deepcopy(state["penalty"][sid])     
+    
+    def primal_residual_at_server(self, global_state):
+        primal_res = 0
+        for i in range(self.num_clients):
+            for name, _ in self.model.named_parameters():
+                primal_res += torch.sum(  torch.square(  global_state[name] - self.primal_states[i][name].to(self.device)  )  ) 
+        primal_res = torch.sqrt(primal_res).item()          
+        return primal_res
 
+    def dual_residual_at_server(self):
+        dual_res = 0
+        if self.is_first_iter == 1:
+            for i in range(self.num_clients):
+                for name, _ in self.model.named_parameters():
+                    self.primal_states_curr[i][name] = copy.deepcopy( self.primal_states[i][name].to(self.device) )
+            self.is_first_iter = 0
+        
+        else:
+            self.primal_states_prev = copy.deepcopy( self.primal_states_curr )
+            for i in range(self.num_clients):
+                for name, _ in self.model.named_parameters():
+                    self.primal_states_curr[i][name] = copy.deepcopy( self.primal_states[i][name].to(self.device) )
+            
+            ## compute dual residual
+            for name, _ in self.model.named_parameters():
+                temp = 0
+                for i in range(self.num_clients):
+                    temp += self.penalty[i] * (  self.primal_states_prev[i][name] - self.primal_states_curr[i][name])
+                
+                dual_res += torch.sum( torch.square( temp ) )
+            dual_res = torch.sqrt(dual_res).item()          
+                            
+        return dual_res
+
+         
 
 """This implements a base class for clients."""
 
@@ -59,6 +97,8 @@ class BaseClient:
 
         self.primal_state = OrderedDict()
         self.dual_state = OrderedDict()
+        self.primal_state_curr = OrderedDict()
+        self.primal_state_prev = OrderedDict()
 
     # update local model
     def update(self):
@@ -67,6 +107,39 @@ class BaseClient:
     def get_model(self):
         return self.model.state_dict()
 
+    def primal_residual_at_client(self, global_state):
+        primal_res = 0        
+        for name, _ in self.model.named_parameters():
+            primal_res += torch.sum(  torch.square(  global_state[name] - self.primal_state[name] )  ) 
+        primal_res = torch.sqrt(primal_res).item()          
+        return primal_res
+
+    def dual_residual_at_client(self):
+        dual_res = 0
+        if self.is_first_iter == 1:
+            self.primal_state_curr = copy.deepcopy( self.primal_state )                    
+            self.is_first_iter = 0
+        
+        else:
+            self.primal_state_prev = copy.deepcopy( self.primal_state_curr )
+            self.primal_state_curr = copy.deepcopy( self.primal_state )
+
+            ## compute dual residual
+            for name, _ in self.model.named_parameters():                
+                temp = self.penalty * (  self.primal_state_prev[name] - self.primal_state_curr[name])
+            
+                dual_res += torch.sum( torch.square( temp ) )
+            dual_res = torch.sqrt(dual_res).item()          
+                            
+        return dual_res    
+
+    def residual_balancing(self,prim_res,dual_res):
+
+        if prim_res > self.residual_balancing.mu * dual_res:
+            self.penalty = self.penalty * self.residual_balancing.tau
+        if dual_res > self.residual_balancing.mu * prim_res:
+            self.penalty = self.penalty / self.residual_balancing.tau
+        
 
     """ 
     Differential Privacy 
