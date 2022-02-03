@@ -106,6 +106,9 @@ class ICEADMMClient(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
+                if self.clip_value != False:                                              
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                   
+
                 ## STEP: Update primal and dual
                 coefficient = 1
                 if self.coeff_grad == True:
@@ -114,8 +117,12 @@ class ICEADMMClient(BaseClient):
                 self.iceadmm_step(coefficient, global_state)    
  
         """ Differential Privacy  """
-        if self.privacy == True:
-            super(ICEADMMClient, self).laplace_mechanism_output_perturb()
+        if self.epsilon != False:
+            sensitivity = 0
+            if self.clip_value != False:                           
+                sensitivity = 2.0 * self.clip_value / self.penalty
+            scale_value = sensitivity / self.epsilon            
+            super(ICEADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """
         self.local_state = OrderedDict()
