@@ -97,6 +97,10 @@ class IIADMMClient(BaseClient):
         """ Inputs for the local model update """
         global_state = copy.deepcopy(self.model.state_dict())
 
+        """ Residual Calculation """
+        prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
+        dual_res = super(IIADMMClient, self).dual_residual_at_client()                
+        print(self.id, " prim_res=",prim_res, " dual_res=",dual_res)
 
         ## TODO: residual_calculation + adaptive_penalty
         ## Option 1: change penalty for every comm. round

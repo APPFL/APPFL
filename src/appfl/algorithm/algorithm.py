@@ -52,7 +52,7 @@ class BaseServer:
     def primal_residual_at_server(self, global_state):
         primal_res = 0
         for i in range(self.num_clients):
-            for name, param in self.model.named_parameters():
+            for name, _ in self.model.named_parameters():
                 primal_res += torch.sum(  torch.square(  global_state[name] - self.primal_states[i][name].to(self.device)  )  ) 
         primal_res = torch.sqrt(primal_res).item()          
         return primal_res
@@ -97,6 +97,8 @@ class BaseClient:
 
         self.primal_state = OrderedDict()
         self.dual_state = OrderedDict()
+        self.primal_state_curr = OrderedDict()
+        self.primal_state_prev = OrderedDict()
 
     # update local model
     def update(self):
@@ -105,6 +107,31 @@ class BaseClient:
     def get_model(self):
         return self.model.state_dict()
 
+    def primal_residual_at_client(self, global_state):
+        primal_res = 0        
+        for name, _ in self.model.named_parameters():
+            primal_res += torch.sum(  torch.square(  global_state[name] - self.primal_state[name] )  ) 
+        primal_res = torch.sqrt(primal_res).item()          
+        return primal_res
+
+    def dual_residual_at_client(self):
+        dual_res = 0
+        if self.is_first_iter == 1:
+            self.primal_state_curr = copy.deepcopy( self.primal_state )                    
+            self.is_first_iter = 0
+        
+        else:
+            self.primal_state_prev = copy.deepcopy( self.primal_state_curr )
+            self.primal_state_curr = copy.deepcopy( self.primal_state )
+
+            ## compute dual residual
+            for name, _ in self.model.named_parameters():                
+                temp = self.penalty * (  self.primal_state_prev[name] - self.primal_state_curr[name])
+            
+                dual_res += torch.sum( torch.square( temp ) )
+            dual_res = torch.sqrt(dual_res).item()          
+                            
+        return dual_res        
 
     """ 
     Differential Privacy 
