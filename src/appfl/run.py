@@ -199,7 +199,7 @@ def run_server(
         LocalUpdate_time = time.time() - LocalUpdate_start
 
         GlobalUpdate_start = time.time()        
-        server.update(local_states)
+        prim_res, dual_res = server.update(local_states)
         GlobalUpdate_time = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
@@ -221,6 +221,8 @@ def run_server(
             Elapsed_time,
             test_loss,
             accuracy,
+            prim_res, 
+            dual_res
         )
 
         if np.isnan(test_loss) == True:

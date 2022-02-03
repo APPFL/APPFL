@@ -16,9 +16,13 @@ class BaseServer:
         self.penalty = OrderedDict()
         self.primal_states = OrderedDict()
         self.dual_states = OrderedDict()
+        self.primal_states_curr = OrderedDict()
+        self.primal_states_prev = OrderedDict()
         for i in range(num_clients):
             self.primal_states[i] = OrderedDict()
             self.dual_states[i] = OrderedDict()
+            self.primal_states_curr[i] = OrderedDict()
+            self.primal_states_prev[i] = OrderedDict()
 
     # update global model
     def update(self):
@@ -43,8 +47,42 @@ class BaseServer:
         for _, states in enumerate(local_states):
             if states is not None:
                 for sid, state in states.items():                    
-                    self.penalty[sid] = copy.deepcopy(state["penalty"][sid])        
+                    self.penalty[sid] = copy.deepcopy(state["penalty"][sid])     
+    
+    def primal_residual_at_server(self, global_state):
+        primal_res = 0
+        for i in range(self.num_clients):
+            for name, param in self.model.named_parameters():
+                primal_res += torch.sum(  torch.square(  global_state[name] - self.primal_states[i][name].to(self.device)  )  ) 
+        primal_res = torch.sqrt(primal_res).item()          
+        return primal_res
 
+    def dual_residual_at_server(self, global_state):
+        dual_res = 0
+        if self.is_first_iter == 1:
+            for i in range(self.num_clients):
+                for name, _ in self.model.named_parameters():
+                    self.primal_states_curr[i][name] = copy.deepcopy( self.primal_states[i][name].to(self.device) )
+            self.is_first_iter = 0
+        
+        else:
+            self.primal_states_prev = copy.deepcopy( self.primal_states_curr )
+            for i in range(self.num_clients):
+                for name, _ in self.model.named_parameters():
+                    self.primal_states_curr[i][name] = copy.deepcopy( self.primal_states[i][name].to(self.device) )
+            
+            ## compute dual residual
+            for name, _ in self.model.named_parameters():
+                temp = 0
+                for i in range(self.num_clients):
+                    temp += self.penalty[i] * (  self.primal_states_prev[i][name] - self.primal_states_curr[i][name])
+                
+                dual_res += torch.sum( torch.square( temp ) )
+            dual_res = torch.sqrt(dual_res).item()          
+                            
+        return dual_res
+
+         
 
 """This implements a base class for clients."""
 

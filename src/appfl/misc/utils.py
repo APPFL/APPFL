@@ -72,7 +72,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         file = dir + "/%s_%d%s" % (filename, uniq, file_ext)
         uniq += 1
     outfile = open(file, "w")
-    title = "%12s %12s %12s %12s %12s %12s %12s %12s \n" % (
+    title = "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s \n" % (
         "Iter",
         "Local[s]",
         "Global[s]",
@@ -81,6 +81,8 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         "Elapsed[s]",
         "TestAvgLoss",
         "TestAccuracy",
+        "Prim_res",
+        "Dual_res",
     )
     outfile.write(title)
     print(title, end="")
@@ -97,8 +99,10 @@ def print_write_result_iteration(
     Elapsed_time,
     test_loss,
     accuracy,
+    prim_res,
+    dual_res,
 ):
-    results = "%12d %12.2f %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n" % (
+    results = "%12d %12.2f %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f %12.4e %12.4e \n" % (
         t + 1,
         LocalUpdate_time,
         GlobalUpdate_time,
@@ -107,6 +111,8 @@ def print_write_result_iteration(
         Elapsed_time,
         test_loss,
         accuracy,
+        prim_res,
+        dual_res,
     )
     print(results, end="")
     outfile.write(results)

@@ -19,6 +19,8 @@ class IIADMMServer(BaseServer):
 
         self.__dict__.update(kwargs)
 
+        self.is_first_iter = 1
+
         """
         At initial, dual_state = 0
         """
@@ -29,9 +31,13 @@ class IIADMMServer(BaseServer):
     def update(self, local_states: OrderedDict):
 
         """ Inputs for the global model update"""
-        global_state = self.model.state_dict()
+        global_state = copy.deepcopy(self.model.state_dict())
         super(IIADMMServer, self).primal_recover_from_local_states(local_states)
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
+
+        """ residual calculation """
+        prim_res = super(IIADMMServer, self).primal_residual_at_server(global_state)  
+        dual_res = super(IIADMMServer, self).dual_residual_at_server(global_state)  
 
 
         """ global_state calculation """
@@ -57,6 +63,8 @@ class IIADMMServer(BaseServer):
 
         """ model update """
         self.model.load_state_dict(global_state)
+
+        return prim_res, dual_res
 
 
 
