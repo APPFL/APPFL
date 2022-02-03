@@ -1,55 +1,58 @@
-
-import sys
 import os
 import time
-
-## User-defined datasets
 import numpy as np
+
 import torch
 
+from appfl.config import *
 from appfl.misc.data import *
 from models.cnn import *
 import appfl.run as rt
-import hydra
 from mpi4py import MPI
-from omegaconf import DictConfig
 import glob
 import cv2
 import csv
 
 DataSet_name = "Coronahack"
 num_clients = 4
-num_channel = 3    # 1 if gray, 3 if color
-num_classes = 7   # number of the image classes
-num_pixel = 32   # image size = (num_pixel, num_pixel)
+num_channel = 3  # 1 if gray, 3 if color
+num_classes = 7  # number of the image classes
+num_pixel = 32  # image size = (num_pixel, num_pixel)
 
 dir = os.getcwd() + "/datasets/RawData/%s/archive" % (DataSet_name)
 
-class Coronahack():
+
+class Coronahack:
     def __init__(self, dir, pixel, is_train):
 
         if is_train == True:
-            self.imgs_path = dir+"/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"
+            self.imgs_path = (
+                dir
+                + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"
+            )
         else:
-            self.imgs_path = dir+"/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
+            self.imgs_path = (
+                dir
+                + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
+            )
 
         self.data = []
-        with open(dir+"/Chest_xray_Corona_Metadata.csv", 'r') as file:
+        with open(dir + "/Chest_xray_Corona_Metadata.csv", "r") as file:
             csvreader = csv.reader(file)
             header = next(csvreader)
             for row in csvreader:
                 if is_train == True:
-                    if row[3]=="TRAIN":
+                    if row[3] == "TRAIN":
                         img_path = self.imgs_path + row[1]
-                        class_name = row[2]+row[4]+row[5]
+                        class_name = row[2] + row[4] + row[5]
                         self.data.append([img_path, class_name])
                 else:
-                    if row[3]=="TEST":
+                    if row[3] == "TEST":
                         img_path = self.imgs_path + row[1]
-                        class_name = row[2]+row[4]+row[5]
+                        class_name = row[2] + row[4] + row[5]
                         self.data.append([img_path, class_name])
 
-        class_name_list =[]
+        class_name_list = []
         for img_path, class_name in self.data:
             if class_name not in class_name_list:
                 class_name_list.append(class_name)
@@ -60,7 +63,7 @@ class Coronahack():
             self.class_map[class_name] = tmpcnt
             tmpcnt += 1
 
-        self.img_dim   = (pixel, pixel)
+        self.img_dim = (pixel, pixel)
 
     def __len__(self):
         return len(self.data)
@@ -75,25 +78,25 @@ class Coronahack():
 
         return img_tensor, class_id
 
-def get_data(comm : MPI.COMM_WORLD):
+
+def get_data(comm: MPI.COMM_WORLD):
     # test data for a server
-    test_data_raw=Coronahack(dir, num_pixel, is_train=False)
+    test_data_raw = Coronahack(dir, num_pixel, is_train=False)
 
     test_data_input = []
     test_data_label = []
     for idx in range(len(test_data_raw)):
-        test_data_input.append( test_data_raw[idx][0].tolist() )
-        test_data_label.append( test_data_raw[idx][1] )
+        test_data_input.append(test_data_raw[idx][0].tolist())
+        test_data_label.append(test_data_raw[idx][1])
 
     test_dataset = Dataset(
         torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
     )
 
-
     # training data for multiple clients
-    train_data_raw=Coronahack(dir, num_pixel, is_train=True)
+    train_data_raw = Coronahack(dir, num_pixel, is_train=True)
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
-    train_datasets=[]
+    train_datasets = []
     for i in range(num_clients):
         train_data_input = []
         train_data_label = []
@@ -102,31 +105,30 @@ def get_data(comm : MPI.COMM_WORLD):
             train_data_label.append(train_data_raw[idx][1])
 
         train_datasets.append(
-                Dataset(
-                    torch.FloatTensor(train_data_input),
-                    torch.tensor(train_data_label),
-                )
+            Dataset(
+                torch.FloatTensor(train_data_input),
+                torch.tensor(train_data_label),
             )
+        )
 
     data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)
     return train_datasets, test_dataset
 
+
 ## User-defined model
-def get_model(comm : MPI.COMM_WORLD):
+def get_model(comm: MPI.COMM_WORLD):
     model = CNN(num_channel, num_classes, num_pixel)
     return model
 
-## Run
 
-@hydra.main(config_path="../src/appfl/config", config_name="config")
-def main(cfg: DictConfig):
+def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
     ## Reproducibility
-    torch.manual_seed(1)    
-    torch.backends.cudnn.deterministic=True
+    torch.manual_seed(1)
+    torch.backends.cudnn.deterministic = True
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
@@ -135,6 +137,9 @@ def main(cfg: DictConfig):
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
+
+    # read default configuration
+    cfg = OmegaConf.structured(Config)
 
     if comm_size > 1:
         if comm_rank == 0:

@@ -39,7 +39,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         'torch',
-        'hydra-core',
+        'omegaconf',
     ],
     extras_require={
         "dev": [
