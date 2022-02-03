@@ -44,12 +44,12 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    filename = "Result_%s_%s_Batch_%s_PrivEps_%s" % (DataSet_name, cfg.fed.type, cfg.batch_training, cfg.fed.args.epsilon)
+    filename = "Result_%s_%s_Batch_%s_PrivEps_%s" % (DataSet_name, cfg.fed.type, cfg.fed.args.batch_training, cfg.fed.args.epsilon)
     if cfg.fed.type == "iiadmm":
         filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_CoeffGrad_%s_Penalty=%s_PrivEps_%s" % (
             DataSet_name,
             cfg.fed.type,
-            cfg.batch_training,
+            cfg.fed.args.batch_training,
             cfg.fed.args.accum_grad,
             cfg.fed.args.coeff_grad,
             cfg.fed.args.init_penalty,
@@ -59,7 +59,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_Penalty=%s_PrivEps_%s" % (
             DataSet_name,
             cfg.fed.type,
-            cfg.batch_training,
+            cfg.fed.args.batch_training,
             cfg.fed.args.accum_grad,
             cfg.fed.args.init_penalty,
             cfg.fed.args.epsilon,
@@ -72,7 +72,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         file = dir + "/%s_%d%s" % (filename, uniq, file_ext)
         uniq += 1
     outfile = open(file, "w")
-    title = "%12s %12s %12s %12s %12s %12s %12s %12s \n" % (
+    title = "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s \n" % (
         "Iter",
         "Local[s]",
         "Global[s]",
@@ -81,6 +81,10 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         "Elapsed[s]",
         "TestAvgLoss",
         "TestAccuracy",
+        "Prim_res",
+        "Dual_res",
+        "Penal_min",
+        "Penal_max"
     )
     outfile.write(title)
     print(title, end="")
@@ -97,8 +101,12 @@ def print_write_result_iteration(
     Elapsed_time,
     test_loss,
     accuracy,
+    prim_res,
+    dual_res,
+    rho_min,
+    rho_max,
 ):
-    results = "%12d %12.2f %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f \n" % (
+    results = "%12d %12.2f %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f %12.4e %12.4e %12.2f %12.2f \n" % (
         t + 1,
         LocalUpdate_time,
         GlobalUpdate_time,
@@ -107,6 +115,10 @@ def print_write_result_iteration(
         Elapsed_time,
         test_loss,
         accuracy,
+        prim_res,
+        dual_res,
+        rho_min,
+        rho_max,
     )
     print(results, end="")
     outfile.write(results)

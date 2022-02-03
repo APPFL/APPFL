@@ -10,6 +10,11 @@ class FedAvg:
         {
             "num_local_epochs": 1,
 
+            # Training Data Batch Info
+            "batch_training": False,
+            "train_data_batch_size": 8,
+            "train_data_shuffle": False,
+
             ## Optimizer
             "optim": "SGD",
             "optim_args": {

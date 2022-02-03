@@ -19,6 +19,8 @@ class IIADMMServer(BaseServer):
 
         self.__dict__.update(kwargs)
 
+        self.is_first_iter = 1
+
         """
         At initial, dual_state = 0
         """
@@ -29,9 +31,13 @@ class IIADMMServer(BaseServer):
     def update(self, local_states: OrderedDict):
 
         """ Inputs for the global model update"""
-        global_state = self.model.state_dict()
+        global_state = copy.deepcopy(self.model.state_dict())
         super(IIADMMServer, self).primal_recover_from_local_states(local_states)
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
+
+        """ residual calculation """
+        prim_res = super(IIADMMServer, self).primal_residual_at_server(global_state)  
+        dual_res = super(IIADMMServer, self).dual_residual_at_server()  
 
 
         """ global_state calculation """
@@ -58,13 +64,15 @@ class IIADMMServer(BaseServer):
         """ model update """
         self.model.load_state_dict(global_state)
 
+        return prim_res, dual_res, min(self.penalty.values()), max(self.penalty.values())
+
 
 
 class IIADMMClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
         super(IIADMMClient, self).__init__(id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
-        self.loss_fn = CrossEntropyLoss()
+        self.loss_fn = CrossEntropyLoss()        
 
         """
         At initial, (1) primal_state = global_state, (2) dual_state = 0
@@ -75,9 +83,7 @@ class IIADMMClient(BaseClient):
             self.dual_state[name] = torch.zeros_like(param.data)
 
         self.penalty = kwargs['init_penalty']
-        self.residual = OrderedDict()
-        self.residual['primal'] = 0
-        self.residual['dual'] = 0
+        self.is_first_iter = 1        
 
     def update(self):
 
@@ -89,13 +95,11 @@ class IIADMMClient(BaseClient):
         """ Inputs for the local model update """
         global_state = copy.deepcopy(self.model.state_dict())
 
-
-        ## TODO: residual_calculation + adaptive_penalty
-        ## Option 1: change penalty for every comm. round
-        if self.residual['primal'] == 0 and self.residual['dual'] == 0:
-            self.penalty = self.penalty
-        # else:
-
+        """ Adaptive Penalty (Residual Balancing) """   
+        if self.residual_balancing.res_on == True:
+            prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
+            dual_res = super(IIADMMClient, self).dual_residual_at_client()                        
+            super(IIADMMClient, self).residual_balancing(prim_res,dual_res)                
 
         """ Multiple local update """
         for i in range(self.num_local_epochs):
@@ -103,8 +107,10 @@ class IIADMMClient(BaseClient):
 
                 self.model.load_state_dict(self.primal_state)
 
-                ## TODO: residual_calculation + adaptive_penalty
-                ## Option 2: change penalty for every local iteration
+                if self.residual_balancing.res_on == True and self.residual_balancing.res_on_every_update == True:                
+                    prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
+                    dual_res = super(IIADMMClient, self).dual_residual_at_client()                        
+                    super(IIADMMClient, self).residual_balancing(prim_res,dual_res)                
 
                 data = data.to(self.device)
                 target = target.to(self.device)
@@ -124,11 +130,9 @@ class IIADMMClient(BaseClient):
                 coefficient = 1
                 if self.coeff_grad == True:
 
-                    # coefficient = (
-                    #     self.weight * len(target) / len(self.dataloader.dataset)
-                    # )
-
-                    coefficient = self.weight  ## NOTE: BATCH + FEMNIST, rho=0.07
+                    coefficient = (
+                        self.weight * len(target) / len(self.dataloader.dataset)
+                    )
 
                 self.iiadmm_step(coefficient, global_state, optimizer)
 
@@ -156,8 +160,17 @@ class IIADMMClient(BaseClient):
         return self.local_state
 
     def iiadmm_step(self, coefficient, global_state, optimizer):
-
-        momentum, weight_decay, dampening, nesterov = self.optimizer_setting()
+        
+        momentum = 0
+        if "momentum" in self.optim_args.keys():
+            momentum = self.optim_args.momentum
+        weight_decay = 0
+        if "weight_decay" in self.optim_args.keys():
+            weight_decay = self.optim_args.weight_decay
+        dampening = 0
+        if "dampening" in self.optim_args.keys():
+            dampening = self.optim_args.dampening
+        nesterov = False
 
         for name, param in self.model.named_parameters():
 
@@ -182,17 +195,4 @@ class IIADMMClient(BaseClient):
                 self.dual_state[name] - grad
             )
 
-
-    def optimizer_setting(self):
-        momentum = 0
-        if "momentum" in self.optim_args.keys():
-            momentum = self.optim_args.momentum
-        weight_decay = 0
-        if "weight_decay" in self.optim_args.keys():
-            weight_decay = self.optim_args.weight_decay
-        dampening = 0
-        if "dampening" in self.optim_args.keys():
-            dampening = self.optim_args.dampening
-        nesterov = False
-
-        return momentum, weight_decay, dampening, nesterov
+ 
