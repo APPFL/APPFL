@@ -29,7 +29,7 @@ class ICEADMMServer(BaseServer):
 
         """ residual calculation """
         prim_res = super(ICEADMMServer, self).primal_residual_at_server(global_state)  
-        dual_res = super(ICEADMMServer, self).dual_residual_at_server(global_state)  
+        dual_res = super(ICEADMMServer, self).dual_residual_at_server()  
 
         total_penalty = 0
         for i in range(self.num_clients):
