@@ -55,15 +55,14 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         )
         
     if cfg.fed.type == "admm" or cfg.fed.type == "iceadmm" or cfg.fed.type == "iiadmm":
-        filename = "Result_%s_%s_batch_%s_eps_%s_clip_%s_rho_%s_accum_%s_coeff_%s" % (
+        filename = "Result_%s_%s_batch_%s_eps_%s_clip_%s_rho_%s_prox_%s" % (
             DataSet_name,
             cfg.fed.type,
             cfg.train_data_batch_size,                    
             cfg.fed.args.epsilon,            
             cfg.fed.args.clip_value,            
             cfg.fed.args.init_penalty,            
-            cfg.fed.args.accum_grad,            
-            cfg.fed.args.coeff_grad,            
+            cfg.fed.args.init_proximity 
         )        
 
 
@@ -146,6 +145,7 @@ def print_write_result_summary(
     outfile.write("Local_Epochs=%s \n" % (cfg.fed.args.num_local_epochs))
     outfile.write("DP_Eps=%s \n" % (cfg.fed.args.epsilon))    
     outfile.write("Clipping=%s \n" % (cfg.fed.args.clip_value))    
+    outfile.write("Proximity=%s \n" % (cfg.fed.args.init_proximity))  
     outfile.write("Elapsed_time=%s \n" % (round(Elapsed_time, 2)))
     outfile.write("BestAccuracy=%s \n" % (round(BestAccuracy, 2)))
  
