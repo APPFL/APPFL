@@ -6,4 +6,3 @@ omegaconf
 grpcio
 numpy
 google
-mpi4py
