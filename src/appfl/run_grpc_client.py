@@ -22,7 +22,7 @@ def update_model_state(comm, model, round_number):
     new_state = {}
     for name in model.state_dict():
         nparray = comm.get_tensor_record(name, round_number)
-        new_state[name] = torch.from_numpy(nparray)
+        new_state[name] = torch.tensor(nparray)
     model.load_state_dict(new_state)
 
 def run_client(cfg        : DictConfig,
