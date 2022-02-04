@@ -1,18 +1,15 @@
-import sys
 import os
 import time
 
-## User-defined datasets
 import json
 import numpy as np
 import torch
 
+from appfl.config import *
 from appfl.misc.data import *
 from models.cnn import *
 import appfl.run as rt
-import hydra
 from mpi4py import MPI
-from omegaconf import DictConfig
 
 DataSet_name = "FEMNIST"
 num_clients = 203
@@ -22,7 +19,8 @@ num_pixel = 28  # image size = (num_pixel, num_pixel)
 
 dir = os.getcwd() + "/datasets/RawData/%s" % (DataSet_name)
 
-def get_data(comm : MPI.COMM_WORLD):
+
+def get_data(comm: MPI.COMM_WORLD):
     # test data for a server
     test_data_raw = {}
     test_data_input = []
@@ -71,21 +69,20 @@ def get_data(comm : MPI.COMM_WORLD):
     return train_datasets, test_dataset
 
 
-def get_model(comm : MPI.COMM_WORLD):
+def get_model(comm: MPI.COMM_WORLD):
     ## User-defined model
     model = CNN(num_channel, num_classes, num_pixel)
     return model
 
-## Run
-@hydra.main(config_path="../src/appfl/config", config_name="config")
-def main(cfg: DictConfig):
+
+def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
     ## Reproducibility
-    torch.manual_seed(1)    
-    torch.backends.cudnn.deterministic=True
+    torch.manual_seed(1)
+    torch.backends.cudnn.deterministic = True
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
@@ -94,6 +91,9 @@ def main(cfg: DictConfig):
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
+
+    # read default configuration
+    cfg = OmegaConf.structured(Config)
 
     if comm_size > 1:
         if comm_rank == 0:

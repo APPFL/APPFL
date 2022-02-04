@@ -1,14 +1,9 @@
-import hydra
 from omegaconf import DictConfig
 
-from collections import OrderedDict
 import torch
 import torch.nn as nn
 from torch.optim import *
 from torch.utils.data import DataLoader
-from torch.utils.data.distributed import DistributedSampler
-import torchvision
-from torchvision.transforms import ToTensor
 
 import copy
 import numpy as np
@@ -27,7 +22,7 @@ def update_model_state(comm, model, round_number):
     new_state = {}
     for name in model.state_dict():
         nparray = comm.get_tensor_record(name, round_number)
-        new_state[name] = torch.from_numpy(nparray)
+        new_state[name] = torch.tensor(nparray)
     model.load_state_dict(new_state)
 
 def run_client(cfg           : DictConfig,
