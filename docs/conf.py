@@ -47,6 +47,15 @@ extensions = [
         'nbsphinx',
 ]
 
+autodoc_mock_imports = [
+        "torch",
+        "omegaconf",
+        "grpcio",
+        "numpy",
+        "google",
+        "mpi4py",
+]
+
 # Add any paths that contain templates here, relative to this directory.
 # templates_path = [
 #         os.path.join(sphinx_book_theme.get_html_theme_path(), "_templates"),
