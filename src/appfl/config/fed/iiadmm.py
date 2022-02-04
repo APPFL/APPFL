@@ -10,11 +10,6 @@ class IIADMM:
         {
             "num_local_epochs": 1,
 
-            # Training Data Batch Info
-            "batch_training": False,
-            "train_data_batch_size": 8,
-            "train_data_shuffle": False,
-
             "accum_grad": True,
             "coeff_grad": False,
 
