@@ -1,5 +1,5 @@
 myst-parser
-sphinx-book-theme
+sphinx_rtd_theme
 nbsphinx
 torch
 omegaconf

@@ -14,8 +14,8 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../src'))
 
-import sphinx_book_theme
-
+# import sphinx_book_theme
+import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
 
@@ -42,15 +42,16 @@ extensions = [
         'sphinx.ext.ifconfig',
         'sphinx.ext.autosectionlabel',
         'myst_parser',
-        'sphinx_book_theme',
+        # 'sphinx_book_theme',
+        'sphinx_rtd_theme',
         'nbsphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = [
-        os.path.join(sphinx_book_theme.get_html_theme_path(), "_templates"),
-        '_templates'
-]
+# templates_path = [
+#         os.path.join(sphinx_book_theme.get_html_theme_path(), "_templates"),
+#         '_templates'
+# ]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -63,8 +64,9 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_data']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_book_theme'
-html_theme_path = [sphinx_book_theme.get_html_theme_path()]
+# html_theme = 'sphinx_book_theme'
+# html_theme_path = [sphinx_book_theme.get_html_theme_path()]
+html_theme = 'sphinx_rtd_theme'
 
 # html_logo = '_static/logo/appfl.png'
 
