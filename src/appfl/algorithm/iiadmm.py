@@ -59,6 +59,7 @@ class IIADMMServer(BaseServer):
                     - (1.0 / self.penalty[i]) * self.dual_states[i][name]
                 )
 
+
             global_state[name] = tmp / self.num_clients
 
         """ model update """
@@ -83,6 +84,7 @@ class IIADMMClient(BaseClient):
             self.dual_state[name] = torch.zeros_like(param.data)
 
         self.penalty = kwargs['init_penalty']
+        self.proximity = kwargs['init_proximity']
         self.is_first_iter = 1        
 
     def update(self):
@@ -94,6 +96,7 @@ class IIADMMClient(BaseClient):
 
         """ Inputs for the local model update """
         global_state = copy.deepcopy(self.model.state_dict())
+        self.primal_state = copy.deepcopy(self.model.state_dict())
 
         """ Adaptive Penalty (Residual Balancing) """   
         if self.residual_balancing.res_on == True:
@@ -104,8 +107,6 @@ class IIADMMClient(BaseClient):
         """ Multiple local update """
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
-
-                self.model.load_state_dict(self.primal_state)
 
                 if self.residual_balancing.res_on == True and self.residual_balancing.res_on_every_update == True:                
                     prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
@@ -122,20 +123,25 @@ class IIADMMClient(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
-                if self.clip_value != False:                                              
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                   
-
-
-                ## STEP: Update primal
+                """ gradient calculation """
                 coefficient = 1
                 if self.coeff_grad == True:
-
                     coefficient = (
                         self.weight * len(target) / len(self.dataloader.dataset)
                     )
+                
+                for _, param in self.model.named_parameters():
+                    param.grad = param.grad * coefficient                
 
-                self.iiadmm_step(coefficient, global_state, optimizer)
+                """ gradient clipping """
+                if self.clip_value != False:                                              
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                                   
 
+                ## STEP: Update primal               
+                self.iiadmm_step(global_state, optimizer)
+                self.model.load_state_dict(self.primal_state)
+
+        
         ## Update dual
         for name, param in self.model.named_parameters():
             self.dual_state[name] = self.dual_state[name] + self.penalty * (
@@ -146,10 +152,16 @@ class IIADMMClient(BaseClient):
         if self.epsilon != False:
             sensitivity = 0
             if self.clip_value != False:                           
-                sensitivity = 2.0 * self.clip_value / self.penalty             
+                sensitivity = 2.0 * self.clip_value / (self.penalty+self.proximity)            
             scale_value = sensitivity / self.epsilon            
             super(IIADMMClient, self).laplace_mechanism_output_perturb(scale_value)
         
+        
+        """ Increasing Proximity """
+        # self.proximity = min( round(self.proximity*self.prox_increase,2), self.prox_max)
+                     
+
+
         """ Update local_state """
         self.local_state = OrderedDict()
         self.local_state["primal"] = copy.deepcopy(self.primal_state)
@@ -159,7 +171,7 @@ class IIADMMClient(BaseClient):
 
         return self.local_state
 
-    def iiadmm_step(self, coefficient, global_state, optimizer):
+    def iiadmm_step(self, global_state, optimizer):
         
         momentum = 0
         if "momentum" in self.optim_args.keys():
@@ -174,7 +186,7 @@ class IIADMMClient(BaseClient):
 
         for name, param in self.model.named_parameters():
 
-            grad = copy.deepcopy(param.grad * coefficient)
+            grad = copy.deepcopy(param.grad)
 
             if weight_decay != 0:
                 grad.add_(weight_decay, self.primal_state[name])
@@ -190,9 +202,13 @@ class IIADMMClient(BaseClient):
                 else:
                     grad = buf
 
-            ## Update primal
-            self.primal_state[name] = global_state[name] + (1.0 / self.penalty) * (
-                self.dual_state[name] - grad
-            )
+            """ IADMM at Clients """
+            # self.primal_state[name] = global_state[name] + (1.0 / self.penalty) * (
+            #     self.dual_state[name] - grad
+            # )
 
- 
+            """ IADMM at Clients """
+            self.primal_state[name] = self.primal_state[name] - (1.0/(self.penalty+self.proximity)) * ( grad - self.dual_state[name] - self.penalty*(global_state[name]-self.primal_state[name]) )
+
+            # """ ADMM at Clients """
+            # self.primal_state[name] = self.primal_state[name] - self.optim_args.lr * ( grad - self.dual_state[name] - self.penalty*(global_state[name]-self.primal_state[name]) )

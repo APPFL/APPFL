@@ -5,18 +5,19 @@ clientname: IIADMMClient
 args:
   num_local_epochs: 10  
   
-  accum_grad: True
+  accum_grad: False
   coeff_grad: False
 
   ## Optimizer for a gradient calculation (esp., to use zero.grad)
   optim: SGD
   optim_args:    
     lr: 0.01
-    # momentum: 0.9
-    # weight_decay: 1e-5
+    momentum: 0.9
+    weight_decay: 1e-5
 
+  
   ## Penalty
-  init_penalty: 100
+  init_penalty: 1
   ## Adaptive penalty
   ## Residual balancing (see (3.13) in "Distributed Optimization and Statistical Learning via the ADMM")
   ## penalty = penalty*(tau) if prim_res > (mu)*dual_res
@@ -27,6 +28,10 @@ args:
     tau: 1.1
     mu: 10
 
+  ## Proximity
+  init_proximity: 200
+  prox_increase: 1.09
+  prox_max: 1500
 
   ## Differential Privacy 
   ##  epsilon: False  (non-private)
@@ -39,11 +44,7 @@ args:
   ## clip_value: 10    (clipping)
   ## clip_value: 1  
   clip_value: False
-<<<<<<< Updated upstream
-  clip_norm: 1
-=======
   clip_norm: 2
->>>>>>> Stashed changes
 
 
   
