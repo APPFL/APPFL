@@ -39,6 +39,8 @@ class BaseServer:
         Return:
             Tuple[float, float, float, float]: primal residual, dual residual, minimum rho, maximum rho
         """
+
+        # TODO: This return type may not be ideal.
         return 0.0, 0.0, 0.0, 0.0
 
     def get_model(self) -> nn.Module:
