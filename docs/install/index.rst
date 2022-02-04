@@ -37,7 +37,7 @@ If you want to even minimize the installation of package dependencies, you can u
 Developer installation
 ----------------------
 
-Code developers and contributors may want to work on the local repositofy. 
+Code developers and contributors may want to work on the local repository. 
 To set up the development environment, 
 
 .. code-block:: console

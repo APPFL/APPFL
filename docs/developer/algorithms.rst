@@ -39,7 +39,7 @@ This is an example code:
             # Any additional initialization
 
         def update(self, local_states: OrderedDict):
-            # Implement new client update function
+            # Implement new server update function
 
     class NewAlgoClient(BaseClient):
         def __init__(self, id, weight, model, dataloader, device, **kwargs):
@@ -55,7 +55,7 @@ Configuration dataclass
 +++++++++++++++++++++++
 
 The new algorithm also needs to set up some configurations. This can be done by adding new dataclass under ``appfl.config.fed``.
-Let's say we add ``src/appfl/config/fed/newalgo.py`` file to implement the datacass as follows:
+Let's say we add ``src/appfl/config/fed/newalgo.py`` file to implement the dataclass as follows:
 
 .. code-block:: python
     :caption: Example code for ``src/appfl/config/fed/newalgo.py``
