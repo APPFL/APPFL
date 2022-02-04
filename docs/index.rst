@@ -35,9 +35,15 @@ Table of Contents
    :titlesonly:
    :caption: Developers Guide
 
+   developer/how_to_contribute
    developer/algorithms
    developer/how_to_test
    README
+
+.. toctree::
+   :maxdepth: 2
+
+   developer/release_guide
 
 
 Acknowledgement
