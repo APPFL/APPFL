@@ -7,7 +7,7 @@ Machine-specific installation steps may be added later.
 Conda environment
 -----------------
 
-We recommend to create new Conda virtual environment and install the required packages for APPFL.
+We highly recommend to create new Conda virtual environment and install the required packages for APPFL.
 
 .. code-block:: console
 
