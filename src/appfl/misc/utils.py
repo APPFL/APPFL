@@ -44,12 +44,12 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    filename = "Result_%s_%s_Batch_%s_PrivEps_%s" % (DataSet_name, cfg.fed.type, cfg.fed.args.batch_training, cfg.fed.args.epsilon)
+    filename = "Result_%s_%s_Batch_%s_PrivEps_%s" % (DataSet_name, cfg.fed.type, cfg.batch_training, cfg.fed.args.epsilon)
     if cfg.fed.type == "iiadmm":
         filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_CoeffGrad_%s_Penalty=%s_PrivEps_%s" % (
             DataSet_name,
             cfg.fed.type,
-            cfg.fed.args.batch_training,
+            cfg.batch_training,
             cfg.fed.args.accum_grad,
             cfg.fed.args.coeff_grad,
             cfg.fed.args.init_penalty,
@@ -59,7 +59,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_Penalty=%s_PrivEps_%s" % (
             DataSet_name,
             cfg.fed.type,
-            cfg.fed.args.batch_training,
+            cfg.batch_training,
             cfg.fed.args.accum_grad,
             cfg.fed.args.init_penalty,
             cfg.fed.args.epsilon,

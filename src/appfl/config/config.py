@@ -12,6 +12,11 @@ class Config:
 
     # Number of training epochs
     num_epochs: int = 2
+    
+    # Training Data Batch Info
+    batch_training: bool = True
+    train_data_batch_size: int = 64
+    train_data_shuffle: bool = False
 
     # Testing Data Batch Info
     test_data_batch_size: int = 64
