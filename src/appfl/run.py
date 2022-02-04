@@ -268,7 +268,7 @@ def run_client(
 
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        batchsize[cid] = cfg.fed.args.train_data_batch_size
+        batchsize[cid] = cfg.train_data_batch_size
         if cfg.batch_training == False:
             batchsize[cid] = len(train_datasets[cid])
 
@@ -281,7 +281,7 @@ def run_client(
                 train_datasets[cid],
                 num_workers=0,
                 batch_size=batchsize[cid],
-                shuffle=cfg.fed.args.train_data_shuffle,
+                shuffle=cfg.train_data_shuffle,
             ),
             device,
             **cfg.fed.args,
