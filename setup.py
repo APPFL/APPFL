@@ -39,6 +39,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         'torch',
+        'grpcio',
         'mpi4py',
         'omegaconf',
     ],
