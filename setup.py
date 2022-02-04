@@ -55,6 +55,7 @@ setuptools.setup(
             "build",
             "black",
             "pytest",
+            "pytest-mpi",
         ],
         "analytics": [
             "jupyter",
