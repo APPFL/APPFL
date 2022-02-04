@@ -52,7 +52,8 @@ autodoc_mock_imports = [
         "omegaconf",
         "grpc",
         "numpy",
-        # "google",
+        "google",
+        "protobuf",
         "mpi4py",
 ]
 
