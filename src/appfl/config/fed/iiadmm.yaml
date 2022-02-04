@@ -4,14 +4,6 @@ clientname: IIADMMClient
 
 args:
   num_local_epochs: 10  
-<<<<<<< Updated upstream
-
-  ## Training Data Batch Info
-  batch_training: True
-  train_data_batch_size: 8
-  train_data_shuffle: False
-=======
->>>>>>> Stashed changes
   
   accum_grad: True
   coeff_grad: False
@@ -19,7 +11,7 @@ args:
   ## Optimizer for a gradient calculation (esp., to use zero.grad)
   optim: SGD
   optim_args:    
-    lr: 0
+    lr: 0.01
     # momentum: 0.9
     # weight_decay: 1e-5
 

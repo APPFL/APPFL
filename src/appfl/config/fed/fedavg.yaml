@@ -5,14 +5,6 @@ clientname: FedAvgClient
 args:  
   num_local_epochs: 10
 
-<<<<<<< Updated upstream
-  ## Training Data Batch Info
-  batch_training: True
-  train_data_batch_size: 8
-  train_data_shuffle: False
-
-=======
->>>>>>> Stashed changes
   ## Optimizer
   optim: SGD
   optim_args:    
@@ -31,9 +23,5 @@ args:
   ## clip_value: 10    (clipping)
   ## clip_value: 1  
   clip_value: False
-<<<<<<< Updated upstream
-  clip_norm: 1
-=======
   clip_norm: 2
->>>>>>> Stashed changes
 
