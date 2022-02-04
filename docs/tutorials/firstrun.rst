@@ -2,7 +2,7 @@ Our first run: MNIST
 ====================
 
 We present how to run an example script for APPFL. 
-We first make sure that the dependencies are install and change the directory to `examples` directory.
+We first make sure that the dependencies are installed and change the directory to `examples` directory.
 
 .. code-block:: console
 
