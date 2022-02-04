@@ -50,7 +50,7 @@ extensions = [
 autodoc_mock_imports = [
         "torch",
         "omegaconf",
-        "grpcio",
+        "grpc",
         "numpy",
         "google",
         "mpi4py",
