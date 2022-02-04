@@ -36,6 +36,7 @@ Table of Contents
    :caption: Developers Guide
 
    developer/algorithms
+   developer/how_to_test
    README
 
 
