@@ -14,6 +14,7 @@ Table of Contents
 
 .. toctree::
    :maxdepth: 2
+   :titlesonly:
    :caption: Getting Started
 
    install/index
@@ -21,6 +22,7 @@ Table of Contents
 
 .. toctree::
    :maxdepth: 2
+   :titlesonly:
    :caption: Users Guide
    
    users/user_run
@@ -30,6 +32,7 @@ Table of Contents
 
 .. toctree::
    :maxdepth: 2
+   :titlesonly:
    :caption: Developers Guide
 
    developer/algorithms
