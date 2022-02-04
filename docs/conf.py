@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../src/appfl'))
+sys.path.insert(0, os.path.abspath('../src'))
 
 import sphinx_book_theme
 
