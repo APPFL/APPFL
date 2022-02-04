@@ -39,13 +39,16 @@ setuptools.setup(
     install_requires=[
         "numpy",
         'torch',
+        'grpcio',
+        'google',
         'mpi4py',
         'omegaconf',
     ],
     extras_require={
         "dev": [
             "sphinx",
-            "sphinx-book-theme",
+            # "sphinx-book-theme",
+            "sphinx_rtd_theme",
             "myst-parser",
             "nbsphinx",
             "twine",
