@@ -1,7 +1,7 @@
 """
 APPFL is a privacy-preserving federated learning framework that allows users to implement a federated learning environment with 
 
-* user-defined neural network models (based on `torch.nn.Module`)
+* user-defined neural network models (based on ``torch.nn.Module``)
 * customized algorithms
 * privacy techniques. 
 

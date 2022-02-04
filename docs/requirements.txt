@@ -1,0 +1,5 @@
+myst-parser
+sphinx_rtd_theme
+nbsphinx
+google
+protobuf
