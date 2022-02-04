@@ -15,7 +15,7 @@ examples/datasets/RawData/MNIST
 examples/datasets/RawData/cifar-10-python.tar.gz
 examples/datasets/PreprocessedData/Coronahack_Clients_4
 outputs/*
- 
+mryu_lib/* 
 
 
 # Byte-compiled / optimized / DLL files
@@ -147,8 +147,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-appfl/privacy/library.py
 examples/femnist_test_swing.py
 examples/mnist_test_swing.py
-src/appfl/algorithm/admm.py
-src/appfl/config/fed/admm.yaml
+

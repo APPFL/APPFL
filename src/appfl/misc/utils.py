@@ -44,26 +44,28 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    filename = "Result_%s_%s_Batch_%s_PrivEps_%s" % (DataSet_name, cfg.fed.type, cfg.batch_training, cfg.fed.args.epsilon)
-    if cfg.fed.type == "iiadmm":
-        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_CoeffGrad_%s_Penalty=%s_PrivEps_%s" % (
+
+    if cfg.fed.type == "fedavg":
+        filename = "Result_%s_%s_batch_%s_eps_%s_clip_%s" % (
             DataSet_name,
             cfg.fed.type,
-            cfg.batch_training,
-            cfg.fed.args.accum_grad,
-            cfg.fed.args.coeff_grad,
-            cfg.fed.args.init_penalty,
+            cfg.train_data_batch_size,                    
             cfg.fed.args.epsilon,            
+            cfg.fed.args.clip_value,            
         )
-    if cfg.fed.type == "iceadmm":
-        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_Penalty=%s_PrivEps_%s" % (
+        
+    if cfg.fed.type == "admm" or cfg.fed.type == "iceadmm" or cfg.fed.type == "iiadmm":
+        filename = "Result_%s_%s_batch_%s_eps_%s_clip_%s_rho_%s_accum_%s_coeff_%s" % (
             DataSet_name,
             cfg.fed.type,
-            cfg.batch_training,
-            cfg.fed.args.accum_grad,
-            cfg.fed.args.init_penalty,
-            cfg.fed.args.epsilon,
+            cfg.train_data_batch_size,                    
+            cfg.fed.args.epsilon,            
+            cfg.fed.args.clip_value,            
+            cfg.fed.args.init_penalty,            
+            cfg.fed.args.accum_grad,            
+            cfg.fed.args.coeff_grad,            
         )        
+
 
     file_ext = ".txt"
     file = dir + "/%s%s" % (filename, file_ext)

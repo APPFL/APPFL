@@ -22,9 +22,9 @@ class FedAvgServer(BaseServer):
         """ Inputs for the global model update """
         global_state = copy.deepcopy(self.model.state_dict())
         super(FedAvgServer, self).primal_recover_from_local_states(local_states)
-
+        
         """ residual calculation """
-        prim_res = super(FedAvgServer, self).primal_residual_at_server(global_state)        
+        prim_res = super(FedAvgServer, self).primal_residual_at_server(global_state)   
 
         """ global_state calculation """
         for name, _ in self.model.named_parameters():
