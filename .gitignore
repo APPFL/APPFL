@@ -18,6 +18,7 @@ outputs/*
 _data
 docs/notebooks/results
 results
+mryu_lib/*
  
 
 
