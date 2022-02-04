@@ -72,15 +72,15 @@ html_theme = 'sphinx_rtd_theme'
 
 html_theme_options = {
     # header settings
-    "repository_url": "https://github.com/APPFL/APPFL",
-    "use_repository_button": True,
-    "use_issues_button": True,
-    "use_edit_page_button": True,
-    "repository_branch": "main",
-    "path_to_docs": "docs",
-    "use_download_button": False,
+#     "repository_url": "https://github.com/APPFL/APPFL",
+#     "use_repository_button": True,
+#     "use_issues_button": True,
+#     "use_edit_page_button": True,
+#     "repository_branch": "main",
+#     "path_to_docs": "docs",
+#     "use_download_button": False,
     # sidebar settings
-    "show_navbar_depth": 1,
+#     "show_navbar_depth": 1,
 #     "logo_only": True,
 }
 
