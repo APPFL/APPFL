@@ -40,6 +40,7 @@ setuptools.setup(
         "numpy",
         'torch',
         'grpcio',
+        'google',
         'mpi4py',
         'omegaconf',
     ],
