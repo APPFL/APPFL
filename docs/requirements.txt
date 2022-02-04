@@ -3,3 +3,5 @@ sphinx-book-theme
 nbsphinx
 torch
 omegaconf
+grpcio
+numpy
