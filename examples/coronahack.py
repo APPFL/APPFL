@@ -21,7 +21,7 @@ dir = os.getcwd() + "/datasets/PreprocessedData/%s_Clients_%s" % (
 )
 
 
-def get_data(comm: MPI.COMM_WORLD):
+def get_data(comm: MPI.Comm):
     # test data for a server
     with open("%s/all_test_data.json" % (dir)) as f:
         test_data_raw = json.load(f)
@@ -47,7 +47,7 @@ def get_data(comm: MPI.COMM_WORLD):
     return train_datasets, test_dataset
 
 
-def get_model(comm: MPI.COMM_WORLD):
+def get_model(comm: MPI.Comm):
     ## User-defined model
     model = CNN(num_channel, num_classes, num_pixel)
     return model

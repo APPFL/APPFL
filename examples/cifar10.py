@@ -21,7 +21,7 @@ num_pixel = 32  # image size = (num_pixel, num_pixel)
 dir = os.getcwd() + "/datasets/RawData"
 
 
-def get_data(comm: MPI.COMM_WORLD):
+def get_data(comm: MPI.Comm):
     comm_rank = comm.Get_rank()
 
     # Root download the data if not already available.
@@ -74,7 +74,7 @@ def get_data(comm: MPI.COMM_WORLD):
     return train_datasets, test_dataset
 
 
-def get_model(comm: MPI.COMM_WORLD):
+def get_model(comm: MPI.Comm):
     ## User-defined model
     model = CNN(num_channel, num_classes, num_pixel)
     return model
