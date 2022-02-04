@@ -17,6 +17,7 @@ examples/datasets/PreprocessedData/Coronahack_Clients_4
 outputs/*
 _data
 docs/notebooks/results
+results
 mryu_lib/*
  
 
