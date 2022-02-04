@@ -48,7 +48,8 @@ class FLClient():
         start = time.time()
         response = self.stub.GetTensorRecord(request)
         end = time.time()
-        self.time_get_tensor += end - start
+        if round_number > 1:
+            self.time_get_tensor += end - start
         shape = tuple(response.data_shape)
         flat = np.frombuffer(response.data_bytes, dtype=np.float32)
         nparray = np.reshape(flat, newshape=shape, order='C')
@@ -60,8 +61,8 @@ class FLClient():
         return response.weight
 
     def send_learning_results(self, penalty, primal, dual, round_number):
-        primal_tensors = [utils.construct_tensor_record(k, np.array(v)) for k,v in primal.items()]
-        dual_tensors = [utils.construct_tensor_record(k, np.array(v)) for k,v in dual.items()]
+        primal_tensors = [utils.construct_tensor_record(k, np.array(v.cpu())) for k,v in primal.items()]
+        dual_tensors = [utils.construct_tensor_record(k, np.array(v.cpu())) for k,v in dual.items()]
         proto = LearningResults(header=self.header, round_number=round_number, penalty=penalty[self.client_id], primal=primal_tensors, dual=dual_tensors)
 
         databuffer = []
@@ -69,7 +70,8 @@ class FLClient():
         start = time.time()
         self.stub.SendLearningResults(iter(databuffer))
         end = time.time()
-        self.time_send_results += end - start
+        if round_number > 1:
+            self.time_send_results += end - start
 
     def get_comm_time(self):
         return self.time_get_job+self.time_get_tensor+self.time_send_results
