@@ -62,6 +62,8 @@ def run_serial(
         weights, copy.deepcopy(model), num_clients, cfg.device, **cfg.fed.args
     )
 
+    server.model.to(cfg.device)
+
     batchsize = {}
     for k in range(num_clients):
         batchsize[k] = cfg.train_data_batch_size
