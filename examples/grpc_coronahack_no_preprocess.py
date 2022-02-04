@@ -80,7 +80,7 @@ class Coronahack:
         return img_tensor, class_id
 
 
-def get_data(comm: MPI.COMM_WORLD):
+def get_data(comm: MPI.Comm):
     # test data for a server
     test_data_raw = Coronahack(dir, num_pixel, is_train=False)
 
@@ -117,7 +117,7 @@ def get_data(comm: MPI.COMM_WORLD):
 
 
 ## User-defined model
-def get_model(comm: MPI.COMM_WORLD):
+def get_model(comm: MPI.Comm):
     model = CNN(num_channel, num_classes, num_pixel)
     return model
 

@@ -1,0 +1,25 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  APPFL: Argonne Privacy-Preserving Federated
+  Learning
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Minseok
+    family-names: Ryu
+    email: mryu@anl.gov
+    affiliation: Argonne National Laboratory
+  - given-names: Kibaek
+    family-names: Kim
+    email: kimk@anl.gov
+    affiliation: Argonne National Laboratory
+    orcid: 'https://orcid.org/0000-0002-5820-6533'
+  - given-names: Youngdae
+    family-names: Kim
+    email: youngdae@anl.gov
+    affiliation: Argonne National Laboratory
