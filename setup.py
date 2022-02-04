@@ -38,7 +38,8 @@ setuptools.setup(
     python_requires=">=3.6",
     install_requires=[
         "numpy",
-        'torch >= 1.9.1',
+        'torch',
+        'mpi4py',
         'omegaconf',
     ],
     extras_require={
@@ -46,6 +47,7 @@ setuptools.setup(
             "sphinx",
             "sphinx-book-theme",
             "myst-parser",
+            "nbsphinx",
             "twine",
             "build",
             "black",
@@ -59,7 +61,6 @@ setuptools.setup(
         "examples": [
             "opencv-python",
             "torchvision",
-            'mpi4py',
         ],
     },
 )

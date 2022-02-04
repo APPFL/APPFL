@@ -1,26 +1,37 @@
-Your first run
-==============
+Our first run: MNIST
+====================
 
-You should be ready to run the first example for APPFL. The first example can be simply done by this:
-
-.. code-block:: console
-
-    $ python appfl/run
-
-You can run it in parallel using MPI (assuming that all clients are trained in the same cluster):
+We present how to run an example script for APPFL. 
+We first make sure that the dependencies are install and change the directory to `examples` directory.
 
 .. code-block:: console
 
-    $ mpiexec -np 2 python appfl/run
+    $ git clone https://github.com/APPFL/APPFL.git
+    $ cd APPFL
+    $ pip install -e ".[examples]"
+    $ cd examples
 
+The first example can be simply run by this:
 
-What did you just run?
-----------------------
+.. code-block:: console
 
-The APPFL run is defined in and reads the following configuration file:
+    $ python mnist.py
 
-.. literalinclude:: /../appfl/config/config.yaml
-    :language: YAML
-    :caption: Configuration file: appfl/config/config.yaml
+If we want to run it in parallel using MPI (assuming that all clients are trained in the same cluster), we can run the same example as
 
-Please find details about the syntax for the configuration file in `Hydra <https://hydra.cc>`_.
+.. code-block:: console
+
+    $ mpiexec -np 5 python mnist.py
+
+We can also simulate PPFL with gRPC.
+
+.. code-block:: console
+
+    $ mpiexec -np 5 python grpc_mnist.py
+
+.. note::
+
+    ``mpiexec`` may need to specify additional argument to use CUDA: ``--mca opal_cuda_support 1``
+
+Our first run is training MNIST in a federated learning setting with the default configuration.
+Learn more about :ref:`How to set configuration`.

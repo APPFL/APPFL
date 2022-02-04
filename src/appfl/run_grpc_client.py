@@ -25,10 +25,19 @@ def update_model_state(comm, model, round_number):
         new_state[name] = torch.tensor(nparray)
     model.load_state_dict(new_state)
 
-def run_client(cfg           : DictConfig,
-               comm_rank     : int,
-               model         : nn.Module,
-               train_dataset : Dataset) -> None:
+def run_client(cfg        : DictConfig,
+               comm_rank  : int,
+               model      : nn.Module,
+               train_data : Dataset) -> None:
+    """Launch gRPC client to connect to the server specified in the configuration.
+
+    Args:
+        cfg (DictConfig): the configuration for this run
+        comm_rank (int): MPI rank
+        model (nn.Module): neural network model to train
+        train_data (Dataset): training data
+    """
+
     logger = logging.getLogger(__name__)
     uri = cfg.server.host + ':' + str(cfg.server.port)
     cid = comm_rank - 1
@@ -41,14 +50,14 @@ def run_client(cfg           : DictConfig,
 
     batch_size = cfg.train_data_batch_size
     if cfg.batch_training == False:
-        batchsize = len(train_dataset)
+        batchsize = len(train_data)
 
     comm = FLClient(cid, uri, max_message_size=cfg.max_message_size)
 
     # Try up to 10 times to retrieve its weight from a server.
     weight = -1.0
     for _ in range(10):
-        weight = comm.get_weight(len(train_dataset))
+        weight = comm.get_weight(len(train_data))
         if weight >= 0.0:
             break
         time.sleep(5)
@@ -61,7 +70,7 @@ def run_client(cfg           : DictConfig,
         cid,
         weight,
         copy.deepcopy(model),
-        DataLoader(train_dataset,
+        DataLoader(train_data,
                    num_workers=0,
                    batch_size=batch_size,
                    shuffle=cfg.train_data_shuffle),
