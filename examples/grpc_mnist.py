@@ -1,4 +1,6 @@
+import sys
 import time
+import logging
 
 ## User-defined datasets
 import numpy as np
@@ -79,6 +81,8 @@ def get_model(comm: MPI.COMM_WORLD):
 
 
 def main():
+
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
