@@ -87,6 +87,6 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-html_copy_source = False
+# html_copy_source = False
 
 nbsphinx_execute = 'never'
