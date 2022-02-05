@@ -47,7 +47,6 @@ setuptools.setup(
     extras_require={
         "dev": [
             "sphinx",
-            # "sphinx-book-theme",
             "sphinx_rtd_theme",
             "myst-parser",
             "nbsphinx",
