@@ -156,3 +156,5 @@ examples/femnist_test_swing.py
 examples/mnist_test_swing.py
 src/appfl/algorithm/admm.py
 src/appfl/config/fed/admm.yaml
+examples/test.py
+.gitignore
