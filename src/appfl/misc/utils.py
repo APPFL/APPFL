@@ -164,8 +164,4 @@ def save_model(model, cfg: DictConfig, filename: str):
     model_scripted = torch.jit.script(model) # Export to TorchScript
     model_scripted.save(file) # Save
 
-    for name, param in model.named_parameters():
-        if name == "conv1.bias":
-            print(param.data)
-
-
+    
