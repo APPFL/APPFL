@@ -159,7 +159,7 @@ def run_server(
         DataSet_name (str): dataset name
     """
 
-    outfile = print_write_result_title(cfg, DataSet_name)
+    outfile, filename = print_write_result_title(cfg, DataSet_name)
 
     ## Start
     comm_size = comm.Get_size()
@@ -261,6 +261,14 @@ def run_server(
     print_write_result_summary(
         cfg, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
+ 
+    """ save model """
+    save_model(server.model, cfg, filename)
+    
+
+
+
+    
 
 
 def run_client(

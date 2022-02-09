@@ -88,7 +88,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     )
     outfile.write(title)
     print(title, end="")
-    return outfile
+    return outfile, filename
 
 
 def print_write_result_iteration(
@@ -149,3 +149,23 @@ def print_write_result_summary(
  
 
     outfile.close()
+
+
+def save_model(model, cfg: DictConfig, filename: str):
+    dir = cfg.result_dir
+    
+    file_ext = ".pt"
+    file = dir + "/%s%s" % (filename, file_ext)
+    uniq = 1
+    while os.path.exists(file):
+        file = dir + "/%s_%d%s" % (filename, uniq, file_ext)
+        uniq += 1
+     
+    model_scripted = torch.jit.script(model) # Export to TorchScript
+    model_scripted.save(file) # Save
+
+    for name, param in model.named_parameters():
+        if name == "conv1.bias":
+            print(param.data)
+
+
