@@ -54,7 +54,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
             cfg.fed.args.clip_value,            
         )
         
-    if cfg.fed.type == "admm" or cfg.fed.type == "iceadmm" or cfg.fed.type == "iiadmm":
+    if cfg.fed.type == "iiadmmdual" or cfg.fed.type == "iceadmm" or cfg.fed.type == "iiadmm":
         filename = "Result_%s_%s_batch_%s_eps_%s_clip_%s_rho_%s_prox_%s" % (
             DataSet_name,
             cfg.fed.type,

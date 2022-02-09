@@ -159,7 +159,12 @@ class IIADMMClient(BaseClient):
         
         """ Increasing Proximity """
         # self.proximity = min( round(self.proximity*self.prox_increase,2), self.prox_max)
-                     
+        # self.is_first_iter += 1
+        # if self.is_first_iter % 10 == 0: 
+        #     self.proximity *= 2
+          
+
+        
 
 
         """ Update local_state """
@@ -202,13 +207,7 @@ class IIADMMClient(BaseClient):
                 else:
                     grad = buf
 
-            """ IADMM at Clients """
-            # self.primal_state[name] = global_state[name] + (1.0 / self.penalty) * (
-            #     self.dual_state[name] - grad
-            # )
 
             """ IADMM at Clients """
             self.primal_state[name] = self.primal_state[name] - (1.0/(self.penalty+self.proximity)) * ( grad - self.dual_state[name] - self.penalty*(global_state[name]-self.primal_state[name]) )
-
-            # """ ADMM at Clients """
-            # self.primal_state[name] = self.primal_state[name] - self.optim_args.lr * ( grad - self.dual_state[name] - self.penalty*(global_state[name]-self.primal_state[name]) )
+ 

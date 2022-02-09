@@ -45,9 +45,11 @@ class ICEADMMServer(BaseServer):
                 )
                 self.dual_states[i][name] = self.dual_states[i][name].to(self.device)
                 ## computation
-                tmp += (self.penalty[i] / total_penalty) * self.primal_states[i][name] + (
-                    1.0 / total_penalty
-                ) * self.dual_states[i][name]
+                # tmp += (self.penalty[i] / total_penalty) * self.primal_states[i][name] + (
+                #     1.0 / total_penalty
+                # ) * self.dual_states[i][name]
+
+                tmp += self.weights[i] * self.primal_states[i][name] + self.optim_args.lr * self.dual_states[i][name]
 
             global_state[name] = tmp
 
@@ -82,7 +84,7 @@ class ICEADMMClient(BaseClient):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
         """ Inputs for the local model update """         
-        global_state = copy.deepcopy(self.model.state_dict())        
+        global_state = copy.deepcopy(self.model.state_dict())           
 
         """ Adaptive Penalty (Residual Balancing) """   
         if self.residual_balancing.res_on == True:
@@ -95,7 +97,7 @@ class ICEADMMClient(BaseClient):
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
 
-                self.model.load_state_dict(self.primal_state)
+                self.model.load_state_dict(self.primal_state) 
 
                 if self.residual_balancing.res_on == True and self.residual_balancing.res_on_every_update == True:                
                     prim_res = super(ICEADMMClient, self).primal_residual_at_client(global_state)
@@ -111,22 +113,42 @@ class ICEADMMClient(BaseClient):
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
                 loss.backward()
-
-                if self.clip_value != False:                                              
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                   
-
-                ## STEP: Update primal and dual
-                coefficient = 1
-                if self.coeff_grad == True:
-                    coefficient = self.weight * len(target) / len(self.dataloader.dataset)                
                 
-                self.iceadmm_step(coefficient, global_state)    
+                ## Update local and dual
+                for name, param in self.model.named_parameters():
+                    
+                    grad = param.grad * self.weight * len(target) / len(self.dataloader.dataset)
+
+                    self.primal_state[name] = self.primal_state[name] - ( self.penalty*(self.primal_state[name]-global_state[name]) + grad + self.dual_state[name]) /  (self.weight * self.proximity + self.penalty) 
+
+                    self.dual_state[name] = self.dual_state[name] + self.penalty*(self.primal_state[name]-global_state[name])
+                    
+
+                """ gradient calculation """
+                # coefficient = 1
+                # if self.coeff_grad == True:
+                #     coefficient = (
+                #         self.weight * len(target) / len(self.dataloader.dataset)
+                #     )
+                
+                # for _, param in self.model.named_parameters():
+                #     param.grad = param.grad * coefficient                
+
+                """ gradient clipping """
+                if self.clip_value != False:                                              
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                                   
+          
+
+                ## STEP: Update primal and dual                                        
+                # self.iceadmm_step(global_state)   
+                
+
  
         """ Differential Privacy  """
         if self.epsilon != False:
             sensitivity = 0
             if self.clip_value != False:                           
-                sensitivity = 2.0 * self.clip_value / self.penalty
+                sensitivity = 2.0 * self.clip_value / (self.weight * self.proximity + self.penalty)
             scale_value = sensitivity / self.epsilon            
             super(ICEADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 
@@ -139,16 +161,16 @@ class ICEADMMClient(BaseClient):
 
         return self.local_state
 
-    def iceadmm_step(self,coefficient,global_state):
+    def iceadmm_step(self,global_state):
         for name, param in self.model.named_parameters():
 
-            grad = param.grad * coefficient
+            grad = param.grad
             ## Update primal
             self.primal_state[name] = self.primal_state[name] - (
                 self.penalty * (self.primal_state[name] - global_state[name])
-                + grad
-                + self.dual_state[name]
+                + grad  + self.dual_state[name]
             ) / (self.weight * self.proximity + self.penalty)
+            
             ## Update dual
             self.dual_state[name] = self.dual_state[name] + self.penalty * (
                 self.primal_state[name] - global_state[name]

@@ -18,7 +18,7 @@ from .misc.utils import *
 from .algorithm.fedavg import *
 from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
-from .algorithm.admm import *
+from .algorithm.iiadmmdual import *
 
 
 def run_serial(

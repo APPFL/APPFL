@@ -13,9 +13,9 @@ import copy
 import math
 
 
-class ADMMServer(BaseServer):
+class IIADMMDualServer(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
-        super(ADMMServer, self).__init__(weights, model, num_clients, device)
+        super(IIADMMDualServer, self).__init__(weights, model, num_clients, device)
 
         self.__dict__.update(kwargs)
 
@@ -32,16 +32,17 @@ class ADMMServer(BaseServer):
 
         """ Inputs for the global model update"""
         global_state = copy.deepcopy(self.model.state_dict())
-        super(ADMMServer, self).primal_recover_from_local_states(local_states)
-        super(ADMMServer, self).penalty_recover_from_local_states(local_states)
+        super(IIADMMDualServer, self).primal_recover_from_local_states(local_states)
+        super(IIADMMDualServer, self).dual_recover_from_local_states(local_states)
+        super(IIADMMDualServer, self).penalty_recover_from_local_states(local_states)
 
         """ residual calculation """
-        prim_res = super(ADMMServer, self).primal_residual_at_server(global_state)  
-        dual_res = super(ADMMServer, self).dual_residual_at_server()  
+        prim_res = super(IIADMMDualServer, self).primal_residual_at_server(global_state)  
+        dual_res = super(IIADMMDualServer, self).dual_residual_at_server()  
 
 
         """ global_state calculation """
-        for name, _ in self.model.named_parameters():
+        for name, param in self.model.named_parameters():
             tmp = 0.0
             for i in range(self.num_clients):
 
@@ -49,18 +50,18 @@ class ADMMServer(BaseServer):
                 self.primal_states[i][name] = self.primal_states[i][name].to(
                     self.device
                 )
-                ## dual
-                self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[i] * (
-                    global_state[name] - self.primal_states[i][name]
+                self.dual_states[i][name] = self.dual_states[i][name].to(
+                    self.device
                 )
+                
                 ## computation
-                tmp += (1.0 / self.num_clients) * (
+                tmp += (
                     self.primal_states[i][name]
                     - (1.0 / self.penalty[i]) * self.dual_states[i][name]
-                )                
+                )
 
 
-            global_state[name] = tmp 
+            global_state[name] = tmp / self.num_clients
 
         """ model update """
         self.model.load_state_dict(global_state)
@@ -69,9 +70,9 @@ class ADMMServer(BaseServer):
 
 
 
-class ADMMClient(BaseClient):
+class IIADMMDualClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(ADMMClient, self).__init__(id, weight, model, dataloader, device)
+        super(IIADMMDualClient, self).__init__(id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
         self.loss_fn = CrossEntropyLoss()        
 
@@ -84,6 +85,7 @@ class ADMMClient(BaseClient):
             self.dual_state[name] = torch.zeros_like(param.data)
 
         self.penalty = kwargs['init_penalty']
+        self.proximity = kwargs['init_proximity']
         self.is_first_iter = 1        
 
     def update(self):
@@ -99,18 +101,18 @@ class ADMMClient(BaseClient):
 
         """ Adaptive Penalty (Residual Balancing) """   
         if self.residual_balancing.res_on == True:
-            prim_res = super(ADMMClient, self).primal_residual_at_client(global_state)
-            dual_res = super(ADMMClient, self).dual_residual_at_client()                        
-            super(ADMMClient, self).residual_balancing(prim_res,dual_res)                
+            prim_res = super(IIADMMDualClient, self).primal_residual_at_client(global_state)
+            dual_res = super(IIADMMDualClient, self).dual_residual_at_client()                        
+            super(IIADMMDualClient, self).residual_balancing(prim_res,dual_res)                
 
         """ Multiple local update """
         for i in range(self.num_local_epochs):
-            for data, target in self.dataloader:    
+            for data, target in self.dataloader:
 
                 if self.residual_balancing.res_on == True and self.residual_balancing.res_on_every_update == True:                
-                    prim_res = super(ADMMClient, self).primal_residual_at_client(global_state)
-                    dual_res = super(ADMMClient, self).dual_residual_at_client()                        
-                    super(ADMMClient, self).residual_balancing(prim_res,dual_res)                
+                    prim_res = super(IIADMMDualClient, self).primal_residual_at_client(global_state)
+                    dual_res = super(IIADMMDualClient, self).dual_residual_at_client()                        
+                    super(IIADMMDualClient, self).residual_balancing(prim_res,dual_res)                
 
                 data = data.to(self.device)
                 target = target.to(self.device)
@@ -130,42 +132,46 @@ class ADMMClient(BaseClient):
                     )
                 
                 for _, param in self.model.named_parameters():
-                    param.grad = param.grad * coefficient
+                    param.grad = param.grad * coefficient                
 
                 """ gradient clipping """
                 if self.clip_value != False:                                              
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                   
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                                   
 
-                ## STEP: Update primal                
-                self.admm_step(global_state, optimizer)
+                ## STEP: Update primal               
+                self.iiadmmdual_step(global_state, optimizer)
                 self.model.load_state_dict(self.primal_state)
-                                
-                         
 
-        ## Update dual
-        for name, param in self.model.named_parameters():
-            self.dual_state[name] = self.dual_state[name] + self.penalty * (
-                global_state[name] - self.primal_state[name]
-            )
 
         """ Differential Privacy  """
         if self.epsilon != False:
             sensitivity = 0
             if self.clip_value != False:                           
-                sensitivity = 2.0 * self.clip_value * self.optim_args.lr       
+                sensitivity = 2.0 * self.clip_value / (self.penalty+self.proximity)            
             scale_value = sensitivity / self.epsilon            
-            super(ADMMClient, self).laplace_mechanism_output_perturb(scale_value)
+            super(IIADMMDualClient, self).laplace_mechanism_output_perturb(scale_value)
         
+        
+        """ Increasing Proximity """
+        # self.proximity = min( round(self.proximity*self.prox_increase,2), self.prox_max)
+        # self.is_first_iter += 1
+        # if self.is_first_iter % 10 == 0: 
+        #     self.proximity *= 2
+          
+
+        
+
+
         """ Update local_state """
         self.local_state = OrderedDict()
         self.local_state["primal"] = copy.deepcopy(self.primal_state)
-        self.local_state["dual"] = OrderedDict()
+        self.local_state["dual"] = copy.deepcopy(self.dual_state)                
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = self.penalty
 
         return self.local_state
 
-    def admm_step(self, global_state, optimizer):
+    def iiadmmdual_step(self, global_state, optimizer):
         
         momentum = 0
         if "momentum" in self.optim_args.keys():
@@ -195,11 +201,14 @@ class ADMMClient(BaseClient):
                     grad = self.grad[name].add(momentum, buf)
                 else:
                     grad = buf
-            
-            """ SGD at Clients """
-            # self.primal_state[name] = self.primal_state[name] - self.optim_args.lr * grad
 
-            """ ADMM at Clients """
-            self.primal_state[name] = self.primal_state[name] - self.optim_args.lr * ( grad - self.dual_state[name] - self.penalty*(global_state[name]-self.primal_state[name]) )
 
+            """ IADMM at Clients """
+            self.primal_state[name] = self.primal_state[name] - (1.0/(self.penalty+self.proximity)) * ( grad - self.dual_state[name] - self.penalty*(global_state[name]-self.primal_state[name]) )
+
+            ## Update dual        
+            self.dual_state[name] = self.dual_state[name] + self.penalty * (
+                global_state[name] - self.primal_state[name]
+            )
+ 
  

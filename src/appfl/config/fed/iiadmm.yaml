@@ -17,7 +17,7 @@ args:
 
   
   ## Penalty
-  init_penalty: 1
+  init_penalty: 1e-10
   ## Adaptive penalty
   ## Residual balancing (see (3.13) in "Distributed Optimization and Statistical Learning via the ADMM")
   ## penalty = penalty*(tau) if prim_res > (mu)*dual_res
@@ -31,7 +31,7 @@ args:
   ## Proximity
   init_proximity: 200
   prox_increase: 1.09
-  prox_max: 1500
+  prox_max: 1e6
 
   ## Differential Privacy 
   ##  epsilon: False  (non-private)

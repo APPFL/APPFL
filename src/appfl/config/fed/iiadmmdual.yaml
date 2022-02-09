@@ -1,22 +1,23 @@
-type: admm
-servername: ADMMServer
-clientname: ADMMClient
+type: iiadmmdual
+servername: IIADMMDualServer
+clientname: IIADMMDualClient
 
 args:
   num_local_epochs: 10  
   
-  accum_grad: False
-  coeff_grad: False
+  accum_grad: True
+  coeff_grad: True
 
   ## Optimizer for a gradient calculation (esp., to use zero.grad)
   optim: SGD
   optim_args:    
     lr: 0.01
-    momentum: 0.9
-    weight_decay: 1e-5
+    # momentum: 0.9
+    # weight_decay: 1e-5
 
+  
   ## Penalty
-  init_penalty: 0.1
+  init_penalty: 100
   ## Adaptive penalty
   ## Residual balancing (see (3.13) in "Distributed Optimization and Statistical Learning via the ADMM")
   ## penalty = penalty*(tau) if prim_res > (mu)*dual_res
@@ -27,6 +28,10 @@ args:
     tau: 1.1
     mu: 10
 
+  ## Proximity
+  init_proximity: 100
+  prox_increase: 1.09
+  prox_max: 1e6
 
   ## Differential Privacy 
   ##  epsilon: False  (non-private)
