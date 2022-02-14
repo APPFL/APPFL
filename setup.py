@@ -38,10 +38,10 @@ setuptools.setup(
     python_requires=">=3.6",
     install_requires=[
         "numpy",
-        'torch',
-        'grpcio',
-        'grpcio-tools',
-        'omegaconf',
+        "torch",
+        "grpcio",
+        "grpcio-tools",
+        "omegaconf",
     ],
     extras_require={
         "dev": [
