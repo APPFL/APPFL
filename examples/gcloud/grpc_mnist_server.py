@@ -92,8 +92,6 @@ def main():
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
-    cfg.server.host = args.host
-    print(OmegaConf.to_yaml(cfg))
 
     grpc_server.run_server(cfg, model, test_dataset, args.nclients)
 
