@@ -38,9 +38,7 @@ class FLOperator():
                                      num_workers=0,
                                      batch_size=cfg.test_data_batch_size,
                                      shuffle=cfg.test_data_shuffle)
-        # self.fed_server = eval(self.cfg.fed.servername)(
-        #     self.client_weights, self.model, self.num_clients, self.device, **self.cfg.fed.args)
-        self.fed_server = FedAvgServer(
+        self.fed_server = eval(self.cfg.fed.servername)(
             self.client_weights, self.model, self.num_clients, self.device, **self.cfg.fed.args)
 
     """
@@ -74,7 +72,7 @@ class FLOperator():
             total_training_size = sum(self.client_training_size[c] for c in range(self.num_clients))
             for c in range(self.num_clients):
                 self.client_weights[c] = self.client_training_size[c] / total_training_size
-            self.fed_server.weights = self.client_weights
+                self.fed_server.weights[c] = self.client_weights[c]
             return self.client_weights[client_id]
         else:
             return -1.0
