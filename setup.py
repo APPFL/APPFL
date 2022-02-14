@@ -40,8 +40,7 @@ setuptools.setup(
         "numpy",
         'torch',
         'grpcio',
-        'google',
-        'mpi4py',
+        'grpcio-tools',
         'omegaconf',
     ],
     extras_require={
@@ -61,6 +60,7 @@ setuptools.setup(
             "tensorboard",
             "matplotlib",
         ],
+        "mpi": ["mpi4py"],
         "examples": [
             "opencv-python",
             "torchvision",
