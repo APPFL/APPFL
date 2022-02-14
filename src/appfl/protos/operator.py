@@ -38,7 +38,9 @@ class FLOperator():
                                      num_workers=0,
                                      batch_size=cfg.test_data_batch_size,
                                      shuffle=cfg.test_data_shuffle)
-        self.fed_server = eval(self.cfg.fed.servername)(
+        # self.fed_server = eval(self.cfg.fed.servername)(
+        #     self.client_weights, self.model, self.num_clients, self.device, **self.cfg.fed.args)
+        self.fed_server = FedAvgServer(
             self.client_weights, self.model, self.num_clients, self.device, **self.cfg.fed.args)
 
     """
