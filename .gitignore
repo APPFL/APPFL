@@ -8,12 +8,8 @@ examples/outputs/*
 examples/results/*
 examples/*.sh
 examples/Slurm_outputs/*
-examples/datasets/RawData/cifar-10-batches-py
-examples/datasets/RawData/Coronahack
-examples/datasets/RawData/FEMNIST
-examples/datasets/RawData/MNIST
-examples/datasets/RawData/cifar-10-python.tar.gz
-examples/datasets/PreprocessedData/Coronahack_Clients_4
+examples/datasets/RawData/*
+examples/datasets/PreprocessedData/*
 outputs/*
 _data
 docs/notebooks/results
