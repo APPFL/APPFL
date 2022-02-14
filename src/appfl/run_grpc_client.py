@@ -60,14 +60,15 @@ def run_client(cfg        : DictConfig,
 
     # Try up to 10 times to retrieve its weight from a server.
     weight = -1.0
-    for _ in range(10):
+    for i in range(10):
         weight = comm.get_weight(len(train_data))
+        logger.debug(f"[Client ID: {cid: 03}] trial {i}, requesting weight ({weight}).")
         if weight >= 0.0:
             break
         time.sleep(5)
 
     if weight < 0.0:
-        logger.info(f"[Client ID: {cid: 03} weight retrieval failed.")
+        logger.info(f"[Client ID: {cid: 03}] weight ({weight}) retrieval failed.")
         return
 
     fed_client = eval(cfg.fed.clientname)(

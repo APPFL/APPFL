@@ -66,9 +66,10 @@ def main():
 
     parser = argparse.ArgumentParser(description="Provide IP address")
     parser.add_argument("--nclients", type=int, required=True)
+    parser.add_argument("--logging", type=str, default="INFO")
     args = parser.parse_args()
 
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    logging.basicConfig(stream=sys.stdout, level=eval("logging." + args.logging))
     torch.manual_seed(1)
 
     start_time = time.time()

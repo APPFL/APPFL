@@ -64,6 +64,7 @@ class FLOperator():
     def get_weight(self, client_id, training_size) -> float:
         self.client_training_size[client_id] = training_size
         self.client_training_size_received[client_id] = True
+        self.logger.debug(f"[Round: {self.round_number: 04}] client_training_size_received: {self.client_training_size_received}")
 
         # If we have received training size from all clients
         if all(c in self.client_training_size_received for c in range(self.num_clients)):
