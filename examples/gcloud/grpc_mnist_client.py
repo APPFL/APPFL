@@ -12,8 +12,6 @@ from torchvision.transforms import ToTensor
 
 from appfl.config import *
 from appfl.misc.data import *
-from models.cnn import *
-import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
 
 DataSet_name = "MNIST"
@@ -26,7 +24,7 @@ def get_data(num_clients: int):
 
     # training data for multiple clients
     train_data_raw = eval("torchvision.datasets." + DataSet_name)(
-        f"./datasets/RawData", download=True, train=True, transform=ToTensor()
+        f"./_data", download=True, train=True, transform=ToTensor()
     )
 
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
