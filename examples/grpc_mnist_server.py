@@ -8,8 +8,6 @@ import pickle
 import numpy as np
 import torch
 import torch.nn as nn
-import torchvision
-from torchvision.transforms import ToTensor
 
 from appfl.config import *
 from appfl.misc.data import *
@@ -23,22 +21,11 @@ num_pixel = 28  # image size = (num_pixel, num_pixel)
 
 def get_data():
 
-    # test data for a server
-    # test_data_raw = eval("torchvision.datasets." + DataSet_name)(
-    #     f"./datasets/RawData", download=True, train=False, transform=ToTensor()
-    # )
-
-    # test_data_input = []
-    # test_data_label = []
-    # for idx in range(len(test_data_raw)):
-    #     test_data_input.append(test_data_raw[idx][0].tolist())
-    #     test_data_label.append(test_data_raw[idx][1])
-
     with open("mnist_test_data.pickle", "rb") as f:
         test_data = pickle.load(f)
 
     test_dataset = Dataset(
-        torch.FloatTensor(test_data["x"]), torch.tensor(test_data["x"])
+        torch.FloatTensor(test_data["x"]), torch.tensor(test_data["y"])
     )
 
     return test_dataset
@@ -78,7 +65,6 @@ class CNN(nn.Module):
 def main():
 
     parser = argparse.ArgumentParser(description="Provide IP address")
-    parser.add_argument("--host", type=str, required=True)
     parser.add_argument("--nclients", type=int, required=True)
     args = parser.parse_args()
 
@@ -88,15 +74,13 @@ def main():
     start_time = time.time()
     test_dataset = get_data()
     model = CNN(num_channel, num_classes, num_pixel)
-    print(
+    logging.info(
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
-    cfg.server.host = args.host
-    print(OmegaConf.to_yaml(cfg))
 
     grpc_server.run_server(cfg, model, test_dataset, args.nclients)
 
