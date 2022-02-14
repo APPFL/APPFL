@@ -39,7 +39,11 @@ def run_client(cfg        : DictConfig,
     """
 
     logger = logging.getLogger(__name__)
-    uri = cfg.server.host + ':' + str(cfg.server.port)
+    if cfg.server.use_tls == True:
+        uri = cfg.server.host
+    else:
+        uri = cfg.server.host + ':' + str(cfg.server.port)
+
     cid = comm_rank - 1
 
     ## We assume to have as many GPUs as the number of MPI processes.
@@ -52,7 +56,7 @@ def run_client(cfg        : DictConfig,
     if cfg.batch_training == False:
         batchsize = len(train_data)
 
-    comm = FLClient(cid, uri, max_message_size=cfg.max_message_size)
+    comm = FLClient(cid, uri, cfg.server.use_tls, max_message_size=cfg.max_message_size)
 
     # Try up to 10 times to retrieve its weight from a server.
     weight = -1.0
