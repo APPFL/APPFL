@@ -15,7 +15,6 @@ from appfl.misc.data import *
 from models.cnn import *
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
-from mpi4py import MPI
 
 DataSet_name = "MNIST"
 num_channel = 1  # 1 if gray, 3 if color
@@ -85,7 +84,8 @@ def main():
 
     parser = argparse.ArgumentParser(description="Provide IP address")
     parser.add_argument("--host", type=str, required=True)
-    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--port", type=int, default=50051)
+    parser.add_argument("--use_tls", type=bool, default=False)
     parser.add_argument("--client_id", type=int, required=True)
     parser.add_argument("--nclients", type=int, required=True)
     args = parser.parse_args()
@@ -105,6 +105,7 @@ def main():
     cfg = OmegaConf.structured(Config)
     cfg.server.host = args.host
     cfg.server.port = args.port
+    cfg.server.use_tls = args.use_tls
     print(OmegaConf.to_yaml(cfg))
 
     grpc_client.run_client(
