@@ -19,6 +19,7 @@ _data
 docs/notebooks/results
 results
 mryu_lib/*
+endpoints
  
 
 
@@ -156,3 +157,4 @@ examples/femnist_test_swing.py
 examples/mnist_test_swing.py
 src/appfl/algorithm/admm.py
 src/appfl/config/fed/admm.yaml
+examples/gcloud/mnist_test_data.pickle
