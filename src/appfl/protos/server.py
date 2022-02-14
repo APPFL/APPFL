@@ -35,6 +35,7 @@ class FLServicer(federated_learning_pb2_grpc.FederatedLearningServicer):
         self.logger.info(f"[Servicer ID: {self.servicer_id: 03}] Received WeightRequest from (client,size)=(%d,%d)",
                          request.header.client_id, request.size)
         weight = self.operator.get_weight(request.header.client_id, request.size)
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] get_weight returns %e", weight)
         return WeightResponse(header=request.header, weight=weight)
 
     def SendLearningResults(self, request_iterator, context):

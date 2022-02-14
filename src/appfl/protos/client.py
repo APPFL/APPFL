@@ -71,6 +71,7 @@ class FLClient:
     def get_weight(self, training_size):
         request = WeightRequest(header=self.header, size=training_size)
         response = self.stub.GetWeight(request)
+        self.logger.debug(f"[Client ID: {self.client_id: 03}] Received weight = %e", response.weight)
         return response.weight
 
     def send_learning_results(self, penalty, primal, dual, round_number):
