@@ -57,6 +57,7 @@ class FLOperator():
     """
     def get_job(self):
         job_todo = Job.WEIGHT
+        self.logger.debug(f"[Round: {self.round_number: 04}] client_training_size_received: {self.client_training_size_received}")
         if all(c in self.client_training_size_received for c in range(self.num_clients)):
             job_todo = Job.TRAIN
         if self.round_number > self.num_epochs:
