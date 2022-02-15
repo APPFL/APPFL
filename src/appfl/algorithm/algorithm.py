@@ -21,7 +21,7 @@ class BaseServer:
         self.model = model
         self.num_clients = num_clients
         self.device = device
-        self.weights = weights
+        self.weights = copy.deepcopy(weights)
         self.penalty = OrderedDict()
         self.primal_states = OrderedDict()
         self.dual_states = OrderedDict()
