@@ -17,7 +17,7 @@ class BaseServer:
         device (str): device for computation
     """
 
-    def __init__(self, weights: Dict, model: nn.Module, num_clients: int, device):
+    def __init__(self, weights: OrderedDict, model: nn.Module, num_clients: int, device):
         self.model = model
         self.num_clients = num_clients
         self.device = device
@@ -50,6 +50,10 @@ class BaseServer:
             nn.Module: a deepcopy of self.model
         """
         return copy.deepcopy(self.model)
+
+    def set_weights(self, weights: OrderedDict):
+        for key, value in weights.items():
+            self.weights[key] = value
 
     def primal_recover_from_local_states(self, local_states):
         for _, states in enumerate(local_states):

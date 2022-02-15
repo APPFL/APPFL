@@ -72,7 +72,8 @@ class FLOperator():
             total_training_size = sum(self.client_training_size[c] for c in range(self.num_clients))
             for c in range(self.num_clients):
                 self.client_weights[c] = self.client_training_size[c] / total_training_size
-                self.fed_server.weights[c] = self.client_weights[c]
+            
+            self.fed_server.set_weights(self.client_weights)
             return self.client_weights[client_id]
         else:
             return -1.0
