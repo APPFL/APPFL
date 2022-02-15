@@ -15,7 +15,13 @@ from .federated_learning_pb2 import Job
 
 class FLOperator():
     def __init__(self, cfg, model, test_dataset, num_clients):
+        
         self.logger = logging.getLogger(__name__)
+        logging.basicConfig(
+            format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s", 
+            level=logging.DEBUG
+        )
+
         self.operator_id = cfg.operator.id
         self.cfg = cfg
         self.num_clients = num_clients
@@ -90,6 +96,7 @@ class FLOperator():
     """
     def update_model_weights(self):
         self.logger.info(f"[Round: {self.round_number: 04}] Updating model weights")
+        self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
         self.fed_server.update([self.client_states])
 
         if self.cfg.validation == True:
