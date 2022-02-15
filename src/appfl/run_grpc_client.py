@@ -94,11 +94,13 @@ def run_client(cfg        : DictConfig,
             if prev_round_number != cur_round_number:
                 logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Start training")
                 update_model_state(comm, fed_client.model, cur_round_number)
+                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Received model update from server")
                 prev_round_number = cur_round_number
 
                 time_start = time.time()
                 local_state = fed_client.update()
                 time_end = time.time()
+                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Updated local model")
                 learning_time = time_end - time_start
                 cumul_learning_time += learning_time
                 time_start = time.time()

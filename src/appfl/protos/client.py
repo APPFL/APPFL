@@ -58,9 +58,11 @@ class FLClient:
         request = TensorRequest(
             header=self.header, name=name, round_number=round_number
         )
+        self.logger.debug(f"[Client ID: {self.client_id: 03}] Requested Tensor record (name,round)=(%s,%d)", name, round_number)
         start = time.time()
         response = self.stub.GetTensorRecord(request)
         end = time.time()
+        self.logger.debug(f"[Client ID: {self.client_id: 03}] Received Tensor record (name,round)=(%s,%d)", name, round_number)
         if round_number > 1:
             self.time_get_tensor += end - start
         shape = tuple(response.data_shape)

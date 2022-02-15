@@ -16,12 +16,7 @@ class FedAvgServer(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
         super(FedAvgServer, self).__init__(weights, model, num_clients, device)
         self.__dict__.update(kwargs)
-
         self.logger = logging.getLogger(__name__)
-        logging.basicConfig(
-            format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s", 
-            level=logging.DEBUG
-        )
 
     def update(self, local_states: OrderedDict):
 

@@ -40,11 +40,14 @@ class FLServicer(federated_learning_pb2_grpc.FederatedLearningServicer):
         return WeightResponse(header=request.header, weight=weight)
 
     def SendLearningResults(self, request_iterator, context):
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] self.operator.fed_server.weights: {self.operator.fed_server.weights}")
         # Restore LearningResults protocol buffer.
         proto = LearningResults()
         bytes_received = b''
         for request in request_iterator:
             bytes_received += request.data_bytes
+
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] self.operator.fed_server.weights: {self.operator.fed_server.weights}")
 
         status = MessageStatus.EMPTY
         if len(bytes_received) > 0:

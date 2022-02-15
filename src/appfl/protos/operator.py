@@ -15,13 +15,8 @@ from .federated_learning_pb2 import Job
 
 class FLOperator():
     def __init__(self, cfg, model, test_dataset, num_clients):
-        
-        self.logger = logging.getLogger(__name__)
-        logging.basicConfig(
-            format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s", 
-            level=logging.DEBUG
-        )
 
+        self.logger = logging.getLogger(__name__)
         self.operator_id = cfg.operator.id
         self.cfg = cfg
         self.num_clients = num_clients
@@ -86,6 +81,8 @@ class FLOperator():
                 self.client_weights[c] = self.client_training_size[c] / total_training_size
             
             self.fed_server.set_weights(self.client_weights)
+            self.logger.debug(f"[Round: {self.round_number: 04}] self.client_weights: {self.client_weights}")
+            self.logger.debug(f"[Round: {self.round_number: 04}] self.client_training_size: {self.client_training_size}")
             self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
             return self.client_weights[client_id]
         else:
@@ -121,6 +118,7 @@ class FLOperator():
     it will trigger a global model update.
     """
     def send_learning_results(self, client_id, round_number, penalty, primal, dual):
+        self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
         primal_tensors = OrderedDict()
         dual_tensors = OrderedDict()
         for tensor in primal:
@@ -139,6 +137,7 @@ class FLOperator():
         self.client_states[client_id]["dual"] = dual_tensors
         self.client_states[client_id]["penalty"][client_id] = penalty
         self.client_learning_status[(client_id,round_number)] = True
+        self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
 
         # Round is finished when we have received model weights from all clients.
         if self.is_round_finished():
