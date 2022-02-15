@@ -3,17 +3,13 @@ import time
 import logging
 import argparse
 import math
-import pickle
 
-import numpy as np
 import torch
 import torch.nn as nn
 
 from appfl.config import *
-from appfl.misc.data import *
 import appfl.run_grpc_server as grpc_server
 
-DataSet_name = "MNIST"
 num_channel = 1  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
 num_pixel = 28  # image size = (num_pixel, num_pixel)
@@ -61,10 +57,9 @@ def main():
     torch.manual_seed(1)
 
     start_time = time.time()
-    test_dataset = get_data()
     model = CNN(num_channel, num_classes, num_pixel)
     logging.info(
-        "----------Loaded Datasets and Model----------Elapsed Time=",
+        "----------Loaded Model----------Elapsed Time=",
         time.time() - start_time,
     )
 
