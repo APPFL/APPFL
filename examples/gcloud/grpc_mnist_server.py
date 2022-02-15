@@ -48,7 +48,7 @@ class CNN(nn.Module):
 
 def main():
 
-    parser = argparse.ArgumentParser(description="Provide IP address")
+    parser = argparse.ArgumentParser(description="Provide the configuration")
     parser.add_argument("--nclients", type=int, required=True)
     parser.add_argument("--logging", type=str, default="INFO")
     args = parser.parse_args()

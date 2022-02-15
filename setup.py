@@ -54,6 +54,8 @@ setuptools.setup(
             "black",
             "pytest",
             "pytest-mpi",
+            "torchvision",
+            "mpi4py",
         ],
         "analytics": [
             "jupyter",
