@@ -19,18 +19,6 @@ num_classes = 10  # number of the image classes
 num_pixel = 28  # image size = (num_pixel, num_pixel)
 
 
-def get_data():
-
-    with open("mnist_test_data.pickle", "rb") as f:
-        test_data = pickle.load(f)
-
-    test_dataset = Dataset(
-        torch.FloatTensor(test_data["x"]), torch.tensor(test_data["y"])
-    )
-
-    return test_dataset
-
-
 class CNN(nn.Module):
     def __init__(self, num_channel, num_classes, num_pixel):
         super().__init__()
@@ -83,7 +71,7 @@ def main():
     # read default configuration
     cfg = OmegaConf.structured(Config)
 
-    grpc_server.run_server(cfg, model, test_dataset, args.nclients)
+    grpc_server.run_server(cfg, model, args.nclients)
 
 
 if __name__ == "__main__":
