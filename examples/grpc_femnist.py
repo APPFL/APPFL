@@ -94,7 +94,7 @@ def main():
     if comm_size > 1:
         # Try to launch both a server and clients.
         if comm_rank == 0:
-            grpc_server.run_server(cfg, model, test_dataset, num_clients)
+            grpc_server.run_server(cfg, model, num_clients, test_dataset)
         else:
             # Give server some time to launch.
             time.sleep(5)
@@ -102,7 +102,7 @@ def main():
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.
-        grpc_server.run_server(cfg, model, test_dataset, num_clients)
+        grpc_server.run_server(cfg, model, num_clients, test_dataset)
 
 
 if __name__ == "__main__":

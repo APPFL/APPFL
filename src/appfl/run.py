@@ -24,8 +24,8 @@ def run_serial(
     cfg: DictConfig,
     model: nn.Module,
     train_data: Dataset,
-    test_data: Dataset,
-    DataSet_name: str,
+    test_data: Dataset = Dataset(),
+    DataSet_name: str = "appfl",
 ):
     """Run serial simulation of PPFL.
 
@@ -33,8 +33,8 @@ def run_serial(
         cfg (DictConfig): the configuration for this run
         model (nn.Module): neural network model to train
         train_data (Dataset): training data
-        test_data (Dataset): testing data
-        DataSet_name (str): dataset name
+        test_data (Dataset): optional testing data. If given, validation will run based on this data.
+        DataSet_name (str): optional dataset name
     """
 
     outfile = print_write_result_title(cfg, DataSet_name)
@@ -51,12 +51,16 @@ def run_serial(
     for k in range(num_clients):        
         weights[k] = len(train_data[k]) / total_num_data
         
-    server_dataloader = DataLoader(
-        test_data,
-        num_workers=0,
-        batch_size=cfg.test_data_batch_size,
-        shuffle=cfg.test_data_shuffle,
-    )
+    "Run validation if test data is given or the configuration is enabled."
+    if cfg.validation == True and len(test_data) > 0:
+        server_dataloader = DataLoader(
+            test_data,
+            num_workers=0,
+            batch_size=cfg.test_data_batch_size,
+            shuffle=cfg.test_data_shuffle,
+        )
+    else:
+        cfg.validation = False
 
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, cfg.device, **cfg.fed.args
@@ -92,6 +96,8 @@ def run_serial(
     local_state[0] = OrderedDict()
 
     start_time = time.time()
+    test_loss = 0.0
+    accuracy = 0.0
     BestAccuracy = 0.0
     for t in range(num_epochs):
         PerIter_start = time.time()
@@ -144,9 +150,9 @@ def run_server(
     cfg: DictConfig,
     comm: MPI.Comm,
     model: nn.Module,
-    test_dataset: Dataset,
     num_clients: int,
-    DataSet_name: str,
+    test_dataset: Dataset = Dataset(),
+    DataSet_name: str = "appfl",
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model
 
@@ -154,9 +160,9 @@ def run_server(
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
         model (nn.Module): neural network model to train
-        test_data (Dataset): testing data
         num_clients (int): the number of clients used in PPFL simulation
-        DataSet_name (str): dataset name
+        test_data (Dataset): optional testing data. If given, validation will run based on this data.
+        DataSet_name (str): optional dataset name
     """
 
     outfile = print_write_result_title(cfg, DataSet_name)
@@ -169,12 +175,16 @@ def run_server(
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
 
-    server_dataloader = DataLoader(
-        test_dataset,
-        num_workers=0,
-        batch_size=cfg.test_data_batch_size,
-        shuffle=cfg.test_data_shuffle,
-    )
+    "Run validation if test data is given or the configuration is enabled."
+    if cfg.validation == True and len(test_dataset) > 0:
+        server_dataloader = DataLoader(
+            test_dataset,
+            num_workers=0,
+            batch_size=cfg.test_data_batch_size,
+            shuffle=cfg.test_data_shuffle,
+        )
+    else:
+        cfg.validation = False
     
     """
     Receive the number of data from clients
@@ -207,6 +217,8 @@ def run_server(
 
     do_continue = True
     start_time = time.time()
+    test_loss = 0.0
+    accuracy = 0.0
     BestAccuracy = 0.0
     for t in range(cfg.num_epochs):
         PerIter_start = time.time()
@@ -264,7 +276,7 @@ def run_server(
 
 
 def run_client(
-    cfg: DictConfig, comm: MPI.Comm, model: nn.Module, train_data: Dataset, num_clients: int
+    cfg: DictConfig, comm: MPI.Comm, model: nn.Module, num_clients: int, train_data: Dataset
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -272,8 +284,8 @@ def run_client(
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
         model (nn.Module): neural network model to train
-        train_data (Dataset): testing data
         num_clients (int): the number of clients used in PPFL simulation
+        train_data (Dataset): testing data
     """
 
     comm_size = comm.Get_size()

@@ -34,10 +34,15 @@ class FLOperator():
         self.client_learning_status = OrderedDict()
         self.servicer = None # Takes care of communication via gRPC
 
-        self.dataloader = DataLoader(test_dataset,
-                                     num_workers=0,
-                                     batch_size=cfg.test_data_batch_size,
-                                     shuffle=cfg.test_data_shuffle)
+        self.dataloader = None
+        if self.cfg.validation == True and len(test_dataset) > 0:
+            self.dataloader = DataLoader(test_dataset,
+                                        num_workers=0,
+                                        batch_size=cfg.test_data_batch_size,
+                                        shuffle=cfg.test_data_shuffle)
+        else:
+            self.cfg.validation = False
+        
         self.fed_server: BaseServer = eval(self.cfg.fed.servername)(
             self.client_weights, self.model, self.num_clients, self.device, **self.cfg.fed.args)
 

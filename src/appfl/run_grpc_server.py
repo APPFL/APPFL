@@ -21,8 +21,8 @@ def grpc_server_on(channel) -> bool:
 def run_server(
     cfg: DictConfig,
     model: nn.Module,
-    test_data: Dataset,
     num_clients: int,
+    test_data: Dataset = Dataset(),
 ) -> None:
     """Launch gRPC server to listen to the port to serve requests from clients.
     The service URI is set in the configuration.
@@ -31,8 +31,8 @@ def run_server(
     Args:
         cfg (DictConfig): the configuration for this run
         model (nn.Module): neural network model to train
-        test_data (Dataset): testing data
         num_clients (int): the number of clients used in PPFL simulation
+        test_data (Dataset): optional testing data. If given, validation will run based on this data.
     """
 
     # Do not launch a server if it is already on.
