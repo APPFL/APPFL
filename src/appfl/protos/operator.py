@@ -79,6 +79,7 @@ class FLOperator():
                 self.client_weights[c] = self.client_training_size[c] / total_training_size
             
             self.fed_server.set_weights(self.client_weights)
+            self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
             return self.client_weights[client_id]
         else:
             return -1.0
