@@ -8,3 +8,4 @@ We present a collection of tutorials for APPFL framework.
 
     firstrun
     ../notebooks/index
+    gcloud
