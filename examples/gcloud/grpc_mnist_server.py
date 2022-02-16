@@ -58,12 +58,9 @@ def main():
 
     start_time = time.time()
     model = CNN(num_channel, num_classes, num_pixel)
-    
+
     logger = logging.getLogger(__name__)
-    logger.info(
-        "----------Loaded Model----------Elapsed Time=",
-        time.time() - start_time,
-    )
+    logger.info(f"----------Loaded Model----------Elapsed Time={time.time() - start_time}")
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
