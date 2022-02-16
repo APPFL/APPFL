@@ -58,7 +58,9 @@ def main():
 
     start_time = time.time()
     model = CNN(num_channel, num_classes, num_pixel)
-    logging.info(
+    
+    logger = logging.getLogger(__name__)
+    logger.info(
         "----------Loaded Model----------Elapsed Time=",
         time.time() - start_time,
     )

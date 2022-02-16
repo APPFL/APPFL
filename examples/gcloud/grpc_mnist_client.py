@@ -95,7 +95,9 @@ def main():
     start_time = time.time()
     train_datasets = get_data(args.nclients)
     model = CNN(num_channel, num_classes, num_pixel)
-    print(
+
+    logger = logging.getLogger(__name__)
+    logger.info(
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
@@ -105,12 +107,12 @@ def main():
     cfg.server.host = args.host
     cfg.server.port = args.port
     cfg.server.use_tls = args.use_tls
-    print(OmegaConf.to_yaml(cfg))
+    logger.debug(OmegaConf.to_yaml(cfg))
 
     grpc_client.run_client(
         cfg, args.client_id, model, train_datasets[args.client_id - 1]
     )
-    print("------DONE------")
+    logger.info("------DONE------")
 
 
 if __name__ == "__main__":
