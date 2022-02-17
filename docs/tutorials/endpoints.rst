@@ -39,6 +39,7 @@ To this end, we create the following directory
 and create the descriptor file ``api_descriptor.pb`` by running the command below:
 
 .. code-block:: shell
+    
     python -m grpc_tools.protoc \
         --include_imports \
         --include_source_info \
