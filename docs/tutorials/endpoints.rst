@@ -39,7 +39,7 @@ To this end, we create the following directory
 and create the descriptor file ``api_descriptor.pb`` by running the command below:
 
 .. code-block:: shell
-    
+
     python -m grpc_tools.protoc \
         --include_imports \
         --include_source_info \
@@ -115,3 +115,26 @@ We provide the the Docker commands below to run the example API and ESP in a Doc
         --rollout_strategy=managed \
         --http2_port=9000 \
         --backend=grpc://appfl-test:50051
+
+
+Launching a client
+------------------
+
+Find the external IP address for the gRPC Endpoints:
+
+.. code-block:: shell
+
+    gcloud compute instances list
+
+
+Launching a client to connect to the Endpoints requires to use `API key <https://cloud.google.com/docs/authentication/api-keys>`_. Follow the steps to create an API key to run a client.
+A client can start the federated learning by running the command below with the API key ``copyandpasteyourapikeyhere``:
+
+.. code-block:: shell
+
+  python grpc_mnist_client.py \
+  --host=<EXTERNAL_IP_ADDRESS> \
+  --port=80 \
+  --client_id=1 \
+  --nclients=3 \
+  --api_key=copyandpasteyourapikeyhere
