@@ -14,6 +14,10 @@ examples/datasets/RawData/FEMNIST
 examples/datasets/RawData/MNIST
 examples/datasets/RawData/cifar-10-python.tar.gz
 examples/datasets/PreprocessedData/Coronahack_Clients_4
+examples/gcloud/generated_pb2
+examples/gcloud/*.sh
+examples/gcloud/*.pb
+examples/gcloud/api_config.yaml
 outputs/*
 _data
 docs/notebooks/results
