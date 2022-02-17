@@ -17,7 +17,7 @@ from . import utils
 
 class FLClient:
     def __init__(
-        self, client_id, server_uri, use_tls, max_message_size=2 * 1024 * 1024
+        self, client_id, server_uri, use_tls, max_message_size=2 * 1024 * 1024, api_key=None
     ):
         self.logger = logging.getLogger(__name__)
         self.client_id = client_id
@@ -39,11 +39,14 @@ class FLClient:
         self.time_get_job = 0.0
         self.time_get_tensor = 0.0
         self.time_send_results = 0.0
+        self.metadata = []
+        if api_key:
+            self.metadata.append(('x-api-key', api_key))
 
     def get_job(self, job_done):
         request = JobRequest(header=self.header, job_done=job_done)
         start = time.time()
-        response = self.stub.GetJob(request)
+        response = self.stub.GetJob(request, metadata=self.metadata)
         end = time.time()
         self.time_get_job += end - start
         self.logger.info(
@@ -60,7 +63,7 @@ class FLClient:
         )
         self.logger.debug(f"[Client ID: {self.client_id: 03}] Requested Tensor record (name,round)=(%s,%d)", name, round_number)
         start = time.time()
-        response = self.stub.GetTensorRecord(request)
+        response = self.stub.GetTensorRecord(request, metadata=self.metadata)
         end = time.time()
         self.logger.debug(f"[Client ID: {self.client_id: 03}] Received Tensor record (name,round)=(%s,%d)", name, round_number)
         if round_number > 1:
@@ -72,7 +75,7 @@ class FLClient:
 
     def get_weight(self, training_size):
         request = WeightRequest(header=self.header, size=training_size)
-        response = self.stub.GetWeight(request)
+        response = self.stub.GetWeight(request, metadata=self.metadata)
         self.logger.debug(f"[Client ID: {self.client_id: 03}] Received weight = %e", response.weight)
         return response.weight
 
@@ -97,7 +100,7 @@ class FLClient:
             proto, max_message_size=self.max_message_size
         )
         start = time.time()
-        self.stub.SendLearningResults(iter(databuffer))
+        self.stub.SendLearningResults(iter(databuffer), metadata=self.metadata)
         end = time.time()
         if round_number > 1:
             self.time_send_results += end - start

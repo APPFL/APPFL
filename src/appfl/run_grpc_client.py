@@ -56,7 +56,8 @@ def run_client(cfg        : DictConfig,
     if cfg.batch_training == False:
         batchsize = len(train_data)
 
-    comm = FLClient(cid, uri, cfg.server.use_tls, max_message_size=cfg.max_message_size)
+    logger.debug(f"[Client ID: {cid: 03}] connecting to (uri,tls)=({uri},{cfg.server.use_tls}).")
+    comm = FLClient(cid, uri, cfg.server.use_tls, max_message_size=cfg.max_message_size, api_key=cfg.server.api_key)
 
     # Try up to 10 times to retrieve its weight from a server.
     weight = -1.0

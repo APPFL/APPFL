@@ -87,6 +87,7 @@ def main():
     parser.add_argument("--client_id", type=int, required=True)
     parser.add_argument("--nclients", type=int, required=True)
     parser.add_argument("--logging", type=str, default="INFO")
+    parser.add_argument("--api_key", default=None)
     args = parser.parse_args()
 
     logging.basicConfig(stream=sys.stdout, level=eval("logging." + args.logging))
@@ -104,6 +105,7 @@ def main():
     cfg.server.host = args.host
     cfg.server.port = args.port
     cfg.server.use_tls = args.use_tls
+    cfg.server.api_key = args.api_key
     logger.debug(OmegaConf.to_yaml(cfg))
 
     grpc_client.run_client(
