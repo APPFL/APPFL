@@ -68,4 +68,9 @@ def serve(servicer, max_message_size=2*1024*1024):
     federated_learning_pb2_grpc.add_FederatedLearningServicer_to_server(servicer, server)
     server.add_insecure_port('[::]:' + servicer.port)
     server.start()
-    server.wait_for_termination()
+    try:
+        server.wait_for_termination()
+    except KeyboardInterrupt:
+        logger = logging.getLogger(__name__)
+        logger.info("Terminating the server ...")
+        return
