@@ -97,7 +97,7 @@ We provide the the Docker commands below to run the example API and ESP in a Doc
         --detach \
         --name=appfl-test \
         --net=esp_net \
-        gcr.io/$GCP_PROJECT/appfl-test2:latest \
+        gcr.io/$GCP_PROJECT/appfl-test:latest \
         python3 grpc_mnist_server.py --nclients=3
 
 

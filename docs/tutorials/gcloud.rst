@@ -51,7 +51,7 @@ We build a docker container by using the tag name ``gcr.io/$GCP_PROJECT/appfl-te
 
 .. code-block:: shell
 
-  docker build -t gcr.io/$GCP_PROJECT/appfl-test2:latest .
+  docker build -t gcr.io/$GCP_PROJECT/appfl-test:latest .
 
 
 Test the Docker container on local machine
