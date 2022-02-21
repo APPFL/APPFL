@@ -44,26 +44,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    filename = "Result_%s_%s_Batch_%s_PrivEps_%s" % (DataSet_name, cfg.fed.type, cfg.batch_training, cfg.fed.args.epsilon)
-    if cfg.fed.type == "iiadmm":
-        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_CoeffGrad_%s_Penalty=%s_PrivEps_%s" % (
-            DataSet_name,
-            cfg.fed.type,
-            cfg.batch_training,
-            cfg.fed.args.accum_grad,
-            cfg.fed.args.coeff_grad,
-            cfg.fed.args.init_penalty,
-            cfg.fed.args.epsilon,            
-        )
-    if cfg.fed.type == "iceadmm":
-        filename = "Result_%s_%s_Batch_%s_AccumGrad_%s_Penalty=%s_PrivEps_%s" % (
-            DataSet_name,
-            cfg.fed.type,
-            cfg.batch_training,
-            cfg.fed.args.accum_grad,
-            cfg.fed.args.init_penalty,
-            cfg.fed.args.epsilon,
-        )        
+    filename = cfg.filename 
 
     file_ext = ".txt"
     file = dir + "/%s%s" % (filename, file_ext)
@@ -88,7 +69,7 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     )
     outfile.write(title)
     print(title, end="")
-    return outfile, filename
+    return outfile
 
 
 def print_write_result_iteration(
@@ -146,13 +127,13 @@ def print_write_result_summary(
     outfile.write("Clipping=%s \n" % (cfg.fed.args.clip_value))    
     outfile.write("Elapsed_time=%s \n" % (round(Elapsed_time, 2)))
     outfile.write("BestAccuracy=%s \n" % (round(BestAccuracy, 2)))
- 
 
     outfile.close()
 
 
-def save_model(model, cfg: DictConfig, filename: str):
+def save_model(model, cfg: DictConfig):
     dir = cfg.result_dir
+    filename=cfg.filename
     
     file_ext = ".pt"
     file = dir + "/%s%s" % (filename, file_ext)

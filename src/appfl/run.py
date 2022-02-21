@@ -139,6 +139,9 @@ def run_serial(
         cfg, outfile, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
 
+    """ save model """
+    save_model(server.model, cfg)
+
 
 def run_server(
     cfg: DictConfig,
@@ -159,7 +162,7 @@ def run_server(
         DataSet_name (str): dataset name
     """
 
-    outfile, filename = print_write_result_title(cfg, DataSet_name)
+    outfile = print_write_result_title(cfg, DataSet_name)
 
     ## Start
     comm_size = comm.Get_size()
@@ -263,7 +266,7 @@ def run_server(
     )
  
     """ save model """
-    save_model(server.model, cfg, filename)
+    save_model(server.model, cfg)
     
 
 

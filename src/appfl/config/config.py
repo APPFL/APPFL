@@ -24,6 +24,7 @@ class Config:
 
     # Results directory
     result_dir: str = "./results"
+    filename: str = "Results"
 
     # Compute device
     device: str = "cpu"
