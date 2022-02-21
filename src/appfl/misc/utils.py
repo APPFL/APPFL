@@ -44,13 +44,13 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     dir = cfg.result_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    filename = cfg.filename 
+    result_name = cfg.result_name 
 
     file_ext = ".txt"
-    file = dir + "/%s%s" % (filename, file_ext)
+    file = dir + "/%s%s" % (result_name, file_ext)
     uniq = 1
     while os.path.exists(file):
-        file = dir + "/%s_%d%s" % (filename, uniq, file_ext)
+        file = dir + "/%s_%d%s" % (result_name, uniq, file_ext)
         uniq += 1
     outfile = open(file, "w")
     title = "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s \n" % (
