@@ -22,9 +22,11 @@ class Config:
     test_data_batch_size: int = 64
     test_data_shuffle: bool = False
 
-    # Results directory
+    # Results
     result_dir: str = "./results"
-    filename: str = "Results"
+    result_name: str = "Result"
+    model_name: str = "Model"
+
 
     # Compute device
     device: str = "cpu"

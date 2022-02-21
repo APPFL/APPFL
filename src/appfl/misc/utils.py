@@ -133,13 +133,13 @@ def print_write_result_summary(
 
 def save_model(model, cfg: DictConfig):
     dir = cfg.result_dir
-    filename=cfg.filename
+    model_name=cfg.model_name
     
     file_ext = ".pt"
-    file = dir + "/%s%s" % (filename, file_ext)
+    file = dir + "/%s%s" % (model_name, file_ext)
     uniq = 1
     while os.path.exists(file):
-        file = dir + "/%s_%d%s" % (filename, uniq, file_ext)
+        file = dir + "/%s_%d%s" % (model_name, uniq, file_ext)
         uniq += 1
      
     model_scripted = torch.jit.script(model) # Export to TorchScript
