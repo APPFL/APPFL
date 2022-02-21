@@ -29,6 +29,7 @@ Table of Contents
    users/user_model
    users/user_data
    notebooks/how_to_config
+   users/user_results
 
 .. toctree::
    :maxdepth: 2
