@@ -41,7 +41,7 @@ def validation(self, dataloader):
 
 def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     ## Print and Write Results
-    dir = cfg.result_dir
+    dir = cfg.output_dir
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
     result_name = cfg.result_name 
@@ -132,7 +132,7 @@ def print_write_result_summary(
 
 
 def save_model(model, cfg: DictConfig):
-    dir = cfg.result_dir
+    dir = cfg.output_dir
     model_name=cfg.model_name
     
     file_ext = ".pt"
