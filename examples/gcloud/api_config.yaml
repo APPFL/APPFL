@@ -1,8 +1,0 @@
-type: google.api.Service
-config_version: 3
-
-name: appfl.endpoints.valiant-student-341521.cloud.goog
-
-title: APPFL gRPC API
-apis:
-- name: FederatedLearning
