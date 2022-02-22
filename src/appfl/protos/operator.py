@@ -24,6 +24,11 @@ class FLOperator():
         self.best_accuracy = 0.0
         self.device = "cpu"
         self.model = copy.deepcopy(model)
+        """ Initial Global State if available """
+        if cfg.is_init_point == True:        
+            file = cfg.init_point_dir + "/" + cfg.init_point_filename        
+            self.model = torch.jit.load(file)
+            model.eval()
         self.client_training_size = OrderedDict()
         self.client_training_size_received = OrderedDict()
         self.client_weights = OrderedDict()
