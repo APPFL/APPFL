@@ -58,7 +58,7 @@ class FLOperator():
         job_todo = Job.WEIGHT
         if all(c in self.client_training_size_received for c in range(self.num_clients)):
             job_todo = Job.TRAIN
-        if self.round_number > self.num_epochs:
+        if self.round_number > self.num_epochs:            
             job_todo = Job.QUIT
         return min(self.round_number, self.num_epochs), job_todo
 
@@ -98,7 +98,13 @@ class FLOperator():
             self.logger.info(
                 f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%, Best Accuracy: {self.best_accuracy:.2f}%"
             )
+
+        if self.round_number == self.cfg.num_epochs:
+            """ save model """
+            save_model(self.model, self.cfg)
+
         self.round_number += 1
+        
 
     """
     Check if we have received model weights from all clients for this round.
