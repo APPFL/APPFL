@@ -59,17 +59,23 @@ def run_client(cfg        : DictConfig,
     logger.debug(f"[Client ID: {cid: 03}] connecting to (uri,tls)=({uri},{cfg.server.use_tls}).")
     comm = FLClient(cid, uri, cfg.server.use_tls, max_message_size=cfg.max_message_size, api_key=cfg.server.api_key)
 
-    # Try up to 10 times to retrieve its weight from a server.
+    # Retrieve its weight from a server.
     weight = -1.0
-    for i in range(10):
-        weight = comm.get_weight(len(train_data))
-        logger.debug(f"[Client ID: {cid: 03}] trial {i}, requesting weight ({weight}).")
-        if weight >= 0.0:
-            break
-        time.sleep(5)
+    i = 1
+    logger.info(f"[Client ID: {cid: 03}] requesting weight to the server.")
+    try:
+        while True:
+            weight = comm.get_weight(len(train_data))
+            logger.debug(f"[Client ID: {cid: 03}] trial {i}, requesting weight ({weight}).")
+            if weight >= 0.0:
+                break
+            time.sleep(5)
+    except KeyboardInterrupt:
+        logger.info(f"[Client ID: {cid: 03}] terminating the client.")
+        return
 
     if weight < 0.0:
-        logger.info(f"[Client ID: {cid: 03}] weight ({weight}) retrieval failed.")
+        logger.error(f"[Client ID: {cid: 03}] weight ({weight}) retrieval failed.")
         return
 
     fed_client = eval(cfg.fed.clientname)(
