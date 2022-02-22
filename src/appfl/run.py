@@ -87,6 +87,12 @@ def run_serial(
         for k in range(num_clients)
     ]
 
+    """ Initial Global State if available """
+    if cfg.is_init_point == True:        
+        file = cfg.init_point_dir + "/" + cfg.init_point_filename        
+        server.model = torch.jit.load(file)
+        model.eval()
+
     local_states = []
     local_state = OrderedDict()
     local_state[0] = OrderedDict()
@@ -207,6 +213,12 @@ def run_server(
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
     ) 
+
+    """ Initial Global State if available """
+    if cfg.is_init_point == True:        
+        file = cfg.init_point_dir + "/" + cfg.init_point_filename        
+        server.model = torch.jit.load(file)
+        model.eval()
 
     do_continue = True
     start_time = time.time()

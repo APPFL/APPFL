@@ -22,6 +22,11 @@ class Config:
     test_data_batch_size: int = 64
     test_data_shuffle: bool = False
 
+    # Initial Model Parameters
+    is_init_point: bool = True
+    init_point_dir: str = "./models"
+    init_point_filename: str = "mnist_cnn_initial.pt"
+
     # Outputs
     output_dir: str = "./outputs"
     result_name: str = "result"
