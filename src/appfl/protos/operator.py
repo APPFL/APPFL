@@ -24,11 +24,9 @@ class FLOperator():
         self.best_accuracy = 0.0
         self.device = "cpu"
         self.model = copy.deepcopy(model)
-        """ Initial Global State if available """
-        if cfg.is_init_point == True:        
-            file = cfg.init_point_dir + "/" + cfg.init_point_filename        
-            self.model = torch.jit.load(file)
-            model.eval()
+        """ Loading Model """
+        if cfg.load_model == True:      
+            self.model = load_model(cfg)                 
         self.client_training_size = OrderedDict()
         self.client_training_size_received = OrderedDict()
         self.client_weights = OrderedDict()
@@ -99,10 +97,11 @@ class FLOperator():
                 f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%, Best Accuracy: {self.best_accuracy:.2f}%"
             )
 
-        if self.round_number == self.cfg.num_epochs:
-            """ save model """
-            save_model(self.model, self.cfg)
-
+        if self.round_number == self.cfg.num_epochs:            
+            """ Saving model """    
+            if self.cfg.save_model == True:        
+                save_model(self.model, self.cfg)
+                
         self.round_number += 1
         
 

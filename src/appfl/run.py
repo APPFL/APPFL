@@ -57,7 +57,7 @@ def run_serial(
         batch_size=cfg.test_data_batch_size,
         shuffle=cfg.test_data_shuffle,
     )
-
+    
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, cfg.device, **cfg.fed.args
     )
@@ -87,11 +87,10 @@ def run_serial(
         for k in range(num_clients)
     ]
 
-    """ Initial Global State if available """
-    if cfg.is_init_point == True:        
-        file = cfg.init_point_dir + "/" + cfg.init_point_filename        
-        server.model = torch.jit.load(file)
-        model.eval()
+    
+    """ Loading Model """
+    if cfg.load_model == True:      
+        server.model = load_model(cfg)        
 
     local_states = []
     local_state = OrderedDict()
@@ -145,9 +144,10 @@ def run_serial(
         cfg, outfile, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
 
-    """ save model """
-    save_model(server.model, cfg)
-
+    """ Saving model """    
+    if cfg.save_model == True:        
+        save_model(server.model, cfg)
+         
 
 def run_server(
     cfg: DictConfig,
@@ -209,17 +209,15 @@ def run_server(
     
     weight = comm.scatter(weight, root = 0)
 
-    # TODO: do we want to use root as a client?
+    # TODO: do we want to use root as a client?    
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
     ) 
-
-    """ Initial Global State if available """
-    if cfg.is_init_point == True:        
-        file = cfg.init_point_dir + "/" + cfg.init_point_filename        
-        server.model = torch.jit.load(file)
-        model.eval()
-
+ 
+    """ Loading Model """
+    if cfg.load_model == True:      
+        server.model = load_model(cfg)        
+        
     do_continue = True
     start_time = time.time()
     BestAccuracy = 0.0
@@ -277,8 +275,10 @@ def run_server(
         cfg, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
  
-    """ save model """
-    save_model(server.model, cfg)
+    """ Saving model """    
+    if cfg.save_model == True:        
+        save_model(server.model, cfg)
+         
     
 
 

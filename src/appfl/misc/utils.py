@@ -41,10 +41,10 @@ def validation(self, dataloader):
 
 def print_write_result_title(cfg: DictConfig, DataSet_name: str):
     ## Print and Write Results
-    dir = cfg.output_dir
+    dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    result_name = cfg.result_name 
+    result_name = cfg.output_filename 
 
     file_ext = ".txt"
     file = dir + "/%s%s" % (result_name, file_ext)
@@ -130,10 +130,18 @@ def print_write_result_summary(
 
     outfile.close()
 
+def load_model(cfg: DictConfig):
+    file = cfg.load_model_dirname + "/%s%s" %(cfg.load_model_filename, ".pt")    
+    model = torch.jit.load(file)
+    model.eval()
+    return model
+    
 
 def save_model(model, cfg: DictConfig):
-    dir = cfg.output_dir
-    model_name=cfg.model_name
+    dir = cfg.save_model_dirname
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)
+    model_name=cfg.save_model_filename
     
     file_ext = ".pt"
     file = dir + "/%s%s" % (model_name, file_ext)

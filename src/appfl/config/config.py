@@ -22,15 +22,19 @@ class Config:
     test_data_batch_size: int = 64
     test_data_shuffle: bool = False
 
-    # Initial Model Parameters
-    is_init_point: bool = False
-    init_point_dir: str = ""
-    init_point_filename: str = ""
+    # Loading Models
+    load_model: bool = True
+    load_model_dirname: str = "./models"
+    load_model_filename: str = "model"
 
-    # Outputs
-    output_dir: str = "./outputs"
-    result_name: str = "result"
-    model_name: str = "model"
+    # Saving Models
+    save_model: bool = True
+    save_model_dirname: str = "./save_models"
+    save_model_filename: str = "model"
+    
+    # FL Outputs
+    output_dirname: str = "./outputs"
+    output_filename: str = "result"    
 
 
     # Compute device
