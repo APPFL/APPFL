@@ -23,9 +23,9 @@ class Config:
     test_data_shuffle: bool = False
 
     # Initial Model Parameters
-    is_init_point: bool = True
-    init_point_dir: str = "./models"
-    init_point_filename: str = "mnist_cnn_initial.pt"
+    is_init_point: bool = False
+    init_point_dir: str = ""
+    init_point_filename: str = ""
 
     # Outputs
     output_dir: str = "./outputs"
