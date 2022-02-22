@@ -1,4 +1,4 @@
-Save FL Results and Models
+Save FL results and models
 ==========================
 
 APPFL store FL outputs (i.e., ``result.txt`` and ``model.pt``) in a ``examples/outputs`` directory.
