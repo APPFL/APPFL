@@ -162,3 +162,4 @@ examples/gcloud/api_config.yaml
 examples/gcloud/api_descriptor.pb
 examples/gcloud/generated_pb2/federated_learning_pb2_grpc.py
 examples/gcloud/generated_pb2/federated_learning_pb2.py
+examples/models/model.pt
