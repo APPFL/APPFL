@@ -23,14 +23,14 @@ class Config:
     test_data_shuffle: bool = False
 
     # Loading Models
-    load_model: bool = True
-    load_model_dirname: str = "./models"
-    load_model_filename: str = "model"
+    load_model: bool = False
+    load_model_dirname: str = ""
+    load_model_filename: str = ""
 
     # Saving Models
-    save_model: bool = True
-    save_model_dirname: str = "./save_models"
-    save_model_filename: str = "model"
+    save_model: bool = False
+    save_model_dirname: str = ""
+    save_model_filename: str = ""
     
     # FL Outputs
     output_dirname: str = "./outputs"
