@@ -1,7 +1,7 @@
 import torch
 import os
 from omegaconf import DictConfig
-
+import logging
 
 def validation(self, dataloader):
 
@@ -38,22 +38,42 @@ def validation(self, dataloader):
 
     return test_loss, accuracy
 
+def create_custom_logger(logger, cfg: DictConfig):
 
-def print_write_result_title(cfg: DictConfig, DataSet_name: str):
-    ## Print and Write Results
     dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    result_name = cfg.output_filename 
+    output_filename = cfg.output_filename 
 
     file_ext = ".txt"
-    file = dir + "/%s%s" % (result_name, file_ext)
+    filename = dir + "/%s%s" % (output_filename, file_ext)
     uniq = 1
-    while os.path.exists(file):
-        file = dir + "/%s_%d%s" % (result_name, uniq, file_ext)
+    while os.path.exists(filename):
+        filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
         uniq += 1
-    outfile = open(file, "w")
-    title = "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s \n" % (
+
+    
+    logger.setLevel(logging.INFO)
+    # Create handlers
+    c_handler = logging.StreamHandler()
+    f_handler = logging.FileHandler(filename)
+    c_handler.setLevel(logging.INFO)
+    f_handler.setLevel(logging.INFO)
+
+    # # Create formatters and add it to handlers
+    # c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    # f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # c_handler.setFormatter(c_format)
+    # f_handler.setFormatter(f_format)
+
+    # Add handlers to the logger
+    logger.addHandler(c_handler)
+    logger.addHandler(f_handler)
+    
+    return logger
+
+def log_title():
+    title = "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s" % (
         "Iter",
         "Local[s]",
         "Global[s]",
@@ -67,13 +87,9 @@ def print_write_result_title(cfg: DictConfig, DataSet_name: str):
         "Penal_min",
         "Penal_max"
     )
-    outfile.write(title)
-    print(title, end="")
-    return outfile
-
-
-def print_write_result_iteration(
-    outfile,
+    return title
+    
+def log_iteration(
     t,
     LocalUpdate_time,
     GlobalUpdate_time,
@@ -85,9 +101,9 @@ def print_write_result_iteration(
     prim_res,
     dual_res,
     rho_min,
-    rho_max,
-):
-    results = "%12d %12.2f %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f %12.4e %12.4e %12.2f %12.2f \n" % (
+    rho_max,):
+
+    log_iter = "%12d %12.2f %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f %12.4e %12.4e %12.2f %12.2f" % (
         t + 1,
         LocalUpdate_time,
         GlobalUpdate_time,
@@ -101,34 +117,25 @@ def print_write_result_iteration(
         rho_min,
         rho_max,
     )
-    print(results, end="")
-    outfile.write(results)
-    return outfile
+    return log_iter
 
-
-def print_write_result_summary(
-    cfg: DictConfig,
-    outfile,
-    comm_size,
+def log_summary(logger, cfg: DictConfig,comm_size,
     DataSet_name,
     num_clients,
     Elapsed_time,
-    BestAccuracy,
-):
+    BestAccuracy,):
 
-    outfile.write("Device=%s \n" % (cfg.device))
-    outfile.write("#Processors=%s \n" % (comm_size))
-    outfile.write("Dataset=%s \n" % (DataSet_name))
-    outfile.write("#Clients=%s \n" % (num_clients))
-    outfile.write("Algorithm=%s \n" % (cfg.fed.type))
-    outfile.write("Comm_Rounds=%s \n" % (cfg.num_epochs))
-    outfile.write("Local_Epochs=%s \n" % (cfg.fed.args.num_local_epochs))
-    outfile.write("DP_Eps=%s \n" % (cfg.fed.args.epsilon))    
-    outfile.write("Clipping=%s \n" % (cfg.fed.args.clip_value))    
-    outfile.write("Elapsed_time=%s \n" % (round(Elapsed_time, 2)))
-    outfile.write("BestAccuracy=%s \n" % (round(BestAccuracy, 2)))
-
-    outfile.close()
+    logger.info("Device=%s" % (cfg.device))
+    logger.info("#Processors=%s" % (comm_size))
+    logger.info("Dataset=%s" % (DataSet_name))
+    logger.info("#Clients=%s" % (num_clients))
+    logger.info("Algorithm=%s" % (cfg.fed.type))
+    logger.info("Comm_Rounds=%s" % (cfg.num_epochs))
+    logger.info("Local_Epochs=%s" % (cfg.fed.args.num_local_epochs))
+    logger.info("DP_Eps=%s" % (cfg.fed.args.epsilon))    
+    logger.info("Clipping=%s" % (cfg.fed.args.clip_value))    
+    logger.info("Elapsed_time=%s" % (round(Elapsed_time, 2)))
+    logger.info("BestAccuracy=%s" % (round(BestAccuracy, 2)))  
 
 def load_model(cfg: DictConfig):
     file = cfg.load_model_dirname + "/%s%s" %(cfg.load_model_filename, ".pt")    
@@ -136,7 +143,6 @@ def load_model(cfg: DictConfig):
     model.eval()
     return model
     
-
 def save_model(model, cfg: DictConfig):
     dir = cfg.save_model_dirname
     if os.path.isdir(dir) == False:

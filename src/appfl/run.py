@@ -11,6 +11,8 @@ from omegaconf import DictConfig
 
 import copy
 import time
+import logging
+
 from .misc.data import Dataset
 from .misc.utils import *
 
@@ -37,7 +39,10 @@ def run_serial(
         DataSet_name (str): dataset name
     """
 
-    outfile = print_write_result_title(cfg, DataSet_name)
+    logger = logging.getLogger(__name__)
+    logger = create_custom_logger(logger, cfg)    
+    title = log_title()    
+    logger.info(title)
 
     num_clients = len(train_data)
     num_epochs = cfg.num_epochs
@@ -124,8 +129,7 @@ def run_serial(
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
 
-        outfile = print_write_result_iteration(
-            outfile,
+        log_iter = log_iteration(            
             t,
             LocalUpdate_time,
             GlobalUpdate_time,
@@ -139,9 +143,10 @@ def run_serial(
             rho_min, 
             rho_max,
         )
+        logger.info(log_iter)
 
-    print_write_result_summary(
-        cfg, outfile, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
+    log_summary(
+        logger, cfg, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
 
     """ Saving model """    
@@ -167,9 +172,12 @@ def run_server(
         num_clients (int): the number of clients used in PPFL simulation
         DataSet_name (str): dataset name
     """
-
-    outfile = print_write_result_title(cfg, DataSet_name)
-
+    
+    logger = logging.getLogger(__name__)
+    logger = create_custom_logger(logger, cfg)    
+    title = log_title()    
+    logger.info(title)
+ 
     ## Start
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
@@ -249,8 +257,7 @@ def run_server(
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
 
-        outfile = print_write_result_iteration(
-            outfile,
+        log_iter = log_iteration(            
             t,
             LocalUpdate_time,
             GlobalUpdate_time,
@@ -264,6 +271,7 @@ def run_server(
             rho_min, 
             rho_max,
         )
+        logger.info(log_iter)
 
         if np.isnan(test_loss) == True:
             break
@@ -271,8 +279,8 @@ def run_server(
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
 
-    print_write_result_summary(
-        cfg, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
+    log_summary(
+        logger, cfg, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
  
     """ Saving model """    
