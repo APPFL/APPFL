@@ -29,8 +29,8 @@ Table of Contents
    users/user_model
    users/user_data
    notebooks/how_to_config
-   users/user_initial_point
-   users/user_outputs
+   users/user_loading_saving
+   users/user_logging_recording
 
 .. toctree::
    :maxdepth: 2
