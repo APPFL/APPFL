@@ -11,6 +11,8 @@ from omegaconf import DictConfig
 
 import copy
 import time
+import logging
+
 from .misc.data import Dataset
 from .misc.utils import *
 
@@ -37,7 +39,10 @@ def run_serial(
         DataSet_name (str): optional dataset name
     """
 
-    outfile = print_write_result_title(cfg, DataSet_name)
+    logger = logging.getLogger(__name__)
+    logger = create_custom_logger(logger, cfg)    
+    title = log_title()    
+    logger.info(title)
 
     num_clients = len(train_data)
     num_epochs = cfg.num_epochs
@@ -91,6 +96,11 @@ def run_serial(
         for k in range(num_clients)
     ]
 
+    
+    """ Loading Model """
+    if cfg.load_model == True:      
+        server.model = load_model(cfg)        
+
     local_states = []
     local_state = OrderedDict()
     local_state[0] = OrderedDict()
@@ -125,8 +135,7 @@ def run_serial(
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
 
-        outfile = print_write_result_iteration(
-            outfile,
+        log_iter = log_iteration(            
             t,
             LocalUpdate_time,
             GlobalUpdate_time,
@@ -140,11 +149,16 @@ def run_serial(
             rho_min, 
             rho_max,
         )
+        logger.info(log_iter)
 
-    print_write_result_summary(
-        cfg, outfile, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
+    log_summary(
+        logger, cfg, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
 
+    """ Saving model """    
+    if cfg.save_model == True:        
+        save_model(server.model, cfg)
+         
 
 def run_server(
     cfg: DictConfig,
@@ -164,9 +178,12 @@ def run_server(
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
     """
-
-    outfile = print_write_result_title(cfg, DataSet_name)
-
+    
+    logger = logging.getLogger(__name__)
+    logger = create_custom_logger(logger, cfg)    
+    title = log_title()    
+    logger.info(title)
+ 
     ## Start
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
@@ -210,11 +227,15 @@ def run_server(
     
     weight = comm.scatter(weight, root = 0)
 
-    # TODO: do we want to use root as a client?
+    # TODO: do we want to use root as a client?    
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
     ) 
-
+ 
+    """ Loading Model """
+    if cfg.load_model == True:      
+        server.model = load_model(cfg)        
+        
     do_continue = True
     start_time = time.time()
     test_loss = 0.0
@@ -248,8 +269,7 @@ def run_server(
         PerIter_time = time.time() - PerIter_start
         Elapsed_time = time.time() - start_time
 
-        outfile = print_write_result_iteration(
-            outfile,
+        log_iter = log_iteration(            
             t,
             LocalUpdate_time,
             GlobalUpdate_time,
@@ -263,6 +283,7 @@ def run_server(
             rho_min, 
             rho_max,
         )
+        logger.info(log_iter)
 
         if np.isnan(test_loss) == True:
             break
@@ -270,9 +291,19 @@ def run_server(
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
 
-    print_write_result_summary(
-        cfg, outfile, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
+    log_summary(
+        logger, cfg, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
     )
+ 
+    """ Saving model """    
+    if cfg.save_model == True:        
+        save_model(server.model, cfg)
+         
+    
+
+
+
+    
 
 
 def run_client(

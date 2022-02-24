@@ -6,6 +6,8 @@
 APPFL: Argonne Privacy-Preserving Federated Learning
 ====================================================
 
+.. image:: _static/logo/logo_small.png
+
 .. automodule:: appfl
 
 
@@ -29,6 +31,8 @@ Table of Contents
    users/user_model
    users/user_data
    notebooks/how_to_config
+   users/user_loading_saving
+   users/user_logging_recording
 
 .. toctree::
    :maxdepth: 2

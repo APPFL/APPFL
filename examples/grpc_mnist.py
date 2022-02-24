@@ -88,7 +88,9 @@ def main():
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
+    ## Reproducibility
     torch.manual_seed(1)
+    torch.backends.cudnn.deterministic = True
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
