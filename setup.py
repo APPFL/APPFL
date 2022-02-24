@@ -5,7 +5,6 @@ authors = {
     "Kibaek Kim": "kimk@anl.gov",
     "Minseok Ryu": "mryu@anl.gov",
     "Youngdae Kim": "youngdae@anl.gov",
-    "Mark Xiao": "ymxiao@anl.gov",
 }
 AUTHOR = ""
 for i, (k, v) in enumerate(authors.items()):
@@ -19,7 +18,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="appfl",
-    version="0.0.1",
+    version="0.2.0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -38,11 +37,10 @@ setuptools.setup(
     python_requires=">=3.6",
     install_requires=[
         "numpy",
-        'torch',
-        'grpcio',
-        'google',
-        'mpi4py',
-        'omegaconf',
+        "torch",
+        "grpcio",
+        "grpcio-tools",
+        "omegaconf",
     ],
     extras_require={
         "dev": [
@@ -55,12 +53,15 @@ setuptools.setup(
             "black",
             "pytest",
             "pytest-mpi",
+            "torchvision",
+            "mpi4py",
         ],
         "analytics": [
             "jupyter",
             "tensorboard",
             "matplotlib",
         ],
+        "mpi": ["mpi4py"],
         "examples": [
             "opencv-python",
             "torchvision",

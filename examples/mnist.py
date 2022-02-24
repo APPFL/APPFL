@@ -104,9 +104,9 @@ def main():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, test_dataset, num_clients, DataSet_name)
+            rt.run_server(cfg, comm, model, num_clients, test_dataset, DataSet_name)
         else:
-            rt.run_client(cfg, comm, model, train_datasets, num_clients)
+            rt.run_client(cfg, comm, model, num_clients, train_datasets)
         print("------DONE------", comm_rank)
     else:
         rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)

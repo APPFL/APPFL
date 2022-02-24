@@ -99,7 +99,7 @@ def test_mnist_fedavg():
     rt.run_serial(cfg, model, train_datasets, test_dataset, "test_mnist")
 
 
-@pytest.mark.mpi
+@pytest.mark.mpi(min_size=3)
 def test_mnist_fedavg_mpi():
     print
 
@@ -116,14 +116,14 @@ def test_mnist_fedavg_mpi():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, test_dataset, num_clients, "test_mnist")
+            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, train_datasets, num_clients)
+            rt.run_client(cfg, comm, model, num_clients, train_datasets)
     else:
         assert 0
 
 
-@pytest.mark.mpi
+@pytest.mark.mpi(min_size=3)
 def test_mnist_iceadmm_mpi():
 
     from mpi4py import MPI
@@ -139,14 +139,14 @@ def test_mnist_iceadmm_mpi():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, test_dataset, num_clients, "test_mnist")
+            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, train_datasets, num_clients)
+            rt.run_client(cfg, comm, model, num_clients, train_datasets)
     else:
         assert 0
 
 
-@pytest.mark.mpi
+@pytest.mark.mpi(min_size=3)
 def test_mnist_iiadmm_mpi():
 
     from mpi4py import MPI
@@ -162,9 +162,43 @@ def test_mnist_iiadmm_mpi():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, test_dataset, num_clients, "test_mnist")
+            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, train_datasets, num_clients)
+            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+    else:
+        assert 0
+
+
+def test_mnist_fedavg_notest():
+
+    num_clients = 2
+    cfg = OmegaConf.structured(Config)
+    model = CNN(1, 10, 28)
+    train_datasets, test_dataset = process_data(num_clients)
+
+    rt.run_serial(cfg, model, train_datasets, Dataset(), "test_mnist")
+
+
+@pytest.mark.mpi(min_size=3)
+def test_mnist_fedavg_mpi_notest():
+    print
+
+    from mpi4py import MPI
+
+    comm = MPI.COMM_WORLD
+    comm_rank = comm.Get_rank()
+    comm_size = comm.Get_size()
+
+    num_clients = 2
+    cfg = OmegaConf.structured(Config)
+    model = CNN(1, 10, 28)
+    train_datasets, test_dataset = process_data(num_clients)
+
+    if comm_size > 1:
+        if comm_rank == 0:
+            rt.run_server(cfg, comm, model, num_clients, Dataset(), "test_mnist")
+        else:
+            rt.run_client(cfg, comm, model, num_clients, train_datasets)
     else:
         assert 0
 

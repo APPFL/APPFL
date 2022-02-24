@@ -35,14 +35,18 @@ class FLServicer(federated_learning_pb2_grpc.FederatedLearningServicer):
         self.logger.info(f"[Servicer ID: {self.servicer_id: 03}] Received WeightRequest from (client,size)=(%d,%d)",
                          request.header.client_id, request.size)
         weight = self.operator.get_weight(request.header.client_id, request.size)
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] get_weight returns %e", weight)
         return WeightResponse(header=request.header, weight=weight)
 
     def SendLearningResults(self, request_iterator, context):
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] self.operator.fed_server.weights: {self.operator.fed_server.weights}")
         # Restore LearningResults protocol buffer.
         proto = LearningResults()
         bytes_received = b''
         for request in request_iterator:
             bytes_received += request.data_bytes
+
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] self.operator.fed_server.weights: {self.operator.fed_server.weights}")
 
         status = MessageStatus.EMPTY
         if len(bytes_received) > 0:
@@ -64,4 +68,9 @@ def serve(servicer, max_message_size=2*1024*1024):
     federated_learning_pb2_grpc.add_FederatedLearningServicer_to_server(servicer, server)
     server.add_insecure_port('[::]:' + servicer.port)
     server.start()
-    server.wait_for_termination()
+    try:
+        server.wait_for_termination()
+    except KeyboardInterrupt:
+        logger = logging.getLogger(__name__)
+        logger.info("Terminating the server ...")
+        return

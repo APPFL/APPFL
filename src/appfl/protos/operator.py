@@ -15,6 +15,7 @@ from .federated_learning_pb2 import Job
 
 class FLOperator():
     def __init__(self, cfg, model, test_dataset, num_clients):
+
         self.logger = logging.getLogger(__name__)
         self.operator_id = cfg.operator.id
         self.cfg = cfg
@@ -37,11 +38,17 @@ class FLOperator():
         self.client_learning_status = OrderedDict()
         self.servicer = None # Takes care of communication via gRPC
 
-        self.dataloader = DataLoader(test_dataset,
-                                     num_workers=0,
-                                     batch_size=cfg.test_data_batch_size,
-                                     shuffle=cfg.test_data_shuffle)
-        self.fed_server = None
+        self.dataloader = None
+        if self.cfg.validation == True and len(test_dataset) > 0:
+            self.dataloader = DataLoader(test_dataset,
+                                        num_workers=0,
+                                        batch_size=cfg.test_data_batch_size,
+                                        shuffle=cfg.test_data_shuffle)
+        else:
+            self.cfg.validation = False
+        
+        self.fed_server: BaseServer = eval(self.cfg.fed.servername)(
+            self.client_weights, self.model, self.num_clients, self.device, **self.cfg.fed.args)
 
     """
     Return the tensor record of a global model requested by its name.
@@ -54,6 +61,7 @@ class FLOperator():
     """
     def get_job(self):
         job_todo = Job.WEIGHT
+        self.logger.debug(f"[Round: {self.round_number: 04}] client_training_size_received: {self.client_training_size_received}")
         if all(c in self.client_training_size_received for c in range(self.num_clients)):
             job_todo = Job.TRAIN
         if self.round_number > self.num_epochs:            
@@ -66,6 +74,7 @@ class FLOperator():
     def get_weight(self, client_id, training_size) -> float:
         self.client_training_size[client_id] = training_size
         self.client_training_size_received[client_id] = True
+        self.logger.debug(f"[Round: {self.round_number: 04}] client_training_size_received: {self.client_training_size_received}")
 
         # If we have received training size from all clients
         if all(c in self.client_training_size_received for c in range(self.num_clients)):
@@ -73,9 +82,11 @@ class FLOperator():
             total_training_size = sum(self.client_training_size[c] for c in range(self.num_clients))
             for c in range(self.num_clients):
                 self.client_weights[c] = self.client_training_size[c] / total_training_size
-            if self.fed_server is None:
-                self.fed_server = eval(self.cfg.fed.servername)(
-                    self.client_weights, self.model, self.num_clients, self.device, **self.cfg.fed.args)
+            
+            self.fed_server.set_weights(self.client_weights)
+            self.logger.debug(f"[Round: {self.round_number: 04}] self.client_weights: {self.client_weights}")
+            self.logger.debug(f"[Round: {self.round_number: 04}] self.client_training_size: {self.client_training_size}")
+            self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
             return self.client_weights[client_id]
         else:
             return -1.0
@@ -85,6 +96,7 @@ class FLOperator():
     """
     def update_model_weights(self):
         self.logger.info(f"[Round: {self.round_number: 04}] Updating model weights")
+        self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
         self.fed_server.update([self.client_states])
 
         if self.cfg.validation == True:
@@ -116,6 +128,7 @@ class FLOperator():
     it will trigger a global model update.
     """
     def send_learning_results(self, client_id, round_number, penalty, primal, dual):
+        self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
         primal_tensors = OrderedDict()
         dual_tensors = OrderedDict()
         for tensor in primal:
@@ -134,6 +147,7 @@ class FLOperator():
         self.client_states[client_id]["dual"] = dual_tensors
         self.client_states[client_id]["penalty"][client_id] = penalty
         self.client_learning_status[(client_id,round_number)] = True
+        self.logger.debug(f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}")
 
         # Round is finished when we have received model weights from all clients.
         if self.is_round_finished():

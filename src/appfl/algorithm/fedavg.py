@@ -16,6 +16,7 @@ class FedAvgServer(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
         super(FedAvgServer, self).__init__(weights, model, num_clients, device)
         self.__dict__.update(kwargs)
+        self.logger = logging.getLogger(__name__)
 
     def update(self, local_states: OrderedDict):
 
@@ -27,6 +28,7 @@ class FedAvgServer(BaseServer):
         prim_res = super(FedAvgServer, self).primal_residual_at_server(global_state)        
 
         """ global_state calculation """
+        self.logger.debug(f"self.weights: {self.weights}")
         for name, _ in self.model.named_parameters():
             tmp = 0.0
             for i in range(self.num_clients):
