@@ -1,5 +1,7 @@
 # APPFL: Argonne Privacy-Preserving Federated Learning
 
+![image](https://github.com/APPFL/APPFL/blob/main/docs/_static/logo/logo_small.png?raw=true)
+
 [![DOI](https://zenodo.org/badge/414722606.svg)](https://zenodo.org/badge/latestdoi/414722606)
 [![Documentation Status](https://readthedocs.org/projects/appfl/badge/?version=latest)](https://appfl.readthedocs.io/en/latest/?badge=latest)
 

@@ -6,6 +6,8 @@
 APPFL: Argonne Privacy-Preserving Federated Learning
 ====================================================
 
+.. image:: _static/logo/logo_small.png
+
 .. automodule:: appfl
 
 
