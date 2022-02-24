@@ -22,8 +22,20 @@ class Config:
     test_data_batch_size: int = 64
     test_data_shuffle: bool = False
 
-    # Results directory
-    result_dir: str = "./results"
+    # Loading Models
+    load_model: bool = False
+    load_model_dirname: str = ""
+    load_model_filename: str = ""
+
+    # Saving Models
+    save_model: bool = False
+    save_model_dirname: str = ""
+    save_model_filename: str = ""
+    
+    # FL Outputs
+    output_dirname: str = "./outputs"
+    output_filename: str = "result"    
+
 
     # Compute device
     device: str = "cpu"

@@ -24,6 +24,9 @@ class FLOperator():
         self.best_accuracy = 0.0
         self.device = "cpu"
         self.model = copy.deepcopy(model)
+        """ Loading Model """
+        if cfg.load_model == True:      
+            self.model = load_model(cfg)                 
         self.client_training_size = OrderedDict()
         self.client_training_size_received = OrderedDict()
         self.client_weights = OrderedDict()
@@ -53,7 +56,7 @@ class FLOperator():
         job_todo = Job.WEIGHT
         if all(c in self.client_training_size_received for c in range(self.num_clients)):
             job_todo = Job.TRAIN
-        if self.round_number > self.num_epochs:
+        if self.round_number > self.num_epochs:            
             job_todo = Job.QUIT
         return min(self.round_number, self.num_epochs), job_todo
 
@@ -93,7 +96,14 @@ class FLOperator():
             self.logger.info(
                 f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%, Best Accuracy: {self.best_accuracy:.2f}%"
             )
+
+        if self.round_number == self.cfg.num_epochs:            
+            """ Saving model """    
+            if self.cfg.save_model == True:        
+                save_model(self.model, self.cfg)
+                
         self.round_number += 1
+        
 
     """
     Check if we have received model weights from all clients for this round.
