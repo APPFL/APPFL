@@ -2,16 +2,16 @@ from dataclasses import dataclass
 from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
-from .fed.fedavg import *
+from .fed.fedadapt import *
 from .fed.iceadmm import *
 from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = FedAvg()
+    fed: Any = FedAdapt()
 
     # Number of training epochs
-    num_epochs: int = 2
+    num_epochs: int = 10
     
     # Training Data Batch Info
     batch_training: bool = True
@@ -38,7 +38,7 @@ class Config:
 
 
     # Compute device
-    device: str = "cpu"
+    device: str = "cuda"
 
     # Indication of whether to validate or not
     validation: bool = True
