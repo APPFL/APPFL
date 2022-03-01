@@ -23,6 +23,8 @@ class BaseServer:
         self.device = device
         self.weights = copy.deepcopy(weights)
         self.penalty = OrderedDict()
+        self.prim_res = 0
+        self.dual_res = 0
         self.global_state = OrderedDict()
         self.primal_states = OrderedDict()
         self.dual_states = OrderedDict()
@@ -83,8 +85,8 @@ class BaseServer:
                         self.global_state[name] - self.primal_states[i][name].to(self.device)
                     )
                 )
-        primal_res = torch.sqrt(primal_res).item()
-        return primal_res
+        self.prim_res = torch.sqrt(primal_res).item()
+        
 
     def dual_residual_at_server(self) -> float:
         dual_res = 0
@@ -114,9 +116,7 @@ class BaseServer:
                     )
 
                 dual_res += torch.sum(torch.square(temp))
-            dual_res = torch.sqrt(dual_res).item()
-
-        return dual_res
+            self.dual_res = torch.sqrt(dual_res).item()
 
 
 """This implements a base class for clients."""
