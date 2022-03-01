@@ -11,7 +11,6 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 import copy
 
-
 class FedServer(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
         super(FedServer, self).__init__(weights, model, num_clients, device)
@@ -28,17 +27,15 @@ class FedServer(BaseServer):
             self.v_vector[name] = torch.zeros_like(self.model.state_dict()[name]) + self.server_adapt_param
 
     def update_m_vector(self):
-        for name, _ in self.model.named_parameters():                        
+        for name, _ in self.model.named_parameters():  
             self.m_vector[name] = self.server_momentum_param_1 * self.m_vector[name] + (1.0 - self.server_momentum_param_1) * self.pseudo_grad[name]   
 
-    # def compute_pseudo_gradient(self):        
-    #     for name, _ in self.model.named_parameters():
-    #         self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
-    #         for i in range(self.num_clients):        
-    #             self.pseudo_grad[name] += self.primal_states[i][name] - global_state[name]
-    #         self.pseudo_grad[name] /= self.num_clients
-
-            
+    def compute_pseudo_gradient(self):        
+        for name, _ in self.model.named_parameters():
+            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
+            for i in range(self.num_clients):        
+                self.pseudo_grad[name] += self.weights[i] * ( self.primal_states[i][name] - self.global_state[name] )
+               
 
     def update(self, local_states: OrderedDict):
 
@@ -47,7 +44,7 @@ class FedServer(BaseServer):
         super(FedServer, self).primal_recover_from_local_states(local_states)
 
         """ residual calculation """
-        prim_res = super(FedServer, self).primal_residual_at_server()        
+        super(FedServer, self).primal_residual_at_server()
 
         """ change device """
         for i in range(self.num_clients):
@@ -56,13 +53,25 @@ class FedServer(BaseServer):
 
         """ global_state calculation """                
         self.compute_step()
-        for name, _ in self.model.named_parameters():                        
-            global_state[name] += self.step[name]
- 
+        for name, _ in self.model.named_parameters():         
+            self.global_state[name] += self.step[name]
+         
         """ model update """
-        self.model.load_state_dict(global_state)
+        self.model.load_state_dict(self.global_state)
 
-        return prim_res, 0, 0, 0
- 
+    
+    def logging_iteration(self, cfg, logger, t):
+        if t == 0:
+            title = super(FedServer, self).log_title()
+            logger.info(title)
+        
+        contents = super(FedServer, self).log_contents(cfg, t) 
+        logger.info(contents)
+
+
+    def logging_summary(self, cfg, logger):
+        super(FedServer, self).log_summary(cfg, logger) 
+        
+
         
 

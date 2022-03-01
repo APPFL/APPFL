@@ -9,7 +9,7 @@ from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = IIADMM()
+    fed: Any = Federated()
 
     # Number of training epochs
     num_epochs: int = 2
