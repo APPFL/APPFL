@@ -9,8 +9,8 @@ import copy
 import numpy as np
 import logging
 import time
-
-from appfl.algorithm.fedavg import *
+ 
+from appfl.algorithm.Client_sgd import *
 from appfl.algorithm.iceadmm import *
 from appfl.algorithm.iiadmm import *
 

@@ -8,7 +8,13 @@ import numpy as np
 import copy
 
 from appfl.misc.utils import *
-from appfl.algorithm.fedavg import *
+
+from appfl.algorithm.Server_fed_avg import *
+from appfl.algorithm.Server_fed_avgmom import *
+from appfl.algorithm.Server_fed_adagrad import *
+from appfl.algorithm.Server_fed_adam import *
+from appfl.algorithm.Server_fed_yogi import *
+
 from appfl.algorithm.iceadmm import *
 from appfl.algorithm.iiadmm import *
 from .federated_learning_pb2 import Job
