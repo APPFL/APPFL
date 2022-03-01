@@ -1,4 +1,4 @@
-from .fedadapt import FedAdaptServer
+from .Server_fed import FedAdaptServer
 
 class FedAvgMServer(FedAdaptServer):
     def compute_step(self):        

@@ -23,6 +23,7 @@ class BaseServer:
         self.device = device
         self.weights = copy.deepcopy(weights)
         self.penalty = OrderedDict()
+        self.global_state = OrderedDict()
         self.primal_states = OrderedDict()
         self.dual_states = OrderedDict()
         self.primal_states_curr = OrderedDict()
@@ -73,13 +74,13 @@ class BaseServer:
                 for sid, state in states.items():
                     self.penalty[sid] = copy.deepcopy(state["penalty"][sid])
 
-    def primal_residual_at_server(self, global_state) -> float:
+    def primal_residual_at_server(self) -> float:
         primal_res = 0
         for i in range(self.num_clients):
             for name, _ in self.model.named_parameters():
                 primal_res += torch.sum(
                     torch.square(
-                        global_state[name] - self.primal_states[i][name].to(self.device)
+                        self.global_state[name] - self.primal_states[i][name].to(self.device)
                     )
                 )
         primal_res = torch.sqrt(primal_res).item()

@@ -1,4 +1,4 @@
-from .fedadapt import FedAdaptServer
+from .Server_fed import FedAdaptServer
 import torch
 
 class FedAdamServer(FedAdaptServer):

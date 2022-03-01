@@ -16,12 +16,16 @@ import logging
 from .misc.data import Dataset
 from .misc.utils import *
 
-from .algorithm.fedadapt import *
-from .algorithm.fedadapt_avg import *
-from .algorithm.fedadapt_avgm import *
-from .algorithm.fedadapt_adagrad import *
-from .algorithm.fedadapt_adam import *
-from .algorithm.fedadapt_yogi import *
+
+from .algorithm.Server_fed import *
+from .algorithm.Server_fed_avg import *
+from .algorithm.Server_fed_avgmomentum import *
+from .algorithm.Server_fed_adagrad import *
+from .algorithm.Server_fed_adam import *
+from .algorithm.Server_fed_yogi import *
+from .algorithm.Client_sgd import *
+
+
 from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
 

@@ -2,13 +2,14 @@ from dataclasses import dataclass
 from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
-from .fed.fedadapt import *
+
+from .fed.federated import *
 from .fed.iceadmm import *
 from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = FedAdapt()
+    fed: Any = Federated()
 
     # Number of training epochs
     num_epochs: int = 10
