@@ -8,7 +8,7 @@ class FedAvg:
     clientname: str = "FedAvgClient"
     args: DictConfig = OmegaConf.create(
         {
-            "num_local_epochs": 1,
+            "num_local_epochs": 10,
 
             ## Optimizer
             "optim": "SGD",

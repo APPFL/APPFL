@@ -62,40 +62,8 @@ class FedAdaptServer(BaseServer):
         self.model.load_state_dict(global_state)
 
         return prim_res, 0, 0, 0
-
-
-class FedAvgServer(FedAdaptServer):
-    def compute_step(self):        
-        for name, _ in self.model.named_parameters():                        
-            self.step[name] = self.pseudo_grad[name]        
+ 
         
-class FedAvgMServer(FedAdaptServer):
-    def compute_step(self):        
-        super(FedAvgMServer, self).update_m_vector()
-        for name, _ in self.model.named_parameters():                        
-            self.step[name] = self.m_vector[name]
-
-class FedAdagradServer(FedAdaptServer):
-    def compute_step(self):        
-        super(FedAdagradServer, self).update_m_vector()
-        for name, _ in self.model.named_parameters():    
-            self.v_vector[name] = self.v_vector[name] + torch.square(self.pseudo_grad[name])
-            self.step[name] = torch.div( self.server_learning_rate * self.m_vector[name], torch.sqrt(self.v_vector[name]) + self.server_adapt_param )
-
-class FedAdamServer(FedAdaptServer):
-    def compute_step(self):        
-        super(FedAdamServer, self).update_m_vector()
-        for name, _ in self.model.named_parameters():    
-            self.v_vector[name] = self.server_momentum_param_2 * self.v_vector[name] + (1.0-self.server_momentum_param_2) * torch.square(self.pseudo_grad[name])
-            self.step[name] = torch.div( self.server_learning_rate * self.m_vector[name], torch.sqrt(self.v_vector[name]) + self.server_adapt_param )
-
-class FedYogiServer(FedAdaptServer):
-    def compute_step(self):        
-        super(FedYogiServer, self).update_m_vector()
-        for name, _ in self.model.named_parameters():    
-            self.v_vector[name] = self.v_vector[name] - (1.0-self.server_momentum_param_2) * torch.mul( torch.square(self.pseudo_grad[name]), torch.sign(self.v_vector[name] - torch.square(self.pseudo_grad[name]) ) )            
-
-            self.step[name] = torch.div( self.server_learning_rate * self.m_vector[name], torch.sqrt(self.v_vector[name]) + self.server_adapt_param )
 
 class FedAdaptClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):

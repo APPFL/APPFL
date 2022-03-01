@@ -4,14 +4,14 @@ from omegaconf import DictConfig, OmegaConf
 @dataclass
 class FedAdapt:
     type: str = "fedadapt"  
-    servername: str = "FedYogiServer" ## FedAvgServer, FedAvgMServer, FedAdagradServer, FedAdamServer, FedYogiServer
+    servername: str = "FedAdamServer" ## FedAvgServer, FedAvgMServer, FedAdagradServer, FedAdamServer, FedYogiServer
     clientname: str = "FedAdaptClient"
     args: DictConfig = OmegaConf.create(
         {
             "num_local_epochs": 10,
 
             ## Server update
-            "server_learning_rate": 0.1,
+            "server_learning_rate": 0.01,
             "server_adapt_param": 0.001,
             "server_momentum_param_1": 0.9,
             "server_momentum_param_2": 0.99,

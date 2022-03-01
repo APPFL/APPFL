@@ -17,6 +17,11 @@ from .misc.data import Dataset
 from .misc.utils import *
 
 from .algorithm.fedadapt import *
+from .algorithm.fedadapt_avg import *
+from .algorithm.fedadapt_avgm import *
+from .algorithm.fedadapt_adagrad import *
+from .algorithm.fedadapt_adam import *
+from .algorithm.fedadapt_yogi import *
 from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
 
