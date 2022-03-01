@@ -31,14 +31,13 @@ class IIADMMServer(BaseServer):
     def update(self, local_states: OrderedDict):
 
         """ Inputs for the global model update"""
-        global_state = copy.deepcopy(self.model.state_dict())
+        self.global_state = copy.deepcopy(self.model.state_dict())
         super(IIADMMServer, self).primal_recover_from_local_states(local_states)
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
 
         """ residual calculation """
-        prim_res = super(IIADMMServer, self).primal_residual_at_server(global_state)  
+        prim_res = super(IIADMMServer, self).primal_residual_at_server()  
         dual_res = super(IIADMMServer, self).dual_residual_at_server()  
-
 
         """ global_state calculation """
         for name, param in self.model.named_parameters():
@@ -51,7 +50,7 @@ class IIADMMServer(BaseServer):
                 )
                 ## dual
                 self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[i] * (
-                    global_state[name] - self.primal_states[i][name]
+                    self.global_state[name] - self.primal_states[i][name]
                 )
                 ## computation
                 tmp += (
@@ -59,10 +58,10 @@ class IIADMMServer(BaseServer):
                     - (1.0 / self.penalty[i]) * self.dual_states[i][name]
                 )
 
-            global_state[name] = tmp / self.num_clients
+            self.global_state[name] = tmp / self.num_clients
 
         """ model update """
-        self.model.load_state_dict(global_state)
+        self.model.load_state_dict(self.global_state)
 
         return prim_res, dual_res, min(self.penalty.values()), max(self.penalty.values())
 

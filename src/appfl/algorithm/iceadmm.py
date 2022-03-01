@@ -22,13 +22,13 @@ class ICEADMMServer(BaseServer):
     def update(self, local_states: OrderedDict):
         
         """ Inputs for the global model update"""
-        global_state = copy.deepcopy(self.model.state_dict())
+        self.global_state = copy.deepcopy(self.model.state_dict())
         super(ICEADMMServer, self).primal_recover_from_local_states(local_states)
         super(ICEADMMServer, self).dual_recover_from_local_states(local_states)
         super(ICEADMMServer, self).penalty_recover_from_local_states(local_states)
 
         """ residual calculation """
-        prim_res = super(ICEADMMServer, self).primal_residual_at_server(global_state)  
+        prim_res = super(ICEADMMServer, self).primal_residual_at_server()  
         dual_res = super(ICEADMMServer, self).dual_residual_at_server()  
         
         total_penalty = 0
@@ -49,10 +49,10 @@ class ICEADMMServer(BaseServer):
                     1.0 / total_penalty
                 ) * self.dual_states[i][name]
 
-            global_state[name] = tmp
+            self.global_state[name] = tmp
 
         """ model update """                
-        self.model.load_state_dict(global_state)
+        self.model.load_state_dict(self.global_state)
 
         return prim_res, dual_res, min(self.penalty.values()), max(self.penalty.values())
 
