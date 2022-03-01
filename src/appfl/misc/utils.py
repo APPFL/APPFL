@@ -71,71 +71,7 @@ def create_custom_logger(logger, cfg: DictConfig):
     logger.addHandler(f_handler)
     
     return logger
-
-def log_title():
-    title = "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s %12s" % (
-        "Iter",
-        "Local[s]",
-        "Global[s]",
-        "Valid[s]",
-        "Iter[s]",
-        "Elapsed[s]",
-        "TestAvgLoss",
-        "TestAccuracy",
-        "Prim_res",
-        "Dual_res",
-        "Penal_min",
-        "Penal_max"
-    )
-    return title
-    
-def log_iteration(
-    t,
-    LocalUpdate_time,
-    GlobalUpdate_time,
-    Validation_time,
-    PerIter_time,
-    Elapsed_time,
-    test_loss,
-    accuracy,
-    prim_res,
-    dual_res,
-    rho_min,
-    rho_max,):
-
-    log_iter = "%12d %12.2f %12.2f %12.2f %12.2f %12.2f %12.6f %12.2f %12.4e %12.4e %12.2f %12.2f" % (
-        t + 1,
-        LocalUpdate_time,
-        GlobalUpdate_time,
-        Validation_time,
-        PerIter_time,
-        Elapsed_time,
-        test_loss,
-        accuracy,
-        prim_res,
-        dual_res,
-        rho_min,
-        rho_max,
-    )
-    return log_iter
-
-def log_summary(logger, cfg: DictConfig,comm_size,
-    DataSet_name,
-    num_clients,
-    Elapsed_time,
-    BestAccuracy,):
-
-    logger.info("Device=%s" % (cfg.device))
-    logger.info("#Processors=%s" % (comm_size))
-    logger.info("Dataset=%s" % (DataSet_name))
-    logger.info("#Clients=%s" % (num_clients))
-    logger.info("Algorithm=%s" % (cfg.fed.type))
-    logger.info("Comm_Rounds=%s" % (cfg.num_epochs))
-    logger.info("Local_Epochs=%s" % (cfg.fed.args.num_local_epochs))
-    logger.info("DP_Eps=%s" % (cfg.fed.args.epsilon))    
-    logger.info("Clipping=%s" % (cfg.fed.args.clip_value))    
-    logger.info("Elapsed_time=%s" % (round(Elapsed_time, 2)))
-    logger.info("BestAccuracy=%s" % (round(BestAccuracy, 2)))  
+   
 
 def load_model(cfg: DictConfig):
     file = cfg.load_model_dirname + "/%s%s" %(cfg.load_model_filename, ".pt")    

@@ -28,8 +28,8 @@ class ICEADMMServer(BaseServer):
         super(ICEADMMServer, self).penalty_recover_from_local_states(local_states)
 
         """ residual calculation """
-        prim_res = super(ICEADMMServer, self).primal_residual_at_server()  
-        dual_res = super(ICEADMMServer, self).dual_residual_at_server()  
+        super(ICEADMMServer, self).primal_residual_at_server()  
+        super(ICEADMMServer, self).dual_residual_at_server()  
         
         total_penalty = 0
         for i in range(self.num_clients):
@@ -54,7 +54,20 @@ class ICEADMMServer(BaseServer):
         """ model update """                
         self.model.load_state_dict(self.global_state)
 
-        return prim_res, dual_res, min(self.penalty.values()), max(self.penalty.values())
+    def logging_iteration(self, cfg, logger, t):
+        if t == 0:
+            title = super(ICEADMMServer, self).log_title()
+            title = title + "%12s %12s %12s %12s" %("PrimRes", "DualRes", "RhoMin", "RhoMax")
+            logger.info(title)
+        
+        contents = super(ICEADMMServer, self).log_contents(cfg, t) 
+        contents = contents + "%12.4e %12.4e %12.4e %12.4e" %(self.prim_res, self.dual_res, min(self.penalty.values()), max(self.penalty.values()))
+        logger.info(contents)
+
+ 
+    def logging_summary(self, cfg, logger):
+        super(ICEADMMServer, self).log_summary(cfg, logger) 
+
 
 class ICEADMMClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):

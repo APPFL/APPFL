@@ -36,8 +36,8 @@ class IIADMMServer(BaseServer):
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
 
         """ residual calculation """
-        prim_res = super(IIADMMServer, self).primal_residual_at_server()  
-        dual_res = super(IIADMMServer, self).dual_residual_at_server()  
+        super(IIADMMServer, self).primal_residual_at_server()  
+        super(IIADMMServer, self).dual_residual_at_server()  
 
         """ global_state calculation """
         for name, param in self.model.named_parameters():
@@ -63,8 +63,21 @@ class IIADMMServer(BaseServer):
         """ model update """
         self.model.load_state_dict(self.global_state)
 
-        return prim_res, dual_res, min(self.penalty.values()), max(self.penalty.values())
+    
+    def logging_iteration(self, cfg, logger, t):
+        if t == 0:
+            title = super(IIADMMServer, self).log_title()
+            title = title + "%12s %12s %12s %12s" %("PrimRes", "DualRes", "RhoMin", "RhoMax")
+            logger.info(title)
+        
+        contents = super(IIADMMServer, self).log_contents(cfg, t) 
+        contents = contents + "%12.4e %12.4e %12.4e %12.4e" %(self.prim_res, self.dual_res, min(self.penalty.values()), max(self.penalty.values()))
+        logger.info(contents)
 
+
+    def logging_summary(self, cfg, logger):
+        super(IIADMMServer, self).log_summary(cfg, logger) 
+ 
 
 
 class IIADMMClient(BaseClient):

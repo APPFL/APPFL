@@ -9,10 +9,10 @@ from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = Federated()
+    fed: Any = IIADMM()
 
     # Number of training epochs
-    num_epochs: int = 10
+    num_epochs: int = 2
     
     # Training Data Batch Info
     batch_training: bool = True
@@ -44,6 +44,9 @@ class Config:
     # Indication of whether to validate or not
     validation: bool = True
 
+    # Logging information
+    logginginfo:  DictConfig = OmegaConf.create({})
+    
     #
     # gRPC configutations
     #

@@ -17,14 +17,12 @@ from .misc.data import Dataset
 from .misc.utils import *
 
 
-from .algorithm.Server_fed import *
 from .algorithm.Server_fed_avg import *
-from .algorithm.Server_fed_avgmomentum import *
+from .algorithm.Server_fed_avgmom import *
 from .algorithm.Server_fed_adagrad import *
 from .algorithm.Server_fed_adam import *
 from .algorithm.Server_fed_yogi import *
 from .algorithm.Client_sgd import *
-
 
 from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
@@ -48,11 +46,13 @@ def run_serial(
         DataSet_name (str): optional dataset name
     """
 
+    ## Logger
     logger = logging.getLogger(__name__)
-    logger = create_custom_logger(logger, cfg)    
-    title = log_title()    
-    logger.info(title)
-
+    logger = create_custom_logger(logger, cfg)  
+    cfg["logginginfo"]["comm_size"] = 1
+    cfg["logginginfo"]["DataSet_name"] = DataSet_name
+    
+    
     num_clients = len(train_data)
     num_epochs = cfg.num_epochs
 
@@ -128,41 +128,27 @@ def run_serial(
             local_state[0][k] = client.update()      
         
         local_states.append(local_state[0])   
- 
-        LocalUpdate_time = time.time() - LocalUpdate_start
+        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
         
         GlobalUpdate_start = time.time()
-        prim_res, dual_res, rho_min, rho_max = server.update(local_states)
-        GlobalUpdate_time = time.time() - GlobalUpdate_start
+        server.update(local_states)
+        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
         if cfg.validation == True:
             test_loss, accuracy = validation(server, server_dataloader)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-        Validation_time = time.time() - Validation_start
-        PerIter_time = time.time() - PerIter_start
-        Elapsed_time = time.time() - start_time
-
-        log_iter = log_iteration(            
-            t,
-            LocalUpdate_time,
-            GlobalUpdate_time,
-            Validation_time,
-            PerIter_time,
-            Elapsed_time,
-            test_loss,
-            accuracy,
-            prim_res, 
-            dual_res,
-            rho_min, 
-            rho_max,
-        )
-        logger.info(log_iter)
-
-    log_summary(
-        logger, cfg, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
-    )
+        cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
+        cfg["logginginfo"]["PerIter_time"]  = time.time() - PerIter_start
+        cfg["logginginfo"]["Elapsed_time"]  = time.time() - start_time
+        cfg["logginginfo"]["test_loss"]     = test_loss
+        cfg["logginginfo"]["accuracy"]      = accuracy
+        cfg["logginginfo"]["BestAccuracy"]  = BestAccuracy
+        
+        server.logging_iteration(cfg, logger, t)          
+  
+    server.logging_summary(cfg, logger)
 
     """ Saving model """    
     if cfg.save_model == True:        
@@ -187,12 +173,7 @@ def run_server(
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
     """
-    
-    logger = logging.getLogger(__name__)
-    logger = create_custom_logger(logger, cfg)    
-    title = log_title()    
-    logger.info(title)
- 
+           
     ## Start
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
@@ -200,6 +181,12 @@ def run_server(
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
+
+    ## Logger
+    logger = logging.getLogger(__name__)
+    logger = create_custom_logger(logger, cfg)  
+    cfg["logginginfo"]["comm_size"] = comm_size
+    cfg["logginginfo"]["DataSet_name"] = DataSet_name
 
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_dataset) > 0:
@@ -263,58 +250,40 @@ def run_server(
         LocalUpdate_start = time.time()
         global_state = comm.bcast(global_state, root=0)
         local_states = comm.gather(None, root=0)
-        LocalUpdate_time = time.time() - LocalUpdate_start
+        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
 
         GlobalUpdate_start = time.time()        
-        prim_res, dual_res, rho_min, rho_max = server.update(local_states)
-        GlobalUpdate_time = time.time() - GlobalUpdate_start
+        server.update(local_states)
+        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
+        test_loss = 0; accuracy = 0; BestAccuracy=0
         if cfg.validation == True:
             test_loss, accuracy = validation(server, server_dataloader)
             if accuracy > BestAccuracy:
-                BestAccuracy = accuracy
-        Validation_time = time.time() - Validation_start
-        PerIter_time = time.time() - PerIter_start
-        Elapsed_time = time.time() - start_time
-
-        log_iter = log_iteration(            
-            t,
-            LocalUpdate_time,
-            GlobalUpdate_time,
-            Validation_time,
-            PerIter_time,
-            Elapsed_time,
-            test_loss,
-            accuracy,
-            prim_res, 
-            dual_res,
-            rho_min, 
-            rho_max,
-        )
-        logger.info(log_iter)
+                BestAccuracy = accuracy                
+        cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
+        cfg["logginginfo"]["PerIter_time"]  = time.time() - PerIter_start
+        cfg["logginginfo"]["Elapsed_time"]  = time.time() - start_time
+        cfg["logginginfo"]["test_loss"]     = test_loss
+        cfg["logginginfo"]["accuracy"]      = accuracy
+        cfg["logginginfo"]["BestAccuracy"]  = BestAccuracy
+        
+        server.logging_iteration(cfg, logger, t)          
 
         if np.isnan(test_loss) == True:
             break
+    
+    server.logging_summary(cfg, logger)
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
-
-    log_summary(
-        logger, cfg, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
-    )
  
     """ Saving model """    
     if cfg.save_model == True:        
         save_model(server.model, cfg)
          
-    
-
-
-
-    
-
-
+          
 def run_client(
     cfg: DictConfig, comm: MPI.Comm, model: nn.Module, num_clients: int, train_data: Dataset
 ):
