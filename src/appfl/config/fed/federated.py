@@ -21,10 +21,9 @@ class Federated:
     servername: str = "ServerFedAvg" 
     clientname: str = "ClientSGD"
     args: DictConfig = OmegaConf.create(
-        {           
-            ## Model
-            # user-defined loss function
-            "loss_type": "torch.nn.BCELoss()",                           
+        {                                            
+            # User-defined loss function (pytorch format)
+            "loss_type": "torch.nn.BCELoss()",
 
             ## Server update
             "server_learning_rate": 0.01,

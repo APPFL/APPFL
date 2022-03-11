@@ -2,50 +2,51 @@ from dataclasses import dataclass
 from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
-
 from .fed.federated import *
-from .fed.iceadmm import *
+from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
 
 @dataclass
 class Config:
     fed: Any = Federated()
 
+    # Compute device
+    device: str = "cuda"    
+
     # Number of training epochs
     num_epochs: int = 2
     
-    # Training Data Batch Info
-    batch_training: bool = True
+    # Train data batch info
+    batch_training: bool = True  ## TODO: revisit
     train_data_batch_size: int = 64
     train_data_shuffle: bool = False
 
-    # Testing Data Batch Info
+    # Indication of whether to validate or not using testing data
+    validation: bool = True    
     test_data_batch_size: int = 64
     test_data_shuffle: bool = False
 
-    # Loading Models
+    # Checking data sanity
+    data_sanity: bool = False
+
+    # Reproducibility
+    reproduce: bool = True
+
+    # Loading models
     load_model: bool = False
     load_model_dirname: str = ""
     load_model_filename: str = ""
 
-    # Saving Models
-    save_model: bool = False
-    save_model_dirname: str = ""
-    save_model_filename: str = ""
+    # Saving models
+    save_model: bool = True
+    save_model_dirname: str = "./save_models"
+    save_model_filename: str = "Model"    
     
-    # FL Outputs
+    # Logging and recording outputs
     output_dirname: str = "./outputs"
     output_filename: str = "result"    
-
-
-    # Compute device
-    device: str = "cuda"
-
-    # Indication of whether to validate or not
-    validation: bool = True
-
-    # Logging information
-    logginginfo:  DictConfig = OmegaConf.create({})
+    logginginfo: DictConfig = OmegaConf.create({})
+  
     
     #
     # gRPC configutations

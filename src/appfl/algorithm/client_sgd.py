@@ -19,7 +19,6 @@ class ClientSGD(BaseClient):
 
         self.loss_fn = eval(self.loss_type)
          
-
         self.train_loss = []
 
     def update(self):
@@ -29,8 +28,9 @@ class ClientSGD(BaseClient):
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
-        """ Inputs for the local model update """
-        ## "global_state" from a server is already stored in 'self.model'
+        """ Inputs for the local model update 
+            "global_state" from a server is already stored in 'self.model'
+        """        
 
         """ Multiple local update """
         for i in range(self.num_local_epochs):
@@ -42,6 +42,7 @@ class ClientSGD(BaseClient):
                 
                 output = self.model(data)
                 
+                ## TODO: different functions take different formats of arguments
                 if self.loss_type == "torch.nn.BCELoss()":
                     target = target.to(torch.float32)                                
                     loss = self.loss_fn(output, target.reshape(-1,1))
@@ -51,7 +52,7 @@ class ClientSGD(BaseClient):
                 optimizer.zero_grad()
                 loss.backward()
 
-                train_loss += loss.item() * len(target)
+                train_loss += loss.item()  
                 tmpcnt += 1
 
                 if self.clip_value != False:                                              
@@ -79,7 +80,6 @@ class ClientSGD(BaseClient):
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0        
 
-        print("id=", self.id, " train_loss=", self.train_loss)
         return self.local_state
 
 

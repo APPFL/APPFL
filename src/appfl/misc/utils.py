@@ -27,6 +27,7 @@ def validation(self, dataloader):
             target = target.to(self.device)            
             output = self.model(img)            
             
+            ## TODO: different functions take different formats of arguments
             if self.loss_type == "torch.nn.BCELoss()":
                 target = target.to(torch.float32)                                
                 test_loss += self.loss_fn(output, target.reshape(-1,1)).item()
@@ -86,6 +87,26 @@ def load_model(cfg: DictConfig):
     model.eval()
     return model
     
+
+def save_model_iteration(model, t, cfg: DictConfig):
+    dir = cfg.save_model_dirname 
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)
+    model_name=cfg.save_model_filename + "_Iter_%s" %(t+1)
+
+    file_ext = ".pt"
+    file = dir + "/%s%s" % (model_name, file_ext)
+    uniq = 1
+    while os.path.exists(file):
+        file = dir + "/%s_%d%s" % (model_name, uniq, file_ext)
+        uniq += 1    
+    
+    torch.save({
+        'epoch': t+1,
+        'model_state_dict': model.state_dict(),        
+        }, file)
+
+
 def save_model(model, t, cfg: DictConfig):
     dir = cfg.save_model_dirname 
     if os.path.isdir(dir) == False:
