@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from omegaconf import DictConfig, OmegaConf
-
+import torch
 """ various server updates are available 
 (Baseline)
     ServerFedAvg
@@ -22,6 +22,9 @@ class Federated:
     clientname: str = "ClientSGD"
     args: DictConfig = OmegaConf.create(
         {           
+            ## Model
+            # user-defined loss function
+            "loss_type": "torch.nn.BCELoss()",                           
 
             ## Server update
             "server_learning_rate": 0.01,
@@ -34,7 +37,7 @@ class Federated:
             "num_local_epochs": 10,
             "optim": "SGD",
             "optim_args": {
-                "lr": 0.01,
+                "lr": 0.001,
                 "momentum": 0.9,
                 "weight_decay": 1e-5,
             },
