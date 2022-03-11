@@ -17,39 +17,26 @@ from mpi4py import MPI
 import argparse
 
 DataSet_name = "MNIST"
-num_clients = 4
+num_clients = 2
 num_channel = 1  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
 num_pixel = 28  # image size = (num_pixel, num_pixel)
 
 dir = os.getcwd() + "/datasets/RawData"
 
-
 def get_data(comm: MPI.Comm):
     comm_rank = comm.Get_rank()
 
-    if comm_rank == 0:
-        # test data for a server
-        test_data_raw = eval("torchvision.datasets." + DataSet_name)(
+    if comm_rank == 0:        
+        test_dataset = eval("torchvision.datasets." + DataSet_name)(
             dir, download=True, train=False, transform=ToTensor()
         )
 
     comm.Barrier()
-    if comm_rank > 0:
-        # test data for a server
-        test_data_raw = eval("torchvision.datasets." + DataSet_name)(
+    if comm_rank > 0:        
+        test_dataset = eval("torchvision.datasets." + DataSet_name)(
             dir, download=False, train=False, transform=ToTensor()
-        )
-
-    test_data_input = []
-    test_data_label = []
-    for idx in range(len(test_data_raw)):
-        test_data_input.append(test_data_raw[idx][0].tolist())
-        test_data_label.append(test_data_raw[idx][1])
-
-    test_dataset = Dataset(
-        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
-    )
+        ) 
 
     # training data for multiple clients
     train_data_raw = eval("torchvision.datasets." + DataSet_name)(
@@ -59,21 +46,8 @@ def get_data(comm: MPI.Comm):
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
     train_datasets = []
     for i in range(num_clients):
-
-        train_data_input = []
-        train_data_label = []
-        for idx in split_train_data_raw[i]:
-            train_data_input.append(train_data_raw[idx][0].tolist())
-            train_data_label.append(train_data_raw[idx][1])
-
-        train_datasets.append(
-            Dataset(
-                torch.FloatTensor(train_data_input),
-                torch.tensor(train_data_label),
-            )
-        )
-
-    data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)
+        train_datasets.append(torch.utils.data.Subset(train_data_raw, split_train_data_raw[i]))
+        
     return train_datasets, test_dataset
 
 
@@ -85,30 +59,44 @@ def get_model(comm: MPI.Comm):
 
 ## Run
 def main():
+    
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
-    ## Reproducibility
-    torch.manual_seed(1)
-    torch.backends.cudnn.deterministic = True
-
-    start_time = time.time()
-    train_datasets, test_dataset = get_data(comm)
-    model = get_model(comm)
-    print(
-        "----------Loaded Datasets and Model----------Elapsed Time=",
-        time.time() - start_time,
-    )
-
-    # read default configuration
-    cfg = OmegaConf.structured(Config)
+    """ Configuration """     
+    cfg = OmegaConf.structured(Config) 
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--server', type=str, required=False)    
     args = parser.parse_args()    
-    cfg["fed"]["servername"] = args.server
 
+    cfg.fed.servername = args.server
+
+    ## Reproducibility
+    if cfg.reproduce == True:
+        torch.manual_seed(1)
+        torch.backends.cudnn.deterministic = True 
+
+    """ User-defined model and data """
+    start_time = time.time()
+ 
+    model = get_model(comm)
+    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
+ 
+    train_datasets, test_dataset = get_data(comm)
+
+    ## Sanity check for the user-defined data
+    if cfg.data_sanity == True:
+        data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)        
+
+    print(
+        "--------Data and Model: Loading_Time=",
+        time.time() - start_time,
+    )
+ 
+    
+    """ Running """
     if comm_size > 1:
         if comm_rank == 0:
             rt.run_server(cfg, comm, model, num_clients, test_dataset, DataSet_name)
