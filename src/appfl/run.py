@@ -16,13 +16,16 @@ import logging
 from .misc.data import Dataset
 from .misc.utils import *
 
-
-from .algorithm.Server_fed_avg import *
-from .algorithm.Server_fed_avgmom import *
-from .algorithm.Server_fed_adagrad import *
-from .algorithm.Server_fed_adam import *
-from .algorithm.Server_fed_yogi import *
-from .algorithm.Client_sgd import *
+from .algorithm.client_sgd import *
+from .algorithm.server_fed_avg import *
+from .algorithm.server_fed_avgmom import *
+from .algorithm.server_fed_adagrad import *
+from .algorithm.server_fed_adam import *
+from .algorithm.server_fed_yogi import *
+from .algorithm.server_fed_bfgs import *
+from .algorithm.server_fed_broyden import *
+from .algorithm.server_fed_dfp import *
+from .algorithm.server_fed_sr1 import *
 
 from .algorithm.iceadmm import *
 from .algorithm.iiadmm import *
@@ -185,8 +188,7 @@ def run_server(
     ## Logger
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)  
-    cfg["logginginfo"]["comm_size"] = comm_size
-    cfg["logginginfo"]["DataSet_name"] = DataSet_name
+    cfg["logginginfo"]["comm_size"] = comm_size    
 
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_dataset) > 0:
@@ -269,19 +271,24 @@ def run_server(
         cfg["logginginfo"]["accuracy"]      = accuracy
         cfg["logginginfo"]["BestAccuracy"]  = BestAccuracy
         
-        server.logging_iteration(cfg, logger, t)          
+        server.logging_iteration(cfg, logger, t)       
+
+        """ Saving model """            
+        if cfg.save_model == True and t in [0,49,99,149,199,249,cfg.num_epochs-1]:             
+            save_model(server.model, t, cfg)   
 
         if np.isnan(test_loss) == True:
             break
-    
+         
+    """ Summary """
     server.logging_summary(cfg, logger)
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
  
-    """ Saving model """    
-    if cfg.save_model == True:        
-        save_model(server.model, cfg)
+    
+
+    
          
           
 def run_client(

@@ -10,7 +10,7 @@ import numpy as np
 import logging
 import time
  
-from appfl.algorithm.Client_sgd import *
+from appfl.algorithm.client_sgd import *
 from appfl.algorithm.iceadmm import *
 from appfl.algorithm.iiadmm import *
 

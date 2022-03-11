@@ -36,7 +36,6 @@ class BaseServer:
             self.primal_states_curr[i] = OrderedDict()
             self.primal_states_prev[i] = OrderedDict()
  
-
     def get_model(self) -> nn.Module:
         """Get the model
 
@@ -134,12 +133,12 @@ class BaseServer:
         )
         return contents
 
-
     def log_summary(self, cfg: DictConfig, logger):
 
         logger.info("Device=%s" % (cfg.device))
         logger.info("#Processors=%s" % (cfg["logginginfo"]["comm_size"]))
-        logger.info("Dataset=%s" % (cfg["logginginfo"]["DataSet_name"]))
+        logger.info("Train_DataSet=%s" % (cfg["logginginfo"]["Train_DataSet_name"]))
+        logger.info("Test_DataSet=%s" % (cfg["logginginfo"]["Test_DataSet_name"]))
         logger.info("#Clients=%s" % (self.num_clients))
         logger.info("Server=%s" % (cfg.fed.servername))
         logger.info("Clients=%s" % (cfg.fed.clientname))
