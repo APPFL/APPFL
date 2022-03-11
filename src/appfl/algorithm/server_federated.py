@@ -1,6 +1,4 @@
-import logging
-
-log = logging.getLogger(__name__)
+import logging 
 
 from collections import OrderedDict
 from .algorithm import BaseServer, BaseClient
@@ -17,14 +15,20 @@ class FedServer(BaseServer):
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
 
-        self.pseudo_grad = OrderedDict()        
         self.step = OrderedDict()
-        
+        """ Group 1 """        
+        self.pseudo_grad = OrderedDict()        
         self.m_vector = OrderedDict()
         self.v_vector = OrderedDict()
         for name, _ in self.model.named_parameters():
             self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name])
             self.v_vector[name] = torch.zeros_like(self.model.state_dict()[name]) + self.server_adapt_param
+        """ Group 2 """ 
+        self.pseudo_grad_vec = OrderedDict()
+        self.model_size = OrderedDict()
+        for name, _ in self.model.named_parameters():
+            self.model_size[name] = self.model.state_dict()[name].size()
+
 
     def update_m_vector(self):
         for name, _ in self.model.named_parameters():  
@@ -34,8 +38,8 @@ class FedServer(BaseServer):
         for name, _ in self.model.named_parameters():
             self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
             for i in range(self.num_clients):        
-                self.pseudo_grad[name] += self.weights[i] * ( self.primal_states[i][name] - self.global_state[name] )
-               
+                self.pseudo_grad[name] += self.weights[i] * ( self.global_state[name] - self.primal_states[i][name] )
+     
 
     def update(self, local_states: OrderedDict):
 
