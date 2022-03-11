@@ -14,6 +14,8 @@ from models.cnn import *
 import appfl.run as rt
 from mpi4py import MPI
 
+import argparse
+
 DataSet_name = "MNIST"
 num_clients = 4
 num_channel = 1  # 1 if gray, 3 if color
@@ -101,6 +103,11 @@ def main():
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--server', type=str, required=False)    
+    args = parser.parse_args()    
+    cfg["fed"]["servername"] = args.server
 
     if comm_size > 1:
         if comm_rank == 0:
