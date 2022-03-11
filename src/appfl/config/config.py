@@ -38,7 +38,7 @@ class Config:
     load_model_filename: str = ""
 
     # Saving models
-    save_model: bool = True
+    save_model: bool = False
     save_model_dirname: str = "./save_models"
     save_model_filename: str = "Model"    
     

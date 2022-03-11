@@ -130,7 +130,7 @@ def run_serial(
             client.model.load_state_dict(global_state)                        
             local_state[0][k] = client.update()      
         
-        local_states.append(local_state[0])   
+        local_states.append(local_state[0])           
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
         
         GlobalUpdate_start = time.time()
@@ -274,8 +274,10 @@ def run_server(
         server.logging_iteration(cfg, logger, t)       
 
         """ Saving model """            
-        if cfg.save_model == True and t in [0,49,99,149,199,249,cfg.num_epochs-1]:             
-            save_model(server.model, t, cfg)   
+
+        save_model_iteration(model, t, cfg)
+        # if cfg.save_model == True and t in [0,49,99,149,199,249,cfg.num_epochs-1]:             
+        #     save_model(server.model, t, cfg)   
 
         if np.isnan(test_loss) == True:
             break
