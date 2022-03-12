@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
@@ -14,7 +14,7 @@ class Config:
     device: str = "cuda"    
 
     # Number of training epochs
-    num_epochs: int = 2
+    num_epochs: int = 2 
     
     # Train data batch info
     batch_training: bool = True  ## TODO: revisit
@@ -39,8 +39,9 @@ class Config:
 
     # Saving models
     save_model: bool = False
-    save_model_dirname: str = "./save_models"
-    save_model_filename: str = "Model"    
+    save_model_dirname: str = ""
+    save_model_filename: str = ""  
+    save_model_checkpoints: list = field(default_factory=list)
     
     # Logging and recording outputs
     output_dirname: str = "./outputs"

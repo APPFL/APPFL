@@ -3,6 +3,7 @@
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 examples/.DS_Store
+examples/save_models
 examples/outputs/*
 examples/results/*
 examples/*.sh
@@ -168,3 +169,5 @@ examples/MPI_DeepCovid_2.py
 examples/MPI_FedCovid_1.py
 examples/MPI_FedCovid_2.py
 src/appfl/config/config.py
+examples/mnist_old.py
+examples/mnist_slow.py

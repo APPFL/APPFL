@@ -150,12 +150,14 @@ def run_serial(
         cfg["logginginfo"]["BestAccuracy"]  = BestAccuracy
         
         server.logging_iteration(cfg, logger, t)          
+        
+        """ Saving model """                  
+        if cfg.save_model == True and t+1 in cfg.save_model_checkpoints:
+            save_model_iteration(model, t+1, cfg)
   
     server.logging_summary(cfg, logger)
 
-    """ Saving model """    
-    if cfg.save_model == True:        
-        save_model(server.model, cfg)
+    
          
 
 def run_server(
@@ -229,11 +231,7 @@ def run_server(
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
     ) 
- 
-    """ Loading Model """
-    if cfg.load_model == True:      
-        server.model = load_model(cfg)        
-        
+  
     do_continue = True
     start_time = time.time()
     test_loss = 0.0
@@ -273,15 +271,14 @@ def run_server(
         
         server.logging_iteration(cfg, logger, t)       
 
-        """ Saving model """            
-
-        save_model_iteration(model, t, cfg)
-        # if cfg.save_model == True and t in [0,49,99,149,199,249,cfg.num_epochs-1]:             
-        #     save_model(server.model, t, cfg)   
+        """ Saving model """                  
+        if cfg.save_model == True and t+1 in cfg.save_model_checkpoints:
+            save_model_iteration(server.model, t+1, cfg)
 
         if np.isnan(test_loss) == True:
             break
-         
+    
+    
     """ Summary """
     server.logging_summary(cfg, logger)
 

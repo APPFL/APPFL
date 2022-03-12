@@ -9,6 +9,7 @@ from torchvision.transforms import ToTensor
 
 from appfl.config import *
 from appfl.misc.data import *
+from appfl.misc.utils import *
 from models.cnn import *
 
 import appfl.run as rt
@@ -27,16 +28,29 @@ dir = os.getcwd() + "/datasets/RawData"
 def get_data(comm: MPI.Comm):
     comm_rank = comm.Get_rank()
 
-    if comm_rank == 0:        
-        test_dataset = eval("torchvision.datasets." + DataSet_name)(
+    # Root download the data if not already available.
+    if comm_rank == 0:
+        # test data for a server
+        test_data_raw = eval("torchvision.datasets." + DataSet_name)(
             dir, download=True, train=False, transform=ToTensor()
         )
 
     comm.Barrier()
-    if comm_rank > 0:        
-        test_dataset = eval("torchvision.datasets." + DataSet_name)(
+    if comm_rank > 0:
+        # test data for a server
+        test_data_raw = eval("torchvision.datasets." + DataSet_name)(
             dir, download=False, train=False, transform=ToTensor()
-        ) 
+        )
+
+    test_data_input = []
+    test_data_label = []
+    for idx in range(len(test_data_raw)):
+        test_data_input.append(test_data_raw[idx][0].tolist())
+        test_data_label.append(test_data_raw[idx][1])
+
+    test_dataset = Dataset(
+        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+    )
 
     # training data for multiple clients
     train_data_raw = eval("torchvision.datasets." + DataSet_name)(
@@ -46,8 +60,19 @@ def get_data(comm: MPI.Comm):
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
     train_datasets = []
     for i in range(num_clients):
-        train_datasets.append(torch.utils.data.Subset(train_data_raw, split_train_data_raw[i]))
-        
+
+        train_data_input = []
+        train_data_label = []
+        for idx in split_train_data_raw[i]:
+            train_data_input.append(train_data_raw[idx][0].tolist())
+            train_data_label.append(train_data_raw[idx][1])
+
+        train_datasets.append(
+            Dataset(
+                torch.FloatTensor(train_data_input),
+                torch.tensor(train_data_label),
+            )
+        ) 
     return train_datasets, test_dataset
 
 
@@ -78,12 +103,20 @@ def main():
         torch.manual_seed(1)
         torch.backends.cudnn.deterministic = True 
 
-    """ User-defined model and data """
     start_time = time.time()
- 
+
+    """ User-defined model """    
     model = get_model(comm)
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
- 
+    
+    ## loading models 
+    cfg.load_model = True
+    if cfg.load_model == True:
+        cfg.load_model_dirname      = "./save_models"
+        cfg.load_model_filename     = "Model"               
+        model = load_model(cfg)         
+    
+    """ User-defined data """
     train_datasets, test_dataset = get_data(comm)
 
     ## Sanity check for the user-defined data
@@ -93,7 +126,14 @@ def main():
     print(
         "--------Data and Model: Loading_Time=",
         time.time() - start_time,
-    )
+    ) 
+    
+    """ saving models """
+    cfg.save_model = False
+    if cfg.save_model == True:
+        cfg.save_model_dirname      = "./save_models"
+        cfg.save_model_filename     = "Model"      
+        cfg.save_model_checkpoints  = [2]
  
     
     """ Running """
@@ -106,6 +146,7 @@ def main():
     else:
         rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
 
+ 
 
 if __name__ == "__main__":
     main()

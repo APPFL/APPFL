@@ -83,16 +83,16 @@ def create_custom_logger(logger, cfg: DictConfig):
 
 def load_model(cfg: DictConfig):
     file = cfg.load_model_dirname + "/%s%s" %(cfg.load_model_filename, ".pt")    
-    model = torch.jit.load(file)
+    model = torch.load(file)    
     model.eval()
     return model
     
 
-def save_model_iteration(model, t, cfg: DictConfig):
+def save_model_iteration(model, iter, cfg: DictConfig):
     dir = cfg.save_model_dirname 
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    model_name=cfg.save_model_filename + "_Iter_%s" %(t+1)
+    model_name=cfg.save_model_filename + "_Iter_%s" %(iter)
 
     file_ext = ".pt"
     file = dir + "/%s%s" % (model_name, file_ext)
@@ -101,32 +101,6 @@ def save_model_iteration(model, t, cfg: DictConfig):
         file = dir + "/%s_%d%s" % (model_name, uniq, file_ext)
         uniq += 1    
     
-    torch.save({
-        'epoch': t+1,
-        'model_state_dict': model.state_dict(),        
-        }, file)
+    torch.save(model, file)
 
-
-def save_model(model, t, cfg: DictConfig):
-    dir = cfg.save_model_dirname 
-    if os.path.isdir(dir) == False:
-        os.mkdir(dir)
-    model_name=cfg.save_model_filename + "_Iter_%s" %(t+1)
-    
-    file_ext = ".pt"
-    file = dir + "/%s%s" % (model_name, file_ext)
-    uniq = 1
-    while os.path.exists(file):
-        file = dir + "/%s_%d%s" % (model_name, uniq, file_ext)
-        uniq += 1
-    
-    
-    ## TODO: need to change
-    
-    if cfg.logginginfo.model_name == "DenseNet121":
-        torch.save(model, file) 
-    else:
-        model_scripted = torch.jit.script(model) # Export to TorchScript
-        model_scripted.save(file) # Save
-
-    
+     
