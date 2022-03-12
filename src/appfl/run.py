@@ -108,11 +108,6 @@ def run_serial(
         for k in range(num_clients)
     ]
 
-    
-    """ Loading Model """
-    if cfg.load_model == True:      
-        server.model = load_model(cfg)        
-
     local_states = []
     local_state = OrderedDict()
     local_state[0] = OrderedDict()
@@ -151,9 +146,9 @@ def run_serial(
         
         server.logging_iteration(cfg, logger, t)          
         
-        """ Saving model """                  
+        """ Saving model """                          
         if cfg.save_model == True and t+1 in cfg.save_model_checkpoints:
-            save_model_iteration(model, t+1, cfg)
+            save_model_iteration(server.model, t+1, cfg)
   
     server.logging_summary(cfg, logger)
 

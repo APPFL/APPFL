@@ -20,7 +20,10 @@ from appfl.algorithm.iiadmm import *
 from .federated_learning_pb2 import Job
 
 class FLOperator():
-    def __init__(self, cfg, model, test_dataset, num_clients):
+    def __init__(self, cfg, model, test_dataset, num_clients): 
+        
+        self.logger1 = create_custom_logger(logging.getLogger(__name__), cfg)  
+        cfg["logginginfo"]["comm_size"] = 1 
 
         self.logger = logging.getLogger(__name__)
         self.operator_id = cfg.operator.id
@@ -114,11 +117,10 @@ class FLOperator():
             self.logger.info(
                 f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%, Best Accuracy: {self.best_accuracy:.2f}%"
             )
-
-        if self.round_number == self.cfg.num_epochs:            
-            """ Saving model """    
-            if self.cfg.save_model == True:        
-                save_model(self.model, self.cfg)
+ 
+        """ Saving model """                          
+        if self.cfg.save_model == True and self.round_number in self.cfg.save_model_checkpoints:
+            save_model_iteration(self.model, self.round_number, self.cfg)                
                 
         self.round_number += 1
         
