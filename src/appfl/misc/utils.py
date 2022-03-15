@@ -6,7 +6,7 @@ import logging
 def validation(self, dataloader):
 
     if dataloader is not None:
-        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.loss_fn = eval(self.loss_type)        
     else:
         self.loss_fn = None
 
@@ -25,9 +25,15 @@ def validation(self, dataloader):
             tmptotal += len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            logits = self.model(img)
-            test_loss += self.loss_fn(logits, target).item()
-            pred = logits.argmax(dim=1, keepdim=True)
+            output = self.model(img)     
+            
+            if self.loss_type == "torch.nn.BCELoss()":
+                target = target.to(torch.float32)                                
+                test_loss += self.loss_fn(output, target.reshape(-1,1)).item()
+            else:
+                test_loss += self.loss_fn(output, target).item()
+                
+            pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     # FIXME: do we need to sent the model to cpu again?

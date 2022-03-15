@@ -109,7 +109,12 @@ class ICEADMMClient(BaseClient):
                     optimizer.zero_grad()
 
                 output = self.model(data)
-                loss = self.loss_fn(output, target)
+                if self.loss_type == "torch.nn.BCELoss()":
+                    target = target.to(torch.float32)                                
+                    loss = self.loss_fn(output, target.reshape(-1,1))
+                else:
+                    loss = self.loss_fn(output, target)            
+                    
                 loss.backward()
 
                 if self.clip_value != False:                                              
