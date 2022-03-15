@@ -8,7 +8,7 @@ class FedAvg:
     clientname: str = "FedAvgClient"
     args: DictConfig = OmegaConf.create(
         {
-            "num_local_epochs": 10,
+            "num_local_epochs": 1,
 
             # User-defined loss function (pytorch format)
             "loss_type": "torch.nn.CrossEntropyLoss()", ##  "torch.nn.CrossEntropyLoss()"  "torch.nn.BCELoss()"
