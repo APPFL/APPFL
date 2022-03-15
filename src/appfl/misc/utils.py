@@ -25,14 +25,8 @@ def validation(self, dataloader):
             tmptotal += len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            output = self.model(img)     
-            
-            if self.loss_type == "torch.nn.BCELoss()":
-                target = target.to(torch.float32)                                
-                test_loss += self.loss_fn(output, target.reshape(-1,1)).item()
-            else:
-                test_loss += self.loss_fn(output, target).item()
-                
+            output = self.model(img)                             
+            test_loss += self.loss_fn(output, target).item()                
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
