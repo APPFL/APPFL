@@ -9,6 +9,8 @@ import copy
 
 from appfl.misc.utils import *
 
+from appfl.algorithm.fedavg import *
+from appfl.algorithm.client_sgd import *
 from appfl.algorithm.server_fed_avg import *
 from appfl.algorithm.server_fed_avgmom import *
 from appfl.algorithm.server_fed_adagrad import *

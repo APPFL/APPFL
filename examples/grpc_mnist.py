@@ -92,11 +92,11 @@ def main():
     """ Configuration """     
     cfg = OmegaConf.structured(Config)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--server', type=str, required=False)    
-    args = parser.parse_args()   
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--server', type=str, required=False)    
+    # args = parser.parse_args()   
 
-    cfg.fed.servername = args.server
+    # cfg.fed.servername = args.server
 
     ## Reproducibility
     if cfg.reproduce == True:
@@ -110,7 +110,7 @@ def main():
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"  
 
     ## loading models 
-    cfg.load_model = True
+    cfg.load_model = False
     if cfg.load_model == True:
         cfg.load_model_dirname      = "./save_models"
         cfg.load_model_filename     = "Model"               

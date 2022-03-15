@@ -2,16 +2,17 @@ from dataclasses import dataclass, field
 from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
+from .fed.fedavg import *
 from .fed.federated import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = Federated()
+    fed: Any = FedAvg()
 
     # Compute device
-    device: str = "cuda"    
+    device: str = "cpu"    
 
     # Number of training epochs
     num_epochs: int = 2 
