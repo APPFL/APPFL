@@ -9,6 +9,8 @@ examples/results/*
 examples/*.sh
 examples/Slurm_outputs/*
 examples/datasets/RawData/cifar-10-batches-py
+examples/models/
+examples/datasets/RawData/Deepcovid
 examples/datasets/RawData/Coronahack
 examples/datasets/RawData/FEMNIST
 examples/datasets/RawData/MNIST
@@ -169,3 +171,4 @@ examples/gcloud/api_descriptor.pb
 examples/gcloud/generated_pb2/federated_learning_pb2_grpc.py
 examples/gcloud/generated_pb2/federated_learning_pb2.py
 examples/models/model.pt
+examples/datasets/PreprocessedData/coronahack_train_data.json
