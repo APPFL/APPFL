@@ -10,6 +10,9 @@ class ICEADMM:
         {
             "num_local_epochs": 1,
 
+            # User-defined loss function (pytorch format)
+            "loss_type": "torch.nn.CrossEntropyLoss()", ##  "torch.nn.CrossEntropyLoss()"  "torch.nn.BCELoss()"
+
             "accum_grad": True,
             "coeff_grad": True,
 
