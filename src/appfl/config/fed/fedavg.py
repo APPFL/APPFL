@@ -10,6 +10,9 @@ class FedAvg:
         {
             "num_local_epochs": 1,
 
+            # User-defined loss function (pytorch format)
+            "loss_type": "torch.nn.CrossEntropyLoss()", ##  "torch.nn.CrossEntropyLoss()"  "torch.nn.BCELoss()"
+
             ## Optimizer
             "optim": "SGD",
             "optim_args": {
