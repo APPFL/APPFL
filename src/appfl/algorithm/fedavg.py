@@ -49,7 +49,7 @@ class FedAvgClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
         super(FedAvgClient, self).__init__(id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
-        self.loss_fn = CrossEntropyLoss()
+        self.loss_fn = eval(self.loss_type)
 
     def update(self):
 

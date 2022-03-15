@@ -72,7 +72,7 @@ class IIADMMClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
         super(IIADMMClient, self).__init__(id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
-        self.loss_fn = CrossEntropyLoss()        
+        self.loss_fn = eval(self.loss_type)
 
         """
         At initial, (1) primal_state = global_state, (2) dual_state = 0

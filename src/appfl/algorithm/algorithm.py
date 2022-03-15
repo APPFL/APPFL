@@ -17,7 +17,7 @@ class BaseServer:
         device (str): device for computation
     """
 
-    def __init__(self, weights: OrderedDict, model: nn.Module, num_clients: int, device):
+    def __init__(self, weights: OrderedDict, model: nn.Module, num_clients: int, device):        
         self.model = model
         self.num_clients = num_clients
         self.device = device
@@ -137,7 +137,7 @@ class BaseClient:
     ):
         self.id = id
         self.weight = weight
-        self.model = model
+        self.model = model        
         self.dataloader = dataloader
         self.device = device
 
