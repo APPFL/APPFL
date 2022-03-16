@@ -20,35 +20,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x18\x66\x65\x64\x65rated_learning.proto\".\n\x06Header\x12\x11\n\tserver_id\x18\x01 \x01(\r\x12\x11\n\tclient_id\x18\x02 \x01(\r\".\n\nDataBuffer\x12\x0c\n\x04size\x18\x01 \x01(\r\x12\x12\n\ndata_bytes\x18\x02 \x01(\x0c\"I\n\x0e\x41\x63knowledgment\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x1e\n\x06status\x18\x02 \x01(\x0e\x32\x0e.MessageStatus\"=\n\nJobRequest\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x16\n\x08job_done\x18\x03 \x01(\x0e\x32\x04.Job\"T\n\x0bJobResponse\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x14\n\x0cround_number\x18\x02 \x01(\r\x12\x16\n\x08job_todo\x18\x03 \x01(\x0e\x32\x04.Job\"\x8d\x01\n\x0fLearningResults\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x14\n\x0cround_number\x18\x02 \x01(\r\x12\x0f\n\x07penalty\x18\x03 \x01(\x02\x12\x1d\n\x06primal\x18\x04 \x03(\x0b\x32\r.TensorRecord\x12\x1b\n\x04\x64ual\x18\x05 \x03(\x0b\x32\r.TensorRecord\"L\n\rTensorRequest\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x14\n\x0cround_number\x18\x03 \x01(\r\"X\n\x0cTensorRecord\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\ndata_shape\x18\x02 \x03(\x05\x12\x12\n\ndata_bytes\x18\x03 \x01(\x0c\x12\x12\n\ndata_dtype\x18\x04 \x01(\t\"6\n\rWeightRequest\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x0c\n\x04size\x18\x02 \x01(\r\"9\n\x0eWeightResponse\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x0e\n\x06weight\x18\x02 \x01(\x02*#\n\tNumPyType\x12\x0b\n\x07\x66loat32\x10\x00\x12\t\n\x05int64\x10\x01*0\n\x03Job\x12\x08\n\x04INIT\x10\x00\x12\n\n\x06WEIGHT\x10\x01\x12\t\n\x05TRAIN\x10\x02\x12\x08\n\x04QUIT\x10\x03*\"\n\rMessageStatus\x12\x06\n\x02OK\x10\x00\x12\t\n\x05\x45MPTY\x10\x01\x32\xd7\x01\n\x11\x46\x65\x64\x65ratedLearning\x12%\n\x06GetJob\x12\x0b.JobRequest\x1a\x0c.JobResponse\"\x00\x12\x32\n\x0fGetTensorRecord\x12\x0e.TensorRequest\x1a\r.TensorRecord\"\x00\x12.\n\tGetWeight\x12\x0e.WeightRequest\x1a\x0f.WeightResponse\"\x00\x12\x37\n\x13SendLearningResults\x12\x0b.DataBuffer\x1a\x0f.Acknowledgment\"\x00(\x01\x62\x06proto3'
+  serialized_pb=b'\n\x18\x66\x65\x64\x65rated_learning.proto\".\n\x06Header\x12\x11\n\tserver_id\x18\x01 \x01(\r\x12\x11\n\tclient_id\x18\x02 \x01(\r\".\n\nDataBuffer\x12\x0c\n\x04size\x18\x01 \x01(\r\x12\x12\n\ndata_bytes\x18\x02 \x01(\x0c\"I\n\x0e\x41\x63knowledgment\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x1e\n\x06status\x18\x02 \x01(\x0e\x32\x0e.MessageStatus\"=\n\nJobRequest\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x16\n\x08job_done\x18\x03 \x01(\x0e\x32\x04.Job\"T\n\x0bJobResponse\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x14\n\x0cround_number\x18\x02 \x01(\r\x12\x16\n\x08job_todo\x18\x03 \x01(\x0e\x32\x04.Job\"\x8d\x01\n\x0fLearningResults\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x14\n\x0cround_number\x18\x02 \x01(\r\x12\x0f\n\x07penalty\x18\x03 \x01(\x02\x12\x1d\n\x06primal\x18\x04 \x03(\x0b\x32\r.TensorRecord\x12\x1b\n\x04\x64ual\x18\x05 \x03(\x0b\x32\r.TensorRecord\"L\n\rTensorRequest\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x14\n\x0cround_number\x18\x03 \x01(\r\"X\n\x0cTensorRecord\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\ndata_shape\x18\x02 \x03(\x05\x12\x12\n\ndata_bytes\x18\x03 \x01(\x0c\x12\x12\n\ndata_dtype\x18\x04 \x01(\t\"6\n\rWeightRequest\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x0c\n\x04size\x18\x02 \x01(\r\"9\n\x0eWeightResponse\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x0e\n\x06weight\x18\x02 \x01(\x02*0\n\x03Job\x12\x08\n\x04INIT\x10\x00\x12\n\n\x06WEIGHT\x10\x01\x12\t\n\x05TRAIN\x10\x02\x12\x08\n\x04QUIT\x10\x03*\"\n\rMessageStatus\x12\x06\n\x02OK\x10\x00\x12\t\n\x05\x45MPTY\x10\x01\x32\xd7\x01\n\x11\x46\x65\x64\x65ratedLearning\x12%\n\x06GetJob\x12\x0b.JobRequest\x1a\x0c.JobResponse\"\x00\x12\x32\n\x0fGetTensorRecord\x12\x0e.TensorRequest\x1a\r.TensorRecord\"\x00\x12.\n\tGetWeight\x12\x0e.WeightRequest\x1a\x0f.WeightResponse\"\x00\x12\x37\n\x13SendLearningResults\x12\x0b.DataBuffer\x1a\x0f.Acknowledgment\"\x00(\x01\x62\x06proto3'
 )
 
-_NUMPYTYPE = _descriptor.EnumDescriptor(
-  name='NumPyType',
-  full_name='NumPyType',
-  filename=None,
-  file=DESCRIPTOR,
-  create_key=_descriptor._internal_create_key,
-  values=[
-    _descriptor.EnumValueDescriptor(
-      name='float32', index=0, number=0,
-      serialized_options=None,
-      type=None,
-      create_key=_descriptor._internal_create_key),
-    _descriptor.EnumValueDescriptor(
-      name='int64', index=1, number=1,
-      serialized_options=None,
-      type=None,
-      create_key=_descriptor._internal_create_key),
-  ],
-  containing_type=None,
-  serialized_options=None,
-  serialized_start=775,
-  serialized_end=810,
-)
-_sym_db.RegisterEnumDescriptor(_NUMPYTYPE)
-
-NumPyType = enum_type_wrapper.EnumTypeWrapper(_NUMPYTYPE)
 _JOB = _descriptor.EnumDescriptor(
   name='Job',
   full_name='Job',
@@ -79,8 +53,8 @@ _JOB = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=812,
-  serialized_end=860,
+  serialized_start=775,
+  serialized_end=823,
 )
 _sym_db.RegisterEnumDescriptor(_JOB)
 
@@ -105,14 +79,12 @@ _MESSAGESTATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=862,
-  serialized_end=896,
+  serialized_start=825,
+  serialized_end=859,
 )
 _sym_db.RegisterEnumDescriptor(_MESSAGESTATUS)
 
 MessageStatus = enum_type_wrapper.EnumTypeWrapper(_MESSAGESTATUS)
-float32 = 0
-int64 = 1
 INIT = 0
 WEIGHT = 1
 TRAIN = 2
@@ -582,7 +554,6 @@ DESCRIPTOR.message_types_by_name['TensorRequest'] = _TENSORREQUEST
 DESCRIPTOR.message_types_by_name['TensorRecord'] = _TENSORRECORD
 DESCRIPTOR.message_types_by_name['WeightRequest'] = _WEIGHTREQUEST
 DESCRIPTOR.message_types_by_name['WeightResponse'] = _WEIGHTRESPONSE
-DESCRIPTOR.enum_types_by_name['NumPyType'] = _NUMPYTYPE
 DESCRIPTOR.enum_types_by_name['Job'] = _JOB
 DESCRIPTOR.enum_types_by_name['MessageStatus'] = _MESSAGESTATUS
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -666,8 +637,8 @@ _FEDERATEDLEARNING = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=899,
-  serialized_end=1114,
+  serialized_start=862,
+  serialized_end=1077,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetJob',
