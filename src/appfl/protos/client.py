@@ -68,19 +68,8 @@ class FLClient:
         self.logger.debug(f"[Client ID: {self.client_id: 03}] Received Tensor record (name,round)=(%s,%d)", name, round_number)
         if round_number > 1:
             self.time_get_tensor += end - start
-        shape = tuple(response.data_shape)
-        
-        if response.data_dtype == "int64":
-            flat = np.frombuffer(response.data_bytes, dtype=np.int64)            
-        elif response.data_dtype == "int32":
-            flat = np.frombuffer(response.data_bytes, dtype=np.int32)                        
-        elif response.data_dtype == "float32":
-            flat = np.frombuffer(response.data_bytes, dtype=np.float32)
-        elif response.data_dtype == "float64":
-            flat = np.frombuffer(response.data_bytes, dtype=np.float64)
-        else:
-            self.logger.info("dtype error")
-
+        shape = tuple(response.data_shape)                
+        flat = np.frombuffer(response.data_bytes, dtype=eval(response.data_dtype))        
         nparray = np.reshape(flat, newshape=shape, order="C")
  
         return nparray
