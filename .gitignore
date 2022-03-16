@@ -175,3 +175,4 @@ examples/datasets/PreprocessedData/coronahack_train_data.json
 examples/gcloud/IsabelleTorch.pth
 examples/gcloud/IsabelleTorch.py
 examples/datasets/PreprocessedData/deepcovid_train_data.json
+examples/datasets/PreprocessedData/deepcovid_test_data.json

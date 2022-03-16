@@ -47,8 +47,8 @@ class Config:
     # gRPC configutations
     #
 
-    # 10 MB for gRPC maximum message size
-    max_message_size: int = 10485760
+    # 100 MB for gRPC maximum message size
+    max_message_size: int = 104857600
 
     operator: DictConfig = OmegaConf.create({"id": 1})
     server: DictConfig = OmegaConf.create(
