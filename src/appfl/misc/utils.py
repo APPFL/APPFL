@@ -159,4 +159,18 @@ def save_model(model, cfg: DictConfig):
     model_scripted = torch.jit.script(model) # Export to TorchScript
     model_scripted.save(file) # Save
 
+def save_model_iteration(t, model, cfg: DictConfig):
+    dir = cfg.save_model_dirname
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)
+    model_name=cfg.save_model_filename
     
+    file_ext = ".pt"
+    file = dir + "/%s_Round_%s%s" % (model_name, t, file_ext)
+    uniq = 1
+    while os.path.exists(file):
+        file = dir + "/%s_%d%s" % (model_name, uniq, file_ext)
+        uniq += 1
+     
+    model_scripted = torch.jit.script(model) # Export to TorchScript
+    model_scripted.save(file) # Save    

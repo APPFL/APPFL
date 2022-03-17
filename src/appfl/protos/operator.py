@@ -109,10 +109,15 @@ class FLOperator():
                 f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%, Best Accuracy: {self.best_accuracy:.2f}%"
             )
 
-        if self.round_number == self.cfg.num_epochs:            
+        if self.round_number % self.cfg.checkpoints_interval == 0 or self.round_number == self.cfg.num_epochs:            
             """ Saving model """    
             if self.cfg.save_model == True:        
-                save_model(self.model, self.cfg)
+                save_model_iteration(self.round_number, self.model, self.cfg)
+
+        # if self.round_number == self.cfg.num_epochs:            
+        #     """ Saving model """    
+        #     if self.cfg.save_model == True:        
+        #         save_model(self.model, self.cfg)
                 
         self.round_number += 1
         

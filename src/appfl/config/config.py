@@ -31,6 +31,7 @@ class Config:
     save_model: bool = False
     save_model_dirname: str = ""
     save_model_filename: str = ""
+    checkpoints_interval: int = 2
     
     # FL Outputs
     output_dirname: str = "./outputs"
