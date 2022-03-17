@@ -7,8 +7,10 @@ examples/.DS_Store
 examples/outputs/*
 examples/results/*
 examples/*.sh
+examples/datasets/PreprocessedData/
 examples/Slurm_outputs/*
 examples/datasets/RawData/cifar-10-batches-py
+examples/gcloud/resulting_models
 examples/models/
 examples/datasets/RawData/Deepcovid
 examples/datasets/RawData/Coronahack
@@ -172,3 +174,10 @@ examples/gcloud/generated_pb2/federated_learning_pb2_grpc.py
 examples/gcloud/generated_pb2/federated_learning_pb2.py
 examples/models/model.pt
 examples/datasets/PreprocessedData/coronahack_train_data.json
+examples/gcloud/IsabelleTorch.pth
+examples/gcloud/IsabelleTorch.py
+examples/datasets/PreprocessedData/deepcovid_train_data.json
+examples/datasets/PreprocessedData/deepcovid_test_data.json
+examples/gcloud/deepcovid_test_data.json
+examples/gcloud/Dockerfile.covid
+examples/gcloud/Dockerfile.mnist

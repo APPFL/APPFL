@@ -102,6 +102,7 @@ class FederatedLearning(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -110,7 +111,7 @@ class FederatedLearning(object):
             federated__learning__pb2.JobRequest.SerializeToString,
             federated__learning__pb2.JobResponse.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GetTensorRecord(request,
@@ -118,6 +119,7 @@ class FederatedLearning(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -126,7 +128,7 @@ class FederatedLearning(object):
             federated__learning__pb2.TensorRequest.SerializeToString,
             federated__learning__pb2.TensorRecord.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GetWeight(request,
@@ -134,6 +136,7 @@ class FederatedLearning(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -142,7 +145,7 @@ class FederatedLearning(object):
             federated__learning__pb2.WeightRequest.SerializeToString,
             federated__learning__pb2.WeightResponse.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def SendLearningResults(request_iterator,
@@ -150,6 +153,7 @@ class FederatedLearning(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -158,4 +162,4 @@ class FederatedLearning(object):
             federated__learning__pb2.DataBuffer.SerializeToString,
             federated__learning__pb2.Acknowledgment.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

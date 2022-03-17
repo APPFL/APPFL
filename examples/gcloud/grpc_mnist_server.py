@@ -49,6 +49,7 @@ class CNN(nn.Module):
 def main():
 
     parser = argparse.ArgumentParser(description="Provide the configuration")
+    parser.add_argument("--num_epochs", type=int, required=True)
     parser.add_argument("--nclients", type=int, required=True)
     parser.add_argument("--logging", type=str, default="INFO")
     args = parser.parse_args()
@@ -60,11 +61,20 @@ def main():
     model = CNN(num_channel, num_classes, num_pixel)
 
     logger = logging.getLogger(__name__)
-    logger.info(f"----------Loaded Model----------Elapsed Time={time.time() - start_time}")
+    logger.info(
+        f"----------Loaded Model----------Elapsed Time={time.time() - start_time}"
+    )
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
     logger.debug(OmegaConf.to_yaml(cfg))
+    cfg.num_epochs = args.num_epochs
+
+    """ saving models """
+    cfg.save_model = True
+    if cfg.save_model == True:
+        cfg.save_model_dirname = "./save_models"
+        cfg.save_model_filename = "MNIST_CNN_Iter_%s" % (cfg.num_epochs)
 
     grpc_server.run_server(cfg, model, args.nclients)
 

@@ -109,10 +109,15 @@ class FLOperator():
                 f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%, Best Accuracy: {self.best_accuracy:.2f}%"
             )
 
-        if self.round_number == self.cfg.num_epochs:            
+        if self.round_number % self.cfg.checkpoints_interval == 0 or self.round_number == self.cfg.num_epochs:            
             """ Saving model """    
             if self.cfg.save_model == True:        
-                save_model(self.model, self.cfg)
+                save_model_iteration(self.round_number, self.model, self.cfg)
+
+        # if self.round_number == self.cfg.num_epochs:            
+        #     """ Saving model """    
+        #     if self.cfg.save_model == True:        
+        #         save_model(self.model, self.cfg)
                 
         self.round_number += 1
         
@@ -133,14 +138,14 @@ class FLOperator():
         dual_tensors = OrderedDict()
         for tensor in primal:
             name = tensor.name
-            shape = tuple(tensor.data_shape)
-            flat = np.frombuffer(tensor.data_bytes, dtype=np.float32)
+            shape = tuple(tensor.data_shape)            
+            flat = np.frombuffer(tensor.data_bytes, dtype=eval(tensor.data_dtype))                        
             nparray = np.reshape(flat, newshape=shape, order='C')
             primal_tensors[name] = torch.from_numpy(nparray)
         for tensor in dual:
             name = tensor.name
             shape = tuple(tensor.data_shape)
-            flat = np.frombuffer(tensor.data_bytes, dtype=np.float32)
+            flat = np.frombuffer(tensor.data_bytes, dtype=eval(tensor.data_dtype))            
             nparray = np.reshape(flat, newshape=shape, order='C')
             dual_tensors[name] = torch.from_numpy(nparray)
         self.client_states[client_id]["primal"] = primal_tensors

@@ -6,7 +6,7 @@ import logging
 def validation(self, dataloader):
 
     if dataloader is not None:
-        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.loss_fn = eval(self.loss_type)        
     else:
         self.loss_fn = None
 
@@ -25,9 +25,9 @@ def validation(self, dataloader):
             tmptotal += len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            logits = self.model(img)
-            test_loss += self.loss_fn(logits, target).item()
-            pred = logits.argmax(dim=1, keepdim=True)
+            output = self.model(img)                             
+            test_loss += self.loss_fn(output, target).item()                
+            pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     # FIXME: do we need to sent the model to cpu again?
@@ -137,26 +137,25 @@ def log_summary(logger, cfg: DictConfig,comm_size,
     logger.info("Elapsed_time=%s" % (round(Elapsed_time, 2)))
     logger.info("BestAccuracy=%s" % (round(BestAccuracy, 2)))  
 
+    
 def load_model(cfg: DictConfig):
     file = cfg.load_model_dirname + "/%s%s" %(cfg.load_model_filename, ".pt")    
-    model = torch.jit.load(file)
+    model = torch.load(file)    
     model.eval()
-    return model
-    
-def save_model(model, cfg: DictConfig):
+    return model    
+
+def save_model_iteration(t, model, cfg: DictConfig):
     dir = cfg.save_model_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
     model_name=cfg.save_model_filename
     
     file_ext = ".pt"
-    file = dir + "/%s%s" % (model_name, file_ext)
+    file = dir + "/%s_Round_%s%s" % (model_name, t, file_ext)
     uniq = 1
     while os.path.exists(file):
         file = dir + "/%s_%d%s" % (model_name, uniq, file_ext)
         uniq += 1
      
-    model_scripted = torch.jit.script(model) # Export to TorchScript
-    model_scripted.save(file) # Save
-
-    
+    torch.save(model, file)    
+ 

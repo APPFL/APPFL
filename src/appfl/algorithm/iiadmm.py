@@ -118,8 +118,8 @@ class IIADMMClient(BaseClient):
                 if self.accum_grad == False:
                     optimizer.zero_grad()
 
-                output = self.model(data)
-                loss = self.loss_fn(output, target)
+                output = self.model(data)                
+                loss = self.loss_fn(output, target)            
                 loss.backward()
 
                 if self.clip_value != False:                                              
