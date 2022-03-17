@@ -26,8 +26,8 @@ class FLServicer(federated_learning_pb2_grpc.FederatedLearningServicer):
         return JobResponse(header=request.header, round_number=round_number, job_todo=job_todo)
 
     def GetTensorRecord(self, request, context):
-        # self.logger.info(f"[Servicer ID: {self.servicer_id: 03}] Received TensorRequest from (client,name,round)=(%d,%s,%d)",
-        #                  request.header.client_id, request.name, request.round_number)
+        self.logger.info(f"[Servicer ID: {self.servicer_id: 03}] Received TensorRequest from (client,name,round)=(%d,%s,%d)",
+                         request.header.client_id, request.name, request.round_number)
         nparray = self.operator.get_tensor(request.name)
         return utils.construct_tensor_record(request.name, nparray)
 
