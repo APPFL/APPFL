@@ -51,7 +51,7 @@ def main():
     cfg = OmegaConf.structured(Config)
 
     parser = argparse.ArgumentParser(description="Provide the configuration")
-    
+
     parser.add_argument("--nclients", type=int, required=True)
     parser.add_argument("--total_iter", type=int, required=True)
     parser.add_argument("--local_iter", type=int, required=True)
@@ -91,7 +91,7 @@ def main():
     cfg.save_model = True
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
-        cfg.save_model_filename     = "Covid_Binary_Isabelle_FedAvg" 
+        cfg.save_model_filename     = "Covid_Binary_Isabelle_FedAvg_LR_%s" %(args.lr) 
         cfg.checkpoints_interval    = args.check_intv
 
     grpc_server.run_server(cfg, model, args.nclients)

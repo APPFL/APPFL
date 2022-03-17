@@ -89,7 +89,7 @@ def main():
     model.eval()
     cfg.fed.args.loss_type = "torch.nn.BCELoss()"
 
-    with open("../datasets/PreprocessedData/deepcovid_test_data.json") as f:
+    with open("../datasets/PreprocessedData/deepcovid32_test_data.json") as f:
         train_data_raw = json.load(f)
     
     train_dataset = Dataset(
