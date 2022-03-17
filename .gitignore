@@ -7,6 +7,7 @@ examples/.DS_Store
 examples/outputs/*
 examples/results/*
 examples/*.sh
+examples/datasets/PreprocessedData/
 examples/Slurm_outputs/*
 examples/datasets/RawData/cifar-10-batches-py
 examples/gcloud/resulting_models
