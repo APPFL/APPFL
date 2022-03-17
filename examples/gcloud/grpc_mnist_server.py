@@ -58,8 +58,13 @@ def main():
     torch.manual_seed(1)
 
     start_time = time.time()
+    """ get model         
+        Note: 
+        "torch.nn.CrossEntropyLoss()" should be used for the multiclass classfication problem with more than 2 classes.                
+    """
     model = CNN(num_channel, num_classes, num_pixel)
-
+    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()" 
+ 
     logger = logging.getLogger(__name__)
     logger.info(
         f"----------Loaded Model----------Elapsed Time={time.time() - start_time}"
