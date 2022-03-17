@@ -179,13 +179,5 @@ examples/gcloud/IsabelleTorch.py
 examples/datasets/PreprocessedData/deepcovid_train_data.json
 examples/datasets/PreprocessedData/deepcovid_test_data.json
 examples/gcloud/deepcovid_test_data.json
-examples/gcloud/Dockerfile
-examples/gcloud/Dockerfile.repo
-examples/gcloud/Dockerfile.repo1
-examples/gcloud/Dockerfile.repo
-examples/gcloud/Dockerfile
-examples/gcloud/Dockerfile
 examples/gcloud/Dockerfile.covid
 examples/gcloud/Dockerfile.mnist
-examples/gcloud/Dockerfile.repo
-examples/gcloud/Dockerfile

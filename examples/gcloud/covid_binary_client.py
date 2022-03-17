@@ -5,10 +5,10 @@ import argparse
 import json
 import torch
 
-from appfl.misc.data import *
 from appfl.config import *
+from appfl.misc.data import *
 
-import appfl.run_grpc_server as grpc_server
+import appfl.run_grpc_client as grpc_client
 
 
 def main():
@@ -16,19 +16,14 @@ def main():
     cfg = OmegaConf.structured(Config)
 
     parser = argparse.ArgumentParser(description="Provide the configuration")
-
+    parser.add_argument("--host", type=str, required=True)
+    parser.add_argument("--port", type=int, default=50051)
+    parser.add_argument("--use_tls", type=bool, default=False)
+    parser.add_argument("--client_id", type=int, required=True)
     parser.add_argument("--nclients", type=int, required=True)
-    parser.add_argument("--num_epochs", type=int, required=True)
-    parser.add_argument("--num_local_epochs", type=int, required=True)
-    parser.add_argument("--lr", type=float, required=True)
-    parser.add_argument("--check_intv", type=int, required=True)
-
     parser.add_argument("--logging", type=str, default="INFO")
+    parser.add_argument("--api_key", default=None)
     args = parser.parse_args()
-
-    cfg.num_epochs = args.num_epochs
-    cfg.fed.args.num_local_epochs = args.num_local_epochs
-    cfg.fed.args.optim_args.lr = args.lr
 
     logging.basicConfig(stream=sys.stdout, level=eval("logging." + args.logging))
 
@@ -45,20 +40,27 @@ def main():
     model.eval()
     cfg.fed.args.loss_type = "torch.nn.BCELoss()"
 
+    with open("../datasets/PreprocessedData/deepcovid32_train_data.json") as f:
+        train_data_raw = json.load(f)
+
+    train_dataset = Dataset(
+        torch.FloatTensor(train_data_raw["x"]),
+        torch.FloatTensor(train_data_raw["y"]).reshape(-1, 1),
+    )
+
     logger = logging.getLogger(__name__)
     logger.info(
-        f"----------Loaded Data and Model----------Elapsed Time={time.time() - start_time}"
+        f"----------Loaded Datasets and Model----------Elapsed Time={time.time() - start_time}"
     )
+
+    cfg.server.host = args.host
+    cfg.server.port = args.port
+    cfg.server.use_tls = args.use_tls
+    cfg.server.api_key = args.api_key
     logger.debug(OmegaConf.to_yaml(cfg))
 
-    """ saving models """
-    cfg.save_model = True
-    if cfg.save_model == True:
-        cfg.save_model_dirname = "./save_models"
-        cfg.save_model_filename = "Covid_Binary_Isabelle_FedAvg_LR_%s" % (args.lr)
-        cfg.checkpoints_interval = args.check_intv
-
-    grpc_server.run_server(cfg, model, args.nclients)
+    grpc_client.run_client(cfg, args.client_id, model, train_dataset)
+    logger.info("------DONE------")
 
 
 if __name__ == "__main__":
