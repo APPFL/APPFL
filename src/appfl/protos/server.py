@@ -20,19 +20,19 @@ class FLServicer(federated_learning_pb2_grpc.FederatedLearningServicer):
         self.logger = logging.getLogger(__name__)
 
     def GetJob(self, request, context):
-        self.logger.info(f"[Servicer ID: {self.servicer_id: 03}] Received JobRequest from client %d job_done %d",
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] Received JobRequest from client %d job_done %d",
                          request.header.client_id, request.job_done)
         round_number, job_todo = self.operator.get_job()
         return JobResponse(header=request.header, round_number=round_number, job_todo=job_todo)
 
     def GetTensorRecord(self, request, context):
-        self.logger.info(f"[Servicer ID: {self.servicer_id: 03}] Received TensorRequest from (client,name,round)=(%d,%s,%d)",
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] Received TensorRequest from (client,name,round)=(%d,%s,%d)",
                          request.header.client_id, request.name, request.round_number)
         nparray = self.operator.get_tensor(request.name)
         return utils.construct_tensor_record(request.name, nparray)
 
     def GetWeight(self, request, context):
-        self.logger.info(f"[Servicer ID: {self.servicer_id: 03}] Received WeightRequest from (client,size)=(%d,%d)",
+        self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] Received WeightRequest from (client,size)=(%d,%d)",
                          request.header.client_id, request.size)
         weight = self.operator.get_weight(request.header.client_id, request.size)
         self.logger.debug(f"[Servicer ID: {self.servicer_id: 03}] get_weight returns %e", weight)
