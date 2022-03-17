@@ -92,6 +92,12 @@ def main():
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
+    """ saving models """
+    cfg.save_model = True
+    if cfg.save_model == True:
+        cfg.save_model_dirname      = "./save_models"
+        cfg.save_model_filename     = "Covid_Binary_Isabelle_FedAvg" 
+        cfg.checkpoints_interval    = 2 
  
 
     if comm_size > 1:

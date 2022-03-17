@@ -83,10 +83,10 @@ def main():
     logger.debug(OmegaConf.to_yaml(cfg))
 
     """ saving models """
-    cfg.save_model = False
+    cfg.save_model = True
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
-        cfg.save_model_filename     = "Covid_Isabelle_Iter_%s" %(cfg.num_epochs)      
+        cfg.save_model_filename     = "Covid_Binary_Isabelle_FedAvg" 
 
     grpc_server.run_server(cfg, model, args.nclients)
 
