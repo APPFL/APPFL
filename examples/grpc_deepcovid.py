@@ -17,7 +17,7 @@ import appfl.run_grpc_client as grpc_client
 from mpi4py import MPI
 
 DataSet_name = "DeepCovid"
-num_clients = 1
+num_clients = 2
 num_channel = 3  # 1 if gray, 3 if color
 num_classes = 2  # number of the image classes
 num_pixel = 32  # image size = (num_pixel, num_pixel)
@@ -30,6 +30,7 @@ def get_model(comm: MPI.Comm):
 def main():
     # read default configuration
     cfg = OmegaConf.structured(Config)
+    cfg.num_epochs = 10
 
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -61,18 +62,24 @@ def main():
        
 
     """ Isabelle's DenseNet (the outputs of the model are probabilities of 1 class ) """
-    import imp
-    MainModel = imp.load_source('MainModel', "./models/IsabelleTorch.py")
-    file = "./models/IsabelleTorch.pth"         
+    import importlib.machinery
+    loader = importlib.machinery.SourceFileLoader('MainModel', './gcloud/IsabelleTorch.py')
+    MainModel = loader.load_module()
+
+
+    file = "./gcloud/IsabelleTorch.pth"         
     model = torch.load(file)        
     model.eval()
     cfg.fed.args.loss_type = "torch.nn.BCELoss()"
 
     with open("./datasets/PreprocessedData/deepcovid_train_data.json") as f:
-        train_data_raw = json.load(f)
+        train_data_raw_1 = json.load(f)
+    with open("./datasets/PreprocessedData/deepcovid_test_data.json") as f:
+        train_data_raw_2 = json.load(f)        
         
     train_datasets = []
-    train_datasets.append(Dataset( torch.FloatTensor(train_data_raw["x"]), torch.FloatTensor(train_data_raw["y"]).reshape(-1,1) ))
+    train_datasets.append(Dataset( torch.FloatTensor(train_data_raw_1["x"]), torch.FloatTensor(train_data_raw_1["y"]).reshape(-1,1) ))    
+    train_datasets.append(Dataset( torch.FloatTensor(train_data_raw_2["x"]), torch.FloatTensor(train_data_raw_2["y"]).reshape(-1,1) ))    
         
     # test data 
     with open("./datasets/PreprocessedData/deepcovid_test_data.json") as f:

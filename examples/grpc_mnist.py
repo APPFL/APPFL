@@ -16,7 +16,7 @@ import appfl.run_grpc_client as grpc_client
 from mpi4py import MPI
 
 DataSet_name = "MNIST"
-num_clients = 4
+num_clients = 2
 num_channel = 1  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
 num_pixel = 28  # image size = (num_pixel, num_pixel)
@@ -102,6 +102,13 @@ def main():
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
+
+    """ saving models """
+    cfg.save_model = True
+    if cfg.save_model == True:
+        cfg.save_model_dirname      = "./save_models"
+        cfg.save_model_filename     = "MNIST_CNN"    
+ 
 
     if comm_size > 1:
         # Try to launch both a server and clients.

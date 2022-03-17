@@ -3,6 +3,7 @@ import time
 import logging
 import argparse
 import math
+import json
 
 import torch
 import torch.nn as nn
@@ -10,9 +11,8 @@ import torch.nn as nn
 from appfl.config import *
 import appfl.run_grpc_server as grpc_server
 
-num_channel = 1  # 1 if gray, 3 if color
-num_classes = 10  # number of the image classes
-num_pixel = 28  # image size = (num_pixel, num_pixel)
+from appfl.misc.data import *
+ 
 
 
 class CNN(nn.Module):
@@ -47,36 +47,48 @@ class CNN(nn.Module):
 
 
 def main():
+    # read default configuration
+    cfg = OmegaConf.structured(Config)
 
     parser = argparse.ArgumentParser(description="Provide the configuration")
     parser.add_argument("--total_iter", type=int, required=True)
+    parser.add_argument("--local_iter", type=int, required=True)
     parser.add_argument("--nclients", type=int, required=True)
     parser.add_argument("--logging", type=str, default="INFO")
     args = parser.parse_args()
 
-    logging.basicConfig(stream=sys.stdout, level=eval("logging." + args.logging))
-    torch.manual_seed(1)
+    cfg.num_epochs = args.total_iter
+    cfg.fed.args.num_local_epochs = args.local_iter
 
-    start_time = time.time()
-    model = CNN(num_channel, num_classes, num_pixel)
+    logging.basicConfig(stream=sys.stdout, level=eval("logging." + args.logging))
+    
+    start_time = time.time()    
+
+    # """ CNN """    
+    # model = CNN(3, 2, 32)
+    
+    """ Isabelle's DenseNet (the outputs of the model are probabilities of 1 class ) """
+    import importlib.machinery
+    loader = importlib.machinery.SourceFileLoader('MainModel', './IsabelleTorch.py')
+    MainModel = loader.load_module()
+ 
+
+    file = "./IsabelleTorch.pth"         
+    model = torch.load(file)        
+    model.eval()
+    cfg.fed.args.loss_type = "torch.nn.BCELoss()" 
 
     logger = logging.getLogger(__name__)
-    logger.info(f"----------Loaded Model----------Elapsed Time={time.time() - start_time}")
-
-    # read default configuration
-    cfg = OmegaConf.structured(Config)
+    logger.info(f"----------Loaded Data and Model----------Elapsed Time={time.time() - start_time}")
     logger.debug(OmegaConf.to_yaml(cfg))
-    cfg.num_epochs = args.total_iter
 
     """ saving models """
-    cfg.save_model = True
+    cfg.save_model = False
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
-        cfg.save_model_filename     = "MNIST_CNN_Iter_%s" %(cfg.num_epochs)      
+        cfg.save_model_filename     = "Covid_Isabelle_Iter_%s" %(cfg.num_epochs)      
 
     grpc_server.run_server(cfg, model, args.nclients)
-
-    
 
 
 if __name__ == "__main__":
