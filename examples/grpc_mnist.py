@@ -102,6 +102,7 @@ def main():
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
+    # cfg.device = "cuda"
 
     """ saving models """
     cfg.save_model = False
@@ -115,7 +116,7 @@ def main():
         if comm_rank == 0:
             grpc_server.run_server(cfg, model, num_clients, test_dataset)
         else:
-            grpc_client.run_client(cfg, comm_rank-1, comm_rank, model, train_datasets[comm_rank - 1])
+            grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1], comm_rank)
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.

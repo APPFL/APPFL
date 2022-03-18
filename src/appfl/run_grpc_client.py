@@ -28,16 +28,16 @@ def update_model_state(comm, model, round_number):
 
 
 def run_client(
-    cfg: DictConfig, cid: int, comm_rank: int, model: nn.Module, train_data: Dataset
+    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, gpu_id : int = 0
 ) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
     Args:
         cfg (DictConfig): the configuration for this run
         cid (int): cliend_id  
-        comm_rank (int): MPI rank  
         model (nn.Module): neural network model to train
         train_data (Dataset): training data
+        gpu_id (int): MPI rank  
     """
 
     logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def run_client(
 
     ## We assume to have as many GPUs as the number of MPI processes.
     if cfg.device == "cuda":        
-        device = f"cuda:{comm_rank-1}"
+        device = f"cuda:{gpu_id}"
     else:
         device = cfg.device
 
