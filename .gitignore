@@ -18,6 +18,11 @@ examples/datasets/RawData/FEMNIST
 examples/datasets/RawData/MNIST
 examples/datasets/RawData/cifar-10-python.tar.gz
 examples/datasets/PreprocessedData/Coronahack_Clients_4
+examples/datasets/CovidDatasets
+examples/datasets/CovidProcessed
+examples/PostProcessing 
+examples/save_models 
+examples/Trials
 examples/gcloud/generated_pb2
 examples/gcloud/*.sh
 examples/gcloud/*.pb
@@ -181,3 +186,8 @@ examples/datasets/PreprocessedData/deepcovid_test_data.json
 examples/gcloud/deepcovid_test_data.json
 examples/gcloud/Dockerfile.covid
 examples/gcloud/Dockerfile.mnist
+examples/mnist_slow.py
+examples/MPI_DeepCovid_1.py
+examples/MPI_DeepCovid_2.py
+examples/MPI_FedCovid_1.py
+examples/MPI_FedCovid_2.py
