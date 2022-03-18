@@ -186,6 +186,7 @@ def run_server(
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)  
     cfg["logginginfo"]["comm_size"] = comm_size    
+    cfg["logginginfo"]["DataSet_name"] = DataSet_name
 
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_dataset) > 0:
@@ -279,7 +280,7 @@ def run_server(
 
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
- 
+     
     
 
     

@@ -75,6 +75,9 @@ class FedServer(BaseServer):
 
     def logging_summary(self, cfg, logger):
         super(FedServer, self).log_summary(cfg, logger) 
+
+
+        
         
 
         
