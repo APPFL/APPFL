@@ -104,7 +104,7 @@ def main():
     cfg = OmegaConf.structured(Config)
 
     """ saving models """
-    cfg.save_model = True
+    cfg.save_model = False
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
         cfg.save_model_filename     = "MNIST_CNN"    
@@ -115,7 +115,7 @@ def main():
         if comm_rank == 0:
             grpc_server.run_server(cfg, model, num_clients, test_dataset)
         else:
-            grpc_client.run_client(cfg, comm_rank, model, train_datasets[comm_rank - 1])
+            grpc_client.run_client(cfg, comm_rank-1, comm_rank, model, train_datasets[comm_rank - 1])
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.
