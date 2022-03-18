@@ -27,6 +27,7 @@ examples/gcloud/generated_pb2
 examples/gcloud/*.sh
 examples/gcloud/*.pb
 examples/gcloud/api_config.yaml
+note
 outputs/*
 _data
 docs/notebooks/results
