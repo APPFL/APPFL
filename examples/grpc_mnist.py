@@ -102,7 +102,7 @@ def main():
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
-    # cfg.device = "cuda"
+    cfg.device = "cpu"
 
     """ saving models """
     cfg.save_model = False
