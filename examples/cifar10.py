@@ -166,7 +166,7 @@ def main():
         cfg.save_model_filename     = "Model"      
         cfg.save_model_checkpoints  = [2]
     
-    cfg.summary_file = cfg.output_dirname + "/Summary_CIFAR10.txt"
+    cfg.summary_file = cfg.output_dirname + "/Summary_%s.txt" %(DataSet_name)
  
     
     """ Running """
@@ -187,10 +187,10 @@ if __name__ == "__main__":
 
 
 # To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./mnist.py
+# mpiexec -np 5 --mca opal_cuda_support 1 python ./cifar10.py
 # To run MPI:
-# mpiexec -np 5 python ./mnist.py
+# mpiexec -np 5 python ./cifar10.py
 # To run:
-# python ./mnist.py
+# python ./cifar10.py
 
 

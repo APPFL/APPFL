@@ -21,7 +21,7 @@ DataSet_name = "MNIST"
 num_clients = 2
 num_channel = 1  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
-num_pixel = 28  # image size = (num_pixel, num_pixel)
+num_pixel = 28   # image size = (num_pixel, num_pixel)
 
 dir = os.getcwd() + "/datasets/RawData"
 
@@ -89,15 +89,46 @@ def main():
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
-    """ Configuration """     
-    cfg = OmegaConf.structured(Config) 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--server', type=str, required=False)    
+    parser.add_argument('--server', type=str, required=True)    
+    parser.add_argument('--num_epochs', type=int, required=True)    
+    parser.add_argument('--client_lr', type=float, required=True)    
+
+    parser.add_argument('--server_lr', type=float, required=False)    
+    parser.add_argument('--mparam_1', type=float, required=False)    
+    parser.add_argument('--mparam_2', type=float, required=False)    
+    parser.add_argument('--adapt_param', type=float, required=False)    
+
+
     args = parser.parse_args()    
 
+    """ Configuration """     
+    cfg = OmegaConf.structured(Config) 
+    cfg.device = "cuda"
     cfg.fed.servername = args.server
+    cfg.num_epochs = args.num_epochs
+    cfg.fed.args.optim_args.lr = args.client_lr
 
+    cfg.output_filename += "_%s_%s_ClientLR_%s" %(DataSet_name, args.server, args.client_lr)
+    
+    if args.server_lr != None:
+        cfg.fed.args.server_learning_rate = args.server_lr
+        cfg.output_filename += "_ServerLR_%s" %(args.server_lr)
+        
+    if args.adapt_param != None:
+        cfg.fed.args.server_adapt_param = args.adapt_param   
+        cfg.output_filename += "_AdaptParam_%s" %(args.adapt_param)             
+        
+    if args.mparam_1 != None:
+        cfg.fed.args.server_momentum_param_1 = args.mparam_1
+        cfg.output_filename += "_MParam1_%s" %(args.mparam_1)
+        
+    if args.mparam_2 != None:
+        cfg.fed.args.server_momentum_param_2 = args.mparam_2  
+        cfg.output_filename += "_MParam2_%s" %(args.mparam_2)
+        
+        
     ## Reproducibility
     if cfg.reproduce == True:
         torch.manual_seed(1)
@@ -110,7 +141,7 @@ def main():
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
     
     ## loading models 
-    cfg.load_model = True
+    cfg.load_model = False
     if cfg.load_model == True:
         cfg.load_model_dirname      = "./save_models"
         cfg.load_model_filename     = "Model"               
@@ -134,6 +165,8 @@ def main():
         cfg.save_model_dirname      = "./save_models"
         cfg.save_model_filename     = "Model"      
         cfg.save_model_checkpoints  = [2]
+    
+    cfg.summary_file = cfg.output_dirname + "/Summary_%s.txt" %(DataSet_name)
  
     
     """ Running """
@@ -145,7 +178,8 @@ def main():
         print("------DONE------", comm_rank)
     else:
         rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
-
+ 
+ 
  
 
 if __name__ == "__main__":
@@ -158,3 +192,5 @@ if __name__ == "__main__":
 # mpiexec -np 5 python ./mnist.py
 # To run:
 # python ./mnist.py
+
+
