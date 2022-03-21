@@ -281,7 +281,7 @@ def run_server(
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
      
-    
+    return cfg
 
     
          
