@@ -172,3 +172,4 @@ examples/MPI_FedCovid_2.py
 src/appfl/config/config.py
 examples/mnist_old.py
 examples/mnist_slow.py
+examples/centralizedML.py
