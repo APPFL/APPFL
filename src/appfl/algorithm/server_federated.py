@@ -26,8 +26,14 @@ class FedServer(BaseServer):
         """ Group 2 """ 
         self.pseudo_grad_vec = OrderedDict()
         self.model_size = OrderedDict()
+        self.approx_H_matrix = OrderedDict()        
         for name, _ in self.model.named_parameters():
-            self.model_size[name] = self.model.state_dict()[name].size()
+            self.model_size[name] = self.model.state_dict()[name].size()           
+            # print("flat size=", torch.flatten(self.model.state_dict()[name]).size())
+
+            ## Too LARGE (Reduce Gradient needed)
+            # self.approx_H_matrix[name] = torch.eye( torch.flatten(self.model.state_dict()[name]).size()[0] )
+            # print("H_shape=", self.approx_H_matrix[name].shape)
 
 
     def update_m_vector(self):
