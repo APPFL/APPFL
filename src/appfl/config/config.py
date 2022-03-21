@@ -9,7 +9,7 @@ from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = FedAvg()
+    fed: Any = Federated()
 
     # Compute device
     device: str = "cpu"    

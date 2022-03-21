@@ -91,6 +91,7 @@ def main():
 
     """ Configuration """     
     cfg = OmegaConf.structured(Config)
+    cfg.device = "cuda"
 
     # parser = argparse.ArgumentParser()
     # parser.add_argument('--server', type=str, required=False)    
