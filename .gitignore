@@ -192,3 +192,4 @@ examples/MPI_DeepCovid_1.py
 examples/MPI_DeepCovid_2.py
 examples/MPI_FedCovid_1.py
 examples/MPI_FedCovid_2.py
+Installation.md
