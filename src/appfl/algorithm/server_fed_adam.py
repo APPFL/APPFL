@@ -19,6 +19,8 @@ class ServerFedAdam(FedServer):
         logger.info("server_learning_rate = %s " %(cfg.fed.args.server_learning_rate))            
         logger.info("server_momentum_param_2 = %s " %(cfg.fed.args.server_momentum_param_2))
 
-        with open(cfg.logginginfo.summary_file, 'a') as f:
 
-            f.write(cfg.logginginfo.DataSet_name + ' FedAdam ClientLR ' + str(cfg.fed.args.optim_args.lr) + ' MParam1 ' + str(cfg.fed.args.server_momentum_param_1) + ' AdaptParam ' + str(cfg.fed.args.server_adapt_param) + ' ServerLR ' + str(cfg.fed.args.server_learning_rate) + ' MParam2 ' + str(cfg.fed.args.server_momentum_param_2)  + ' TestAccuracy ' + str(cfg.logginginfo.accuracy) +' BestAccuracy ' + str(cfg.logginginfo.BestAccuracy) + '\n')  
+        if cfg.summary_file != "":
+            with open(cfg.summary_file, 'a') as f:
+
+                f.write(cfg.logginginfo.DataSet_name + ' FedAdam ClientLR ' + str(cfg.fed.args.optim_args.lr) + ' MParam1 ' + str(cfg.fed.args.server_momentum_param_1) + ' AdaptParam ' + str(cfg.fed.args.server_adapt_param) + ' ServerLR ' + str(cfg.fed.args.server_learning_rate) + ' MParam2 ' + str(cfg.fed.args.server_momentum_param_2)  + ' TestAccuracy ' + str(cfg.logginginfo.accuracy) +' BestAccuracy ' + str(cfg.logginginfo.BestAccuracy) + ' Time ' + str(round(cfg.logginginfo.Elapsed_time,2)) +'\n')  

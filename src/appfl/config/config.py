@@ -48,6 +48,8 @@ class Config:
     output_dirname: str = "./outputs"
     output_filename: str = "result"    
     logginginfo: DictConfig = OmegaConf.create({})
+    summary_file: str = ""
+
   
     
     #

@@ -111,21 +111,24 @@ def main():
     cfg.fed.args.optim_args.lr = args.client_lr
 
     cfg.output_filename += "_%s_%s_ClientLR_%s" %(DataSet_name, args.server, args.client_lr)
-
+    
     if args.server_lr != None:
         cfg.fed.args.server_learning_rate = args.server_lr
         cfg.output_filename += "_ServerLR_%s" %(args.server_lr)
+        
     if args.adapt_param != None:
         cfg.fed.args.server_adapt_param = args.adapt_param   
         cfg.output_filename += "_AdaptParam_%s" %(args.adapt_param)             
+        
     if args.mparam_1 != None:
         cfg.fed.args.server_momentum_param_1 = args.mparam_1
         cfg.output_filename += "_MParam1_%s" %(args.mparam_1)
+        
     if args.mparam_2 != None:
         cfg.fed.args.server_momentum_param_2 = args.mparam_2  
         cfg.output_filename += "_MParam2_%s" %(args.mparam_2)
-    
-  
+        
+        
     ## Reproducibility
     if cfg.reproduce == True:
         torch.manual_seed(1)
@@ -163,18 +166,20 @@ def main():
         cfg.save_model_filename     = "Model"      
         cfg.save_model_checkpoints  = [2]
     
-    
+    cfg.summary_file = cfg.output_dirname + "/Summary_CIFAR10.txt"
+ 
     
     """ Running """
     if comm_size > 1:
         if comm_rank == 0:
-            cfg = rt.run_server(cfg, comm, model, num_clients, test_dataset, DataSet_name)
+            rt.run_server(cfg, comm, model, num_clients, test_dataset, DataSet_name)
         else:
             rt.run_client(cfg, comm, model, num_clients, train_datasets)
         print("------DONE------", comm_rank)
     else:
         rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
-
+ 
+ 
  
 
 if __name__ == "__main__":

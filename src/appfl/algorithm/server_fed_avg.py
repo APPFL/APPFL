@@ -11,8 +11,8 @@ class ServerFedAvg(FedServer):
                 
         logger.info("client_learning_rate = %s " %(cfg.fed.args.optim_args.lr))
         
-        with open(cfg.logginginfo.summary_file, 'a') as f:            
+        if cfg.summary_file != "":
+            with open(cfg.summary_file, 'a') as f:            
 
-            f.write(cfg.logginginfo.DataSet_name + ' FedAvg ClientLR ' + str(cfg.fed.args.optim_args.lr) + ' TestAccuracy ' + str(cfg.logginginfo.accuracy) +' BestAccuracy ' + str(cfg.logginginfo.BestAccuracy) + '\n')  
-        
-                    
+                f.write(cfg.logginginfo.DataSet_name + ' FedAvg ClientLR ' + str(cfg.fed.args.optim_args.lr) + ' TestAccuracy ' + str(cfg.logginginfo.accuracy) +' BestAccuracy ' + str(cfg.logginginfo.BestAccuracy) + ' Time ' + str(round(cfg.logginginfo.Elapsed_time,2)) + '\n')  
+            
