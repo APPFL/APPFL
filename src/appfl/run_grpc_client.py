@@ -37,7 +37,7 @@ def run_client(
         cid (int): cliend_id  
         model (nn.Module): neural network model to train
         train_data (Dataset): training data
-        gpu_id (int): MPI rank  
+        gpu_id (int): GPU ID 
     """
 
     logger = logging.getLogger(__name__)
