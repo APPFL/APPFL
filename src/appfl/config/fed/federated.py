@@ -18,7 +18,7 @@ import torch
 @dataclass
 class Federated:
     type: str = "federated"  
-    servername: str = "ServerFedBFGS" 
+    servername: str = "ServerFedAvg" 
     clientname: str = "ClientSGD"
     args: DictConfig = OmegaConf.create(
         {                                            

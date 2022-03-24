@@ -93,11 +93,11 @@ def main():
     cfg = OmegaConf.structured(Config)
     cfg.device = "cuda"
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--server', type=str, required=False)    
-    # args = parser.parse_args()   
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--server', type=str, required=False)    
+    args = parser.parse_args()   
 
-    # cfg.fed.servername = args.server
+    cfg.fed.servername = args.server
 
     ## Reproducibility
     if cfg.reproduce == True:

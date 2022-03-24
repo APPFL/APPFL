@@ -31,7 +31,7 @@ class FedServer(BaseServer):
             self.model_size[name] = self.model.state_dict()[name].size()           
             # print("flat size=", torch.flatten(self.model.state_dict()[name]).size())
 
-            ## Too LARGE (Reduce Gradient needed)
+            ## TODO: Too LARGE (Reduceing gradient may be needed)
             # self.approx_H_matrix[name] = torch.eye( torch.flatten(self.model.state_dict()[name]).size()[0] )
             # print("H_shape=", self.approx_H_matrix[name].shape)
 
