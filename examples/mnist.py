@@ -164,7 +164,7 @@ def main():
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
         cfg.save_model_filename     = "Model"      
-        cfg.save_model_checkpoints  = [2]
+        
     
     cfg.summary_file = cfg.output_dirname + "/Summary_%s.txt" %(DataSet_name)
  
