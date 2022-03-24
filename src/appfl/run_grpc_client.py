@@ -131,9 +131,14 @@ def run_client(
                 learning_time = time_end - time_start
                 cumul_learning_time += learning_time
 
-                print("cur_round_number=", cur_round_number, " cur_round_number / cfg.checkpoints_interval=",cur_round_number % cfg.checkpoints_interval )
+                logger.info(
+                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] [EXTRA] {cur_round_number % cfg.checkpoints_interval: 03} "
+                )
+
                 if cur_round_number % cfg.checkpoints_interval == 0 or cur_round_number == cfg.num_epochs:            
-                    print("HERE=", cfg.save_model)
+                    logger.info(
+                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] [save_model] {cfg.save_model : 03} "
+                    )
                     """ Saving model """    
                     if cfg.save_model == True:        
                         save_model_iteration(cur_round_number, fed_client.model, cfg)
