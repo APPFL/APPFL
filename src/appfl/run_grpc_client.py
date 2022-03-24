@@ -9,21 +9,13 @@ import copy
 import numpy as np
 import logging
 import time
- 
-from appfl.algorithm.fedavg import *
-from appfl.algorithm.client_sgd import *
-from appfl.algorithm.server_fed_avg import *
-from appfl.algorithm.server_fed_avgmom import *
-from appfl.algorithm.server_fed_adagrad import *
-from appfl.algorithm.server_fed_adam import *
-from appfl.algorithm.server_fed_yogi import *
-from appfl.algorithm.iceadmm import *
-from appfl.algorithm.iiadmm import *
 
+from .misc import *
+from .algorithm import *
+  
 from .protos.federated_learning_pb2 import Job
 from .protos.client import FLClient
-from .misc.data import Dataset
-from .misc.utils import *
+
 
 def update_model_state(comm, model, round_number):
     new_state = {}

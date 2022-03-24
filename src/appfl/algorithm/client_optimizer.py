@@ -12,9 +12,9 @@ from torch.utils.data import DataLoader
 import copy
 
  
-class ClientSGD(BaseClient):
+class ClientOptim(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(ClientSGD, self).__init__(id, weight, model, dataloader, device)
+        super(ClientOptim, self).__init__(id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
 
         self.loss_fn = eval(self.loss_type)
@@ -71,7 +71,7 @@ class ClientSGD(BaseClient):
             if self.clip_value != False:                           
                 sensitivity = 2.0 * self.clip_value * self.optim_args.lr 
             scale_value = sensitivity / self.epsilon            
-            super(ClientSGD, self).laplace_mechanism_output_perturb(scale_value)
+            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """
         self.local_state = OrderedDict()

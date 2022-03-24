@@ -19,7 +19,7 @@ import torch
 class Federated:
     type: str = "federated"  
     servername: str = "ServerFedAvg" 
-    clientname: str = "ClientSGD"
+    clientname: str = "ClientOptim"
     args: DictConfig = OmegaConf.create(
         {                                            
             # User-defined loss function (pytorch format)

@@ -187,9 +187,9 @@ if __name__ == "__main__":
 
 
 # To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./mnist.py
+# mpiexec -np 3 --mca opal_cuda_support 1 python ./mnist.py
 # To run MPI:
-# mpiexec -np 5 python ./mnist.py
+# mpiexec -np 3 python ./mnist.py
 # To run:
 # python ./mnist.py
 

@@ -12,23 +12,9 @@ from omegaconf import DictConfig
 import copy
 import time
 import logging
-
-from .misc.data import Dataset
-from .misc.utils import *
-
-from .algorithm.client_sgd import *
-from .algorithm.server_fed_avg import *
-from .algorithm.server_fed_avgmom import *
-from .algorithm.server_fed_adagrad import *
-from .algorithm.server_fed_adam import *
-from .algorithm.server_fed_yogi import *
-from .algorithm.server_fed_bfgs import *
-from .algorithm.server_fed_broyden import *
-from .algorithm.server_fed_dfp import *
-from .algorithm.server_fed_sr1 import *
-
-from .algorithm.iceadmm import *
-from .algorithm.iiadmm import *
+ 
+from .misc import *
+from .algorithm import * 
 
 from mpi4py import MPI
 
