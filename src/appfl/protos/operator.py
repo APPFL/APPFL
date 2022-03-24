@@ -113,11 +113,6 @@ class FLOperator():
             """ Saving model """    
             if self.cfg.save_model == True:        
                 save_model_iteration(self.round_number, self.model, self.cfg)
-
-        # if self.round_number == self.cfg.num_epochs:            
-        #     """ Saving model """    
-        #     if self.cfg.save_model == True:        
-        #         save_model(self.model, self.cfg)
                 
         self.round_number += 1
         
