@@ -17,7 +17,7 @@ from appfl.algorithm.iiadmm import *
 from .protos.federated_learning_pb2 import Job
 from .protos.client import FLClient
 from .misc.data import Dataset
-
+from .misc.utils import *
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -130,6 +130,13 @@ def run_client(
                 )
                 learning_time = time_end - time_start
                 cumul_learning_time += learning_time
+
+                if cur_round_number % cfg.checkpoints_interval == 0 or cur_round_number == cfg.num_epochs:            
+                    """ Saving model """    
+                    if cfg.save_model == True:        
+                        save_model_iteration(cur_round_number, fed_client.model, cfg)
+
+                
                 time_start = time.time()
                 comm.send_learning_results(
                     local_state["penalty"],
