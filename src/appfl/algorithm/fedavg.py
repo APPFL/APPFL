@@ -59,7 +59,7 @@ class FedAvgClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
         super(FedAvgClient, self).__init__(id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
-        self.loss_fn = CrossEntropyLoss()
+        self.loss_fn = eval(self.loss_type)
 
     def update(self):
 
@@ -79,8 +79,8 @@ class FedAvgClient(BaseClient):
                 target = target.to(self.device)
 
                 optimizer.zero_grad()
-                output = self.model(data)
-                loss = self.loss_fn(output, target)
+                output = self.model(data)                
+                loss = self.loss_fn(output, target)                                                
                 loss.backward()
 
                 if self.clip_value != False:                                              

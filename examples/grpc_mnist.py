@@ -133,15 +133,15 @@ def main():
     cfg.save_model = False
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
-        cfg.save_model_filename     = "Model"      
-        cfg.save_model_checkpoints  = [2]
+        cfg.save_model_filename     = "MNIST_CNN"    
+ 
 
     if comm_size > 1:
         # Try to launch both a server and clients.
         if comm_rank == 0:
             grpc_server.run_server(cfg, model, num_clients, test_dataset)
         else:
-            grpc_client.run_client(cfg, comm_rank, model, train_datasets[comm_rank - 1])
+            grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1], comm_rank)
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.

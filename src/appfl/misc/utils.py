@@ -24,16 +24,9 @@ def validation(self, dataloader):
             tmpcnt += 1
             tmptotal += len(target)
             img = img.to(self.device)
-            target = target.to(self.device)            
-            output = self.model(img)            
-            
-            ## TODO: different functions take different formats of arguments
-            if self.loss_type == "torch.nn.BCELoss()":
-                target = target.to(torch.float32)                                
-                test_loss += self.loss_fn(output, target.reshape(-1,1)).item()
-            else:
-                test_loss += self.loss_fn(output, target).item()
-                    
+            target = target.to(self.device)
+            output = self.model(img)                             
+            test_loss += self.loss_fn(output, target).item()                
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
  
@@ -81,26 +74,25 @@ def create_custom_logger(logger, cfg: DictConfig):
     return logger
    
 
+    
 def load_model(cfg: DictConfig):
     file = cfg.load_model_dirname + "/%s%s" %(cfg.load_model_filename, ".pt")    
     model = torch.load(file)    
     model.eval()
-    return model
-    
+    return model    
 
-def save_model_iteration(model, iter, cfg: DictConfig):
-    dir = cfg.save_model_dirname 
+def save_model_iteration(t, model, cfg: DictConfig):
+    dir = cfg.save_model_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
     model_name=cfg.save_model_filename + "_Iter_%s" %(iter)
 
     file_ext = ".pt"
-    file = dir + "/%s%s" % (model_name, file_ext)
+    file = dir + "/%s_Round_%s%s" % (model_name, t, file_ext)
     uniq = 1
     while os.path.exists(file):
         file = dir + "/%s_%d%s" % (model_name, uniq, file_ext)
-        uniq += 1    
-    
-    torch.save(model, file)
-
+        uniq += 1
      
+    torch.save(model, file)    
+ 

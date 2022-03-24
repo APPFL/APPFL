@@ -23,6 +23,7 @@ from appfl.algorithm.iiadmm import *
 from .protos.federated_learning_pb2 import Job
 from .protos.client import FLClient
 from .misc.data import Dataset
+from .misc.utils import *
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -31,30 +32,30 @@ def update_model_state(comm, model, round_number):
         new_state[name] = torch.tensor(nparray)
     model.load_state_dict(new_state)
 
-def run_client(cfg        : DictConfig,
-               comm_rank  : int,
-               model      : nn.Module,
-               train_data : Dataset) -> None:
+
+def run_client(
+    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, gpu_id : int = 0
+) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
     Args:
         cfg (DictConfig): the configuration for this run
-        comm_rank (int): MPI rank
+        cid (int): cliend_id  
         model (nn.Module): neural network model to train
         train_data (Dataset): training data
+        gpu_id (int): GPU ID 
     """
 
     logger = logging.getLogger(__name__)
     if cfg.server.use_tls == True:
         uri = cfg.server.host
     else:
-        uri = cfg.server.host + ':' + str(cfg.server.port)
+        uri = cfg.server.host + ":" + str(cfg.server.port)
 
-    cid = comm_rank - 1
 
     ## We assume to have as many GPUs as the number of MPI processes.
-    if cfg.device == "cuda":
-        device = f"cuda:{cid}"
+    if cfg.device == "cuda":        
+        device = f"cuda:{gpu_id}"
     else:
         device = cfg.device
 
@@ -62,8 +63,16 @@ def run_client(cfg        : DictConfig,
     if cfg.batch_training == False:
         batchsize = len(train_data)
 
-    logger.debug(f"[Client ID: {cid: 03}] connecting to (uri,tls)=({uri},{cfg.server.use_tls}).")
-    comm = FLClient(cid, uri, cfg.server.use_tls, max_message_size=cfg.max_message_size, api_key=cfg.server.api_key)
+    logger.debug(
+        f"[Client ID: {cid: 03}] connecting to (uri,tls)=({uri},{cfg.server.use_tls})."
+    )
+    comm = FLClient(
+        cid,
+        uri,
+        cfg.server.use_tls,
+        max_message_size=cfg.max_message_size,
+        api_key=cfg.server.api_key,
+    )
 
     # Retrieve its weight from a server.
     weight = -1.0
@@ -72,7 +81,9 @@ def run_client(cfg        : DictConfig,
     try:
         while True:
             weight = comm.get_weight(len(train_data))
-            logger.debug(f"[Client ID: {cid: 03}] trial {i}, requesting weight ({weight}).")
+            logger.debug(
+                f"[Client ID: {cid: 03}] trial {i}, requesting weight ({weight})."
+            )
             if weight >= 0.0:
                 break
             time.sleep(5)
@@ -88,12 +99,15 @@ def run_client(cfg        : DictConfig,
         cid,
         weight,
         copy.deepcopy(model),
-        DataLoader(train_data,
-                   num_workers=0,
-                   batch_size=batch_size,
-                   shuffle=cfg.train_data_shuffle),
+        DataLoader(
+            train_data,
+            num_workers=0,
+            batch_size=batch_size,
+            shuffle=cfg.train_data_shuffle,
+        ),
         device,
-        **cfg.fed.args)
+        **cfg.fed.args,
+    )
 
     # Start federated learning.
     cur_round_number, job_todo = comm.get_job(Job.INIT)
@@ -105,31 +119,61 @@ def run_client(cfg        : DictConfig,
     while job_todo != Job.QUIT:
         if job_todo == Job.TRAIN:
             if prev_round_number != cur_round_number:
-                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Start training")
+                logger.info(
+                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Start training"
+                )
                 update_model_state(comm, fed_client.model, cur_round_number)
-                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Received model update from server")
+                logger.info(
+                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Received model update from server"
+                )
                 prev_round_number = cur_round_number
 
                 time_start = time.time()
                 local_state = fed_client.update()
                 time_end = time.time()
-                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Updated local model")
+                
                 learning_time = time_end - time_start
                 cumul_learning_time += learning_time
+
+                
+                if cur_round_number % cfg.checkpoints_interval == 0 or cur_round_number == cfg.num_epochs:                                
+                    """ Saving model """    
+                    if cfg.save_model == True:        
+                        save_model_iteration(cur_round_number, fed_client.model, cfg)
+
+                
                 time_start = time.time()
-                comm.send_learning_results(local_state["penalty"], local_state["primal"], local_state["dual"], cur_round_number)
+                comm.send_learning_results(
+                    local_state["penalty"],
+                    local_state["primal"],
+                    local_state["dual"],
+                    cur_round_number,
+                )
                 time_end = time.time()
                 send_time = time_end - time_start
-                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Trained (Elapsed %.4f) and sent results back to the server (Elapsed %.4f)", learning_time, send_time)
+                logger.info(
+                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Trained (Elapsed %.4f) and sent results back to the server (Elapsed %.4f)",
+                    learning_time,
+                    send_time,
+                )
             else:
-                logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Waiting for next job")
+                logger.info(
+                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Waiting for next job"
+                )
                 time.sleep(5)
         cur_round_number, job_todo = comm.get_job(job_todo)
         if job_todo == Job.QUIT:
-            logger.info(f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Quitting... Learning %.4f Sending %.4f Receiving %.4f Job %.4f Total %.4f",
-                        cumul_learning_time, comm.time_send_results, comm.time_get_tensor, comm.time_get_job, comm.get_comm_time())
+            logger.info(
+                f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Quitting... Learning %.4f Sending %.4f Receiving %.4f Job %.4f Total %.4f",
+                cumul_learning_time,
+                comm.time_send_results,
+                comm.time_get_tensor,
+                comm.time_get_job,
+                comm.get_comm_time(),
+            )
             # Update with the most recent weights before exit.
             update_model_state(comm, fed_client.model, cur_round_number)
+
 
 if __name__ == "__main__":
     run_client()

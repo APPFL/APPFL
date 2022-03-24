@@ -16,7 +16,7 @@ message Header {
 message DataBuffer {
     uint32 size       = 1; // size of this buffer
     bytes  data_bytes = 2; // data
-}
+} 
 
 enum Job {
     INIT   = 0;
@@ -64,6 +64,7 @@ message TensorRecord {
     string         name       = 1;
     repeated int32 data_shape = 2;
     bytes          data_bytes = 3;
+    string         data_dtype = 4;
 }
 
 message WeightRequest {

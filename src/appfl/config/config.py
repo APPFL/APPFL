@@ -41,8 +41,8 @@ class Config:
     # Saving models
     save_model: bool = False
     save_model_dirname: str = ""
-    save_model_filename: str = ""  
-    save_model_checkpoints: list = field(default_factory=list)
+    save_model_filename: str = ""
+    checkpoints_interval: int = 2
     
     # Logging and recording outputs
     output_dirname: str = "./outputs"
@@ -56,8 +56,8 @@ class Config:
     # gRPC configutations
     #
 
-    # 10 MB for gRPC maximum message size
-    max_message_size: int = 10485760
+    # 100 MB for gRPC maximum message size
+    max_message_size: int = 104857600
 
     operator: DictConfig = OmegaConf.create({"id": 1})
     server: DictConfig = OmegaConf.create(

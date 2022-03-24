@@ -73,7 +73,7 @@ class ICEADMMClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
         super(ICEADMMClient, self).__init__(id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
-        self.loss_fn = CrossEntropyLoss()
+        self.loss_fn = eval(self.loss_type)
         
         """ 
         At initial, (1) primal_state = global_state, (2) dual_state = 0
@@ -121,8 +121,8 @@ class ICEADMMClient(BaseClient):
                 if self.accum_grad == False:
                     optimizer.zero_grad()
 
-                output = self.model(data)
-                loss = self.loss_fn(output, target)
+                output = self.model(data)                
+                loss = self.loss_fn(output, target)            
                 loss.backward()
 
                 if self.clip_value != False:                                              

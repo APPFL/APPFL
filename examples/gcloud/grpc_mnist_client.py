@@ -95,10 +95,18 @@ def main():
 
     start_time = time.time()
     train_datasets = get_data(args.nclients)
+
+    """ get model         
+        Note: 
+        "torch.nn.CrossEntropyLoss()" should be used for the multiclass classfication problem with more than 2 classes.                
+    """
     model = CNN(num_channel, num_classes, num_pixel)
+    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
 
     logger = logging.getLogger(__name__)
-    logger.info(f"----------Loaded Datasets and Model----------Elapsed Time={time.time() - start_time}")
+    logger.info(
+        f"----------Loaded Datasets and Model----------Elapsed Time={time.time() - start_time}"
+    )
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
