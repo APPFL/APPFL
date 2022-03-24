@@ -125,20 +125,12 @@ def run_client(
                 time_start = time.time()
                 local_state = fed_client.update()
                 time_end = time.time()
-                logger.info(
-                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Updated local model"
-                )
+                
                 learning_time = time_end - time_start
                 cumul_learning_time += learning_time
 
-                logger.info(
-                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] [EXTRA] {cur_round_number % cfg.checkpoints_interval: 03} "
-                )
-
-                if cur_round_number % cfg.checkpoints_interval == 0 or cur_round_number == cfg.num_epochs:            
-                    logger.info(
-                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] [save_model] {cfg.save_model : 03} "
-                    )
+                
+                if cur_round_number % cfg.checkpoints_interval == 0 or cur_round_number == cfg.num_epochs:                                
                     """ Saving model """    
                     if cfg.save_model == True:        
                         save_model_iteration(cur_round_number, fed_client.model, cfg)
