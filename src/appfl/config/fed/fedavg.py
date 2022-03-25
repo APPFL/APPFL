@@ -16,9 +16,7 @@ class FedAvg:
             ## Optimizer
             "optim": "SGD",
             "optim_args": {
-                "lr": 0.01,
-                "momentum": 0.9,
-                "weight_decay": 1e-5,
+                "lr": 0.01,                
             },
 
             ## Differential Privacy 

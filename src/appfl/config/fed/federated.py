@@ -36,9 +36,7 @@ class Federated:
             "num_local_epochs": 10,
             "optim": "SGD",
             "optim_args": {
-                "lr": 0.001,
-                "momentum": 0.9,
-                "weight_decay": 1e-5,
+                "lr": 0.001,                                                
             },
 
             ## Differential Privacy 
