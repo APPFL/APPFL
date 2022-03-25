@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
-from .fed.fedavg import *
+
 from .fed.federated import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
