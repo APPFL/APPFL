@@ -20,24 +20,25 @@ class FedAvgServer(BaseServer):
 
     def update(self, local_states: OrderedDict):
 
-        """ Inputs for the global model update """
+        """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())
         super(FedAvgServer, self).primal_recover_from_local_states(local_states)
 
         """ residual calculation """
-        super(FedAvgServer, self).primal_residual_at_server()        
+        super(FedAvgServer, self).primal_residual_at_server()
 
-        """ global_state calculation """        
+        """ global_state calculation """
         for name, _ in self.model.named_parameters():
             tmp = 0.0
             for i in range(self.num_clients):
                 ## change device
-                self.primal_states[i][name] = self.primal_states[i][name].to(self.device)
+                self.primal_states[i][name] = self.primal_states[i][name].to(
+                    self.device
+                )
                 ## computation
                 tmp += self.weights[i] * self.primal_states[i][name]
 
             self.global_state[name] = tmp
-
 
         """ model update """
         self.model.load_state_dict(self.global_state)
@@ -46,14 +47,13 @@ class FedAvgServer(BaseServer):
         if t == 0:
             title = super(FedAvgServer, self).log_title()
             logger.info(title)
-        
-        contents = super(FedAvgServer, self).log_contents(cfg, t) 
+
+        contents = super(FedAvgServer, self).log_contents(cfg, t)
         logger.info(contents)
 
-
     def logging_summary(self, cfg, logger):
-        super(FedAvgServer, self).log_summary(cfg, logger) 
-        
+        super(FedAvgServer, self).log_summary(cfg, logger)
+
 
 class FedAvgClient(BaseClient):
     def __init__(self, id, weight, model, dataloader, device, **kwargs):
@@ -79,23 +79,27 @@ class FedAvgClient(BaseClient):
                 target = target.to(self.device)
 
                 optimizer.zero_grad()
-                output = self.model(data)                
-                loss = self.loss_fn(output, target)                                                
+                output = self.model(data)
+                loss = self.loss_fn(output, target)
                 loss.backward()
 
-                if self.clip_value != False:                                              
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                
+                if self.clip_value != False:
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(),
+                        self.clip_value,
+                        norm_type=self.clip_norm,
+                    )
 
                 optimizer.step()
 
-        self.primal_state = copy.deepcopy(self.model.state_dict()) 
+        self.primal_state = copy.deepcopy(self.model.state_dict())
 
         """ Differential Privacy  """
         if self.epsilon != False:
             sensitivity = 0
-            if self.clip_value != False:                           
-                sensitivity = 2.0 * self.clip_value * self.optim_args.lr 
-            scale_value = sensitivity / self.epsilon            
+            if self.clip_value != False:
+                sensitivity = 2.0 * self.clip_value * self.optim_args.lr
+            scale_value = sensitivity / self.epsilon
             super(FedAvgClient, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """

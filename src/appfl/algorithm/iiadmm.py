@@ -30,14 +30,14 @@ class IIADMMServer(BaseServer):
 
     def update(self, local_states: OrderedDict):
 
-        """ Inputs for the global model update"""
+        """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())
         super(IIADMMServer, self).primal_recover_from_local_states(local_states)
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
 
         """ residual calculation """
-        super(IIADMMServer, self).primal_residual_at_server()  
-        super(IIADMMServer, self).dual_residual_at_server()  
+        super(IIADMMServer, self).primal_residual_at_server()
+        super(IIADMMServer, self).dual_residual_at_server()
 
         """ global_state calculation """
         for name, param in self.model.named_parameters():
@@ -49,9 +49,9 @@ class IIADMMServer(BaseServer):
                     self.device
                 )
                 ## dual
-                self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[i] * (
-                    self.global_state[name] - self.primal_states[i][name]
-                )
+                self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[
+                    i
+                ] * (self.global_state[name] - self.primal_states[i][name])
                 ## computation
                 tmp += (
                     self.primal_states[i][name]
@@ -63,21 +63,28 @@ class IIADMMServer(BaseServer):
         """ model update """
         self.model.load_state_dict(self.global_state)
 
-    
     def logging_iteration(self, cfg, logger, t):
         if t == 0:
             title = super(IIADMMServer, self).log_title()
-            title = title + "%12s %12s %12s %12s" %("PrimRes", "DualRes", "RhoMin", "RhoMax")
+            title = title + "%12s %12s %12s %12s" % (
+                "PrimRes",
+                "DualRes",
+                "RhoMin",
+                "RhoMax",
+            )
             logger.info(title)
-        
-        contents = super(IIADMMServer, self).log_contents(cfg, t) 
-        contents = contents + "%12.4e %12.4e %12.4e %12.4e" %(self.prim_res, self.dual_res, min(self.penalty.values()), max(self.penalty.values()))
+
+        contents = super(IIADMMServer, self).log_contents(cfg, t)
+        contents = contents + "%12.4e %12.4e %12.4e %12.4e" % (
+            self.prim_res,
+            self.dual_res,
+            min(self.penalty.values()),
+            max(self.penalty.values()),
+        )
         logger.info(contents)
 
-
     def logging_summary(self, cfg, logger):
-        super(IIADMMServer, self).log_summary(cfg, logger) 
- 
+        super(IIADMMServer, self).log_summary(cfg, logger)
 
 
 class IIADMMClient(BaseClient):
@@ -94,8 +101,8 @@ class IIADMMClient(BaseClient):
             self.primal_state[name] = param.data
             self.dual_state[name] = torch.zeros_like(param.data)
 
-        self.penalty = kwargs['init_penalty']
-        self.is_first_iter = 1        
+        self.penalty = kwargs["init_penalty"]
+        self.is_first_iter = 1
 
     def update(self):
 
@@ -107,11 +114,11 @@ class IIADMMClient(BaseClient):
         """ Inputs for the local model update """
         global_state = copy.deepcopy(self.model.state_dict())
 
-        """ Adaptive Penalty (Residual Balancing) """   
+        """ Adaptive Penalty (Residual Balancing) """
         if self.residual_balancing.res_on == True:
             prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
-            dual_res = super(IIADMMClient, self).dual_residual_at_client()                        
-            super(IIADMMClient, self).residual_balancing(prim_res,dual_res)                
+            dual_res = super(IIADMMClient, self).dual_residual_at_client()
+            super(IIADMMClient, self).residual_balancing(prim_res, dual_res)
 
         """ Multiple local update """
         for i in range(self.num_local_epochs):
@@ -119,10 +126,15 @@ class IIADMMClient(BaseClient):
 
                 self.model.load_state_dict(self.primal_state)
 
-                if self.residual_balancing.res_on == True and self.residual_balancing.res_on_every_update == True:                
-                    prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
-                    dual_res = super(IIADMMClient, self).dual_residual_at_client()                        
-                    super(IIADMMClient, self).residual_balancing(prim_res,dual_res)                
+                if (
+                    self.residual_balancing.res_on == True
+                    and self.residual_balancing.res_on_every_update == True
+                ):
+                    prim_res = super(IIADMMClient, self).primal_residual_at_client(
+                        global_state
+                    )
+                    dual_res = super(IIADMMClient, self).dual_residual_at_client()
+                    super(IIADMMClient, self).residual_balancing(prim_res, dual_res)
 
                 data = data.to(self.device)
                 target = target.to(self.device)
@@ -130,13 +142,16 @@ class IIADMMClient(BaseClient):
                 if self.accum_grad == False:
                     optimizer.zero_grad()
 
-                output = self.model(data)                
-                loss = self.loss_fn(output, target)            
+                output = self.model(data)
+                loss = self.loss_fn(output, target)
                 loss.backward()
 
-                if self.clip_value != False:                                              
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)                   
-
+                if self.clip_value != False:
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(),
+                        self.clip_value,
+                        norm_type=self.clip_norm,
+                    )
 
                 ## STEP: Update primal
                 coefficient = 1
@@ -157,11 +172,11 @@ class IIADMMClient(BaseClient):
         """ Differential Privacy  """
         if self.epsilon != False:
             sensitivity = 0
-            if self.clip_value != False:                           
-                sensitivity = 2.0 * self.clip_value / self.penalty             
-            scale_value = sensitivity / self.epsilon            
+            if self.clip_value != False:
+                sensitivity = 2.0 * self.clip_value / self.penalty
+            scale_value = sensitivity / self.epsilon
             super(IIADMMClient, self).laplace_mechanism_output_perturb(scale_value)
-        
+
         """ Update local_state """
         self.local_state = OrderedDict()
         self.local_state["primal"] = copy.deepcopy(self.primal_state)
@@ -172,7 +187,7 @@ class IIADMMClient(BaseClient):
         return self.local_state
 
     def iiadmm_step(self, coefficient, global_state, optimizer):
-        
+
         momentum = 0
         if "momentum" in self.optim_args.keys():
             momentum = self.optim_args.momentum
@@ -206,5 +221,3 @@ class IIADMMClient(BaseClient):
             self.primal_state[name] = global_state[name] + (1.0 / self.penalty) * (
                 self.dual_state[name] - grad
             )
-
- 

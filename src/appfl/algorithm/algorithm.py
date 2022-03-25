@@ -7,6 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 
+
 class BaseServer:
     """Abstract class of PPFL algorithm for server that aggregates and updates model parameters.
 
@@ -17,7 +18,9 @@ class BaseServer:
         device (str): device for computation
     """
 
-    def __init__(self, weights: OrderedDict, model: nn.Module, num_clients: int, device):        
+    def __init__(
+        self, weights: OrderedDict, model: nn.Module, num_clients: int, device
+    ):
         self.model = model
         self.num_clients = num_clients
         self.device = device
@@ -35,7 +38,7 @@ class BaseServer:
             self.dual_states[i] = OrderedDict()
             self.primal_states_curr[i] = OrderedDict()
             self.primal_states_prev[i] = OrderedDict()
- 
+
     def get_model(self) -> nn.Module:
         """Get the model
 
@@ -72,11 +75,12 @@ class BaseServer:
             for name, _ in self.model.named_parameters():
                 primal_res += torch.sum(
                     torch.square(
-                        self.global_state[name] - self.primal_states[i][name].to(self.device)
+                        self.global_state[name]
+                        - self.primal_states[i][name].to(self.device)
                     )
                 )
         self.prim_res = torch.sqrt(primal_res).item()
-        
+
     def dual_residual_at_server(self) -> float:
         dual_res = 0
         if self.is_first_iter == 1:
@@ -116,11 +120,11 @@ class BaseServer:
             "PerIter(s)",
             "Elapsed(s)",
             "TestLoss",
-            "TestAccu"        
+            "TestAccu",
         )
         return title
 
-    def log_contents(self, cfg, t):    
+    def log_contents(self, cfg, t):
         contents = "%10d %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.2f" % (
             t + 1,
             cfg["logginginfo"]["LocalUpdate_time"],
@@ -129,23 +133,24 @@ class BaseServer:
             cfg["logginginfo"]["PerIter_time"],
             cfg["logginginfo"]["Elapsed_time"],
             cfg["logginginfo"]["test_loss"],
-            cfg["logginginfo"]["accuracy"],             
+            cfg["logginginfo"]["accuracy"],
         )
         return contents
 
     def log_summary(self, cfg: DictConfig, logger):
 
         logger.info("Device=%s" % (cfg.device))
-        logger.info("#Processors=%s" % (cfg["logginginfo"]["comm_size"]))        
+        logger.info("#Processors=%s" % (cfg["logginginfo"]["comm_size"]))
         logger.info("#Clients=%s" % (self.num_clients))
         logger.info("Server=%s" % (cfg.fed.servername))
         logger.info("Clients=%s" % (cfg.fed.clientname))
         logger.info("Comm_Rounds=%s" % (cfg.num_epochs))
-        logger.info("Local_Rounds=%s" % (cfg.fed.args.num_local_epochs))    
-        logger.info("DP_Eps=%s" % (cfg.fed.args.epsilon))    
-        logger.info("Clipping=%s" % (cfg.fed.args.clip_value))    
+        logger.info("Local_Rounds=%s" % (cfg.fed.args.num_local_epochs))
+        logger.info("DP_Eps=%s" % (cfg.fed.args.epsilon))
+        logger.info("Clipping=%s" % (cfg.fed.args.clip_value))
         logger.info("Elapsed_time=%s" % (round(cfg["logginginfo"]["Elapsed_time"], 2)))
-        logger.info("BestAccuracy=%s" % (round(cfg["logginginfo"]["BestAccuracy"], 2)))  
+        logger.info("BestAccuracy=%s" % (round(cfg["logginginfo"]["BestAccuracy"], 2)))
+
 
 """This implements a base class for clients."""
 
@@ -166,7 +171,7 @@ class BaseClient:
     ):
         self.id = id
         self.weight = weight
-        self.model = model        
+        self.model = model
         self.dataloader = dataloader
         self.device = device
 

@@ -2,18 +2,11 @@ from dataclasses import dataclass
 from omegaconf import DictConfig, OmegaConf
 import torch
 """ various server updates are available 
-(Baseline)
     ServerFedAvg
-(Group 1)
     ServerFedAvgMomentum
     ServerFedAdagrad
     ServerFedAdam 
     ServerFedYogi
-(Group 2)
-    ServerFedBFGS
-    ServerFedBroyden
-    ServerFedDFP
-    ServerFedSR1
 """ 
 @dataclass
 class Federated:
@@ -32,9 +25,9 @@ class Federated:
             "server_momentum_param_1": 0.9,
             "server_momentum_param_2": 0.99,
 
-            ## Clients update
-            "num_local_epochs": 10,
+            ## Clients optimizer
             "optim": "SGD",
+            "num_local_epochs": 10,            
             "optim_args": {
                 "lr": 0.001,                                                
             },
