@@ -85,13 +85,12 @@ def save_model_iteration(t, model, cfg: DictConfig):
     dir = cfg.save_model_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    model_name = cfg.save_model_filename + "_Iter_%s" % (iter)
 
     file_ext = ".pt"
-    file = dir + "/%s_Round_%s%s" % (model_name, t, file_ext)
+    file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
     uniq = 1
     while os.path.exists(file):
-        file = dir + "/%s_%d%s" % (model_name, uniq, file_ext)
+        file = dir + "/%s_%d%s" % (cfg.save_model_filename, uniq, file_ext)
         uniq += 1
 
     torch.save(model, file)
