@@ -35,27 +35,35 @@ class ClientOptim(BaseClient):
 
         """ Multiple local update """
         for i in range(self.num_local_epochs):
-            train_loss = 0
-            tmpcnt = 0
+            # train_loss = 0
+            # tmpcnt = 0
             for data, target in self.dataloader:
 
                 data = data.to(self.device)
                 target = target.to(self.device)
 
-                output = self.model(data)
-
-                ## TODO: different functions take different formats of arguments
-                if self.loss_type == "torch.nn.BCELoss()":
-                    target = target.to(torch.float32)
-                    loss = self.loss_fn(output, target.reshape(-1, 1))
-                else:
-                    loss = self.loss_fn(output, target)
-
                 optimizer.zero_grad()
-                loss.backward()
+                output = self.model(data)
+                loss = self.loss_fn(output, target)
+                loss.backward() 
+                optimizer.step()
 
-                train_loss += loss.item()
-                tmpcnt += 1
+                # output = self.model(data)
+                
+                # loss = self.loss_fn(output, target)
+
+                # ## TODO: different functions take different formats of arguments
+                # if self.loss_type == "torch.nn.BCELoss()":
+                #     target = target.to(torch.float32)
+                #     loss = self.loss_fn(output, target.reshape(-1, 1))
+                # else:
+                #     loss = self.loss_fn(output, target)
+
+                # optimizer.zero_grad()
+                # loss.backward()
+
+                # train_loss += loss.item()
+                # tmpcnt += 1
 
                 if self.clip_value != False:
                     torch.nn.utils.clip_grad_norm_(
@@ -64,10 +72,11 @@ class ClientOptim(BaseClient):
                         norm_type=self.clip_norm,
                     )
 
-                optimizer.step()
-            train_loss = train_loss / tmpcnt
+                # optimizer.step()
 
-        self.train_loss.append(train_loss)
+            # train_loss = train_loss / tmpcnt
+
+        # self.train_loss.append(train_loss)
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
