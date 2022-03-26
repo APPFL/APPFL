@@ -10,10 +10,12 @@ from torchvision.transforms import ToTensor
 
 from appfl.config import *
 from appfl.misc.data import *
+from appfl.misc.utils import *
 from models.cnn import *
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
 from mpi4py import MPI
+import argparse
 
 DataSet_name = "MNIST"
 num_clients = 2
@@ -70,7 +72,6 @@ def get_data(comm: MPI.Comm):
             )
         )
 
-    data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)
     return train_datasets, test_dataset
 
 
@@ -88,22 +89,46 @@ def main():
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
-    ## Reproducibility
-    torch.manual_seed(1)
-    torch.backends.cudnn.deterministic = True
-
-    start_time = time.time()
-    train_datasets, test_dataset = get_data(comm)
-    model = get_model(comm)
-    print(
-        "----------Loaded Datasets and Model----------Elapsed Time=",
-        time.time() - start_time,
-    )
-
-    # read default configuration
+    """ Configuration """     
     cfg = OmegaConf.structured(Config)
     cfg.device = "cuda"
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--server', type=str, required=False)    
+    args = parser.parse_args()   
+
+    cfg.fed.servername = args.server
+
+    ## Reproducibility
+    if cfg.reproduce == True:
+        torch.manual_seed(1)
+        torch.backends.cudnn.deterministic = True 
+
+    start_time = time.time()
+
+    """ User-defined model """    
+    model = get_model(comm)
+    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"  
+
+    ## loading models 
+    cfg.load_model = False
+    if cfg.load_model == True:
+        cfg.load_model_dirname      = "./save_models"
+        cfg.load_model_filename     = "Model"               
+        model = load_model(cfg)      
+
+    """ User-defined data """        
+    train_datasets, test_dataset = get_data(comm)
+    
+    ## Sanity check for the user-defined data
+    if cfg.data_sanity == True:
+        data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)        
+
+    print(
+            "--------Data and Model: Loading_Time=",
+            time.time() - start_time,
+        ) 
+    
     """ saving models """
     cfg.save_model = False
     if cfg.save_model == True:

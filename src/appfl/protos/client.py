@@ -17,7 +17,12 @@ from . import utils
 
 class FLClient:
     def __init__(
-        self, client_id, server_uri, use_tls, max_message_size=2 * 1024 * 1024, api_key=None
+        self,
+        client_id,
+        server_uri,
+        use_tls,
+        max_message_size=2 * 1024 * 1024,
+        api_key=None,
     ):
         self.logger = logging.getLogger(__name__)
         self.client_id = client_id
@@ -41,7 +46,7 @@ class FLClient:
         self.time_send_results = 0.0
         self.metadata = []
         if api_key:
-            self.metadata.append(('x-api-key', api_key))
+            self.metadata.append(("x-api-key", api_key))
 
     def get_job(self, job_done):
         request = JobRequest(header=self.header, job_done=job_done)
@@ -61,23 +66,33 @@ class FLClient:
         request = TensorRequest(
             header=self.header, name=name, round_number=round_number
         )
-        self.logger.debug(f"[Client ID: {self.client_id: 03}] Requested Tensor record (name,round)=(%s,%d)", name, round_number)
+        self.logger.debug(
+            f"[Client ID: {self.client_id: 03}] Requested Tensor record (name,round)=(%s,%d)",
+            name,
+            round_number,
+        )
         start = time.time()
         response = self.stub.GetTensorRecord(request, metadata=self.metadata)
         end = time.time()
-        self.logger.debug(f"[Client ID: {self.client_id: 03}] Received Tensor record (name,round)=(%s,%d)", name, round_number)
+        self.logger.debug(
+            f"[Client ID: {self.client_id: 03}] Received Tensor record (name,round)=(%s,%d)",
+            name,
+            round_number,
+        )
         if round_number > 1:
             self.time_get_tensor += end - start
-        shape = tuple(response.data_shape)                
-        flat = np.frombuffer(response.data_bytes, dtype=eval(response.data_dtype))        
+        shape = tuple(response.data_shape)
+        flat = np.frombuffer(response.data_bytes, dtype=eval(response.data_dtype))
         nparray = np.reshape(flat, newshape=shape, order="C")
- 
+
         return nparray
 
     def get_weight(self, training_size):
         request = WeightRequest(header=self.header, size=training_size)
         response = self.stub.GetWeight(request, metadata=self.metadata)
-        self.logger.debug(f"[Client ID: {self.client_id: 03}] Received weight = %e", response.weight)
+        self.logger.debug(
+            f"[Client ID: {self.client_id: 03}] Received weight = %e", response.weight
+        )
         return response.weight
 
     def send_learning_results(self, penalty, primal, dual, round_number):

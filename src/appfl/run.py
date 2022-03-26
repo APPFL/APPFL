@@ -13,14 +13,11 @@ import copy
 import time
 import logging
 
-from .misc.data import Dataset
-from .misc.utils import *
-
-from .algorithm.fedavg import *
-from .algorithm.iceadmm import *
-from .algorithm.iiadmm import *
+from .misc import *
+from .algorithm import *
 
 from mpi4py import MPI
+
 
 def run_serial(
     cfg: DictConfig,
@@ -39,23 +36,24 @@ def run_serial(
         DataSet_name (str): optional dataset name
     """
 
+    ## Logger
     logger = logging.getLogger(__name__)
-    logger = create_custom_logger(logger, cfg)    
-    title = log_title()    
-    logger.info(title)
+    logger = create_custom_logger(logger, cfg)
+    cfg["logginginfo"]["comm_size"] = 1
+    cfg["logginginfo"]["DataSet_name"] = DataSet_name
 
     num_clients = len(train_data)
     num_epochs = cfg.num_epochs
 
-    """ weight calculation """    
-    total_num_data = 0    
+    """ weight calculation """
+    total_num_data = 0
     for k in range(num_clients):
-        total_num_data += len( train_data[k] )
+        total_num_data += len(train_data[k])
 
-    weights={}
-    for k in range(num_clients):        
+    weights = {}
+    for k in range(num_clients):
         weights[k] = len(train_data[k]) / total_num_data
-        
+
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_data) > 0:
         server_dataloader = DataLoader(
@@ -96,11 +94,6 @@ def run_serial(
         for k in range(num_clients)
     ]
 
-    
-    """ Loading Model """
-    if cfg.load_model == True:      
-        server.model = load_model(cfg)        
-
     local_states = []
     local_state = OrderedDict()
     local_state[0] = OrderedDict()
@@ -114,51 +107,38 @@ def run_serial(
 
         global_state = server.model.state_dict()
         LocalUpdate_start = time.time()
-        for k, client in enumerate(clients):            
-            client.model.load_state_dict(global_state)                        
-            local_state[0][k] = client.update()      
-        
-        local_states.append(local_state[0])   
- 
-        LocalUpdate_time = time.time() - LocalUpdate_start
-        
+        for k, client in enumerate(clients):
+            client.model.load_state_dict(global_state)
+            local_state[0][k] = client.update()
+
+        local_states.append(local_state[0])
+        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
+
         GlobalUpdate_start = time.time()
-        prim_res, dual_res, rho_min, rho_max = server.update(local_states)
-        GlobalUpdate_time = time.time() - GlobalUpdate_start
+        server.update(local_states)
+        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
         if cfg.validation == True:
             test_loss, accuracy = validation(server, server_dataloader)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-        Validation_time = time.time() - Validation_start
-        PerIter_time = time.time() - PerIter_start
-        Elapsed_time = time.time() - start_time
+        cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
+        cfg["logginginfo"]["PerIter_time"] = time.time() - PerIter_start
+        cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
+        cfg["logginginfo"]["test_loss"] = test_loss
+        cfg["logginginfo"]["accuracy"] = accuracy
+        cfg["logginginfo"]["BestAccuracy"] = BestAccuracy
 
-        log_iter = log_iteration(            
-            t,
-            LocalUpdate_time,
-            GlobalUpdate_time,
-            Validation_time,
-            PerIter_time,
-            Elapsed_time,
-            test_loss,
-            accuracy,
-            prim_res, 
-            dual_res,
-            rho_min, 
-            rho_max,
-        )
-        logger.info(log_iter)
+        server.logging_iteration(cfg, logger, t)
 
-    log_summary(
-        logger, cfg, 1, DataSet_name, num_clients, Elapsed_time, BestAccuracy
-    )
+        """ Saving model """
+        if t + 1 % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
+            if cfg.save_model == True:
+                save_model_iteration(t + 1, server.model, cfg)
 
-    """ Saving model """    
-    if cfg.save_model == True:        
-        save_model(server.model, cfg)
-         
+    server.logging_summary(cfg, logger)
+
 
 def run_server(
     cfg: DictConfig,
@@ -178,12 +158,7 @@ def run_server(
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
     """
-    
-    logger = logging.getLogger(__name__)
-    logger = create_custom_logger(logger, cfg)    
-    title = log_title()    
-    logger.info(title)
- 
+
     ## Start
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
@@ -191,6 +166,12 @@ def run_server(
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
+
+    ## Logger
+    logger = logging.getLogger(__name__)
+    logger = create_custom_logger(logger, cfg)
+    cfg["logginginfo"]["comm_size"] = comm_size
+    cfg["logginginfo"]["DataSet_name"] = DataSet_name
 
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_dataset) > 0:
@@ -202,40 +183,37 @@ def run_server(
         )
     else:
         cfg.validation = False
-    
+
     """
     Receive the number of data from clients
     Compute "weight[client] = data[client]/total_num_data" from a server    
     Scatter "weight information" to clients        
-    """    
+    """
     Num_Data = comm.gather(0, root=0)
     total_num_data = 0
     for rank in range(1, comm_size):
         for val in Num_Data[rank].values():
-            total_num_data += val             
-    
-    weight=[]; weights = {}
+            total_num_data += val
+
+    weight = []
+    weights = {}
     for rank in range(comm_size):
         if rank == 0:
             weight.append(0)
         else:
             temp = {}
             for key in Num_Data[rank].keys():
-                temp[key]       = Num_Data[rank][key] / total_num_data
-                weights[key]    = temp[key]
+                temp[key] = Num_Data[rank][key] / total_num_data
+                weights[key] = temp[key]
             weight.append(temp)
-    
-    weight = comm.scatter(weight, root = 0)
 
-    # TODO: do we want to use root as a client?    
+    weight = comm.scatter(weight, root=0)
+
+    # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
-    ) 
- 
-    """ Loading Model """
-    if cfg.load_model == True:      
-        server.model = load_model(cfg)        
-        
+    )
+
     do_continue = True
     start_time = time.time()
     test_loss = 0.0
@@ -254,60 +232,50 @@ def run_server(
         LocalUpdate_start = time.time()
         global_state = comm.bcast(global_state, root=0)
         local_states = comm.gather(None, root=0)
-        LocalUpdate_time = time.time() - LocalUpdate_start
+        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
 
-        GlobalUpdate_start = time.time()        
-        prim_res, dual_res, rho_min, rho_max = server.update(local_states)
-        GlobalUpdate_time = time.time() - GlobalUpdate_start
+        GlobalUpdate_start = time.time()
+        server.update(local_states)
+        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()
+        test_loss = 0
+        accuracy = 0
+        BestAccuracy = 0
         if cfg.validation == True:
             test_loss, accuracy = validation(server, server_dataloader)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-        Validation_time = time.time() - Validation_start
-        PerIter_time = time.time() - PerIter_start
-        Elapsed_time = time.time() - start_time
+        cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
+        cfg["logginginfo"]["PerIter_time"] = time.time() - PerIter_start
+        cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
+        cfg["logginginfo"]["test_loss"] = test_loss
+        cfg["logginginfo"]["accuracy"] = accuracy
+        cfg["logginginfo"]["BestAccuracy"] = BestAccuracy
 
-        log_iter = log_iteration(            
-            t,
-            LocalUpdate_time,
-            GlobalUpdate_time,
-            Validation_time,
-            PerIter_time,
-            Elapsed_time,
-            test_loss,
-            accuracy,
-            prim_res, 
-            dual_res,
-            rho_min, 
-            rho_max,
-        )
-        logger.info(log_iter)
+        server.logging_iteration(cfg, logger, t)
+
+        """ Saving model """
+        if t + 1 % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
+            if cfg.save_model == True:
+                save_model_iteration(t + 1, server.model, cfg)
 
         if np.isnan(test_loss) == True:
             break
 
+    """ Summary """
+    server.logging_summary(cfg, logger)
+
     do_continue = False
     do_continue = comm.bcast(do_continue, root=0)
 
-    log_summary(
-        logger, cfg, comm_size, DataSet_name, num_clients, Elapsed_time, BestAccuracy
-    )
- 
-    """ Saving model """    
-    if cfg.save_model == True:        
-        save_model(server.model, cfg)
-         
-    
-
-
-
-    
-
 
 def run_client(
-    cfg: DictConfig, comm: MPI.Comm, model: nn.Module, num_clients: int, train_data: Dataset
+    cfg: DictConfig,
+    comm: MPI.Comm,
+    model: nn.Module,
+    num_clients: int,
+    train_data: Dataset,
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -339,10 +307,9 @@ def run_client(
     num_data = {}
     for i, cid in enumerate(num_client_groups[comm_rank - 1]):
         num_data[cid] = len(train_data[cid])
-    comm.gather(num_data, root=0)        
+    comm.gather(num_data, root=0)
     weight = None
-    weight = comm.scatter(weight, root = 0)
-    
+    weight = comm.scatter(weight, root=0)
 
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
@@ -372,15 +339,15 @@ def run_client(
     local_states = OrderedDict()
 
     while do_continue:
-        """ Receive "global_state" """    
+        """Receive "global_state" """
         global_state = comm.bcast(None, root=0)
 
-        """ Update "local_states" based on "global_state" """        
-        for client in clients:          
+        """ Update "local_states" based on "global_state" """
+        for client in clients:
             client.model.load_state_dict(global_state)
             local_states[client.id] = client.update()
 
-        """ Send "local_states" to a server """                
+        """ Send "local_states" to a server """
         comm.gather(local_states, root=0)
 
         do_continue = comm.bcast(None, root=0)

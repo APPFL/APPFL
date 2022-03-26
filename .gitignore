@@ -1,14 +1,18 @@
 .gitignore
 .DS_Store
 src/appfl/.DS_Store
-src/appfl/config/optim/*
 src/appfl/algorithm/mryu.py
+note
 examples/.DS_Store
+examples/save_models
 examples/outputs/*
 examples/results/*
 examples/*.sh
 examples/datasets/PreprocessedData/
 examples/Slurm_outputs/*
+examples/PostProcessing/*
+examples/datasets/PreprocessedData/
+examples/datasets/RawData/Deepcovid
 examples/datasets/RawData/cifar-10-batches-py
 examples/gcloud/resulting_models
 examples/models/
@@ -163,12 +167,15 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+examples/models/IsabelleTorch.pth
+examples/models/IsabelleTorch.py
+examples/models/IsabelleTorch.pth
+examples/Trials/BinaryClassification.py
+examples/Trials/IsabelleModel.py
 
 # Pyre type checker
 .pyre/
 appfl/privacy/library.py
-examples/femnist_test_swing.py
-examples/mnist_test_swing.py
 src/appfl/algorithm/admm.py
 src/appfl/config/fed/admm.yaml
 examples/gcloud/mnist_test_data.pickle
@@ -185,8 +192,6 @@ examples/gcloud/IsabelleTorch.py
 examples/datasets/PreprocessedData/deepcovid_train_data.json
 examples/datasets/PreprocessedData/deepcovid_test_data.json
 examples/gcloud/deepcovid_test_data.json
-examples/gcloud/Dockerfile.covid
-examples/gcloud/Dockerfile.mnist
 examples/mnist_slow.py
 examples/MPI_DeepCovid_1.py
 examples/MPI_DeepCovid_2.py

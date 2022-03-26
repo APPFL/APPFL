@@ -10,14 +10,12 @@ import numpy as np
 import logging
 import time
 
-from appfl.algorithm.fedavg import *
-from appfl.algorithm.iceadmm import *
-from appfl.algorithm.iiadmm import *
+from .misc import *
+from .algorithm import *
 
 from .protos.federated_learning_pb2 import Job
 from .protos.client import FLClient
-from .misc.data import Dataset
-from .misc.utils import *
+
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -28,16 +26,16 @@ def update_model_state(comm, model, round_number):
 
 
 def run_client(
-    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, gpu_id : int = 0
+    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, gpu_id: int = 0
 ) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
     Args:
         cfg (DictConfig): the configuration for this run
-        cid (int): cliend_id  
+        cid (int): cliend_id
         model (nn.Module): neural network model to train
         train_data (Dataset): training data
-        gpu_id (int): GPU ID 
+        gpu_id (int): GPU ID
     """
 
     logger = logging.getLogger(__name__)
@@ -46,9 +44,8 @@ def run_client(
     else:
         uri = cfg.server.host + ":" + str(cfg.server.port)
 
-
     ## We assume to have as many GPUs as the number of MPI processes.
-    if cfg.device == "cuda":        
+    if cfg.device == "cuda":
         device = f"cuda:{gpu_id}"
     else:
         device = cfg.device
@@ -125,17 +122,18 @@ def run_client(
                 time_start = time.time()
                 local_state = fed_client.update()
                 time_end = time.time()
-                
+
                 learning_time = time_end - time_start
                 cumul_learning_time += learning_time
 
-                
-                if cur_round_number % cfg.checkpoints_interval == 0 or cur_round_number == cfg.num_epochs:                                
-                    """ Saving model """    
-                    if cfg.save_model == True:        
+                if (
+                    cur_round_number % cfg.checkpoints_interval == 0
+                    or cur_round_number == cfg.num_epochs
+                ):
+                    """Saving model"""
+                    if cfg.save_model == True:
                         save_model_iteration(cur_round_number, fed_client.model, cfg)
 
-                
                 time_start = time.time()
                 comm.send_learning_results(
                     local_state["penalty"],

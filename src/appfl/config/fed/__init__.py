@@ -2,6 +2,6 @@
 Configuration for each algorithm
 """
 
-from .fedavg import *
+from .federated import *
 from .iceadmm import *
 from .iiadmm import *
