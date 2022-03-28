@@ -43,7 +43,7 @@ class ClientOptim(BaseClient):
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
-                print("tmp=", tmp, " target=", len(target), " loss=", loss)
+                print("tmp=", tmp, " output=", output, " loss=", loss)
                 loss.backward()
                 optimizer.step()
 
