@@ -53,6 +53,7 @@ class ClientOptim(BaseClient):
                 #         self.clip_value,
                 #         norm_type=self.clip_norm,
                 #     )
+            print("t=",t, " ", self.model.state_dict()["conv1_bn.bias"], "  ", sum(self.model.state_dict()["conv1_bn.bias"]))
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
