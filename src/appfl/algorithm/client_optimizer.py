@@ -43,17 +43,19 @@ class ClientOptim(BaseClient):
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
-                print("tmp=", tmp, " output=", output, " loss=", loss)
+                if tmp==1:
+                    print("tmp=", tmp, " output=", output, " loss=", loss)
+
                 loss.backward()
                 optimizer.step()
 
-                # if self.clip_value != False:
-                #     torch.nn.utils.clip_grad_norm_(
-                #         self.model.parameters(),
-                #         self.clip_value,
-                #         norm_type=self.clip_norm,
-                #     )
-            print("t=",t, " ", self.model.state_dict()["conv1_bn.bias"], "  ", sum(self.model.state_dict()["conv1_bn.bias"]))
+                if self.clip_value != False:
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(),
+                        self.clip_value,
+                        norm_type=self.clip_norm,
+                    )
+            
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
