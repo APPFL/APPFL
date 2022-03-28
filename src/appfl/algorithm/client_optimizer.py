@@ -30,22 +30,15 @@ class ClientOptim(BaseClient):
         """ Inputs for the local model update 
             "global_state" from a server is already stored in 'self.model'
         """
-        print("optimizer=", optimizer)
+
         """ Multiple local update """
-        for t in range(self.num_local_epochs):
-            
-            print("t=",t, " ", self.model.state_dict()["conv1_bn.bias"], "  ", sum(self.model.state_dict()["conv1_bn.bias"]))
-            tmp=0
+        for _ in range(self.num_local_epochs):
             for data, target in self.dataloader:
-                tmp+=1
                 data = data.to(self.device)
                 target = target.to(self.device)
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
-                if tmp==1:
-                    print("tmp=", tmp, " output=", output, " loss=", loss)
-
                 loss.backward()
                 optimizer.step()
 
@@ -55,7 +48,6 @@ class ClientOptim(BaseClient):
                         self.clip_value,
                         norm_type=self.clip_norm,
                     )
-            
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
