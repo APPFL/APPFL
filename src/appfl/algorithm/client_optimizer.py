@@ -47,12 +47,12 @@ class ClientOptim(BaseClient):
                 loss.backward()
                 optimizer.step()
 
-                if self.clip_value != False:
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.clip_value,
-                        norm_type=self.clip_norm,
-                    )
+                # if self.clip_value != False:
+                #     torch.nn.utils.clip_grad_norm_(
+                #         self.model.parameters(),
+                #         self.clip_value,
+                #         norm_type=self.clip_norm,
+                #     )
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
