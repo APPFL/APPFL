@@ -34,7 +34,7 @@ class ClientOptim(BaseClient):
         """ Multiple local update """
         for t in range(self.num_local_epochs):
             
-            print("t=",t, " ", self.model.state_dict()["conv1_bn.bias"])
+            print("t=",t, " ", self.model.state_dict()["conv1_bn.bias"], "  ", sum(self.model.state_dict()["conv1_bn.bias"]))
 
             for data, target in self.dataloader:
                 data = data.to(self.device)
