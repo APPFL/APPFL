@@ -133,7 +133,7 @@ def run_serial(
         server.logging_iteration(cfg, logger, t)
 
         """ Saving model """
-        if t + 1 % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
+        if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
                 save_model_iteration(t + 1, server.model, cfg)
 
@@ -256,7 +256,7 @@ def run_server(
         server.logging_iteration(cfg, logger, t)
 
         """ Saving model """
-        if t + 1 % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
+        if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
                 save_model_iteration(t + 1, server.model, cfg)
 
