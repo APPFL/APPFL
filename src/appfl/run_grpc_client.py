@@ -144,8 +144,8 @@ def run_client(
                 time_end = time.time()
                 send_time = time_end - time_start
                 logger.info(
-                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Trained (Elapsed %.4f) and sent results back to the server (Elapsed %.4f)",
-                    learning_time,
+                    f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Trained (Time %.4f, Epoch {cfg.fed.args.num_local_epochs: 03}) and sent results back to the server (Elapsed %.4f)",
+                    learning_time,                    
                     send_time,
                 )
             else:
