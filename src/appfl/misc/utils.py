@@ -90,7 +90,7 @@ def save_model_iteration(t, model, cfg: DictConfig):
     file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
     uniq = 1
     while os.path.exists(file):
-        file = dir + "/%s_%d%s" % (cfg.save_model_filename, uniq, file_ext)
+        file = dir + "/%s_Round_%s_%d%s" % (cfg.save_model_filename, t, uniq, file_ext)
         uniq += 1
 
     torch.save(model, file)
