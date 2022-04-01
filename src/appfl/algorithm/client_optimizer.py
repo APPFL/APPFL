@@ -32,7 +32,7 @@ class ClientOptim(BaseClient):
         """
 
         """ Multiple local update """
-        for i in range(self.num_local_epochs):
+        for _ in range(self.num_local_epochs):
             for data, target in self.dataloader:
                 data = data.to(self.device)
                 target = target.to(self.device)
