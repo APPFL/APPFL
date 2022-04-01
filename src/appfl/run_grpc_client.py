@@ -92,7 +92,7 @@ def run_client(
         copy.deepcopy(model),
         DataLoader(
             train_data,
-            num_workers=0,
+            num_workers=cfg.num_workers,
             batch_size=batch_size,
             shuffle=cfg.train_data_shuffle,
         ),

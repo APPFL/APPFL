@@ -58,7 +58,7 @@ def run_serial(
     if cfg.validation == True and len(test_data) > 0:
         server_dataloader = DataLoader(
             test_data,
-            num_workers=0,
+            num_workers=cfg.num_workers,
             batch_size=cfg.test_data_batch_size,
             shuffle=cfg.test_data_shuffle,
         )
@@ -84,7 +84,7 @@ def run_serial(
             copy.deepcopy(model),
             DataLoader(
                 train_data[k],
-                num_workers=0,
+                num_workers=cfg.num_workers,
                 batch_size=batchsize[k],
                 shuffle=cfg.train_data_shuffle,
             ),
@@ -177,7 +177,7 @@ def run_server(
     if cfg.validation == True and len(test_dataset) > 0:
         server_dataloader = DataLoader(
             test_dataset,
-            num_workers=0,
+            num_workers=cfg.num_workers,
             batch_size=cfg.test_data_batch_size,
             shuffle=cfg.test_data_shuffle,
         )
@@ -324,7 +324,7 @@ def run_client(
             copy.deepcopy(model),
             DataLoader(
                 train_data[cid],
-                num_workers=0,
+                num_workers=cfg.num_workers,
                 batch_size=batchsize[cid],
                 shuffle=cfg.train_data_shuffle,
             ),

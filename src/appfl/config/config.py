@@ -18,6 +18,9 @@ class Config:
     # Number of training epochs
     num_epochs: int = 2
 
+    # Number of workers in DataLoader
+    num_workers: int = 0
+
     # Train data batch info
     batch_training: bool = True  ## TODO: revisit
     train_data_batch_size: int = 64
