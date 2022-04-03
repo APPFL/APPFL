@@ -7,7 +7,7 @@ import logging
 def validation(self, dataloader):
 
     if dataloader is not None:
-        self.loss_fn = eval(self.loss_type)
+        self.loss_fn = eval(self.loss_type)        
     else:
         self.loss_fn = None
 
@@ -27,8 +27,13 @@ def validation(self, dataloader):
             img = img.to(self.device)
             target = target.to(self.device)
             output = self.model(img)
-            test_loss += self.loss_fn(output, target).item()
-            pred = output.argmax(dim=1, keepdim=True)
+            test_loss += self.loss_fn(output, target).item()     
+            
+            if self.loss_type == "torch.nn.BCELoss()":
+                pred = torch.round(output)
+            else:
+                pred = output.argmax(dim=1, keepdim=True)
+
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     # FIXME: do we need to sent the model to cpu again?
