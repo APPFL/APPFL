@@ -47,6 +47,7 @@ class Config:
     save_model_dirname: str = ""
     save_model_filename: str = ""
     checkpoints_interval: int = 2
+    save_model_client: bool = False
 
     # Logging and recording outputs
     output_dirname: str = "./outputs"

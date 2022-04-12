@@ -16,13 +16,8 @@ def validation(self, dataloader):
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
-    model = copy.deepcopy(self.model)
-    
-    model.to(self.device)
-    model.eval()
-
-    # self.model.to(self.device)
-    # self.model.eval()
+    self.model.to(self.device)
+    self.model.eval()
     test_loss = 0
     correct = 0
     tmpcnt = 0
@@ -33,7 +28,7 @@ def validation(self, dataloader):
             tmptotal += len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            output = model(img)
+            output = self.model(img)
             test_loss += self.loss_fn(output, target).item()
 
             if self.loss_type == "torch.nn.BCELoss()":                
@@ -47,7 +42,7 @@ def validation(self, dataloader):
     # FIXME: do we need to sent the model to cpu again?
     # self.model.to("cpu")
 
-    test_loss = round(test_loss / tmpcnt, 4)
+    test_loss = round( test_loss / tmpcnt, 4)
     accuracy = 100.0 * correct / tmptotal
 
     return test_loss, accuracy

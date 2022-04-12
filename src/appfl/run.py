@@ -36,7 +36,7 @@ def run_serial(
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
     """
-
+    
     ## Logger
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
@@ -345,7 +345,7 @@ def run_client(
         global_state = comm.bcast(None, root=0)
 
         """ Update "local_states" based on "global_state" """
-        for client in clients:
+        for client in clients:            
             client.model.load_state_dict(global_state)
             local_states[client.id] = client.update()
             if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:

@@ -102,9 +102,7 @@ def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
- 
-
-
+  
     # """ Configuration """     
     cfg = OmegaConf.structured(Config)     
     cfg.device = args.device      
@@ -118,7 +116,7 @@ def main():
     """ model """ 
     model = resnet20(num_classes=args.num_classes)  
     # model = CNN(3, 10, 32)  
-    model.to(args.device)    
+    
     cfg.fed.args.loss_type = args.loss_fn
 
     """ Optimizer """
@@ -126,70 +124,70 @@ def main():
     cfg.num_epochs = args.num_epochs    
 
     cfg.fed.args.optim = args.optimizer
-    cfg.fed.args.num_local_epochs = 5        
+    cfg.fed.args.num_local_epochs = 3        
     cfg.fed.args.optim_args.lr = args.LR
      
     loading_time = round( time.time() - start_time, 2)
     logger.info("Loading Time = %s" %(loading_time))
 
-    # # """ Running """     
-    # if comm_size > 1:
-    #     if comm_rank == 0:
-    #         rt.run_server(cfg, comm, model, args.num_clients, test_dataset, args.dataset_name)
-    #     else:
-    #         rt.run_client(cfg, comm, model, args.num_clients, train_datasets)
-    #     print("------DONE------", comm_rank)
-    # else:
-    #     rt.run_serial(cfg, model, train_datasets, test_dataset, args.dataset_name)
+    # """ Running """     
+    if comm_size > 1:
+        if comm_rank == 0:
+            rt.run_server(cfg, comm, model, args.num_clients, test_dataset, args.dataset_name)
+        else:
+            rt.run_client(cfg, comm, model, args.num_clients, train_datasets)
+        print("------DONE------", comm_rank)
+    else:
+        rt.run_serial(cfg, model, train_datasets, test_dataset, args.dataset_name)
    
-    """ Local Training """ 
-    if args.optimizer=="SGD":
-        optimizer = optim.SGD(model.parameters(), lr=args.LR, momentum=0.9, weight_decay=1e-4)     
+    # """ Local Training """ 
+    # if args.optimizer=="SGD":
+    #     optimizer = optim.SGD(model.parameters(), lr=args.LR, momentum=0.9, weight_decay=1e-4)     
     
-    if args.optimizer=="Adam":
-        optimizer = optim.Adam(model.parameters(), lr=args.LR, weight_decay=0)
+    # if args.optimizer=="Adam":
+    #     optimizer = optim.Adam(model.parameters(), lr=args.LR, weight_decay=0)
 
-    train_dataloader = torch.utils.data.DataLoader(
-                    train_datasets[0],
-                    batch_size=64, shuffle=True,
-                    num_workers=32, pin_memory=True)
-    test_dataloader = DataLoader(
-                test_dataset,
-                num_workers=32,
-                batch_size=64,
-                shuffle=False,
-            )     
+    # train_dataloader = torch.utils.data.DataLoader(
+    #                 train_datasets[0],
+    #                 batch_size=64, shuffle=True,
+    #                 num_workers=32, pin_memory=True)
+    # test_dataloader = DataLoader(
+    #             test_dataset,
+    #             num_workers=32,
+    #             batch_size=64,
+    #             shuffle=False,
+    #         )     
                                 
-    """ Initial Parameter """
-    valid_stime = time.time()            
-    train_loss, train_accuracy = local_validation(args, copy.deepcopy(model), train_dataloader)
-    test_loss, test_accuracy = local_validation(args, copy.deepcopy(model), test_dataloader)
-    valid_etime = time.time() - valid_stime
-    logging_initial(logger, -1, 0.0, valid_etime, 0.0, train_loss, train_accuracy, train_auc, test_loss, test_accuracy, test_auc)  
+    # """ Initial Parameter """
+    # valid_stime = time.time()            
+    # train_loss, train_accuracy, train_auc = local_validation(args, copy.deepcopy(model), train_dataloader)
+    # test_loss, test_accuracy, test_auc = local_validation(args, copy.deepcopy(model), test_dataloader)
+    # valid_etime = time.time() - valid_stime
+    # logging_initial(logger, -1, 0.0, valid_etime, 0.0, train_loss, train_accuracy, train_auc, test_loss, test_accuracy, test_auc)  
     
-    start_time = time.time()
-    model.train()    
-    for t in range(args.num_epochs):
-        train_stime = time.time()
-        for data, target in train_dataloader:
-            data = data.to(args.device)
-            target = target.to(args.device)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = eval(args.loss_fn)(output, target)
-            loss.backward() 
-            optimizer.step()
+    # start_time = time.time()
+    # model.train()    
+    # for t in range(args.num_epochs):
+    #     train_stime = time.time()
+    #     for data, target in train_dataloader:
+    #         data = data.to(args.device)
+    #         target = target.to(args.device)
+    #         optimizer.zero_grad()
+    #         output = model(data)
+    #         loss = eval(args.loss_fn)(output, target)
+    #         loss.backward() 
+    #         optimizer.step()
  
-        train_etime = round(time.time() - train_stime,2)
+    #     train_etime = round(time.time() - train_stime,2)
 
-        valid_stime = time.time()            
-        train_loss, train_accuracy, train_auc = local_validation(args, copy.deepcopy(model), train_dataloader)            
-        test_loss, test_accuracy, test_auc = local_validation(args, copy.deepcopy(model),  test_dataloader)
-        valid_etime = time.time() - valid_stime
+    #     valid_stime = time.time()            
+    #     train_loss, train_accuracy, train_auc = local_validation(args, copy.deepcopy(model), train_dataloader)            
+    #     test_loss, test_accuracy, test_auc = local_validation(args, copy.deepcopy(model),  test_dataloader)
+    #     valid_etime = time.time() - valid_stime
 
-        elapsed_time = round(time.time()-start_time,2)
+    #     elapsed_time = round(time.time()-start_time,2)
 
-        logging_iteration(logger, t, train_etime, valid_etime, elapsed_time, train_loss, train_accuracy, train_auc, test_loss, test_accuracy, test_auc)
+    #     logging_iteration(logger, t, train_etime, valid_etime, elapsed_time, train_loss, train_accuracy, train_auc, test_loss, test_accuracy, test_auc)
 
 
 if __name__ == "__main__":

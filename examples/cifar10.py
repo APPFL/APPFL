@@ -32,10 +32,10 @@ parser.add_argument('--server', type=str, default="ServerFedAvg")
 parser.add_argument('--num_epochs', type=int, default=2)    
 
 parser.add_argument('--local_optimizer', type=str, default="Adam")       
-parser.add_argument('--num_local_epochs', type=int, default=1)       
+parser.add_argument('--num_local_epochs', type=int, default=5)       
 parser.add_argument('--local_lr', type=float, default=1e-3)    
  
-parser.add_argument('--num_workers', type=int, default=32)  
+parser.add_argument('--num_workers', type=int, default=2)  
      
 ## optional: federated adaptive
 parser.add_argument('--server_lr', type=float, required=False)    
