@@ -1,6 +1,7 @@
 from cmath import nan
 
 from collections import OrderedDict
+from matplotlib import table
 import torch.nn as nn
 from torch.optim import *
 from torch.utils.data import DataLoader
@@ -338,16 +339,23 @@ def run_client(
 
     local_states = OrderedDict()
 
+    t = 0
     while do_continue:
-        """Receive "global_state" """
+        """ Receive "global_state" """
         global_state = comm.bcast(None, root=0)
 
         """ Update "local_states" based on "global_state" """
         for client in clients:
             client.model.load_state_dict(global_state)
             local_states[client.id] = client.update()
+            if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
+                if cfg.save_model_client == True:
+                    save_model_client(t, client.id, client.model, cfg) 
+        
+        t+=1
 
         """ Send "local_states" to a server """
         comm.gather(local_states, root=0)
 
         do_continue = comm.bcast(None, root=0)
+        

@@ -108,6 +108,22 @@ def save_model_iteration(t, model, cfg: DictConfig):
 
     torch.save(model, file)
 
+def save_model_client(t, id, model, cfg: DictConfig):
+    dirname = cfg.save_model_dirname + "_ClientID_" + id
+    filename = cfg.save_model_filename + "_ClientID_" + id
+
+    if os.path.isdir(dirname) == False:
+        os.mkdir(dirname)
+
+    file_ext = ".pt"
+    file = dirname + "/%s_Round_%s%s" % (filename, t, file_ext)
+    uniq = 1
+    while os.path.exists(file):
+        file = dirname + "/%s_Round_%s_%d%s" % (filename, t, uniq, file_ext)
+        uniq += 1
+
+    torch.save(model, file)    
+
 
 def set_seed(seed=233): 
     random.seed(seed)
