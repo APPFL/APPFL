@@ -29,6 +29,11 @@ For other examples, replace the file name with an appropriate example name.
 mpiexec -n 5 python mnist.py --server ServerFedAvg --num_epochs 6 --client_lr 0.01
 ```
 `--server : ServerFedAvg  or  ICEADMMServer  or IIADMMServer`
+start tensorborad and then go to the web page
+```shell
+tensorboard --logdir=runs
+```
+
 ### gRPC communication
 
 For gRPC communication, we launch multiple MPI processes as well for simulation purposes only.
