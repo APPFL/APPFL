@@ -18,6 +18,8 @@ from .algorithm import *
 
 from mpi4py import MPI
 
+from tensorboardX import SummaryWriter
+
 
 def run_serial(
     cfg: DictConfig,
@@ -159,6 +161,9 @@ def run_server(
         DataSet_name (str): optional dataset name
     """
 
+    ## Using tensorboard to visualize the test loss
+    writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(num_clients))
+
     ## Start
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
@@ -244,6 +249,9 @@ def run_server(
         BestAccuracy = 0
         if cfg.validation == True:
             test_loss, accuracy = validation(server, server_dataloader)
+            # Add them to tensorboard
+            writer.add_scalar('server_test_accuracy', accuracy, t)
+            writer.add_scalar('server_test_loss', test_loss, t)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
         cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
