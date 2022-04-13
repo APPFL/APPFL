@@ -37,6 +37,9 @@ class Config:
     # Reproducibility
     reproduce: bool = True
 
+    # Tensorboard
+    use_tensorboard: bool = False
+
     # Loading models
     load_model: bool = False
     load_model_dirname: str = ""
