@@ -25,6 +25,25 @@ num_pixel = 28   # image size = (num_pixel, num_pixel)
 
 dir = os.getcwd() + "/datasets/RawData"
 
+
+""" read arguments """
+parser = argparse.ArgumentParser()
+parser.add_argument('--server', type=str, default="ServerFedAvg")    
+parser.add_argument('--num_epochs', type=int, default=1)    
+
+parser.add_argument('--client_optim', type=str, default="Adam")    
+parser.add_argument('--client_lr', type=float, default=1e-3)    
+parser.add_argument('--num_local_epochs', type=int, default=1)    
+
+parser.add_argument('--server_lr', type=float, required=False)    
+parser.add_argument('--mparam_1', type=float, required=False)    
+parser.add_argument('--mparam_2', type=float, required=False)    
+parser.add_argument('--adapt_param', type=float, required=False)    
+
+args = parser.parse_args()    
+
+
+
 def get_data(comm: MPI.Comm):
     comm_rank = comm.Get_rank()
 
@@ -88,30 +107,15 @@ def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
-
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--server', type=str, required=True)    
-    parser.add_argument('--num_epochs', type=int, required=True)    
-    parser.add_argument('--client_lr', type=float, required=True)    
-
-    parser.add_argument('--server_lr', type=float, required=False)    
-    parser.add_argument('--mparam_1', type=float, required=False)    
-    parser.add_argument('--mparam_2', type=float, required=False)    
-    parser.add_argument('--adapt_param', type=float, required=False)    
-
-
-    args = parser.parse_args()    
-
+ 
     """ Configuration """     
     cfg = OmegaConf.structured(Config)
     use_cuda = torch.cuda.is_available()
+
     if use_cuda:
         cfg.device = "cuda"
         print("use GPU")
-    cfg.fed.servername = args.server
-    cfg.num_epochs = args.num_epochs
-    cfg.fed.args.optim_args.lr = args.client_lr
+
 
     cfg.output_filename += "_%s_%s_ClientLR_%s" %(DataSet_name, args.server, args.client_lr)
     
@@ -155,10 +159,19 @@ def main():
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:
-        data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)        
+        data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)     
+        
+    """ Optimizer """
+    cfg.fed.servername = args.server
+    cfg.num_epochs = args.num_epochs
+    
+    cfg.fed.args.optim = args.client_optim
+    cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.num_local_epochs = args.num_local_epochs
 
+ 
     print(
-        "--------Data and Model: Loading_Time=",
+        "--------Loading_Time=",
         time.time() - start_time,
     ) 
     
@@ -192,7 +205,7 @@ if __name__ == "__main__":
 # To run CUDA-aware MPI:
 # mpiexec -np 3 --mca opal_cuda_support 1 python ./mnist.py
 # To run MPI:
-# mpiexec -np 3 python ./mnist.py
+# mpiexec -np 3 python ./mnist.py --server=
 # To run:
 # python ./mnist.py
 
