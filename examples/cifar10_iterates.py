@@ -18,7 +18,7 @@ from mpi4py import MPI
 import argparse
 
 DataSet_name = "CIFAR10"
-num_clients = 1
+num_clients = 4
 num_channel = 3  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
 num_pixel = 32   # image size = (num_pixel, num_pixel)
@@ -32,7 +32,7 @@ parser.add_argument('--num_epochs', type=int, default=100)
  
 parser.add_argument('--client_optimizer', type=str, default="Adam")    
 parser.add_argument('--client_lr', type=float, default=1e-3)    
-parser.add_argument('--num_local_epochs', type=int, default=10)    
+parser.add_argument('--num_local_epochs', type=int, default=50)    
 
 parser.add_argument('--server_lr', type=float, required=False)    
 parser.add_argument('--mparam_1', type=float, required=False)    
