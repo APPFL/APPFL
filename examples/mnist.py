@@ -104,8 +104,11 @@ def main():
     args = parser.parse_args()    
 
     """ Configuration """     
-    cfg = OmegaConf.structured(Config) 
-    cfg.device = "cuda"
+    cfg = OmegaConf.structured(Config)
+    use_cuda = torch.cuda.is_available()
+    if use_cuda:
+        cfg.device = "cuda"
+        print("use GPU")
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
     cfg.fed.args.optim_args.lr = args.client_lr
