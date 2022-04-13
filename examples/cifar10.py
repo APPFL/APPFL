@@ -10,92 +10,106 @@ import torchvision.transforms as transforms
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
-
 from models.cnn import *
-from models.resnet import *
+
 import appfl.run as rt
 from mpi4py import MPI
 
 import argparse
 
+""" read arguments """ 
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--server', type=str, default="ServerFedAvg")    
+parser.add_argument('--num_epochs', type=int, default=100)    
+ 
+parser.add_argument('--client_optimizer', type=str, default="Adam")    
+parser.add_argument('--client_lr', type=float, default=1e-3)    
+parser.add_argument('--num_local_epochs', type=int, default=10)    
+
+parser.add_argument('--server_lr', type=float, required=False)    
+parser.add_argument('--mparam_1', type=float, required=False)    
+parser.add_argument('--mparam_2', type=float, required=False)    
+parser.add_argument('--adapt_param', type=float, required=False)    
+
+
+args = parser.parse_args()    
+
 DataSet_name = "CIFAR10"
-num_clients = 1
+num_clients = 4
 num_channel = 3  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
 num_pixel = 32   # image size = (num_pixel, num_pixel)
 
 dir = os.getcwd() + "/datasets/RawData"
 
-""" read arguments """
-parser = argparse.ArgumentParser()
-parser.add_argument('--server', type=str, default="ServerFedAvg")    
-parser.add_argument('--num_epochs', type=int, default=2)    
-
-parser.add_argument('--local_optimizer', type=str, default="Adam")       
-parser.add_argument('--num_local_epochs', type=int, default=5)       
-parser.add_argument('--local_lr', type=float, default=1e-3)    
- 
-parser.add_argument('--num_workers', type=int, default=2)  
-     
-## optional: federated adaptive
-parser.add_argument('--server_lr', type=float, required=False)    
-parser.add_argument('--mparam_1', type=float, required=False)    
-parser.add_argument('--mparam_2', type=float, required=False)    
-parser.add_argument('--adapt_param', type=float, required=False)    
-
-args = parser.parse_args()    
-
-# """ reproducibility """
-# set_seed(1)
-  
 def get_data(comm: MPI.Comm):
     comm_rank = comm.Get_rank()
+
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
     # Root download the data if not already available.
     if comm_rank == 0:
         # test data for a server
-        test_dataset = eval("torchvision.datasets." + DataSet_name)(
+        test_data_raw = eval("torchvision.datasets." + DataSet_name)(
             dir, download=True, train=False, transform=transforms.Compose([
-                        transforms.ToTensor(),
-                        # normalize,
-                    ])
+                    transforms.ToTensor(),
+                    normalize,
+                ])
         )
 
     comm.Barrier()
     if comm_rank > 0:
         # test data for a server
-        test_dataset = eval("torchvision.datasets." + DataSet_name)(
+        test_data_raw = eval("torchvision.datasets." + DataSet_name)(
             dir, download=False, train=False, transform=transforms.Compose([
-                        transforms.ToTensor(),
-                        # normalize,
-                    ])
+                    transforms.ToTensor(),
+                    normalize,
+                ])
         )
- 
- 
+
+    test_data_input = []
+    test_data_label = []
+    for idx in range(len(test_data_raw)):
+        test_data_input.append(test_data_raw[idx][0].tolist())
+        test_data_label.append(test_data_raw[idx][1])
+
+    test_dataset = Dataset(
+        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+    )
 
     # training data for multiple clients
-    train_dataset = eval("torchvision.datasets." + DataSet_name)(
+    train_data_raw = eval("torchvision.datasets." + DataSet_name)(
         dir, download=False, train=True, transform=transforms.Compose([
+                        transforms.RandomHorizontalFlip(),
+                        transforms.RandomCrop(32, 4),
                         transforms.ToTensor(),
-                        # transforms.RandomHorizontalFlip(),
-                        # transforms.RandomCrop(32, 4),                        
-                        # normalize,
+                        normalize,
                     ])
     )
- 
 
-    split_train_data_raw = np.array_split(range(len(train_dataset)), num_clients)        
+    split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
     train_datasets = []
     for i in range(num_clients):
-        train_datasets.append(torch.utils.data.Subset(train_dataset, split_train_data_raw[i]))
- 
-    return train_datasets, test_dataset 
+
+        train_data_input = []
+        train_data_label = []
+        for idx in split_train_data_raw[i]:
+            train_data_input.append(train_data_raw[idx][0].tolist())
+            train_data_label.append(train_data_raw[idx][1])
+
+        train_datasets.append(
+            Dataset(
+                torch.FloatTensor(train_data_input),
+                torch.tensor(train_data_label),
+            )
+        ) 
+    return train_datasets, test_dataset
+
 
 def get_model(comm: MPI.Comm):
     ## User-defined model
-    # model = CNN(num_channel, num_classes, num_pixel)
-    model = resnet20(num_classes=num_classes)    
+    model = CNN(num_channel, num_classes, num_pixel)
     return model
 
 
@@ -109,17 +123,17 @@ def main():
 
     """ Configuration """     
     cfg = OmegaConf.structured(Config) 
+    
     cfg.device = "cuda"
+    
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
-
-    cfg.fed.args.optim = args.local_optimizer
+    
+    cfg.fed.args.optim = args.client_optimizer
+    cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
-    cfg.fed.args.optim_args.lr = args.local_lr
 
-    cfg.num_workers = args.num_workers
-
-    cfg.output_filename += "_%s_%s_%s_LocalLR_%s_LocalEpochs_%s" %(DataSet_name, args.server, args.local_optimizer, args.local_lr, args.num_local_epochs)
+    cfg.output_filename += "_%s_%s_ClientLR_%s" %(DataSet_name, args.server, args.client_lr)
     
     if args.server_lr != None:
         cfg.fed.args.server_learning_rate = args.server_lr
@@ -137,10 +151,13 @@ def main():
         cfg.fed.args.server_momentum_param_2 = args.mparam_2  
         cfg.output_filename += "_MParam2_%s" %(args.mparam_2)
         
-         
+        
+    ## Reproducibility
+    set_seed(1)
+    
     start_time = time.time()
 
-    """ Model """    
+    """ User-defined model """    
     model = get_model(comm)
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
     
@@ -151,20 +168,15 @@ def main():
         cfg.load_model_filename     = "Model"               
         model = load_model(cfg)         
     
-    """ Data """
+    """ User-defined data """
     train_datasets, test_dataset = get_data(comm)
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:
         data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)        
 
-    """ Optimizer """
-    if args.local_optimizer == "SGD":
-        cfg.fed.args.optim_args.momentum = 0.9        
-        cfg.fed.args.optim_args.weight_decay = 1e-5      
-
     print(
-        "--------Loading_Time=",
+        "--------Data and Model: Loading_Time=",
         time.time() - start_time,
     ) 
     
@@ -173,7 +185,6 @@ def main():
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
         cfg.save_model_filename     = "Model"      
-        cfg.checkpoints_interval    = 2
         
     
     cfg.summary_file = cfg.output_dirname + "/Summary_%s.txt" %(DataSet_name)
@@ -195,12 +206,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-# To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./cifar10.py
-# To run MPI:
-# mpiexec -np 5 python ./cifar10.py
-# To run:
-# python ./cifar10.py
-
+ 
 
