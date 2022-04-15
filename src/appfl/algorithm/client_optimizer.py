@@ -26,7 +26,6 @@ class ClientOptim(BaseClient):
 
         self.model.train()
         self.model.to(self.device)
-        print("device======",self.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
