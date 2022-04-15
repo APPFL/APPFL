@@ -143,7 +143,7 @@ def main():
 
     ## outputs        
     
-    cfg.use_tensorboard = True
+    cfg.use_tensorboard = False
 
     cfg.output_dirname = "./outputs_%s_%s_%s"%(args.dataset, args.server, args.client_optimizer)    
     if args.server_lr != None:

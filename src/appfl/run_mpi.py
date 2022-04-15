@@ -208,8 +208,7 @@ def run_client(
             batchsize[cid] = len(train_data[cid])
 
     clients = [
-        eval(cfg.fed.clientname)(
-            cfg,
+        eval(cfg.fed.clientname)(            
             cid,
             weight[cid],
             copy.deepcopy(model),
@@ -221,6 +220,7 @@ def run_client(
                 pin_memory=True
             ),
             device,
+            cfg,
             **cfg.fed.args,
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])

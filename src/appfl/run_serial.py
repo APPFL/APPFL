@@ -76,8 +76,7 @@ def run_serial(
             batchsize[k] = len(train_data[k])
 
     clients = [
-        eval(cfg.fed.clientname)(
-            cfg,
+        eval(cfg.fed.clientname)(            
             k,
             weights[k],
             copy.deepcopy(model),
@@ -89,6 +88,7 @@ def run_serial(
                 pin_memory=True
             ), 
             cfg.device,
+            cfg,
             **cfg.fed.args,
         )
         for k in range(cfg.num_clients)
