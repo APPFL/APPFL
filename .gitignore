@@ -3,6 +3,8 @@
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 note
+examples/outputs_mpi
+examples/outputs_serial
 examples/.DS_Store
 examples/save_models
 examples/outputs/*

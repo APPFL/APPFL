@@ -1,38 +1,43 @@
 import logging
-
-log = logging.getLogger(__name__)
-
+import os
 from collections import OrderedDict
-from .algorithm import BaseServer, BaseClient
+from .algorithm import BaseClient
 
 import torch
 from torch.optim import *
-
-# from torch.nn import CrossEntropyLoss, BCELoss
+ 
 from torch.utils.data import DataLoader
 import copy
 
 
 class ClientOptim(BaseClient):
-    def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(ClientOptim, self).__init__(id, weight, model, dataloader, device)
+    def __init__(self, cfg, id, weight, model, dataloader, device, **kwargs):
+        super(ClientOptim, self).__init__(cfg, id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
 
         self.loss_fn = eval(self.loss_type)
 
-    def update(self):
+        self.round = 0
+        
+           
+    def update(self, outfile, outdir, test_dataloader: DataLoader=None ):
+  
+        """ Inputs for the local model update """        
 
         self.model.train()
         self.model.to(self.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
-        """ Inputs for the local model update 
-            "global_state" from a server is already stored in 'self.model'
-        """
 
         """ Multiple local update """
-        for _ in range(self.num_local_epochs):
+        for t in range(self.num_local_epochs):
+
+            if self.cfg.validation == True:            
+                train_loss, train_accuracy = super(ClientOptim, self).validation_client(copy.deepcopy(self.model), self.dataloader)
+                test_loss, test_accuracy = super(ClientOptim, self).validation_client(copy.deepcopy(self.model), test_dataloader)
+                outfile = super(ClientOptim, self).write_result_content(outfile, t, train_loss, train_accuracy, test_loss, test_accuracy)
+  
             for data, target in self.dataloader:
                 data = data.to(self.device)
                 target = target.to(self.device)
@@ -49,6 +54,13 @@ class ClientOptim(BaseClient):
                         norm_type=self.clip_norm,
                     )
 
+            ## save model.state_dict()
+            if self.cfg.save_model_state_dict == True:
+                torch.save(self.model.state_dict(), os.path.join(outdir,  str(t) +  '.pt'))
+
+ 
+        self.round += 1
+        
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
         """ Differential Privacy  """
@@ -66,4 +78,5 @@ class ClientOptim(BaseClient):
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
 
-        return self.local_state
+        return self.local_state, outfile
+ 
