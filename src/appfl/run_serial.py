@@ -16,9 +16,6 @@ import logging
 from .misc import *
 from .algorithm import *
 
-if cfg.use_tensorboard:
-    from tensorboardX import SummaryWriter
-
 
 def run_serial(
     cfg: DictConfig,
@@ -110,11 +107,11 @@ def run_serial(
     
     ## Using tensorboard to visualize the test loss
     if cfg.use_tensorboard:
+
+        from tensorboardX import SummaryWriter
         writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))        
  
-    start_time = time.time()
-    test_loss = 0.0
-    accuracy = 0.0
+    start_time = time.time()    
     best_accuracy = 0.0
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
@@ -151,14 +148,14 @@ def run_serial(
                 writer.add_scalar('server_test_accuracy', test_accuracy, t)
                 writer.add_scalar('server_test_loss', test_loss, t)
 
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
+            if test_accuracy > best_accuracy:
+                best_accuracy = test_accuracy
 
         cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
         cfg["logginginfo"]["PerIter_time"] = time.time() - per_iter_start
         cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
         cfg["logginginfo"]["test_loss"] = test_loss
-        cfg["logginginfo"]["accuracy"] = accuracy
+        cfg["logginginfo"]["test_accuracy"] = test_accuracy
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
 
         server.logging_iteration(cfg, logger, t)

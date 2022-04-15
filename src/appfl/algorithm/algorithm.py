@@ -135,7 +135,7 @@ class BaseServer:
             cfg["logginginfo"]["PerIter_time"],
             cfg["logginginfo"]["Elapsed_time"],
             cfg["logginginfo"]["test_loss"],
-            cfg["logginginfo"]["accuracy"],
+            cfg["logginginfo"]["test_accuracy"],
         )
         return contents
 
@@ -234,7 +234,7 @@ class BaseClient:
 
     def write_result_title(self, output_filename): 
 
-        dir = self.cfg.output_dirname + "_client_%s" %(self.id)
+        dir = self.cfg.output_dirname  
         if os.path.isdir(dir) == False:
             os.mkdir(dir)
          

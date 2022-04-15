@@ -31,7 +31,7 @@ parser.add_argument('--num_classes', type=int, default=10)
 parser.add_argument('--num_pixel', type=int, default=28)   
 
 ## clients
-parser.add_argument('--num_clients', type=int, default=2)    
+parser.add_argument('--num_clients', type=int, default=1)    
 parser.add_argument('--client_optimizer', type=str, default="Adam")    
 parser.add_argument('--client_lr', type=float, default=1e-3)    
 parser.add_argument('--num_local_epochs', type=int, default=3)    
@@ -50,25 +50,6 @@ args = parser.parse_args()
 if torch.cuda.is_available():
     args.device="cuda"
  
-
-
-""" read arguments """
-parser = argparse.ArgumentParser()
-parser.add_argument('--server', type=str, default="ServerFedAvg")    
-parser.add_argument('--num_epochs', type=int, default=1)    
-
-parser.add_argument('--client_optim', type=str, default="Adam")    
-parser.add_argument('--client_lr', type=float, default=1e-3)    
-parser.add_argument('--num_local_epochs', type=int, default=1)    
-
-parser.add_argument('--server_lr', type=float, required=False)    
-parser.add_argument('--mparam_1', type=float, required=False)    
-parser.add_argument('--mparam_2', type=float, required=False)    
-parser.add_argument('--adapt_param', type=float, required=False)    
-
-args = parser.parse_args()    
-
-
 
 def get_data(comm: MPI.Comm):
     dir = os.getcwd() + "/datasets/RawData"
@@ -142,14 +123,15 @@ def main():
 
     ## Reproducibility
     set_seed(1)
-
  
 
     """ Configuration """     
     cfg = OmegaConf.structured(Config) 
     
     cfg.device = args.device
+
     
+  
     ## clients
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer
@@ -161,6 +143,9 @@ def main():
     cfg.num_epochs = args.num_epochs
 
     ## outputs        
+    
+    cfg.use_tensorboard = True
+
     cfg.output_dirname = "./outputs_%s_%s_%s"%(args.dataset, args.server, args.client_optimizer)    
     if args.server_lr != None:
         cfg.fed.args.server_learning_rate = args.server_lr
