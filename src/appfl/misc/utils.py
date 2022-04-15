@@ -5,7 +5,9 @@ import logging
 import random
 import numpy as np
 
-def validation(self, dataloader):
+ 
+
+def validation(self, model, dataloader):
 
     if dataloader is not None:
         self.loss_fn = eval(self.loss_type)        
@@ -15,8 +17,8 @@ def validation(self, dataloader):
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
-    self.model.to(self.device)
-    self.model.eval()
+    model.to(self.device)
+    model.eval()
     test_loss = 0
     correct = 0
     tmpcnt = 0
@@ -27,7 +29,7 @@ def validation(self, dataloader):
             tmptotal += len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            output = self.model(img)
+            output = model(img)
             test_loss += self.loss_fn(output, target).item()     
             
             if self.loss_type == "torch.nn.BCELoss()":
@@ -40,18 +42,18 @@ def validation(self, dataloader):
     # FIXME: do we need to sent the model to cpu again?
     # self.model.to("cpu")
 
-    test_loss = test_loss / tmpcnt
-    accuracy = 100.0 * correct / tmptotal
+    test_loss = round(test_loss / tmpcnt, 4)
+    test_accuracy = round(100.0 * correct / tmptotal, 2)
 
-    return test_loss, accuracy
+    return test_loss, test_accuracy
 
 
 def create_custom_logger(logger, cfg: DictConfig):
 
-    dir = cfg.output_dirname
+    dir = cfg.output_dirname + "_server"
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    output_filename = cfg.output_filename
+    output_filename = cfg.output_filename + "_server"
 
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)
@@ -66,12 +68,7 @@ def create_custom_logger(logger, cfg: DictConfig):
     f_handler = logging.FileHandler(filename)
     c_handler.setLevel(logging.INFO)
     f_handler.setLevel(logging.INFO)
-
-    # # Create formatters and add it to handlers
-    # c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    # f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # c_handler.setFormatter(c_format)
-    # f_handler.setFormatter(f_format)
+ 
 
     # Add handlers to the logger
     logger.addHandler(c_handler)

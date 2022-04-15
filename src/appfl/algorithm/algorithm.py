@@ -7,6 +7,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 
+import os
+import logging
 
 class BaseServer:
     """Abstract class of PPFL algorithm for server that aggregates and updates model parameters.
@@ -167,12 +169,13 @@ class BaseClient:
     """
 
     def __init__(
-        self, id: int, weight: Dict, model: nn.Module, dataloader: DataLoader, device
+        self, cfg, id: int, weight: Dict, model: nn.Module, dataloader: DataLoader, device
     ):
+        self.cfg = cfg
         self.id = id
         self.weight = weight
         self.model = model
-        self.dataloader = dataloader
+        self.dataloader = dataloader        
         self.device = device
 
         self.primal_state = OrderedDict()
@@ -228,6 +231,73 @@ class BaseClient:
             self.penalty = self.penalty * self.residual_balancing.tau
         if dual_res > self.residual_balancing.mu * prim_res:
             self.penalty = self.penalty / self.residual_balancing.tau
+
+    def create_custom_logger_client(self, logger, output_filename): 
+
+        dir = self.cfg.output_dirname + "_client_%s" %(self.id)
+        if os.path.isdir(dir) == False:
+            os.mkdir(dir)
+        
+
+        file_ext = ".txt"
+        filename = dir + "/%s%s" % (output_filename, file_ext)
+        uniq = 1
+        while os.path.exists(filename):
+            filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
+            uniq += 1
+
+        logger.setLevel(logging.INFO)
+        # Create handlers
+        c_handler = logging.StreamHandler()
+        f_handler = logging.FileHandler(filename)
+        c_handler.setLevel(logging.INFO)
+        f_handler.setLevel(logging.INFO)
+     
+        # Add handlers to the logger
+        logger.addHandler(c_handler)
+        logger.addHandler(f_handler)
+        
+        return logger
+
+    def validation_client(self, model, dataloader):
+
+        if dataloader is not None:
+            self.loss_fn = eval(self.loss_type)        
+        else:
+            self.loss_fn = None
+
+        if self.loss_fn is None or dataloader is None:
+            return 0.0, 0.0
+
+        model.to(self.device)
+        model.eval()
+        test_loss = 0
+        correct = 0
+        tmpcnt = 0
+        tmptotal = 0
+        with torch.no_grad():
+            for img, target in dataloader:
+                tmpcnt += 1
+                tmptotal += len(target)
+                img = img.to(self.device)
+                target = target.to(self.device)
+                output = model(img)
+                test_loss += self.loss_fn(output, target).item()     
+                
+                if self.loss_type == "torch.nn.BCELoss()":
+                    pred = torch.round(output)
+                else:
+                    pred = output.argmax(dim=1, keepdim=True)
+
+                correct += pred.eq(target.view_as(pred)).sum().item()
+
+        # FIXME: do we need to sent the model to cpu again?
+        # self.model.to("cpu")
+
+        test_loss = round(test_loss / tmpcnt, 4)
+        test_accuracy = round(100.0 * correct / tmptotal, 2)
+
+        return test_loss, test_accuracy
 
     """ 
     Differential Privacy 

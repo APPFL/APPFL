@@ -1,38 +1,63 @@
 import logging
 
-log = logging.getLogger(__name__)
-
 from collections import OrderedDict
-from .algorithm import BaseServer, BaseClient
+from .algorithm import BaseClient
 
 import torch
 from torch.optim import *
-
-# from torch.nn import CrossEntropyLoss, BCELoss
+ 
 from torch.utils.data import DataLoader
 import copy
 
 
 class ClientOptim(BaseClient):
-    def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(ClientOptim, self).__init__(id, weight, model, dataloader, device)
+    def __init__(self, cfg, id, weight, model, dataloader, device, **kwargs):
+        super(ClientOptim, self).__init__(cfg, id, weight, model, dataloader, device)
         self.__dict__.update(kwargs)
 
         self.loss_fn = eval(self.loss_type)
 
-    def update(self):
+        self.round = 0
+        
+          
+        self.logger_local = {}        
+        logger_local = logging.getLogger(__name__)
+        output_local = cfg.output_filename + "_local_client_%s" %(id)
+        self.logger_local[id] = copy.deepcopy( super(ClientOptim, self).create_custom_logger_client(logger_local, output_local) )
+ 
+        title = "%10s %10s %10s %10s" % (
+            "Round",
+            "LocalEpoch", 
+            "TestLoss",
+            "TestAccu",
+        ) 
+        self.logger_local[id].info(title)
+
+    def update(self, test_dataloader: DataLoader=None ):
+
+
+        """ Inputs for the local model update """        
 
         self.model.train()
         self.model.to(self.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
-        """ Inputs for the local model update 
-            "global_state" from a server is already stored in 'self.model'
-        """
 
         """ Multiple local update """
-        for _ in range(self.num_local_epochs):
+        for t in range(self.num_local_epochs):
+
+            if self.cfg.validation == True:            
+                test_loss, test_accuracy = super(ClientOptim, self).validation_client(copy.deepcopy(self.model), test_dataloader)
+                contents = "%10s %10s %10s %10s" % (
+                    self.round,
+                    t, 
+                    test_loss,
+                    test_accuracy,
+                )
+                self.logger_local[self.id].info(contents)
+ 
+
             for data, target in self.dataloader:
                 data = data.to(self.device)
                 target = target.to(self.device)
@@ -48,7 +73,9 @@ class ClientOptim(BaseClient):
                         self.clip_value,
                         norm_type=self.clip_norm,
                     )
-
+ 
+        self.round += 1
+        
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
         """ Differential Privacy  """
@@ -67,3 +94,4 @@ class ClientOptim(BaseClient):
         self.local_state["penalty"][self.id] = 0.0
 
         return self.local_state
+ 

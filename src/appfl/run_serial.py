@@ -36,24 +36,24 @@ def run_serial(
     ## Logger
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
+
     cfg["logginginfo"]["comm_size"] = 1
     cfg["logginginfo"]["DataSet_name"] = DataSet_name
 
-    num_clients = len(train_data)
-    num_epochs = cfg.num_epochs
+    
 
     """ weight calculation """
     total_num_data = 0
-    for k in range(num_clients):
+    for k in range(cfg.num_clients):
         total_num_data += len(train_data[k])
 
     weights = {}
-    for k in range(num_clients):
+    for k in range(cfg.num_clients):
         weights[k] = len(train_data[k]) / total_num_data
 
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_data) > 0:
-        server_dataloader = DataLoader(
+        test_dataloader = DataLoader(
             test_data,
             num_workers=cfg.num_workers,
             batch_size=cfg.test_data_batch_size,
@@ -64,19 +64,20 @@ def run_serial(
 
 
     server = eval(cfg.fed.servername)(
-        weights, copy.deepcopy(model), num_clients, cfg.device, **cfg.fed.args
+        weights, copy.deepcopy(model), cfg.num_clients, cfg.device, **cfg.fed.args
     )
 
     server.model.to(cfg.device)
 
     batchsize = {}
-    for k in range(num_clients):
+    for k in range(cfg.num_clients):
         batchsize[k] = cfg.train_data_batch_size
         if cfg.batch_training == False:
             batchsize[k] = len(train_data[k])
 
     clients = [
         eval(cfg.fed.clientname)(
+            cfg,
             k,
             weights[k],
             copy.deepcopy(model),
@@ -85,27 +86,40 @@ def run_serial(
                 num_workers=cfg.num_workers,
                 batch_size=batchsize[k],
                 shuffle=cfg.train_data_shuffle,
-            ),
+            ), 
             cfg.device,
             **cfg.fed.args,
         )
-        for k in range(num_clients)
+        for k in range(cfg.num_clients)
     ] 
+
+    model_name=[]
+    for name, _ in server.model.named_parameters():
+        model_name.append(name)
 
     start_time = time.time()
     test_loss = 0.0
     accuracy = 0.0
     BestAccuracy = 0.0
-    for t in range(num_epochs):
+    for t in range(cfg.num_epochs):
         PerIter_start = time.time()
 
         local_states = [OrderedDict()]
 
         global_state = server.model.state_dict()
+        
         LocalUpdate_start = time.time()
-        for k, client in enumerate(clients):
+        for k, client in enumerate(clients):            
+            
+            ## initial point for a client model
+            for name in server.model.state_dict():
+                if name not in model_name:
+                    global_state[name] = client.model.state_dict()[name]
             client.model.load_state_dict(global_state)
-            local_states[0][k] = client.update()
+
+            ## client update
+            local_states[0][k] = client.update(test_dataloader)
+
   
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
 
@@ -115,10 +129,10 @@ def run_serial(
 
         Validation_start = time.time()
         if cfg.validation == True:
-            test_loss, accuracy = validation(server, server_dataloader)
+            test_loss, accuracy = validation(server, server.model, test_dataloader)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
-                
+
         cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
         cfg["logginginfo"]["PerIter_time"] = time.time() - PerIter_start
         cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time

@@ -16,6 +16,9 @@ class Config:
     device: str = "cpu"
 
     # Number of training epochs
+    num_clients: int = 1
+
+    # Number of training epochs
     num_epochs: int = 2
 
     # Number of workers in DataLoader
@@ -49,8 +52,9 @@ class Config:
     checkpoints_interval: int = 2
 
     # Logging and recording outputs
-    output_dirname: str = "./outputs"
-    output_filename: str = "result"
+    output_dirname: str = ""
+    output_filename: str = ""
+    
     logginginfo: DictConfig = OmegaConf.create({})
     summary_file: str = ""
 
