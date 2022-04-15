@@ -101,7 +101,7 @@ def run_serial(
     ## outputs (clients)   
     outfile={}; outdir={}
     for k, client in enumerate(clients): 
-        output_filename = cfg.output_filename + "_local_client_%s" %(k)
+        output_filename = cfg.output_filename + "_client_%s" %(k)
         outfile[k], outdir[k]=client.write_result_title(output_filename)
  
     start_time = time.time()

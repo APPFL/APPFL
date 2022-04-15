@@ -95,6 +95,7 @@ def run_client(
             num_workers=cfg.num_workers,
             batch_size=batch_size,
             shuffle=cfg.train_data_shuffle,
+            pin_memory=True
         ),
         device,
         **cfg.fed.args,
