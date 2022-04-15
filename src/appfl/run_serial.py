@@ -21,7 +21,7 @@ def run_serial(
     model: nn.Module,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
-    DataSet_name: str = "appfl",
+    dataset_name: str = "appfl",
 ):
     """Run serial simulation of PPFL.
 
@@ -30,7 +30,7 @@ def run_serial(
         model (nn.Module): neural network model to train
         train_data (Dataset): training data
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
-        DataSet_name (str): optional dataset name
+        dataset_name (str): optional dataset name
     """
 
     ## Logger
@@ -38,7 +38,7 @@ def run_serial(
     logger = create_custom_logger(logger, cfg)
 
     cfg["logginginfo"]["comm_size"] = 1
-    cfg["logginginfo"]["DataSet_name"] = DataSet_name
+    cfg["logginginfo"]["DataSet_name"] = dataset_name
 
 
     """ weight calculation """
@@ -85,6 +85,7 @@ def run_serial(
                 num_workers=cfg.num_workers,
                 batch_size=batchsize[k],
                 shuffle=cfg.train_data_shuffle,
+                pin_memory=True
             ), 
             cfg.device,
             **cfg.fed.args,
@@ -106,15 +107,15 @@ def run_serial(
     start_time = time.time()
     test_loss = 0.0
     accuracy = 0.0
-    BestAccuracy = 0.0
+    best_accuracy = 0.0
     for t in range(cfg.num_epochs):
-        PerIter_start = time.time()
+        per_iter_start = time.time()
 
         local_states = [OrderedDict()]
 
         global_state = server.model.state_dict()
         
-        LocalUpdate_start = time.time()
+        local_update_start = time.time()
         for k, client in enumerate(clients):    
              
             ## initial point for a client model
@@ -127,24 +128,24 @@ def run_serial(
             local_states[0][k], outfile[k] = client.update(outfile[k], outdir[k], test_dataloader)
 
   
-        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
+        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
-        GlobalUpdate_start = time.time()
+        global_update_start = time.time()
         server.update(local_states)
-        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - GlobalUpdate_start
+        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
-        Validation_start = time.time()
+        validation_start = time.time()
         if cfg.validation == True:
             test_loss, accuracy = validation(server, server.model, test_dataloader)
-            if accuracy > BestAccuracy:
-                BestAccuracy = accuracy
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
 
-        cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
-        cfg["logginginfo"]["PerIter_time"] = time.time() - PerIter_start
+        cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
+        cfg["logginginfo"]["PerIter_time"] = time.time() - per_iter_start
         cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
         cfg["logginginfo"]["test_loss"] = test_loss
         cfg["logginginfo"]["accuracy"] = accuracy
-        cfg["logginginfo"]["BestAccuracy"] = BestAccuracy
+        cfg["logginginfo"]["BestAccuracy"] = best_accuracy
 
         server.logging_iteration(cfg, logger, t)
 

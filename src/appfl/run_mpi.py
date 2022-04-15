@@ -25,7 +25,7 @@ def run_server(
     model: nn.Module,
     num_clients: int,
     test_dataset: Dataset = Dataset(),
-    DataSet_name: str = "appfl",
+    dataset_name: str = "appfl",
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model
 
@@ -51,7 +51,7 @@ def run_server(
     logger = create_custom_logger(logger, cfg)
 
     cfg["logginginfo"]["comm_size"] = comm_size
-    cfg["logginginfo"]["DataSet_name"] = DataSet_name
+    cfg["logginginfo"]["DataSet_name"] = dataset_name
 
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_dataset) > 0:
@@ -69,10 +69,10 @@ def run_server(
     Compute "weight[client] = data[client]/total_num_data" from a server    
     Scatter "weight information" to clients        
     """
-    Num_Data = comm.gather(0, root=0)
+    num_data = comm.gather(0, root=0)
     total_num_data = 0
     for rank in range(1, comm_size):
-        for val in Num_Data[rank].values():
+        for val in num_data[rank].values():
             total_num_data += val
 
     weight = []
@@ -82,8 +82,8 @@ def run_server(
             weight.append(0)
         else:
             temp = {}
-            for key in Num_Data[rank].keys():
-                temp[key] = Num_Data[rank][key] / total_num_data
+            for key in num_data[rank].keys():
+                temp[key] = num_data[rank][key] / total_num_data
                 weights[key] = temp[key]
             weight.append(temp)
 
@@ -98,9 +98,9 @@ def run_server(
     start_time = time.time()
     test_loss = 0.0
     accuracy = 0.0
-    BestAccuracy = 0.0
+    best_accuracy = 0.0
     for t in range(cfg.num_epochs):
-        PerIter_start = time.time()
+        per_iter_start = time.time()
         do_continue = comm.bcast(do_continue, root=0)
 
         # We need to load the model on cpu, before communicating.
@@ -109,29 +109,29 @@ def run_server(
 
         global_state = server.model.state_dict()
 
-        LocalUpdate_start = time.time()
+        local_update_start = time.time()
         global_state = comm.bcast(global_state, root=0)
         local_states = comm.gather(None, root=0)
-        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
+        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
-        GlobalUpdate_start = time.time()
+        global_update_start = time.time()
         server.update(local_states)
-        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - GlobalUpdate_start
+        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
-        Validation_start = time.time()
+        validation_start = time.time()
         test_loss = 0
         accuracy = 0
         BestAccuracy = 0
         if cfg.validation == True:
             test_loss, accuracy = validation(server, copy.deepcopy(server.model), test_dataloader)
-            if accuracy > BestAccuracy:
-                BestAccuracy = accuracy
-        cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
-        cfg["logginginfo"]["PerIter_time"] = time.time() - PerIter_start
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+        cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
+        cfg["logginginfo"]["PerIter_time"] = time.time() - per_iter_start
         cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
         cfg["logginginfo"]["test_loss"] = test_loss
         cfg["logginginfo"]["accuracy"] = accuracy
-        cfg["logginginfo"]["BestAccuracy"] = BestAccuracy
+        cfg["logginginfo"]["BestAccuracy"] = best_accuracy
 
         server.logging_iteration(cfg, logger, t)
 
@@ -210,6 +210,7 @@ def run_client(
                 num_workers=cfg.num_workers,
                 batch_size=batchsize[cid],
                 shuffle=cfg.train_data_shuffle,
+                pin_memory=True
             ),
             device,
             **cfg.fed.args,
