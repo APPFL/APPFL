@@ -62,6 +62,7 @@ def run_serial(
     else:
         cfg.validation = False
 
+
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), num_clients, cfg.device, **cfg.fed.args
     )
@@ -89,11 +90,7 @@ def run_serial(
             **cfg.fed.args,
         )
         for k in range(num_clients)
-    ]
-
-    local_states = []
-    local_state = OrderedDict()
-    local_state[0] = OrderedDict()
+    ] 
 
     start_time = time.time()
     test_loss = 0.0
@@ -102,13 +99,14 @@ def run_serial(
     for t in range(num_epochs):
         PerIter_start = time.time()
 
+        local_states = [OrderedDict()]
+
         global_state = server.model.state_dict()
         LocalUpdate_start = time.time()
         for k, client in enumerate(clients):
             client.model.load_state_dict(global_state)
-            local_state[0][k] = client.update()
-
-        local_states.append(local_state[0])
+            local_states[0][k] = client.update()
+  
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
 
         GlobalUpdate_start = time.time()
@@ -120,6 +118,7 @@ def run_serial(
             test_loss, accuracy = validation(server, server_dataloader)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
+                
         cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
         cfg["logginginfo"]["PerIter_time"] = time.time() - PerIter_start
         cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
