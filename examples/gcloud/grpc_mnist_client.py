@@ -96,6 +96,9 @@ def main():
     start_time = time.time()
     train_datasets = get_data(args.nclients)
 
+    """ Configuration """     
+    cfg = OmegaConf.structured(Config)
+
     """ get model         
         Note: 
         "torch.nn.CrossEntropyLoss()" should be used for the multiclass classfication problem with more than 2 classes.                
@@ -107,9 +110,7 @@ def main():
     logger.info(
         f"----------Loaded Datasets and Model----------Elapsed Time={time.time() - start_time}"
     )
-
-    # read default configuration
-    cfg = OmegaConf.structured(Config)
+ 
     cfg.server.host = args.host
     cfg.server.port = args.port
     cfg.server.use_tls = args.use_tls

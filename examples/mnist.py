@@ -44,12 +44,17 @@ parser.add_argument('--server_lr', type=float, required=False)
 parser.add_argument('--mparam_1', type=float, required=False)    
 parser.add_argument('--mparam_2', type=float, required=False)    
 parser.add_argument('--adapt_param', type=float, required=False)    
+
+
+
+parser.add_argument('--output_dirname', type=float, default=False)    
+
+
  
 args = parser.parse_args()    
 
 if torch.cuda.is_available():
-    args.device="cuda"
- 
+    args.device="cuda" 
 
 def get_data(comm: MPI.Comm):
     dir = os.getcwd() + "/datasets/RawData"
@@ -115,22 +120,16 @@ def main():
     
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
+    comm_size = comm.Get_size()  
  
-    """ Configuration """     
-    cfg = OmegaConf.structured(Config)
-    use_cuda = torch.cuda.is_available()
-
-    ## Reproducibility
-    set_seed(1)
- 
-
     """ Configuration """     
     cfg = OmegaConf.structured(Config) 
     
-    cfg.device = args.device
+    cfg.device = args.device 
+    cfg.reproduce = True
+    if cfg.reproduce == True:
+        set_seed(1)
 
-    
   
     ## clients
     cfg.num_clients = args.num_clients
@@ -181,7 +180,7 @@ def main():
     """ User-defined data """
     train_datasets, test_dataset = get_data(comm)
 
-## Sanity check for the user-defined data
+    ## Sanity check for the user-defined data
     if cfg.data_sanity == True:
         data_sanity_check(train_datasets, test_dataset, args.num_channel, args.num_pixel)        
 
@@ -197,10 +196,7 @@ def main():
         cfg.save_model_dirname      = "./save_models"
         cfg.save_model_filename     = "Model"      
         
-    
-    
- 
-    
+     
     """ Running """
     if comm_size > 1:
         if comm_rank == 0:

@@ -26,7 +26,7 @@ def update_model_state(comm, model, round_number):
 
 
 def run_client(
-    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, gpu_id: int = 0
+    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, test_dataset: Dataset = Dataset(), gpu_id: int = 0
 ) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
@@ -87,6 +87,7 @@ def run_client(
         return
 
     fed_client = eval(cfg.fed.clientname)(
+        cfg,
         cid,
         weight,
         copy.deepcopy(model),
@@ -99,6 +100,25 @@ def run_client(
         device,
         **cfg.fed.args,
     )
+
+    ##
+    if test_dataset != None:
+        test_dataloader = DataLoader(
+            test_dataset,
+            num_workers=cfg.num_workers,
+            batch_size=cfg.test_data_batch_size,
+            shuffle=cfg.test_data_shuffle,
+        )
+
+    ## name of parameters 
+    model_name=[]    
+    for name, _ in fed_client.model.named_parameters():
+        model_name.append(name)
+
+    
+    ## outputs      
+    output_filename = cfg.output_filename + "_client_%s" %(cid)
+    outfile, outdir =fed_client.write_result_title(output_filename)
 
     # Start federated learning.
     cur_round_number, job_todo = comm.get_job(Job.INIT)
@@ -120,7 +140,7 @@ def run_client(
                 prev_round_number = cur_round_number
 
                 time_start = time.time()
-                local_state = fed_client.update()
+                local_state, outfile = fed_client.update(outfile, outdir, test_dataloader)
                 time_end = time.time()
 
                 learning_time = time_end - time_start

@@ -244,7 +244,7 @@ def run_client(
     ## outputs (clients)   
     outfile={}; outdir={}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        output_filename = cfg.output_filename + "_local_client_%s" %(cid)
+        output_filename = cfg.output_filename + "_client_%s" %(cid)
         outfile[cid], outdir[cid]=client.write_result_title(output_filename)
 
     do_continue = comm.bcast(None, root=0)
