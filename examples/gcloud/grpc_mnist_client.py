@@ -86,7 +86,7 @@ def main():
     parser.add_argument("--use_tls", type=bool, default=False)
     parser.add_argument("--client_id", type=int, required=True)
     parser.add_argument("--nclients", type=int, required=True)
-    parser.add_argument("--logging", type=str, default="INFO")
+    parser.add_argument("--logging", type=str, default="DEBUG")
     parser.add_argument("--api_key", default=None)
     args = parser.parse_args()
 
@@ -115,10 +115,11 @@ def main():
     cfg.server.port = args.port
     cfg.server.use_tls = args.use_tls
     cfg.server.api_key = args.api_key
+
     logger.debug(OmegaConf.to_yaml(cfg))
 
     grpc_client.run_client(
-        cfg, args.client_id, model, train_datasets[args.client_id - 1]
+        cfg, args.client_id, model, train_datasets[args.client_id]
     )
     logger.info("------DONE------")
 

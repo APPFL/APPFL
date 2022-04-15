@@ -82,7 +82,7 @@ def main():
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     # If you have more than 1 client, then change the param "1" and "train_datasets[0]" to "i" and "train_datasets[i-1]"
     # which "i" stands for the i-th client ,so the following line should be different according to the client.
-    grpc_client.run_client(cfg, 1, model, train_datasets[0])
+    grpc_client.run_client(cfg, 0, model, train_datasets[0])
     # grpc_client.run_client(cfg, 2, model, train_datasets[1])
     # grpc_client.run_client(cfg, 3, model, train_datasets[2])
     # grpc_client.run_client(cfg, 4, model, train_datasets[3])

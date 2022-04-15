@@ -26,7 +26,7 @@ def update_model_state(comm, model, round_number):
 
 
 def run_client(
-    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, test_dataset: Dataset = Dataset(), gpu_id: int = 0
+    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, gpu_id: int = 0, test_dataset: Dataset = None
 ) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
@@ -86,8 +86,7 @@ def run_client(
         logger.error(f"[Client ID: {cid: 03}] weight ({weight}) retrieval failed.")
         return
 
-    fed_client = eval(cfg.fed.clientname)(
-        cfg,
+    fed_client = eval(cfg.fed.clientname)(                
         cid,
         weight,
         copy.deepcopy(model),
@@ -98,10 +97,11 @@ def run_client(
             shuffle=cfg.train_data_shuffle,
         ),
         device,
+        cfg,
         **cfg.fed.args,
     )
 
-    ##
+    ## 
     if test_dataset != None:
         test_dataloader = DataLoader(
             test_dataset,
@@ -109,6 +109,8 @@ def run_client(
             batch_size=cfg.test_data_batch_size,
             shuffle=cfg.test_data_shuffle,
         )
+    else:
+        test_dataloader = None
 
     ## name of parameters 
     model_name=[]    

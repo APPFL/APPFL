@@ -169,7 +169,7 @@ class BaseClient:
     """
 
     def __init__(
-        self, cfg, id: int, weight: Dict, model: nn.Module, dataloader: DataLoader, device
+        self, id: int, weight: Dict, model: nn.Module, dataloader: DataLoader, device, cfg
     ):
         self.cfg = cfg
         self.id = id
@@ -282,7 +282,7 @@ class BaseClient:
 
         model.to(self.device)
         model.eval()
-        test_loss = 0
+        loss = 0
         correct = 0
         tmpcnt = 0
         tmptotal = 0
@@ -293,7 +293,7 @@ class BaseClient:
                 img = img.to(self.device)
                 target = target.to(self.device)
                 output = model(img)
-                test_loss += self.loss_fn(output, target).item()     
+                loss += self.loss_fn(output, target).item()     
                 
                 if self.loss_type == "torch.nn.BCELoss()":
                     pred = torch.round(output)
@@ -305,10 +305,10 @@ class BaseClient:
         # FIXME: do we need to sent the model to cpu again?
         # self.model.to("cpu")
 
-        test_loss = round(test_loss / tmpcnt, 4)
-        test_accuracy = round(100.0 * correct / tmptotal, 2)
+        loss = loss / tmpcnt
+        accuracy = 100.0 * correct / tmptotal
 
-        return test_loss, test_accuracy
+        return loss, accuracy
 
     """ 
     Differential Privacy 

@@ -146,6 +146,8 @@ def main():
     model = get_model(comm)
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"  
 
+
+    cfg.validation = False
     ## loading models 
     cfg.load_model = False
     if cfg.load_model == True:
@@ -175,10 +177,11 @@ def main():
 
     if comm_size > 1:
         # Try to launch both a server and clients.
-        if comm_rank == 0:
-            grpc_server.run_server(cfg, model, args.num_clients, test_dataset)
-        else:
-            grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1], test_dataset, comm_rank)
+        if comm_rank == 0:            
+            grpc_server.run_server(cfg, model, args.num_clients)
+        else:            
+            # grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1], comm_rank, test_dataset)
+            grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1])
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.

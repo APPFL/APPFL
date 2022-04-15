@@ -51,7 +51,7 @@ def main():
     parser = argparse.ArgumentParser(description="Provide the configuration")
     parser.add_argument("--num_epochs", type=int, default=2)
     parser.add_argument("--nclients", type=int, default=1)
-    parser.add_argument("--logging", type=str, default="INFO")
+    parser.add_argument("--logging", type=str, default="DEBUG")
     args = parser.parse_args()
 
     logging.basicConfig(stream=sys.stdout, level=eval("logging." + args.logging))
