@@ -16,8 +16,7 @@ import logging
 from .misc import *
 from .algorithm import *
 
-from mpi4py import MPI
-
+from mpi4py import MPI 
  
 def run_server(
     cfg: DictConfig,
@@ -37,6 +36,11 @@ def run_server(
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
     """
+
+    ## Using tensorboard to visualize the test loss
+    if cfg.use_tensorboard:
+        from tensorboardX import SummaryWriter
+        writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))
 
     ## Start
     comm_size = comm.Get_size()
@@ -118,19 +122,23 @@ def run_server(
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
-        validation_start = time.time()
-        test_loss = 0
-        accuracy = 0
+        validation_start = time.time()        
         best_accuracy = 0
         if cfg.validation == True:
-            test_loss, accuracy = validation(server, test_dataloader)
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
+            test_loss, test_accuracy = validation(server, test_dataloader)
+            
+            if cfg.use_tensorboard:
+                # Add them to tensorboard
+                writer.add_scalar('server_test_accuracy', test_accuracy, t)
+                writer.add_scalar('server_test_loss', test_loss, t)
+
+            if test_accuracy > best_accuracy:
+                best_accuracy = test_accuracy
         cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
         cfg["logginginfo"]["PerIter_time"] = time.time() - per_iter_start
         cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
         cfg["logginginfo"]["test_loss"] = test_loss
-        cfg["logginginfo"]["accuracy"] = accuracy
+        cfg["logginginfo"]["test_accuracy"] = test_accuracy
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
 
         server.logging_iteration(cfg, logger, t)
@@ -200,8 +208,7 @@ def run_client(
             batchsize[cid] = len(train_data[cid])
 
     clients = [
-        eval(cfg.fed.clientname)(
-            cfg,
+        eval(cfg.fed.clientname)(            
             cid,
             weight[cid],
             copy.deepcopy(model),
@@ -213,6 +220,7 @@ def run_client(
                 pin_memory=True
             ),
             device,
+            cfg,
             **cfg.fed.args,
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
@@ -236,7 +244,7 @@ def run_client(
     ## outputs (clients)   
     outfile={}; outdir={}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        output_filename = cfg.output_filename + "_local_client_%s" %(cid)
+        output_filename = cfg.output_filename + "_client_%s" %(cid)
         outfile[cid], outdir[cid]=client.write_result_title(output_filename)
 
     do_continue = comm.bcast(None, root=0)

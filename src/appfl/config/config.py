@@ -40,6 +40,9 @@ class Config:
     # Reproducibility
     reproduce: bool = True
 
+    # Tensorboard
+    use_tensorboard: bool = False
+
     # Loading models
     load_model: bool = False
     load_model_dirname: str = ""
@@ -55,8 +58,8 @@ class Config:
     save_model_state_dict: bool = False
 
     # Logging and recording outputs
-    output_dirname: str = ""
-    output_filename: str = ""
+    output_dirname: str = "output"
+    output_filename: str = "result"
     
     logginginfo: DictConfig = OmegaConf.create({})
     summary_file: str = ""
