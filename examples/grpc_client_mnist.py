@@ -76,6 +76,7 @@ def main():
     model = CNN()
 
     cfg = OmegaConf.structured(Config)
+    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
     cfg.server.host = args.server_host
     print(OmegaConf.to_yaml(cfg))
 

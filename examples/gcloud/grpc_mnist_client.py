@@ -116,8 +116,8 @@ def main():
     cfg.server.use_tls = args.use_tls
     cfg.server.api_key = args.api_key
 
-    logger.debug(OmegaConf.to_yaml(cfg))
-
+    logger.debug(OmegaConf.to_yaml(cfg)) 
+    
     grpc_client.run_client(
         cfg, args.client_id, model, train_datasets[args.client_id]
     )
