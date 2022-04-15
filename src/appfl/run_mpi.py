@@ -123,7 +123,7 @@ def run_server(
         accuracy = 0
         BestAccuracy = 0
         if cfg.validation == True:
-            test_loss, accuracy = validation(server, copy.deepcopy(server.model), test_dataloader)
+            test_loss, accuracy = validation(server, server.model, test_dataloader)
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
         cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
