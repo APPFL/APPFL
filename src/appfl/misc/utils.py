@@ -6,6 +6,38 @@ import random
 import numpy as np
 import copy 
 
+
+def local_validation(cfg, model, dataloader):
+    loss_fn = eval(cfg.fed.args.loss_type)
+    model.to(cfg.device)
+    model.eval()
+    loss = 0
+    correct = 0
+    tmpcnt = 0
+    tmptotal = 0    
+    auc_class1 = 0.0
+    
+    with torch.no_grad():
+        for img, target in dataloader:
+            tmpcnt += 1
+            tmptotal += len(target)
+            img = img.to(cfg.device)
+            target = target.to(cfg.device)            
+            output = model(img)      
+            loss += loss_fn(output, target).item()     
+            pred = output.argmax(dim=1, keepdim=True)
+
+            correct += pred.eq(target.view_as(pred)).sum().item()         
+     
+
+    loss = round( loss / tmpcnt, 4)
+    accuracy = 100.0 * correct / tmptotal
+
+
+    return loss, accuracy
+ 
+
+
 def validation(self, dataloader):
 
     if dataloader is not None:
@@ -46,6 +78,9 @@ def validation(self, dataloader):
     accuracy = 100.0 * correct / tmptotal
 
     return test_loss, accuracy
+
+
+
 
 
 def create_custom_logger(logger, cfg: DictConfig):

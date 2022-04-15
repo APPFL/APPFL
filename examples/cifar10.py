@@ -4,6 +4,7 @@ import time
 import numpy as np
 import torch
 
+
 import torchvision
 import torchvision.transforms as transforms
 
@@ -11,14 +12,20 @@ from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.cnn import *
+from models.resnet import *
 
 import appfl.run as rt
 from mpi4py import MPI
 
 import argparse
 
+import torch.optim as optim
+from models.utils import *
+import logging
+from torch.utils.data import DataLoader
+
 DataSet_name = "CIFAR10"
-num_clients = 1
+num_clients = 2
 num_channel = 3  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
 num_pixel = 32   # image size = (num_pixel, num_pixel)
@@ -26,13 +33,14 @@ num_pixel = 32   # image size = (num_pixel, num_pixel)
 """ read arguments """ 
 
 parser = argparse.ArgumentParser() 
+parser.add_argument('--device', type=str, default="cpu")    
 
 parser.add_argument('--server', type=str, default="ServerFedAvg")    
-parser.add_argument('--num_epochs', type=int, default=100)    
+parser.add_argument('--num_epochs', type=int, default=1)    
  
 parser.add_argument('--client_optimizer', type=str, default="Adam")    
 parser.add_argument('--client_lr', type=float, default=1e-3)    
-parser.add_argument('--num_local_epochs', type=int, default=10)    
+parser.add_argument('--num_local_epochs', type=int, default=3)    
 
 parser.add_argument('--server_lr', type=float, required=False)    
 parser.add_argument('--mparam_1', type=float, required=False)    
@@ -42,6 +50,8 @@ parser.add_argument('--adapt_param', type=float, required=False)
 
 args = parser.parse_args()    
 
+if torch.cuda.is_available():
+    args.device="cuda"
 
 dir = os.getcwd() + "/datasets/RawData"
 
@@ -49,26 +59,15 @@ def get_data(comm: MPI.Comm):
     comm_rank = comm.Get_rank()
 
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
-    # Root download the data if not already available.
-    if comm_rank == 0:
-        # test data for a server
-        test_data_raw = eval("torchvision.datasets." + DataSet_name)(
-            dir, download=True, train=False, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    normalize,
-                ])
-        )
-
-    comm.Barrier()
-    if comm_rank > 0:
-        # test data for a server
-        test_data_raw = eval("torchvision.datasets." + DataSet_name)(
-            dir, download=False, train=False, transform=transforms.Compose([
-                    transforms.ToTensor(),
-                    normalize,
-                ])
-        )
+ 
+    # test data for a server
+    test_data_raw = eval("torchvision.datasets." + DataSet_name)(
+        dir, download=True, train=False, transform=transforms.Compose([
+                transforms.ToTensor(),
+                normalize,
+            ])
+    )
+ 
 
     test_data_input = []
     test_data_label = []
@@ -83,9 +82,9 @@ def get_data(comm: MPI.Comm):
     # training data for multiple clients
     train_data_raw = eval("torchvision.datasets." + DataSet_name)(
         dir, download=False, train=True, transform=transforms.Compose([
-                        transforms.RandomHorizontalFlip(),
-                        transforms.RandomCrop(32, 4),
                         transforms.ToTensor(),
+                        transforms.RandomHorizontalFlip(),
+                        transforms.RandomCrop(32, 4),                        
                         normalize,
                     ])
     )
@@ -111,7 +110,19 @@ def get_data(comm: MPI.Comm):
 
 def get_model(comm: MPI.Comm):
     ## User-defined model
-    model = CNN(num_channel, num_classes, num_pixel)
+    # model = CNN(num_channel, num_classes, num_pixel)
+    model = resnet8(num_classes=num_classes)    
+
+    # model_name = []
+    # for name, _ in model.named_parameters():
+    #     model_name.append(name)
+
+    # for name in model.state_dict():
+    #     if name in model_name:
+    #         print("model_name=", name)
+    #     else:
+    #         print("else_name=", name)
+                
     return model
 
 
@@ -125,8 +136,8 @@ def main():
 
     """ Configuration """     
     cfg = OmegaConf.structured(Config) 
-    
-    cfg.device = "cuda"
+
+    cfg.device = args.device
     
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
@@ -161,6 +172,7 @@ def main():
 
     """ User-defined model """    
     model = get_model(comm)
+    args.loss_fn = "torch.nn.CrossEntropyLoss()"
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
     
     ## loading models 
@@ -202,8 +214,7 @@ def main():
     else:
         rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
  
- 
- 
+  
 
 if __name__ == "__main__":
     main()

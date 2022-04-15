@@ -54,7 +54,7 @@ def run_serial(
     weights = {}
     for k in range(num_clients):
         weights[k] = len(train_data[k]) / total_num_data
-
+    
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_data) > 0:
         server_dataloader = DataLoader(
@@ -95,9 +95,9 @@ def run_serial(
         for k in range(num_clients)
     ]
 
-    local_states = []
-    local_state = OrderedDict()
-    local_state[0] = OrderedDict()
+    param_name = []
+    for name, _ in server.model.named_parameters():
+        param_name.append(name)
 
     start_time = time.time()
     test_loss = 0.0
@@ -106,22 +106,39 @@ def run_serial(
     for t in range(num_epochs):
         PerIter_start = time.time()
 
+        local_states = [OrderedDict()]
+        
         global_state = server.model.state_dict()
         LocalUpdate_start = time.time()
+         
         for k, client in enumerate(clients):
-            client.model.load_state_dict(global_state)
-            local_state[0][k] = client.update()
+            client.model.load_state_dict(global_state)            
+            local_states[0][k] = client.update() 
+            
+            """ trial """
+            test_loss, test_accuracy = local_validation(cfg, copy.deepcopy(client.model), server_dataloader)
+            print("local=", k, "  ", test_loss, " ",test_accuracy)
 
-        local_states.append(local_state[0])
+            print("t=", t, " k=", k, client.model.state_dict()["bn1.running_mean"])
+            print("t=", t, " k=", k, client.model.state_dict()["bn1.running_var"])
+            print("t=", t, " k=", k, client.model.state_dict()["bn1.num_batches_tracked"]) 
+
+            # for name in client.model.state_dict():
+            #     if name not in param_name:
+            #         client.model_state_dict()[name]
+             
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
 
         GlobalUpdate_start = time.time()
-        server.update(local_states)
+  
+        server.update(local_states, server_dataloader, cfg, client)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - GlobalUpdate_start
+
 
         Validation_start = time.time()
         if cfg.validation == True:
             test_loss, accuracy = validation(server, server_dataloader)
+            # test_loss, test_accuracy = local_validation(cfg, copy.deepcopy(server.model), server_dataloader)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
         cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
@@ -233,10 +250,15 @@ def run_server(
         LocalUpdate_start = time.time()
         global_state = comm.bcast(global_state, root=0)
         local_states = comm.gather(None, root=0)
+        print("Iter=", t,  "local_states=", local_states)
+        
+
+
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
 
         GlobalUpdate_start = time.time()
-        server.update(local_states)
+        # server.update(local_states)
+        server.update(local_states, server_dataloader, cfg)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - GlobalUpdate_start
 
         Validation_start = time.time()

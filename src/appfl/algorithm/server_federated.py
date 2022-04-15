@@ -8,7 +8,7 @@ from torch.optim import *
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 import copy
-
+ 
 
 class FedServer(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
@@ -54,10 +54,14 @@ class FedServer(BaseServer):
                     self.global_state[name] - self.primal_states[i][name]
                 )
 
-    def update(self, local_states: OrderedDict):
+    def update(self, local_states: OrderedDict, server_dataloader, cfg, client):
+        
+        client_state = copy.deepcopy(client.model.state_dict())
 
         """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())
+
+         
         super(FedServer, self).primal_recover_from_local_states(local_states)
 
         """ residual calculation """
@@ -65,18 +69,22 @@ class FedServer(BaseServer):
 
         """ change device """
         for i in range(self.num_clients):
-            for name, _ in self.model.named_parameters():
+            for name, _ in self.model.named_parameters():                
                 self.primal_states[i][name] = self.primal_states[i][name].to(
                     self.device
                 )
+                self.global_state[name] = copy.deepcopy(self.primal_states[i][name])
 
+        
         """ global_state calculation """
         self.compute_step()
         for name, _ in self.model.named_parameters():
             self.global_state[name] += self.step[name]
+  
 
         """ model update """
         self.model.load_state_dict(self.global_state)
+          
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:
@@ -88,3 +96,36 @@ class FedServer(BaseServer):
 
     def logging_summary(self, cfg, logger):
         super(FedServer, self).log_summary(cfg, logger)
+
+
+
+
+def local_validation(cfg, model, dataloader):
+    loss_fn = eval(cfg.fed.args.loss_type)
+    model.to(cfg.device)
+    model.eval()
+    loss = 0
+    correct = 0
+    tmpcnt = 0
+    tmptotal = 0    
+    auc_class1 = 0.0
+    
+    with torch.no_grad():
+        for img, target in dataloader:
+            tmpcnt += 1
+            tmptotal += len(target)
+            img = img.to(cfg.device)
+            target = target.to(cfg.device)            
+            output = model(img)      
+            loss += loss_fn(output, target).item()     
+            pred = output.argmax(dim=1, keepdim=True)
+
+            correct += pred.eq(target.view_as(pred)).sum().item()         
+     
+
+    loss = round( loss / tmpcnt, 4)
+    accuracy = 100.0 * correct / tmptotal
+
+
+    return loss, accuracy
+ 

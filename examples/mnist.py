@@ -18,7 +18,7 @@ from mpi4py import MPI
 import argparse
 
 DataSet_name = "MNIST"
-num_clients = 2
+num_clients = 1
 num_channel = 1  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
 num_pixel = 28   # image size = (num_pixel, num_pixel)
@@ -79,6 +79,7 @@ def get_data(comm: MPI.Comm):
 def get_model(comm: MPI.Comm):
     ## User-defined model
     model = CNN(num_channel, num_classes, num_pixel)
+    
     return model
 
 
@@ -90,10 +91,13 @@ def main():
     comm_size = comm.Get_size()
 
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--server', type=str, required=True)    
-    parser.add_argument('--num_epochs', type=int, required=True)    
-    parser.add_argument('--client_lr', type=float, required=True)    
+    parser = argparse.ArgumentParser()        
+
+    parser.add_argument('--device', type=str, default="cpu")    
+
+    parser.add_argument('--server', type=str, default="ServerFedAvg")    
+    parser.add_argument('--num_epochs', type=int, default=1)    
+    parser.add_argument('--client_lr', type=float, default=1e-3) 
 
     parser.add_argument('--server_lr', type=float, required=False)    
     parser.add_argument('--mparam_1', type=float, required=False)    
@@ -102,10 +106,12 @@ def main():
 
 
     args = parser.parse_args()    
+    if torch.cuda.is_available():
+        args.device="cuda"
 
     """ Configuration """     
     cfg = OmegaConf.structured(Config) 
-    cfg.device = "cuda"
+    cfg.device = args.device
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
     cfg.fed.args.optim_args.lr = args.client_lr
