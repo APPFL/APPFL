@@ -49,12 +49,13 @@ def run_server(
     ## Logger
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
+
     cfg["logginginfo"]["comm_size"] = comm_size
     cfg["logginginfo"]["DataSet_name"] = DataSet_name
 
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_dataset) > 0:
-        server_dataloader = DataLoader(
+        test_dataloader = DataLoader(
             test_dataset,
             num_workers=cfg.num_workers,
             batch_size=cfg.test_data_batch_size,
@@ -122,7 +123,7 @@ def run_server(
         accuracy = 0
         BestAccuracy = 0
         if cfg.validation == True:
-            test_loss, accuracy = validation(server, server_dataloader)
+            test_loss, accuracy = validation(server, copy.deepcopy(server.model), test_dataloader)
             if accuracy > BestAccuracy:
                 BestAccuracy = accuracy
         cfg["logginginfo"]["Validation_time"] = time.time() - Validation_start
@@ -155,6 +156,7 @@ def run_client(
     model: nn.Module,
     num_clients: int,
     train_data: Dataset,
+    test_dataset: Dataset = Dataset(),
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -163,7 +165,8 @@ def run_client(
         comm: MPI communicator
         model (nn.Module): neural network model to train
         num_clients (int): the number of clients used in PPFL simulation
-        train_data (Dataset): testing data
+        train_data (Dataset): training data
+        test_data (Dataset): testing data
     """
 
     comm_size = comm.Get_size()
@@ -198,6 +201,7 @@ def run_client(
 
     clients = [
         eval(cfg.fed.clientname)(
+            cfg,
             cid,
             weight[cid],
             copy.deepcopy(model),
@@ -212,6 +216,27 @@ def run_client(
         )
         for i, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
+    ##
+    if test_dataset != None:
+        test_dataloader = DataLoader(
+            test_dataset,
+            num_workers=cfg.num_workers,
+            batch_size=cfg.test_data_batch_size,
+            shuffle=cfg.test_data_shuffle,
+        )
+
+    ## name of parameters 
+    model_name=[]
+    for client in clients:
+        for name, _ in client.model.named_parameters():
+            model_name.append(name)
+        break
+    
+    ## outputs (clients)   
+    outfile={}; outdir={}
+    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
+        output_filename = cfg.output_filename + "_local_client_%s" %(cid)
+        outfile[cid], outdir[cid]=client.write_result_title(output_filename)
 
     do_continue = comm.bcast(None, root=0)
 
@@ -223,10 +248,20 @@ def run_client(
 
         """ Update "local_states" based on "global_state" """
         for client in clients:
+            cid = client.id
+            ## initial point for a client model
+            for name in client.model.state_dict():
+                if name not in model_name:
+                    global_state[name] = client.model.state_dict()[name]
             client.model.load_state_dict(global_state)
-            local_states[client.id] = client.update()
+             
+            ## client update
+            local_states[cid], outfile[cid] = client.update(outfile[cid], outdir[cid], test_dataloader)
 
         """ Send "local_states" to a server """
         comm.gather(local_states, root=0)
 
         do_continue = comm.bcast(None, root=0)
+
+    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
+        outfile[cid].close()

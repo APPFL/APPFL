@@ -26,6 +26,7 @@ class ClientOptim(BaseClient):
 
         self.model.train()
         self.model.to(self.device)
+        print("device======",self.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
@@ -34,8 +35,9 @@ class ClientOptim(BaseClient):
         for t in range(self.num_local_epochs):
 
             if self.cfg.validation == True:            
+                train_loss, train_accuracy = super(ClientOptim, self).validation_client(copy.deepcopy(self.model), self.dataloader)
                 test_loss, test_accuracy = super(ClientOptim, self).validation_client(copy.deepcopy(self.model), test_dataloader)
-                outfile = super(ClientOptim, self).write_result_content(outfile, t, test_loss, test_accuracy)
+                outfile = super(ClientOptim, self).write_result_content(outfile, t, train_loss, train_accuracy, test_loss, test_accuracy)
   
             for data, target in self.dataloader:
                 data = data.to(self.device)

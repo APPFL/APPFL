@@ -246,9 +246,11 @@ class BaseClient:
             uniq += 1
         
         outfile = open(filename, "w")
-        title = "%10s %10s %10s %10s \n" % (
+        title = "%10s %10s %10s %10s %10s %10s \n" % (
             "Round",
             "LocalEpoch", 
+            "TrainLoss",
+            "TrainAccu",
             "TestLoss",
             "TestAccu",
         ) 
@@ -256,10 +258,12 @@ class BaseClient:
         
         return outfile, dir
 
-    def write_result_content(self, outfile, t, test_loss, test_accuracy):
-        contents = "%10s %10s %10s %10s \n" % (
+    def write_result_content(self, outfile, t, train_loss, train_accuracy, test_loss, test_accuracy):
+        contents = "%10s %10s %10s %10s %10s %10s \n" % (
                     self.round,
                     t, 
+                    train_loss, 
+                    train_accuracy,
                     test_loss,
                     test_accuracy,
                 ) 

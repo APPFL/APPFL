@@ -38,14 +38,14 @@ parser.add_argument('--num_classes', type=int, default=10)
 parser.add_argument('--num_pixel', type=int, default=32)   
 
 ## clients
-parser.add_argument('--num_clients', type=int, default=4)    
+parser.add_argument('--num_clients', type=int, default=2)    
 parser.add_argument('--client_optimizer', type=str, default="Adam")    
 parser.add_argument('--client_lr', type=float, default=1e-3)    
 parser.add_argument('--num_local_epochs', type=int, default=3)    
 
 ## server
 parser.add_argument('--server', type=str, default="ServerFedAvg")    
-parser.add_argument('--num_epochs', type=int, default=2)    
+parser.add_argument('--num_epochs', type=int, default=1)    
 
 parser.add_argument('--server_lr', type=float, required=False)    
 parser.add_argument('--mparam_1', type=float, required=False)    
@@ -116,8 +116,8 @@ def get_data():
 
 def get_model():
     ## User-defined model
-    # model = CNN(args.num_channel, args.num_classes, args.num_pixel)
-    model = resnet8(num_classes=args.num_classes)        
+    model = CNN(args.num_channel, args.num_classes, args.num_pixel)
+    # model = resnet8(num_classes=args.num_classes)        
     return model
 
 
@@ -206,7 +206,7 @@ def main():
         if comm_rank == 0:
             rm.run_server(cfg, comm, model, args.num_clients, test_dataset, args.dataset)
         else:
-            rm.run_client(cfg, comm, model, args.num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, args.num_clients, train_datasets, test_dataset)
         print("------DONE------", comm_rank)
     else:
         rs.run_serial(cfg, model, train_datasets, test_dataset, args.dataset)
