@@ -26,7 +26,12 @@ For other examples, replace the file name with an appropriate example name.
 ### MPI communication
 
 ```bash
-mpiexec -n 5 python mnist.py
+mpiexec -n 5 python mnist.py --server ServerFedAvg --num_epochs 6 --client_lr 0.01
+```
+`--server : ServerFedAvg  or  ICEADMMServer  or IIADMMServer`
+start tensorborad and then go to the web page
+```shell
+tensorboard --logdir=runs
 ```
 
 ### gRPC communication
@@ -43,9 +48,9 @@ mpiexec -n 5 python grpc_mnist.py
 ### MPI communication
 
 ```bash
-mpiexec -n 204 python femnist.py
+mpiexec -n 204 python femnist.py --server ServerFedAvg --num_epochs 6 --client_lr 0.01
 ```
-
+`--server : ServerFedAvg  or  ICEADMMServer  or IIADMMServer`
 ### gRPC communication
 
 ```bash

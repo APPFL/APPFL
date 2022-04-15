@@ -50,7 +50,11 @@ git clone https://github.com/APPFL/APPFL.git
 cd APPFL
 pip install -e ".[dev,examples,analytics]"
 ```
-
+On Ubuntu:
+If the install process failed, you can try:
+```shell
+sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
+```
 ## Acknowledgements
 
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357.

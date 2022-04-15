@@ -135,7 +135,7 @@ class BaseServer:
             cfg["logginginfo"]["PerIter_time"],
             cfg["logginginfo"]["Elapsed_time"],
             cfg["logginginfo"]["test_loss"],
-            cfg["logginginfo"]["accuracy"],
+            cfg["logginginfo"]["test_accuracy"],
         )
         return contents
 
@@ -169,7 +169,7 @@ class BaseClient:
     """
 
     def __init__(
-        self, cfg, id: int, weight: Dict, model: nn.Module, dataloader: DataLoader, device
+        self, id: int, weight: Dict, model: nn.Module, dataloader: DataLoader, device, cfg
     ):
         self.cfg = cfg
         self.id = id

@@ -15,7 +15,8 @@ import logging
 
 from .misc import *
 from .algorithm import *
- 
+
+
 def run_serial(
     cfg: DictConfig,
     model: nn.Module,
@@ -75,8 +76,7 @@ def run_serial(
             batchsize[k] = len(train_data[k])
 
     clients = [
-        eval(cfg.fed.clientname)(
-            cfg,
+        eval(cfg.fed.clientname)(            
             k,
             weights[k],
             copy.deepcopy(model),
@@ -88,6 +88,7 @@ def run_serial(
                 pin_memory=True
             ), 
             cfg.device,
+            cfg,
             **cfg.fed.args,
         )
         for k in range(cfg.num_clients)
@@ -103,10 +104,14 @@ def run_serial(
     for k, client in enumerate(clients): 
         output_filename = cfg.output_filename + "_client_%s" %(k)
         outfile[k], outdir[k]=client.write_result_title(output_filename)
+    
+    ## Using tensorboard to visualize the test loss
+    if cfg.use_tensorboard:
+
+        from tensorboardX import SummaryWriter
+        writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))        
  
-    start_time = time.time()
-    test_loss = 0.0
-    accuracy = 0.0
+    start_time = time.time()    
     best_accuracy = 0.0
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
@@ -136,15 +141,21 @@ def run_serial(
 
         validation_start = time.time()
         if cfg.validation == True:
-            test_loss, accuracy = validation(server, test_dataloader)
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
+            test_loss, test_accuracy = validation(server, test_dataloader)
+
+            if cfg.use_tensorboard:
+                # Add them to tensorboard
+                writer.add_scalar('server_test_accuracy', test_accuracy, t)
+                writer.add_scalar('server_test_loss', test_loss, t)
+
+            if test_accuracy > best_accuracy:
+                best_accuracy = test_accuracy
 
         cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
         cfg["logginginfo"]["PerIter_time"] = time.time() - per_iter_start
         cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
         cfg["logginginfo"]["test_loss"] = test_loss
-        cfg["logginginfo"]["accuracy"] = accuracy
+        cfg["logginginfo"]["test_accuracy"] = test_accuracy
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
 
         server.logging_iteration(cfg, logger, t)

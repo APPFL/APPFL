@@ -12,8 +12,8 @@ import copy
 import numpy as np
 
 class ClientOptim(BaseClient):
-    def __init__(self, cfg, id, weight, model, dataloader, device, **kwargs):
-        super(ClientOptim, self).__init__(cfg, id, weight, model, dataloader, device)
+    def __init__(self, id, weight, model, dataloader, device, cfg, **kwargs):
+        super(ClientOptim, self).__init__(id, weight, model, dataloader, device, cfg)
         self.__dict__.update(kwargs)
 
         self.loss_fn = eval(self.loss_type)
@@ -34,7 +34,7 @@ class ClientOptim(BaseClient):
         """ Multiple local update """
         for t in range(self.num_local_epochs):
 
-            if self.cfg.validation == True:            
+            if self.cfg.validation == True and test_dataloader!=None:            
                 train_loss, train_accuracy = super(ClientOptim, self).validation_client(copy.deepcopy(self.model), self.dataloader)
                 test_loss, test_accuracy = super(ClientOptim, self).validation_client(copy.deepcopy(self.model), test_dataloader)
                 outfile = super(ClientOptim, self).write_result_content(outfile, t, train_loss, train_accuracy, test_loss, test_accuracy)
