@@ -38,7 +38,7 @@ parser.add_argument('--num_classes', type=int, default=10)
 parser.add_argument('--num_pixel', type=int, default=32)   
 
 ## clients
-parser.add_argument('--num_clients', type=int, default=2)    
+parser.add_argument('--num_clients', type=int, default=4)    
 parser.add_argument('--client_optimizer', type=str, default="Adam")    
 parser.add_argument('--client_lr', type=float, default=1e-3)    
 parser.add_argument('--num_local_epochs', type=int, default=3)    
@@ -53,6 +53,8 @@ parser.add_argument('--mparam_2', type=float, required=False)
 parser.add_argument('--adapt_param', type=float, required=False)    
  
 args = parser.parse_args()    
+
+args.save_model_state_dict = True
 
 if torch.cuda.is_available():
     args.device="cuda"
@@ -133,7 +135,7 @@ def main():
     cfg = OmegaConf.structured(Config) 
 
     cfg.device = args.device
-
+    cfg.save_model_state_dict = args.save_model_state_dict
     ## clients
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer

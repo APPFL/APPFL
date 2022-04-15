@@ -40,7 +40,6 @@ def run_serial(
     cfg["logginginfo"]["comm_size"] = 1
     cfg["logginginfo"]["DataSet_name"] = DataSet_name
 
-    
 
     """ weight calculation """
     total_num_data = 0
@@ -93,10 +92,17 @@ def run_serial(
         for k in range(cfg.num_clients)
     ] 
 
+    ## name of parameters
     model_name=[]
     for name, _ in server.model.named_parameters():
         model_name.append(name)
-
+    
+    ## outputs (clients)   
+    outfile={}; outdir={}
+    for k, client in enumerate(clients): 
+        output_filename = cfg.output_filename + "_local_client_%s" %(k)
+        outfile[k], outdir[k]=client.write_result_title(output_filename)
+ 
     start_time = time.time()
     test_loss = 0.0
     accuracy = 0.0
@@ -109,8 +115,8 @@ def run_serial(
         global_state = server.model.state_dict()
         
         LocalUpdate_start = time.time()
-        for k, client in enumerate(clients):            
-            
+        for k, client in enumerate(clients):    
+             
             ## initial point for a client model
             for name in server.model.state_dict():
                 if name not in model_name:
@@ -118,7 +124,7 @@ def run_serial(
             client.model.load_state_dict(global_state)
 
             ## client update
-            local_states[0][k] = client.update(test_dataloader)
+            local_states[0][k], outfile[k] = client.update(outfile[k], outdir[k], test_dataloader)
 
   
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - LocalUpdate_start
@@ -149,4 +155,5 @@ def run_serial(
 
     server.logging_summary(cfg, logger)
 
- 
+    for k, client in enumerate(clients):    
+        outfile[k].close()

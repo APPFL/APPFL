@@ -1,5 +1,5 @@
 import logging
-
+import os
 from collections import OrderedDict
 from .algorithm import BaseClient
 
@@ -19,23 +19,9 @@ class ClientOptim(BaseClient):
 
         self.round = 0
         
-          
-        self.logger_local = {}        
-        logger_local = logging.getLogger(__name__)
-        output_local = cfg.output_filename + "_local_client_%s" %(id)
-        self.logger_local[id] = copy.deepcopy( super(ClientOptim, self).create_custom_logger_client(logger_local, output_local) )
- 
-        title = "%10s %10s %10s %10s" % (
-            "Round",
-            "LocalEpoch", 
-            "TestLoss",
-            "TestAccu",
-        ) 
-        self.logger_local[id].info(title)
-
-    def update(self, test_dataloader: DataLoader=None ):
-
-
+           
+    def update(self, outfile, outdir, test_dataloader: DataLoader=None ):
+  
         """ Inputs for the local model update """        
 
         self.model.train()
@@ -49,15 +35,8 @@ class ClientOptim(BaseClient):
 
             if self.cfg.validation == True:            
                 test_loss, test_accuracy = super(ClientOptim, self).validation_client(copy.deepcopy(self.model), test_dataloader)
-                contents = "%10s %10s %10s %10s" % (
-                    self.round,
-                    t, 
-                    test_loss,
-                    test_accuracy,
-                )
-                self.logger_local[self.id].info(contents)
- 
-
+                outfile = super(ClientOptim, self).write_result_content(outfile, t, test_loss, test_accuracy)
+  
             for data, target in self.dataloader:
                 data = data.to(self.device)
                 target = target.to(self.device)
@@ -73,6 +52,11 @@ class ClientOptim(BaseClient):
                         self.clip_value,
                         norm_type=self.clip_norm,
                     )
+
+            ## save model.state_dict()
+            if self.cfg.save_model_state_dict == True:
+                torch.save(self.model.state_dict(), os.path.join(outdir,  str(t) +  '.pt'))
+
  
         self.round += 1
         
@@ -93,5 +77,5 @@ class ClientOptim(BaseClient):
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
 
-        return self.local_state
+        return self.local_state, outfile
  

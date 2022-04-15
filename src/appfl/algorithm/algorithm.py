@@ -232,33 +232,40 @@ class BaseClient:
         if dual_res > self.residual_balancing.mu * prim_res:
             self.penalty = self.penalty / self.residual_balancing.tau
 
-    def create_custom_logger_client(self, logger, output_filename): 
+    def write_result_title(self, output_filename): 
 
         dir = self.cfg.output_dirname + "_client_%s" %(self.id)
         if os.path.isdir(dir) == False:
             os.mkdir(dir)
-        
-
+         
         file_ext = ".txt"
         filename = dir + "/%s%s" % (output_filename, file_ext)
         uniq = 1
         while os.path.exists(filename):
             filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
             uniq += 1
-
-        logger.setLevel(logging.INFO)
-        # Create handlers
-        c_handler = logging.StreamHandler()
-        f_handler = logging.FileHandler(filename)
-        c_handler.setLevel(logging.INFO)
-        f_handler.setLevel(logging.INFO)
-     
-        # Add handlers to the logger
-        logger.addHandler(c_handler)
-        logger.addHandler(f_handler)
         
-        return logger
+        outfile = open(filename, "w")
+        title = "%10s %10s %10s %10s \n" % (
+            "Round",
+            "LocalEpoch", 
+            "TestLoss",
+            "TestAccu",
+        ) 
+        outfile.write(title)
+        
+        return outfile, dir
 
+    def write_result_content(self, outfile, t, test_loss, test_accuracy):
+        contents = "%10s %10s %10s %10s \n" % (
+                    self.round,
+                    t, 
+                    test_loss,
+                    test_accuracy,
+                ) 
+        outfile.write(contents)
+        return outfile
+    
     def validation_client(self, model, dataloader):
 
         if dataloader is not None:
