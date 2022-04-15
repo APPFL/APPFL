@@ -5,9 +5,8 @@ import logging
 import random
 import numpy as np
 
- 
-
-def validation(self, model, dataloader):
+  
+def validation(self, dataloader):
 
     if dataloader is not None:
         self.loss_fn = eval(self.loss_type)        
@@ -17,8 +16,8 @@ def validation(self, model, dataloader):
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
-    model.to(self.device)
-    model.eval()
+    self.model.to(self.device)
+    self.model.eval()
     
     loss = 0
     correct = 0
@@ -30,7 +29,7 @@ def validation(self, model, dataloader):
             tmptotal += len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            output = model(img)
+            output = self.model(img)
             loss += self.loss_fn(output, target).item()     
             
             if self.loss_type == "torch.nn.BCELoss()":

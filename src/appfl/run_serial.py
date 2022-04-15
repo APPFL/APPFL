@@ -136,7 +136,7 @@ def run_serial(
 
         validation_start = time.time()
         if cfg.validation == True:
-            test_loss, accuracy = validation(server, server.model, test_dataloader)
+            test_loss, accuracy = validation(server, test_dataloader)
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
 
