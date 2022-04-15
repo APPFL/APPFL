@@ -7,7 +7,8 @@ import torch
 from appfl.config import *
 from appfl.misc.data import *
 from models.cnn import *
-import appfl.run as rt
+import appfl.run_serial as rs
+import appfl.run_mpi as rm
 from mpi4py import MPI
 import glob
 import cv2
@@ -143,12 +144,12 @@ def main():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, DataSet_name)
+            rm.run_server(cfg, comm, model, num_clients, test_dataset, DataSet_name)
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, num_clients, train_datasets)
         print("------DONE------", comm_rank)
     else:
-        rt.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
+        rs.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
 
 
 if __name__ == "__main__":

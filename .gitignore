@@ -3,9 +3,12 @@
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 note
+<<<<<<< HEAD
 
 examples/CIFAR10_1client
 examples/CIFAR10_4clients
+=======
+>>>>>>> 4bf827c56b9fe38b140a7bad282238e5e23d9564
 examples/outputs_mpi
 examples/outputs_serial
 examples/.DS_Store

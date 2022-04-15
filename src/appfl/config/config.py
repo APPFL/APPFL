@@ -16,6 +16,9 @@ class Config:
     device: str = "cpu"
 
     # Number of training epochs
+    num_clients: int = 1
+
+    # Number of training epochs
     num_epochs: int = 2
 
     # Number of workers in DataLoader
@@ -45,17 +48,22 @@ class Config:
     load_model_dirname: str = ""
     load_model_filename: str = ""
 
-    # Saving models
+    # Saving models (server)
     save_model: bool = False
     save_model_dirname: str = ""
     save_model_filename: str = ""
     checkpoints_interval: int = 2
 
+    # Saving state_dict (clients)
+    save_model_state_dict: bool = False
+
     # Logging and recording outputs
-    output_dirname: str = "./outputs"
-    output_filename: str = "result"
+    output_dirname: str = ""
+    output_filename: str = ""
+    
     logginginfo: DictConfig = OmegaConf.create({})
     summary_file: str = ""
+
 
     #
     # gRPC configutations

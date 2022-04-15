@@ -2,12 +2,14 @@ import torch
 import os
 from omegaconf import DictConfig
 import logging
+import random
+import numpy as np
 
-
+  
 def validation(self, dataloader):
 
     if dataloader is not None:
-        self.loss_fn = eval(self.loss_type)
+        self.loss_fn = eval(self.loss_type)        
     else:
         self.loss_fn = None
 
@@ -16,7 +18,8 @@ def validation(self, dataloader):
 
     self.model.to(self.device)
     self.model.eval()
-    test_loss = 0
+    
+    loss = 0
     correct = 0
     tmpcnt = 0
     tmptotal = 0
@@ -27,25 +30,30 @@ def validation(self, dataloader):
             img = img.to(self.device)
             target = target.to(self.device)
             output = self.model(img)
-            test_loss += self.loss_fn(output, target).item()
-            pred = output.argmax(dim=1, keepdim=True)
+            loss += self.loss_fn(output, target).item()     
+            
+            if self.loss_type == "torch.nn.BCELoss()":
+                pred = torch.round(output)
+            else:
+                pred = output.argmax(dim=1, keepdim=True)
+
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     # FIXME: do we need to sent the model to cpu again?
     # self.model.to("cpu")
 
-    test_loss = test_loss / tmpcnt
-    accuracy = 100.0 * correct / tmptotal
+    loss = loss / tmpcnt 
+    accuracy = 100.0 * correct / tmptotal 
 
-    return test_loss, accuracy
+    return loss, accuracy
 
 
 def create_custom_logger(logger, cfg: DictConfig):
 
-    dir = cfg.output_dirname
+    dir = cfg.output_dirname  
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
-    output_filename = cfg.output_filename
+    output_filename = cfg.output_filename + "_server"
 
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)
@@ -60,12 +68,7 @@ def create_custom_logger(logger, cfg: DictConfig):
     f_handler = logging.FileHandler(filename)
     c_handler.setLevel(logging.INFO)
     f_handler.setLevel(logging.INFO)
-
-    # # Create formatters and add it to handlers
-    # c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    # f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # c_handler.setFormatter(c_format)
-    # f_handler.setFormatter(f_format)
+ 
 
     # Add handlers to the logger
     logger.addHandler(c_handler)
@@ -94,3 +97,12 @@ def save_model_iteration(t, model, cfg: DictConfig):
         uniq += 1
 
     torch.save(model, file)
+
+
+def set_seed(seed=233): 
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
