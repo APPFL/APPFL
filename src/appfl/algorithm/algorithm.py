@@ -9,6 +9,8 @@ from omegaconf import DictConfig
 
 import os
 import logging
+import numpy as np
+from sklearn.decomposition import PCA
 
 
 class BaseServer:
@@ -329,3 +331,36 @@ class BaseClient:
             scale = torch.zeros_like(param.data) + scale_value
             m = torch.distributions.laplace.Laplace(mean, scale)
             self.primal_state[name] += m.sample()
+
+
+    """ 
+    Projection Matrix
+        Each client can obtain a trajectory of iterates by training a model using the local data, i.e., w^1, w^2, ..., w^I, where w^i in R^J
+        By conduting PCA (principle component analysis) using the "I" iterates, one can obtain a projection matrix "M X J" where M ( < I ) is the number of components.
+    """
+        
+    def construct_projection_matrix(self):
+
+        W = []
+
+        pca_dir = cfg.pca_dir + "_%s" % (cid)
+
+        for i in range(cfg.params_start, cfg.params_end):
+            client.model.load_state_dict(
+                torch.load(
+                    os.path.join(pca_dir, str(i) + ".pt"),
+                    map_location=torch.device(cfg.device),
+                )
+            )
+            W.append(client.get_model_param_vec(client.model))
+
+        W = np.array(W)
+
+        # Obtain base variables through PCA
+        pca = PCA(n_components=cfg.ncomponents)
+        pca.fit_transform(W)
+        P = np.array(pca.components_)
+        P = torch.from_numpy(P).to(client.device)
+
+        return P, pca.explained_variance_ratio_
+
