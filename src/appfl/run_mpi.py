@@ -16,8 +16,9 @@ import logging
 from .misc import *
 from .algorithm import *
 
-from mpi4py import MPI 
- 
+from mpi4py import MPI
+
+
 def run_server(
     cfg: DictConfig,
     comm: MPI.Comm,
@@ -36,12 +37,6 @@ def run_server(
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
     """
-
-    ## Using tensorboard to visualize the test loss
-    if cfg.use_tensorboard:
-        from tensorboardX import SummaryWriter
-        writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))
-
     ## Start
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
@@ -50,12 +45,20 @@ def run_server(
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
 
-    ## Logger
+    """ log for a server """
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
 
     cfg["logginginfo"]["comm_size"] = comm_size
     cfg["logginginfo"]["DataSet_name"] = dataset_name
+
+    ## Using tensorboard to visualize the test loss
+    if cfg.use_tensorboard:
+        from tensorboardX import SummaryWriter
+
+        writer = SummaryWriter(
+            comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients)
+        )
 
     "Run validation if test data is given or the configuration is enabled."
     if cfg.validation == True and len(test_dataset) > 0:
@@ -101,7 +104,7 @@ def run_server(
     do_continue = True
     start_time = time.time()
     test_loss = 0.0
-    accuracy = 0.0
+    test_accuracy = 0.0
     best_accuracy = 0.0
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
@@ -122,15 +125,15 @@ def run_server(
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
-        validation_start = time.time()        
+        validation_start = time.time()
         best_accuracy = 0
         if cfg.validation == True:
             test_loss, test_accuracy = validation(server, test_dataloader)
-            
+
             if cfg.use_tensorboard:
                 # Add them to tensorboard
-                writer.add_scalar('server_test_accuracy', test_accuracy, t)
-                writer.add_scalar('server_test_loss', test_loss, t)
+                writer.add_scalar("server_test_accuracy", test_accuracy, t)
+                writer.add_scalar("server_test_loss", test_loss, t)
 
             if test_accuracy > best_accuracy:
                 best_accuracy = test_accuracy
@@ -164,7 +167,7 @@ def run_client(
     model: nn.Module,
     num_clients: int,
     train_data: Dataset,
-    test_dataset: Dataset = Dataset(),
+    test_data: Dataset = Dataset(),
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -188,6 +191,12 @@ def run_client(
 
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
 
+    """ log for clients"""
+    outfile = {}
+    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
+        output_filename = cfg.output_filename + "_client_%s" % (cid)
+        outfile[cid] = client_log(cfg.output_dirname, output_filename)
+
     """
     Send the number of data to a server
     Receive "weight_info" from a server    
@@ -195,7 +204,7 @@ def run_client(
         (iceadmm+iiadmm)    "weight_info" is needed for constructing coefficients of the loss_function         
     """
     num_data = {}
-    for i, cid in enumerate(num_client_groups[comm_rank - 1]):
+    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         num_data[cid] = len(train_data[cid])
     comm.gather(num_data, root=0)
     weight = None
@@ -207,8 +216,20 @@ def run_client(
         if cfg.batch_training == False:
             batchsize[cid] = len(train_data[cid])
 
+    "Run validation if test data is given or the configuration is enabled."
+    if cfg.validation == True and len(test_data) > 0:
+        test_dataloader = DataLoader(
+            test_data,
+            num_workers=cfg.num_workers,
+            batch_size=cfg.test_data_batch_size,
+            shuffle=cfg.test_data_shuffle,
+        )
+    else:
+        cfg.validation = False
+        test_dataloader = None
+
     clients = [
-        eval(cfg.fed.clientname)(            
+        eval(cfg.fed.clientname)(
             cid,
             weight[cid],
             copy.deepcopy(model),
@@ -217,35 +238,22 @@ def run_client(
                 num_workers=cfg.num_workers,
                 batch_size=batchsize[cid],
                 shuffle=cfg.train_data_shuffle,
-                pin_memory=True
+                pin_memory=True,
             ),
-            device,
             cfg,
+            outfile[cid],
+            test_dataloader,
             **cfg.fed.args,
         )
-        for i, cid in enumerate(num_client_groups[comm_rank - 1])
+        for _, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
-    ##
-    if test_dataset != None:
-        test_dataloader = DataLoader(
-            test_dataset,
-            num_workers=cfg.num_workers,
-            batch_size=cfg.test_data_batch_size,
-            shuffle=cfg.test_data_shuffle,
-        )
 
-    ## name of parameters 
-    model_name=[]
+    ## name of parameters
+    model_name = []
     for client in clients:
         for name, _ in client.model.named_parameters():
             model_name.append(name)
         break
-    
-    ## outputs (clients)   
-    outfile={}; outdir={}
-    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        output_filename = cfg.output_filename + "_client_%s" %(cid)
-        outfile[cid], outdir[cid]=client.write_result_title(output_filename)
 
     do_continue = comm.bcast(None, root=0)
 
@@ -263,14 +271,14 @@ def run_client(
                 if name not in model_name:
                     global_state[name] = client.model.state_dict()[name]
             client.model.load_state_dict(global_state)
-             
+
             ## client update
-            local_states[cid], outfile[cid] = client.update(outfile[cid], outdir[cid], test_dataloader)
+            local_states[cid] = client.update()
 
         """ Send "local_states" to a server """
         comm.gather(local_states, root=0)
 
         do_continue = comm.bcast(None, root=0)
 
-    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
-        outfile[cid].close()
+    for client in clients:
+        client.outfile.close()

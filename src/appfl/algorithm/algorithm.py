@@ -10,6 +10,7 @@ from omegaconf import DictConfig
 import os
 import logging
 
+
 class BaseServer:
     """Abstract class of PPFL algorithm for server that aggregates and updates model parameters.
 
@@ -169,14 +170,23 @@ class BaseClient:
     """
 
     def __init__(
-        self, id: int, weight: Dict, model: nn.Module, dataloader: DataLoader, device, cfg
+        self,
+        id: int,
+        weight: Dict,
+        model: nn.Module,
+        dataloader: DataLoader,
+        cfg,
+        outfile,
+        test_dataloader,
     ):
-        self.cfg = cfg
+
         self.id = id
         self.weight = weight
         self.model = model
-        self.dataloader = dataloader        
-        self.device = device
+        self.dataloader = dataloader
+        self.cfg = cfg
+        self.outfile = outfile
+        self.test_dataloader = test_dataloader
 
         self.primal_state = OrderedDict()
         self.dual_state = OrderedDict()
@@ -232,56 +242,44 @@ class BaseClient:
         if dual_res > self.residual_balancing.mu * prim_res:
             self.penalty = self.penalty / self.residual_balancing.tau
 
-    def write_result_title(self, output_filename): 
-
-        dir = self.cfg.output_dirname  
-        if os.path.isdir(dir) == False:
-            os.mkdir(dir)
-         
-        file_ext = ".txt"
-        filename = dir + "/%s%s" % (output_filename, file_ext)
-        uniq = 1
-        while os.path.exists(filename):
-            filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
-            uniq += 1
-        
-        outfile = open(filename, "w")
+    def client_log_title(self):
         title = "%10s %10s %10s %10s %10s %10s \n" % (
             "Round",
-            "LocalEpoch", 
+            "LocalEpoch",
             "TrainLoss",
             "TrainAccu",
             "TestLoss",
             "TestAccu",
-        ) 
-        outfile.write(title)
-        
-        return outfile, dir
+        )
+        self.outfile.write(title)
+        self.outfile.flush()
 
-    def write_result_content(self, outfile, t, train_loss, train_accuracy, test_loss, test_accuracy):
-        contents = "%10s %10s %10s %10s %10s %10s \n" % (
-                    self.round,
-                    t, 
-                    train_loss, 
-                    train_accuracy,
-                    test_loss,
-                    test_accuracy,
-                ) 
-        outfile.write(contents)
-        return outfile
-    
-    def validation_client(self, model, dataloader):
+    def client_log_content(
+        self, t, train_loss, train_accuracy, test_loss, test_accuracy
+    ):
+        contents = "%10s %10s %10.4f %10.4f %10.4f %10.4f \n" % (
+            self.round,
+            t,
+            train_loss,
+            train_accuracy,
+            test_loss,
+            test_accuracy,
+        )
+        self.outfile.write(contents)
+        self.outfile.flush()
+
+    def client_validation(self, dataloader):
 
         if dataloader is not None:
-            self.loss_fn = eval(self.loss_type)        
+            self.loss_fn = eval(self.loss_type)
         else:
             self.loss_fn = None
 
         if self.loss_fn is None or dataloader is None:
             return 0.0, 0.0
 
-        model.to(self.device)
-        model.eval()
+        self.model.to(self.cfg.device)
+        self.model.eval()
         loss = 0
         correct = 0
         tmpcnt = 0
@@ -290,11 +288,11 @@ class BaseClient:
             for img, target in dataloader:
                 tmpcnt += 1
                 tmptotal += len(target)
-                img = img.to(self.device)
-                target = target.to(self.device)
-                output = model(img)
-                loss += self.loss_fn(output, target).item()     
-                
+                img = img.to(self.cfg.device)
+                target = target.to(self.cfg.device)
+                output = self.model(img)
+                loss += self.loss_fn(output, target).item()
+
                 if self.loss_type == "torch.nn.BCELoss()":
                     pred = torch.round(output)
                 else:

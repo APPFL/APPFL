@@ -34,13 +34,26 @@ def run_serial(
         dataset_name (str): optional dataset name
     """
 
-    ## Logger
+    """ log for a server """
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
 
     cfg["logginginfo"]["comm_size"] = 1
     cfg["logginginfo"]["DataSet_name"] = dataset_name
 
+    ## Using tensorboard to visualize the test loss
+    if cfg.use_tensorboard:
+        from tensorboardX import SummaryWriter
+
+        writer = SummaryWriter(
+            comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients)
+        )
+
+    """ log for clients"""
+    outfile = {}
+    for k in range(cfg.num_clients):
+        output_filename = cfg.output_filename + "_client_%s" % (k)
+        outfile[k] = client_log(cfg.output_dirname, output_filename)
 
     """ weight calculation """
     total_num_data = 0
@@ -62,7 +75,6 @@ def run_serial(
     else:
         cfg.validation = False
 
-
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), cfg.num_clients, cfg.device, **cfg.fed.args
     )
@@ -76,7 +88,7 @@ def run_serial(
             batchsize[k] = len(train_data[k])
 
     clients = [
-        eval(cfg.fed.clientname)(            
+        eval(cfg.fed.clientname)(
             k,
             weights[k],
             copy.deepcopy(model),
@@ -85,33 +97,24 @@ def run_serial(
                 num_workers=cfg.num_workers,
                 batch_size=batchsize[k],
                 shuffle=cfg.train_data_shuffle,
-                pin_memory=True
-            ), 
-            cfg.device,
+                pin_memory=True,
+            ),
             cfg,
+            outfile[k],
+            test_dataloader,
             **cfg.fed.args,
         )
         for k in range(cfg.num_clients)
-    ] 
+    ]
 
     ## name of parameters
-    model_name=[]
+    model_name = []
     for name, _ in server.model.named_parameters():
         model_name.append(name)
-    
-    ## outputs (clients)   
-    outfile={}; outdir={}
-    for k, client in enumerate(clients): 
-        output_filename = cfg.output_filename + "_client_%s" %(k)
-        outfile[k], outdir[k]=client.write_result_title(output_filename)
-    
-    ## Using tensorboard to visualize the test loss
-    if cfg.use_tensorboard:
 
-        from tensorboardX import SummaryWriter
-        writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))        
- 
-    start_time = time.time()    
+    start_time = time.time()
+    test_loss = 0.0
+    test_accuracy = 0.0
     best_accuracy = 0.0
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
@@ -119,10 +122,10 @@ def run_serial(
         local_states = [OrderedDict()]
 
         global_state = server.model.state_dict()
-        
+
         local_update_start = time.time()
-        for k, client in enumerate(clients):    
-             
+        for k, client in enumerate(clients):
+
             ## initial point for a client model
             for name in server.model.state_dict():
                 if name not in model_name:
@@ -130,9 +133,8 @@ def run_serial(
             client.model.load_state_dict(global_state)
 
             ## client update
-            local_states[0][k], outfile[k] = client.update(outfile[k], outdir[k], test_dataloader)
+            local_states[0][k] = client.update()
 
-  
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
         global_update_start = time.time()
@@ -145,8 +147,8 @@ def run_serial(
 
             if cfg.use_tensorboard:
                 # Add them to tensorboard
-                writer.add_scalar('server_test_accuracy', test_accuracy, t)
-                writer.add_scalar('server_test_loss', test_loss, t)
+                writer.add_scalar("server_test_accuracy", test_accuracy, t)
+                writer.add_scalar("server_test_loss", test_loss, t)
 
             if test_accuracy > best_accuracy:
                 best_accuracy = test_accuracy
@@ -167,5 +169,5 @@ def run_serial(
 
     server.logging_summary(cfg, logger)
 
-    for k, client in enumerate(clients):    
-        outfile[k].close()
+    for k, client in enumerate(clients):
+        client.outfile.close()

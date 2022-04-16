@@ -103,6 +103,8 @@ def main():
         Note: 
         "torch.nn.CrossEntropyLoss()" should be used for the multiclass classfication problem with more than 2 classes.                
     """
+    # read default configuration
+    cfg = OmegaConf.structured(Config)
     model = CNN(num_channel, num_classes, num_pixel)
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
 

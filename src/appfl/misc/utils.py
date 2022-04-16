@@ -4,12 +4,13 @@ from omegaconf import DictConfig
 import logging
 import random
 import numpy as np
+from sklearn.decomposition import PCA
 
-  
+
 def validation(self, dataloader):
 
     if dataloader is not None:
-        self.loss_fn = eval(self.loss_type)        
+        self.loss_fn = eval(self.loss_type)
     else:
         self.loss_fn = None
 
@@ -18,7 +19,7 @@ def validation(self, dataloader):
 
     self.model.to(self.device)
     self.model.eval()
-    
+
     loss = 0
     correct = 0
     tmpcnt = 0
@@ -30,8 +31,8 @@ def validation(self, dataloader):
             img = img.to(self.device)
             target = target.to(self.device)
             output = self.model(img)
-            loss += self.loss_fn(output, target).item()     
-            
+            loss += self.loss_fn(output, target).item()
+
             if self.loss_type == "torch.nn.BCELoss()":
                 pred = torch.round(output)
             else:
@@ -42,15 +43,15 @@ def validation(self, dataloader):
     # FIXME: do we need to sent the model to cpu again?
     # self.model.to("cpu")
 
-    loss = loss / tmpcnt 
-    accuracy = 100.0 * correct / tmptotal 
+    loss = loss / tmpcnt
+    accuracy = 100.0 * correct / tmptotal
 
     return loss, accuracy
 
 
 def create_custom_logger(logger, cfg: DictConfig):
 
-    dir = cfg.output_dirname  
+    dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
     output_filename = cfg.output_filename + "_server"
@@ -68,13 +69,29 @@ def create_custom_logger(logger, cfg: DictConfig):
     f_handler = logging.FileHandler(filename)
     c_handler.setLevel(logging.INFO)
     f_handler.setLevel(logging.INFO)
- 
 
     # Add handlers to the logger
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
 
     return logger
+
+
+def client_log(dir, output_filename):
+
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)
+
+    file_ext = ".txt"
+    filename = dir + "/%s%s" % (output_filename, file_ext)
+    uniq = 1
+    while os.path.exists(filename):
+        filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
+        uniq += 1
+
+    outfile = open(filename, "a")
+
+    return outfile
 
 
 def load_model(cfg: DictConfig):
@@ -99,7 +116,33 @@ def save_model_iteration(t, model, cfg: DictConfig):
     torch.save(model, file)
 
 
-def set_seed(seed=233): 
+def construct_projection_matrix(cfg, cid, client):
+
+    W = []
+
+    pca_dir = cfg.pca_dir + "_%s" % (cid)
+
+    for i in range(cfg.params_start, cfg.params_end):
+        client.model.load_state_dict(
+            torch.load(
+                os.path.join(pca_dir, str(i) + ".pt"),
+                map_location=torch.device(cfg.device),
+            )
+        )
+        W.append(client.get_model_param_vec(client.model))
+
+    W = np.array(W)
+
+    # Obtain base variables through PCA
+    pca = PCA(n_components=cfg.ncomponents)
+    pca.fit_transform(W)
+    P = np.array(pca.components_)
+    P = torch.from_numpy(P).to(client.device)
+
+    return P, pca.explained_variance_ratio_
+
+
+def set_seed(seed=233):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
