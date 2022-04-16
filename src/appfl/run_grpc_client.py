@@ -26,7 +26,12 @@ def update_model_state(comm, model, round_number):
 
 
 def run_client(
-    cfg: DictConfig, cid: int, model: nn.Module, train_data: Dataset, gpu_id: int = 0, test_dataset: Dataset = None
+    cfg: DictConfig,
+    cid: int,
+    model: nn.Module,
+    train_data: Dataset,
+    gpu_id: int = 0,
+    test_data: Dataset = Dataset(),
 ) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
@@ -37,7 +42,6 @@ def run_client(
         train_data (Dataset): training data
         gpu_id (int): GPU ID
     """
- 
 
     logger = logging.getLogger(__name__)
     if cfg.server.use_tls == True:
@@ -50,6 +54,10 @@ def run_client(
         device = f"cuda:{gpu_id}"
     else:
         device = cfg.device
+
+    """ log for clients"""
+    output_filename = cfg.output_filename + "_client_%s" % (cid)
+    outfile = client_log(cfg.output_dirname, output_filename)
 
     batch_size = cfg.train_data_batch_size
     if cfg.batch_training == False:
@@ -87,7 +95,19 @@ def run_client(
         logger.error(f"[Client ID: {cid: 03}] weight ({weight}) retrieval failed.")
         return
 
-    fed_client = eval(cfg.fed.clientname)(                
+    "Run validation if test data is given or the configuration is enabled."
+    if cfg.validation == True and len(test_data) > 0:
+        test_dataloader = DataLoader(
+            test_data,
+            num_workers=cfg.num_workers,
+            batch_size=cfg.test_data_batch_size,
+            shuffle=cfg.test_data_shuffle,
+        )
+    else:
+        cfg.validation = False
+        test_dataloader = None
+
+    fed_client = eval(cfg.fed.clientname)(
         cid,
         weight,
         copy.deepcopy(model),
@@ -96,33 +116,18 @@ def run_client(
             num_workers=cfg.num_workers,
             batch_size=batch_size,
             shuffle=cfg.train_data_shuffle,
-            pin_memory=True
+            pin_memory=True,
         ),
-        device,
         cfg,
+        outfile,
+        test_dataloader,
         **cfg.fed.args,
     )
 
-    ## 
-    if test_dataset != None:
-        test_dataloader = DataLoader(
-            test_dataset,
-            num_workers=cfg.num_workers,
-            batch_size=cfg.test_data_batch_size,
-            shuffle=cfg.test_data_shuffle,
-        )
-    else:
-        test_dataloader = None
-
-    ## name of parameters 
-    model_name=[]    
+    ## name of parameters
+    model_name = []
     for name, _ in fed_client.model.named_parameters():
         model_name.append(name)
-
-    
-    ## outputs      
-    output_filename = cfg.output_filename + "_client_%s" %(cid)
-    outfile, outdir =fed_client.write_result_title(output_filename)
 
     # Start federated learning.
     cur_round_number, job_todo = comm.get_job(Job.INIT)
@@ -144,7 +149,7 @@ def run_client(
                 prev_round_number = cur_round_number
 
                 time_start = time.time()
-                local_state, outfile = fed_client.update(outfile, outdir, test_dataloader)
+                local_state = fed_client.update()
                 time_end = time.time()
 
                 learning_time = time_end - time_start
@@ -169,7 +174,7 @@ def run_client(
                 send_time = time_end - time_start
                 logger.info(
                     f"[Client ID: {cid: 03} Round #: {cur_round_number: 03}] Trained (Time %.4f, Epoch {cfg.fed.args.num_local_epochs: 03}) and sent results back to the server (Elapsed %.4f)",
-                    learning_time,                    
+                    learning_time,
                     send_time,
                 )
             else:
@@ -189,6 +194,8 @@ def run_client(
             )
             # Update with the most recent weights before exit.
             update_model_state(comm, fed_client.model, cur_round_number)
+
+            outfile.close()
 
 
 if __name__ == "__main__":
