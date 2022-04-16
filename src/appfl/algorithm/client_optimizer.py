@@ -98,35 +98,4 @@ class ClientOptim(BaseClient):
         self.local_state["penalty"][self.id] = 0.0
 
         return self.local_state
-
-    def write_result(self, output_filename, W, P, explained_variance_ratio_):
-
-        dir = self.cfg.output_dirname
-        if os.path.isdir(dir) == False:
-            os.mkdir(dir)
-
-        file_ext = ".txt"
-        filename = dir + "/%s%s" % (output_filename, file_ext)
-        uniq = 1
-        while os.path.exists(filename):
-            filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
-            uniq += 1
-
-        outfile = open(filename, "w")
-
-        outfile.write("W: (%s, %s) \n" % (W.shape[0], W.shape[1]))
-        outfile.write("Ratio: %s \n" % (explained_variance_ratio_))
-        outfile.write("Sum: %s \n" % (sum(explained_variance_ratio_)))
-        outfile.write("P: (%s, %s) \n" % (P.shape[0], P.shape[1]))
-
-        title = "%10s %10s %10s %10s %10s %10s \n" % (
-            "Round",
-            "LocalEpoch",
-            "TrainLoss",
-            "TrainAccu",
-            "TestLoss",
-            "TestAccu",
-        )
-        outfile.write(title)
-
-        return outfile, dir
+ 

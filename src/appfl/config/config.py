@@ -41,6 +41,7 @@ class Config:
     reproduce: bool = True
 
     # PCA on Trajectory
+    projection: bool = False
     pca_dir: str = ""
     params_start: int=0
     params_end: int=49

@@ -338,29 +338,74 @@ class BaseClient:
         Each client can obtain a trajectory of iterates by training a model using the local data, i.e., w^1, w^2, ..., w^I, where w^i in R^J
         By conduting PCA (principle component analysis) using the "I" iterates, one can obtain a projection matrix "M X J" where M ( < I ) is the number of components.
     """
-        
-    def construct_projection_matrix(self):
 
+
+    def log_pca(self):
+  
+        self.outfile.write("Ratio: %s \n" % (self.EVR))
+        self.outfile.write("Sum: %s \n" % ( sum(self.EVR) ) )        
+        self.outfile.write("P: (%s, %s) \n" % (self.P.shape[0], self.P.shape[1])) 
+        self.outfile.flush() 
+
+    def construct_projection_matrix(self):
+ 
+        
         W = []
 
-        pca_dir = cfg.pca_dir + "_%s" % (cid)
+        pca_dir = self.cfg.pca_dir + "_%s" % (self.id)
 
-        for i in range(cfg.params_start, cfg.params_end):
-            client.model.load_state_dict(
+        for i in range(self.cfg.params_start, self.cfg.params_end):
+            self.model.load_state_dict(
                 torch.load(
-                    os.path.join(pca_dir, str(i) + ".pt"),
-                    map_location=torch.device(cfg.device),
+                    os.path.join(pca_dir, "%s.pt" %(i) ),
+                    map_location=torch.device(self.cfg.device),
                 )
             )
-            W.append(client.get_model_param_vec(client.model))
+            W.append(self.get_model_param_vec())
 
         W = np.array(W)
 
         # Obtain base variables through PCA
-        pca = PCA(n_components=cfg.ncomponents)
+        pca = PCA(n_components=self.cfg.ncomponents)
         pca.fit_transform(W)
         P = np.array(pca.components_)
-        P = torch.from_numpy(P).to(client.device)
+        P = torch.from_numpy(P).to(self.cfg.device)
 
         return P, pca.explained_variance_ratio_
 
+    def get_model_param_vec(self):
+        """
+        Return model parameters as a vector
+        """
+        vec = []
+        for _,param in self.model.named_parameters():
+            vec.append(param.detach().cpu().numpy().reshape(-1))
+        return np.concatenate(vec, 0)
+
+    def get_model_grad_vec(self):
+        # Return the model grad as a vector
+
+        vec = []
+        for _,param in self.model.named_parameters():
+            vec.append(param.grad.detach().reshape(-1))
+        return torch.cat(vec, 0)
+
+    def update_grad(self, grad_vec):
+        idx = 0
+        for _,param in self.model.named_parameters():
+            arr_shape = param.grad.shape
+            size = 1
+            for i in range(len(list(arr_shape))):
+                size *= arr_shape[i]
+            param.grad.data = grad_vec[idx:idx+size].reshape(arr_shape)
+            idx += size
+
+    def update_param(self, param_vec):
+        idx = 0
+        for _,param in self.model.named_parameters():
+            arr_shape = param.data.shape
+            size = 1
+            for i in range(len(list(arr_shape))):
+                size *= arr_shape[i]
+            param.data = param_vec[idx:idx+size].reshape(arr_shape)
+            idx += size    

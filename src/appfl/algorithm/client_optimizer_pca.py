@@ -26,7 +26,12 @@ class ClientOptimPCA(BaseClient):
 
         self.round = 0
 
+        ## construct
+        self.P, self.EVR = super(ClientOptimPCA, self).construct_projection_matrix()
+        super(ClientOptimPCA, self).log_pca()
         super(ClientOptimPCA, self).client_log_title()
+        
+        
 
     def update(self):
 
@@ -40,13 +45,13 @@ class ClientOptimPCA(BaseClient):
         for t in range(self.num_local_epochs):
 
             if self.cfg.validation == True and self.test_dataloader != None:
-                train_loss, train_accuracy = super(ClientOptim, self).client_validation(
+                train_loss, train_accuracy = super(ClientOptimPCA, self).client_validation(
                     self.dataloader
                 )
-                test_loss, test_accuracy = super(ClientOptim, self).client_validation(
+                test_loss, test_accuracy = super(ClientOptimPCA, self).client_validation(
                     self.test_dataloader
                 )
-                super(ClientOptim, self).client_log_content(
+                super(ClientOptimPCA, self).client_log_content(
                     t, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
@@ -59,6 +64,20 @@ class ClientOptimPCA(BaseClient):
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
                 loss.backward()
+
+                if self.cfg.projection:
+                    ## gradient
+                    grad = super(ClientOptimPCA, self).get_model_grad_vec()  
+            
+                    ## reduced gradient
+                    gk = torch.mm(self.P, grad.reshape(-1,1))
+                    
+                    ## back to original space
+                    grad_proj = torch.mm(self.P.transpose(0, 1), gk)                
+
+                    super(ClientOptimPCA, self).update_grad(grad_proj)
+
+
                 optimizer.step()
 
                 if self.clip_value != False:
@@ -88,7 +107,7 @@ class ClientOptimPCA(BaseClient):
             if self.clip_value != False:
                 sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            super(ClientOptimPCA, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """
         self.local_state = OrderedDict()
@@ -98,35 +117,3 @@ class ClientOptimPCA(BaseClient):
         self.local_state["penalty"][self.id] = 0.0
 
         return self.local_state
-
-    def write_result(self, output_filename, W, P, explained_variance_ratio_):
-
-        dir = self.cfg.output_dirname
-        if os.path.isdir(dir) == False:
-            os.mkdir(dir)
-
-        file_ext = ".txt"
-        filename = dir + "/%s%s" % (output_filename, file_ext)
-        uniq = 1
-        while os.path.exists(filename):
-            filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
-            uniq += 1
-
-        outfile = open(filename, "w")
-
-        outfile.write("W: (%s, %s) \n" % (W.shape[0], W.shape[1]))
-        outfile.write("Ratio: %s \n" % (explained_variance_ratio_))
-        outfile.write("Sum: %s \n" % (sum(explained_variance_ratio_)))
-        outfile.write("P: (%s, %s) \n" % (P.shape[0], P.shape[1]))
-
-        title = "%10s %10s %10s %10s %10s %10s \n" % (
-            "Round",
-            "LocalEpoch",
-            "TrainLoss",
-            "TrainAccu",
-            "TestLoss",
-            "TestAccu",
-        )
-        outfile.write(title)
-
-        return outfile, dir
