@@ -36,17 +36,27 @@ class Federated:
         {
             # User-defined loss function (pytorch format)
             "loss_type": "torch.nn.BCELoss()",
+            
             ## Server update
             "server_learning_rate": 0.01,
             "server_adapt_param": 0.001,
             "server_momentum_param_1": 0.9,
             "server_momentum_param_2": 0.99,
+            
             ## Clients optimizer
             "optim": "SGD",
             "num_local_epochs": 10,
             "optim_args": {
                 "lr": 0.001,
             },
+            
+            ## Projection
+            "projection": False,
+            "pca_dir": "",
+            "params_start": 0,
+            "params_end": 49,
+            "ncomponents": 40,            
+
             ## Differential Privacy
             ##  epsilon: False  (non-private)
             ##  epsilon: 1      (stronger privacy as the value decreases)

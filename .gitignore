@@ -3,7 +3,7 @@
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 note
-example/archive
+examples/archive
 examples/.DS_Store
 examples/save_models
 examples/outputs/*

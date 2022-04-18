@@ -25,6 +25,7 @@ class ClientOptim(BaseClient):
         self.loss_fn = eval(self.loss_type)
 
         self.round = 0
+        self.iter = 0
 
         super(ClientOptim, self).client_log_title()
 
@@ -75,8 +76,9 @@ class ClientOptim(BaseClient):
                     os.makedirs(path)
                 torch.save(
                     self.model.state_dict(),
-                    os.path.join(path, "%s_%s.pt" % (self.round, t)),
+                    os.path.join(path, "%s.pt" % (self.iter)),
                 )
+                self.iter +=1
 
         self.round += 1
 

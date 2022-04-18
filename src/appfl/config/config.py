@@ -40,13 +40,6 @@ class Config:
     # Reproducibility
     reproduce: bool = True
 
-    # PCA on Trajectory
-    projection: bool = False
-    pca_dir: str = ""
-    params_start: int=0
-    params_end: int=49
-    ncomponents: int=40
-    
     # Tensorboard
     use_tensorboard: bool = False
 

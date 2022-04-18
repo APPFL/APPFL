@@ -10,9 +10,9 @@ from torch.utils.data import DataLoader
 import copy
 import numpy as np
 
-class FedServer(BaseServer):
+class FedServerPCA(BaseServer):
     def __init__(self, weights, model, num_clients, device, **kwargs):
-        super(FedServer, self).__init__(weights, model, num_clients, device)
+        super(FedServerPCA, self).__init__(weights, model, num_clients, device)
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
 
@@ -38,8 +38,12 @@ class FedServer(BaseServer):
             ## TODO: Too LARGE (Reduceing gradient may be needed)
             # self.approx_H_matrix[name] = torch.eye( torch.flatten(self.model.state_dict()[name]).size()[0] )
             # print("H_shape=", self.approx_H_matrix[name].shape)
-   
 
+        ## construct projection
+        self.P = OrderedDict()
+        self.EVR = OrderedDict()
+        for id in range(self.num_clients):
+            self.P[id], self.EVR[id] = super(FedServerPCA, self).construct_projection_matrix(id)            
 
     def update_m_vector(self):
         for name, _ in self.model.named_parameters():
@@ -60,10 +64,10 @@ class FedServer(BaseServer):
 
         """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())
-        super(FedServer, self).primal_recover_from_local_states(local_states)
+        super(FedServerPCA, self).primal_recover_from_local_states(local_states)
 
         """ residual calculation """
-        super(FedServer, self).primal_residual_at_server()
+        super(FedServerPCA, self).primal_residual_at_server()
 
         """ change device """
         for i in range(self.num_clients):
@@ -71,10 +75,41 @@ class FedServer(BaseServer):
                 self.primal_states[i][name] = self.primal_states[i][name].to(
                     self.device
                 )
- 
+
+        """ vectorize """
+        param_vec={}
+        for id in range(self.num_clients):
+            vec = []
+            for name, _ in self.model.named_parameters():
+                vec.append(self.primal_states[id][name].detach().cpu().numpy().reshape(-1))
+            param_vec[id] = np.concatenate(vec, 0)
+
+            param_vec[id] = torch.tensor(param_vec[id], device = self.device)
+            
+            ## reduced  
+            param_vec[id] = torch.mm(self.P[id], param_vec[id].reshape(-1, 1))
+            
+            ## back to original space
+            param_vec[id] = torch.mm(self.P[id].transpose(0, 1), param_vec[id])
+            
+
+            idx = 0
+            for _,param in self.model.named_parameters():
+                arr_shape = param.data.shape
+                size = 1
+                for i in range(len(list(arr_shape))):
+                    size *= arr_shape[i]
+                self.primal_states[id][name] = param_vec[id][idx:idx+size].reshape(arr_shape)
+                idx += size    
+            
+            
 
         """ global_state calculation """
-        self.compute_step()
+        # self.compute_step()
+        self.compute_pseudo_gradient()
+        for name, _ in self.model.named_parameters():
+            self.step[name] = -self.pseudo_grad[name]
+
         for name, _ in self.model.named_parameters():
             self.global_state[name] += self.step[name]
 
@@ -83,11 +118,11 @@ class FedServer(BaseServer):
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:
-            title = super(FedServer, self).log_title()
+            title = super(FedServerPCA, self).log_title()
             logger.info(title)
 
-        contents = super(FedServer, self).log_contents(cfg, t)
+        contents = super(FedServerPCA, self).log_contents(cfg, t)
         logger.info(contents)
 
     def logging_summary(self, cfg, logger):
-        super(FedServer, self).log_summary(cfg, logger)
+        super(FedServerPCA, self).log_summary(cfg, logger)

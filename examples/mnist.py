@@ -24,20 +24,26 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--device", type=str, default="cpu")
 
-## dataset
+## dataset and model
+parser.add_argument("--model", type=str, default="CNN")
 parser.add_argument("--dataset", type=str, default="MNIST")
 parser.add_argument("--num_channel", type=int, default=1)
 parser.add_argument("--num_classes", type=int, default=10)
 parser.add_argument("--num_pixel", type=int, default=28)
+parser.add_argument("--train_data_batch_size", type=int, default=128)
+parser.add_argument("--test_data_batch_size", type=int, default=128)
+
 
 ## clients
+parser.add_argument("--clientname", type=str, default="ClientOptim")
 parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=100)
+ 
 
 ## server
-parser.add_argument("--server", type=str, default="ServerFedAvg")
+parser.add_argument("--servername", type=str, default="ServerFedAvg")
 parser.add_argument("--num_epochs", type=int, default=2)
 
 parser.add_argument("--server_lr", type=float, required=False)
@@ -47,6 +53,17 @@ parser.add_argument("--adapt_param", type=float, required=False)
 
 
 args = parser.parse_args()
+
+args.output_dirname = "./outputs_%s_%s_%s_%s_%s_%s_%s_nclients_%s" % (
+        args.dataset,
+        args.model,
+        args.servername,
+        args.clientname,
+        args.client_optimizer,
+        args.num_local_epochs,
+        args.client_lr,
+        args.num_clients
+    )
 
 if torch.cuda.is_available():
     args.device = "cuda"
@@ -122,18 +139,33 @@ def main():
     cfg = OmegaConf.structured(Config)
 
     cfg.device = args.device
+    cfg.save_model_state_dict = False
+
     cfg.reproduce = True
     if cfg.reproduce == True:
         set_seed(1)
+    
+    ## pca
+    cfg.projection = True
+    cfg.pca_dir = args.pca_dir
+    cfg.params_start = args.params_start
+    cfg.params_end = args.params_end
+    cfg.ncomponents = args.ncomponents        
+
+    ## dataset
+    cfg.train_data_batch_size = args.train_data_batch_size
+    cfg.test_data_batch_size = args.test_data_batch_size
+    cfg.train_data_shuffle = False
 
     ## clients
+    cfg.clientname = args.clientname
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
 
     ## server
-    cfg.fed.servername = args.server
+    cfg.fed.servername = args.servername
     cfg.num_epochs = args.num_epochs
 
     ## outputs
@@ -142,12 +174,8 @@ def main():
 
     cfg.save_model_state_dict = True
 
-    cfg.output_dirname = "./outputs_%s_%s_%s_%s" % (
-        args.dataset,
-        args.server,
-        args.client_optimizer,
-        args.num_clients
-    )
+    cfg.output_dirname = args.output_dirname
+
     if args.server_lr != None:
         cfg.fed.args.server_learning_rate = args.server_lr
         cfg.output_dirname += "_ServerLR_%s" % (args.server_lr)
@@ -206,10 +234,10 @@ def main():
                 cfg, comm, model, args.num_clients, test_dataset, args.dataset
             )
         else:
-            # rm.run_client(
-            #     cfg, comm, model, args.num_clients, train_datasets, test_dataset
-            # )
-            rm.run_client(cfg, comm, model, args.num_clients, train_datasets)
+            rm.run_client(
+                cfg, comm, model, args.num_clients, train_datasets, test_dataset
+            )
+            
         print("------DONE------", comm_rank)
     else:
         rs.run_serial(cfg, model, train_datasets, test_dataset, args.dataset)
