@@ -35,7 +35,7 @@ class ClientOptimPCA(BaseClient):
 
         """Inputs for the local model update"""
         if self.round == 0:
-            pca_dir = self.pca_dir + "_%s" % (self.id)
+            pca_dir = self.pca_dir + "/client_%s" % (self.id)
             # Resume from params_start
             self.model.load_state_dict(
                 torch.load(
@@ -49,21 +49,25 @@ class ClientOptimPCA(BaseClient):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
         """ Multiple local update """
+        start_time = time.time()
         for t in range(self.num_local_epochs):
 
-            if self.cfg.validation == True and self.test_dataloader != None:
+            # if self.cfg.validation == True and self.test_dataloader != None:
+            if self.test_dataloader != None:                
                 train_loss, train_accuracy = super(
                     ClientOptimPCA, self
                 ).client_validation(self.dataloader)
                 test_loss, test_accuracy = super(
                     ClientOptimPCA, self
                 ).client_validation(self.test_dataloader)
+                per_iter_time = time.time() - start_time
                 super(ClientOptimPCA, self).client_log_content(
-                    t, train_loss, train_accuracy, test_loss, test_accuracy
+                    t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
                 self.model.train()
-
+            
+            start_time = time.time()
             for data, target in self.dataloader:
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)

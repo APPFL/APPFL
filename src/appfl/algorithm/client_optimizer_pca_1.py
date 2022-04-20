@@ -52,6 +52,7 @@ class ClientOptimPCA1(BaseClient):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
         """ Multiple local update """
+        start_time = time.time()
         for t in range(self.num_local_epochs):
 
             if self.cfg.validation == True and self.test_dataloader != None:
@@ -61,12 +62,14 @@ class ClientOptimPCA1(BaseClient):
                 test_loss, test_accuracy = super(
                     ClientOptimPCA1, self
                 ).client_validation(self.test_dataloader)
+                per_iter_time = time.time() - start_time
                 super(ClientOptimPCA1, self).client_log_content(
-                    t, train_loss, train_accuracy, test_loss, test_accuracy
+                    t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
                 self.model.train()
 
+            start_time = time.time()
             for data, target in self.dataloader:
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
@@ -75,17 +78,17 @@ class ClientOptimPCA1(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
-                if self.cfg.projection:
-                    ## gradient
-                    grad = super(ClientOptimPCA1, self).get_model_grad_vec()
+                
+                ## gradient
+                grad = super(ClientOptimPCA1, self).get_model_grad_vec()
 
-                    ## reduced gradient
-                    gk = torch.mm(self.P, grad.reshape(-1, 1))
+                ## reduced gradient
+                gk = torch.mm(self.P, grad.reshape(-1, 1))
 
-                    ## back to original space
-                    grad_proj = torch.mm(self.P.transpose(0, 1), gk)
+                ## back to original space
+                grad_proj = torch.mm(self.P.transpose(0, 1), gk)
 
-                    super(ClientOptimPCA1, self).update_grad(grad_proj)
+                super(ClientOptimPCA1, self).update_grad(grad_proj)
 
                 optimizer.step()
  
