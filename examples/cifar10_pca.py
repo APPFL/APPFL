@@ -195,9 +195,7 @@ def main():
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
-    if args.client_optimizer == "SGD":
-        cfg.fed.args.optim_args.momentum = 0.9
-        cfg.fed.args.optim_args.weight_decay = 1e-4
+    
 
     ## server
     cfg.fed.servername = args.servername
