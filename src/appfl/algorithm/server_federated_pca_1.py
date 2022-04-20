@@ -34,23 +34,23 @@ class FedServerPCA1(BaseServer):
         for id in range(self.num_clients):
             self.param_vec[id] = self.param_vec[id].to(self.device)
 
-            print("server_param_vec_red=", self.param_vec[id].shape)
+            # print("server_param_vec_red=", self.param_vec[id].shape)
         
             ## back to original space
             self.param_vec[id] = torch.mm(self.P[id].transpose(0, 1), self.param_vec[id])
 
-            print("server_param_vec=", self.param_vec[id].shape)
+            # print("server_param_vec=", self.param_vec[id].shape)
             
             param_vec_avg += (1.0/self.num_clients) * self.param_vec[id]
 
 
-        print("Before=", self.model.state_dict()["linear.bias"])
-        print("------")
-        print(param_vec_avg)
+        # print("Before=", self.model.state_dict()["linear.bias"])
+        # print("------")
+        # print(param_vec_avg)
         super(FedServerPCA1, self).update_param(param_vec_avg)             
 
         
-        print("After=", self.model.state_dict()["linear.bias"])
+        # print("After=", self.model.state_dict()["linear.bias"])
 
 
         idx = 0
@@ -67,7 +67,7 @@ class FedServerPCA1(BaseServer):
         """ model update """
         self.model.load_state_dict(self.global_state)
 
-        print("22After=", self.model.state_dict()["linear.bias"])
+        # print("22After=", self.model.state_dict()["linear.bias"])
         
  
 
