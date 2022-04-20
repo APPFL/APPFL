@@ -25,8 +25,9 @@ import logging
 from torch.utils.data import DataLoader
 
 """
-python cifar10.py --clientname=ClientOptim --num_clients=1
-mpiexec -np 5 python cifar10.py --clientname=ClientOptim --num_clients=4
+
+python cifar10.py --clientname=ClientOptimPCA --num_clients=1 --pca_dir=./archive/CIFAR10_1client/client
+mpiexec -np 5 python cifar10.py --clientname=ClientOptimPCA --num_clients=4 --pca_dir=./archive/CIFAR10_4clients/state_client
 """
 
 """ read arguments """
@@ -52,7 +53,13 @@ parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
- 
+
+## pca
+parser.add_argument("--pca_dir", type=str, default="./archive/CIFAR10_1client_test/client")
+parser.add_argument("--params_start", type=int, default=0)
+parser.add_argument("--params_end", type=int, default=49)
+parser.add_argument("--ncomponents", type=int, default=40)
+
 
 ## server
 parser.add_argument("--servername", type=str, default="ServerFedAvg")
@@ -65,17 +72,18 @@ parser.add_argument("--adapt_param", type=float, required=False)
 
 args = parser.parse_args()
 
-args.output_dirname = "./outputs_%s_%s_%s_round_%s_%s_%s_%s_%s_nclients_%s" % (
-        args.dataset,
-        args.model,
-        args.servername,
-        args.num_epochs,
-        args.clientname,
-        args.client_optimizer,
-        args.num_local_epochs,
-        args.client_lr,
-        args.num_clients
-    )
+args.output_dirname = "./output_pcadir_%s_%s_%s_%s_round_%s_%s_%s_%s_epoch_%s_nclient_%s" % (
+         args.pca_dir,
+         args.dataset,
+         args.model,
+         args.servername,
+         args.num_epochs,
+         args.clientname,
+         args.client_optimizer,        
+         args.client_lr,
+         args.num_local_epochs,
+         args.num_clients
+     )
  
 
 if torch.cuda.is_available():
@@ -172,7 +180,12 @@ def main():
     if cfg.reproduce == True:
         set_seed(1)
 
-    
+    ## pca
+    cfg.fed.args.pca_dir = "./archive/" + args.pca_dir
+    cfg.fed.args.params_start = args.params_start
+    cfg.fed.args.params_end = args.params_end
+    cfg.fed.args.ncomponents = args.ncomponents
+
     ## dataset
     cfg.train_data_batch_size = args.train_data_batch_size
     cfg.test_data_batch_size = args.test_data_batch_size
