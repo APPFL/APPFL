@@ -38,7 +38,8 @@ class ClientOptim(BaseClient):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
         """ Multiple local update """
-        for t in range(self.num_local_epochs):
+        start_time=time.time()
+        for t in range(self.num_local_epochs):            
 
             if self.cfg.validation == True and self.test_dataloader != None:
                 train_loss, train_accuracy = super(ClientOptim, self).client_validation(
@@ -47,12 +48,14 @@ class ClientOptim(BaseClient):
                 test_loss, test_accuracy = super(ClientOptim, self).client_validation(
                     self.test_dataloader
                 )
+                per_iter_time = time.time() - start_time
                 super(ClientOptim, self).client_log_content(
-                    t, train_loss, train_accuracy, test_loss, test_accuracy
+                    t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
                 self.model.train()
-
+            
+            start_time=time.time()
             for data, target in self.dataloader:
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)

@@ -173,7 +173,8 @@ class BaseServer:
 
 
     def log_pca(self):
-  
+
+        self.outfile.write("pca_dir: %s \n" %(self.pca_dir) )
         self.outfile.write("Ratio: %s \n" % (self.EVR))
         self.outfile.write("Sum: %s \n" % ( sum(self.EVR) ) )        
         self.outfile.write("P: (%s, %s) \n" % (self.P.shape[0], self.P.shape[1])) 
@@ -183,7 +184,7 @@ class BaseServer:
   
         W = []
 
-        pca_dir = self.pca_dir + "_%s" % (id)
+        pca_dir = self.pca_dir + "/client_%s" % (id)
 
         for i in range(self.params_start, self.params_end):
             self.model.load_state_dict(
@@ -330,9 +331,10 @@ class BaseClient:
             self.penalty = self.penalty / self.residual_balancing.tau
 
     def client_log_title(self):
-        title = "%10s %10s %10s %10s %10s %10s \n" % (
-            "Round",
+        title = "%10s %10s %10s %10s %10s %10s %10s \n" % (
+            "Round",            
             "LocalEpoch",
+            "PerIter[s]",
             "TrainLoss",
             "TrainAccu",
             "TestLoss",
@@ -342,11 +344,12 @@ class BaseClient:
         self.outfile.flush()
 
     def client_log_content(
-        self, t, train_loss, train_accuracy, test_loss, test_accuracy
+        self, t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
     ):
-        contents = "%10s %10s %10.4f %10.4f %10.4f %10.4f \n" % (
+        contents = "%10s %10s %10.2f %10.4f %10.4f %10.4f %10.4f \n" % (
             self.round,
             t,
+            per_iter_time,
             train_loss,
             train_accuracy,
             test_loss,
@@ -455,7 +458,8 @@ class BaseClient:
 
 
     def log_pca(self):
-  
+        
+        self.outfile.write("pca_dir: %s \n" %(self.pca_dir) )
         self.outfile.write("Ratio: %s \n" % (self.EVR))
         self.outfile.write("Sum: %s \n" % ( sum(self.EVR) ) )        
         self.outfile.write("P: (%s, %s) \n" % (self.P.shape[0], self.P.shape[1])) 
@@ -465,7 +469,7 @@ class BaseClient:
   
         W = []
 
-        pca_dir = self.pca_dir + "_%s" % (self.id)
+        pca_dir = self.pca_dir + "/client_%s" % (self.id)
 
         for i in range(self.params_start, self.params_end):
             self.model.load_state_dict(

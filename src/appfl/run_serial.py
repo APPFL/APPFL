@@ -122,7 +122,6 @@ def run_serial(
         local_states = [OrderedDict()]
 
         global_state = server.model.state_dict()
- 
 
         local_update_start = time.time()
         for k, client in enumerate(clients):            
