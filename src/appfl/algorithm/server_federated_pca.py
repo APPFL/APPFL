@@ -88,13 +88,16 @@ class FedServerPCA(BaseServer):
             
             ## reduced  
             param_vec[id] = torch.mm(self.P[id], param_vec[id].reshape(-1, 1))
-            
+
+             
             ## back to original space
             param_vec[id] = torch.mm(self.P[id].transpose(0, 1), param_vec[id])
+
+            # print("id=", id, "  param_vec=", param_vec[id])
             
 
             idx = 0
-            for _,param in self.model.named_parameters():
+            for name, param in self.model.named_parameters():
                 arr_shape = param.data.shape
                 size = 1
                 for i in range(len(list(arr_shape))):
@@ -115,6 +118,7 @@ class FedServerPCA(BaseServer):
 
         """ model update """
         self.model.load_state_dict(self.global_state)
+ 
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:

@@ -13,11 +13,11 @@ import numpy as np
 import time
 
 
-class ClientOptimPCA(BaseClient):
+class ClientOptimPCA2(BaseClient):
     def __init__(
         self, id, weight, model, dataloader, cfg, outfile, test_dataloader, **kwargs
     ):
-        super(ClientOptimPCA, self).__init__(
+        super(ClientOptimPCA2, self).__init__(
             id, weight, model, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
@@ -27,11 +27,11 @@ class ClientOptimPCA(BaseClient):
         self.round = 0
 
         ## construct
-        self.P, self.EVR = super(ClientOptimPCA, self).construct_projection_matrix()
-        super(ClientOptimPCA, self).log_pca()
-        super(ClientOptimPCA, self).client_log_title()
+        self.P, self.EVR = super(ClientOptimPCA2, self).construct_projection_matrix()
+        super(ClientOptimPCA2, self).log_pca()
+        super(ClientOptimPCA2, self).client_log_title()
 
-    def update(self):
+    def update(self, global_state_vec):
 
         """Inputs for the local model update"""
         if self.round == 0:
@@ -43,19 +43,24 @@ class ClientOptimPCA(BaseClient):
                     map_location=torch.device(self.cfg.device),
                 )
             )
-        # else: 
-        #     P = copy.deepcopy(torch.sqrt(self.P))
-        #     global_state_vec = super(ClientOptimPCA, self).get_model_param_vec()
-        #     global_state_vec = torch.tensor(global_state_vec, device=self.cfg.device)
-        #     # ## reduced gradient
-        #     # global_state_vec_red = torch.mm(P, global_state_vec.reshape(-1, 1))
+        else: 
+            
+            local_state_vec = torch.mm(self.P.transpose(0, 1), global_state_vec.reshape(-1, 1))
+ 
 
-        #     # ## back to original space
-        #     # global_state_vec = torch.mm(P.transpose(0, 1), global_state_vec_red)
+            super(ClientOptimPCA2, self).update_param(local_state_vec)
 
-        #     super(ClientOptimPCA, self).update_param(global_state_vec)
-
-
+            train_loss, train_accuracy = super(
+                    ClientOptimPCA2, self
+                ).client_validation(self.dataloader)
+            test_loss, test_accuracy = super(
+                    ClientOptimPCA2, self
+                ).client_validation(self.test_dataloader)
+            
+            print("train_loss=",train_loss, " train_accuracy=",train_accuracy)
+            print("test_loss=",test_loss, " test_accuracy=",test_accuracy)
+            stop
+ 
 
         self.model.to(self.cfg.device)
 
@@ -67,13 +72,13 @@ class ClientOptimPCA(BaseClient):
 
             if self.test_dataloader != None:
                 train_loss, train_accuracy = super(
-                    ClientOptimPCA, self
+                    ClientOptimPCA2, self
                 ).client_validation(self.dataloader)
                 test_loss, test_accuracy = super(
-                    ClientOptimPCA, self
+                    ClientOptimPCA2, self
                 ).client_validation(self.test_dataloader)
                 per_iter_time = time.time() - start_time
-                super(ClientOptimPCA, self).client_log_content(
+                super(ClientOptimPCA2, self).client_log_content(
                     t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
@@ -89,25 +94,32 @@ class ClientOptimPCA(BaseClient):
                 loss.backward()
  
                 ## gradient
-                grad = super(ClientOptimPCA, self).get_model_grad_vec()
+                grad = super(ClientOptimPCA2, self).get_model_grad_vec()
 
                 ## reduced gradient
                 gk = torch.mm(self.P, grad.reshape(-1, 1))
 
                 ## back to original space
                 grad_proj = torch.mm(self.P.transpose(0, 1), gk)                    
-                super(ClientOptimPCA, self).update_grad(grad_proj)                
+                super(ClientOptimPCA2, self).update_grad(grad_proj)                
 
                 optimizer.step()
  
 
         self.round += 1
+
+        ## Reduction 
+        param_vec = super(ClientOptimPCA2, self).get_model_param_vec()        
+        param_vec = torch.tensor(param_vec, device = self.cfg.device)        
+        param_vec = param_vec.reshape(-1, 1)        
+        param_vec = torch.mm(self.P, param_vec) 
  
-        self.primal_state = copy.deepcopy(self.model.state_dict())
+        # self.primal_state = copy.deepcopy(self.model.state_dict())
  
         """ Update local_state """
         self.local_state = OrderedDict()
-        self.local_state["primal"] = copy.deepcopy(self.primal_state)        
+        # self.local_state["primal"] = copy.deepcopy(self.primal_state)   
+        self.local_state["param_vec"] = param_vec     
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0        

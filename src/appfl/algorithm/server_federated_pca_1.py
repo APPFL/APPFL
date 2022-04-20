@@ -16,13 +16,49 @@ class FedServerPCA1(BaseServer):
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
  
-        ## construct
+        self.step = OrderedDict()
+        """ Group 1 """
+        self.pseudo_grad = OrderedDict()
+        self.m_vector = OrderedDict()
+        self.v_vector = OrderedDict()
+        for name, _ in self.model.named_parameters():
+            self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name])
+            self.v_vector[name] = (
+                torch.zeros_like(self.model.state_dict()[name])
+                + self.server_adapt_param
+            )
+        """ Group 2 """
+        self.pseudo_grad_vec = OrderedDict()
+        self.model_size = OrderedDict()
+        self.approx_H_matrix = OrderedDict()
+        for name, _ in self.model.named_parameters():
+            self.model_size[name] = self.model.state_dict()[name].size()
+            # print("flat size=", torch.flatten(self.model.state_dict()[name]).size())
+
+            ## TODO: Too LARGE (Reduceing gradient may be needed)
+            # self.approx_H_matrix[name] = torch.eye( torch.flatten(self.model.state_dict()[name]).size()[0] )
+            # print("H_shape=", self.approx_H_matrix[name].shape)
+
+        ## construct projection
         self.P = OrderedDict()
         self.EVR = OrderedDict()
         for id in range(self.num_clients):
-            self.P[id], self.EVR[id] = super(FedServerPCA1, self).construct_projection_matrix(id)
-        
-        
+            self.P[id], self.EVR[id] = super(FedServerPCA1, self).construct_projection_matrix(id)            
+
+    def update_m_vector(self):
+        for name, _ in self.model.named_parameters():
+            self.m_vector[name] = (
+                self.server_momentum_param_1 * self.m_vector[name]
+                + (1.0 - self.server_momentum_param_1) * self.pseudo_grad[name]
+            )
+
+    def compute_pseudo_gradient(self):
+        for name, _ in self.model.named_parameters():
+            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
+            for i in range(self.num_clients):
+                self.pseudo_grad[name] += self.weights[i] * (
+                    self.global_state[name] - self.primal_states[i][name]
+                )      
         
     def update(self, local_states: OrderedDict):
 
@@ -33,41 +69,34 @@ class FedServerPCA1(BaseServer):
         param_vec_avg = 0
         for id in range(self.num_clients):
             self.param_vec[id] = self.param_vec[id].to(self.device)
-
-            # print("server_param_vec_red=", self.param_vec[id].shape)
-        
+ 
             ## back to original space
             self.param_vec[id] = torch.mm(self.P[id].transpose(0, 1), self.param_vec[id])
+ 
 
-            # print("server_param_vec=", self.param_vec[id].shape)
+            idx = 0
+            for name, param in self.model.named_parameters():
+                arr_shape = param.data.shape
+                size = 1
+                for i in range(len(list(arr_shape))):
+                    size *= arr_shape[i]
+                self.primal_states[id][name] = self.param_vec[id][idx:idx+size].reshape(arr_shape)
+                idx += size    
+
             
-            param_vec_avg += (1.0/self.num_clients) * self.param_vec[id]
+            
+        """ global_state calculation """
+        # self.compute_step()
+        self.compute_pseudo_gradient()
+        for name, _ in self.model.named_parameters():
+            self.step[name] = -self.pseudo_grad[name]
 
-
-        # print("Before=", self.model.state_dict()["linear.bias"])
-        # print("------")
-        # print(param_vec_avg)
-        super(FedServerPCA1, self).update_param(param_vec_avg)             
-
-        
-        # print("After=", self.model.state_dict()["linear.bias"])
-
-
-        idx = 0
-        for name, param in self.model.named_parameters():
-            arr_shape = param.data.shape
-            size = 1
-            for i in range(len(list(arr_shape))):
-                size *= arr_shape[i]
-            self.global_state[name] = param_vec_avg[idx:idx+size].reshape(arr_shape)
-            idx += size
-
-        
+        for name, _ in self.model.named_parameters():
+            self.global_state[name] += self.step[name]
 
         """ model update """
         self.model.load_state_dict(self.global_state)
-
-        # print("22After=", self.model.state_dict()["linear.bias"])
+ 
         
  
 

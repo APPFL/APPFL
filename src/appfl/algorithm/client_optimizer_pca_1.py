@@ -91,12 +91,10 @@ class ClientOptimPCA1(BaseClient):
         self.round += 1
 
         ## Reduction 
-        param_vec = super(ClientOptimPCA1, self).get_model_param_vec()
-        # print("client_param_vec=", param_vec.shape)
+        param_vec = super(ClientOptimPCA1, self).get_model_param_vec()        
         param_vec = torch.tensor(param_vec, device = self.cfg.device)        
         param_vec = param_vec.reshape(-1, 1)        
-        param_vec = torch.mm(self.P, param_vec) 
-        # print("client_param_vec_reduced=", param_vec.shape)
+        param_vec = torch.mm(self.P, param_vec)         
  
         # self.primal_state = copy.deepcopy(self.model.state_dict())
  
