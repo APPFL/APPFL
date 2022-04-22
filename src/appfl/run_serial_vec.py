@@ -122,7 +122,7 @@ def run_serial(
         per_iter_start = time.time()
 
         local_states = [OrderedDict()]
-        print("global_state_vec=", global_state_vec)
+        # print("global_state_vec=", global_state_vec)
         local_update_start = time.time()
         for k, client in enumerate(clients):            
  
