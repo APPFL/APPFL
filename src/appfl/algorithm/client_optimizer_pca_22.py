@@ -95,10 +95,17 @@ class ClientOptimPCA22(BaseClient):
                 ## reduced gradient
                 gk = torch.mm(self.P, grad.reshape(-1, 1))
         
-                local_state_vec_red = local_state_vec_red - self.optim_args.lr * gk
+                # local_state_vec_red = local_state_vec_red - self.optim_args.lr * gk
+                local_state_vec_red = local_state_vec_red - 100 * gk
  
 
                 local_state_vec = torch.mm(self.P.transpose(0, 1), local_state_vec_red)
+
+
+                print("-------1111")
+                print("train_loss=", train_loss, " train_accuracy=", train_accuracy)
+                print("test_loss=", test_loss, " test_accuracy=", test_accuracy)
+
 
                 super(ClientOptimPCA22, self).update_param(local_state_vec)
 
@@ -108,9 +115,12 @@ class ClientOptimPCA22(BaseClient):
                 test_loss, test_accuracy = super(
                     ClientOptimPCA22, self
                 ).client_validation(self.test_dataloader)
+                print("-------2222")
+                print("train_loss=", train_loss, " train_accuracy=", train_accuracy)
+                print("test_loss=", test_loss, " test_accuracy=", test_accuracy)
         
 
- 
+            stop
 
         self.round += 1
  

@@ -13,11 +13,11 @@ import numpy as np
 import time
 
 
-class ClientOptimPCA2(BaseClient):
+class ClientOptimPCA21(BaseClient):
     def __init__(
         self, id, weight, model, dataloader, cfg, outfile, test_dataloader, **kwargs
     ):
-        super(ClientOptimPCA2, self).__init__(
+        super(ClientOptimPCA21, self).__init__(
             id, weight, model, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
@@ -27,9 +27,9 @@ class ClientOptimPCA2(BaseClient):
         self.round = 0
 
         ## construct
-        self.P, self.EVR = super(ClientOptimPCA2, self).construct_projection_matrix()
-        super(ClientOptimPCA2, self).log_pca()
-        super(ClientOptimPCA2, self).client_log_title()
+        self.P, self.EVR = super(ClientOptimPCA21, self).construct_projection_matrix()
+        super(ClientOptimPCA21, self).log_pca()
+        super(ClientOptimPCA21, self).client_log_title()
 
     def update(self, global_state_vec):
 
@@ -45,21 +45,10 @@ class ClientOptimPCA2(BaseClient):
             )
         else: 
             
-            local_state_vec = torch.mm(self.P.transpose(0, 1), global_state_vec.reshape(-1, 1))
+            local_state_vec = torch.mm(self.P.transpose(0, 1), global_state_vec)
+  
+            super(ClientOptimPCA21, self).update_param(local_state_vec)
  
-
-            super(ClientOptimPCA2, self).update_param(local_state_vec)
-
-            train_loss, train_accuracy = super(
-                    ClientOptimPCA2, self
-                ).client_validation(self.dataloader)
-            test_loss, test_accuracy = super(
-                    ClientOptimPCA2, self
-                ).client_validation(self.test_dataloader)
-            
-            print("train_loss=",train_loss, " train_accuracy=",train_accuracy)
-            print("test_loss=",test_loss, " test_accuracy=",test_accuracy)
-            stop
  
 
         self.model.to(self.cfg.device)
@@ -72,13 +61,13 @@ class ClientOptimPCA2(BaseClient):
 
             if self.test_dataloader != None:
                 train_loss, train_accuracy = super(
-                    ClientOptimPCA2, self
+                    ClientOptimPCA21, self
                 ).client_validation(self.dataloader)
                 test_loss, test_accuracy = super(
-                    ClientOptimPCA2, self
+                    ClientOptimPCA21, self
                 ).client_validation(self.test_dataloader)
                 per_iter_time = time.time() - start_time
-                super(ClientOptimPCA2, self).client_log_content(
+                super(ClientOptimPCA21, self).client_log_content(
                     t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
@@ -94,14 +83,14 @@ class ClientOptimPCA2(BaseClient):
                 loss.backward()
  
                 ## gradient
-                grad = super(ClientOptimPCA2, self).get_model_grad_vec()
+                grad = super(ClientOptimPCA21, self).get_model_grad_vec()
 
                 ## reduced gradient
                 gk = torch.mm(self.P, grad.reshape(-1, 1))
 
                 ## back to original space
                 grad_proj = torch.mm(self.P.transpose(0, 1), gk)                    
-                super(ClientOptimPCA2, self).update_grad(grad_proj)                
+                super(ClientOptimPCA21, self).update_grad(grad_proj)                
 
                 optimizer.step()
  
@@ -109,7 +98,7 @@ class ClientOptimPCA2(BaseClient):
         self.round += 1
 
         ## Reduction 
-        param_vec = super(ClientOptimPCA2, self).get_model_param_vec()        
+        param_vec = super(ClientOptimPCA21, self).get_model_param_vec()        
         param_vec = torch.tensor(param_vec, device = self.cfg.device)        
         param_vec = param_vec.reshape(-1, 1)        
         param_vec = torch.mm(self.P, param_vec) 
