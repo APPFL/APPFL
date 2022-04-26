@@ -7,12 +7,13 @@ from .client_optimizer_pca import *
 from .client_optimizer_pca_1 import *
 from .client_optimizer_pca_21 import *
 from .client_optimizer_pca_22 import *
+from .client_optimizer_pca_3 import *
 
 from .server_federated import *
 from .server_federated_pca import *
 from .server_federated_pca_1 import *
 from .server_federated_pca_2 import *
-
+from .server_federated_pca_3 import *
 
 from .server_fed_avg import *
 from .server_fed_avgmom import *

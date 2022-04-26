@@ -33,6 +33,7 @@ class BaseServer:
         self.penalty = OrderedDict()
         self.prim_res = 0
         self.dual_res = 0
+        self.reduced_grad_vec = OrderedDict()
         self.param_vec = OrderedDict()
         self.global_state = OrderedDict()
         self.primal_states = OrderedDict()
@@ -56,6 +57,12 @@ class BaseServer:
     def set_weights(self, weights: OrderedDict):
         for key, value in weights.items():
             self.weights[key] = value
+
+    def reduced_grad_vec_recover_from_local_states(self, local_states):
+        for _, states in enumerate(local_states):
+            if states is not None:
+                for sid, state in states.items():
+                    self.reduced_grad_vec[sid] = copy.deepcopy(state["reduced_grad"])
 
     def param_vec_recover_from_local_states(self, local_states):
         for _, states in enumerate(local_states):
@@ -202,6 +209,14 @@ class BaseServer:
         pca.fit_transform(W)
         P = np.array(pca.components_)
         P = torch.from_numpy(P).to(self.device)
+
+        # 
+        self.model.load_state_dict(
+            torch.load(
+                os.path.join(pca_dir, "0.pt" ),
+                map_location=torch.device(self.device),
+            )
+        )        
 
         return P, pca.explained_variance_ratio_
 
@@ -487,6 +502,14 @@ class BaseClient:
         pca.fit_transform(W)
         P = np.array(pca.components_)
         P = torch.from_numpy(P).to(self.cfg.device)
+
+        # 
+        self.model.load_state_dict(
+            torch.load(
+                os.path.join(pca_dir, "0.pt" ),
+                map_location=torch.device(self.cfg.device),
+            )
+        )
 
         return P, pca.explained_variance_ratio_
 

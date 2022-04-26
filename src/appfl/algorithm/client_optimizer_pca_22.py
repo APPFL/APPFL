@@ -44,18 +44,52 @@ class ClientOptimPCA22(BaseClient):
                 )
             )
 
+                  
+
             local_state_vec = super(ClientOptimPCA22, self).get_model_param_vec()       
-            local_state_vec = torch.tensor(local_state_vec, device = self.cfg.device)        
-            local_state_vec_red = torch.mm(self.P, local_state_vec.reshape(-1, 1))
+            local_state_vec = torch.tensor(local_state_vec, device = self.cfg.device)      
+            local_state_vec = local_state_vec.reshape(-1, 1)  
+            local_state_vec_red = torch.mm(self.P, local_state_vec)
+
+            #############################################
+            train_loss, train_accuracy = super(
+                    ClientOptimPCA22, self
+                ).client_validation(self.dataloader)
+            test_loss, test_accuracy = super(
+                ClientOptimPCA22, self
+            ).client_validation(self.test_dataloader)
+            
+            print("===")
+            print("train_loss=", train_loss, " train_accuracy=",train_accuracy)
+            print("test_loss=", test_loss, " test_accuracy=",test_accuracy)      
+            print("local_state_vec=", local_state_vec)
+
+            print("P=",  self.P   )
+            ##
+            local_state_vec = 0.1 * torch.mm(self.P.transpose(0, 1), local_state_vec_red)
+            
+            super(ClientOptimPCA22, self).update_param(local_state_vec)
+
+            train_loss, train_accuracy = super(
+                    ClientOptimPCA22, self
+                ).client_validation(self.dataloader)
+            test_loss, test_accuracy = super(
+                ClientOptimPCA22, self
+            ).client_validation(self.test_dataloader)
+            print("===")
+            print("train_loss=", train_loss, " train_accuracy=",train_accuracy)
+            print("test_loss=", test_loss, " test_accuracy=",test_accuracy)
+            print("local_state_vec=", local_state_vec)
+
+            local_state_vec = super(ClientOptimPCA22, self).get_model_param_vec()       
+
+            print("===")
+            print("local_state_vec=", local_state_vec)
+            stop
 
         else:
             local_state_vec_red = copy.deepcopy(global_state_vec_red)
-            local_state_vec = torch.mm(self.P.transpose(0, 1), local_state_vec_red.reshape(-1, 1))
-            super(ClientOptimPCA22, self).update_param(local_state_vec)
 
-
-         
- 
 
         self.model.to(self.cfg.device)
 
@@ -64,6 +98,7 @@ class ClientOptimPCA22(BaseClient):
         """ Multiple local update """
         start_time=time.time()
         for t in range(self.num_local_epochs):
+
  
             if self.test_dataloader != None:                
 
@@ -79,9 +114,13 @@ class ClientOptimPCA22(BaseClient):
                 )
                 ## return to train mode
                 self.model.train()
+            stop
             
+            tmp_cnt = 0
             start_time=time.time()
             for data, target in self.dataloader:
+                tmp_cnt += 1
+                
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
                 optimizer.zero_grad()
@@ -89,38 +128,30 @@ class ClientOptimPCA22(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
  
-                ## gradient
-                grad = super(ClientOptimPCA22, self).get_model_grad_vec()
+                # ## gradient
+                # grad = super(ClientOptimPCA22, self).get_model_grad_vec()
 
-                ## reduced gradient
-                gk = torch.mm(self.P, grad.reshape(-1, 1))
+                # print("Grad=", grad)
+                # stop
+
+                # ## reduced gradient
+                # gk = torch.mm(self.P, grad.reshape(-1, 1))
         
+                # print("================================")
+                # print("local_state_vec=", local_state_vec)
+                # print("local_state_vec_red=", local_state_vec_red)
+                # print("gk=", gk)
                 # local_state_vec_red = local_state_vec_red - self.optim_args.lr * gk
-                local_state_vec_red = local_state_vec_red - 100 * gk
+                # local_state_vec_red = local_state_vec_red - 1 * gk
  
 
-                local_state_vec = torch.mm(self.P.transpose(0, 1), local_state_vec_red)
+                 
+
+                # if tmp_cnt == 3:
+                #     stop
 
 
-                print("-------1111")
-                print("train_loss=", train_loss, " train_accuracy=", train_accuracy)
-                print("test_loss=", test_loss, " test_accuracy=", test_accuracy)
-
-
-                super(ClientOptimPCA22, self).update_param(local_state_vec)
-
-                train_loss, train_accuracy = super(
-                    ClientOptimPCA22, self
-                ).client_validation(self.dataloader)
-                test_loss, test_accuracy = super(
-                    ClientOptimPCA22, self
-                ).client_validation(self.test_dataloader)
-                print("-------2222")
-                print("train_loss=", train_loss, " train_accuracy=", train_accuracy)
-                print("test_loss=", test_loss, " test_accuracy=", test_accuracy)
-        
-
-            stop
+            # stop
 
         self.round += 1
  

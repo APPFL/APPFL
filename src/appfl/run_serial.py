@@ -73,7 +73,7 @@ def run_serial(
             shuffle=cfg.test_data_shuffle,
         )
     else:
-        cfg.validation = False
+        cfg.validation = False   
 
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), cfg.num_clients, cfg.device, **cfg.fed.args
@@ -121,7 +121,7 @@ def run_serial(
 
         local_states = [OrderedDict()]
 
-        global_state = server.model.state_dict()
+        global_state = server.model.state_dict()        
 
         local_update_start = time.time()
         for k, client in enumerate(clients):            

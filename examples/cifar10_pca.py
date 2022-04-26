@@ -234,11 +234,16 @@ def main():
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
 
     ## loading models
-    cfg.load_model = False
+    cfg.load_model = True
     if cfg.load_model == True:
-        cfg.load_model_dirname = "./save_models"
-        cfg.load_model_filename = "Model"
-        model = load_model(cfg)
+        pca_dir = cfg.fed.args.pca_dir  + "/client_0" 
+        # Resume from params_start
+        model.load_state_dict(
+            torch.load(
+                os.path.join(pca_dir, "0.pt"),
+                map_location=torch.device(cfg.device),
+            )
+        )         
 
     """ User-defined data """
     train_datasets, test_dataset = get_data()
