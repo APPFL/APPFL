@@ -3,7 +3,9 @@ This module provides a base class to define the functions required to implement 
 """
 
 
-from .client_optimizer_pca import * 
+from .client_optimizer_psgd import * 
+from .client_optimizer_pbfgs import * 
+
 from .server_federated_pca import * 
 
 
