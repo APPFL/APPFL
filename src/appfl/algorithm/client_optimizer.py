@@ -87,6 +87,18 @@ class ClientOptim(BaseClient):
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
+        if self.test_dataloader != None:
+            train_loss, train_accuracy = super(
+                ClientOptimPBFGS, self
+            ).client_validation(self.dataloader)
+            test_loss, test_accuracy = super(
+                ClientOptimPBFGS, self
+            ).client_validation(self.test_dataloader)
+            per_iter_time = time.time() - start_time
+            super(ClientOptimPBFGS, self).client_log_content(
+                self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
+            )
+
         """ Differential Privacy  """
         if self.epsilon != False:
             sensitivity = 0

@@ -13,11 +13,11 @@ import numpy as np
 import time
 
 
-class ClientOptimPCA(BaseClient):
+class ClientOptimPSGD(BaseClient):
     def __init__(
         self, id, weight, model, dataloader, cfg, outfile, test_dataloader, **kwargs
     ):
-        super(ClientOptimPCA, self).__init__(
+        super(ClientOptimPSGD, self).__init__(
             id, weight, model, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
@@ -27,9 +27,9 @@ class ClientOptimPCA(BaseClient):
         self.round = 0 
 
         ## construct
-        self.P, self.EVR = super(ClientOptimPCA, self).construct_projection_matrix()
-        super(ClientOptimPCA, self).log_pca()
-        super(ClientOptimPCA, self).client_log_title()
+        self.P, self.EVR = super(ClientOptimPSGD, self).construct_projection_matrix()
+        super(ClientOptimPSGD, self).log_pca()
+        super(ClientOptimPSGD, self).client_log_title()
 
     def update(self):
 
@@ -45,13 +45,13 @@ class ClientOptimPCA(BaseClient):
 
             if self.test_dataloader != None:
                 train_loss, train_accuracy = super(
-                    ClientOptimPCA, self
+                    ClientOptimPSGD, self
                 ).client_validation(self.dataloader)
                 test_loss, test_accuracy = super(
-                    ClientOptimPCA, self
+                    ClientOptimPSGD, self
                 ).client_validation(self.test_dataloader)
                 per_iter_time = time.time() - start_time
-                super(ClientOptimPCA, self).client_log_content(
+                super(ClientOptimPSGD, self).client_log_content(
                     t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
@@ -67,7 +67,7 @@ class ClientOptimPCA(BaseClient):
                 loss.backward()
  
                 ## gradient
-                grad = super(ClientOptimPCA, self).get_model_grad_vec()
+                grad = super(ClientOptimPSGD, self).get_model_grad_vec()
 
                 ## reduced gradient
                 gk = torch.mm(self.P, grad.reshape(-1, 1))
@@ -76,12 +76,24 @@ class ClientOptimPCA(BaseClient):
 
                 ## back to original space
                 grad_proj = torch.mm(self.P.transpose(0, 1), gk)                    
-                super(ClientOptimPCA, self).update_grad(grad_proj)                
+                super(ClientOptimPSGD, self).update_grad(grad_proj)                
 
                 optimizer.step()
  
  
         self.round += 1
+
+        if self.test_dataloader != None:
+            train_loss, train_accuracy = super(
+                ClientOptimPBFGS, self
+            ).client_validation(self.dataloader)
+            test_loss, test_accuracy = super(
+                ClientOptimPBFGS, self
+            ).client_validation(self.test_dataloader)
+            per_iter_time = time.time() - start_time
+            super(ClientOptimPBFGS, self).client_log_content(
+                self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
+            )
          
         """ Update local_state """
         self.local_state = OrderedDict()
