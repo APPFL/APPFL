@@ -106,6 +106,7 @@ def run_server(
     best_accuracy = 0.0
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
+        
         do_continue = comm.bcast(do_continue, root=0)
 
         # We need to load the model on cpu, before communicating.
@@ -126,6 +127,15 @@ def run_server(
         validation_start = time.time()
         best_accuracy = 0
         if cfg.validation == True:
+
+            ## select client 0 for updating server's model state dict
+            for name in server.model.state_dict():                
+                if name not in model_name:
+                    global_state[name] = clients[0].model.state_dict()[name]
+                else:
+                    global_state[name] = server.model.state_dict()[name]
+            server.model.load_state_dict(global_state)            
+            
             test_loss, test_accuracy = validation(server, test_dataloader)
 
             if cfg.use_tensorboard:
@@ -171,8 +181,7 @@ def run_client(
     Args:
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
-        model (nn.Module): neural network model to train
-        num_clients (int): the number of clients used in PPFL simulation
+        model (nn.Module): neural network model to train        
         train_data (Dataset): training data
         test_data (Dataset): testing data
     """
@@ -186,7 +195,7 @@ def run_client(
     else:
         device = cfg.device
 
-    num_client_groups = np.array_split(range(num_clients), comm_size - 1)
+    num_client_groups = np.array_split(range(cfg.num_clients), comm_size - 1)
 
     """ log for clients"""
     outfile = {}

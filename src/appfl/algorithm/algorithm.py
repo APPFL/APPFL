@@ -58,11 +58,11 @@ class BaseServer:
         for key, value in weights.items():
             self.weights[key] = value
 
-    def reduced_grad_vec_recover_from_local_states(self, local_states):
+    def grad_vec_recover_from_local_states(self, local_states):
         for _, states in enumerate(local_states):
             if states is not None:
                 for sid, state in states.items():
-                    self.reduced_grad_vec[sid] = copy.deepcopy(state["reduced_grad"])
+                    self.reduced_grad_vec[sid] = copy.deepcopy(state["grad"])
 
     def param_vec_recover_from_local_states(self, local_states):
         for _, states in enumerate(local_states):

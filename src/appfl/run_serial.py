@@ -124,6 +124,7 @@ def run_serial(
         global_state = server.model.state_dict()        
 
         local_update_start = time.time()
+        
         for k, client in enumerate(clients):            
 
             ## initial point for a client model

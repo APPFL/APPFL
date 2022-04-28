@@ -68,7 +68,7 @@ class FedServerPCA(BaseServer):
         global_state_vec = torch.tensor(global_state_vec, device = self.device)
         global_state_vec = global_state_vec.reshape(-1,1)
  
-        super(FedServerPCA, self).reduced_grad_vec_recover_from_local_states(local_states)
+        super(FedServerPCA, self).grad_vec_recover_from_local_states(local_states)
 
         """ vectorize """ 
         avg_grad = 0
