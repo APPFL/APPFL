@@ -143,6 +143,15 @@ def run_serial(
 
         validation_start = time.time()
         if cfg.validation == True:
+
+            ## select client 0 for updating server's model state dict
+            for name in server.model.state_dict():                
+                if name not in model_name:
+                    global_state[name] = clients[0].model.state_dict()[name]
+                else:
+                    global_state[name] = server.model.state_dict()[name]
+            server.model.load_state_dict(global_state)
+
             test_loss, test_accuracy = validation(server, test_dataloader)
 
             if cfg.use_tensorboard:

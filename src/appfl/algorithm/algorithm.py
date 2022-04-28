@@ -190,13 +190,11 @@ class BaseServer:
     def construct_projection_matrix(self, id):
   
         W = []
-
-        pca_dir = self.pca_dir + "/client_%s" % (id)
-
+ 
         for i in range(self.params_start, self.params_end):
             self.model.load_state_dict(
                 torch.load(
-                    os.path.join(pca_dir, "%s.pt" %(i) ),
+                    os.path.join(self.pca_dir , "%s.pt" %(i) ),
                     map_location=torch.device(self.device),
                 )
             )
@@ -213,7 +211,7 @@ class BaseServer:
         # 
         self.model.load_state_dict(
             torch.load(
-                os.path.join(pca_dir, "0.pt" ),
+                os.path.join(self.pca_dir , "0.pt" ),
                 map_location=torch.device(self.device),
             )
         )        
@@ -483,13 +481,11 @@ class BaseClient:
     def construct_projection_matrix(self):
   
         W = []
-
-        pca_dir = self.pca_dir + "/client_%s" % (self.id)
-
+ 
         for i in range(self.params_start, self.params_end):
             self.model.load_state_dict(
                 torch.load(
-                    os.path.join(pca_dir, "%s.pt" %(i) ),
+                    os.path.join(self.pca_dir , "%s.pt" %(i) ),
                     map_location=torch.device(self.cfg.device),
                 )
             )
@@ -506,7 +502,7 @@ class BaseClient:
         # 
         self.model.load_state_dict(
             torch.load(
-                os.path.join(pca_dir, "0.pt" ),
+                os.path.join(self.pca_dir , "0.pt" ),
                 map_location=torch.device(self.cfg.device),
             )
         )

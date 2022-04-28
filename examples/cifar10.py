@@ -253,11 +253,11 @@ def main():
     if comm_size > 1:
         if comm_rank == 0:
             rm.run_server(
-                cfg, comm, model, args.num_clients, test_dataset, args.dataset
+                cfg, comm, model, test_dataset, args.dataset
             )
         else:
             rm.run_client(
-                cfg, comm, model, args.num_clients, train_datasets, test_dataset
+                cfg, comm, model, train_datasets, test_dataset
             )
         print("------DONE------", comm_rank)
     else:

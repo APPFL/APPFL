@@ -179,7 +179,7 @@ def main():
         set_seed(1)
 
     ## pca
-    cfg.fed.args.pca_dir = "./archive/" + args.pca_dir
+    cfg.fed.args.pca_dir = "./archive/" + args.pca_dir + "/client_0"
     cfg.fed.args.params_start = args.params_start
     cfg.fed.args.params_end = args.params_end
     cfg.fed.args.ncomponents = args.ncomponents
@@ -234,13 +234,11 @@ def main():
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
 
     ## loading models
-    cfg.load_model = True
-    if cfg.load_model == True:
-        pca_dir = cfg.fed.args.pca_dir  + "/client_0" 
-        # Resume from params_start
+    cfg.load_model = False
+    if cfg.load_model == True:                
         model.load_state_dict(
             torch.load(
-                os.path.join(pca_dir, "0.pt"),
+                os.path.join(cfg.fed.args.pca_dir, "0.pt"),
                 map_location=torch.device(cfg.device),
             )
         )         
@@ -271,11 +269,11 @@ def main():
     if comm_size > 1:
         if comm_rank == 0:
             rm.run_server(
-                cfg, comm, model, args.num_clients, test_dataset, args.dataset
+                cfg, comm, model, test_dataset, args.dataset
             )
         else:
             rm.run_client(
-                cfg, comm, model, args.num_clients, train_datasets, test_dataset
+                cfg, comm, model, train_datasets, test_dataset
             )
         print("------DONE------", comm_rank)
     else:

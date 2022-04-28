@@ -22,8 +22,7 @@ from mpi4py import MPI
 def run_server(
     cfg: DictConfig,
     comm: MPI.Comm,
-    model: nn.Module,
-    num_clients: int,
+    model: nn.Module,    
     test_dataset: Dataset = Dataset(),
     dataset_name: str = "appfl",
 ):
@@ -32,15 +31,14 @@ def run_server(
     Args:
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
-        model (nn.Module): neural network model to train
-        num_clients (int): the number of clients used in PPFL simulation
+        model (nn.Module): neural network model to train        
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
     """
     ## Start
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
-    num_client_groups = np.array_split(range(num_clients), comm_size - 1)
+    num_client_groups = np.array_split(range(cfg.num_clients), comm_size - 1)
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
@@ -98,7 +96,7 @@ def run_server(
 
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
-        weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
+        weights, copy.deepcopy(model), cfg.num_clients, device, **cfg.fed.args
     )
 
     do_continue = True
@@ -164,8 +162,7 @@ def run_server(
 def run_client(
     cfg: DictConfig,
     comm: MPI.Comm,
-    model: nn.Module,
-    num_clients: int,
+    model: nn.Module,    
     train_data: Dataset,
     test_data: Dataset = Dataset(),
 ):

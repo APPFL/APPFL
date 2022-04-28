@@ -24,7 +24,7 @@ class ClientOptimPCA(BaseClient):
 
         self.loss_fn = eval(self.loss_type)
 
-        self.round = 0
+        self.round = 0 
 
         ## construct
         self.P, self.EVR = super(ClientOptimPCA, self).construct_projection_matrix()
@@ -33,17 +33,6 @@ class ClientOptimPCA(BaseClient):
 
     def update(self):
 
-        """Inputs for the local model update"""
-        if self.round == 0:
-            pca_dir = self.pca_dir  + "/client_%s" % (self.id)
-            # Resume from params_start
-            self.model.load_state_dict(
-                torch.load(
-                    os.path.join(pca_dir, "0.pt"),
-                    map_location=torch.device(self.cfg.device),
-                )
-            ) 
- 
 
         self.model.to(self.cfg.device)
 
@@ -51,6 +40,7 @@ class ClientOptimPCA(BaseClient):
 
         """ Multiple local update """
         start_time=time.time()
+        reduced_grad = 0
         for t in range(self.num_local_epochs):
 
             if self.test_dataloader != None:
@@ -81,6 +71,8 @@ class ClientOptimPCA(BaseClient):
 
                 ## reduced gradient
                 gk = torch.mm(self.P, grad.reshape(-1, 1))
+ 
+                reduced_grad += optimizer.param_groups[0]['lr'] * gk                
 
                 ## back to original space
                 grad_proj = torch.mm(self.P.transpose(0, 1), gk)                    
@@ -88,16 +80,15 @@ class ClientOptimPCA(BaseClient):
 
                 optimizer.step()
  
-
+ 
         self.round += 1
- 
-        self.primal_state = copy.deepcopy(self.model.state_dict())
- 
+         
         """ Update local_state """
         self.local_state = OrderedDict()
-        self.local_state["primal"] = copy.deepcopy(self.primal_state)        
+        self.local_state["primal"] = OrderedDict()
         self.local_state["dual"] = OrderedDict()
+        self.local_state["grad"] = reduced_grad     
         self.local_state["penalty"] = OrderedDict()
-        self.local_state["penalty"][self.id] = 0.0        
-
+        self.local_state["penalty"][self.id] = 0.0 
+         
         return self.local_state

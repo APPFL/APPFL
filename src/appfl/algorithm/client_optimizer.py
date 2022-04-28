@@ -99,6 +99,7 @@ class ClientOptim(BaseClient):
         self.local_state = OrderedDict()
         self.local_state["primal"] = copy.deepcopy(self.primal_state)
         self.local_state["dual"] = OrderedDict()
+        self.local_state["grad"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
 
