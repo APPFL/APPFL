@@ -108,7 +108,7 @@ class ClientOptimPBFGS(BaseClient):
             super(ClientOptimPBFGS, self).client_log_content(
                 self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
             ) 
-            
+
         self.round += 1
 
         
@@ -154,7 +154,8 @@ class ClientOptimPBFGS(BaseClient):
         descent = torch.mm(gk.transpose(0, 1), dk)[0,0]
 
         # Copy the original parameters
-        model_name = 'temporary.pt'
+        model_name = self.cfg.output_dirname + '/temporary.pt'
+
         torch.save(self.model.state_dict(), model_name)
 
         self.sk = dk
