@@ -16,10 +16,10 @@ class FedServerPCA(BaseServer):
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
 
-        self.step = None 
-        self.pseudo_grad = None
-        self.m_vector = None         
-        self.v_vector = None
+        self.step = 0 
+        self.pseudo_grad = 0
+        self.m_vector = 0         
+        self.v_vector = 0
 
 
         """ Group 2 """
@@ -37,17 +37,19 @@ class FedServerPCA(BaseServer):
         ## construct projection        
         self.P, self.EVR = super(FedServerPCA, self).construct_projection_matrix()            
 
-    def update_m_vector(self):
-
-        self.m_vector = self.server_momentum_param_1 * self.m_vector + (1.0 - self.server_momentum_param_1) * self.pseudo_grad
- 
-              
     def compute_pseudo_gradient(self):
 
         self.pseudo_grad = 0
                
         for id in range(self.num_clients):             
             self.pseudo_grad += self.weights[id] * self.reduced_grad_vec[id]
+
+    def update_m_vector(self):
+
+        self.m_vector = self.server_momentum_param_1 * self.m_vector + (1.0 - self.server_momentum_param_1) * self.pseudo_grad
+ 
+              
+
  
 
     def update(self, local_states: OrderedDict):
