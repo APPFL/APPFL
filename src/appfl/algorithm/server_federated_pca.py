@@ -16,10 +16,10 @@ class FedServerPCA(BaseServer):
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
 
-        self.step = 0 
-        self.pseudo_grad = 0
-        self.m_vector = 0         
-        self.v_vector = 0
+        self.step = None 
+        self.pseudo_grad = None
+        self.m_vector = None         
+        self.v_vector = None
 
 
         """ Group 2 """
@@ -34,16 +34,14 @@ class FedServerPCA(BaseServer):
             # self.approx_H_matrix[name] = torch.eye( torch.flatten(self.model.state_dict()[name]).size()[0] )
             # print("H_shape=", self.approx_H_matrix[name].shape)
 
-        ## construct projection
-        self.P = OrderedDict()
-        self.EVR = OrderedDict()
-        for id in range(self.num_clients):
-            self.P[id], self.EVR[id] = super(FedServerPCA, self).construct_projection_matrix(id)            
+        ## construct projection        
+        self.P, self.EVR = super(FedServerPCA, self).construct_projection_matrix()            
 
     def update_m_vector(self):
-        self.m_vector = self.server_momentum_param_1 * self.m_vector + (1.0 - self.server_momentum_param_1) * self.pseudo_grad
-                 
 
+        self.m_vector = self.server_momentum_param_1 * self.m_vector + (1.0 - self.server_momentum_param_1) * self.pseudo_grad
+ 
+              
     def compute_pseudo_gradient(self):
 
         self.pseudo_grad = 0
@@ -61,6 +59,7 @@ class FedServerPCA(BaseServer):
         global_state_vec = global_state_vec.reshape(-1,1)
  
         super(FedServerPCA, self).grad_vec_recover_from_local_states(local_states)
+        
  
         self.compute_step()
         global_state_vec += self.step

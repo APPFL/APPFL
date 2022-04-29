@@ -13,7 +13,7 @@ class ServerFedYogiPCA(FedServerPCA):
         
         temp = torch.div(self.server_learning_rate*self.m_vector, torch.sqrt(self.v_vector) + self.server_adapt_param)
         
-        self.step = - torch.mm( self.P[id].transpose(0, 1), temp)
+        self.step = - torch.mm( self.P.transpose(0, 1), temp.reshape(-1,1))
 
     def logging_summary(self, cfg, logger):
         super(FedServerPCA, self).log_summary(cfg, logger)

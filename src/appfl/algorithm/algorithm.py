@@ -187,7 +187,7 @@ class BaseServer:
         self.outfile.write("P: (%s, %s) \n" % (self.P.shape[0], self.P.shape[1])) 
         self.outfile.flush() 
 
-    def construct_projection_matrix(self, id):
+    def construct_projection_matrix(self):
   
         W = []
  

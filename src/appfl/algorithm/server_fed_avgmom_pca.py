@@ -8,7 +8,7 @@ class ServerFedAvgMomentumPCA(FedServerPCA):
 
         super(ServerFedAvgMomentumPCA, self).update_m_vector()
 
-        self.step = - torch.mm( self.P[id].transpose(0, 1), self.m_vector )
+        self.step = - torch.mm( self.P.transpose(0, 1), self.m_vector.reshape(-1,1) )
          
 
     def logging_summary(self, cfg, logger):

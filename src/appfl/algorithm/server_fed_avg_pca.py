@@ -6,8 +6,9 @@ class ServerFedAvgPCA(FedServerPCA):
     def compute_step(self):
 
         super(ServerFedAvgPCA, self).compute_pseudo_gradient()
+        
+        self.step = - torch.mm( self.P.transpose(0, 1), self.pseudo_grad.reshape(-1,1) )
 
-        self.step = - torch.mm( self.P[id].transpose(0, 1), self.pseudo_grad )
 
 
     def logging_summary(self, cfg, logger):
