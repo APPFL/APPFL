@@ -97,9 +97,6 @@ class ClientOptimPBFGS(BaseClient):
 
                 reduced_grad += gk
  
- 
-        self.round += 1
-
         if self.test_dataloader != None:
             train_loss, train_accuracy = super(
                 ClientOptimPBFGS, self
@@ -110,7 +107,11 @@ class ClientOptimPBFGS(BaseClient):
             per_iter_time = time.time() - start_time
             super(ClientOptimPBFGS, self).client_log_content(
                 self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
-            )
+            ) 
+            
+        self.round += 1
+
+        
          
         """ Update local_state """
         self.local_state = OrderedDict()
