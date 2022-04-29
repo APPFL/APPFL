@@ -17,7 +17,7 @@ class FedServer(BaseServer):
         self.logger = logging.getLogger(__name__)
 
         self.step = OrderedDict()
-        """ Group 1 """
+                
         self.pseudo_grad = OrderedDict()
         self.m_vector = OrderedDict()
         self.v_vector = OrderedDict()
@@ -26,19 +26,7 @@ class FedServer(BaseServer):
             self.v_vector[name] = (
                 torch.zeros_like(self.model.state_dict()[name])
                 + self.server_adapt_param
-            )
-        """ Group 2 """
-        self.pseudo_grad_vec = OrderedDict()
-        self.model_size = OrderedDict()
-        self.approx_H_matrix = OrderedDict()
-        for name, _ in self.model.named_parameters():
-            self.model_size[name] = self.model.state_dict()[name].size()
-            # print("flat size=", torch.flatten(self.model.state_dict()[name]).size())
-
-            ## TODO: Too LARGE (Reduceing gradient may be needed)
-            # self.approx_H_matrix[name] = torch.eye( torch.flatten(self.model.state_dict()[name]).size()[0] )
-            # print("H_shape=", self.approx_H_matrix[name].shape)
-   
+            )  
 
 
     def update_m_vector(self):

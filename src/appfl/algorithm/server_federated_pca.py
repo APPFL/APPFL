@@ -16,17 +16,12 @@ class FedServerPCA(BaseServer):
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
 
-        self.step = OrderedDict()
-        """ Group 1 """
-        self.pseudo_grad = OrderedDict()
-        self.m_vector = OrderedDict()
-        self.v_vector = OrderedDict()
-        for name, _ in self.model.named_parameters():
-            self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name])
-            self.v_vector[name] = (
-                torch.zeros_like(self.model.state_dict()[name])
-                + self.server_adapt_param
-            )
+        self.step = 0 
+        self.pseudo_grad = 0
+        self.m_vector = 0         
+        self.v_vector = 0
+
+
         """ Group 2 """
         self.pseudo_grad_vec = OrderedDict()
         self.model_size = OrderedDict()
@@ -46,19 +41,16 @@ class FedServerPCA(BaseServer):
             self.P[id], self.EVR[id] = super(FedServerPCA, self).construct_projection_matrix(id)            
 
     def update_m_vector(self):
-        for name, _ in self.model.named_parameters():
-            self.m_vector[name] = (
-                self.server_momentum_param_1 * self.m_vector[name]
-                + (1.0 - self.server_momentum_param_1) * self.pseudo_grad[name]
-            )
+        self.m_vector = self.server_momentum_param_1 * self.m_vector + (1.0 - self.server_momentum_param_1) * self.pseudo_grad
+                 
 
     def compute_pseudo_gradient(self):
-        for name, _ in self.model.named_parameters():
-            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
-            for i in range(self.num_clients):
-                self.pseudo_grad[name] += self.weights[i] * (
-                    self.global_state[name] - self.primal_states[i][name]
-                )
+
+        self.pseudo_grad = 0
+               
+        for id in range(self.num_clients):             
+            self.pseudo_grad += self.weights[id] * self.reduced_grad_vec[id]
+ 
 
     def update(self, local_states: OrderedDict):
 
@@ -69,15 +61,10 @@ class FedServerPCA(BaseServer):
         global_state_vec = global_state_vec.reshape(-1,1)
  
         super(FedServerPCA, self).grad_vec_recover_from_local_states(local_states)
-
-        """ vectorize """ 
-        avg_grad = 0
-        for id in range(self.num_clients):             
-            avg_grad += self.weights[id] * torch.mm(self.P[id].transpose(0, 1), self.reduced_grad_vec[id])
  
-        global_state_vec = global_state_vec - avg_grad 
-
-
+        self.compute_step()
+        global_state_vec += self.step
+ 
         super(FedServerPCA, self).update_param(global_state_vec)
  
 
