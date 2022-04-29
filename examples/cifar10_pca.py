@@ -179,7 +179,7 @@ def main():
         set_seed(1)
 
     ## pca
-    cfg.fed.args.pca_dir = "./archive/" + args.pca_dir + "/client_0"
+    cfg.fed.args.pca_dir = "./CIFAR10_Trajectory/" + args.pca_dir + "/client_0"
     cfg.fed.args.params_start = args.params_start
     cfg.fed.args.params_end = args.params_end
     cfg.fed.args.ncomponents = args.ncomponents
@@ -234,14 +234,14 @@ def main():
     cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
 
     ## loading models
-    cfg.load_model = False
+    cfg.load_model = True
     if cfg.load_model == True:                
         model.load_state_dict(
             torch.load(
                 os.path.join(cfg.fed.args.pca_dir, "0.pt"),
                 map_location=torch.device(cfg.device),
             )
-        )         
+        )          
 
     """ User-defined data """
     train_datasets, test_dataset = get_data()
