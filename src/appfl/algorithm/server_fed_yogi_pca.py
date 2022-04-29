@@ -16,7 +16,7 @@ class ServerFedYogiPCA(FedServerPCA):
         self.step = - torch.mm( self.P[id].transpose(0, 1), temp)
 
     def logging_summary(self, cfg, logger):
-        super(FedServer, self).log_summary(cfg, logger)
+        super(FedServerPCA, self).log_summary(cfg, logger)
 
         logger.info("client_learning_rate = %s " % (cfg.fed.args.optim_args.lr))
         logger.info(
