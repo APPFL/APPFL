@@ -45,11 +45,10 @@ class ClientOptimPBFGS(BaseClient):
         # Store the last gradient on basis variables for P_plus_BFGS update
         self.gk_last = None
 
-        # Variables for BFGS and backtracking line search
-        self.rho = 0.55
+        # Variables for BFGS and backtracking line search        
         self.rho = 0.4
         self.sigma = 0.4
-        self.Bk = torch.eye(40, device=self.cfg.device) 
+        self.Bk = torch.eye(self.ncomponents, device=self.cfg.device) 
         self.sk = None
 
         # Store the backtracking line search times

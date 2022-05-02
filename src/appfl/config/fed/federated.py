@@ -42,6 +42,9 @@ class Federated:
             "server_adapt_param": 0.001,
             "server_momentum_param_1": 0.9,
             "server_momentum_param_2": 0.99,
+
+            "c" : 1e-4,
+            "tau" : 0.5,
             
             ## Clients optimizer
             "optim": "SGD",
