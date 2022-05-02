@@ -63,6 +63,8 @@ parser.add_argument("--ncomponents", type=int, default=40)
 ## server
 parser.add_argument("--servername", type=str, default="ServerFedAvg")
 parser.add_argument("--num_epochs", type=int, default=2)
+parser.add_argument("--c", type=float, default=1e-4)
+parser.add_argument("--tau", type=float, default=0.5)
 
 parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
@@ -200,6 +202,9 @@ def main():
     ## server
     cfg.fed.servername = args.servername
     cfg.num_epochs = args.num_epochs
+
+    cfg.fed.args.c = args.c
+    cfg.fed.args.tau = args.tau
 
     ## outputs
 

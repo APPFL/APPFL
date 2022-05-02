@@ -7,8 +7,8 @@ class ServerFedBFGSPCA(FedServerBFGS):
     def update_global_state(self, clients):
 
         super(ServerFedBFGSPCA, self).compute_pseudo_gradient()
- 
 
+        
         ## compute the approximate inverse Hessian
         if self.round > 0:
             s = self.step_prev 
@@ -28,7 +28,8 @@ class ServerFedBFGSPCA(FedServerBFGS):
 
         step_size = 1.0
         if self.round > 0:     
-            step_size = 1.0
+            step_size = 1.0            
+
             ## deepcopy the models        
             model = {}                
             for k, client in enumerate(clients):                        
@@ -47,7 +48,7 @@ class ServerFedBFGSPCA(FedServerBFGS):
             while termination:
                 
                 ##  
-                RHS = loss_prev + 1e-4 * step_size * torch.dot(self.pseudo_grad.reshape(-1), direction.reshape(-1))
+                RHS = loss_prev + self.c * step_size * torch.dot(self.pseudo_grad.reshape(-1), direction.reshape(-1))
 
                 ##
                 global_state_vec_next = self.global_state_vec + torch.mm( self.P.transpose(0, 1), step_size * direction )
@@ -67,7 +68,7 @@ class ServerFedBFGSPCA(FedServerBFGS):
                 if loss_new <= RHS:
                     termination = 0
                 else:
-                    step_size = step_size * 0.4
+                    step_size = step_size * self.tau
  
 
         ## compute step   
@@ -116,7 +117,7 @@ class ServerFedBFGSPCA(FedServerBFGS):
 
     def logging_summary(self, cfg, logger):
         
-        super(FedServerPCA, self).log_summary(cfg, logger)
+        super(FedServerBFGS, self).log_summary(cfg, logger)
 
         logger.info("client_learning_rate = %s " % (cfg.fed.args.optim_args.lr))
 
