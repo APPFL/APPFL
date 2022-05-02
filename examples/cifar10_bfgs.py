@@ -73,7 +73,7 @@ parser.add_argument("--adapt_param", type=float, required=False)
 
 args = parser.parse_args()
 
-args.output_dirname = "./output_pcadir_%s_%s_%s_%s_round_%s_%s_%s_%s_epoch_%s_nclient_%s" % (
+args.output_dirname = "./output_pcadir_%s_%s_%s_%s_round_%s_%s_%s_%s_epoch_%s_nclient_%s_c_%s_tau_%s" % (
         args.pca_dir,
         args.dataset,
         args.model,
@@ -83,7 +83,9 @@ args.output_dirname = "./output_pcadir_%s_%s_%s_%s_round_%s_%s_%s_%s_epoch_%s_nc
         args.client_optimizer,        
         args.client_lr,
         args.num_local_epochs,
-        args.num_clients
+        args.num_clients,
+        args.c,
+        args.tau
     )
  
 
