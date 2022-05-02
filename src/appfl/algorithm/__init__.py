@@ -5,6 +5,7 @@ This module provides a base class to define the functions required to implement 
 """ gradient-based algorithms communicating reduced gradients """
 from .client_optimizer_psgd import * 
 from .client_optimizer_pbfgs import * 
+from .client_optimizer_pbfgs_1 import *  ## (no backtracking line search)
 
 from .server_federated_pca import * 
 from .server_fed_avg_pca import * 

@@ -61,15 +61,13 @@ class ServerFedBFGSPCA(FedServerBFGS):
                 for k, client in enumerate(clients):            
                     loss_new += self.loss_calculation(client.loss_type, model[k], client.dataloader)
                 loss_new = loss_new / self.num_clients
-
-                print("loss_new=", loss_new, " RHS=", RHS, " step_size=", step_size)
-
-
+ 
                 if loss_new <= RHS or step_size <= 1e-10:
                     termination = 0
                 else:
                     step_size = step_size * self.tau
- 
+
+        print("step_size=", step_size)
 
         ## compute step   
         step = step_size * direction
