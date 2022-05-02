@@ -3,11 +3,11 @@ import torch
 
 class ServerFedAvgPCA(FedServerPCA):
 
-    def compute_step(self):
+    def update_global_state(self):
 
         super(ServerFedAvgPCA, self).compute_pseudo_gradient()
         
-        self.step = - torch.mm( self.P.transpose(0, 1), self.pseudo_grad.reshape(-1,1) )
+        self.global_state_vec += - torch.mm( self.P.transpose(0, 1), self.pseudo_grad.reshape(-1,1) )
 
 
 

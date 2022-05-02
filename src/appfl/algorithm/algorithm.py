@@ -394,7 +394,7 @@ class BaseClient:
         
     
 
-        loss = round( loss / tmpcnt, 4)
+        loss = loss / tmpcnt 
         accuracy = 100.0 * correct / tmptotal
 
 

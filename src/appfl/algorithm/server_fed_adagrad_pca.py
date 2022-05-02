@@ -3,7 +3,7 @@ import torch
 
 
 class ServerFedAdagradPCA(FedServerPCA):
-    def compute_step(self):
+    def update_global_state(self):
 
         super(ServerFedAdagradPCA, self).compute_pseudo_gradient()
 
@@ -13,7 +13,7 @@ class ServerFedAdagradPCA(FedServerPCA):
 
         temp = torch.div(self.server_learning_rate*self.m_vector, torch.sqrt(self.v_vector) + self.server_adapt_param)
         
-        self.step = - torch.mm( self.P.transpose(0, 1), temp.reshape(-1,1))
+        self.global_state_vec += - torch.mm( self.P.transpose(0, 1), temp.reshape(-1,1))
                 
          
 

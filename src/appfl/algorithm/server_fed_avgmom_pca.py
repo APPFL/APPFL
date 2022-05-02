@@ -2,13 +2,13 @@ from .server_federated_pca import FedServerPCA
 import torch
 
 class ServerFedAvgMomentumPCA(FedServerPCA):
-    def compute_step(self):
+    def update_global_state(self):
         
         super(ServerFedAvgMomentumPCA, self).compute_pseudo_gradient()
 
         super(ServerFedAvgMomentumPCA, self).update_m_vector()
 
-        self.step = - torch.mm( self.P.transpose(0, 1), self.m_vector.reshape(-1,1) )
+        self.global_state_vec += - torch.mm( self.P.transpose(0, 1), self.m_vector.reshape(-1,1) )
          
 
     def logging_summary(self, cfg, logger):
