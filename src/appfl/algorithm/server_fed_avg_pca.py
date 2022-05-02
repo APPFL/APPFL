@@ -7,7 +7,7 @@ class ServerFedAvgPCA(FedServerPCA):
 
         super(ServerFedAvgPCA, self).compute_pseudo_gradient()
         
-        self.global_state_vec += - torch.mm( self.P.transpose(0, 1), self.pseudo_grad.reshape(-1,1) )
+        self.global_state_vec += - torch.mm( self.P.transpose(0, 1), self.pseudo_grad )
 
 
 

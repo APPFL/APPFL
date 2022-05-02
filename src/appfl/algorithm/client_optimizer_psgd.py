@@ -27,8 +27,7 @@ class ClientOptimPSGD(BaseClient):
         self.round = 0 
 
         ## construct
-        self.P, self.EVR = super(ClientOptimPSGD, self).construct_projection_matrix()
-        super(ClientOptimPSGD, self).log_pca()
+        self.P, self.EVR = super(ClientOptimPSGD, self).construct_projection_matrix()        
         super(ClientOptimPSGD, self).client_log_title()
 
     def update(self):

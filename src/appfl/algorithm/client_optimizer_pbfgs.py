@@ -30,7 +30,6 @@ class ClientOptimPBFGS(BaseClient):
 
         ## construct
         self.P, self.EVR = super(ClientOptimPBFGS, self).construct_projection_matrix()
-        super(ClientOptimPBFGS, self).log_pca()
         super(ClientOptimPBFGS, self).client_log_title()
 
         ## settings for BFGS

@@ -170,7 +170,11 @@ class BaseServer:
         logger.info("Elapsed_time=%s" % (round(cfg["logginginfo"]["Elapsed_time"], 2)))
         logger.info("BestAccuracy=%s" % (round(cfg["logginginfo"]["BestAccuracy"], 2)))
 
-
+        logger.info("pca_dir= %s" %(cfg.fed.args.pca_dir) )
+                
+        logger.info("Ratio= %s" % (self.EVR))
+        logger.info("Sum= %s" % ( sum(self.EVR) ) )        
+        logger.info("P: (%s, %s)" % (self.P.shape[0], self.P.shape[1])) 
 
     """ 
     Projection Matrix
@@ -179,13 +183,13 @@ class BaseServer:
     """
 
 
-    def log_pca(self):
+    # def log_pca(self):
 
-        self.outfile.write("pca_dir: %s \n" %(self.pca_dir) )
-        self.outfile.write("Ratio: %s \n" % (self.EVR))
-        self.outfile.write("Sum: %s \n" % ( sum(self.EVR) ) )        
-        self.outfile.write("P: (%s, %s) \n" % (self.P.shape[0], self.P.shape[1])) 
-        self.outfile.flush() 
+    #     self.outfile.write("pca_dir: %s \n" %(self.pca_dir) )
+    #     self.outfile.write("Ratio: %s \n" % (self.EVR))
+    #     self.outfile.write("Sum: %s \n" % ( sum(self.EVR) ) )        
+    #     self.outfile.write("P: (%s, %s) \n" % (self.P.shape[0], self.P.shape[1])) 
+    #     self.outfile.flush() 
 
     def construct_projection_matrix(self):
   
@@ -468,15 +472,7 @@ class BaseClient:
         Each client can obtain a trajectory of iterates by training a model using the local data, i.e., w^1, w^2, ..., w^I, where w^i in R^J
         By conduting PCA (principle component analysis) using the "I" iterates, one can obtain a projection matrix "M X J" where M ( < I ) is the number of components.
     """
-
-
-    def log_pca(self):
-        
-        self.outfile.write("pca_dir: %s \n" %(self.pca_dir) )
-        self.outfile.write("Ratio: %s \n" % (self.EVR))
-        self.outfile.write("Sum: %s \n" % ( sum(self.EVR) ) )        
-        self.outfile.write("P: (%s, %s) \n" % (self.P.shape[0], self.P.shape[1])) 
-        self.outfile.flush() 
+ 
 
     def construct_projection_matrix(self):
   
