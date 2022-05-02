@@ -65,7 +65,7 @@ class ServerFedBFGSPCA(FedServerBFGS):
                 print("loss_new=", loss_new, " RHS=", RHS, " step_size=", step_size)
 
 
-                if loss_new <= RHS:
+                if loss_new <= RHS or step_size <= 1e-10:
                     termination = 0
                 else:
                     step_size = step_size * self.tau
