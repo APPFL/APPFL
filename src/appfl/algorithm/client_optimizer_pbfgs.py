@@ -45,7 +45,7 @@ class ClientOptimPBFGS(BaseClient):
         self.gk_last = None
 
         # Variables for BFGS and backtracking line search        
-        self.rho = 0.4
+        self.rho = 0.55
         self.sigma = 0.4
         self.Bk = torch.eye(self.ncomponents, device=self.cfg.device) 
         self.sk = None
@@ -148,7 +148,7 @@ class ClientOptimPBFGS(BaseClient):
 
         # Backtracking line search
         m = 0
-        search_times_MAX = 20
+        search_times_MAX = 15
         descent = torch.mm(gk.transpose(0, 1), dk)[0,0]
 
         # Copy the original parameters

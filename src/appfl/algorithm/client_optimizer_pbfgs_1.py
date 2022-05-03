@@ -114,6 +114,8 @@ class ClientOptimPBFGS1(BaseClient):
         
         gk = torch.mm(self.P, grad.reshape(-1,1))
 
+        grad_proj = torch.mm(self.P.transpose(0, 1), gk)
+        grad_res = grad - grad_proj.reshape(-1)
 
         # Quasi-Newton update
         if self.gk_last is not None:
@@ -124,12 +126,47 @@ class ClientOptimPBFGS1(BaseClient):
                 t1 = torch.eye(self.ncomponents, device=self.cfg.device) - torch.mm(pk * yk, self.sk.transpose(0, 1))
                 self.Bk = torch.mm(torch.mm(t1.transpose(0, 1), self.Bk), t1) + torch.mm(pk * self.sk, self.sk.transpose(0, 1))
         
-        self.gk_last = gk        
-        self.sk = torch.mm(self.Bk, gk)
+        self.gk_last = gk
+        dk = -torch.mm(self.Bk, gk)
+
+        # Backtracking line search
+        # m = 0
+        # search_times_MAX = 20
+        # descent = torch.mm(gk.transpose(0, 1), dk)[0,0]
+
+        # Copy the original parameters
+        # model_name = self.cfg.output_dirname + '/temporary.pt'
+
+        # torch.save(self.model.state_dict(), model_name)
+
+        self.sk = dk
+        # while (m < search_times_MAX):
+        #     super(ClientOptimPBFGS, self).update_grad(torch.mm(self.P.transpose(0, 1), -self.sk).reshape(-1))
+        #     optimizer.step()
+        #     yp = self.model(X)
+        #     loss = torch.nn.CrossEntropyLoss()(yp,y)
+        #     newf = loss.item()
+        #     self.model.load_state_dict(torch.load(model_name))
+
+        #     if (newf < oldf + self.sigma * descent):
+        #         # print ('(', m, LA.cond(Bk), ')', end=' ')
+        #         self.search_times.append(m)
+        #         break
+
+        #     m = m + 1
+        #     descent *= self.rho
+        #     self.sk *= self.rho
+        
+        # Cannot find proper lr
+        # if m == search_times:
+        #     sk *= 0
+
+        # SGD + momentum for the remaining part of gradient
+        # self.grad_res_momentum = self.grad_res_momentum * self.gamma + grad_res
 
         # Update the model grad and do a step
 
-        grad_proj = torch.mm(self.P.transpose(0, 1), self.sk).reshape(-1)  
+        grad_proj = torch.mm(self.P.transpose(0, 1), -self.sk).reshape(-1) # + self.grad_res_momentum * self.alpha
 
 
         super(ClientOptimPBFGS1, self).update_grad(grad_proj)
