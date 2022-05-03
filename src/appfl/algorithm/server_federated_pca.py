@@ -77,3 +77,8 @@ class FedServerPCA(BaseServer):
 
     def logging_summary(self, cfg, logger):
         super(FedServerPCA, self).log_summary(cfg, logger)
+
+        logger.info("pca_dir= %s" %(cfg.fed.args.pca_dir) )                
+        logger.info("Ratio= %s" % (self.EVR))
+        logger.info("Sum= %s" % ( sum(self.EVR) ) )        
+        logger.info("P: (%s, %s)" % (self.P.shape[0], self.P.shape[1])) 
