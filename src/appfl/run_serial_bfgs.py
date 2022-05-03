@@ -139,7 +139,7 @@ def run_serial(
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
         global_update_start = time.time()
-        server.update(local_states)
+        server.update(local_states, clients)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
         validation_start = time.time()

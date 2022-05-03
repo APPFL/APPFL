@@ -9,6 +9,8 @@ from omegaconf import DictConfig
 
 import os
 import logging
+import numpy as np
+from sklearn.decomposition import PCA
 
 
 class BaseServer:
@@ -31,6 +33,8 @@ class BaseServer:
         self.penalty = OrderedDict()
         self.prim_res = 0
         self.dual_res = 0
+        self.reduced_grad_vec = OrderedDict()
+        self.param_vec = OrderedDict()
         self.global_state = OrderedDict()
         self.primal_states = OrderedDict()
         self.dual_states = OrderedDict()
@@ -53,6 +57,18 @@ class BaseServer:
     def set_weights(self, weights: OrderedDict):
         for key, value in weights.items():
             self.weights[key] = value
+
+    def grad_vec_recover_from_local_states(self, local_states):
+        for _, states in enumerate(local_states):
+            if states is not None:
+                for sid, state in states.items():
+                    self.reduced_grad_vec[sid] = copy.deepcopy(state["grad"])
+
+    def param_vec_recover_from_local_states(self, local_states):
+        for _, states in enumerate(local_states):
+            if states is not None:
+                for sid, state in states.items():
+                    self.param_vec[sid] = copy.deepcopy(state["param_vec"])
 
     def primal_recover_from_local_states(self, local_states):
         for _, states in enumerate(local_states):
@@ -155,6 +171,83 @@ class BaseServer:
         logger.info("BestAccuracy=%s" % (round(cfg["logginginfo"]["BestAccuracy"], 2)))
 
 
+
+    """ 
+    Projection Matrix
+        Each client can obtain a trajectory of iterates by training a model using the local data, i.e., w^1, w^2, ..., w^I, where w^i in R^J
+        By conduting PCA (principle component analysis) using the "I" iterates, one can obtain a projection matrix "M X J" where M ( < I ) is the number of components.
+    """
+ 
+
+    def construct_projection_matrix(self):
+  
+        W = []
+ 
+        for i in range(self.params_start, self.params_end):
+            self.model.load_state_dict(
+                torch.load(
+                    os.path.join(self.pca_dir , "%s.pt" %(i) ),
+                    map_location=torch.device(self.device),
+                )
+            )
+            W.append(self.get_model_param_vec())
+
+        W = np.array(W)
+        
+        # Obtain base variables through PCA
+        pca = PCA(n_components=self.ncomponents)
+        pca.fit_transform(W)
+        P = np.array(pca.components_)
+        P = torch.from_numpy(P).to(self.device)
+
+        # 
+        self.model.load_state_dict(
+            torch.load(
+                os.path.join(self.pca_dir , "0.pt" ),
+                map_location=torch.device(self.device),
+            )
+        )        
+
+        return P, pca.explained_variance_ratio_
+
+    def get_model_param_vec(self):
+        """
+        Return model parameters as a vector
+        """
+        vec = []
+        for _,param in self.model.named_parameters():
+            vec.append(param.detach().cpu().numpy().reshape(-1))
+        return np.concatenate(vec, 0)
+
+    def get_model_grad_vec(self):
+        # Return the model grad as a vector
+
+        vec = []
+        for _,param in self.model.named_parameters():
+            vec.append(param.grad.detach().reshape(-1))
+        return torch.cat(vec, 0)
+
+    def update_grad(self, grad_vec):
+        idx = 0
+        for _,param in self.model.named_parameters():
+            arr_shape = param.grad.shape
+            size = 1
+            for i in range(len(list(arr_shape))):
+                size *= arr_shape[i]
+            param.grad.data = grad_vec[idx:idx+size].reshape(arr_shape)
+            idx += size
+
+    def update_param(self, param_vec):
+        idx = 0
+        for _,param in self.model.named_parameters():
+            arr_shape = param.data.shape
+            size = 1
+            for i in range(len(list(arr_shape))):
+                size *= arr_shape[i]
+            param.data = param_vec[idx:idx+size].reshape(arr_shape)
+            idx += size    
+
+
 """This implements a base class for clients."""
 
 
@@ -243,9 +336,10 @@ class BaseClient:
             self.penalty = self.penalty / self.residual_balancing.tau
 
     def client_log_title(self):
-        title = "%10s %10s %10s %10s %10s %10s \n" % (
-            "Round",
+        title = "%10s %10s %10s %10s %10s %10s %10s \n" % (
+            "Round",            
             "LocalEpoch",
+            "PerIter[s]",
             "TrainLoss",
             "TrainAccu",
             "TestLoss",
@@ -255,11 +349,12 @@ class BaseClient:
         self.outfile.flush()
 
     def client_log_content(
-        self, t, train_loss, train_accuracy, test_loss, test_accuracy
+        self, t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
     ):
-        contents = "%10s %10s %10.4f %10.4f %10.4f %10.4f \n" % (
+        contents = "%10s %10s %10.2f %10.4f %10.4f %10.4f %10.4f \n" % (
             self.round,
             t,
+            per_iter_time,
             train_loss,
             train_accuracy,
             test_loss,
@@ -267,6 +362,35 @@ class BaseClient:
         )
         self.outfile.write(contents)
         self.outfile.flush()
+
+
+    def local_validation(self,  dataloader):
+    
+        self.model.eval()
+        loss = 0
+        correct = 0
+        tmpcnt = 0
+        tmptotal = 0     
+        with torch.no_grad():
+            for img, target in dataloader:
+                tmpcnt += 1
+                tmptotal += len(target)
+                img = img.to(self.cfg.device)
+                target = target.to(self.cfg.device)            
+                output = self.model(img)      
+                loss += eval(self.loss_fn)(output, target).item()                    
+            
+                pred = output.argmax(dim=1, keepdim=True)
+
+                correct += pred.eq(target.view_as(pred)).sum().item()         
+        
+    
+
+        loss = loss / tmpcnt 
+        accuracy = 100.0 * correct / tmptotal
+
+
+        return loss, accuracy 
 
     def client_validation(self, dataloader):
 
@@ -329,3 +453,79 @@ class BaseClient:
             scale = torch.zeros_like(param.data) + scale_value
             m = torch.distributions.laplace.Laplace(mean, scale)
             self.primal_state[name] += m.sample()
+
+
+    """ 
+    Projection Matrix
+        Each client can obtain a trajectory of iterates by training a model using the local data, i.e., w^1, w^2, ..., w^I, where w^i in R^J
+        By conduting PCA (principle component analysis) using the "I" iterates, one can obtain a projection matrix "M X J" where M ( < I ) is the number of components.
+    """
+ 
+
+    def construct_projection_matrix(self):
+  
+        W = []
+ 
+        for i in range(self.params_start, self.params_end):
+            self.model.load_state_dict(
+                torch.load(
+                    os.path.join(self.pca_dir , "%s.pt" %(i) ),
+                    map_location=torch.device(self.cfg.device),
+                )
+            )
+            W.append(self.get_model_param_vec())
+
+        W = np.array(W)
+        
+        # Obtain base variables through PCA
+        pca = PCA(n_components=self.ncomponents)
+        pca.fit_transform(W)
+        P = np.array(pca.components_)
+        P = torch.from_numpy(P).to(self.cfg.device)
+
+        # 
+        self.model.load_state_dict(
+            torch.load(
+                os.path.join(self.pca_dir , "0.pt" ),
+                map_location=torch.device(self.cfg.device),
+            )
+        )
+
+        return P, pca.explained_variance_ratio_
+
+    def get_model_param_vec(self):
+        """
+        Return model parameters as a vector
+        """
+        vec = []
+        for _,param in self.model.named_parameters():
+            vec.append(param.detach().cpu().numpy().reshape(-1))
+        return np.concatenate(vec, 0)
+
+    def get_model_grad_vec(self):
+        # Return the model grad as a vector
+
+        vec = []
+        for _,param in self.model.named_parameters():
+            vec.append(param.grad.detach().reshape(-1))
+        return torch.cat(vec, 0)
+
+    def update_grad(self, grad_vec):
+        idx = 0
+        for _,param in self.model.named_parameters():
+            arr_shape = param.grad.shape
+            size = 1
+            for i in range(len(list(arr_shape))):
+                size *= arr_shape[i]
+            param.grad.data = grad_vec[idx:idx+size].reshape(arr_shape)
+            idx += size
+
+    def update_param(self, param_vec):
+        idx = 0
+        for _,param in self.model.named_parameters():
+            arr_shape = param.data.shape
+            size = 1
+            for i in range(len(list(arr_shape))):
+                size *= arr_shape[i]
+            param.data = param_vec[idx:idx+size].reshape(arr_shape)
+            idx += size    

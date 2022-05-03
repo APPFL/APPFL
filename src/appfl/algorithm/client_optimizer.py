@@ -25,6 +25,7 @@ class ClientOptim(BaseClient):
         self.loss_fn = eval(self.loss_type)
 
         self.round = 0
+        self.iter = 0
 
         super(ClientOptim, self).client_log_title()
 
@@ -37,7 +38,8 @@ class ClientOptim(BaseClient):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
         """ Multiple local update """
-        for t in range(self.num_local_epochs):
+        start_time=time.time()
+        for t in range(self.num_local_epochs):            
 
             if self.cfg.validation == True and self.test_dataloader != None:
                 train_loss, train_accuracy = super(ClientOptim, self).client_validation(
@@ -46,12 +48,14 @@ class ClientOptim(BaseClient):
                 test_loss, test_accuracy = super(ClientOptim, self).client_validation(
                     self.test_dataloader
                 )
+                per_iter_time = time.time() - start_time
                 super(ClientOptim, self).client_log_content(
-                    t, train_loss, train_accuracy, test_loss, test_accuracy
+                    t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
                 self.model.train()
-
+            
+            start_time=time.time()
             for data, target in self.dataloader:
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
@@ -75,12 +79,28 @@ class ClientOptim(BaseClient):
                     os.makedirs(path)
                 torch.save(
                     self.model.state_dict(),
-                    os.path.join(path, "%s_%s.pt" % (self.round, t)),
+                    os.path.join(path, "%s.pt" % (self.iter)),
                 )
+                self.iter +=1
+
+        if self.test_dataloader != None:
+            train_loss, train_accuracy = super(
+                ClientOptim, self
+            ).client_validation(self.dataloader)
+            test_loss, test_accuracy = super(
+                ClientOptim, self
+            ).client_validation(self.test_dataloader)
+            per_iter_time = time.time() - start_time
+            super(ClientOptim, self).client_log_content(
+                self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
+            )
+                        
 
         self.round += 1
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
+
+
 
         """ Differential Privacy  """
         if self.epsilon != False:
@@ -94,39 +114,9 @@ class ClientOptim(BaseClient):
         self.local_state = OrderedDict()
         self.local_state["primal"] = copy.deepcopy(self.primal_state)
         self.local_state["dual"] = OrderedDict()
+        self.local_state["grad"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
 
         return self.local_state
-
-    def write_result(self, output_filename, W, P, explained_variance_ratio_):
-
-        dir = self.cfg.output_dirname
-        if os.path.isdir(dir) == False:
-            os.mkdir(dir)
-
-        file_ext = ".txt"
-        filename = dir + "/%s%s" % (output_filename, file_ext)
-        uniq = 1
-        while os.path.exists(filename):
-            filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
-            uniq += 1
-
-        outfile = open(filename, "w")
-
-        outfile.write("W: (%s, %s) \n" % (W.shape[0], W.shape[1]))
-        outfile.write("Ratio: %s \n" % (explained_variance_ratio_))
-        outfile.write("Sum: %s \n" % (sum(explained_variance_ratio_)))
-        outfile.write("P: (%s, %s) \n" % (P.shape[0], P.shape[1]))
-
-        title = "%10s %10s %10s %10s %10s %10s \n" % (
-            "Round",
-            "LocalEpoch",
-            "TrainLoss",
-            "TrainAccu",
-            "TestLoss",
-            "TestAccu",
-        )
-        outfile.write(title)
-
-        return outfile, dir
+ 
