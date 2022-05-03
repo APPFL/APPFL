@@ -28,7 +28,7 @@ class ServerFedBFGSPCA(FedServerBFGS):
 
         step_size = 1.0
         if self.round > 0:     
-            step_size = super(ServerFedBFGSPCA, self).backtracking_line_search(clients)
+            step_size = super(ServerFedBFGSPCA, self).backtracking_line_search(clients, direction, step_size)
              
         print("step_size=", step_size)
 

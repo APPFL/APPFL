@@ -64,7 +64,7 @@ class FedServerBFGS(BaseServer):
         super(FedServerBFGS, self).update_param(self.global_state_vec)
 
         
-    def backtracking_line_search(self, clients):
+    def backtracking_line_search(self, clients, direction, step_size):
         ## deepcopy the models        
         model = {}                
         for k, client in enumerate(clients):                        

@@ -114,8 +114,8 @@ class ClientOptimPBFGS1(BaseClient):
         
         gk = torch.mm(self.P, grad.reshape(-1,1))
 
-        grad_proj = torch.mm(self.P.transpose(0, 1), gk)
-        grad_res = grad - grad_proj.reshape(-1)
+        # grad_proj = torch.mm(self.P.transpose(0, 1), gk)
+        # grad_res = grad - grad_proj.reshape(-1)
 
         # Quasi-Newton update
         if self.gk_last is not None:
