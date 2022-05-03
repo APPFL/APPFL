@@ -6,21 +6,8 @@ import random
 import numpy as np
 
 
-class BCELoss_Custom: 
 
-    def __init__(self, weights):        
-        self.weights = weights
 
-    def __call__(self, output, target):
-        if self.weights is not None:
-            assert len(self.weights) == 2
-            loss = self.weights[1] * (target * torch.log(output)) + \
-                self.weights[0] * ((1 - target) * torch.log(1 - output))
-        else:
-            loss = target * torch.log(output) + (1 - target) * torch.log(1 - output)
-
-        return torch.neg(torch.mean(loss))
-        
 def validation(self, dataloader):
 
     if dataloader is not None:
