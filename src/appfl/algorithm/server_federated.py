@@ -11,8 +11,8 @@ import copy
 
 
 class FedServer(BaseServer):
-    def __init__(self, weights, model, num_clients, device, **kwargs):
-        super(FedServer, self).__init__(weights, model, num_clients, device)
+    def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
+        super(FedServer, self).__init__(weights, model, loss_fn, num_clients, device)
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
 

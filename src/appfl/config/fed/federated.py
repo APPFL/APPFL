@@ -34,8 +34,6 @@ class Federated:
     clientname: str = "ClientOptim"
     args: DictConfig = OmegaConf.create(
         {
-            # User-defined loss function (pytorch format)
-            "loss_type": "torch.nn.BCELoss()",
             ## Server update
             "server_learning_rate": 0.01,
             "server_adapt_param": 0.001,

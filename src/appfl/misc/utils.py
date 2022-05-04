@@ -9,11 +9,6 @@ from sklearn.decomposition import PCA
 
 def validation(self, dataloader):
 
-    if dataloader is not None:
-        self.loss_fn = eval(self.loss_type)
-    else:
-        self.loss_fn = None
-
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
@@ -33,7 +28,7 @@ def validation(self, dataloader):
             output = self.model(img)
             loss += self.loss_fn(output, target).item()
 
-            if self.loss_type == "torch.nn.BCELoss()":
+            if output.shape[1] == 1:
                 pred = torch.round(output)
             else:
                 pred = output.argmax(dim=1, keepdim=True)

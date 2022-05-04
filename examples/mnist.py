@@ -31,10 +31,10 @@ parser.add_argument("--num_classes", type=int, default=10)
 parser.add_argument("--num_pixel", type=int, default=28)
 
 ## clients
-parser.add_argument("--num_clients", type=int, default=2)
+parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
 parser.add_argument("--client_lr", type=float, default=1e-3)
-parser.add_argument("--num_local_epochs", type=int, default=5)
+parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg")
@@ -50,7 +50,7 @@ args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
-
+ 
 
 def get_data(comm: MPI.Comm):
     dir = os.getcwd() + "/datasets/RawData"
@@ -140,7 +140,7 @@ def main():
 
     cfg.use_tensorboard = False
 
-    cfg.save_model_state_dict = True
+    cfg.save_model_state_dict = False
 
     cfg.output_dirname = "./outputs_%s_%s_%s" % (
         args.dataset,
@@ -169,7 +169,10 @@ def main():
 
     """ User-defined model """
     model = get_model(comm)
-    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
+
+    ## loss function (pytorch)
+    # cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
+    loss_fn = torch.nn.CrossEntropyLoss()   
 
     ## loading models
     cfg.load_model = False
@@ -202,16 +205,15 @@ def main():
     if comm_size > 1:
         if comm_rank == 0:
             rm.run_server(
-                cfg, comm, model, args.num_clients, test_dataset, args.dataset
+                cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
             )
         else:
-            # rm.run_client(
-            #     cfg, comm, model, args.num_clients, train_datasets, test_dataset
-            # )
-            rm.run_client(cfg, comm, model, args.num_clients, train_datasets)
+            rm.run_client(
+                cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset
+            )
         print("------DONE------", comm_rank)
     else:
-        rs.run_serial(cfg, model, train_datasets, test_dataset, args.dataset)
+        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
         
 
 
@@ -220,8 +222,8 @@ if __name__ == "__main__":
 
 
 # To run CUDA-aware MPI:
-# mpiexec -np 3 --mca opal_cuda_support 1 python ./mnist.py
+# mpiexec -np 2 --mca opal_cuda_support 1 python ./mnist.py
 # To run MPI:
-# mpiexec -np 3 python ./mnist.py --server=
+# mpiexec -np 2 python ./mnist.py
 # To run:
 # python ./mnist.py

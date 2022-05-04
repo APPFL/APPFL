@@ -13,8 +13,8 @@ import copy
 
 
 class ICEADMMServer(BaseServer):
-    def __init__(self, weights, model, num_clients, device, **kwargs):
-        super(ICEADMMServer, self).__init__(weights, model, num_clients, device)
+    def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
+        super(ICEADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
         self.__dict__.update(kwargs)
 
         self.is_first_iter = 1

@@ -23,6 +23,7 @@ def run_server(
     cfg: DictConfig,
     comm: MPI.Comm,
     model: nn.Module,
+    loss_fn: nn.Module,
     num_clients: int,
     test_dataset: Dataset = Dataset(),
     dataset_name: str = "appfl",
@@ -33,6 +34,7 @@ def run_server(
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
         model (nn.Module): neural network model to train
+        loss_fn (nn.Module): loss function 
         num_clients (int): the number of clients used in PPFL simulation
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
@@ -98,7 +100,7 @@ def run_server(
 
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
-        weights, copy.deepcopy(model), num_clients, device, **cfg.fed.args
+        weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args
     )
 
     do_continue = True
@@ -165,6 +167,7 @@ def run_client(
     cfg: DictConfig,
     comm: MPI.Comm,
     model: nn.Module,
+    loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
@@ -233,6 +236,7 @@ def run_client(
             cid,
             weight[cid],
             copy.deepcopy(model),
+            loss_fn,
             DataLoader(
                 train_data[cid],
                 num_workers=cfg.num_workers,

@@ -29,6 +29,7 @@ def run_client(
     cfg: DictConfig,
     cid: int,
     model: nn.Module,
+    loss_fn: nn.Module,
     train_data: Dataset,
     gpu_id: int = 0,
     test_data: Dataset = Dataset(),
@@ -39,6 +40,7 @@ def run_client(
         cfg (DictConfig): the configuration for this run
         cid (int): cliend_id
         model (nn.Module): neural network model to train
+        loss_fn (nn.Module): loss function
         train_data (Dataset): training data
         gpu_id (int): GPU ID
     """
@@ -111,6 +113,7 @@ def run_client(
         cid,
         weight,
         copy.deepcopy(model),
+        loss_fn,
         DataLoader(
             train_data,
             num_workers=cfg.num_workers,

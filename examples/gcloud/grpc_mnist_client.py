@@ -106,7 +106,8 @@ def main():
     # read default configuration
     cfg = OmegaConf.structured(Config)
     model = CNN(num_channel, num_classes, num_pixel)
-    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
+    loss_fn = torch.nn.CrossEntropyLoss()
+    
 
     logger = logging.getLogger(__name__)
     logger.info(
@@ -121,7 +122,7 @@ def main():
     logger.debug(OmegaConf.to_yaml(cfg)) 
     
     grpc_client.run_client(
-        cfg, args.client_id, model, train_datasets[args.client_id]
+        cfg, args.client_id, model, loss_fn, train_datasets[args.client_id]
     )
     logger.info("------DONE------")
 

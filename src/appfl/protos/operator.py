@@ -14,7 +14,7 @@ from .federated_learning_pb2 import Job
 
 
 class FLOperator:
-    def __init__(self, cfg, model, test_dataset, num_clients):
+    def __init__(self, cfg, model, loss_fn, test_dataset, num_clients):
 
         self.logger1 = create_custom_logger(logging.getLogger(__name__), cfg)
         cfg["logginginfo"]["comm_size"] = 1
@@ -28,6 +28,7 @@ class FLOperator:
         self.best_accuracy = 0.0
         self.device = "cpu"
         self.model = copy.deepcopy(model)
+        self.loss_fn = loss_fn
         """ Loading Model """
         if cfg.load_model == True:
             self.model = load_model(cfg)
@@ -55,6 +56,7 @@ class FLOperator:
         self.fed_server: BaseServer = eval(self.cfg.fed.servername)(
             self.client_weights,
             self.model,
+            self.loss_fn,
             self.num_clients,
             self.device,
             **self.cfg.fed.args,

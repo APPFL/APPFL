@@ -20,6 +20,7 @@ from .algorithm import *
 def run_serial(
     cfg: DictConfig,
     model: nn.Module,
+    loss_fn: nn.Module,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
     dataset_name: str = "appfl",
@@ -29,11 +30,12 @@ def run_serial(
     Args:
         cfg (DictConfig): the configuration for this run
         model (nn.Module): neural network model to train
+        loss_fn (nn.Module): loss function 
         train_data (Dataset): training data
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         dataset_name (str): optional dataset name
     """
-
+    
     """ log for a server """
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
@@ -76,7 +78,7 @@ def run_serial(
         cfg.validation = False
 
     server = eval(cfg.fed.servername)(
-        weights, copy.deepcopy(model), cfg.num_clients, cfg.device, **cfg.fed.args
+        weights, copy.deepcopy(model), loss_fn, cfg.num_clients, cfg.device, **cfg.fed.args
     )
 
     server.model.to(cfg.device)
@@ -92,6 +94,7 @@ def run_serial(
             k,
             weights[k],
             copy.deepcopy(model),
+            loss_fn,
             DataLoader(
                 train_data[k],
                 num_workers=cfg.num_workers,
@@ -111,7 +114,7 @@ def run_serial(
     model_name = []
     for name, _ in server.model.named_parameters():
         model_name.append(name)
-
+    
     start_time = time.time()
     test_loss = 0.0
     test_accuracy = 0.0
@@ -125,7 +128,7 @@ def run_serial(
 
         local_update_start = time.time()
         for k, client in enumerate(clients):
-
+            
             ## initial point for a client model
             for name in server.model.state_dict():
                 if name not in model_name:

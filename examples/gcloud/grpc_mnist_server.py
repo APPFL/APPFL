@@ -59,7 +59,8 @@ def main():
 
     start_time = time.time()
     model = CNN(num_channel, num_classes, num_pixel)
-
+    loss_fn = torch.nn.CrossEntropyLoss()
+    
     logger = logging.getLogger(__name__)
     logger.info(
         f"----------Loading_Time={time.time() - start_time}"
@@ -78,7 +79,7 @@ def main():
         cfg.save_model_dirname = "./save_models"
         cfg.save_model_filename = "MNIST_CNN_Iter_%s" % (cfg.num_epochs)
 
-    grpc_server.run_server(cfg, model, args.nclients)
+    grpc_server.run_server(cfg, model, loss_fn, args.nclients)
 
 
 if __name__ == "__main__":
