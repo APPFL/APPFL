@@ -15,21 +15,19 @@ import time
 
 class ClientOptim(BaseClient):
     def __init__(
-        self, id, weight, model, dataloader, cfg, outfile, test_dataloader, **kwargs
+        self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, **kwargs
     ):
         super(ClientOptim, self).__init__(
-            id, weight, model, dataloader, cfg, outfile, test_dataloader
+            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
-
-        self.loss_fn = eval(self.loss_type)
 
         self.round = 0
 
         super(ClientOptim, self).client_log_title()
 
     def update(self):
-
+        
         """Inputs for the local model update"""
 
         self.model.to(self.cfg.device)

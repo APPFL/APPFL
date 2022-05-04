@@ -3,7 +3,8 @@
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 note
-example/archive
+examples/archive
+examples/CIFAR10_Trajectory
 examples/.DS_Store
 examples/save_models
 examples/outputs/*

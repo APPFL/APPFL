@@ -20,7 +20,8 @@ def grpc_server_on(channel) -> bool:
 
 def run_server(
     cfg: DictConfig,
-    model: nn.Module,
+    model: nn.Module,    
+    loss_fn: nn.Module, 
     num_clients: int,
     test_data: Dataset = Dataset(),
 ) -> None:
@@ -30,7 +31,8 @@ def run_server(
 
     Args:
         cfg (DictConfig): the configuration for this run
-        model (nn.Module): neural network model to train
+        model (nn.Module): neural network model to train        
+        loss_fn (nn.Module): loss function
         num_clients (int): the number of clients used in PPFL simulation
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
     """
@@ -41,7 +43,7 @@ def run_server(
     #     print("Server is already running . . .")
     #     return
 
-    op = operator.FLOperator(cfg, model, test_data, num_clients)
+    op = operator.FLOperator(cfg, model, loss_fn, test_data, num_clients)
     op.servicer = server.FLServicer(cfg.server.id, str(cfg.server.port), op)
 
     logger = logging.getLogger(__name__)

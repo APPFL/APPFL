@@ -14,8 +14,8 @@ import math
 
 
 class IIADMMServer(BaseServer):
-    def __init__(self, weights, model, num_clients, device, **kwargs):
-        super(IIADMMServer, self).__init__(weights, model, num_clients, device)
+    def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
+        super(IIADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
 
         self.__dict__.update(kwargs)
 

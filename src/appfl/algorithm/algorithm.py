@@ -17,14 +17,16 @@ class BaseServer:
     Args:
         weight (Dict): aggregation weight assigned to each client
         model (nn.Module): torch neural network model to train
+        loss_fn (nn.Module): loss function
         num_clients (int): the number of clients
         device (str): device for computation
     """
 
     def __init__(
-        self, weights: OrderedDict, model: nn.Module, num_clients: int, device
+        self, weights: OrderedDict, model: nn.Module, loss_fn: nn.Module, num_clients: int, device
     ):
         self.model = model
+        self.loss_fn = loss_fn
         self.num_clients = num_clients
         self.device = device
         self.weights = copy.deepcopy(weights)
@@ -165,6 +167,7 @@ class BaseClient:
         id: unique ID for each client
         weight: aggregation weight assigned to each client
         model: (nn.Module): torch neural network model to train
+        loss_fn (nn.Module): loss function
         dataloader: PyTorch data loader
         device (str): device for computation
     """
@@ -174,6 +177,7 @@ class BaseClient:
         id: int,
         weight: Dict,
         model: nn.Module,
+        loss_fn: nn.Module,
         dataloader: DataLoader,
         cfg,
         outfile,
@@ -183,6 +187,7 @@ class BaseClient:
         self.id = id
         self.weight = weight
         self.model = model
+        self.loss_fn = loss_fn
         self.dataloader = dataloader
         self.cfg = cfg
         self.outfile = outfile
@@ -270,11 +275,6 @@ class BaseClient:
 
     def client_validation(self, dataloader):
 
-        if dataloader is not None:
-            self.loss_fn = eval(self.loss_type)
-        else:
-            self.loss_fn = None
-
         if self.loss_fn is None or dataloader is None:
             return 0.0, 0.0
 
@@ -293,7 +293,7 @@ class BaseClient:
                 output = self.model(img)
                 loss += self.loss_fn(output, target).item()
 
-                if self.loss_type == "torch.nn.BCELoss()":
+                if output.shape[1] == 1:
                     pred = torch.round(output)
                 else:
                     pred = output.argmax(dim=1, keepdim=True)

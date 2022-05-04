@@ -16,6 +16,9 @@ import appfl.run_grpc_client as grpc_client
 from mpi4py import MPI
 import argparse
 
+"""
+python grpc_mnist_client.py --host=localhost --client_id=0 --nclients=1
+"""
 
 """ read arguments """ 
 
@@ -144,7 +147,7 @@ def main():
 
     """ User-defined model """    
     model = get_model(comm)
-    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"  
+    loss_fn = torch.nn.CrossEntropyLoss()  
 
 
     cfg.validation = False
@@ -180,8 +183,8 @@ def main():
         if comm_rank == 0:            
             grpc_server.run_server(cfg, model, args.num_clients)
         else:            
-            # grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1], comm_rank, test_dataset)
-            grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1])
+            grpc_client.run_client(cfg, comm_rank-1, model, loss_fn, train_datasets[comm_rank - 1], comm_rank, test_dataset)
+            
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.
