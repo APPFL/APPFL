@@ -28,6 +28,8 @@ def get_data(num_clients: int):
     )
 
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
+    
+    
     train_datasets = []
     for i in range(num_clients):
 
@@ -44,7 +46,22 @@ def get_data(num_clients: int):
             )
         )
 
-    return train_datasets
+     # test data for a server
+    test_data_raw = eval("torchvision.datasets." + DataSet_name)(
+        f"./_data", download=True,  train=False, transform=ToTensor()
+    )
+
+    test_data_input = []
+    test_data_label = []
+    for idx in range(len(test_data_raw)):
+        test_data_input.append(test_data_raw[idx][0].tolist())
+        test_data_label.append(test_data_raw[idx][1])
+
+    test_dataset = Dataset(
+        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+    )
+
+    return train_datasets, test_dataset
 
 
 class CNN(nn.Module):
@@ -94,7 +111,7 @@ def main():
     torch.manual_seed(1)
 
     start_time = time.time()
-    train_datasets = get_data(args.nclients)
+    train_datasets, test_dataset = get_data(args.nclients)
 
     """ Configuration """     
     cfg = OmegaConf.structured(Config)
@@ -122,7 +139,7 @@ def main():
     logger.debug(OmegaConf.to_yaml(cfg)) 
     
     grpc_client.run_client(
-        cfg, args.client_id, model, loss_fn, train_datasets[args.client_id]
+        cfg, args.client_id, model, loss_fn, train_datasets[args.client_id], 0, test_dataset
     )
     logger.info("------DONE------")
 
