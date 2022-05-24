@@ -3,7 +3,7 @@ import os
 from omegaconf import DictConfig
 import logging
 import random
-import numpy as np 
+import numpy as np
 
 
 def validation(self, dataloader):
@@ -108,7 +108,7 @@ def save_model_iteration(t, model, cfg: DictConfig):
         uniq += 1
 
     torch.save(model, file)
-
+ 
 
 def set_seed(seed=233):
     random.seed(seed)

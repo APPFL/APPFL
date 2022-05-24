@@ -14,6 +14,10 @@ from appfl.config import *
 from appfl.misc.data import *
 import appfl.run_grpc_client as grpc_client
 
+"""
+python grpc_mnist_client.py --host=localhost --client_id=0 --nclients=1
+"""
+
 DataSet_name = "MNIST"
 num_channel = 1  # 1 if gray, 3 if color
 num_classes = 10  # number of the image classes
@@ -103,7 +107,7 @@ def main():
     parser.add_argument("--use_tls", type=bool, default=False)
     parser.add_argument("--client_id", type=int, required=True)
     parser.add_argument("--nclients", type=int, required=True)
-    parser.add_argument("--logging", type=str, default="DEBUG")
+    parser.add_argument("--logging", type=str, default="INFO")
     parser.add_argument("--api_key", default=None)
     args = parser.parse_args()
 

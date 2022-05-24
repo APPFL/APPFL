@@ -248,9 +248,10 @@ class BaseClient:
             self.penalty = self.penalty / self.residual_balancing.tau
 
     def client_log_title(self):
-        title = "%10s %10s %10s %10s %10s %10s \n" % (
+        title = "%10s %10s %10s %10s %10s %10s %10s \n" % (
             "Round",
             "LocalEpoch",
+            "PerIter[s]",
             "TrainLoss",
             "TrainAccu",
             "TestLoss",
@@ -260,11 +261,12 @@ class BaseClient:
         self.outfile.flush()
 
     def client_log_content(
-        self, t, train_loss, train_accuracy, test_loss, test_accuracy
+        self, t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
     ):
-        contents = "%10s %10s %10.4f %10.4f %10.4f %10.4f \n" % (
+        contents = "%10s %10s %10.2f %10.4f %10.4f %10.4f %10.4f \n" % (
             self.round,
             t,
+            per_iter_time,
             train_loss,
             train_accuracy,
             test_loss,
