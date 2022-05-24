@@ -169,9 +169,6 @@ def main():
 
     """ User-defined model """
     model = get_model(comm)
-
-    ## loss function (pytorch)
-    # cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
     loss_fn = torch.nn.CrossEntropyLoss()   
 
     ## loading models
