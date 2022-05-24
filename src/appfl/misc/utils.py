@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 import logging
 import random
 import numpy as np
-from sklearn.decomposition import PCA
+
 
 
 def validation(self, dataloader):
@@ -110,32 +110,7 @@ def save_model_iteration(t, model, cfg: DictConfig):
 
     torch.save(model, file)
 
-
-def construct_projection_matrix(cfg, cid, client):
-
-    W = []
-
-    pca_dir = cfg.pca_dir + "_%s" % (cid)
-
-    for i in range(cfg.params_start, cfg.params_end):
-        client.model.load_state_dict(
-            torch.load(
-                os.path.join(pca_dir, str(i) + ".pt"),
-                map_location=torch.device(cfg.device),
-            )
-        )
-        W.append(client.get_model_param_vec(client.model))
-
-    W = np.array(W)
-
-    # Obtain base variables through PCA
-    pca = PCA(n_components=cfg.ncomponents)
-    pca.fit_transform(W)
-    P = np.array(pca.components_)
-    P = torch.from_numpy(P).to(client.device)
-
-    return P, pca.explained_variance_ratio_
-
+ 
 
 def set_seed(seed=233):
     random.seed(seed)
