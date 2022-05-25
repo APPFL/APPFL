@@ -6,7 +6,6 @@ import random
 import numpy as np
 
 
-
 def validation(self, dataloader):
 
     if self.loss_fn is None or dataloader is None:
@@ -109,7 +108,6 @@ def save_model_iteration(t, model, cfg: DictConfig):
         uniq += 1
 
     torch.save(model, file)
-
  
 
 def set_seed(seed=233):

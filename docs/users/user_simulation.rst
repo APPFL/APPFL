@@ -15,7 +15,7 @@ Serial run
 
 Serial runs begin simply by calling the following API function.
 
-.. autofunction:: appfl.run.run_serial
+.. autofunction:: appfl.run_serial.run_serial
 
 
 Some remarks are made as follows:
@@ -30,9 +30,9 @@ Parallel run with MPI
 We can parallelize the PPFL simulation by usinig MPI through ``mpi4py`` package.
 The following two API functions need to be called for parallelization.
 
-.. autofunction:: appfl.run.run_server
+.. autofunction:: appfl.run_mpi.run_server
 
-.. autofunction:: appfl.run.run_client
+.. autofunction:: appfl.run_mpi.run_client
 
 
 The server and the clients begin by ``run_server`` and ``run_client``, respectively, where MPI communicator (e.g., ``MPI.COMM_WORLD`` in this example) is given as an argument.
