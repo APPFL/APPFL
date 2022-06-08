@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, List, Dict
 from omegaconf import DictConfig, OmegaConf
 
 
@@ -83,3 +83,17 @@ class Config:
         {"id": 1, "host": "localhost", "port": 50051, "use_tls": False, "api_key": None}
     )
     client: DictConfig = OmegaConf.create({"id": 1})
+
+@dataclass
+class FuncXClientConfig:
+    data_folder : Any 
+    name        : str = ""
+    endpoint_id : str = ""
+
+@dataclass
+class FuncXConfig(Config):
+    clients      : List[FuncXClientConfig] = field(default_factory=list)
+    dataset      : str  = ""
+    model_args   : List = field(default_factory=list)
+    model_kwargs : Dict = field(default_factory=dict)
+    

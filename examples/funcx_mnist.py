@@ -10,9 +10,9 @@ from torchvision.transforms import ToTensor
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
-from models.cnn import *
+from appfl.funcx import get_model
+from models.cnn  import *
 import appfl.run_funcx_server as funcx_server
-import appfl.run_funcx_client as funcx_client
 import argparse
 
 from funcx import FuncXClient
@@ -26,6 +26,8 @@ python grpc_mnist_client.py --host=localhost --client_id=0 --nclients=1
 parser = argparse.ArgumentParser() 
 
 parser.add_argument('--device', type=str, default="cpu")    
+## appfl-funcx
+parser.add_argument("--config", type=str, default="configs/funcx_mnist.yaml")
 
 ## dataset
 parser.add_argument('--dataset', type=str, default="MNIST")   
@@ -53,12 +55,17 @@ args = parser.parse_args()
 if torch.cuda.is_available():
     args.device="cuda"
 
-
+def check_endpoint(fxc, endpoints):
+    for endpoint in endpoints:
+        print("------ Status of Endpoint %s ------" % endpoint)
+        endpoint_status = fxc.get_endpoint_status(endpoint)
+        print("Status       : %s" % endpoint_status['status'])
+        print("Workers      : %s" % endpoint_status['logs'][0]['info']['total_workers'])
+        print("Pending tasks: %s" % endpoint_status['logs'][0]['info']['pending_tasks'])
 def main():
-
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    logging.basicConfig(stream=sys.stdout, level=None) #logging.INFO
     """ Configuration """     
-    cfg = OmegaConf.structured(Config)
+    cfg = OmegaConf.structured(FuncXConfig)
     
     cfg.device = args.device 
     cfg.reproduce = True
@@ -75,19 +82,13 @@ def main():
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
 
-    ## outputs        
-
+    ## outputs
     cfg.output_dirname = "./outputs_%s_%s_%s"%(args.dataset, args.server, args.client_optimizer)     
-    
     cfg.output_filename = "result"    
 
-    start_time = time.time()
-
-    """ User-defined model """    
-    model = CNN(args.num_channel, args.num_classes, args.num_pixel)
-    loss_fn = torch.nn.CrossEntropyLoss()  
-
+    ## validation
     cfg.validation = False
+
     ## loading models 
     cfg.load_model = False
     if cfg.load_model == True:
@@ -95,33 +96,49 @@ def main():
         cfg.load_model_filename     = "Model"               
         model = load_model(cfg)      
 
-    """ User-defined data """        
-    train_datasets, test_dataset = get_data(comm)
+    ## loading funcX configs from file
+    load_funcx_config(cfg, args.config)
     
-    ## Sanity check for the user-defined data
-    if cfg.data_sanity == True:
-        data_sanity_check(train_datasets, test_dataset, args.num_channel, args.num_pixel)        
+    """ User-defined model """   
+    cfg.model_args = [args.num_channel, args.num_classes, args.num_pixel] 
+    ModelClass     = get_model()
+    model          = ModelClass(*cfg.model_args, **cfg.model_kwargs) 
+    loss_fn        = torch.nn.CrossEntropyLoss()  
 
- 
-    print(
-        "-------Loading_Time=",
-        time.time() - start_time,
-    ) 
-    
-    """ saving models """
+    """ User-defined data """        
+    cfg.dataset = args.dataset
+
+    """ Saving models """
     cfg.save_model = False
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
-        cfg.save_model_filename     = "MNIST_CNN"    
+        cfg.save_model_filename     = "MNIST_CNN"   
+    
+    """ APPFL with funcX """
+    ## create funcX client object
+    fxc = FuncXClient()
+    
+    ## run server
+    funcx_server.run_server(cfg, model, loss_fn, fxc)
+    
+    # check_endpoint(fxc, endpoints)
+    # train_datasets, test_dataset = get_data(comm)
+    
+    # ## Sanity check for the user-defined data
+    # if cfg.data_sanity == True:
+    #     data_sanity_check(train_datasets, test_dataset, args.num_channel, args.num_pixel)        
+
  
-    # Try to launch both a server and clients.
-    funcx_server.run_server(cfg, model, args.num_clients)
-    funcx_client.run_client(cfg, comm_rank-1, model, loss_fn, train_datasets[comm_rank - 1], comm_rank, test_dataset)
+    # print(
+    #     "-------Loading_Time=",
+    #     time.time() - start_time,
+    # )  
+ 
+    # # Try to launch both a server and clients.
+    # funcx_server.run_server(cfg, model, args.num_clients)
+    # funcx_client.run_client(cfg, comm_rank-1, model, loss_fn, train_datasets[comm_rank - 1], comm_rank, test_dataset)
             
-    print("------DONE------", comm_rank)
+    # print("------DONE------", comm_rank)
 
 if __name__ == "__main__":
-    # main()
-    fxc = FuncXClient()
-    tutorial_endpoint = '4b116d3c-1703-4f8f-9f6f-39921e5864df'
-    funcx_client.run_client(fxc, tutorial_endpoint)
+    main()

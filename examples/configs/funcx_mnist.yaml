@@ -1,0 +1,14 @@
+dataset:
+  name: MNIST
+clients:
+  - name: client-1
+    endpoint_id: f45229d0-487d-4981-b062-f20b0ba4fd95
+    data_folder: 0
+  
+  - name: client-2
+    endpoint_id: 73399a37-23f6-4039-8a48-31560fcd809b
+    data_folder: 1
+
+  - name: client-3
+    endpoint_id: 9bebbbde-b6eb-46e3-9c0d-4f2e4c484dc5
+    data_folder: 2
