@@ -1,43 +1,5 @@
-def get_model():
-    import torch
-    import torch.nn as nn
-    import math
-
-    class CNN(nn.Module):
-        def __init__(self, num_channel, num_classes, num_pixel):
-            super().__init__()
-            self.conv1 = nn.Conv2d(
-                num_channel, 32, kernel_size=5, padding=0, stride=1, bias=True
-            )
-            self.conv2 = nn.Conv2d(32, 64, kernel_size=5, padding=0, stride=1, bias=True)
-            self.maxpool = nn.MaxPool2d(kernel_size=(2, 2))
-            self.act = nn.ReLU(inplace=True)
-
-            ###
-            ### X_out = floor{ 1 + (X_in + 2*padding - dilation*(kernel_size-1) - 1)/stride }
-            ###
-            X = num_pixel
-            X = math.floor(1 + (X + 2 * 0 - 1 * (5 - 1) - 1) / 1)
-            X = X / 2
-            X = math.floor(1 + (X + 2 * 0 - 1 * (5 - 1) - 1) / 1)
-            X = X / 2
-            X = int(X)
-
-            self.fc1 = nn.Linear(64 * X * X, 512)
-            self.fc2 = nn.Linear(512, num_classes)
-
-        def forward(self, x):
-            x = self.act(self.conv1(x))
-            x = self.maxpool(x)
-            x = self.act(self.conv2(x))
-            x = self.maxpool(x)
-            x = torch.flatten(x, 1)
-            x = self.act(self.fc1(x))
-            x = self.fc2(x)
-            return x
-    return CNN
-
-def get_model_size(model):
+import torch.nn as nn
+def get_model_size(model: nn.Module):
     param_size = 0
     for param in model.parameters():
         param_size += param.nelement() * param.element_size()
@@ -47,3 +9,11 @@ def get_model_size(model):
 
     size_all_mb = (param_size + buffer_size) / 1024**2
     print('model size: {:.3f}MB'.format(size_all_mb))
+
+def check_endpoint(fxc, endpoints):
+    for endpoint in endpoints:
+        print("------ Status of Endpoint %s ------" % endpoint)
+        endpoint_status = fxc.get_endpoint_status(endpoint)
+        print("Status       : %s" % endpoint_status['status'])
+        print("Workers      : %s" % endpoint_status['logs'][0]['info']['total_workers'])
+        print("Pending tasks: %s" % endpoint_status['logs'][0]['info']['pending_tasks'])

@@ -86,14 +86,31 @@ class Config:
 
 @dataclass
 class FuncXClientConfig:
-    data_folder : Any 
+    data_split  : Any 
     name        : str = ""
     endpoint_id : str = ""
+    device      : str = "cpu"
+    output_dir  : str = "./"
+    data_dir    : str = "./"
+
+@dataclass 
+class FuncXServerConfig:
+    device      : str = "cpu"
+    output_dir  : str = "./"
+    data_dir    : str = "./"
+
+@dataclass
+class ExecutableFunc:
+    module       : str = ""
+    call         : str = ""
 
 @dataclass
 class FuncXConfig(Config):
+    get_data     : ExecutableFunc = field(default_factory=ExecutableFunc)
+    get_model    : ExecutableFunc = field(default_factory=ExecutableFunc)
     clients      : List[FuncXClientConfig] = field(default_factory=list)
     dataset      : str  = ""
     model_args   : List = field(default_factory=list)
     model_kwargs : Dict = field(default_factory=dict)
+    server       : FuncXServerConfig
     

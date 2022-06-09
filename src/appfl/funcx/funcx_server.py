@@ -1,23 +1,31 @@
 from omegaconf import DictConfig
 from funcx import FuncXClient
 import torch.nn as nn
+from collections import OrderedDict
+import logging
+from appfl.misc import create_custom_logger
 
-class APPFLFuncXServer:
-    def __init__(self, cfg: DictConfig, fxc : FuncXClient):
+class APPFLFuncTrainingEndpoints:
+    def __init__(self, cfg: DictConfig, fxc : FuncXClient, logger):
         self.cfg = cfg
         self.fxc = fxc
         self.executing_tasks = {}
-
-    def send_task_to_clients(self, exct_func, *args, **kwargs):
+        
+        # Logging
+        self.logger = logger
+        
+    def send_task_to_clients(self, exct_func, *args, silent = False, **kwargs):
         ## Register funcX function and create execution batch 
         func_uuid = self.fxc.register_function(exct_func)
         batch     = self.fxc.create_batch()
-        for client_cfg in self.cfg.clients:
-            # import ipdb; ipdb.set_trace()
+
+        for client_idx, client_cfg in enumerate(self.cfg.clients):
+            # select device
             batch.add(
                 self.cfg,
-                client_cfg.data_folder, # TODO: can work with other datasets
+                client_idx, # TODO: can work with other datasets
                 *args,
+                **kwargs,
                 endpoint_id = client_cfg.endpoint_id, 
                 function_id = func_uuid)
         
@@ -26,28 +34,40 @@ class APPFLFuncXServer:
         
         ## Saving task ids 
         for i, task_id in enumerate(task_ids):
-            self.executing_tasks[task_ids[i]] = self.cfg.clients[i].name
+            self.executing_tasks[task_ids[i]] = i
         
         ## Logging
-        for task_id in  self.executing_tasks:
-            print("Task id %s is assigned to %s." %(task_id, self.executing_tasks[task_id]))
+        if not silent:
+            for task_id in  self.executing_tasks:
+                self.logger.info("Task '%s' (id: %s) is assigned to %s." %(exct_func.__name__, task_id, self.cfg.clients[self.executing_tasks[task_id]].name))
         return self.executing_tasks
 
-    def receive_sync_client_updates(self):
+    def receive_sync_endpoints_updates(self):
         stop_aggregate    = False
-        client_results    = []
+        client_results    = OrderedDict()
         while (not stop_aggregate):
             results = self.fxc.get_batch_result(list(self.executing_tasks.keys()))
             for task_id in results:
                 if results[task_id]['pending'] == False:
                     if task_id in self.executing_tasks:
-                        print("Training task %s on %s is completed with status '%s'." % ( 
-                            task_id, 
-                            self.executing_tasks[task_id],
-                            results[task_id]['status']))
-                        
-                        if results[task_id]['status'] != "failed": 
-                            client_results.append(results[task_id]['result'])
+                        ## Training at client is succeeded
+                        if results[task_id]['status'] == "success": 
+                            client_results[self.executing_tasks[task_id]] = results[task_id]['result']
+                            
+                            self.logger.info(
+                            "Task %s on %s is completed successfully." % ( 
+                                task_id, 
+                                self.cfg.clients[self.executing_tasks[task_id]].name)
+                            )
+                        else:
+                            # TODO: handling situations when training has errors
+                            client_results[self.executing_tasks[task_id]] = None
+
+                            self.logger.warning(
+                            "Task %s on %s is failed with an error." % ( 
+                                task_id, 
+                                self.cfg.clients[self.executing_tasks[task_id]].name)
+                            )
                     self.executing_tasks.pop(task_id)
 
             if len(self.executing_tasks) == 0:

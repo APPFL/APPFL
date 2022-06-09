@@ -5,6 +5,10 @@ import logging
 import random
 import numpy as np
 
+def get_executable_func(func_cfg):
+    import importlib
+    mdl = importlib.import_module(func_cfg.module)
+    return getattr(mdl, func_cfg.call)
 
 def validation(self, dataloader):
 
@@ -47,7 +51,7 @@ def create_custom_logger(logger, cfg: DictConfig):
 
     dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+        os.makedirs(dir, exist_ok = True)
     output_filename = cfg.output_filename + "_server"
 
     file_ext = ".txt"
@@ -67,7 +71,6 @@ def create_custom_logger(logger, cfg: DictConfig):
     # Add handlers to the logger
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
-
     return logger
 
 

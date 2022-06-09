@@ -1,48 +1,33 @@
-def client_get_data(
-    cfg,
-    client_idx: int):
-    # TODO: Loading other datasets, not only MNIST at client
-    import torchvision
-    from   torchvision.transforms import ToTensor
-    import numpy as np
-    import os
-    import torch
-    from appfl.misc.data import Dataset
-
-    local_dir = os.getcwd() + "/datasets/RawData%d" %client_idx
-    train_data_raw = eval("torchvision.datasets." + cfg.dataset)(
-        local_dir, download = True, train = True, transform= ToTensor()
-    )
-    split_train_data_raw = np.array_split(range(len(train_data_raw)),  100)
-    train_datasets = []
-    train_data_input = []
-    train_data_label = []
-    
-    for idx in split_train_data_raw[client_idx]:
-        train_data_input.append(train_data_raw[idx][0].tolist())
-        train_data_label.append(train_data_raw[idx][1])
-    
-    train_dataset = Dataset(
-            torch.FloatTensor(train_data_input),
-            torch.tensor(train_data_label),
-        )
-    return train_dataset
+def client_validate_data(
+    cfg, 
+    client_idx):
+    from appfl.misc import client_log, get_executable_func
+    get_data  = get_executable_func(cfg.get_data)
+    # Get train data
+    train_data = get_data(cfg, client_idx)
+    return len(train_data)
 
 def client_training(
     cfg, 
     client_idx,
-    server_weight,
+    weights,
+    global_state,
     loss_fn
     ):
     ## Import libaries
     import torch
     from torch.utils.data import DataLoader
-    from appfl.misc import client_log
+    from appfl.misc import client_log, get_executable_func
     from appfl.algorithm import ClientOptim
-    from appfl.funcx import client_get_data, get_model
     
+    get_model = get_executable_func(cfg.get_model)
+    get_data  = get_executable_func(cfg.get_data)
+    ## Load client configs
+    cfg.device         = cfg.clients[client_idx].device
+    cfg.output_dirname = cfg.clients[client_idx].output_dir
+
     ## Prepare training/testing data
-    train_data = client_get_data(cfg, client_idx)
+    train_data = get_data(cfg, client_idx)
 
     ## Prepare output directory
     output_filename = cfg.output_filename + "_client_%s" % (client_idx)
@@ -58,7 +43,7 @@ def client_training(
     ## Instantiate training client 
     client= eval(cfg.fed.clientname)(
             client_idx,
-            server_weight,
+            weights,
             model,
             loss_fn,
             DataLoader(
@@ -70,12 +55,12 @@ def client_training(
             ),
             cfg,
             outfile,
-            None,
+            None, #TODO: support validation at client
             **cfg.fed.args,
         )
-    ## Initial weight for a client
-    client.model.load_state_dict(server_weight)
+    ## Initial state for a client
+    client.model.load_state_dict(global_state)
 
-    ## Perform client update
+    ## Perform a client update
     client_state = client.update()
     return client_state
