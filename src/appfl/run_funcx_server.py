@@ -12,6 +12,7 @@ from .misc import *
 from .funcx import client_training, client_validate_data
 from .funcx import APPFLFuncTrainingEndpoints
 
+from .funcx import appfl_funcx_save_log
 def run_server(
     cfg: DictConfig, 
     model: nn.Module,
@@ -136,5 +137,8 @@ def run_server(
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
                 save_model_iteration(t + 1, server.model, cfg)
-
+    
+    appfl_funcx_save_log(cfg, logger)
     server.logging_summary(cfg, logger)
+
+    
