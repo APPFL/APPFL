@@ -41,7 +41,10 @@ parser.add_argument('--num_epochs', type=int, default=2)
 parser.add_argument('--server_lr', type=float, required=False)    
 parser.add_argument('--mparam_1', type=float, required=False)    
 parser.add_argument('--mparam_2', type=float, required=False)    
-parser.add_argument('--adapt_param', type=float, required=False)    
+parser.add_argument('--adapt_param', type=float, required=False)   
+
+## tensorboard
+parser.add_argument('--use_tensorboard', type=bool, default=True)
  
 args = parser.parse_args()
 
@@ -63,8 +66,10 @@ def main():
     
     ## server
     cfg.fed.servername = args.server
-    cfg.num_epochs = args.num_epochs
+    cfg.num_epochs     = args.num_epochs
 
+    ## tensorboard
+    cfg.use_tensorboard= args.use_tensorboard
     
     ## outputs
     cfg.output_dirname = osp.join(cfg.server.output_dir, "outputs_%s_%s_%s"%(cfg.dataset, args.server, args.client_optimizer)) 

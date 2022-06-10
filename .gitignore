@@ -43,6 +43,8 @@ endpoints
 **/datasets/
 **/log_funcx_appfl/
 
+# Tensorboard log dir
+**/runs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

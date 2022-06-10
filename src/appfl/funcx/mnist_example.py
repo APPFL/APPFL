@@ -17,8 +17,8 @@ def get_data(
         local_dir, download = True, train = True, transform= ToTensor()
     )
     ## TODO: for development, temporary use a smaller dataset size at client
-    split_train_data_raw = np.array_split(range(len(train_data_raw)),  500)
-    # split_train_data_raw = np.array_split(range(len(train_data_raw)),  cfg.num_clients)
+    # split_train_data_raw = np.array_split(range(len(train_data_raw)),  500)
+    split_train_data_raw = np.array_split(range(len(train_data_raw)),  cfg.num_clients)
     train_datasets = []
     train_data_input = []
     train_data_label = []

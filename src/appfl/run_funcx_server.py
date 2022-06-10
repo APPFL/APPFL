@@ -37,6 +37,7 @@ def run_server(
         writer = SummaryWriter(
             comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients)
         )
+        
     ## Testing/validation variables
     test_loss = 0.0
     test_accuracy = 0.0
