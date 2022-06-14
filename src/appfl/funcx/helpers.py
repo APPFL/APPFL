@@ -2,6 +2,7 @@ import torch.nn as nn
 from datetime import datetime
 import os.path as osp
 
+from enum import Enum
 def get_model_size(model: nn.Module):
     param_size = 0
     for param in model.parameters():

@@ -19,6 +19,13 @@ clients:
     data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-1"
     output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-1"
   
+  - name: theta-1
+    endpoint_id: b425e356-2bb2-449e-a3dc-bf7cdfcca379
+    device: cuda:0
+    data_split: 0
+    data_dir  : "./data/theta-client-1"
+    output_dir: "./log/theta-client-1"
+  
   - name: client-2
     endpoint_id: 73399a37-23f6-4039-8a48-31560fcd809b
     device: cuda:1
@@ -26,9 +33,9 @@ clients:
     data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-2"
     output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-2"
 
-  - name: client-3
-    endpoint_id: 9bebbbde-b6eb-46e3-9c0d-4f2e4c484dc5
-    device: cuda:1
-    data_split: 2
-    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-3"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-3"
+  # - name: client-3
+  #   endpoint_id: 9bebbbde-b6eb-46e3-9c0d-4f2e4c484dc5
+  #   device: cuda:1
+  #   data_split: 2
+  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-3"
+  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-3"

@@ -9,7 +9,7 @@ from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.cnn  import *
-import appfl.run_funcx_server as funcx_server
+import appfl.run_funcx_async_server as funcx_async_server
 import argparse
 
 from funcx import FuncXClient
@@ -115,9 +115,9 @@ def main():
     
     """ APPFL with funcX """
     ## create funcX client object
-    fxc = FuncXClient()
+    fxc = FuncXClient(batch_enabled=True)
     ## run funcX server
-    funcx_server.run_server(cfg, model, loss_fn, fxc , test_dataset)
+    funcx_async_server.run_server(cfg, model, loss_fn, fxc , test_dataset)
 
 if __name__ == "__main__":
     main()
