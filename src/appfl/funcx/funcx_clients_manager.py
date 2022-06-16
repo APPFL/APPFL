@@ -113,7 +113,7 @@ class APPFLFuncXTrainingClients:
                     self.executing_tasks[task_id].success = True if results[task_id]["status"] == "success" else False
                     if task_id in self.executing_tasks:
                         ## Training at client is succeeded
-                        if results[task_id]['status'] == "success": 
+                        if results[task_id]['status'] == "success":
                             client_results[self.executing_tasks[task_id].client_idx] = results[task_id]['result']
                             self.executing_tasks[task_id].end_time= float(results[task_id]["completion_t"])                         
                             self.logger.info(
@@ -130,6 +130,12 @@ class APPFLFuncXTrainingClients:
                                 task_id, 
                                 self.cfg.clients[self.executing_tasks[task_id].client_idx].name)
                             )
+                            # Raise/Reraise the exception at client
+                            excpt = results[task_id]['exception']
+                            if type(excpt) == Exception:
+                                raise excpt
+                            else:
+                                results[task_id]['exception'].reraise()
                     # Save to log file
                     self.cfg.logging_tasks.append(self.executing_tasks[task_id])
                     self.executing_tasks.pop(task_id)

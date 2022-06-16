@@ -12,30 +12,40 @@ server:
   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
   output_dir: "./log_funcx_appfl/server"
 clients:
-  - name: client-1
-    endpoint_id: f45229d0-487d-4981-b062-f20b0ba4fd95
-    device: cuda:0
-    data_split: 0
-    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-1"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-1"
-  
-  - name: theta-1
-    endpoint_id: b425e356-2bb2-449e-a3dc-bf7cdfcca379
-    device: cuda:0
-    data_split: 0
-    data_dir  : "./data/theta-client-1"
-    output_dir: "./log/theta-client-1"
-  
-  - name: client-2
+  ## CSL@UIUC clusters
+  # - name: uiuc-1
+  #   endpoint_id: f45229d0-487d-4981-b062-f20b0ba4fd95
+  #   device: cpu # cuda:0 # 1 x GeForce GTX 1070 GPU
+  #   data_split: 0
+  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-1"
+  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-1"
+
+  - name: uiuc-2
     endpoint_id: 73399a37-23f6-4039-8a48-31560fcd809b
-    device: cuda:1
+    device: cuda:1 # 1 x GeForce RTX 2080 GPU
     data_split: 1
     data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-2"
     output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-2"
 
-  # - name: client-3
+  # - name: uiuc-3
   #   endpoint_id: 9bebbbde-b6eb-46e3-9c0d-4f2e4c484dc5
-  #   device: cuda:1
+  #   device: cuda:1 # 1 x GeForce RTX 2080 GPU
   #   data_split: 2
   #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-3"
   #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-3"
+
+  ## ALCF ThetaGPU clusters
+  # - name: thetagpu-1
+  #   endpoint_id: bf4897e1-83c6-4f29-9b12-b28c289cf7d8
+  #   device: cuda:0
+  #   data_split: 0
+  #   data_dir  : "./data/theta-client-1"
+  #   output_dir: "/eagle/covid-xray/log/theta-client-1"
+
+  ## LCRC CPU clusters
+  - name: bebop-cli-1
+    endpoint_id: 655aa1d8-9ef4-4a25-ad63-d216fef14fce
+    device: cpu
+    data_split: 0
+    data_dir  : "./data/bebop-client-1"
+    output_dir: "./log/bebop-client-1"

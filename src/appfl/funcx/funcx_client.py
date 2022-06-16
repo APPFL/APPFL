@@ -59,8 +59,8 @@ def client_training(
             **cfg.fed.args,
         )
     ## Initial state for a client
+    client.model.to(cfg.clients[client_idx].device)
     client.model.load_state_dict(global_state)
-
     ## Perform a client update
     client_state = client.update()
     return client_state

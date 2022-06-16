@@ -2,6 +2,7 @@ import logging
 
 from collections import OrderedDict
 from .algorithm import BaseServer, BaseClient
+from .server_federated import FedServer
 
 import torch
 from torch.optim import *
@@ -11,7 +12,8 @@ import copy
 
 class AsyncFedServer(FedServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
-        super(FedServer, self).__init__(weights, model, loss_fn, num_clients, device)
+        print("AsyncFedServer")
+        super(AsyncFedServer, self).__init__(weights, model, loss_fn, num_clients, device)
     
     def compute_pseudo_gradient(self):
         for name, _ in self.model.named_parameters():

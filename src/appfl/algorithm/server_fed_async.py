@@ -1,7 +1,9 @@
 from .server_async_federated import AsyncFedServer
+from .server_federated import FedServer
 
 class ServerFedAsync(AsyncFedServer):
-    super(ServerFedAsync, self).compute_pseudo_gradient()
+    def compute_step(self):
+        super(ServerFedAsync, self).compute_pseudo_gradient()
         for name, _ in self.model.named_parameters():
             self.step[name] = -self.pseudo_grad[name]
 

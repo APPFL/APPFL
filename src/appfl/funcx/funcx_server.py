@@ -72,10 +72,10 @@ class APPFLFuncXServer(abc.ABC):
     def _initialize_server_model(self):
         """ APPFL server """
         self.server  = eval(self.cfg.fed.servername)(
-            self.weights, copy.deepcopy(self.model), self.loss_fn, self.cfg.num_clients, self.cfg.server.device, **self.cfg.fed.args        
+            self.weights, copy.deepcopy(self.model), self.loss_fn, self.cfg.num_clients, "cpu", **self.cfg.fed.args        
         )
-        # Send server model to device
-        self.server.model.to(self.cfg.server.device)
+        # Server model should stay on CPU for serialization
+        self.server.model.to("cpu")
     
     def _initialize_training(self, model: nn.Module, loss_fn: nn.Module):
         self.model =  model
@@ -87,7 +87,16 @@ class APPFLFuncXServer(abc.ABC):
         test_loss    = 0.0
         test_accuracy= 0.0
         if self.cfg.validation == True:
+            # Move server model to GPU (if available) for validation inference 
+            if self.cfg.server.device != "cpu":
+                self.server.model.to(self.cfg.server.device)
+
             test_loss, test_accuracy = validation(self.server, self.test_dataloader)
+            
+            if self.cfg.server.device != "cpu":
+                # Move back to cpu after validation
+                self.server.model.to("cpu")
+
             if self.cfg.use_tensorboard:
                 # Add them to tensorboard
                 self.writer.add_scalar("server_test_accuracy", test_accuracy, step)
@@ -147,7 +156,6 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
             """ Training """
             ## Get current global state
             global_state = self.server.model.state_dict()
-            
             local_update_start = time.time()
             ## Boardcast global state and start training at funcX endpoints
             tasks   = self.trn_endps.send_task_to_all_clients(client_training,
@@ -176,11 +184,21 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
 class APPFLFuncXAsyncServer(APPFLFuncXServer):
     def __init__(self, cfg: DictConfig, fxc: FuncXClient):
         super(APPFLFuncXAsyncServer, self).__init__(cfg, fxc)
+        cfg["logginginfo"]["comm_size"] = 1
+
+    def _initialize_server_model(self):
+        """ Initialize server with only 1 client """
+        self.server  = eval(self.cfg.fed.servername)(
+            self.weights, copy.deepcopy(self.model), self.loss_fn, 1, "cpu", **self.cfg.fed.args        
+        )
+        # Send server model to device
+        self.server.model.to("cpu")
 
     def _get_client_weights(self):
-        self.weights = {
+        weights = {
             k: 1 / self.cfg.num_clients for k in range(self.cfg.num_clients)
         }
+        return weights
 
     def run(self, model: nn.Module, loss_fn: nn.Module):
         # Set model, and loss function
@@ -194,7 +212,7 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         # Do training
         self._do_training()
         # Wrap-up
-        self._finalize_training()
+        # self._finalize_training()
 
     def _do_training(self):
         ## Get current global state
@@ -204,14 +222,20 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         while (not stop_aggregate):
             # Assigning training tasks to all available clients
             self.trn_endps.run_async_task_on_available_clients(
-                client_validate_data
-                # client_training, 
-                # self.weights, global_state, self.loss_fn
+                # client_validate_data
+                client_training, 
+                self.weights, global_state, self.loss_fn
             )
             # Wating for results
             client_results = self.trn_endps.get_async_result_from_clients()
             if len(client_results) > 0:
                 count_updates += len(client_results)
-                print(client_results)
+                # Perform global update
+                global_update_start = time.time()
+                
+                local_states = [client_results]
+                self.server.update(local_states)
+                
+                self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
                 if count_updates >= 3:
                     stop_aggregate = True

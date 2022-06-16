@@ -8,5 +8,7 @@ from .server_fed_avgmom import *
 from .server_fed_adagrad import *
 from .server_fed_adam import *
 from .server_fed_yogi import *
+from .server_fed_async import *
+from .server_federated import *
 from .iceadmm import *
 from .iiadmm import *
