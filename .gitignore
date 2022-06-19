@@ -33,6 +33,9 @@ examples/gcloud/generated_pb2
 examples/gcloud/*.sh
 examples/gcloud/*.pb
 examples/gcloud/api_config.yaml
+examples/output/*
+examples/adapfed_test/output
+examples/adapfed_test/datasets
 note
 outputs/*
 _data
@@ -40,7 +43,6 @@ docs/notebooks/results
 results
 mryu_lib/*
 endpoints
- 
 
 
 # Byte-compiled / optimized / DLL files
@@ -112,6 +114,9 @@ instance/
 
 # Scrapy stuff:
 .scrapy
+
+# Vim stuff:
+*.swp
 
 # Sphinx documentation
 docs/_build/
@@ -785,3 +790,4 @@ examples/archive/outputs_cifar10_nclient4_pca_0_49/outputs_pca_CIFAR10_resnet20_
 examples/archive/outputs_cifar10_nclient4_pca_0_49/outputs_pca_CIFAR10_resnet20_ServerFedAvg_Adam_5_1.0/result_local_client_2.txt
 examples/archive/outputs_cifar10_nclient4_pca_0_49/outputs_pca_CIFAR10_resnet20_ServerFedAvg_Adam_5_1.0/result_local_client_3.txt
 examples/archive/outputs_cifar10_nclient4_pca_0_49/outputs_pca_CIFAR10_resnet20_ServerFedAvg_Adam_5_1.0/result_server.txt
+examples/outputs_MNIST_ServerFedAvg_Adam/

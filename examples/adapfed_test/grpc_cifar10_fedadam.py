@@ -101,7 +101,16 @@ def main():
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
+
+    # Configuration for program
     cfg.device = "cuda"
+    cfg.num_epochs = 1000
+    cfg.output_dirname = "output/fed_adam"
+
+    # Configuration for FL
+    cfg.fed.servername = "ServerFedAdam"
+    cfg.fed.args.num_local_epochs = 1
+
     loss_fn = torch.nn.CrossEntropyLoss()
 
 

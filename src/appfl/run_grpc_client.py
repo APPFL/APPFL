@@ -198,7 +198,7 @@ def run_client(
             # Update with the most recent weights before exit.
             update_model_state(comm, fed_client.model, cur_round_number)
 
-            outfile.close()
+    outfile.close()
 
 
 if __name__ == "__main__":

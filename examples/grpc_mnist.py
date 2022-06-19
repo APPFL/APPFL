@@ -181,8 +181,9 @@ def main():
     if comm_size > 1:
         # Try to launch both a server and clients.
         if comm_rank == 0:            
-            grpc_server.run_server(cfg, model, args.num_clients)
+            grpc_server.run_server(cfg, model, loss_fn, args.num_clients)
         else:            
+            print(comm_rank, len(train_datasets))
             grpc_client.run_client(cfg, comm_rank-1, model, loss_fn, train_datasets[comm_rank - 1], comm_rank, test_dataset)
             
         print("------DONE------", comm_rank)
