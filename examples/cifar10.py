@@ -10,8 +10,7 @@ import torchvision.transforms as transforms
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
-from models.cnn import *
-from models.resnet import *
+from models.utils import get_model
 
 import appfl.run_serial as rs
 import appfl.run_mpi as rm
@@ -20,7 +19,6 @@ from mpi4py import MPI
 import argparse
 
 import torch.optim as optim
-from models.utils import *
 import logging
 from torch.utils.data import DataLoader
  
@@ -36,7 +34,7 @@ parser.add_argument('--dataset', type=str, default="CIFAR10")
 parser.add_argument('--num_channel', type=int, default=3)   
 parser.add_argument('--num_classes', type=int, default=10)   
 parser.add_argument('--num_pixel', type=int, default=32)   
-parser.add_argument('--model', type=str, default="resnet20")   
+parser.add_argument('--model', type=str, default="CNN")   
 parser.add_argument('--train_data_batch_size', type=int, default=128)   
 parser.add_argument('--test_data_batch_size', type=int, default=128)   
 
@@ -117,16 +115,6 @@ def get_data():
         ) 
     return train_datasets, test_dataset
 
-
-def get_model():
-    ## User-defined model
-    if args.model == "CNN":
-        model = CNN(args.num_channel, args.num_classes, args.num_pixel)
-    if args.model == "resnet20":
-        model = resnet20(num_classes=args.num_classes)        
-    return model
-
-
 ## Run
 def main():
     
@@ -182,7 +170,7 @@ def main():
     start_time = time.time()
 
     """ User-defined model """    
-    model = get_model() 
+    model = get_model(args) 
     loss_fn = torch.nn.CrossEntropyLoss()   
     
     ## loading models 
@@ -229,3 +217,9 @@ if __name__ == "__main__":
     main()
 
  
+# To run CUDA-aware MPI:
+# mpiexec -np 2 --mca opal_cuda_support 1 python ./cifar10.py
+# To run MPI:
+# mpiexec -np 2 python ./cifar10.py
+# To run:
+# python ./cifar10.py
