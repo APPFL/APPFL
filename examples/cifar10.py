@@ -183,7 +183,7 @@ def main():
 
     """ User-defined model """    
     model = get_model() 
-    cfg.fed.args.loss_type = "torch.nn.CrossEntropyLoss()"
+    loss_fn = torch.nn.CrossEntropyLoss()   
     
     ## loading models 
     cfg.load_model = False
@@ -216,12 +216,12 @@ def main():
     """ Running """
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(cfg, comm, model, args.num_clients, test_dataset, args.dataset)
+            rm.run_server(cfg, comm, loss_fn, model, args.num_clients, test_dataset, args.dataset)
         else:
-            rm.run_client(cfg, comm, model, args.num_clients, train_datasets, test_dataset)
+            rm.run_client(cfg, comm, loss_fn, model, args.num_clients, train_datasets, test_dataset)
         print("------DONE------", comm_rank)
     else:
-        rs.run_serial(cfg, model, train_datasets, test_dataset, args.dataset)
+        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
  
   
 
