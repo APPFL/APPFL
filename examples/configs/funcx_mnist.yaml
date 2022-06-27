@@ -13,39 +13,55 @@ server:
   output_dir: "./log_funcx_appfl/server"
 clients:
   ## CSL@UIUC clusters
-  # - name: uiuc-1
-  #   endpoint_id: f45229d0-487d-4981-b062-f20b0ba4fd95
-  #   device: cpu # cuda:0 # 1 x GeForce GTX 1070 GPU
-  #   data_split: 0
-  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-1"
-  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-1"
+  - name: uiuc-gpu-1
+    endpoint_id: f45229d0-487d-4981-b062-f20b0ba4fd95
+    device:  cuda:0 # 1 x GeForce GTX 1070 GPU
+    data_split: 0
+    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-1"
+    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-1"
 
-  - name: uiuc-2
+  - name: uiuc-gpu-2
     endpoint_id: 73399a37-23f6-4039-8a48-31560fcd809b
     device: cuda:1 # 1 x GeForce RTX 2080 GPU
     data_split: 1
-    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-2"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-2"
+    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-2"
+    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-2"
 
-  # - name: uiuc-3
-  #   endpoint_id: 9bebbbde-b6eb-46e3-9c0d-4f2e4c484dc5
-  #   device: cuda:1 # 1 x GeForce RTX 2080 GPU
-  #   data_split: 2
-  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/client-3"
-  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/client-3"
+  - name: uiuc-gpu-3
+    endpoint_id: 9bebbbde-b6eb-46e3-9c0d-4f2e4c484dc5
+    device: cuda:1 # 1 x GeForce RTX 2080 GPU
+    data_split: 2
+    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-3"
+    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-3"
 
-  ## ALCF ThetaGPU clusters
+  # # ALCF ThetaGPU clusters
   # - name: thetagpu-1
   #   endpoint_id: bf4897e1-83c6-4f29-9b12-b28c289cf7d8
   #   device: cuda:0
-  #   data_split: 0
+  #   data_split: 3
   #   data_dir  : "./data/theta-client-1"
   #   output_dir: "/eagle/covid-xray/log/theta-client-1"
 
-  ## LCRC CPU clusters
-  - name: bebop-cli-1
-    endpoint_id: 655aa1d8-9ef4-4a25-ad63-d216fef14fce
-    device: cpu
-    data_split: 0
-    data_dir  : "./data/bebop-client-1"
-    output_dir: "./log/bebop-client-1"
+  # # LCRC CPU clusters
+  # - name: bebop-cpu-1
+  #   endpoint_id: c50b2423-6f92-4b62-9eb0-dbb89d824b35
+  #   device: cpu
+  #   data_split: 4
+  #   data_dir  : "./data/bebop-cpu-1"
+  #   output_dir: "./log/bebop-cpu-1"
+
+  # - name: bebop-cpu-2
+  #   endpoint_id: d6c2a151-b1a1-4a9d-9365-ec84ba1c1583
+  #   device: cpu
+  #   data_split: 5
+  #   data_dir  : "./data/bebop-cpu-2"
+  #   output_dir: "./log/bebop-cpu-2"
+  
+  ## LCRC GPU clusters
+  # - name: swing-gpu-1
+  #   endpoint_id: a63472c2-51a3-4065-88de-d238cd24542b
+  #   device: cuda:0
+  #   data_split: 0
+  #   data_dir  : "./data/swing-gpu-1"
+  #   output_dir: "./log/swing-gpu-1"
+  

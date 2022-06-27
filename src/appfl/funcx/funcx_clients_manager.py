@@ -2,7 +2,6 @@ from omegaconf import DictConfig, OmegaConf
 from funcx import FuncXClient, FuncXExecutor
 import torch.nn as nn
 from collections import OrderedDict
-import logging
 import time
 from appfl.misc import create_custom_logger
 from appfl.config import ClientTask
@@ -25,11 +24,13 @@ class FuncXClient:
     @property
     def status(self):
         if (self._status == ClientStatus.RUNNING):
+            print(self.future.done())
             if self.future.done():
                 self._status = ClientStatus.DONE
         return self._status
 
-    def submit_task(self, fxc, exct_func, *args, **kwargs):
+
+    def submit_task(self, fxc, exct_func, *args, callback = None, **kwargs ):
         fx = FuncXExecutor(fxc)
         if self.status == ClientStatus.AVAILABLE:
             self._status = ClientStatus.RUNNING
@@ -38,9 +39,11 @@ class FuncXClient:
                 exct_func, *args, **kwargs,
                 endpoint_id = self.client_cfg.endpoint_id, 
             )
+            self.future.add_done_callback(callback)
             return True
         else:
             return False
+    
 
     def get_result(self):
         if self.status   == ClientStatus.DONE:
@@ -144,19 +147,25 @@ class APPFLFuncXTrainingClients:
         return client_results
     
     def run_async_task_on_available_clients(self, exct_func, *args, **kwargs):
+        def done_callback_test(res):
+            print(res)
+            self.logger.info("Done!")
+
         for client_idx in self.clients:
             client = self.clients[client_idx]
             if client.status == ClientStatus.AVAILABLE:
                 self.logger.info("Async task '%s' is assigned to %s." %(
                                 exct_func.__name__, client.client_cfg.name)
                 ) 
+                # client.add_done_callback(done_callback_test)
                 client.submit_task(
                     self.fxc,
                     exct_func,
                     self.cfg,
                     client_idx,
                     *args,
-                    **kwargs
+                    **kwargs,
+                    callback = done_callback_test
                 ) 
                 
     def get_async_result_from_clients(self):

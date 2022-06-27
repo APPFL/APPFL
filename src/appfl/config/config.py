@@ -22,7 +22,7 @@ class Config:
     num_epochs: int = 2
 
     # Number of workers in DataLoader
-    num_workers: int = 0
+    num_workers: int = 8
 
     # Train data batch info
     batch_training: bool = True  ## TODO: revisit

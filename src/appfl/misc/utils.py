@@ -61,12 +61,18 @@ def create_custom_logger(logger, cfg: DictConfig):
         filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
         uniq += 1
 
+    fmt = logging.Formatter(
+        '%(asctime)s %(levelname)-8s %(message)s'
+    )
+
     logger.setLevel(logging.INFO)
     # Create handlers
     c_handler = logging.StreamHandler()
     f_handler = logging.FileHandler(filename)
     c_handler.setLevel(logging.INFO)
     f_handler.setLevel(logging.INFO)
+    c_handler.setFormatter(fmt)
+    f_handler.setFormatter(fmt)
 
     # Add handlers to the logger
     logger.addHandler(c_handler)

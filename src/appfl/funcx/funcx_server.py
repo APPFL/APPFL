@@ -219,23 +219,38 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         global_state = self.server.model.state_dict()
         count_updates = 0
         stop_aggregate= False
-        while (not stop_aggregate):
-            # Assigning training tasks to all available clients
-            self.trn_endps.run_async_task_on_available_clients(
+
+        # TESTING HERE
+        self.trn_endps.run_async_task_on_available_clients(
                 # client_validate_data
                 client_training, 
                 self.weights, global_state, self.loss_fn
             )
-            # Wating for results
-            client_results = self.trn_endps.get_async_result_from_clients()
-            if len(client_results) > 0:
-                count_updates += len(client_results)
-                # Perform global update
-                global_update_start = time.time()
+
+        # while (not stop_aggregate):
+        #     # Assigning training tasks to all available clients
+        #     self.trn_endps.run_async_task_on_available_clients(
+        #         # client_validate_data
+        #         client_training, 
+        #         self.weights, global_state, self.loss_fn
+        #     )
+        #     # Wating for results
+        #     client_results = self.trn_endps.get_async_result_from_clients()
+        #     if len(client_results) > 0:
+        #         count_updates += 1
+
+        #         self.logger.info("Async FL global modle update step %d " % count_updates)
                 
-                local_states = [client_results]
-                self.server.update(local_states)
+        #         # Perform global update
+        #         global_update_start = time.time()
                 
-                self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
-                if count_updates >= 3:
-                    stop_aggregate = True
+        #         local_states = [client_results]
+        #         self.server.update(local_states)
+                
+        #         self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
+                
+        #         # if count_updates % 2 == 0:
+        #         #     self._do_validation(count_updates)
+        #         if count_updates >= 3:
+        #             stop_aggregate = True
+                
