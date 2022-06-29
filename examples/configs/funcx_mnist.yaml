@@ -13,26 +13,40 @@ server:
   output_dir: "./log_funcx_appfl/server"
 clients:
   ## CSL@UIUC clusters
-  - name: uiuc-gpu-1
-    endpoint_id: f45229d0-487d-4981-b062-f20b0ba4fd95
+  - name: uiuc-pascal-gpu-1
+    endpoint_id: 94452e85-e33e-48be-9688-42ab2a6afaab
     device:  cuda:0 # 1 x GeForce GTX 1070 GPU
     data_split: 0
     data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-1"
     output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-1"
 
-  - name: uiuc-gpu-2
-    endpoint_id: 73399a37-23f6-4039-8a48-31560fcd809b
-    device: cuda:1 # 1 x GeForce RTX 2080 GPU
-    data_split: 1
-    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-2"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-2"
+  # - name: uiuc-pascal-gpu-2
+  #   endpoint_id: c9c222f1-e2b2-4359-9eae-a0a12096443f
+  #   device:  cuda:0 # 1 x GeForce GTX 1070 GPU
+  #   data_split: 0
+  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-1"
+  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-1"
 
-  - name: uiuc-gpu-3
-    endpoint_id: 9bebbbde-b6eb-46e3-9c0d-4f2e4c484dc5
-    device: cuda:1 # 1 x GeForce RTX 2080 GPU
-    data_split: 2
-    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-3"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-3"
+  # - name: uiuc-gpu-1
+  #   endpoint_id: f45229d0-487d-4981-b062-f20b0ba4fd95
+  #   device:  cuda:0 # 1 x GeForce GTX 1070 GPU
+  #   data_split: 0
+  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-1"
+  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-1"
+
+  # - name: uiuc-gpu-2
+  #   endpoint_id: 73399a37-23f6-4039-8a48-31560fcd809b
+  #   device: cuda:1 # 1 x GeForce RTX 2080 GPU
+  #   data_split: 1
+  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-2"
+  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-2"
+
+  # - name: uiuc-gpu-3
+  #   endpoint_id: 9bebbbde-b6eb-46e3-9c0d-4f2e4c484dc5
+  #   device: cuda:1 # 1 x GeForce RTX 2080 GPU
+  #   data_split: 2
+  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/uiuc-cpu-3"
+  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-gpu-3"
 
   # # ALCF ThetaGPU clusters
   # - name: thetagpu-1

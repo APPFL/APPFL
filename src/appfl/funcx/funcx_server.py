@@ -217,40 +217,33 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
     def _do_training(self):
         ## Get current global state
         global_state = self.server.model.state_dict()
-        count_updates = 0
+        self.count_updates = 0
         stop_aggregate= False
 
-        # TESTING HERE
-        self.trn_endps.run_async_task_on_available_clients(
-                # client_validate_data
-                client_training, 
-                self.weights, global_state, self.loss_fn
-            )
+        def global_update(res):
+            self.logger.info("Async FL global model update at step %d " % self.count_updates)
+            self.count_updates += 1
+            # TODO: fix this
+            client_results = {0: res.result()}
+            local_states = [client_results]
+            # Perform global update
+            global_update_start = time.time()
+            self.server.update(local_states)
+            self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
-        # while (not stop_aggregate):
-        #     # Assigning training tasks to all available clients
-        #     self.trn_endps.run_async_task_on_available_clients(
-        #         # client_validate_data
-        #         client_training, 
-        #         self.weights, global_state, self.loss_fn
-        #     )
-        #     # Wating for results
-        #     client_results = self.trn_endps.get_async_result_from_clients()
-        #     if len(client_results) > 0:
-        #         count_updates += 1
+        self.trn_endps.register_async_call_back_funcn(global_update)
+        self.trn_endps.register_async_func(
+            client_training, 
+            self.weights, global_state, self.loss_fn
+        )
+        # Assigning training tasks to all available clients
+        self.trn_endps.run_async_task_on_available_clients()
 
-        #         self.logger.info("Async FL global modle update step %d " % count_updates)
-                
-        #         # Perform global update
-        #         global_update_start = time.time()
-                
-        #         local_states = [client_results]
-        #         self.server.update(local_states)
-                
-        #         self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
-                
-        #         # if count_updates % 2 == 0:
-        #         #     self._do_validation(count_updates)
-        #         if count_updates >= 3:
-        #             stop_aggregate = True
+        while (not stop_aggregate):
+            if self.count_updates % 2 == 0:
+                self._do_validation(self.count_updates)
+            # Define some stopping criteria
+            if self.count_updates >= 3:
+                self.logger.info("Training is finished!")
+                stop_aggregate = True
                 

@@ -11,7 +11,7 @@ class ClientStatus(Enum):
     UNAVAILABLE = 0
     AVAILABLE   = 1
     RUNNING     = 2
-    DONE        = 3
+    # DONE        = 3
 
 class FuncXClient:
     def __init__(self, client_idx:int, client_cfg: OrderedDict, status = ClientStatus.AVAILABLE):
@@ -24,14 +24,13 @@ class FuncXClient:
     @property
     def status(self):
         if (self._status == ClientStatus.RUNNING):
-            print(self.future.done())
             if self.future.done():
-                self._status = ClientStatus.DONE
+                self._status = ClientStatus.AVAILABLE
         return self._status
 
 
     def submit_task(self, fxc, exct_func, *args, callback = None, **kwargs ):
-        fx = FuncXExecutor(fxc)
+        fx = FuncXExecutor(fxc, batch_enabled = False)
         if self.status == ClientStatus.AVAILABLE:
             self._status = ClientStatus.RUNNING
             self.task_name = exct_func.__name__
@@ -40,18 +39,18 @@ class FuncXClient:
                 endpoint_id = self.client_cfg.endpoint_id, 
             )
             self.future.add_done_callback(callback)
-            return True
-        else:
-            return False
-    
-
-    def get_result(self):
-        if self.status   == ClientStatus.DONE:
-            self._status  = ClientStatus.AVAILABLE
-            self.task_name= "N/A"
-            return self.future.result()  
+            return self.future.task_id
         else:
             return None
+    
+
+    # def get_result(self):
+    #     if self.status   == ClientStatus.DONE:
+    #         self._status  = ClientStatus.AVAILABLE
+    #         self.task_name= "N/A"
+    #         return self.future.result()  
+    #     else:
+    #         return None
     
 
 
@@ -67,7 +66,16 @@ class APPFLFuncXTrainingClients:
             client_idx: FuncXClient(client_idx, client_cfg)
             for client_idx, client_cfg in enumerate(self.cfg.clients)
         }
-        
+    def __register_task(self, task_id, client_id, task_name):
+        self.executing_tasks[task_id] =  OmegaConf.structured(ClientTask(
+                    task_id    = task_id,
+                    task_name  = task_name,
+                    client_idx = client_id,
+                    start_time = time.time()
+                ))
+    def __finalize_task(self, task_id):
+        self.executing_tasks.pop(task_id)
+
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
         ## Register funcX function and create execution batch 
         func_uuid = self.fxc.register_function(exct_func)
@@ -85,17 +93,13 @@ class APPFLFuncXTrainingClients:
         
         ## Execute training tasks at clients
         #TODO: Assuming that all tasks do not have the same start time
-        start_time= time.time()  
         task_ids  = self.fxc.batch_run(batch)
         
         ## Saving task ids 
         for i, task_id in enumerate(task_ids):
-            self.executing_tasks[task_ids[i]] =  OmegaConf.structured(ClientTask(
-                    task_id    = task_id,
-                    task_name  = exct_func.__name__,
-                    client_idx = i,
-                    start_time = start_time
-                ))
+            self.__register_task(
+                task_id, i, exct_func.__name__
+            )
             
         ## Logging
         if not silent:
@@ -141,41 +145,67 @@ class APPFLFuncXTrainingClients:
                                 results[task_id]['exception'].reraise()
                     # Save to log file
                     self.cfg.logging_tasks.append(self.executing_tasks[task_id])
-                    self.executing_tasks.pop(task_id)
+                    self.__finalize_task(task_id)
             if len(self.executing_tasks) == 0:
                 stop_aggregate = True
         return client_results
     
-    def run_async_task_on_available_clients(self, exct_func, *args, **kwargs):
-        def done_callback_test(res):
-            print(res)
-            self.logger.info("Done!")
-
-        for client_idx in self.clients:
-            client = self.clients[client_idx]
-            if client.status == ClientStatus.AVAILABLE:
-                self.logger.info("Async task '%s' is assigned to %s." %(
-                                exct_func.__name__, client.client_cfg.name)
-                ) 
-                # client.add_done_callback(done_callback_test)
-                client.submit_task(
-                    self.fxc,
-                    exct_func,
-                    self.cfg,
-                    client_idx,
-                    *args,
-                    **kwargs,
-                    callback = done_callback_test
-                ) 
-                
-    def get_async_result_from_clients(self):
-        results = OrderedDict()
-        for client_idx in self.clients:
-            client = self.clients[client_idx]
-            if client.status == ClientStatus.DONE:
-                self.logger.info("Recieved results of task '%s' from %s." %(
-                                client.task_name, client.client_cfg.name)
+    def register_async_call_back_funcn(self, call_back_func):
+        # Callback function
+        def __cbfn(res):
+            task_id = res.task_id
+            client_task  = self.executing_tasks[task_id]
+            self.logger.info("Recieved results of task '%s' from %s." %(
+                                client_task.task_name, 
+                                self.clients[client_task.client_idx].client_cfg.name)
                 )
-                results[client_idx] = client.get_result()
-        return results
+            # call the user's call back func
+            call_back_func(res)
+            self.__finalize_task(res.task_id)
+
+            # Assign new task to client
+            self.run_async_task_on_client(client_task.client_idx)
+
+        self.call_back_func = __cbfn
+    
+    def register_async_func(self, exct_func, *args, **kwargs):
+        self.async_func       = exct_func
+        self.async_func_args  = args
+        self.async_func_kwargs= kwargs
+
+    def run_async_task_on_client(self, client_idx):
+        client = self.clients[client_idx]
+        self.logger.info("Async task '%s' is assigned to %s." %(
+                        self.async_func.__name__, client.client_cfg.name)
+                ) 
+        # Send task to client
+        task_id = client.submit_task(
+            self.fxc,
+            self.async_func,
+            self.cfg,
+            client_idx,
+            *self.async_func_args,
+            **self.async_func_kwargs,
+            callback = self.call_back_func
+        ) 
+        # Register new tasks
+        self.__register_task(
+            task_id, client_idx, self.async_func.__name__
+        )
+    
+    def run_async_task_on_available_clients(self):
+        for client_idx in self.clients:
+            if self.clients[client_idx].status == ClientStatus.AVAILABLE:
+                self.run_async_task_on_client(client_idx)
+                
+    # def get_async_result_from_clients(self):
+    #     results = OrderedDict()
+    #     for client_idx in self.clients:
+    #         client = self.clients[client_idx]
+    #         if client.status == ClientStatus.DONE:
+    #             self.logger.info("Recieved results of task '%s' from %s." %(
+    #                             client.task_name, client.client_cfg.name)
+    #             )
+    #             results[client_idx] = client.get_result()
+    #     return results
                     
