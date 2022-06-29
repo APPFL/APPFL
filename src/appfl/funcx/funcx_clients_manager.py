@@ -30,20 +30,24 @@ class FuncXClient:
 
 
     def submit_task(self, fxc, exct_func, *args, callback = None, **kwargs ):
-        fx = FuncXExecutor(fxc, batch_enabled = False)
+        self.fx = FuncXExecutor(fxc, batch_enabled = False)
         if self.status == ClientStatus.AVAILABLE:
             self._status = ClientStatus.RUNNING
             self.task_name = exct_func.__name__
-            self.future = fx.submit(
-                exct_func, *args, **kwargs,
-                endpoint_id = self.client_cfg.endpoint_id, 
-            )
+            try:
+                self.future = self.fx.submit(
+                    exct_func, *args, **kwargs,
+                    endpoint_id = self.client_cfg.endpoint_id, 
+                )
+            except:
+                print("cannot start")
             self.future.add_done_callback(callback)
             return self.future.task_id
         else:
             return None
     
-
+    def cancel_task(self):
+        return self.fx.cancel()
     # def get_result(self):
     #     if self.status   == ClientStatus.DONE:
     #         self._status  = ClientStatus.AVAILABLE
@@ -73,7 +77,13 @@ class APPFLFuncXTrainingClients:
                     client_idx = client_id,
                     start_time = time.time()
                 ))
+    def __set_task_success_status(self, task_id, completion_time):
+        self.executing_tasks[task_id].end_time= float(completion_time)
+
     def __finalize_task(self, task_id):
+        # Save task to log file
+        self.cfg.logging_tasks.append(self.executing_tasks[task_id])
+        # Remove from executing tasks list
         self.executing_tasks.pop(task_id)
 
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
@@ -122,7 +132,10 @@ class APPFLFuncXTrainingClients:
                         ## Training at client is succeeded
                         if results[task_id]['status'] == "success":
                             client_results[self.executing_tasks[task_id].client_idx] = results[task_id]['result']
-                            self.executing_tasks[task_id].end_time= float(results[task_id]["completion_t"])                         
+                            # self.executing_tasks[task_id].end_time= float(results[task_id]["completion_t"]) 
+                            self.__set_task_success_status(task_id, results[task_id]["completion_t"])
+
+                            # Logging                      
                             self.logger.info(
                             "Task %s on %s completed successfully." % ( 
                                 task_id, 
@@ -143,8 +156,7 @@ class APPFLFuncXTrainingClients:
                                 raise excpt
                             else:
                                 results[task_id]['exception'].reraise()
-                    # Save to log file
-                    self.cfg.logging_tasks.append(self.executing_tasks[task_id])
+                    # Finalize task
                     self.__finalize_task(task_id)
             if len(self.executing_tasks) == 0:
                 stop_aggregate = True
@@ -155,19 +167,28 @@ class APPFLFuncXTrainingClients:
         def __cbfn(res):
             task_id = res.task_id
             client_task  = self.executing_tasks[task_id]
-            self.logger.info("Recieved results of task '%s' from %s." %(
-                                client_task.task_name, 
-                                self.clients[client_task.client_idx].client_cfg.name)
-                )
-            # call the user's call back func
-            call_back_func(res)
+            # If the task is canceled
+            if res.cancel() == False and self.stopping_func() == False:
+                self.logger.info("Recieved results of task '%s' from %s." %(
+                                    client_task.task_name, 
+                                    self.clients[client_task.client_idx].client_cfg.name)
+                    )
+                # call the user's call back func
+                call_back_func(res)
+                # TODO: get completion time stamp
+                self.__set_task_success_status(task_id, time.time())
+                # Assign new task to client
+                self.run_async_task_on_client(client_task.client_idx)
+            else:
+                self.logger.info("Task '%s' from %s is cancelled." % (
+                    client_task.task_name, self.clients[client_task.client_idx].client_cfg.name)
+                    )
             self.__finalize_task(res.task_id)
-
-            # Assign new task to client
-            self.run_async_task_on_client(client_task.client_idx)
-
         self.call_back_func = __cbfn
     
+    def register_stopping_criteria(self, stopping_func):
+        self.stopping_func = stopping_func
+
     def register_async_func(self, exct_func, *args, **kwargs):
         self.async_func       = exct_func
         self.async_func_args  = args
@@ -197,7 +218,16 @@ class APPFLFuncXTrainingClients:
         for client_idx in self.clients:
             if self.clients[client_idx].status == ClientStatus.AVAILABLE:
                 self.run_async_task_on_client(client_idx)
-                
+    
+    def shutdown_all_clients(self):
+        self.logger.info("Shutting down all clients.")
+            
+        for client_idx in self.clients:
+            # self.clients[client_idx].future.cancel()
+            self.clients[client_idx].fx.shutdown()
+            
+        self.logger.info("All clients have been shutted down successfully.")
+    
     # def get_async_result_from_clients(self):
     #     results = OrderedDict()
     #     for client_idx in self.clients:

@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 import logging
 import random
 import numpy as np
-
+import copy
 def get_executable_func(func_cfg):
     import importlib
     mdl = importlib.import_module(func_cfg.module)
@@ -15,8 +15,9 @@ def validation(self, dataloader):
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
-    self.model.to(self.device)
-    self.model.eval()
+    eval_model = copy.deepcopy(self.model)
+    eval_model.to(self.device)
+    eval_model.eval()
 
     loss = 0
     correct = 0
@@ -28,7 +29,7 @@ def validation(self, dataloader):
             tmptotal += len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            output = self.model(img)
+            output = eval_model(img)
             loss += self.loss_fn(output, target).item()
 
             if output.shape[1] == 1:

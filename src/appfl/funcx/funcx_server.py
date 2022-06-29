@@ -88,14 +88,12 @@ class APPFLFuncXServer(abc.ABC):
         test_accuracy= 0.0
         if self.cfg.validation == True:
             # Move server model to GPU (if available) for validation inference 
-            if self.cfg.server.device != "cpu":
-                self.server.model.to(self.cfg.server.device)
-
+            # if self.cfg.server.device != "cpu":
+            #     self.server.model.to(self.cfg.server.device)
             test_loss, test_accuracy = validation(self.server, self.test_dataloader)
-            
-            if self.cfg.server.device != "cpu":
-                # Move back to cpu after validation
-                self.server.model.to("cpu")
+            # if self.cfg.server.device != "cpu":
+            #     # Move back to cpu after validation
+            #     self.server.model.to("cpu")
 
             if self.cfg.use_tensorboard:
                 # Add them to tensorboard
@@ -212,7 +210,7 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         # Do training
         self._do_training()
         # Wrap-up
-        # self._finalize_training()
+        self._finalize_training()
 
     def _do_training(self):
         ## Get current global state
@@ -231,11 +229,19 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
             self.server.update(local_states)
             self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
+        def stopping_criteria():
+            return self.count_updates >= 3
+        
         self.trn_endps.register_async_call_back_funcn(global_update)
         self.trn_endps.register_async_func(
             client_training, 
             self.weights, global_state, self.loss_fn
         )
+        self.trn_endps.register_stopping_criteria(
+            stopping_criteria
+        )
+        # Start asynchronous FL
+        start_time = time.time()
         # Assigning training tasks to all available clients
         self.trn_endps.run_async_task_on_available_clients()
 
@@ -243,7 +249,10 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
             if self.count_updates % 2 == 0:
                 self._do_validation(self.count_updates)
             # Define some stopping criteria
-            if self.count_updates >= 3:
+            if stopping_criteria():
                 self.logger.info("Training is finished!")
                 stop_aggregate = True
+                # Shutdown all clients
+                self.trn_endps.shutdown_all_clients()
+        self.cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
                 
