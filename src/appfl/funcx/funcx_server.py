@@ -211,32 +211,49 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         self._do_training()
         # Wrap-up
         self._finalize_training()
+        # Shutdown all clients
+        self.trn_endps.shutdown_all_clients()
 
     def _do_training(self):
         ## Get current global state
-        global_state = self.server.model.state_dict()
         self.count_updates = 0
-        stop_aggregate= False
-
+        stop_aggregate     = False
+        start_time         = time.time()
         def global_update(res):
             self.logger.info("Async FL global model update at step %d " % self.count_updates)
-            self.count_updates += 1
             # TODO: fix this
             client_results = {0: res.result()}
             local_states = [client_results]
+            # TODO: fix local update time
+            self.cfg["logginginfo"]["LocalUpdate_time"]  = 0
+            self.cfg["logginginfo"]["PerIter_time"]      = 0
+            self.cfg["logginginfo"]["Elapsed_time"]      = 0
             # Perform global update
             global_update_start = time.time()
             self.server.update(local_states)
             self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
+            # Update callback func
+            self.trn_endps.register_async_func(
+                client_training, 
+                self.weights, self.server.model.state_dict(), self.loss_fn
+            )
+            # Training eval log
+            self.server.logging_iteration(self.cfg, self.logger, self.count_updates)
+            # Saving checkpoint
+            self._save_checkpoint(self.count_updates)
+            self.count_updates += 1
 
         def stopping_criteria():
-            return self.count_updates >= 3
+            return self.count_updates >= 10
         
+        # Register callback function: global_update
         self.trn_endps.register_async_call_back_funcn(global_update)
+        # Register async function: client training
         self.trn_endps.register_async_func(
             client_training, 
-            self.weights, global_state, self.loss_fn
+            self.weights, self.server.model.state_dict(), self.loss_fn
         )
+        # Register the stopping criteria
         self.trn_endps.register_stopping_criteria(
             stopping_criteria
         )
@@ -245,6 +262,7 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         # Assigning training tasks to all available clients
         self.trn_endps.run_async_task_on_available_clients()
 
+        # Run async event loop
         while (not stop_aggregate):
             if self.count_updates % 2 == 0:
                 self._do_validation(self.count_updates)
@@ -252,7 +270,4 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
             if stopping_criteria():
                 self.logger.info("Training is finished!")
                 stop_aggregate = True
-                # Shutdown all clients
-                self.trn_endps.shutdown_all_clients()
         self.cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
-                

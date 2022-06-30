@@ -3,10 +3,10 @@ from funcx import FuncXClient, FuncXExecutor
 import torch.nn as nn
 from collections import OrderedDict
 import time
-from appfl.misc import create_custom_logger
 from appfl.config import ClientTask
-
 from enum import Enum
+import asyncio
+
 class ClientStatus(Enum):
     UNAVAILABLE = 0
     AVAILABLE   = 1
@@ -29,25 +29,24 @@ class FuncXClient:
         return self._status
 
 
-    def submit_task(self, fxc, exct_func, *args, callback = None, **kwargs ):
-        self.fx = FuncXExecutor(fxc, batch_enabled = False)
+    def submit_task(self, fx, exct_func, *args, callback = None, **kwargs ):
         if self.status == ClientStatus.AVAILABLE:
             self._status = ClientStatus.RUNNING
             self.task_name = exct_func.__name__
             try:
-                self.future = self.fx.submit(
+                self.future = fx.submit(
                     exct_func, *args, **kwargs,
                     endpoint_id = self.client_cfg.endpoint_id, 
                 )
             except:
-                print("cannot start")
+                pass
             self.future.add_done_callback(callback)
             return self.future.task_id
         else:
             return None
     
-    def cancel_task(self):
-        return self.fx.cancel()
+    # def cancel_task(self):
+    #     return self.fx.cancel()
     # def get_result(self):
     #     if self.status   == ClientStatus.DONE:
     #         self._status  = ClientStatus.AVAILABLE
@@ -56,12 +55,11 @@ class FuncXClient:
     #     else:
     #         return None
     
-
-
 class APPFLFuncXTrainingClients:
     def __init__(self, cfg: DictConfig, fxc : FuncXClient, logger):
         self.cfg = cfg
         self.fxc = fxc
+        self.fx  = FuncXExecutor(fxc, batch_enabled = False)
         self.executing_tasks = {}
         
         # Logging
@@ -79,6 +77,7 @@ class APPFLFuncXTrainingClients:
                 ))
     def __set_task_success_status(self, task_id, completion_time):
         self.executing_tasks[task_id].end_time= float(completion_time)
+        self.executing_tasks[task_id].success = True
 
     def __finalize_task(self, task_id):
         # Save task to log file
@@ -127,7 +126,6 @@ class APPFLFuncXTrainingClients:
             for task_id in results:
                 if results[task_id]['pending'] == False:
                     self.executing_tasks[task_id].pending = False
-                    self.executing_tasks[task_id].success = True if results[task_id]["status"] == "success" else False
                     if task_id in self.executing_tasks:
                         ## Training at client is succeeded
                         if results[task_id]['status'] == "success":
@@ -156,6 +154,7 @@ class APPFLFuncXTrainingClients:
                                 raise excpt
                             else:
                                 results[task_id]['exception'].reraise()
+                    
                     # Finalize task
                     self.__finalize_task(task_id)
             if len(self.executing_tasks) == 0:
@@ -180,7 +179,7 @@ class APPFLFuncXTrainingClients:
                 # Assign new task to client
                 self.run_async_task_on_client(client_task.client_idx)
             else:
-                self.logger.info("Task '%s' from %s is cancelled." % (
+                self.logger.info("Task '%s' from %s is canceled." % (
                     client_task.task_name, self.clients[client_task.client_idx].client_cfg.name)
                     )
             self.__finalize_task(res.task_id)
@@ -201,7 +200,7 @@ class APPFLFuncXTrainingClients:
                 ) 
         # Send task to client
         task_id = client.submit_task(
-            self.fxc,
+            self.fx,
             self.async_func,
             self.cfg,
             client_idx,
@@ -221,12 +220,22 @@ class APPFLFuncXTrainingClients:
     
     def shutdown_all_clients(self):
         self.logger.info("Shutting down all clients.")
-            
+        
         for client_idx in self.clients:
-            # self.clients[client_idx].future.cancel()
-            self.clients[client_idx].fx.shutdown()
-            
+            self.clients[client_idx].future.cancel()
+        
+        self.fx.shutdown()
         self.logger.info("All clients have been shutted down successfully.")
+    
+    # def run_loop(self):
+    #     loop = asyncio.get_event_loop()
+    #     try:
+    #         loop.run_forever()
+    #     except KeyboardInterrupt:
+    #         pass
+    #     finally:
+    #         print("Ending loop")
+    #         loop.close()
     
     # def get_async_result_from_clients(self):
     #     results = OrderedDict()
