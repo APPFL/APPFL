@@ -14,65 +14,38 @@ import argparse
 
 from funcx import FuncXClient
 
-"""
-python grpc_mnist_client.py --host=localhost --client_id=0 --nclients=1
-"""
-
 """ read arguments """ 
 
 parser = argparse.ArgumentParser()  
 ## appfl-funcx
-parser.add_argument("--config", type=str, default="configs/funcx_mnist.yaml")
-
+parser.add_argument("--device_config", type=str, default="configs/devices/funcx_devices.yaml")
+parser.add_argument("--config", type=str, default= "configs/fed_async/funcx_fed_async_mnist.yaml")
 ## dataset 
 parser.add_argument('--num_channel', type=int, default=1)   
 parser.add_argument('--num_classes', type=int, default=10)   
 parser.add_argument('--num_pixel', type=int, default=28)   
+## other agruments
+parser.add_argument('--reproduce', action='store_true', default=True) 
+parser.add_argument('--use_tensorboard', action='store_true', default=True)
 
-## clients
-parser.add_argument('--client_optimizer', type=str, default="Adam")    
-parser.add_argument('--client_lr', type=float, default=1e-3)    
-parser.add_argument('--num_local_epochs', type=int, default=3)    
-
-## server
-parser.add_argument('--server', type=str, default="ServerFedAvg")    
-parser.add_argument('--num_epochs', type=int, default=2)    
-
-parser.add_argument('--server_lr', type=float, required=False)    
-parser.add_argument('--mparam_1', type=float, required=False)    
-parser.add_argument('--mparam_2', type=float, required=False)    
-parser.add_argument('--adapt_param', type=float, required=False)   
-
-## tensorboard
-parser.add_argument('--use_tensorboard', type=bool, default=True)
- 
 args = parser.parse_args()
 
 def main():
     """ Configuration """     
     cfg = OmegaConf.structured(FuncXConfig)
- 
-    cfg.reproduce = True
     if cfg.reproduce == True:
         set_seed(1)
 
     ## loading funcX configs from file
+    load_funcx_device_config(cfg, args.device_config)
     load_funcx_config(cfg, args.config)
     
-    ## clients
-    cfg.fed.args.optim = args.client_optimizer
-    cfg.fed.args.optim_args.lr = args.client_lr
-    cfg.fed.args.num_local_epochs = args.num_local_epochs
-    
-    ## server
-    cfg.fed.servername = args.server
-    cfg.num_epochs     = args.num_epochs
-
     ## tensorboard
     cfg.use_tensorboard= args.use_tensorboard
     
     ## outputs
-    cfg.output_dirname = osp.join(cfg.server.output_dir, "outputs_%s_%s_%s"%(cfg.dataset, args.server, args.client_optimizer)) 
+    cfg.output_dirname = osp.join(cfg.server.output_dir, "outputs_%s_%s_%s"%(
+        cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)) 
 
     ## validation
     cfg.validation = True

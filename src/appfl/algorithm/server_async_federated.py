@@ -11,10 +11,10 @@ from torch.utils.data import DataLoader
 import copy
 
 class AsyncFedServer(FedServer):
-    def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
-        print("AsyncFedServer")
-        super(AsyncFedServer, self).__init__(weights, model, loss_fn, num_clients, device)
-    
+    def __init__(self, weights, model, loss_fn, num_clients, device, global_step = 0, **kwargs):
+        super(AsyncFedServer, self).__init__(weights, model, loss_fn, num_clients, device, **kwargs)
+        self.global_step = global_step
+
     def compute_pseudo_gradient(self):
         for name, _ in self.model.named_parameters():
             self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
@@ -23,8 +23,7 @@ class AsyncFedServer(FedServer):
                     self.global_state[name] - self.primal_states[i][name]
                 )
 
-    def update(self, local_states: OrderedDict):
-
+    def update(self, local_states: OrderedDict, init_step: int):
         """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())
         super(FedServer, self).primal_recover_from_local_states(local_states)
@@ -40,9 +39,12 @@ class AsyncFedServer(FedServer):
                 )
 
         """ global_state calculation """
-        self.compute_step()
+        self.compute_step(init_step)
         for name, _ in self.model.named_parameters():
             self.global_state[name] += self.step[name]
 
         """ model update """
         self.model.load_state_dict(self.global_state)
+
+        """ global step update """
+        self.global_step += 1

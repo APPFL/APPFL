@@ -1,16 +1,8 @@
-dataset:
-  name: MNIST
-func:
-  get_model:
-    module: "appfl.funcx.mnist_example"
-    call: "get_model"
-  get_data:
-    module: "appfl.funcx.mnist_example"
-    call: "get_data"
 server:
   device: cuda:0
   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
   output_dir: "./log_funcx_appfl/server"
+  
 clients:
   ## CSL@UIUC clusters
   - name: uiuc-cig-01-gpu-01

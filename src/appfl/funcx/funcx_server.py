@@ -45,16 +45,23 @@ class APPFLFuncXServer(abc.ABC):
         training_size_at_client = self.trn_endps.receive_sync_endpoints_updates()
         return training_size_at_client
 
-    def _get_client_weights(self, training_size_at_client):
-        total_num_data = 0
-        for k in range(self.cfg.num_clients):
-            total_num_data += training_size_at_client[k]
-            #TODO: What if a client doesn't have any training samples
-            self.logger.info("Client %s has %d training samples" % (self.cfg.clients[k].name, training_size_at_client[k])) 
-        ## weight calculation
-        weights = {}
-        for k in range(self.cfg.num_clients):
-            weights[k] = training_size_at_client[k] / total_num_data
+    def _get_client_weights(self, training_size_at_client = None, mode = "samples_size"):
+        if mode == "samples_size":
+            total_num_data = 0
+            for k in range(self.cfg.num_clients):
+                total_num_data += training_size_at_client[k]
+                #TODO: What if a client doesn't have any training samples
+                self.logger.info("Client %s has %d training samples" % (self.cfg.clients[k].name, training_size_at_client[k])) 
+            ## weight calculation
+            weights = {}
+            for k in range(self.cfg.num_clients):
+                weights[k] = training_size_at_client[k] / total_num_data
+        elif mode == "equal":
+            weights = {
+                k: 1 / self.cfg.num_clients for k in range(self.cfg.num_clients)
+            }
+        else:
+            raise NotImplementedError
         return weights
 
     def set_validation_dataset(self, test_data):
@@ -184,19 +191,18 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         super(APPFLFuncXAsyncServer, self).__init__(cfg, fxc)
         cfg["logginginfo"]["comm_size"] = 1
 
+        # Save the version of global model initialized at each client 
+        self.client_init_step ={
+            i : 0 for i in range(self.cfg.num_clients)
+        }
+
     def _initialize_server_model(self):
         """ Initialize server with only 1 client """
         self.server  = eval(self.cfg.fed.servername)(
-            self.weights, copy.deepcopy(self.model), self.loss_fn, 1, "cpu", **self.cfg.fed.args        
+            copy.deepcopy(self.model), self.loss_fn, 1, "cpu", **self.cfg.fed.args, weights = self.weights      
         )
         # Send server model to device
         self.server.model.to("cpu")
-
-    def _get_client_weights(self):
-        weights = {
-            k: 1 / self.cfg.num_clients for k in range(self.cfg.num_clients)
-        }
-        return weights
 
     def run(self, model: nn.Module, loss_fn: nn.Module):
         # Set model, and loss function
@@ -204,7 +210,7 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         # Validate data at clients
         # training_size_at_client = self._validate_clients_data()
         # Calculate weight
-        self.weights = self._get_client_weights()
+        self.weights = None
         # Initialze model at server
         self._initialize_server_model()
         # Do training
@@ -216,11 +222,9 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
 
     def _do_training(self):
         ## Get current global state
-        self.count_updates = 0
         stop_aggregate     = False
         start_time         = time.time()
-        def global_update(res):
-            self.logger.info("Async FL global model update at step %d " % self.count_updates)
+        def global_update(res, client_idx):
             # TODO: fix this
             client_results = {0: res.result()}
             local_states = [client_results]
@@ -228,23 +232,36 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
             self.cfg["logginginfo"]["LocalUpdate_time"]  = 0
             self.cfg["logginginfo"]["PerIter_time"]      = 0
             self.cfg["logginginfo"]["Elapsed_time"]      = 0
+            
+            # TODO: add semaphore to protect this update operator
             # Perform global update
             global_update_start = time.time()
-            self.server.update(local_states)
+            init_step           = self.client_init_step[client_idx]
+            
+            self.server.update(local_states, init_step = init_step)
+            global_step         = self.server.global_step
+            
             self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
+            self.logger.info("Async FL global model updated. GLB step = %02d | Staleness = %02d" 
+                                % (global_step, global_step - init_step - 1))
+
+            # Save new init step of client
+            self.client_init_step[client_idx] = self.server.global_step
+
             # Update callback func
             self.trn_endps.register_async_func(
                 client_training, 
                 self.weights, self.server.model.state_dict(), self.loss_fn
             )
+
             # Training eval log
-            self.server.logging_iteration(self.cfg, self.logger, self.count_updates)
+            self.server.logging_iteration(self.cfg, self.logger, global_step - 1)
+            
             # Saving checkpoint
-            self._save_checkpoint(self.count_updates)
-            self.count_updates += 1
+            self._save_checkpoint(global_step -1)
 
         def stopping_criteria():
-            return self.count_updates >= 10
+            return self.server.global_step > self.cfg.num_epochs
         
         # Register callback function: global_update
         self.trn_endps.register_async_call_back_funcn(global_update)
@@ -264,10 +281,12 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
 
         # Run async event loop
         while (not stop_aggregate):
-            if self.count_updates % 2 == 0:
-                self._do_validation(self.count_updates)
+            if self.server.global_step % 2 == 0:
+                self._do_validation(self.server.global_step)
+            
             # Define some stopping criteria
             if stopping_criteria():
                 self.logger.info("Training is finished!")
                 stop_aggregate = True
+
         self.cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time

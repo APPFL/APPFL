@@ -173,7 +173,7 @@ class APPFLFuncXTrainingClients:
                                     self.clients[client_task.client_idx].client_cfg.name)
                     )
                 # call the user's call back func
-                call_back_func(res)
+                call_back_func(res, client_task.client_idx)
                 # TODO: get completion time stamp
                 self.__set_task_success_status(task_id, time.time())
                 # Assign new task to client
