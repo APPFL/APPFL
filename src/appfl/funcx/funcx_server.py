@@ -19,8 +19,7 @@ class APPFLFuncXServer(abc.ABC):
         self.fxc = fxc
 
         ## Logger for a server
-        logger = logging.getLogger(__name__)
-        self.logger = create_custom_logger(logger, cfg)
+        self.logger = mLogging.get_logger()
 
         ## assign number of clients
         self.cfg.num_clients = len(self.cfg.clients)

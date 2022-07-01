@@ -39,13 +39,15 @@ def main():
     ## loading funcX configs from file
     load_funcx_device_config(cfg, args.device_config)
     load_funcx_config(cfg, args.config)
-    
+
     ## tensorboard
     cfg.use_tensorboard= args.use_tensorboard
     
     ## outputs
-    cfg.output_dirname = osp.join(cfg.server.output_dir, "outputs_%s_%s_%s"%(
+    cfg.output_dirname      = osp.join(cfg.server.output_dir, "outputs_%s_%s_%s"%(
         cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)) 
+
+    # cfg.tensorboard_dirname = osp.join
 
     ## validation
     cfg.validation = True
@@ -86,6 +88,14 @@ def main():
         cfg.save_model_dirname      = "./save_models"
         cfg.save_model_filename     = "MNIST_CNN"   
     
+    ## config logger
+    mLogging.config_logger(cfg)
+    
+    ## save config to logfile
+    logger = mLogging.get_logger()
+    logger.info(
+        OmegaConf.to_yaml(cfg)
+    )
     """ APPFL with funcX """
     ## create funcX client object
     fxc = FuncXClient(batch_enabled=True)

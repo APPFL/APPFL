@@ -2,6 +2,7 @@ from omegaconf import OmegaConf
 from .config import *
 import yaml
 import os.path as osp
+
 def show():
     conf = OmegaConf.structured(Config)
     print(OmegaConf.to_yaml(conf))

@@ -1,3 +1,7 @@
+from asyncio.log import logger
+from datetime import datetime
+from logging import handlers
+from pickle import NONE
 import torch
 import os
 from omegaconf import DictConfig
@@ -49,12 +53,12 @@ def validation(self, dataloader):
 
 
 def create_custom_logger(logger, cfg: DictConfig):
-
     dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
         os.makedirs(dir, exist_ok = True)
     output_filename = cfg.output_filename + "_server"
-
+    
+    # TODO: use timestamp instead
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)
     uniq = 1
@@ -80,6 +84,54 @@ def create_custom_logger(logger, cfg: DictConfig):
     logger.addHandler(f_handler)
     return logger
 
+class mLogging:
+    __logger = None
+    @staticmethod
+    def config_logger(cfg: DictConfig):
+        dir = cfg.output_dirname
+        if os.path.isdir(dir) == False:
+            os.makedirs(dir, exist_ok = True)
+        
+        time_stamp = datetime.now().strftime("%m%d%y_%H:%M:%S")
+        fmt = logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') 
+        log_fname  = os.path.join(dir, "log_server_%s.log" % time_stamp) 
+    
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+        # Create handlers
+        c_handler = logging.StreamHandler()
+        f_handler = logging.FileHandler(log_fname)
+        c_handler.setLevel(logging.INFO)
+        f_handler.setLevel(logging.INFO)
+        c_handler.setFormatter(fmt)
+        f_handler.setFormatter(fmt)
+        # Add handlers to the logger
+        logger.addHandler(c_handler)
+        logger.addHandler(f_handler)
+        mLogging.__logger = logger
+    
+    @staticmethod
+    def get_logger():
+        if mLogging.__logger is None:
+            raise Exception("Logger need to be configured first")
+        return mLogging.__logger
+
+def setup_logging(cfg: DictConfig):
+    dir = cfg.output_dirname
+    if os.path.isdir(dir) == False:
+        os.makedirs(dir, exist_ok = True)
+
+    
+    log_fname  = "log_server_%s.log" % time_stamp 
+    handlers  = [
+        logging.FileHandler(log_fname),
+        logging.StreamHandler(),
+    ]
+    logging.basicConfig(
+        level= logging.INFO,
+        format=fmt,
+        handlers=handlers
+    )
 
 def client_log(dir, output_filename):
 
