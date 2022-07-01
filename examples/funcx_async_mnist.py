@@ -8,6 +8,7 @@ from torchvision.transforms import ToTensor
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
+from appfl.misc.logging import *
 from models.cnn  import *
 import appfl.run_funcx_async_server as funcx_async_server
 import argparse
@@ -45,7 +46,7 @@ def main():
     
     ## config logger
     mLogging.config_logger(cfg)
-    
+
     ## validation
     cfg.validation = True
 

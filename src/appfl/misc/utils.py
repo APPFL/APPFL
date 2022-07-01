@@ -83,66 +83,10 @@ def create_custom_logger(logger, cfg: DictConfig):
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
     return logger
-
-class mLogging:
-    __logger = None
-    __writer   = None
-    @staticmethod
-    def config_logger(cfg: DictConfig):
-        run_str = "%s_%s_%s" % (cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)
-        dir     = os.path.join(cfg.server.output_dir,
-                                "outputs_%s" % run_str)
-        
-        if os.path.isdir(dir) == False:
-            os.makedirs(dir, exist_ok = True)
-        
-        
-        time_stamp = datetime.now().strftime("%m%d%y_%H%M%S")
-        fmt = logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') 
-        log_fname  = os.path.join(
-            dir,
-            "log_server_%s.log" % time_stamp) 
-    
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
-        # Create handlers
-        c_handler = logging.StreamHandler()
-        f_handler = logging.FileHandler(log_fname)
-        c_handler.setLevel(logging.INFO)
-        f_handler.setLevel(logging.INFO)
-        c_handler.setFormatter(fmt)
-        f_handler.setFormatter(fmt)
-        # Add handlers to the logger
-        logger.addHandler(c_handler)
-        logger.addHandler(f_handler)
-        mLogging.__logger = logger
-
-        if cfg.use_tensorboard:
-            tb_dir = os.path.join(
-                dir,
-                "tensorboard",
-                "%s_%s" % (run_str, time_stamp)
-            )
-            from tensorboardX import SummaryWriter
-            mLogging.__writer = SummaryWriter(tb_dir)
-
-    @staticmethod
-    def get_logger():
-        if mLogging.__logger is None:
-            raise Exception("Logger need to be configured first")
-        return mLogging.__logger
-
-    @staticmethod
-    def get_tensorboard_writer():
-        if mLogging.__writer is None:
-            raise Exception("Tensorboard X writer need to be configured first")
-        return mLogging.__writer
-
+            
 def client_log(dir, output_filename):
-
     if os.path.isdir(dir) == False:
         os.makedirs(dir, exist_ok = True)
-
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)
     uniq = 1

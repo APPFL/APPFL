@@ -79,10 +79,8 @@ class FedServer(BaseServer):
         self.model.load_state_dict(self.global_state)
 
     def logging_iteration(self, cfg, logger, t):
-        if t == 0:
-            title = super(FedServer, self).log_title()
-            logger.info(title)
-
+        title = super(FedServer, self).log_title()
+        logger.info(title)
         contents = super(FedServer, self).log_contents(cfg, t)
         logger.info(contents)
 

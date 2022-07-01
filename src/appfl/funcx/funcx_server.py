@@ -11,7 +11,6 @@ from ..misc import *
 
 from .funcx_client import client_training, client_validate_data
 from .funcx_clients_manager import APPFLFuncXTrainingClients
-from .helpers import appfl_funcx_save_log
 
 class APPFLFuncXServer(abc.ABC):
     def __init__(self, cfg: DictConfig, fxc: FuncXClient):
@@ -30,7 +29,7 @@ class APPFLFuncXServer(abc.ABC):
         ## Using tensorboard to visualize the test loss
         if cfg.use_tensorboard:
             self.writer = mLogging.get_tensorboard_writer()
-            
+
         self.best_accuracy = 0.0
 
     def _validate_clients_data(self):
@@ -110,7 +109,7 @@ class APPFLFuncXServer(abc.ABC):
         self.cfg["logginginfo"]["BestAccuracy"]    = self.best_accuracy
 
     def _finalize_training(self):
-        appfl_funcx_save_log(self.cfg, self.logger)
+        mLogging.save_funcx_log(self.cfg)
         self.server.logging_summary(self.cfg, self.logger)
 
     def _save_checkpoint(self, step):
