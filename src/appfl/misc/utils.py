@@ -86,15 +86,22 @@ def create_custom_logger(logger, cfg: DictConfig):
 
 class mLogging:
     __logger = None
+    __writer   = None
     @staticmethod
     def config_logger(cfg: DictConfig):
-        dir = cfg.output_dirname
+        run_str = "%s_%s_%s" % (cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)
+        dir     = os.path.join(cfg.server.output_dir,
+                                "outputs_%s" % run_str)
+        
         if os.path.isdir(dir) == False:
             os.makedirs(dir, exist_ok = True)
         
-        time_stamp = datetime.now().strftime("%m%d%y_%H:%M:%S")
+        
+        time_stamp = datetime.now().strftime("%m%d%y_%H%M%S")
         fmt = logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') 
-        log_fname  = os.path.join(dir, "log_server_%s.log" % time_stamp) 
+        log_fname  = os.path.join(
+            dir,
+            "log_server_%s.log" % time_stamp) 
     
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
@@ -109,29 +116,27 @@ class mLogging:
         logger.addHandler(c_handler)
         logger.addHandler(f_handler)
         mLogging.__logger = logger
-    
+
+        if cfg.use_tensorboard:
+            tb_dir = os.path.join(
+                dir,
+                "tensorboard",
+                "%s_%s" % (run_str, time_stamp)
+            )
+            from tensorboardX import SummaryWriter
+            mLogging.__writer = SummaryWriter(tb_dir)
+
     @staticmethod
     def get_logger():
         if mLogging.__logger is None:
             raise Exception("Logger need to be configured first")
         return mLogging.__logger
 
-def setup_logging(cfg: DictConfig):
-    dir = cfg.output_dirname
-    if os.path.isdir(dir) == False:
-        os.makedirs(dir, exist_ok = True)
-
-    
-    log_fname  = "log_server_%s.log" % time_stamp 
-    handlers  = [
-        logging.FileHandler(log_fname),
-        logging.StreamHandler(),
-    ]
-    logging.basicConfig(
-        level= logging.INFO,
-        format=fmt,
-        handlers=handlers
-    )
+    @staticmethod
+    def get_tensorboard_writer():
+        if mLogging.__writer is None:
+            raise Exception("Tensorboard X writer need to be configured first")
+        return mLogging.__writer
 
 def client_log(dir, output_filename):
 

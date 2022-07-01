@@ -29,12 +29,8 @@ class APPFLFuncXServer(abc.ABC):
         
         ## Using tensorboard to visualize the test loss
         if cfg.use_tensorboard:
-            from tensorboardX import SummaryWriter
-
-            self.writer = SummaryWriter(
-                comment=self.cfg.fed.args.optim + "_clients_nums_" + str(self.cfg.num_clients)
-            )
-        
+            self.writer = mLogging.get_tensorboard_writer()
+            
         self.best_accuracy = 0.0
 
     def _validate_clients_data(self):

@@ -43,12 +43,9 @@ def main():
     ## tensorboard
     cfg.use_tensorboard= args.use_tensorboard
     
-    ## outputs
-    cfg.output_dirname      = osp.join(cfg.server.output_dir, "outputs_%s_%s_%s"%(
-        cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)) 
-
-    # cfg.tensorboard_dirname = osp.join
-
+    ## config logger
+    mLogging.config_logger(cfg)
+    
     ## validation
     cfg.validation = True
 
@@ -86,11 +83,8 @@ def main():
     cfg.save_model = False
     if cfg.save_model == True:
         cfg.save_model_dirname      = "./save_models"
-        cfg.save_model_filename     = "MNIST_CNN"   
-    
-    ## config logger
-    mLogging.config_logger(cfg)
-    
+        cfg.save_model_filename     = "MNIST_CNN"
+
     ## save config to logfile
     logger = mLogging.get_logger()
     logger.info(

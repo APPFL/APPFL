@@ -34,7 +34,7 @@ algorithm:
     clip_norm: 1
 
 training:
-  num_epochs: 5
+  num_epochs: 10
 
 dataset:
   name: MNIST
