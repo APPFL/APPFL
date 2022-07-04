@@ -37,14 +37,14 @@ model:
   num_channel: 1
   num_classes: 10
   num_pixel:   28 
-  
+
 training:
   num_epochs: 2
-  save_model_filename: "MNIST_CNN"
+  save_model_filename: "CIFAR10_CNN"
   save_model_dirname: "./save_models"
 
 dataset:
-  name: MNIST
+  name: CIFAR10
 
 func:
   get_model:

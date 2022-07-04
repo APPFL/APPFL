@@ -19,12 +19,8 @@ from funcx import FuncXClient
 
 parser = argparse.ArgumentParser()  
 ## appfl-funcx
-parser.add_argument("--device_config", type=str, default="configs/devices/funcx_devices.yaml")
-parser.add_argument("--config", type=str, default= "configs/fed_async/funcx_fed_async_mnist.yaml")
-## dataset 
-parser.add_argument('--num_channel', type=int, default=1)   
-parser.add_argument('--num_classes', type=int, default=10)   
-parser.add_argument('--num_pixel', type=int, default=28)   
+parser.add_argument("--device_config", type=str, required=True)
+parser.add_argument("--config", type=str, required=True) 
 ## other agruments
 parser.add_argument('--reproduce', action='store_true', default=True) 
 parser.add_argument('--use_tensorboard', action='store_true', default=True)
@@ -48,17 +44,9 @@ def main():
     mLogging.config_logger(cfg)
 
     ## validation
-    cfg.validation = True
-
-    ## loading models 
-    cfg.load_model = False
-    if cfg.load_model == True:
-        cfg.load_model_dirname      = "./save_models"
-        cfg.load_model_filename     = "Model"               
-        model = load_model(cfg)      
+    cfg.validation = True   
     
-    """ User-defined model """   
-    cfg.model_args = [args.num_channel, args.num_classes, args.num_pixel] 
+    """ User-defined model """
     ModelClass     = get_executable_func(cfg.get_model)()
     model          = ModelClass(*cfg.model_args, **cfg.model_kwargs) 
     loss_fn        = torch.nn.CrossEntropyLoss()  
@@ -79,14 +67,8 @@ def main():
     test_dataset = Dataset(
         torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
     )
-
-    """ Saving models """
-    cfg.save_model = False
-    if cfg.save_model == True:
-        cfg.save_model_dirname      = "./save_models"
-        cfg.save_model_filename     = "MNIST_CNN"
-
-    ## save config to logfile
+    
+    ## save a copy of config to logfile
     logger = mLogging.get_logger()
     logger.info(
         OmegaConf.to_yaml(cfg)
