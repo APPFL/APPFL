@@ -22,9 +22,9 @@ class FedServer(BaseServer):
         self.m_vector = OrderedDict()
         self.v_vector = OrderedDict()
         for name, _ in self.model.named_parameters():
-            self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name])
+            self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device)
             self.v_vector[name] = (
-                torch.zeros_like(self.model.state_dict()[name])
+                torch.zeros_like(self.model.state_dict()[name], device=device)
                 + self.server_adapt_param
             )
         """ Group 2 """
