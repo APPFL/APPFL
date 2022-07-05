@@ -1,16 +1,7 @@
 algorithm:
-  servername: 'ServerFedAsync'
+  servername: 'ServerFedAvg'
   clientname: 'ClientOptim'
   args:
-    # FL algorithm params
-    alpha: 0.9
-    gamma: 0.1
-    rho: 0.01
-    max_stalness: 4
-    staness_func: 
-      name: 'polynomial'
-      args:
-        a: 0.5
     ## Server update
     server_learning_rate: 0.01
     server_adapt_param: 0.001
@@ -22,10 +13,9 @@ algorithm:
     optim_args: 
         lr: 0.001
     ## Differential Privacy
-    ##  epsilon: False  (non-private)
+    epsilon: False
     ##  epsilon: 1      (stronger privacy as the value decreases)
     ##  epsilon: 0.05
-    epsilon: False
     ## Gradient Clipping
     ## clip_value: False (no-clipping)
     ## clip_value: 10    (clipping)
@@ -37,9 +27,9 @@ model:
   num_channel: 3
   num_classes: 10
   num_pixel:   32 
-
+  
 training:
-  num_epochs: 10
+  num_epochs: 2
   save_model_filename: "CIFAR10_CNN"
   save_model_dirname: "./save_models"
 
