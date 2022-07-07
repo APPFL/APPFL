@@ -924,3 +924,5 @@ examples/archive_1/output_pcadir_11_CIFAR10_nclient_1_Adam_CIFAR10_resnet20_Serv
 examples/archive_1/output_pcadir_11_CIFAR10_nclient_1_Adam_CIFAR10_resnet20_ServerFedBFGSPCA_round_50_ClientOptimPSGD_SGD_1.0_epoch_1_nclient_4_c_1e-05_tau_0.55/result_server.txt
 
 outputs_*
+examples/adapfed_test
+examples/notebooks

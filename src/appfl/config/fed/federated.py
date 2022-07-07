@@ -8,6 +8,7 @@ import torch
     (3) ServerFedAdagrad        : use of the adaptive gradient (Adagrad) algorithm for a global update at a server
     (4) ServerFedAdam           : use of the adaptive moment estimation (Adam) algorithm for a global update 
     (5) ServerFedYogi           : use of the Yogi algorithm for a global update                        
+    (6) ServerFedSDLBFGS        : use of the stochastic dampened L-BFGS for a global update at a server
         
     At server, the global update is done by
             global_model_parameter += (server_learning_rate * m) / ( sqrt(v) + server_adapt_param)
@@ -39,6 +40,9 @@ class Federated:
             "server_adapt_param": 0.001,
             "server_momentum_param_1": 0.9,
             "server_momentum_param_2": 0.99,
+            ## SD L-BFGS specific configurations
+            "history": 10,
+            "delta": 1,
             ## Clients optimizer
             "optim": "SGD",
             "num_local_epochs": 10,
