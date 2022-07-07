@@ -80,4 +80,5 @@ def main():
     funcx_async_server.run_server(cfg, model, loss_fn, fxc , test_dataset)
 
 if __name__ == "__main__":
+
     main()
