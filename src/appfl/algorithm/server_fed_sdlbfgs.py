@@ -10,11 +10,7 @@ class ServerFedSDLBFGS(FedServer):
     def __init__(self, *args, **kwargs):
         super(ServerFedSDLBFGS, self).__init__(*args, **kwargs)
 
-        """ Gradient history for L-BFGS 
-
-        TODO: This will potentially be too large for most tasks since O(n) storage is
-        required where n is potentially very large.
-        """
+        """ Gradient history for L-BFGS """
         self.s_vectors = []
         self.ybar_vectors = []
         self.rho_values = []
@@ -22,8 +18,6 @@ class ServerFedSDLBFGS(FedServer):
         self.prev_grad = OrderedDict()
         self.k = 0
 
-        # TODO: These variables are temporary and should be moved to the config
-        # files ASAP
         # p - history
         # delta - lower bound on gamma_k
         self.p = kwargs["history"]
@@ -53,8 +47,8 @@ class ServerFedSDLBFGS(FedServer):
     def make_initial_step(self):
         for name, _ in self.model.named_parameters():
             self.step[name] = -self.pseudo_grad[name]
-            self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
-            self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
+            self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1).double())
+            self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1).double())
 
 
     def make_lbfgs_step(self):
@@ -68,11 +62,12 @@ class ServerFedSDLBFGS(FedServer):
             shape = self.model.state_dict()[name].shape
 
             # Create newest s vector
-            s_vector = self.model.state_dict()[name].reshape(-1) - self.prev_params[name]
+            s_vector = self.model.state_dict()[name].reshape(-1).double() - self.prev_params[name]
+
             self.s_vectors[0][name] = s_vector
 
             # Create newest ybar vector
-            y_vector = self.pseudo_grad[name].reshape(-1) - self.prev_grad[name]
+            y_vector = self.pseudo_grad[name].reshape(-1).double() - self.prev_grad[name]
             gamma = self.compute_gamma(y_vector, s_vector)
             ybar_vector = self.compute_ybar_vector(y_vector, s_vector, gamma)
             self.ybar_vectors[0][name] = ybar_vector
@@ -83,11 +78,12 @@ class ServerFedSDLBFGS(FedServer):
 
             # Perform recursive computations and step
             v_vector = self.compute_step_approximation(name, gamma)
-            self.step[name] = -v_vector.reshape(shape) 
+
+            self.step[name] = -(self.server_learning_rate * v_vector.reshape(shape))
 
             # Store information for next step
-            self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
-            self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
+            self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1).double())
+            self.prev_grad[name] = copy.deepcopy(v_vector)
 
 
 
@@ -109,11 +105,13 @@ class ServerFedSDLBFGS(FedServer):
         # H_{k, 0}^{-1} doesn't need to be computed directly since 
         # H_{k, 0}^{-1} @ vector = (gamma * I) @ vector = gamma * vector
         theta = self.compute_theta(y_vec, s_vec, gamma)
-        return (theta * y_vec) + ((1 - theta) * (gamma * s_vec))
+        val = (theta * y_vec) + ((1 - theta) * (gamma * s_vec))
+
+        return val
 
 
     def compute_step_approximation(self, name, gamma):
-        u = self.pseudo_grad[name].reshape(-1)
+        u = self.pseudo_grad[name].reshape(-1).double()
         mu_values = []
         m = min(self.p, self.k - 1)
         r = range(m)
@@ -126,10 +124,8 @@ class ServerFedSDLBFGS(FedServer):
         v = (1.0 / gamma) * u
         for i in reversed(r):
             nu = self.rho_values[i][name] * v.dot(self.ybar_vectors[i][name])
-            try:
-                v = v + (mu_values[m - i - 1] - nu) * self.s_vectors[i][name]
-            except IndexError:
-                __import__('pdb').set_trace()
+            v = v + (mu_values[m - i - 1] - nu) * self.s_vectors[i][name]
+        
         return v
 
     def logging_summary(self, cfg, logger):
