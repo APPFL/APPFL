@@ -191,4 +191,4 @@ if __name__ == "__main__":
     main()
 
 # To run:
-# python ./mnist.py
+# python ./mnist_no_mpi.py

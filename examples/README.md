@@ -57,3 +57,10 @@ mpiexec -n 204 python femnist.py --server ServerFedAvg --num_epochs 6 --client_l
 ```bash
 mpiexec -n 204 python grpc_femnist.py
 ```
+
+
+### Running Serial
+
+```bash
+python mnist_no_mpi.py
+```
