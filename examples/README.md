@@ -44,6 +44,12 @@ Note that our gPRC implementation itself does not require any MPI communication.
 mpiexec -n 5 python grpc_mnist.py
 ```
 
+### Running Serial
+
+```bash
+python mnist_no_mpi.py
+```
+
 ## FEMNIST
 
 ### MPI communication
@@ -58,9 +64,3 @@ mpiexec -n 204 python femnist.py --server ServerFedAvg --num_epochs 6 --client_l
 mpiexec -n 204 python grpc_femnist.py
 ```
 
-
-### Running Serial
-
-```bash
-python mnist_no_mpi.py
-```
