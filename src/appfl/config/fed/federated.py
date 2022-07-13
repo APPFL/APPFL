@@ -42,7 +42,7 @@ class Federated:
             "server_momentum_param_2": 0.99,
             ## SD L-BFGS specific configurations
             "history": 10,
-            "delta": 1,
+            "delta": 0.1,
             ## Clients optimizer
             "optim": "SGD",
             "num_local_epochs": 10,

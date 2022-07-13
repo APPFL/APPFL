@@ -79,7 +79,7 @@ class ServerFedSDLBFGS(FedServer):
             # Perform recursive computations and step
             v_vector = self.compute_step_approximation(name, gamma)
 
-            self.step[name] = -(self.server_learning_rate * v_vector.reshape(shape))
+            self.step[name] = -((self.server_learning_rate / self.k) * v_vector.reshape(shape))
 
             # Store information for next step
             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1).double())
