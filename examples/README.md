@@ -21,7 +21,8 @@ For files starting with `grpc_`, we use gRPC protocol for communication instead.
 
 All the examples require the same number of MPI processes.
 Below shows how to execute the MNIST example.
-For other examples, replace the file name with an appropriate example name.
+For Coronahack and FEMNIST check the dataset directory for preprocessing the data and replace the file name with an appropriate example name.
+
 
 ### MPI communication
 
