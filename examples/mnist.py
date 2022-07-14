@@ -10,7 +10,7 @@ from torchvision.transforms import ToTensor
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
-from models.cnn import *
+from models.utils import get_model
 
 import appfl.run_serial as rs
 import appfl.run_mpi as rm
@@ -29,6 +29,7 @@ parser.add_argument("--dataset", type=str, default="MNIST")
 parser.add_argument("--num_channel", type=int, default=1)
 parser.add_argument("--num_classes", type=int, default=10)
 parser.add_argument("--num_pixel", type=int, default=28)
+parser.add_argument("--model", type=str, default="CNN")
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
@@ -105,11 +106,6 @@ def get_data(comm: MPI.Comm):
     return train_datasets, test_dataset
 
 
-def get_model(comm: MPI.Comm):
-    ## User-defined model
-    model = CNN(args.num_channel, args.num_classes, args.num_pixel)
-    return model
-
 
 ## Run
 def main():
@@ -168,7 +164,7 @@ def main():
     start_time = time.time()
 
     """ User-defined model """
-    model = get_model(comm)
+    model = get_model(args)
     loss_fn = torch.nn.CrossEntropyLoss()   
 
     ## loading models
