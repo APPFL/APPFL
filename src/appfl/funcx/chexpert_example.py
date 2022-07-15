@@ -41,7 +41,7 @@ def get_data(cfg, client_idx: int):
                     for idx, label_ in enumerate(label):
                         if label_: label[idx] = float(label_) 
                         if not label_ or  float(label_) == -1: label[idx] = 0
-                    xrays.append(os.getcwd() + "/Data/" + xray_path)
+                    xrays.append(os.path.join(path, xray_path))
                     labels.append(label)
             self.xrays = xrays
             self.labels = labels
