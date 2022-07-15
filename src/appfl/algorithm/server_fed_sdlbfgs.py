@@ -36,9 +36,10 @@ class ServerFedSDLBFGS(FedServer):
             self.make_lbfgs_step()
 
             # Clean up memory
-            del self.s_vectors[-1]
-            del self.ybar_vectors[-1]
-            del self.rho_values[-1]
+            if self.k > self.p:
+                del self.s_vectors[-1]
+                del self.ybar_vectors[-1]
+                del self.rho_values[-1]
         self.k += 1
 
 
@@ -55,6 +56,11 @@ class ServerFedSDLBFGS(FedServer):
         self.s_vectors.insert(0, OrderedDict())
         self.ybar_vectors.insert(0, OrderedDict())
         self.rho_values.insert(0, OrderedDict())
+
+        # TODO: Something here still isn't working properly. I believe it has to
+        # do with either the learning rate or the precision required for
+        # convergence. We keep seeing that the s_vector -> 0, causing the
+        # gradient to explode.
 
         for name, _ in self.model.named_parameters():
 
@@ -87,10 +93,12 @@ class ServerFedSDLBFGS(FedServer):
 
 
     def compute_gamma(self, y_vec, s_vec):
+        """ Equation 3.10 """
         return max((y_vec.dot(y_vec)) / (y_vec.dot(s_vec)), self.delta)
 
 
     def compute_theta(self, y_vec, s_vec, gamma):
+        """ Equation 3.8 """
         s_proj = s_vec.dot(s_vec) * gamma
         dot = s_vec.dot(y_vec)
 
@@ -100,6 +108,7 @@ class ServerFedSDLBFGS(FedServer):
 
 
     def compute_ybar_vector(self, y_vec, s_vec, gamma):
+        """ Equation 3.7 """
 
         # H_{k, 0}^{-1} doesn't need to be computed directly since 
         # H_{k, 0}^{-1} @ vector = (gamma * I) @ vector = gamma * vector
@@ -110,6 +119,7 @@ class ServerFedSDLBFGS(FedServer):
 
 
     def compute_step_approximation(self, name, gamma):
+        """ Lines 4-12 in Procedure 1 """
         u = self.pseudo_grad[name].reshape(-1).double()
         mu_values = []
         m = min(self.p, self.k - 1)
