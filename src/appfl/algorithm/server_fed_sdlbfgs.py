@@ -31,20 +31,19 @@ class ServerFedSDLBFGS(FedServer):
 
         # Initial step, necessary so we can get x_{k - 1}
         if self.k == 0:
-            self.make_initial_step()
+            self.make_sgd_step()
         else:
             self.make_lbfgs_step()
 
             # Clean up memory
-            if self.k > self.p:
-                del self.s_vectors[-1]
-                del self.ybar_vectors[-1]
-                del self.rho_values[-1]
+            del self.s_vectors[-1]
+            del self.ybar_vectors[-1]
+            del self.rho_values[-1]
         self.k += 1
 
 
 
-    def make_initial_step(self):
+    def make_sgd_step(self):
         for name, _ in self.model.named_parameters():
             self.step[name] = -self.pseudo_grad[name]
             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1).double())
@@ -83,7 +82,7 @@ class ServerFedSDLBFGS(FedServer):
 
             # Store information for next step
             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1).double())
-            self.prev_grad[name] = copy.deepcopy(v_vector)
+            self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1).double())
 
 
 
@@ -95,9 +94,9 @@ class ServerFedSDLBFGS(FedServer):
         s_proj = s_vec.dot(s_vec) * gamma
         dot = s_vec.dot(y_vec)
 
-        if dot >= 0.25 * s_proj:
-            return 1
-        return (0.75 * s_proj) / (s_proj - dot)
+        if dot < 0.25 * s_proj:
+            return (0.75 * s_proj) / (s_proj - dot)
+        return 1
 
 
     def compute_ybar_vector(self, y_vec, s_vec, gamma):
@@ -118,13 +117,13 @@ class ServerFedSDLBFGS(FedServer):
 
         for i in r:
             mu = self.rho_values[i][name] * u.dot(self.s_vectors[i][name])
-            mu_values.insert(0, mu)
+            mu_values.append(mu)
             u = u - (mu * self.ybar_vectors[i][name])
 
         v = (1.0 / gamma) * u
         for i in reversed(r):
             nu = self.rho_values[i][name] * v.dot(self.ybar_vectors[i][name])
-            v = v + (mu_values[m - i - 1] - nu) * self.s_vectors[i][name]
+            v = v + ((mu_values[i] - nu) * self.s_vectors[i][name])
         
         return v
 
