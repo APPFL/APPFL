@@ -4,7 +4,9 @@ def get_data(cfg, client_idx: int):
     import csv
     import pandas as pd
     import os
-
+    import torchvision.transforms as transforms
+    import torch
+    from PIL import Image
     class FromCSVDataset(Dataset):
 
         def __init__(self, path, start_line = -1, end_line = -1):
