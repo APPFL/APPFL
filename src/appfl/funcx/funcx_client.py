@@ -2,7 +2,12 @@ def client_validate_data(
     cfg, 
     client_idx):
     from appfl.misc import client_log, get_executable_func
-    get_data  = get_executable_func(cfg.get_data)
+    
+    if 'get_data' in cfg.clients[client_idx]:
+        get_data  = get_executable_func(cfg.clients[client_idx].get_data)
+    else:
+        get_data  = get_executable_func(cfg.get_data)
+
     # Get train data
     train_data = get_data(cfg, client_idx)
     return len(train_data)
@@ -21,7 +26,12 @@ def client_training(
     from appfl.algorithm import ClientOptim
     
     get_model = get_executable_func(cfg.get_model)
-    get_data  = get_executable_func(cfg.get_data)
+    
+    if 'get_data' in cfg.clients[client_idx]:
+        get_data  = get_executable_func(cfg.clients[client_idx].get_data)
+    else:
+        get_data  = get_executable_func(cfg.get_data)
+
     ## Load client configs
     cfg.device         = cfg.clients[client_idx].device
     cfg.output_dirname = cfg.clients[client_idx].output_dir
@@ -64,3 +74,15 @@ def client_training(
     ## Perform a client update
     client_state = client.update()
     return client_state
+
+if __name__ == '__main__':
+    from omegaconf import OmegaConf
+    from appfl.config import load_funcx_device_config, load_funcx_config, FuncXConfig
+    cfg = OmegaConf.structured(FuncXConfig)
+    load_funcx_device_config(cfg,
+        "configs/devices/covid19_anl_uchicago.yaml")
+    load_funcx_config(cfg, 
+        "configs/fed_avg/funcx_fedavg_covid.yaml")
+    
+    print(client_validate_data(cfg, 0))
+    

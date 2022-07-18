@@ -23,7 +23,7 @@ python grpc_mnist_client.py --host=localhost --client_id=0 --nclients=1
 
 parser = argparse.ArgumentParser()  
 ## appfl-funcx
-parser.add_argument("--device_config", type=str, required= True)
+parser.add_argument("--client_config", type=str, required= True)
 parser.add_argument("--config", type=str, default= "configs/fed_async/funcx_fed_async_mnist.yaml") 
 
 ## other agruments
@@ -41,7 +41,7 @@ def main():
         set_seed(1)
 
     ## loading funcX configs from file
-    load_funcx_device_config(cfg, args.device_config)
+    load_funcx_device_config(cfg, args.client_config)
     load_funcx_config(cfg, args.config)
 
     ## tensorboard
@@ -63,18 +63,19 @@ def main():
     test_data_input = []
     test_data_label = []
 
-    test_data_raw = eval("torchvision.datasets." + cfg.dataset)(
-            osp.join(cfg.server.data_dir, "RawData"), download=True, train=False, transform=ToTensor()
-        )
+    """Prepare test dataset """
+    # test_data_raw = eval("torchvision.datasets." + cfg.dataset)(
+    #         osp.join(cfg.server.data_dir, "RawData"), download=True, train=False, transform=ToTensor()
+    #     )
 
-    for idx in range(len(test_data_raw)):
-        test_data_input.append(test_data_raw[idx][0].tolist())
-        test_data_label.append(test_data_raw[idx][1])
+    # for idx in range(len(test_data_raw)):
+    #     test_data_input.append(test_data_raw[idx][0].tolist())
+    #     test_data_label.append(test_data_raw[idx][1])
 
-    test_dataset = Dataset(
-        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
-    )
-
+    # test_dataset = Dataset(
+    #     torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+    # )
+    test_dataset = []
     ## save a copy of config to logfile
     logger = mLogging.get_logger()
     logger.info(

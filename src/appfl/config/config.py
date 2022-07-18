@@ -1,3 +1,4 @@
+from email.policy import default
 from dataclasses import dataclass, field
 from typing import Any, List, Dict 
 from omegaconf import DictConfig, OmegaConf
@@ -83,14 +84,6 @@ class Config:
     )
     client: DictConfig = OmegaConf.create({"id": 1})
 
-@dataclass
-class FuncXClientConfig:
-    data_split  : Any 
-    name        : str = ""
-    endpoint_id : str = ""
-    device      : str = "cpu"
-    output_dir  : str = "./"
-    data_dir    : str = "./"
 
 @dataclass 
 class FuncXServerConfig:
@@ -114,6 +107,16 @@ class ClientTask:
     end_time     : float= -1
 
 @dataclass
+class FuncXClientConfig:
+    data_split  : Any 
+    name        : str = ""
+    endpoint_id : str = ""
+    device      : str = "cpu"
+    output_dir  : str = "./"
+    data_dir    : str = "./"
+    get_data    : OmegaConf = field(default_factory=OmegaConf)
+
+@dataclass
 class FuncXConfig(Config):
     get_data     : ExecutableFunc = field(default_factory=ExecutableFunc)
     get_model    : ExecutableFunc = field(default_factory=ExecutableFunc)
@@ -123,4 +126,5 @@ class FuncXConfig(Config):
     model_kwargs : Dict = field(default_factory=dict)
     server       : FuncXServerConfig
     logging_tasks: List = field(default_factory=list) 
+    
     

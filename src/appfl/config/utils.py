@@ -14,7 +14,8 @@ def load_funcx_config(cfg: FuncXConfig,
         data = yaml.load(fi, Loader = yaml.SafeLoader)
 
     ## Load module configs for get_model and get_dataset method
-    cfg.get_data = OmegaConf.structured(ExecutableFunc(**data['func']['get_data']))
+    if 'get_data' in data['func']:
+        cfg.get_data = OmegaConf.structured(ExecutableFunc(**data['func']['get_data']))
     cfg.get_model= OmegaConf.structured(ExecutableFunc(**data['func']['get_model']))
     
     ## Load FL algorithm configs
@@ -42,7 +43,10 @@ def load_funcx_device_config(cfg: FuncXConfig,
     
     ## Load configs for clients
     for client in data["clients"]:
+        if 'get_data' in client:
+            client['get_data'] = OmegaConf.create(client['get_data'])
         client_cfg = OmegaConf.structured(FuncXClientConfig(**client))
+        
         cfg.clients.append(client_cfg)
     
     cfg.num_clients = len(cfg.clients)
