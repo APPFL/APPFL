@@ -68,7 +68,6 @@ class ServerFedSDLBFGS(FedServer):
 
             # Create newest s vector
             s_vector = self.model.state_dict()[name].reshape(-1).double() - self.prev_params[name]
-
             self.s_vectors[0][name] = s_vector
 
             # Create newest ybar vector
@@ -89,6 +88,7 @@ class ServerFedSDLBFGS(FedServer):
             # Store information for next step
             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1).double())
             self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1).double())
+
 
 
 
