@@ -5,7 +5,6 @@ import numpy as np
 import torch.nn as nn
 import copy
 import time
-import logging
 from ..algorithm import *
 from ..misc import *
 

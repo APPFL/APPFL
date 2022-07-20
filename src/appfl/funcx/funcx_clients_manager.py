@@ -6,6 +6,11 @@ import time
 from appfl.config import ClientTask
 from enum import Enum
 import asyncio
+from appfl.funcx.cloud_storage import CloudStorage
+import os.path as osp
+import os
+import torch
+import pickle as pkl
 
 class ClientStatus(Enum):
     UNAVAILABLE = 0
@@ -68,6 +73,13 @@ class APPFLFuncXTrainingClients:
             client_idx: FuncXClient(client_idx, client_cfg)
             for client_idx, client_cfg in enumerate(self.cfg.clients)
         }
+
+        # Config S3 bucket (if necessary)
+        self.use_s3bucket = cfg.server.s3_bucket is not None
+        
+        if (self.use_s3bucket):
+            CloudStorage.init(cfg.server)
+
     def __register_task(self, task_id, client_id, task_name):
         self.executing_tasks[task_id] =  OmegaConf.structured(ClientTask(
                     task_id    = task_id,
@@ -84,7 +96,30 @@ class APPFLFuncXTrainingClients:
         self.cfg.logging_tasks.append(self.executing_tasks[task_id])
         # Remove from executing tasks list
         self.executing_tasks.pop(task_id)
-
+    
+    def __process_client_results(self, results):
+        if not CloudStorage.is_cloud_storage_object(results) or not self.use_s3bucket:
+            return results
+        else:
+            _, object_name, file_name = CloudStorage.get_cloud_object_info(results)
+            # Prepare cache dir
+            cache_dir = osp.join(self.cfg.server.output_dir, 'cache')
+            os.makedirs(cache_dir, exist_ok=True)
+            file_path = osp.join(cache_dir, file_name)
+            self.logger.info("Downloading object %s" % file_name)
+            # Download file
+            cs = CloudStorage.get_instance()
+            cs.download(object_name,file_path)
+            # Load files to memory
+            file_ext = osp.splitext(osp.basename(file_name))[1]
+            if  file_ext in ['.pt', '.pth']:
+                results = torch.load(file_path)
+            elif results in ['.pkl']:
+                with open(file_path, "rb") as fi:
+                    results = pkl.load(fi)
+            # import ipdb; ipdb.set_trace()
+            return results
+        
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
         ## Register funcX function and create execution batch 
         func_uuid = self.fxc.register_function(exct_func)
@@ -129,8 +164,8 @@ class APPFLFuncXTrainingClients:
                     if task_id in self.executing_tasks:
                         ## Training at client is succeeded
                         if results[task_id]['status'] == "success":
-                            client_results[self.executing_tasks[task_id].client_idx] = results[task_id]['result']
-                            # self.executing_tasks[task_id].end_time= float(results[task_id]["completion_t"]) 
+                            client_results[self.executing_tasks[task_id].client_idx] =self.__process_client_results(results[task_id]['result'])
+                            
                             self.__set_task_success_status(task_id, results[task_id]["completion_t"])
 
                             # Logging                      

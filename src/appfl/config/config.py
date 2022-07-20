@@ -90,6 +90,7 @@ class FuncXServerConfig:
     device      : str = "cpu"
     output_dir  : str = "./"
     data_dir    : str = "./"
+    s3_bucket   : str = None
 
 @dataclass
 class ExecutableFunc:

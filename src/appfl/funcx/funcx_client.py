@@ -22,9 +22,11 @@ def client_training(
     ## Import libaries
     import torch
     from torch.utils.data import DataLoader
+    import os.path as osp
     from appfl.misc import client_log, get_executable_func
     from appfl.algorithm import ClientOptim
-    
+    from appfl.funcx.cloud_storage import CloudStorage
+    import pickle as pkl
     get_model = get_executable_func(cfg.get_model)
     
     if 'get_data' in cfg.clients[client_idx]:
@@ -68,12 +70,27 @@ def client_training(
             None, #TODO: support validation at client
             **cfg.fed.args,
         )
+    
     ## Initial state for a client
     client.model.to(cfg.clients[client_idx].device)
     client.model.load_state_dict(global_state)
+    
     ## Perform a client update
     client_state = client.update()
-    return client_state
+    
+    # Upload
+    use_s3 = cfg.server.s3_bucket is not None
+    if use_s3:
+        # Save client's weight to file:
+        ckpt_file = osp.join(cfg.clients[client_idx].output_dir, "client-%d.pkl" % client_idx)
+        with open(ckpt_file, "wb") as fo:
+            pkl.dump(client_state, fo)
+        # Upload to cloud
+        CloudStorage.init(cfg.server)
+        cs = CloudStorage.get_instance()
+        return cs.upload(ckpt_file)
+    else:
+        return client_state
 
 if __name__ == '__main__':
     from omegaconf import OmegaConf
