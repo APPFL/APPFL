@@ -1,7 +1,26 @@
-from ..misc import mLogging
+from asyncio.log import logger
+import imp
+from multiprocessing.spawn import prepare
+from ..misc import mLogging, dump_data_to_file, load_data_from_file
 import boto3
 from botocore.exceptions import ClientError
+import os
 import os.path as osp
+import sys
+class LargeObjectWrapper(object):
+    MAX_SIZE_LIMIT = 3 * 1e6 
+    def __init__(self, data, name: str):
+        self.data = data
+        self.name= name
+    
+    @property
+    def size(self):
+        return sys.getsizeof(self.data)
+    
+    @property
+    def can_send_directly(self):
+        return False #TODO: just for debugging
+        # return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
 
 class CloudStorage(object):
     instc  = None
@@ -16,11 +35,13 @@ class CloudStorage(object):
             raise RuntimeError("Please call CloudStorage.init(cfg) first")
     
     @classmethod
-    def init(cls, cfg):
+    def init(cls, cfg, temp_dir="./tmp", logger = None):
         if cls.instc is None:
             new_inst = cls.__new__(cls)
-            new_inst.bucket = cfg.s3_bucket
+            new_inst.bucket = cfg.server.s3_bucket
             new_inst.client = boto3.client('s3')
+            new_inst.temp_dir= temp_dir
+            new_inst.logger = logger
             # new_inst.logging = mLogging.get_logger()
             cls.instc = new_inst
         return cls.instc
@@ -60,10 +81,59 @@ class CloudStorage(object):
     def __download_file(self, file_name, object_name):
         self.client.download_file(self.bucket, object_name, file_name)
 
-    def upload(self, file_path, object_name=None):
+    def upload_file(self, file_path: str, object_name: str=None):
         if object_name is None:
             object_name = osp.basename(file_path)
         return self.__upload_file(file_path, object_name)
 
-    def download(self, object_name, file_path):
+    def download_file(self, object_name, file_path):
         return self.__download_file(file_path, object_name)
+    
+    @classmethod
+    def upload_object(cls, data, object_name = None, ext='pkl', temp_dir = None):
+        if object_name is None:
+            assert type(data) == LargeObjectWrapper
+            object_name = data.name
+            data        = data.data
+
+        assert ext in ['pkl', 'pt', 'pth']
+        cs = cls.get_instance()
+        
+        # Prepare temp dir
+        temp_dir = temp_dir if temp_dir is not None else cs.temp_dir
+        os.makedirs(temp_dir, exist_ok=True)
+        file_path = osp.join(temp_dir, "%s.%s" % (object_name, ext))
+        
+        # Save data to file
+        dump_data_to_file(data, file_path)
+        
+        # Logging 
+        if cs.logger is not None:
+            file_size = osp.getsize(file_path) * 1e-3 
+            cs.logger.info("Uploading object '%s' (%.01f KB) to S3" % 
+                (object_name, file_size))
+        # Upload file
+        return cs.upload_file(file_path)
+    
+    @classmethod
+    def download_object(cls, data_info: dict, temp_dir: str = None):
+        cs = cls.get_instance()
+        # Prepare temp_dir
+        _, object_name, file_name = cls.get_cloud_object_info(data_info)
+        temp_dir = temp_dir if temp_dir is not None else cs.temp_dir
+        os.makedirs(temp_dir, exist_ok=True)
+        file_path = osp.join(temp_dir, file_name)
+        
+        # Download file
+        cs.download_file(object_name,file_path)
+
+        # Logging 
+        if cs.logger is not None:
+            file_size = osp.getsize(file_path) * 1e-3 
+            cs.logger.info("Downloaded objected '%s' (%.01f) from S3" %  
+                (object_name, file_size))
+        return load_data_from_file(file_path)
+    
+    def clean_up(self):
+        """Clean up files on cloud storage"""
+        pass

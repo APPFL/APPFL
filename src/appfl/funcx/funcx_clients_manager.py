@@ -6,11 +6,10 @@ import time
 from appfl.config import ClientTask
 from enum import Enum
 import asyncio
-from appfl.funcx.cloud_storage import CloudStorage
+from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
+from appfl.misc import load_data_from_file
 import os.path as osp
 import os
-import torch
-import pickle as pkl
 
 class ClientStatus(Enum):
     UNAVAILABLE = 0
@@ -76,9 +75,11 @@ class APPFLFuncXTrainingClients:
 
         # Config S3 bucket (if necessary)
         self.use_s3bucket = cfg.server.s3_bucket is not None
-        
         if (self.use_s3bucket):
-            CloudStorage.init(cfg.server)
+            CloudStorage.init(
+                cfg, 
+                temp_dir= osp.join(cfg.server.output_dir, 'tmp'),
+                logger= self.logger)
 
     def __register_task(self, task_id, client_id, task_name):
         self.executing_tasks[task_id] =  OmegaConf.structured(ClientTask(
@@ -98,33 +99,36 @@ class APPFLFuncXTrainingClients:
         self.executing_tasks.pop(task_id)
     
     def __process_client_results(self, results):
+        """Process results from clients, download file from S3 if necessary"""
         if not CloudStorage.is_cloud_storage_object(results) or not self.use_s3bucket:
             return results
         else:
-            _, object_name, file_name = CloudStorage.get_cloud_object_info(results)
-            # Prepare cache dir
-            cache_dir = osp.join(self.cfg.server.output_dir, 'cache')
-            os.makedirs(cache_dir, exist_ok=True)
-            file_path = osp.join(cache_dir, file_name)
-            self.logger.info("Downloading object %s" % file_name)
-            # Download file
-            cs = CloudStorage.get_instance()
-            cs.download(object_name,file_path)
-            # Load files to memory
-            file_ext = osp.splitext(osp.basename(file_name))[1]
-            if  file_ext in ['.pt', '.pth']:
-                results = torch.load(file_path)
-            elif results in ['.pkl']:
-                with open(file_path, "rb") as fi:
-                    results = pkl.load(fi)
-            # import ipdb; ipdb.set_trace()
-            return results
-        
+            return CloudStorage.download_object(results)
+    
+    def __handle_params(self, args, kwargs):
+        """Parse function's parameters and upload to S3 """
+        # Handling args
+        _args = list(args)
+        for i, obj in enumerate(_args):
+            if type(obj) == LargeObjectWrapper:
+                if not obj.can_send_directly:
+                    _args[i] = CloudStorage.upload_object(obj)
+        args = tuple(_args)
+        # Handling kwargs
+        for k in kwargs:
+            obj = kwargs[k]
+            if type(obj) == LargeObjectWrapper:
+                if not obj.can_send_directly:
+                    kwargs[k] = CloudStorage.upload_object(obj)
+        return args, kwargs
+
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
+        """Broadcast excutable tasks and parameters to all clients"""
         ## Register funcX function and create execution batch 
         func_uuid = self.fxc.register_function(exct_func)
         batch     = self.fxc.create_batch()
-
+        # Prepare args, kwargs before sending to clients
+        args, kwargs = self.__handle_params(args, kwargs)
         for client_idx, client_cfg in enumerate(self.cfg.clients):
             # select device
             batch.add(
@@ -134,7 +138,6 @@ class APPFLFuncXTrainingClients:
                 **kwargs,
                 endpoint_id = client_cfg.endpoint_id, 
                 function_id = func_uuid)
-        
         ## Execute training tasks at clients
         #TODO: Assuming that all tasks do not have the same start time
         task_ids  = self.fxc.batch_run(batch)

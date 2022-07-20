@@ -1,14 +1,19 @@
+from ast import With
 from asyncio.log import logger
 from datetime import datetime
 from logging import handlers
 from pickle import NONE
 import torch
 import os
+import os.path as osp
 from omegaconf import DictConfig
 import logging
 import random
 import numpy as np
 import copy
+
+import torch
+import pickle as pkl
 def get_executable_func(func_cfg):
     import importlib
     mdl = importlib.import_module(func_cfg.module)
@@ -128,3 +133,31 @@ def set_seed(seed=233):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+TORCH_EXT = ['.pt', '.pth']
+PICKLE_EXT= ['.pkl']
+
+def load_data_from_file(file_path: str):
+    """Read data from file using the corresponding readers"""
+    # Load files to memory
+    file_ext = osp.splitext(osp.basename(file_path))[-1]
+    if  file_ext in TORCH_EXT:
+        results = torch.load(file_path)
+    elif file_ext in PICKLE_EXT:
+        with open(file_path, "rb") as fi:
+            results = pkl.load(fi)
+    else:
+        raise RuntimeError("File extension %s is not supported" % file_ext)
+    return results
+
+def dump_data_to_file(obj, file_path: str):
+    """Write data to file using the corresponding readers"""
+    file_ext = osp.splitext(osp.basename(file_path))[-1]
+    if file_ext in TORCH_EXT:
+        torch.save(obj, file_path)
+    elif file_ext in PICKLE_EXT:
+        with open(file_path, "wb") as fo:
+            pkl.dump(obj, fo)
+    else:
+        raise RuntimeError("File extension %s is not supported" % file_ext)
+    return True

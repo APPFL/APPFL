@@ -1,4 +1,5 @@
 import abc
+from appfl.funcx.cloud_storage import LargeObjectWrapper
 from omegaconf import DictConfig
 from funcx import FuncXClient
 import numpy as np
@@ -156,8 +157,8 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
             global_state = self.server.model.state_dict()
             local_update_start = time.time()
             ## Boardcast global state and start training at funcX endpoints
-            tasks   = self.trn_endps.send_task_to_all_clients(client_training,
-                        self.weights, global_state, self.loss_fn)
+            _  = self.trn_endps.send_task_to_all_clients(client_training,
+                        self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn)
         
             ## Aggregate local updates from clients
             local_states = []

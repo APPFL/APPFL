@@ -1,3 +1,6 @@
+from appfl.funcx.cloud_storage import LargeObjectWrapper
+
+
 def client_validate_data(
     cfg, 
     client_idx):
@@ -20,12 +23,11 @@ def client_training(
     loss_fn
     ):
     ## Import libaries
-    import torch
     from torch.utils.data import DataLoader
     import os.path as osp
     from appfl.misc import client_log, get_executable_func
     from appfl.algorithm import ClientOptim
-    from appfl.funcx.cloud_storage import CloudStorage
+    from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
     import pickle as pkl
     get_model = get_executable_func(cfg.get_model)
     
@@ -70,6 +72,15 @@ def client_training(
             None, #TODO: support validation at client
             **cfg.fed.args,
         )
+    # Upload
+    ## Download global state
+    if CloudStorage.is_cloud_storage_object(global_state):
+        CloudStorage.init(
+            cfg, 
+            osp.join(cfg.clients[client_idx].output_dir, "tmp")
+            )
+        
+        global_state = CloudStorage.download_object(global_state)    
     
     ## Initial state for a client
     client.model.to(cfg.clients[client_idx].device)
@@ -77,20 +88,16 @@ def client_training(
     
     ## Perform a client update
     client_state = client.update()
-    
-    # Upload
-    use_s3 = cfg.server.s3_bucket is not None
-    if use_s3:
+    client_state = LargeObjectWrapper(client_state, "client-%d" % client_idx)
+    if not client_state.can_send_directly:
         # Save client's weight to file:
-        ckpt_file = osp.join(cfg.clients[client_idx].output_dir, "client-%d.pkl" % client_idx)
-        with open(ckpt_file, "wb") as fo:
-            pkl.dump(client_state, fo)
-        # Upload to cloud
-        CloudStorage.init(cfg.server)
-        cs = CloudStorage.get_instance()
-        return cs.upload(ckpt_file)
+        CloudStorage.init(
+            cfg, 
+            osp.join(cfg.clients[client_idx].output_dir, "tmp")
+            )
+        return CloudStorage.upload_object(client_state)
     else:
-        return client_state
+        return client_state.data
 
 if __name__ == '__main__':
     from omegaconf import OmegaConf
