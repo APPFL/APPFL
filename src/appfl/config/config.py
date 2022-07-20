@@ -83,3 +83,4 @@ class Config:
         {"id": 1, "host": "localhost", "port": 50051, "use_tls": False, "api_key": None}
     )
     client: DictConfig = OmegaConf.create({"id": 1})
+

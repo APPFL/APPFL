@@ -23,7 +23,12 @@ class BaseServer:
     """
 
     def __init__(
-        self, weights: OrderedDict, model: nn.Module, loss_fn: nn.Module, num_clients: int, device
+        self, 
+        weights: OrderedDict, 
+        model: nn.Module, 
+        loss_fn: nn.Module, 
+        num_clients: int, 
+        device,
     ):
         self.model = model
         self.loss_fn = loss_fn

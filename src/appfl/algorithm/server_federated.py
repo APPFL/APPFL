@@ -11,10 +11,21 @@ import copy
 
 
 class FedServer(BaseServer):
-    def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
+    def __init__(
+        self, 
+        weights, 
+        model, 
+        loss_fn, 
+        num_clients, 
+        device, 
+        test_dataloader, 
+        **kwargs
+    ):
+
         super(FedServer, self).__init__(weights, model, loss_fn, num_clients, device)
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
+        self.test_dataloader = test_dataloader
 
         self.step = OrderedDict()
         """ Group 1 """
@@ -77,6 +88,7 @@ class FedServer(BaseServer):
 
         """ model update """
         self.model.load_state_dict(self.global_state)
+
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:

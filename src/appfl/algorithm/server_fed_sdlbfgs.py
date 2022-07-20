@@ -4,6 +4,8 @@ from .server_federated import FedServer
 import torch
 import copy
 
+from ..misc.utils import validation
+
 
 class ServerFedSDLBFGS(FedServer):
 
@@ -23,13 +25,18 @@ class ServerFedSDLBFGS(FedServer):
         self.p = kwargs["history"]
         self.delta = kwargs["delta"]
 
+        # Configuration for backwards line search
+        self.max_step_size = kwargs["max_step_size"]
+        self.increment = kwargs["increment"]
+        self.search_control = kwargs["search_control"]
+
 
 
     def compute_step(self):
         super(ServerFedSDLBFGS, self).compute_pseudo_gradient()
         super(ServerFedSDLBFGS, self).update_m_vector()
 
-        # Initial step, necessary so we can get x_{k - 1}
+        # Initial step, necessary so we can get g_{k - 1}
         if self.k == 0:
             self.make_sgd_step()
         else:
@@ -47,8 +54,8 @@ class ServerFedSDLBFGS(FedServer):
     def make_sgd_step(self):
         for name, _ in self.model.named_parameters():
             self.step[name] = -self.pseudo_grad[name]
-            self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1).double())
-            self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1).double())
+            self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
+            self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
 
 
     def make_lbfgs_step(self):
@@ -58,20 +65,23 @@ class ServerFedSDLBFGS(FedServer):
         self.rho_values.insert(0, OrderedDict())
 
         # TODO: Something here still isn't working properly. I believe it has to
-        # do with either the learning rate or the precision required for
-        # convergence. We keep seeing that the s_vector -> 0, causing the
-        # gradient to explode.
+        # do with either the learning rate required for convergence. We keep
+        # seeing that the s_vector -> 0, causing the gradient to explode. We
+        # need to try and implement the Wolfe backtracking conditions. All in
+        # all, it feels like the search direction isn't even correct at all,
+        # despite the fact that I've triple checked all the code and it lines
+        # up.
 
         for name, _ in self.model.named_parameters():
 
             shape = self.model.state_dict()[name].shape
 
             # Create newest s vector
-            s_vector = self.model.state_dict()[name].reshape(-1).double() - self.prev_params[name]
+            s_vector = self.model.state_dict()[name].reshape(-1) - self.prev_params[name]
             self.s_vectors[0][name] = s_vector
 
             # Create newest ybar vector
-            y_vector = self.pseudo_grad[name].reshape(-1).double() - self.prev_grad[name]
+            y_vector = self.pseudo_grad[name].reshape(-1) - self.prev_grad[name]
             gamma = self.compute_gamma(y_vector, s_vector)
             ybar_vector = self.compute_ybar_vector(y_vector, s_vector, gamma)
             self.ybar_vectors[0][name] = ybar_vector
@@ -82,13 +92,17 @@ class ServerFedSDLBFGS(FedServer):
 
             # Perform recursive computations and step
             v_vector = self.compute_step_approximation(name, gamma)
-
-            self.step[name] = -((self.server_learning_rate / self.k) * v_vector.reshape(shape))
+            if self.k > self.p and not s_vector.isnan().any():
+                self.step[name] = -v_vector.reshape(shape)
+            else:
+                self.step[name] = -self.pseudo_grad[name]
 
             # Store information for next step
-            self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1).double())
-            self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1).double())
+            self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
+            self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
 
+        if self.k > self.p:
+            self.backwards_line_search()
 
 
 
@@ -120,7 +134,7 @@ class ServerFedSDLBFGS(FedServer):
 
     def compute_step_approximation(self, name, gamma):
         """ Lines 4-12 in Procedure 1 """
-        u = self.pseudo_grad[name].reshape(-1).double()
+        u = self.pseudo_grad[name].reshape(-1)
         mu_values = []
         m = min(self.p, self.k - 1)
         r = range(m)
@@ -136,6 +150,33 @@ class ServerFedSDLBFGS(FedServer):
             v = v + ((mu_values[i] - nu) * self.s_vectors[i][name])
         
         return v
+
+    def backwards_line_search(self):
+
+        lr = self.max_step_size
+        m = 0
+        for name, _ in self.model.named_parameters():
+            m += (self.model.state_dict()[name] * self.step[name]).sum()
+        t = - m * self.search_control
+
+        loss, _ = validation(self, self.test_dataloader)
+        while True:
+            model = copy.deepcopy(self)
+            for name, _ in model.model.named_parameters():
+                model.global_state[name] += model.step[name] * lr
+            model.model.load_state_dict(model.global_state)
+            model_loss, _ = validation(model, model.test_dataloader)
+            if loss - model_loss >= lr * t: 
+                break
+            lr *= self.increment
+
+        for name, _ in self.model.named_parameters():
+            self.step[name] *= lr
+
+
+
+
+
 
     def logging_summary(self, cfg, logger):
         super(FedServer, self).log_summary(cfg, logger)

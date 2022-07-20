@@ -78,7 +78,13 @@ def run_serial(
         cfg.validation = False
 
     server = eval(cfg.fed.servername)(
-        weights, copy.deepcopy(model), loss_fn, cfg.num_clients, cfg.device, **cfg.fed.args
+        weights, 
+        copy.deepcopy(model), 
+        loss_fn, 
+        cfg.num_clients, 
+        cfg.device, 
+        test_dataloader,
+        **cfg.fed.args
     )
 
     server.model.to(cfg.device)
@@ -141,6 +147,7 @@ def run_serial(
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
         global_update_start = time.time()
+
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
