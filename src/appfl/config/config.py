@@ -1,5 +1,6 @@
+from email.policy import default
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, List, Dict 
 from omegaconf import DictConfig, OmegaConf
 
 
@@ -22,7 +23,7 @@ class Config:
     num_epochs: int = 2
 
     # Number of workers in DataLoader
-    num_workers: int = 0
+    num_workers: int = 8
 
     # Train data batch info
     batch_training: bool = True  ## TODO: revisit
@@ -70,7 +71,6 @@ class Config:
     logginginfo: DictConfig = OmegaConf.create({})
     summary_file: str = ""
 
-
     #
     # gRPC configutations
     #
@@ -83,3 +83,48 @@ class Config:
         {"id": 1, "host": "localhost", "port": 50051, "use_tls": False, "api_key": None}
     )
     client: DictConfig = OmegaConf.create({"id": 1})
+
+
+@dataclass 
+class FuncXServerConfig:
+    device      : str = "cpu"
+    output_dir  : str = "./"
+    data_dir    : str = "./"
+
+@dataclass
+class ExecutableFunc:
+    module       : str = ""
+    call         : str = ""
+
+@dataclass
+class ClientTask:
+    task_id      : str  = ""
+    task_name    : str  = ""
+    client_idx   : int  = ""
+    pending      : bool = True
+    success      : bool = False
+    start_time   : float= -1
+    end_time     : float= -1
+
+@dataclass
+class FuncXClientConfig:
+    data_split  : Any 
+    name        : str = ""
+    endpoint_id : str = ""
+    device      : str = "cpu"
+    output_dir  : str = "./"
+    data_dir    : str = "./"
+    get_data    : OmegaConf = field(default_factory=OmegaConf)
+
+@dataclass
+class FuncXConfig(Config):
+    get_data     : ExecutableFunc = field(default_factory=ExecutableFunc)
+    get_model    : ExecutableFunc = field(default_factory=ExecutableFunc)
+    clients      : List[FuncXClientConfig] = field(default_factory=list)
+    dataset      : str  = ""
+    model_args   : List = field(default_factory=list)
+    model_kwargs : Dict = field(default_factory=dict)
+    server       : FuncXServerConfig
+    logging_tasks: List = field(default_factory=list) 
+    
+    

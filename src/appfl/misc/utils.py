@@ -1,18 +1,27 @@
+from asyncio.log import logger
+from datetime import datetime
+from logging import handlers
+from pickle import NONE
 import torch
 import os
 from omegaconf import DictConfig
 import logging
 import random
 import numpy as np
-
+import copy
+def get_executable_func(func_cfg):
+    import importlib
+    mdl = importlib.import_module(func_cfg.module)
+    return getattr(mdl, func_cfg.call)
 
 def validation(self, dataloader):
 
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
-    self.model.to(self.device)
-    self.model.eval()
+    eval_model = copy.deepcopy(self.model)
+    eval_model.to(self.device)
+    eval_model.eval()
 
     loss = 0
     correct = 0
@@ -24,7 +33,7 @@ def validation(self, dataloader):
             tmptotal += len(target)
             img = img.to(self.device)
             target = target.to(self.device)
-            output = self.model(img)
+            output = eval_model(img)
             loss += self.loss_fn(output, target).item()
 
             if output.shape[1] == 1:
@@ -44,12 +53,12 @@ def validation(self, dataloader):
 
 
 def create_custom_logger(logger, cfg: DictConfig):
-
     dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+        os.makedirs(dir, exist_ok = True)
     output_filename = cfg.output_filename + "_server"
-
+    
+    # TODO: use timestamp instead
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)
     uniq = 1
@@ -57,25 +66,27 @@ def create_custom_logger(logger, cfg: DictConfig):
         filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
         uniq += 1
 
+    fmt = logging.Formatter(
+        '%(asctime)s %(levelname)-8s %(message)s'
+    )
+
     logger.setLevel(logging.INFO)
     # Create handlers
     c_handler = logging.StreamHandler()
     f_handler = logging.FileHandler(filename)
     c_handler.setLevel(logging.INFO)
     f_handler.setLevel(logging.INFO)
+    c_handler.setFormatter(fmt)
+    f_handler.setFormatter(fmt)
 
     # Add handlers to the logger
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
-
     return logger
-
-
+            
 def client_log(dir, output_filename):
-
     if os.path.isdir(dir) == False:
-        os.mkdir(dir)
-
+        os.makedirs(dir, exist_ok = True)
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)
     uniq = 1
