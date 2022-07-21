@@ -307,7 +307,7 @@ class BaseClient:
 
         loss = loss / tmpcnt
         accuracy = 100.0 * correct / tmptotal
-
+        # TODO: add other metrics precision, recall, ...
         return loss, accuracy
 
     """ 

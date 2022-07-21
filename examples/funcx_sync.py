@@ -59,23 +59,6 @@ def main():
     loss_fn        = torch.nn.CrossEntropyLoss()  
 
     """ User-defined data """
-    # Prepare dataset for testing at server 
-    test_data_input = []
-    test_data_label = []
-
-    """Prepare test dataset """
-    # test_data_raw = eval("torchvision.datasets." + cfg.dataset)(
-    #         osp.join(cfg.server.data_dir, "RawData"), download=True, train=False, transform=ToTensor()
-    #     )
-
-    # for idx in range(len(test_data_raw)):
-    #     test_data_input.append(test_data_raw[idx][0].tolist())
-    #     test_data_label.append(test_data_raw[idx][1])
-
-    # test_dataset = Dataset(
-    #     torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
-    # )
-    test_dataset = []
     ## save a copy of config to logfile
     logger = mLogging.get_logger()
     logger.info(
@@ -86,7 +69,7 @@ def main():
     ## create funcX client object
     fxc = FuncXClient()
     ## run funcX server
-    funcx_server.run_server(cfg, model, loss_fn, fxc , test_dataset)
+    funcx_server.run_server(cfg, model, loss_fn, fxc)
 
 if __name__ == "__main__":
     main()

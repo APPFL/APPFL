@@ -9,7 +9,7 @@ import time
 from ..algorithm import *
 from ..misc import *
 
-from .funcx_client import client_training, client_validate_data
+from .funcx_client import client_training, client_testing, client_validate_data
 from .funcx_clients_manager import APPFLFuncXTrainingClients
 
 class APPFLFuncXServer(abc.ABC):
@@ -18,7 +18,8 @@ class APPFLFuncXServer(abc.ABC):
         self.fxc = fxc
 
         ## Logger for a server
-        self.logger = mLogging.get_logger()
+        self.logger      = mLogging.get_logger()
+        self.eval_logger = mLogging.get_eval_logger()
 
         ## assign number of clients
         self.cfg.num_clients = len(self.cfg.clients)
@@ -58,17 +59,18 @@ class APPFLFuncXServer(abc.ABC):
             raise NotImplementedError
         return weights
 
-    def set_validation_dataset(self, test_data):
+    def set_validation_dataset(self, validation_data):
         """ Server test-set data loader"""
-        if self.cfg.validation == True and len(test_data) > 0:
+        if self.cfg.validation == True and len(validation_data) > 0:
             self.test_dataloader = DataLoader(
-                test_data,
+                validation_data,
                 num_workers=self.cfg.num_workers,
                 batch_size= self.cfg.test_data_batch_size,
                 shuffle   = self.cfg.test_data_shuffle,
             )
         else:
             self.cfg.validation = False
+            self.cfg.server_do_testing = False
     
     def _initialize_server_model(self):
         """ APPFL server """
@@ -82,33 +84,64 @@ class APPFLFuncXServer(abc.ABC):
         self.model =  model
         self.loss_fn =loss_fn
     
-    def _do_validation(self, step):
+    def __evaluate_global_model_at_server(self, dataloader):
+        return validation(self.server, dataloader)
+
+    def __evaluate_global_model_at_clients(self, mode = 'val'):
+        assert mode in ['val', 'test']
+        global_state = self.server.model.state_dict()
+        _  = self.trn_endps.send_task_to_all_clients(client_testing,
+                            self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn)
+        eval_results = self.trn_endps.receive_sync_endpoints_updates()
+        # TODO: handle this, refactor evaluation code
+        for client_idx in eval_results:
+            eval_results[client_idx] = {
+                'loss': eval_results[client_idx][0],
+                'acc' : eval_results[client_idx][1]
+            }
+        return eval_results
+        
+    def _do_server_validation(self, step:int):
         """ Validation """
         validation_start = time.time()
-        test_loss    = 0.0
-        test_accuracy= 0.0
+        val_loss    = 0.0
+        val_accuracy= 0.0
         if self.cfg.validation == True:
             # Move server model to GPU (if available) for validation inference 
-            # if self.cfg.server.device != "cpu":
-            #     self.server.model.to(self.cfg.server.device)
-            test_loss, test_accuracy = validation(self.server, self.test_dataloader)
-            # if self.cfg.server.device != "cpu":
-            #     # Move back to cpu after validation
-            #     self.server.model.to("cpu")
-
+            # TODO: change to val_dataloader
+            val_loss, val_accuracy = self.__evaluate_global_model_at_server(self.test_dataloader)
             if self.cfg.use_tensorboard:
                 # Add them to tensorboard
-                self.writer.add_scalar("server_test_accuracy", test_accuracy, step)
-                self.writer.add_scalar("server_test_loss", test_loss, step)
-            if test_accuracy > self.best_accuracy:
-                self.best_accuracy = test_accuracy
+                self.writer.add_scalar("server_test_accuracy", val_accuracy, step)
+                self.writer.add_scalar("server_test_loss", val_loss, step)
+            if val_accuracy > self.best_accuracy:
+                self.best_accuracy = val_accuracy
 
         self.cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
-        self.cfg["logginginfo"]["test_loss"]       = test_loss
-        self.cfg["logginginfo"]["test_accuracy"]   = test_accuracy
+        self.cfg["logginginfo"]["test_loss"]       = val_loss
+        self.cfg["logginginfo"]["test_accuracy"]   = val_accuracy
         self.cfg["logginginfo"]["BestAccuracy"]    = self.best_accuracy
+        self.eval_logger.log_server_validation({'acc': val_accuracy, 'loss': val_loss}, step)
 
-    def _finalize_training(self):
+    def _do_server_testing(self):
+        """Peform testing at server """
+        if self.cfg.server_do_testing:
+            test_loss, test_accuracy = self.__evaluate_global_model_at_server(self.test_dataloader)
+            self.eval_logger.log_server_testing({'acc': test_accuracy, 'loss': test_loss})
+
+    def _do_client_validation(self, step:int):
+        """Perform validation at clients"""
+        if self.cfg.client_do_validation:
+            validation_results = self.__evaluate_global_model_at_clients(mode='val')
+            self.eval_logger.log_client_validation(validation_results, step)
+    
+    def _do_client_testing(self):
+        """Perform tesint at clients """
+        if self.cfg.client_do_testing:
+            testing_results  = self.__evaluate_global_model_at_clients(mode='test')
+            self.eval_logger.log_client_testing(testing_results)
+    
+    def _finalize_experiment(self):
         mLogging.save_funcx_log(self.cfg)
         self.server.logging_summary(self.cfg, self.logger)
 
@@ -116,7 +149,7 @@ class APPFLFuncXServer(abc.ABC):
         """ Saving model"""
         if (step + 1) % self.cfg.checkpoints_interval == 0 or step + 1 == self.cfg.num_epochs:
             if self.cfg.save_model == True:
-                save_model_iteration(t + 1, self.server.model, self.cfg)
+                save_model_iteration(step + 1, self.server.model, self.cfg)
 
     @abc.abstractmethod
     def _do_training(self):
@@ -142,8 +175,12 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
         self._initialize_server_model()
         # Do training
         self._do_training()
+        # Do client testing
+        self._do_client_testing()
+        # Do server testing
+        self._do_server_testing()
         # Wrap-up
-        self._finalize_training()
+        self._finalize_experiment()
     
     def _do_training(self):
         """ Looping over all epochs """
@@ -161,8 +198,7 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
                         self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn)
         
             ## Aggregate local updates from clients
-            local_states = []
-            local_states.append(self.trn_endps.receive_sync_endpoints_updates())
+            local_states = [self.trn_endps.receive_sync_endpoints_updates()]
             self.cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
             ## Perform global update
@@ -173,8 +209,8 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
             self.cfg["logginginfo"]["Elapsed_time"]      = time.time() - start_time
             
             """ Validation """
-            self._do_validation(t)
-
+            self._do_server_validation(t)
+            self._do_client_validation(t)
             self.server.logging_iteration(self.cfg, self.logger, t)
 
             """ Saving checkpoint """
@@ -199,6 +235,7 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         self.server.model.to("cpu")
 
     def run(self, model: nn.Module, loss_fn: nn.Module):
+        # TODO: combine into one run function
         # Set model, and loss function
         self._initialize_training(model, loss_fn)
         # Validate data at clients
@@ -209,8 +246,10 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         self._initialize_server_model()
         # Do training
         self._do_training()
+        # Do client testing
+        self._do_client_testing()
         # Wrap-up
-        self._finalize_training()
+        self._finalize_experiment()
         # Shutdown all clients
         self.trn_endps.shutdown_all_clients()
 
@@ -276,7 +315,7 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         # Run async event loop
         while (not stop_aggregate):
             if self.server.global_step % 2 == 0:
-                self._do_validation(self.server.global_step)
+                self._do_server_validation(self.server.global_step)
             
             # Define some stopping criteria
             if stopping_criteria():

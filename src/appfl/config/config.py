@@ -127,5 +127,9 @@ class FuncXConfig(Config):
     model_kwargs : Dict = field(default_factory=dict)
     server       : FuncXServerConfig
     logging_tasks: List = field(default_factory=list) 
-    
+
+    client_do_validation: bool = True
+    client_do_testing:    bool = True
+    server_do_validation: bool = True
+    server_do_testing   : bool = True
     

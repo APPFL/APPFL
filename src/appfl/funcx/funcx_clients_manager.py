@@ -166,7 +166,7 @@ class APPFLFuncXTrainingClients:
                     self.executing_tasks[task_id].pending = False
                     if task_id in self.executing_tasks:
                         ## Training at client is succeeded
-                        if results[task_id]['status'] == "success":
+                        if 'result' in results[task_id]:
                             client_results[self.executing_tasks[task_id].client_idx] =self.__process_client_results(results[task_id]['result'])
                             
                             self.__set_task_success_status(task_id, results[task_id]["completion_t"])
@@ -177,7 +177,6 @@ class APPFLFuncXTrainingClients:
                                 task_id, 
                                 self.cfg.clients[self.executing_tasks[task_id].client_idx].name)
                             )
-
                         else:
                             # TODO: handling situations when training has errors
                             client_results[self.executing_tasks[task_id]] = None
@@ -187,6 +186,8 @@ class APPFLFuncXTrainingClients:
                                 self.cfg.clients[self.executing_tasks[task_id].client_idx].name)
                             )
                             # Raise/Reraise the exception at client
+                            if 'exception' not in results[task_id]:
+                                import ipdb; ipdb.set_trace() 
                             excpt = results[task_id]['exception']
                             if type(excpt) == Exception:
                                 raise excpt
@@ -264,6 +265,9 @@ class APPFLFuncXTrainingClients:
         
         self.fx.shutdown()
         self.logger.info("All clients have been shutted down successfully.")
+        
+        # Clean-up cloud storage
+        CloudStorage.clean_up()
     
     # def run_loop(self):
     #     loop = asyncio.get_event_loop()

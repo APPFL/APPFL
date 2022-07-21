@@ -134,6 +134,7 @@ class CloudStorage(object):
                 (object_name, file_size))
         return load_data_from_file(file_path)
     
+    @classmethod
     def clean_up(self):
         """Clean up files on cloud storage"""
         pass

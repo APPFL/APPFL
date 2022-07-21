@@ -1,6 +1,7 @@
 def get_data(
     cfg,
-    client_idx: int):
+    client_idx: int,
+    mode='train'):
     # TODO: Support other datasets, not only MNIST at client
     import torchvision
     from   torchvision.transforms import ToTensor
@@ -13,25 +14,24 @@ def get_data(
     ## Prepare local dataset directory
     data_dir       = cfg.clients[client_idx].data_dir
     local_dir      = osp.join(data_dir,"RawData")
-    train_data_raw = eval("torchvision.datasets." + cfg.dataset)(
-        local_dir, download = True, train = True, transform= ToTensor()
+    data_raw = eval("torchvision.datasets." + cfg.dataset)(
+        local_dir, download = True, 
+        train = True if mode == 'train' else False, 
+        transform= ToTensor()
     )
-    ## TODO: for development, temporary use a smaller dataset size at client
-    # split_train_data_raw = np.array_split(range(len(train_data_raw)),  500)
-    split_train_data_raw = np.array_split(range(len(train_data_raw)),  cfg.num_clients)
-    train_datasets = []
-    train_data_input = []
-    train_data_label = []
+    
+    split_train_data_raw = np.array_split(range(len(data_raw)),  cfg.num_clients)
+    data_input = []
+    data_label = []
     
     for idx in split_train_data_raw[client_idx]:
-        train_data_input.append(train_data_raw[idx][0].tolist())
-        train_data_label.append(train_data_raw[idx][1])
+        data_input.append(data_raw[idx][0].tolist())
+        data_label.append(data_raw[idx][1])
     
-    train_dataset = Dataset(
-            torch.FloatTensor(train_data_input),
-            torch.tensor(train_data_label),
+    return Dataset(
+            torch.FloatTensor(data_input),
+            torch.tensor(data_label),
         )
-    return train_dataset
     
 def get_model():
     import torch

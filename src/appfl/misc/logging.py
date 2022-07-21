@@ -3,14 +3,69 @@ import logging
 from omegaconf import DictConfig
 import os
 from datetime import datetime
+import json
+class EvalLogger:
+    def __init__(self, cfg: DictConfig) -> None:
+        self.cfg = cfg
+        self.test_results = {'clients': None, 'server': None}
+        self.val_results  = {'clients': [], 'server': []}
+        self.main_logger = mLogging.get_logger()
+
+    def __format(self, key, val):
+        c = "%8s:" % key
+        if type(val) == int:
+            c+= "%5s"    % val 
+        else:
+            c+= "%10.3f" % val
+        return c
+
+    def log_info_client_results(self, results, rs_name = ''):
+        for cli_name in results:
+            c = "[%8s] %20s" %  (rs_name, cli_name)
+            for k in results[cli_name]:
+                c+= self.__format(k, results[cli_name][k])
+            self.main_logger.info(c)
+    
+    def log_info_server_results(self, results, rs_name = ''):
+        c = "[%8s] %20s" % (rs_name, "server")
+        for k in results:
+            c+= self.__format(k, results[k])
+        self.main_logger.info(c)
+
+    def log_client_testing(self, results):
+        rs = {
+            self.cfg.clients[client_idx].name: results[client_idx] for client_idx in results
+        }
+        self.test_results['clients'] = rs
+        self.log_info_client_results(rs, 'CLI-TEST')
+    
+    def log_server_testing(self, results):
+        self.test_results['server'] = results 
+        self.log_info_server_results(results, 'SER-TEST')
+
+    def log_client_validation(self, results, step):
+        rs = {
+            self.cfg.clients[client_idx].name: {
+                'step': step, **results[client_idx],
+                } for client_idx in results
+        }
+        self.val_results['clients'].append(rs)
+        self.log_info_client_results(rs, 'CLI-VAL')
+    
+    def log_server_validation(self, results, step):
+        rs = { 'step': step, **results }
+        self.val_results['server'].append(rs)
+        self.log_info_server_results(rs, 'SER-VAL')
+    
+    def save_log(self, output_file):
+        out_dict = {"val": self.val_results, "test": self.test_results}
+        with open(output_file, "w") as fo:
+            json.dump(out_dict, fo)
 
 class mLogging:
-    __logger    = None
-    __writer    = None
-    __dir       = None 
-    __timestamp = None
-    @staticmethod
-    def config_logger(cfg: DictConfig):
+    __logger = None
+    @classmethod
+    def config_logger(cls, cfg: DictConfig):
         run_str = "%s_%s_%s" % (cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)
         dir     = os.path.join(cfg.server.output_dir,
                                 "outputs_%s" % run_str)
@@ -37,9 +92,12 @@ class mLogging:
         # Add handlers to the logger
         logger.addHandler(c_handler)
         logger.addHandler(f_handler)
-        mLogging.__logger    = logger
-        mLogging.__dir       = dir
-        mLogging.__timestamp = time_stamp
+
+        # Instantiate method
+        new_inst = cls.__new__(cls) 
+        new_inst.logger    = logger
+        new_inst.dir       = dir
+        new_inst.timestamp = time_stamp
         if cfg.use_tensorboard:
             tb_dir = os.path.join(
                 dir,
@@ -47,28 +105,38 @@ class mLogging:
                 "%s_%s" % (run_str, time_stamp)
             )
             from tensorboardX import SummaryWriter
-            mLogging.__writer = SummaryWriter(tb_dir)
+            new_inst.writer = SummaryWriter(tb_dir)
+        
+        # Initialize eval logger
+        cls.__logger = new_inst
+        new_inst.eval_logger= EvalLogger(cfg)
+        
 
-    @staticmethod
-    def get_logger():
-        if mLogging.__logger is None:
-            raise Exception("Logger need to be configured first")
-        return mLogging.__logger
-
-    @staticmethod
-    def get_tensorboard_writer():
-        if mLogging.__writer is None:
+    @classmethod
+    def get_logger(cls):
+        if cls.__logger is None:
+            raise RuntimeError("Need to configure logger first")
+        return cls.__logger.logger
+    
+    @classmethod
+    def get_eval_logger(cls):
+        if cls.__logger is None:
+            raise RuntimeError("Need to configure logger first")
+        return cls.__logger.eval_logger
+    
+    @classmethod
+    def get_tensorboard_writer(cls):
+        if cls.__logger.writer is None:
             raise Exception("Tensorboard X writer need to be configured first")
-        return mLogging.__writer
+        return cls.__logger.writer
 
-    @staticmethod
-    def save_funcx_log(cfg):
+    @classmethod
+    def save_funcx_log(cls, cfg):
         import csv
         header = ['timestamp','task_name','client_name','status','execution_time']
-        
+        lgg = cls.__logger
         with open(os.path.join(
-                mLogging.__dir,
-                "log_funcx_%s.csv" % mLogging.__timestamp
+                lgg.dir, "log_funcx_%s.csv" % lgg.timestamp
             ), "w") as fo:
             writer = csv.writer(fo)
             writer.writerow(header)
@@ -80,3 +148,5 @@ class mLogging:
                     "success" if tlog.success else "failed",        
                     "%.02f" % (tlog.end_time - tlog.start_time)    
                 ])
+        # Save log
+        lgg.eval_logger.save_log(os.path.join(lgg.dir, "log_eval_%s.json" % lgg.timestamp))

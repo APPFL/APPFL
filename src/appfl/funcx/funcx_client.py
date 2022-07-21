@@ -1,18 +1,13 @@
+from appfl.funcx.client_utils import get_dataloader, get_model
 from appfl.funcx.cloud_storage import LargeObjectWrapper
 
 
 def client_validate_data(
     cfg, 
-    client_idx):
-    from appfl.misc import client_log, get_executable_func
-    
-    if 'get_data' in cfg.clients[client_idx]:
-        get_data  = get_executable_func(cfg.clients[client_idx].get_data)
-    else:
-        get_data  = get_executable_func(cfg.get_data)
-
-    # Get train data
-    train_data = get_data(cfg, client_idx)
+    client_idx,
+    ):
+    from appfl.funcx.client_utils import get_dataset
+    train_data = get_dataset(cfg, client_idx, mode='train')
     return len(train_data)
 
 def client_training(
@@ -23,81 +18,90 @@ def client_training(
     loss_fn
     ):
     ## Import libaries
-    from torch.utils.data import DataLoader
     import os.path as osp
-    from appfl.misc import client_log, get_executable_func
-    from appfl.algorithm import ClientOptim
-    from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
-    import pickle as pkl
-    get_model = get_executable_func(cfg.get_model)
-    
-    if 'get_data' in cfg.clients[client_idx]:
-        get_data  = get_executable_func(cfg.clients[client_idx].get_data)
-    else:
-        get_data  = get_executable_func(cfg.get_data)
-
+    from appfl.algorithm.client_optimizer import ClientOptim
+    from appfl.misc import client_log
+    from appfl.funcx.client_utils import get_dataset, load_global_state, send_client_state, get_dataloader, get_model
     ## Load client configs
     cfg.device         = cfg.clients[client_idx].device
     cfg.output_dirname = cfg.clients[client_idx].output_dir
-
-    ## Prepare training/testing data
-    train_data = get_data(cfg, client_idx)
-
+    ## Prepare training/validation data
+    train_dataset   = get_dataset(cfg, client_idx, mode='train')
+    train_dataloader= get_dataloader(cfg, train_dataset, mode='train')
+    if cfg.client_do_validation:
+        val_dataset    = get_dataset(cfg, client_idx, mode='val')
+        val_dataloader = get_dataloader(cfg, val_dataset, mode='val') 
+    
+    # Get training model
+    model = get_model(cfg)
     ## Prepare output directory
     output_filename = cfg.output_filename + "_client_%s" % (client_idx)
     outfile = client_log(cfg.output_dirname, output_filename)
-    
-    ## Get training model
-    ModelClass = get_model()
-    model      = ModelClass(*cfg.model_args, **cfg.model_kwargs)
-    
-    ## Configure training at client
-    batch_size = cfg.train_data_batch_size
-    
-    ## Instantiate training client 
+    ## Instantiate training agent at client 
     client= eval(cfg.fed.clientname)(
             client_idx,
             weights,
             model,
             loss_fn,
-            DataLoader(
-                train_data,
-                num_workers = cfg.num_workers,
-                batch_size  = batch_size,
-                shuffle     = cfg.train_data_shuffle,
-                pin_memory  = True,
-            ),
+            train_dataloader,
             cfg,
             outfile,
-            None, #TODO: support validation at client
-            **cfg.fed.args,
-        )
-    # Upload
-    ## Download global state
-    if CloudStorage.is_cloud_storage_object(global_state):
-        CloudStorage.init(
-            cfg, 
-            osp.join(cfg.clients[client_idx].output_dir, "tmp")
-            )
-        
-        global_state = CloudStorage.download_object(global_state)    
+            val_dataloader, 
+            **cfg.fed.args)
     
+    ## Download global state
+    temp_dir = osp.join(cfg.output_dirname, "tmp")
+    global_state = load_global_state(cfg, global_state, temp_dir)
     ## Initial state for a client
     client.model.to(cfg.clients[client_idx].device)
     client.model.load_state_dict(global_state)
-    
     ## Perform a client update
     client_state = client.update()
-    client_state = LargeObjectWrapper(client_state, "client-%d" % client_idx)
-    if not client_state.can_send_directly:
-        # Save client's weight to file:
-        CloudStorage.init(
-            cfg, 
-            osp.join(cfg.clients[client_idx].output_dir, "tmp")
-            )
-        return CloudStorage.upload_object(client_state)
-    else:
-        return client_state.data
+    ## Send client state to server
+    return send_client_state(cfg, client_state, client_idx, temp_dir)
+    
+def client_testing(
+    cfg, 
+    client_idx,
+    weights,
+    global_state,
+    loss_fn
+    ):
+    ## Import libaries
+    import os.path as osp
+    from appfl.misc import client_log
+    from appfl.algorithm.client_optimizer import ClientOptim
+    from appfl.funcx.client_utils import get_dataset, load_global_state, get_dataloader, get_model
+    ## Load client configs
+    cfg.device         = cfg.clients[client_idx].device
+    cfg.output_dirname = cfg.clients[client_idx].output_dir
+    ## Prepare testing data
+    test_dataset   = get_dataset(cfg, client_idx, mode='test')
+    test_dataloader= get_dataloader(cfg, test_dataset, mode='test')
+    # Get training model
+    model = get_model(cfg)
+    ## Prepare output directory
+    output_filename = cfg.output_filename + "_client_test_%s" % (client_idx)
+    outfile = client_log(cfg.output_dirname, output_filename)
+    ## Instantiate training agent at client 
+    client= eval(cfg.fed.clientname)(
+            client_idx,
+            weights,
+            model,
+            loss_fn,
+            None,
+            cfg,
+            outfile,
+            None,
+            **cfg.fed.args)
+    ## Download global state
+    temp_dir = osp.join(cfg.output_dirname, "tmp")
+    global_state = load_global_state(cfg, global_state, temp_dir)
+    ## Initial state for a client
+    client.model.to(cfg.clients[client_idx].device)
+    client.model.load_state_dict(global_state)
+    ## Do validation
+    return client.client_validation(test_dataloader)
 
 if __name__ == '__main__':
     from omegaconf import OmegaConf
