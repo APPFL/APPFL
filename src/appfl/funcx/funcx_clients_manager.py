@@ -10,33 +10,39 @@ from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
 from appfl.misc import load_data_from_file
 import os.path as osp
 import os
+import random
 
 class ClientStatus(Enum):
     UNAVAILABLE = 0
     AVAILABLE   = 1
     RUNNING     = 2
-    # DONE        = 3
 
 class FuncXClient:
-    def __init__(self, client_idx:int, client_cfg: OrderedDict, status = ClientStatus.AVAILABLE):
-        self._status: ClientStatus = ClientStatus.AVAILABLE
+    def __init__(self, client_idx:int, client_cfg: OrderedDict):  
         self.client_idx = client_idx 
         self.client_cfg = client_cfg
-        self.future   = None
-        self.task_name= "N/A"
-
+        self.set_no_runing_task()
+    
     @property
     def status(self):
         if (self._status == ClientStatus.RUNNING):
             if self.future.done():
-                self._status = ClientStatus.AVAILABLE
+                self.set_no_runing_task()
         return self._status
 
+    def set_no_runing_task(self):
+        self._status  = ClientStatus.AVAILABLE
+        self.task_name= "N/A"
+        self.executing_task_id = None
+        self.future   = None
 
     def submit_task(self, fx, exct_func, *args, callback = None, **kwargs ):
         if self.status == ClientStatus.AVAILABLE:
             self._status = ClientStatus.RUNNING
             self.task_name = exct_func.__name__
+            self.executing_task_id = str("%03d" % random.randint(1,999))
+            # def exct_func_wrapper(*args, **kwargs):
+            #     return (exct_func(*args, **kwargs), self.executing_task_id)   
             try:
                 self.future = fx.submit(
                     exct_func, *args, **kwargs,
@@ -44,35 +50,24 @@ class FuncXClient:
                 )
             except:
                 pass
-            self.future.add_done_callback(callback)
-            return self.future.task_id
+            if callback is not None:
+                self.future.add_done_callback(callback)
+            return self.executing_task_id
         else:
             return None
-    
-    # def cancel_task(self):
-    #     return self.fx.cancel()
-    # def get_result(self):
-    #     if self.status   == ClientStatus.DONE:
-    #         self._status  = ClientStatus.AVAILABLE
-    #         self.task_name= "N/A"
-    #         return self.future.result()  
-    #     else:
-    #         return None
-    
+
 class APPFLFuncXTrainingClients:
     def __init__(self, cfg: DictConfig, fxc : FuncXClient, logger):
         self.cfg = cfg
         self.fxc = fxc
         self.fx  = FuncXExecutor(fxc, batch_enabled = False)
         self.executing_tasks = {}
-        
         # Logging
         self.logger  = logger
         self.clients = {
             client_idx: FuncXClient(client_idx, client_cfg)
             for client_idx, client_cfg in enumerate(self.cfg.clients)
         }
-
         # Config S3 bucket (if necessary)
         self.use_s3bucket = cfg.server.s3_bucket is not None
         if (self.use_s3bucket):
@@ -82,6 +77,7 @@ class APPFLFuncXTrainingClients:
                 logger= self.logger)
 
     def __register_task(self, task_id, client_id, task_name):
+        """Register new client task - call after task submission """
         self.executing_tasks[task_id] =  OmegaConf.structured(ClientTask(
                     task_id    = task_id,
                     task_name  = task_name,
@@ -95,9 +91,11 @@ class APPFLFuncXTrainingClients:
     def __finalize_task(self, task_id):
         # Save task to log file
         self.cfg.logging_tasks.append(self.executing_tasks[task_id])
+        # Reset client
+        self.clients[self.executing_tasks[task_id].client_idx].status
         # Remove from executing tasks list
         self.executing_tasks.pop(task_id)
-    
+        
     def __process_client_results(self, results):
         """Process results from clients, download file from S3 if necessary"""
         if not CloudStorage.is_cloud_storage_object(results) or not self.use_s3bucket:
@@ -122,40 +120,68 @@ class APPFLFuncXTrainingClients:
                     kwargs[k] = CloudStorage.upload_object(obj)
         return args, kwargs
 
+    def __handle_funcx_result(self, res, task_id):
+        """Handle returned results from Funcx"""
+        res = self.__process_client_results(res)
+        self.__set_task_success_status(task_id, time.time())
+        client_task  = self.executing_tasks[task_id]
+        self.logger.info("Recieved results of task '%s' from %s." %(
+            client_task.task_name, 
+            self.clients[client_task.client_idx].client_cfg.name)
+        )
+        self.__finalize_task(task_id)
+        return res      
+
+    def __handle_future_result(self, future):
+        """Handle returned Future object from Funcx"""
+        res    = future.result()
+        task_id= future.task_id
+        return self.__handle_funcx_result(res, task_id)
+    
+    def __handle_dict_result(self, dict_result, task_id):
+        """Handle returned dictionary object from Funcx"""
+        return self.__handle_funcx_result(dict_result['result'], task_id)
+
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
-        """Broadcast excutable tasks and parameters to all clients"""
-        ## Register funcX function and create execution batch 
-        func_uuid = self.fxc.register_function(exct_func)
-        batch     = self.fxc.create_batch()
+        """Broadcast an excutabl tasks with all agruments to all clients"""
         # Prepare args, kwargs before sending to clients
         args, kwargs = self.__handle_params(args, kwargs)
+        # Register funcX function and create execution batch
+        func_uuid = self.fxc.register_function(exct_func)
+        batch     = self.fxc.create_batch()
         for client_idx, client_cfg in enumerate(self.cfg.clients):
             # select device
             batch.add(
                 self.cfg,
-                client_idx, # TODO: can work with other datasets
+                client_idx,
                 *args,
                 **kwargs,
                 endpoint_id = client_cfg.endpoint_id, 
                 function_id = func_uuid)
-        ## Execute training tasks at clients
-        #TODO: Assuming that all tasks do not have the same start time
+        # Execute training tasks at clients
+        # TODO: Assuming that all tasks do not have the same start time
         task_ids  = self.fxc.batch_run(batch)
         
-        ## Saving task ids 
+        # Saving task ids 
         for i, task_id in enumerate(task_ids):
             self.__register_task(
                 task_id, i, exct_func.__name__
             )
-            
-        ## Logging
+        # Logging
         if not silent:
             for task_id in  self.executing_tasks:
                 self.logger.info("Task '%s' (id: %s) is assigned to %s." %(
                     exct_func.__name__, task_id, 
                     self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
         return self.executing_tasks
-
+    
+    # def receive_sync_endpoints_updates(self):
+    #     sync_results = {}
+    #     for client_idx in self.clients:
+    #         print(self.clients[client_idx].task_name)
+    #         sync_results[client_idx] = self.__handle_funcx_future(self.clients[client_idx].future)
+    #     return sync_results
+    
     def receive_sync_endpoints_updates(self):
         stop_aggregate    = False
         client_results    = OrderedDict()
@@ -167,16 +193,9 @@ class APPFLFuncXTrainingClients:
                     if task_id in self.executing_tasks:
                         ## Training at client is succeeded
                         if 'result' in results[task_id]:
-                            client_results[self.executing_tasks[task_id].client_idx] =self.__process_client_results(results[task_id]['result'])
-                            
-                            self.__set_task_success_status(task_id, results[task_id]["completion_t"])
-
-                            # Logging                      
-                            self.logger.info(
-                            "Task %s on %s completed successfully." % ( 
-                                task_id, 
-                                self.cfg.clients[self.executing_tasks[task_id].client_idx].name)
-                            )
+                            client_idx = self.executing_tasks[task_id].client_idx
+                            client_results[client_idx] = self.__handle_dict_result(
+                                results[task_id], task_id)
                         else:
                             # TODO: handling situations when training has errors
                             client_results[self.executing_tasks[task_id]] = None
@@ -186,27 +205,23 @@ class APPFLFuncXTrainingClients:
                                 self.cfg.clients[self.executing_tasks[task_id].client_idx].name)
                             )
                             # Raise/Reraise the exception at client
-                            if 'exception' not in results[task_id]:
-                                import ipdb; ipdb.set_trace() 
                             excpt = results[task_id]['exception']
                             if type(excpt) == Exception:
+                                # import ipdb; ipdb.set_trace() 
                                 raise excpt
                             else:
                                 results[task_id]['exception'].reraise()
-                    
-                    # Finalize task
-                    self.__finalize_task(task_id)
             if len(self.executing_tasks) == 0:
                 stop_aggregate = True
         return client_results
     
-    def register_async_call_back_funcn(self, call_back_func):
+    def register_async_call_back_func(self, call_back_func, invoke_async_func_on_complete = True):
         # Callback function
         def __cbfn(res):
             task_id = res.task_id
             client_task  = self.executing_tasks[task_id]
             # If the task is canceled
-            if res.cancel() == False and self.stopping_func() == False:
+            if res.cancel() == False or self.stopping_func() == False: #I changed from AND to OR
                 self.logger.info("Recieved results of task '%s' from %s." %(
                                     client_task.task_name, 
                                     self.clients[client_task.client_idx].client_cfg.name)
@@ -215,8 +230,9 @@ class APPFLFuncXTrainingClients:
                 call_back_func(res, client_task.client_idx)
                 # TODO: get completion time stamp
                 self.__set_task_success_status(task_id, time.time())
-                # Assign new task to client
-                self.run_async_task_on_client(client_task.client_idx)
+                if invoke_async_func_on_complete:
+                    # Assign new task to client
+                    self.run_async_task_on_client(client_task.client_idx)
             else:
                 self.logger.info("Task '%s' from %s is canceled." % (
                     client_task.task_name, self.clients[client_task.client_idx].client_cfg.name)
@@ -237,6 +253,8 @@ class APPFLFuncXTrainingClients:
         self.logger.info("Async task '%s' is assigned to %s." %(
                         self.async_func.__name__, client.client_cfg.name)
                 ) 
+        # Prepare args, kwargs before sending to clients
+        args, kwargs = self.__handle_params(args, kwargs)
         # Send task to client
         task_id = client.submit_task(
             self.fx,
@@ -245,7 +263,7 @@ class APPFLFuncXTrainingClients:
             client_idx,
             *self.async_func_args,
             **self.async_func_kwargs,
-            callback = self.call_back_func
+            callback = self.call_back_func if hasattr(self, 'call_back_func') else None
         ) 
         # Register new tasks
         self.__register_task(
@@ -253,6 +271,7 @@ class APPFLFuncXTrainingClients:
         )
     
     def run_async_task_on_available_clients(self):
+        # self.fx  = FuncXExecutor(self.fxc, batch_enabled = True)
         for client_idx in self.clients:
             if self.clients[client_idx].status == ClientStatus.AVAILABLE:
                 self.run_async_task_on_client(client_idx)

@@ -1,14 +1,15 @@
-from appfl.funcx.client_utils import get_dataloader, get_model
-from appfl.funcx.cloud_storage import LargeObjectWrapper
-
-
 def client_validate_data(
     cfg, 
     client_idx,
+    mode = 'train'
     ):
+    modes = [mode] if type(mode) == str else mode 
     from appfl.funcx.client_utils import get_dataset
-    train_data = get_dataset(cfg, client_idx, mode='train')
-    return len(train_data)
+    data_info = {}
+    for m in modes: 
+        dataset = get_dataset(cfg, client_idx, mode=m)
+        data_info[m] = len(dataset)
+    return data_info
 
 def client_training(
     cfg, 
@@ -20,8 +21,8 @@ def client_training(
     ## Import libaries
     import os.path as osp
     from appfl.algorithm.client_optimizer import ClientOptim
-    from appfl.misc import client_log
-    from appfl.funcx.client_utils import get_dataset, load_global_state, send_client_state, get_dataloader, get_model
+    from appfl.misc import client_log, get_dataloader
+    from appfl.funcx.client_utils import get_dataset, load_global_state, send_client_state, get_model
     ## Load client configs
     cfg.device         = cfg.clients[client_idx].device
     cfg.output_dirname = cfg.clients[client_idx].output_dir
@@ -69,9 +70,9 @@ def client_testing(
     ):
     ## Import libaries
     import os.path as osp
-    from appfl.misc import client_log
+    from appfl.misc import client_log, get_dataloader
     from appfl.algorithm.client_optimizer import ClientOptim
-    from appfl.funcx.client_utils import get_dataset, load_global_state, get_dataloader, get_model
+    from appfl.funcx.client_utils import get_dataset, load_global_state, get_model
     ## Load client configs
     cfg.device         = cfg.clients[client_idx].device
     cfg.output_dirname = cfg.clients[client_idx].output_dir
@@ -108,7 +109,7 @@ if __name__ == '__main__':
     from appfl.config import load_funcx_device_config, load_funcx_config, FuncXConfig
     cfg = OmegaConf.structured(FuncXConfig)
     load_funcx_device_config(cfg,
-        "configs/devices/covid19_anl_uchicago.yaml")
+        "configs/clients/covid19_anl_uchicago.yaml")
     load_funcx_config(cfg, 
         "configs/fed_avg/funcx_fedavg_covid.yaml")
     

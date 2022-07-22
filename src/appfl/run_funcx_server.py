@@ -9,10 +9,14 @@ def run_server(
     model: nn.Module,
     loss_fn: nn.Module,
     fxc: FuncXClient,
-    test_data: Dataset = Dataset()
+    test_data: Dataset = Dataset(),
+    val_data : Dataset = Dataset()
     ):
     serv = APPFLFuncXSyncServer(cfg, fxc)
 
-    serv.set_validation_dataset(test_data) 
+    serv.set_server_dataset(
+        validation_dataset=val_data,
+        testing_dataset= test_data
+        ) 
     
     serv.run(model, loss_fn)

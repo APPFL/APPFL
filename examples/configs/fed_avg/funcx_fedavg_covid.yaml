@@ -36,5 +36,5 @@ dataset:
 
 func:
   get_model:
-    module: "appfl.funcx.chexpert_example"
+    script_file: "./models/densenet.py"
     call: "get_model"

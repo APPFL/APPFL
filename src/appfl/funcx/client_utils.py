@@ -1,9 +1,10 @@
 from appfl.misc import get_executable_func
-from torch.utils.data import DataLoader
+
 from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
 import os.path as osp
 
 def get_dataset(cfg, client_idx, mode='train'):
+    print(mode)
     assert mode in ['train', 'val', 'test']
     if 'get_data' in cfg.clients[client_idx]:
         func_call  = get_executable_func(cfg.clients[client_idx].get_data)
@@ -17,26 +18,6 @@ def get_model(cfg):
     ModelClass = get_model()
     model      = ModelClass(*cfg.model_args, **cfg.model_kwargs)
     return model
-
-def get_dataloader(cfg, dataset, mode):
-    if len(dataset) == 0:
-        return None
-    assert mode in ['train', 'val', 'test']
-    if mode == 'train':
-        ## Configure training at client
-        batch_size = cfg.train_data_batch_size
-        shuffle    = cfg.test_data_shuffle
-    else:
-        batch_size = cfg.test_data_batch_size
-        shuffle    = cfg.test_data_shuffle
-    # assert type(num_workers) == int
-    return DataLoader(
-            dataset,
-            batch_size  = cfg.train_data_batch_size,
-            num_workers = cfg.num_workers,
-            shuffle     = shuffle,
-            pin_memory  = True
-        )
 
 def load_global_state(cfg, global_state, temp_dir):
     if CloudStorage.is_cloud_storage_object(global_state):

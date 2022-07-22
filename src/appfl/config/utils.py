@@ -2,10 +2,23 @@ from omegaconf import OmegaConf
 from .config import *
 import yaml
 import os.path as osp
-
+from ..misc.utils import *
 def show():
     conf = OmegaConf.structured(Config)
     print(OmegaConf.to_yaml(conf))
+
+
+def load_exct_func_cfg(cfg_dict):
+    src = OmegaConf.create(
+        ExecutableFunc(**cfg_dict))
+    assert src.module != "" or  src.script_file  != "",  "Need to specify the executable function by (module, call) or script file"
+    assert not (src.module != "" and src.script_file != ""), "Can only specify the executable function by (module, call) or script file but not both"
+    assert src.call != "", "Need to specify the function's name by setting 'call: <func name>' in the config file"
+    if src.script_file != "":
+        with open(src.script_file) as fi:
+            src.source = fi.read()
+        assert len(src.source) > 0, "Source file is empty."
+    return src
 
 def load_funcx_config(cfg: FuncXConfig,
     config_file: str):
@@ -15,8 +28,8 @@ def load_funcx_config(cfg: FuncXConfig,
 
     ## Load module configs for get_model and get_dataset method
     if 'get_data' in data['func']:
-        cfg.get_data = OmegaConf.structured(ExecutableFunc(**data['func']['get_data']))
-    cfg.get_model= OmegaConf.structured(ExecutableFunc(**data['func']['get_model']))
+        cfg.get_data = load_exct_func_cfg(data['func']['get_data'])
+    cfg.get_model= load_exct_func_cfg(data['func']['get_model'])
     
     ## Load FL algorithm configs
     cfg.fed =Federated()
@@ -44,9 +57,10 @@ def load_funcx_device_config(cfg: FuncXConfig,
     ## Load configs for clients
     for client in data["clients"]:
         if 'get_data' in client:
-            client['get_data'] = OmegaConf.create(client['get_data'])
+            client['get_data'] = load_exct_func_cfg(client['get_data'])
+        if 'data_pipeline' in client:
+            client['data_pipeline']= OmegaConf.create(client['data_pipeline'])
         client_cfg = OmegaConf.structured(FuncXClientConfig(**client))
-        
         cfg.clients.append(client_cfg)
     
     cfg.num_clients = len(cfg.clients)

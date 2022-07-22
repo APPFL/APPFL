@@ -7,7 +7,7 @@ from omegaconf import DictConfig, OmegaConf
 from .fed.federated import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
-
+from ..misc import *
 
 @dataclass
 class Config:
@@ -96,6 +96,8 @@ class FuncXServerConfig:
 class ExecutableFunc:
     module       : str = ""
     call         : str = ""
+    script_file  : str = ""
+    source       : str = ""
 
 @dataclass
 class ClientTask:
@@ -116,6 +118,7 @@ class FuncXClientConfig:
     output_dir  : str = "./"
     data_dir    : str = "./"
     get_data    : OmegaConf = field(default_factory=OmegaConf)
+    data_pipeline: OmegaConf= field(default_factory=OmegaConf)
 
 @dataclass
 class FuncXConfig(Config):
@@ -127,9 +130,13 @@ class FuncXConfig(Config):
     model_kwargs : Dict = field(default_factory=dict)
     server       : FuncXServerConfig
     logging_tasks: List = field(default_factory=list) 
-
-    client_do_validation: bool = True
-    client_do_testing:    bool = True
-    server_do_validation: bool = True
-    server_do_testing   : bool = True
     
+    # Testing and validation params
+    client_do_validation: bool = True
+    client_do_testing   : bool = True
+    server_do_validation: bool = False
+    server_do_testing   : bool = False
+    
+    # Testing and validation frequency
+    client_validation_step: int = 1
+    server_validation_step: int = 1

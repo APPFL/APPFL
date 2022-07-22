@@ -14,10 +14,15 @@ import copy
 
 import torch
 import pickle as pkl
+
 def get_executable_func(func_cfg):
-    import importlib
-    mdl = importlib.import_module(func_cfg.module)
-    return getattr(mdl, func_cfg.call)
+    if func_cfg.module != "":
+        import importlib
+        mdl = importlib.import_module(func_cfg.module)
+        return getattr(mdl, func_cfg.call)
+    elif func_cfg.source != "":
+        exec(func_cfg.source, globals())
+        return eval(func_cfg.call)
 
 def validation(self, dataloader):
 
@@ -161,3 +166,32 @@ def dump_data_to_file(obj, file_path: str):
     else:
         raise RuntimeError("File extension %s is not supported" % file_ext)
     return True
+
+from torch.utils.data import DataLoader
+def get_dataloader(cfg, dataset, mode):
+    """ Create a data loader object from the dataset and config file"""
+    if dataset is None:
+        return None
+    if len(dataset) == 0:
+        return None
+    assert mode in ['train', 'val', 'test']
+    if mode == 'train':
+        ## Configure training at client
+        batch_size = cfg.train_data_batch_size
+        shuffle    = cfg.test_data_shuffle
+    else:
+        batch_size = cfg.test_data_batch_size
+        shuffle    = cfg.test_data_shuffle
+
+    return DataLoader(
+            dataset,
+            batch_size  = batch_size,
+            num_workers = cfg.num_workers,
+            shuffle     = shuffle,
+            pin_memory  = True
+        )
+
+def load_source_file(file_path):
+    with open(file_path) as fi:
+        source = fi.read()
+    return source

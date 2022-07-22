@@ -9,7 +9,8 @@ def run_server(
     model: nn.Module,
     loss_fn: nn.Module,
     fxc: FuncXClient,
-    test_data: Dataset = Dataset()
+    test_data: Dataset = Dataset(),
+    val_data: Dataset = Dataset()
     ):
     """ 
     This function runs an Async FL server object, and instantiate client tasks at funcX endpoints 
@@ -20,7 +21,10 @@ def run_server(
     """
     serv = APPFLFuncXAsyncServer(cfg, fxc)
 
-    serv.set_validation_dataset(test_data) 
+    serv.set_server_dataset(
+        validation_dataset=val_data,
+        testing_dataset= test_data
+        ) 
     
     serv.run(model, loss_fn)
     

@@ -1,4 +1,5 @@
 import abc
+from http import client
 from appfl.funcx.cloud_storage import LargeObjectWrapper
 from omegaconf import DictConfig
 from funcx import FuncXClient
@@ -31,47 +32,60 @@ class APPFLFuncXServer(abc.ABC):
         if cfg.use_tensorboard:
             self.writer = mLogging.get_tensorboard_writer()
 
+        ## Runtime variables
         self.best_accuracy = 0.0
+        self.data_info_at_client = None
 
     def _validate_clients_data(self):
         """ Checking data at clients """
         ## Geting the total number of data samples at clients
-        self.trn_endps.send_task_to_all_clients(client_validate_data)
-        training_size_at_client = self.trn_endps.receive_sync_endpoints_updates()
-        return training_size_at_client
+        mode = ['train', 'val', 'test']
+        self.trn_endps.send_task_to_all_clients(client_validate_data, mode)
+        data_info_at_client = self.trn_endps.receive_sync_endpoints_updates()
+        assert len(data_info_at_client) > 0, "Number of clients need to be larger than 0"
+        ## Logging 
+        mLogging.log_client_data_info(self.cfg, data_info_at_client)
+        self.data_info_at_client = data_info_at_client
 
-    def _get_client_weights(self, training_size_at_client = None, mode = "samples_size"):
+    def _set_client_weights(self, mode = "samples_size"):
+        assert self.data_info_at_client is not None, "Please call the validate clients' data first"
         if mode == "samples_size":
             total_num_data = 0
             for k in range(self.cfg.num_clients):
-                total_num_data += training_size_at_client[k]
-                #TODO: What if a client doesn't have any training samples
-                self.logger.info("Client %s has %d training samples" % (self.cfg.clients[k].name, training_size_at_client[k])) 
+                total_num_data += self.data_info_at_client[k]['train']
             ## weight calculation
             weights = {}
             for k in range(self.cfg.num_clients):
-                weights[k] = training_size_at_client[k] / total_num_data
+                weights[k]      = self.data_info_at_client[k]['train'] / total_num_data
         elif mode == "equal":
             weights = {
                 k: 1 / self.cfg.num_clients for k in range(self.cfg.num_clients)
             }
         else:
             raise NotImplementedError
-        return weights
+        self.weights = weights
 
-    def set_validation_dataset(self, validation_data):
+    def set_server_dataset(self, validation_dataset=None, testing_dataset=None):
+        val_loader, test_loader = None, None
+        val_size, test_size     = 0,0
         """ Server test-set data loader"""
-        if self.cfg.validation == True and len(validation_data) > 0:
-            self.test_dataloader = DataLoader(
-                validation_data,
-                num_workers=self.cfg.num_workers,
-                batch_size= self.cfg.test_data_batch_size,
-                shuffle   = self.cfg.test_data_shuffle,
-            )
-        else:
-            self.cfg.validation = False
-            self.cfg.server_do_testing = False
-    
+        if self.cfg.server_do_validation: 
+            val_loader = get_dataloader(self.cfg, validation_dataset, mode='val')
+            val_size   = len(val_loader) if val_loader is not None else 0
+        if self.cfg.server_do_testing:
+            test_loader= get_dataloader(self.cfg, testing_dataset,    mode='test')
+            test_size  = len(test_loader)if val_loader is not None else 0
+        if val_loader is None:
+            self.cfg.server_do_validation = False
+            self.logger.warning("Validation dataset at server is empty")
+        if test_loader is None:
+            self.cfg.server_do_testing    = False
+            self.logger.warning("Testing dataset at server is empty")
+
+        mLogging.log_server_data_info({"val": val_size, "test": test_size})
+        self.server_testing_dataloader    = test_loader
+        self.server_validation_dataloader = val_loader
+
     def _initialize_server_model(self):
         """ APPFL server """
         self.server  = eval(self.cfg.fed.servername)(
@@ -106,10 +120,10 @@ class APPFLFuncXServer(abc.ABC):
         validation_start = time.time()
         val_loss    = 0.0
         val_accuracy= 0.0
-        if self.cfg.validation == True:
+        if self.cfg.server_do_validation== True:
             # Move server model to GPU (if available) for validation inference 
             # TODO: change to val_dataloader
-            val_loss, val_accuracy = self.__evaluate_global_model_at_server(self.test_dataloader)
+            val_loss, val_accuracy = self.__evaluate_global_model_at_server(self.server_validation_dataloader)
             if self.cfg.use_tensorboard:
                 # Add them to tensorboard
                 self.writer.add_scalar("server_test_accuracy", val_accuracy, step)
@@ -126,7 +140,7 @@ class APPFLFuncXServer(abc.ABC):
     def _do_server_testing(self):
         """Peform testing at server """
         if self.cfg.server_do_testing:
-            test_loss, test_accuracy = self.__evaluate_global_model_at_server(self.test_dataloader)
+            test_loss, test_accuracy = self.__evaluate_global_model_at_server(self.server_testing_dataloader)
             self.eval_logger.log_server_testing({'acc': test_accuracy, 'loss': test_loss})
 
     def _do_client_validation(self, step:int):
@@ -168,9 +182,9 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
         # Set model, and loss function
         self._initialize_training(model, loss_fn)
         # Validate data at clients
-        training_size_at_client = self._validate_clients_data()
+        self._validate_clients_data()
         # Calculate weight
-        self.weights = self._get_client_weights(training_size_at_client)
+        self._set_client_weights()
         # Initialze model at server
         self._initialize_server_model()
         # Do training
@@ -209,10 +223,13 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
             self.cfg["logginginfo"]["Elapsed_time"]      = time.time() - start_time
             
             """ Validation """
-            self._do_server_validation(t)
-            self._do_client_validation(t)
-            self.server.logging_iteration(self.cfg, self.logger, t)
+            if (t+1) % self.cfg.server_validation_step == 0:
+                self._do_server_validation(t+1)
+            
+            if (t+1) % self.cfg.server_validation_step == 0:
+                self._do_client_validation(t+1)
 
+            self.server.logging_iteration(self.cfg, self.logger, t)
             """ Saving checkpoint """
             self._save_checkpoint(t)
 
@@ -259,7 +276,7 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
         start_time         = time.time()
         def global_update(res, client_idx):
             # TODO: fix this
-            client_results = {0: res.result()}
+            client_results = {0: res}
             local_states = [client_results]
             # TODO: fix local update time
             self.cfg["logginginfo"]["LocalUpdate_time"]  = 0
@@ -297,7 +314,7 @@ class APPFLFuncXAsyncServer(APPFLFuncXServer):
             return self.server.global_step > self.cfg.num_epochs
         
         # Register callback function: global_update
-        self.trn_endps.register_async_call_back_funcn(global_update)
+        self.trn_endps.register_async_call_back_func(global_update)
         # Register async function: client training
         self.trn_endps.register_async_func(
             client_training, 

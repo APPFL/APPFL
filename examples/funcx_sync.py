@@ -65,11 +65,14 @@ def main():
         OmegaConf.to_yaml(cfg)
     )
     
+    """ Prepare test dataset"""
+    server_test_dataset = None
+    server_val_dataset  = None
     """ APPFL with funcX """
     ## create funcX client object
     fxc = FuncXClient()
     ## run funcX server
-    funcx_server.run_server(cfg, model, loss_fn, fxc)
+    funcx_server.run_server(cfg, model, loss_fn, fxc, server_test_dataset, server_val_dataset)
 
 if __name__ == "__main__":
     main()

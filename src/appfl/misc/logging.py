@@ -150,3 +150,36 @@ class mLogging:
                 ])
         # Save log
         lgg.eval_logger.save_log(os.path.join(lgg.dir, "log_eval_%s.json" % lgg.timestamp))
+
+    @classmethod
+    def log_client_data_info(cls, cfg, data_info_at_client):
+        mode = list(data_info_at_client[0].keys())
+        logger = cls.get_logger()
+        b = '|'+'-'*25+'|'+('-'*10+'|') * len(mode)
+        logger.info(b)
+        c = "|%25s|" + "%10s|" * len(mode)
+        c = c % ("client name ",*mode)
+        logger.info(c)
+        logger.info(b)
+        for client_idx in range(cfg.num_clients):
+            c = "|%25s|" % cfg.clients[client_idx].name
+            for k in data_info_at_client[client_idx]:
+                c+= ("%10s|" % (data_info_at_client[client_idx][k]))
+            logger.info(c)
+        logger.info(b)
+    
+    @classmethod
+    def log_server_data_info(cls, data_info_at_server):
+        mode = list(data_info_at_server.keys())
+        logger = cls.get_logger()
+        b = '|'+'-'*10+'|'+('-'*10+'|') * len(mode)
+        logger.info(b)
+        c = "|%10s|" + "%10s|" * len(mode)
+        c = c % (" ",*mode)
+        logger.info(c)
+        logger.info(b)
+        c = "|%10s|" % "server"
+        for k in data_info_at_server:
+            c+= ("%10s|" % (data_info_at_server[k]))
+        logger.info(c)
+        logger.info(b)

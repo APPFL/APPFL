@@ -2,6 +2,7 @@ server:
   device: cuda:0
   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
   output_dir: "./log_funcx_appfl/server"
+  s3_bucket: anl-appfl
   
 clients:
   # @Argonne: ALCF ThetaGPU clusters 
@@ -12,10 +13,10 @@ clients:
     data_dir  : "/eagle/covid-xray/archive/"
     output_dir: "/eagle/covid-xray/log/theta-client-1"
     get_data:
-      module: "appfl.dataset.covid19_argonne"
+      script_file: "./datasets/covid19_argonne.py"
       call:   "get_data"
-      transforms: 
-        resize: 224
+    data_pipeline: 
+      resize: 224
   
   # @UChicago: 
 
