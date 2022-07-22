@@ -60,11 +60,7 @@ def load_funcx_device_config(cfg: FuncXConfig,
             client['get_data'] = load_exct_func_cfg(client['get_data'])
         if 'data_pipeline' in client:
             client['data_pipeline']= OmegaConf.create(client['data_pipeline'])
-        # else:
-        #     client['data_pipeline']= OmegaConf.create({})
-        # import ipdb; ipdb.set_trace()
         client_cfg = OmegaConf.structured(FuncXClientConfig(**client))
         cfg.clients.append(client_cfg)
-    
     cfg.num_clients = len(cfg.clients)
     return cfg

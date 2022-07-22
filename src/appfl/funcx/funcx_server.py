@@ -1,6 +1,6 @@
 import abc
 from http import client
-from appfl.funcx.cloud_storage import LargeObjectWrapper
+from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
 from omegaconf import DictConfig
 from funcx import FuncXClient
 import numpy as np
@@ -48,8 +48,10 @@ class APPFLFuncXServer(abc.ABC):
         self.data_info_at_client = data_info_at_client
 
     def _set_client_weights(self, mode = "samples_size"):
-        assert self.data_info_at_client is not None, "Please call the validate clients' data first"
+        if  self.data_info_at_client is None:
+            mode = "equal"
         if mode == "samples_size":
+            assert self.data_info_at_client is not None, "Please call the validate clients' data first"
             total_num_data = 0
             for k in range(self.cfg.num_clients):
                 total_num_data += self.data_info_at_client[k]['train']
@@ -156,8 +158,11 @@ class APPFLFuncXServer(abc.ABC):
             self.eval_logger.log_client_testing(testing_results)
     
     def _finalize_experiment(self):
+        # save log file
         mLogging.save_funcx_log(self.cfg)
         self.server.logging_summary(self.cfg, self.logger)
+        # clean-up cloud storage
+        CloudStorage.clean_up()
 
     def _save_checkpoint(self, step):
         """ Saving model"""
@@ -182,7 +187,7 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
         # Set model, and loss function
         self._initialize_training(model, loss_fn)
         # Validate data at clients
-        self._validate_clients_data()
+        # self._validate_clients_data()
         # Calculate weight
         self._set_client_weights()
         # Initialze model at server

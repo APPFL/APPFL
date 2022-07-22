@@ -109,9 +109,17 @@ if __name__ == '__main__':
     from appfl.config import load_funcx_device_config, load_funcx_config, FuncXConfig
     cfg = OmegaConf.structured(FuncXConfig)
     load_funcx_device_config(cfg,
-        "configs/clients/covid19_anl_uchicago.yaml")
+        "configs/clients/torchvision_clients.yaml"
+        # "configs/clients/covid19_anl_uchicago.yaml"
+        )
     load_funcx_config(cfg, 
-        "configs/fed_avg/funcx_fedavg_covid.yaml")
+        # "configs/fed_avg/funcx_fedavg_covid.yaml",
+        "configs/fed_avg/funcx_fedavg_cifar10.yaml"
+        )
     
-    print(client_validate_data(cfg, 0))
+    server  = eval(cfg.fed.servername)(
+            self.weights, copy.deepcopy(self.model), self.loss_fn, self.cfg.num_clients, "cpu", **self.cfg.fed.args        
+        )
+
+    print(client_training(cfg, 0))
     

@@ -1,4 +1,5 @@
 from asyncio.log import logger
+from distutils.debug import DEBUG
 import imp
 from multiprocessing.spawn import prepare
 from ..misc import mLogging, dump_data_to_file, load_data_from_file
@@ -9,6 +10,8 @@ import os.path as osp
 import sys
 class LargeObjectWrapper(object):
     MAX_SIZE_LIMIT = 3 * 1024 * 1024 
+    DEBUG = False
+
     def __init__(self, data, name: str):
         self.data = data
         self.name= name
@@ -19,7 +22,10 @@ class LargeObjectWrapper(object):
     
     @property
     def can_send_directly(self):
-        return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
+        if LargeObjectWrapper.DEBUG == True:
+            return False
+        else:
+            return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
 
 class CloudStorage(object):
     instc  = None
@@ -31,16 +37,18 @@ class CloudStorage(object):
         if cls.instc is not None:
             return cls.instc
         else:
-            raise RuntimeError("Please call CloudStorage.init(cfg) first")
+            raise RuntimeError("Please call 'CloudStorage.init(cfg)' first")
     
     @classmethod
     def init(cls, cfg, temp_dir="./tmp", logger = None):
         if cls.instc is None:
             new_inst = cls.__new__(cls)
-            new_inst.bucket = cfg.server.s3_bucket
-            new_inst.client = boto3.client('s3')
-            new_inst.temp_dir= temp_dir
-            new_inst.logger = logger
+            assert cfg.server.s3_bucket != "", "Please specify the S3 bucket under the config file."
+            new_inst.bucket    = cfg.server.s3_bucket
+            new_inst.client    = boto3.client('s3')
+            new_inst.temp_dir  = temp_dir
+            new_inst.logger    = logger
+            new_inst.cloud_objs= []
             # new_inst.logging = mLogging.get_logger()
             cls.instc = new_inst
         return cls.instc
@@ -80,6 +88,9 @@ class CloudStorage(object):
     def __download_file(self, file_name, object_name):
         self.client.download_file(self.bucket, object_name, file_name)
 
+    def __delete_object(self, object_name):
+        self.client.delete_object(self.bucket, object_name)
+
     def upload_file(self, file_path: str, object_name: str=None):
         if object_name is None:
             object_name = osp.basename(file_path)
@@ -111,6 +122,10 @@ class CloudStorage(object):
             file_size = osp.getsize(file_path) * 1e-3 
             cs.logger.info("Uploading object '%s' (%.01f KB) to S3" % 
                 (object_name, file_size))
+        
+        # Save object info
+        cs.cloud_objs.append(object_name)
+
         # Upload file
         return cs.upload_file(file_path)
     
@@ -131,9 +146,16 @@ class CloudStorage(object):
             file_size = osp.getsize(file_path) * 1e-3 
             cs.logger.info("Downloaded objected '%s' (%.01f) from S3" %  
                 (object_name, file_size))
+        
+        # Save object info
+        cs.cloud_objs.append(object_name)
         return load_data_from_file(file_path)
     
     @classmethod
-    def clean_up(self):
+    def clean_up(cls):
+        if cls.instc is None:
+            return
+        cs = cls.get_instance()
         """Clean up files on cloud storage"""
-        pass
+        for object_name in cs.cloud_objs:
+            cs.__delete_object(object_name)

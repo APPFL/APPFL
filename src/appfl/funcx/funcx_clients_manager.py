@@ -69,7 +69,7 @@ class APPFLFuncXTrainingClients:
             for client_idx, client_cfg in enumerate(self.cfg.clients)
         }
         # Config S3 bucket (if necessary)
-        self.use_s3bucket = cfg.server.s3_bucket is not None
+        self.use_s3bucket = cfg.server.s3_bucket != ""
         if (self.use_s3bucket):
             CloudStorage.init(
                 cfg, 
@@ -98,7 +98,7 @@ class APPFLFuncXTrainingClients:
         
     def __process_client_results(self, results):
         """Process results from clients, download file from S3 if necessary"""
-        if not CloudStorage.is_cloud_storage_object(results) or not self.use_s3bucket:
+        if not CloudStorage.is_cloud_storage_object(results):
             return results
         else:
             return CloudStorage.download_object(results)
@@ -108,16 +108,14 @@ class APPFLFuncXTrainingClients:
         # Handling args
         _args = list(args)
         for i, obj in enumerate(_args):
-            if type(obj) == LargeObjectWrapper:
-                if not obj.can_send_directly:
-                    _args[i] = CloudStorage.upload_object(obj)
+            if type(obj) == LargeObjectWrapper: 
+                _args[i] = obj.data if obj.can_send_directly else CloudStorage.upload_object(obj)
         args = tuple(_args)
         # Handling kwargs
         for k in kwargs:
             obj = kwargs[k]
             if type(obj) == LargeObjectWrapper:
-                if not obj.can_send_directly:
-                    kwargs[k] = CloudStorage.upload_object(obj)
+                kwargs[k] = obj.data if obj.can_send_directly else CloudStorage.upload_object(obj)        
         return args, kwargs
 
     def __handle_funcx_result(self, res, task_id):
@@ -150,6 +148,8 @@ class APPFLFuncXTrainingClients:
         func_uuid = self.fxc.register_function(exct_func)
         batch     = self.fxc.create_batch()
         for client_idx, client_cfg in enumerate(self.cfg.clients):
+            # result =  exct_func(self.cfg, client_idx, *args, **kwargs)
+            # import ipdb; ipdb.set_trace()
             # select device
             batch.add(
                 self.cfg,
@@ -207,7 +207,7 @@ class APPFLFuncXTrainingClients:
                             # Raise/Reraise the exception at client
                             excpt = results[task_id]['exception']
                             if type(excpt) == Exception:
-                                # import ipdb; ipdb.set_trace() 
+                                import ipdb; ipdb.set_trace() 
                                 raise excpt
                             else:
                                 results[task_id]['exception'].reraise()

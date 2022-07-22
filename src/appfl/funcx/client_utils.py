@@ -4,7 +4,6 @@ from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
 import os.path as osp
 
 def get_dataset(cfg, client_idx, mode='train'):
-    print(mode)
     assert mode in ['train', 'val', 'test']
     if 'get_data' in cfg.clients[client_idx]:
         func_call  = get_executable_func(cfg.clients[client_idx].get_data)
@@ -28,6 +27,7 @@ def load_global_state(cfg, global_state, temp_dir):
 
 def send_client_state(cfg, client_state, client_idx, temp_dir):
     client_state = LargeObjectWrapper(client_state, "client-%d" % client_idx)
+    assert(type(client_state) == LargeObjectWrapper), "%s" % str(type(client_state))
     if not client_state.can_send_directly:
         # Save client's weight to file:
         CloudStorage.init(
