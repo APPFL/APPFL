@@ -117,8 +117,8 @@ class FuncXClientConfig:
     device      : str = "cpu"
     output_dir  : str = "./"
     data_dir    : str = "./"
-    get_data    : OmegaConf = field(default_factory=OmegaConf)
-    data_pipeline: OmegaConf= field(default_factory=OmegaConf)
+    get_data    :  DictConfig = OmegaConf.create({})
+    data_pipeline: DictConfig = OmegaConf.create({})
 
 @dataclass
 class FuncXConfig(Config):

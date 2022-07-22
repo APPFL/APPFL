@@ -8,7 +8,7 @@ import os
 import os.path as osp
 import sys
 class LargeObjectWrapper(object):
-    MAX_SIZE_LIMIT = 3 * 1e6 
+    MAX_SIZE_LIMIT = 3 * 1024 * 1024 
     def __init__(self, data, name: str):
         self.data = data
         self.name= name
@@ -19,8 +19,7 @@ class LargeObjectWrapper(object):
     
     @property
     def can_send_directly(self):
-        return False #TODO: just for debugging
-        # return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
+        return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
 
 class CloudStorage(object):
     instc  = None
