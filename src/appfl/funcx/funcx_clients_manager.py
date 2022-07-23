@@ -111,6 +111,8 @@ class APPFLFuncXTrainingClients:
             if type(obj) == LargeObjectWrapper:
                 if not obj.can_send_directly:
                     _args[i] = CloudStorage.upload_object(obj)
+                else:
+                    _args[i] = obj.data
         args = tuple(_args)
         # Handling kwargs
         for k in kwargs:
@@ -118,6 +120,8 @@ class APPFLFuncXTrainingClients:
             if type(obj) == LargeObjectWrapper:
                 if not obj.can_send_directly:
                     kwargs[k] = CloudStorage.upload_object(obj)
+                else:
+                    kwargs[k] = obj.data
         return args, kwargs
 
     def __handle_funcx_result(self, res, task_id):
@@ -150,6 +154,8 @@ class APPFLFuncXTrainingClients:
         func_uuid = self.fxc.register_function(exct_func)
         batch     = self.fxc.create_batch()
         for client_idx, client_cfg in enumerate(self.cfg.clients):
+            # res = exct_func(self.cfg, client_idx, *args, **kwargs)
+            # import ipdb; ipdb.set_trace()
             # select device
             batch.add(
                 self.cfg,

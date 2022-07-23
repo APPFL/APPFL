@@ -8,7 +8,8 @@ import os
 import os.path as osp
 import sys
 class LargeObjectWrapper(object):
-    MAX_SIZE_LIMIT = 3 * 1024 * 1024 
+    MAX_SIZE_LIMIT = 1 * 1024 * 1024 
+    DEBUG = True
     def __init__(self, data, name: str):
         self.data = data
         self.name= name
@@ -19,6 +20,8 @@ class LargeObjectWrapper(object):
     
     @property
     def can_send_directly(self):
+        if LargeObjectWrapper.DEBUG:    
+            return False
         return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
 
 class CloudStorage(object):
@@ -129,7 +132,7 @@ class CloudStorage(object):
         # Logging 
         if cs.logger is not None:
             file_size = osp.getsize(file_path) * 1e-3 
-            cs.logger.info("Downloaded objected '%s' (%.01f) from S3" %  
+            cs.logger.info("Downloaded object '%s' (%.01f) from S3" %  
                 (object_name, file_size))
         return load_data_from_file(file_path)
     

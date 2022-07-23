@@ -38,8 +38,5 @@ dataset:
 
 func:
   get_model:
-    module: "appfl.funcx.mnist_example"
+    script_file: "./models/funcx_cnn.py"
     call: "get_model"
-  get_data:
-    module: "appfl.funcx.mnist_example"
-    call: "get_data"
