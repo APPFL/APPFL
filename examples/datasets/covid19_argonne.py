@@ -45,7 +45,8 @@ def get_data(
     temean = 0.6250
     tesd = 0.2498
 
-    num_pixel = cfg.clients[client_idx].get_data.transforms.resize
+    #num_pixel = cfg.clients[client_idx].get_data.transforms.resize
+    num_pixel = cfg.clients[client_idx].data_pipeline.resize
     data_dir  = cfg.clients[client_idx].data_dir
 
     train_transform = transforms.Compose(
