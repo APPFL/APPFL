@@ -1,5 +1,5 @@
 server:
-  device: cuda:1
+  device: cuda:0
   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
   output_dir: "./log_funcx_appfl/server"
   s3_bucket: anl-appfl

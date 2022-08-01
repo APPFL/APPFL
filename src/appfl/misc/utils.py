@@ -142,12 +142,12 @@ def set_seed(seed=233):
 TORCH_EXT = ['.pt', '.pth']
 PICKLE_EXT= ['.pkl']
 
-def load_data_from_file(file_path: str):
+def load_data_from_file(file_path: str, to_device=None):
     """Read data from file using the corresponding readers"""
     # Load files to memory
     file_ext = osp.splitext(osp.basename(file_path))[-1]
     if  file_ext in TORCH_EXT:
-        results = torch.load(file_path)
+        results = torch.load(file_path, map_location=to_device)
     elif file_ext in PICKLE_EXT:
         with open(file_path, "rb") as fi:
             results = pkl.load(fi)

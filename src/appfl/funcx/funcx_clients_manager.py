@@ -101,7 +101,7 @@ class APPFLFuncXTrainingClients:
         if not CloudStorage.is_cloud_storage_object(results) or not self.use_s3bucket:
             return results
         else:
-            return CloudStorage.download_object(results)
+            return CloudStorage.download_object(results, to_device=self.cfg.server.device)
     
     def __handle_params(self, args, kwargs):
         """Parse function's parameters and upload to S3 """

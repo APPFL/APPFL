@@ -32,6 +32,6 @@ def send_client_state(cfg, client_state, client_idx, temp_dir):
         # Save client's weight to file:
         CloudStorage.init(
             cfg, temp_dir)
-        return CloudStorage.upload_object(client_state)
+        return CloudStorage.upload_object(client_state, ext='pt')
     else:
         return client_state.data

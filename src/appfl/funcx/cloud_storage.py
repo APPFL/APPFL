@@ -118,7 +118,7 @@ class CloudStorage(object):
         return cs.upload_file(file_path)
     
     @classmethod
-    def download_object(cls, data_info: dict, temp_dir: str = None):
+    def download_object(cls, data_info: dict, temp_dir: str = None, to_device = None):
         cs = cls.get_instance()
         # Prepare temp_dir
         _, object_name, file_name = cls.get_cloud_object_info(data_info)
@@ -134,7 +134,7 @@ class CloudStorage(object):
             file_size = osp.getsize(file_path) * 1e-3 
             cs.logger.info("Downloaded object '%s' (%.01f) from S3" %  
                 (object_name, file_size))
-        return load_data_from_file(file_path)
+        return load_data_from_file(file_path, to_device)
     
     @classmethod
     def clean_up(self):
