@@ -17,7 +17,6 @@ examples/datasets/PreprocessedData/
 examples/datasets/RawData/Deepcovid
 examples/datasets/RawData/cifar-10-batches-py
 examples/gcloud/resulting_models
-examples/models/
 examples/datasets/RawData/Deepcovid
 examples/datasets/RawData/Coronahack
 examples/datasets/RawData/FEMNIST
@@ -40,7 +39,6 @@ docs/notebooks/results
 results
 mryu_lib/*
 endpoints
-**/datasets/
 **/log_funcx_appfl/
 
 # Tensorboard log dir
