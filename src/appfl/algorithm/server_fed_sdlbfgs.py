@@ -2,6 +2,7 @@ from collections import OrderedDict
 from .server_federated import FedServer
 
 import torch
+from torch import linalg
 import copy
 
 from ..misc.utils import validation
@@ -25,7 +26,7 @@ class ServerFedSDLBFGS(FedServer):
         self.p = kwargs["history"]
         self.delta = kwargs["delta"]
 
-        # Configuration for backwards line search
+        # Configuration for learning rate or backwards line search
         self.max_step_size = kwargs["max_step_size"]
         self.increment = kwargs["increment"]
         self.search_control = kwargs["search_control"]
@@ -64,14 +65,6 @@ class ServerFedSDLBFGS(FedServer):
         self.ybar_vectors.insert(0, OrderedDict())
         self.rho_values.insert(0, OrderedDict())
 
-        # TODO: Something here still isn't working properly. I believe it has to
-        # do with either the learning rate required for convergence. We keep
-        # seeing that the s_vector -> 0, causing the gradient to explode. We
-        # need to try and implement the Wolfe backtracking conditions. All in
-        # all, it feels like the search direction isn't even correct at all,
-        # despite the fact that I've triple checked all the code and it lines
-        # up.
-
         for name, _ in self.model.named_parameters():
 
             shape = self.model.state_dict()[name].shape
@@ -92,18 +85,36 @@ class ServerFedSDLBFGS(FedServer):
 
             # Perform recursive computations and step
             v_vector = self.compute_step_approximation(name, gamma)
-            if self.k > self.p and not s_vector.isnan().any():
-                self.step[name] = -v_vector.reshape(shape)
-            else:
-                self.step[name] = -self.pseudo_grad[name]
+
+            # try: 
+            #     hessian = self.realize_hessian(name, gamma, shape)
+            #     eigvals = linalg.eigvals(hessian)
+            #     if (eigvals.real < 0.0).any():
+            #         __import__('pdb').set_trace()
+            # except RuntimeError:
+            #     # occurs if there is not enough memory to realize the hessian
+            #     pass
+            self.step[name] = -(self.max_step_size / self.k) * v_vector.reshape(shape)
 
             # Store information for next step
             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
             self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
 
-        if self.k > self.p:
-            self.backwards_line_search()
 
+    
+    def realize_hessian(self, name, gamma, shape):
+        H = torch.eye(shape.numel(), device=self.device) * (1. / gamma)
+        m = min(self.p, self.k - 1)
+        r = range(m)
+
+        for i in reversed(r):
+            rs = self.rho_values[i][name] * self.s_vectors[i][name]
+            I = torch.eye(shape.numel(), device=self.device) - (self.ybar_vectors[i][name].outer(rs))
+            proj = rs.outer(self.s_vectors[i][name])
+            H = (I.transpose(0, 1) @ H @ I) + proj
+
+        return H
+        
 
 
     def compute_gamma(self, y_vec, s_vec):
@@ -134,7 +145,7 @@ class ServerFedSDLBFGS(FedServer):
 
     def compute_step_approximation(self, name, gamma):
         """ Lines 4-12 in Procedure 1 """
-        u = self.pseudo_grad[name].reshape(-1)
+        u = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
         mu_values = []
         m = min(self.p, self.k - 1)
         r = range(m)
@@ -169,9 +180,6 @@ class ServerFedSDLBFGS(FedServer):
             if loss - model_loss >= lr * t: 
                 break
             lr *= self.increment
-
-        for name, _ in self.model.named_parameters():
-            self.step[name] *= lr
 
 
 

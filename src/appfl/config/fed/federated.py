@@ -43,7 +43,7 @@ class Federated:
             ## SD L-BFGS specific configurations
             "history": 10,
             "delta": 0.1,
-            "max_step_size": 10,
+            "max_step_size": 100,
             "increment": 0.9, 
             "search_control": 0.5,
             ## Clients optimizer
