@@ -23,7 +23,7 @@
     pip install -e .
     ```
 
-3. Install and configure AWS CLI
+ 3. Install and configure AWS CLI
 
     ```
     pip install awscli
@@ -32,10 +32,29 @@
 
     Then use the propvided access key ID and secret key for adding the S3 credential.
 
-4. Setup [funcx_endpoint](https://funcx.readthedocs.io/en/latest/endpoints.html) client :
-   
+ 4. Setup [funcx_endpoint](https://funcx.readthedocs.io/en/latest/endpoints.html) client :
+
    ```
    funcx-endpoint configure <ENDPOINT_NAME>
+   funcx-endpoint start <ENDPOINT_NAME>
    ```
 
-   You might be required to login with [Globus](https://app.globus.org/), following the url and complete all steps to get the credential token. 
+   Where `<ENDPOINT_NAME>` is the name of your endpoint, e.g., `uchicago-gpu-01`
+
+   You might be required to login with [Globus](https://app.globus.org/), following the url and complete all steps to get the credential token.
+
+   If your machine is using work management systems, you might need to further configure your endpoint by modifying the `config.py` under `~/.funcx/<ENDPOINT_NAME>/config.py`. For further details, please check this [link](https://funcx.readthedocs.io/en/latest/endpoints.html#example-configurations).
+
+   When ready, you can check the status of your endpoints by running `funcx-endpoint list`, the result should look like this:
+
+   ```
+    +--------------------+--------------+--------------------------------------+
+    |   Endpoint Name    |    Status    |             Endpoint ID              |
+    +====================+==============+======================================+
+    | uiuc-cig-01-gpu-02 | Running      | a719450f-4721-4ef1-a5e8-5a22b772d354 |
+    +--------------------+--------------+--------------------------------------+
+    | uiuc-cig-01-gpu-01 | Running      | 32737688-2eef-4595-a004-3d67992f20a1 |
+    +--------------------+--------------+--------------------------------------+
+   ```
+
+   Then, please provide the endpoint information to the federated learning server's  owner.
