@@ -13,18 +13,18 @@ class ServerFedSDLBFGS(FedServer):
     def __init__(self, *args, **kwargs):
         super(ServerFedSDLBFGS, self).__init__(*args, **kwargs)
 
-        """ Gradient history for L-BFGS """
-        self.s_vectors = []
-        self.ybar_vectors = []
-        self.rho_values = []
-        self.prev_params = OrderedDict()
-        self.prev_grad = OrderedDict()
-        self.k = 0
-
         # p - history
         # delta - lower bound on gamma_k
         self.p = kwargs["history"]
         self.delta = kwargs["delta"]
+
+        """ Gradient history for L-BFGS """
+        self.s_vectors = [OrderedDict()] * self.p
+        self.ybar_vectors = [OrderedDict()] * self.p
+        self.rho_values = [OrderedDict()] * self.p
+        self.prev_params = OrderedDict()
+        self.prev_grad = OrderedDict()
+        self.k = 0
 
         # Configuration for learning rate or backwards line search
         self.max_step_size = kwargs["max_step_size"]
@@ -42,12 +42,6 @@ class ServerFedSDLBFGS(FedServer):
             self.make_sgd_step()
         else:
             self.make_lbfgs_step()
-
-            # Clean up memory
-            if self.k > self.p:
-                del self.s_vectors[-1]
-                del self.ybar_vectors[-1]
-                del self.rho_values[-1]
         self.k += 1
 
 
@@ -61,27 +55,25 @@ class ServerFedSDLBFGS(FedServer):
 
     def make_lbfgs_step(self):
 
-        self.s_vectors.insert(0, OrderedDict())
-        self.ybar_vectors.insert(0, OrderedDict())
-        self.rho_values.insert(0, OrderedDict())
-
         for name, _ in self.model.named_parameters():
 
             shape = self.model.state_dict()[name].shape
+            k = self.k % self.p
 
             # Create newest s vector
             s_vector = self.model.state_dict()[name].reshape(-1) - self.prev_params[name]
-            self.s_vectors[0][name] = s_vector
+            self.s_vectors[k][name] = s_vector
 
             # Create newest ybar vector
             y_vector = self.pseudo_grad[name].reshape(-1) - self.prev_grad[name]
             gamma = self.compute_gamma(y_vector, s_vector)
             ybar_vector = self.compute_ybar_vector(y_vector, s_vector, gamma)
-            self.ybar_vectors[0][name] = ybar_vector
+            self.ybar_vectors[k][name] = ybar_vector
 
             # Create newest rho
             rho = 1.0 / (s_vector.dot(ybar_vector))
-            self.rho_values[0][name] = rho
+            print(rho)
+            self.rho_values[k][name] = rho
 
             # Perform recursive computations and step
             v_vector = self.compute_step_approximation(name, gamma)
@@ -147,43 +139,22 @@ class ServerFedSDLBFGS(FedServer):
         """ Lines 4-12 in Procedure 1 """
         u = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
         mu_values = []
-        m = min(self.p, self.k - 1)
-        r = range(m)
+        p = min(self.k - 1, self.p)
+        r = range(p)
 
         for i in r:
-            mu = self.rho_values[i][name] * u.dot(self.s_vectors[i][name])
+            j = self.k - i - 1 % p
+            mu = self.rho_values[j][name] * u.dot(self.s_vectors[j][name])
             mu_values.append(mu)
-            u = u - (mu * self.ybar_vectors[i][name])
+            u = u - (mu * self.ybar_vectors[j][name])
 
         v = (1.0 / gamma) * u
-        for i in reversed(r):
-            nu = self.rho_values[i][name] * v.dot(self.ybar_vectors[i][name])
-            v = v + ((mu_values[i] - nu) * self.s_vectors[i][name])
+        for i in r:
+            j = self.k - p + i % p
+            nu = self.rho_values[j][name] * v.dot(self.ybar_vectors[j][name])
+            v = v + ((mu_values[-(i + 1)] - nu) * self.s_vectors[j][name])
         
         return v
-
-    def backwards_line_search(self):
-
-        lr = self.max_step_size
-        m = 0
-        for name, _ in self.model.named_parameters():
-            m += (self.model.state_dict()[name] * self.step[name]).sum()
-        t = - m * self.search_control
-
-        loss, _ = validation(self, self.test_dataloader)
-        while True:
-            model = copy.deepcopy(self)
-            for name, _ in model.model.named_parameters():
-                model.global_state[name] += model.step[name] * lr
-            model.model.load_state_dict(model.global_state)
-            model_loss, _ = validation(model, model.test_dataloader)
-            if loss - model_loss >= lr * t: 
-                break
-            lr *= self.increment
-
-
-
-
 
 
     def logging_summary(self, cfg, logger):
