@@ -143,14 +143,17 @@ class ServerFedSDLBFGS(FedServer):
         r = range(p)
 
         for i in r:
-            j = self.k - i - 1 % p
-            mu = self.rho_values[j][name] * u.dot(self.s_vectors[j][name])
-            mu_values.append(mu)
-            u = u - (mu * self.ybar_vectors[j][name])
+            j = (self.k - i - 1) % p
+            try:
+                mu = self.rho_values[j][name] * u.dot(self.s_vectors[j][name])
+                mu_values.append(mu)
+                u = u - (mu * self.ybar_vectors[j][name])
+            except IndexError:
+                __import__('pdb').set_trace()
 
         v = (1.0 / gamma) * u
         for i in r:
-            j = self.k - p + i % p
+            j = (self.k - p + i) % p
             nu = self.rho_values[j][name] * v.dot(self.ybar_vectors[j][name])
             v = v + ((mu_values[-(i + 1)] - nu) * self.s_vectors[j][name])
         

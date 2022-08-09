@@ -45,6 +45,7 @@ parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
+parser.add_argument('--max_step_size', type=float, required=False)
 
 
 args = parser.parse_args()
@@ -158,6 +159,10 @@ def main():
     if args.mparam_2 != None:
         cfg.fed.args.server_momentum_param_2 = args.mparam_2
         cfg.output_dirname += "_MParam2_%s" % (args.mparam_2)
+
+    if args.max_step_size != None:
+        cfg.fed.args.max_step_size = args.max_step_size
+        cfg.output_dirname += "_MStepSize_%s" % (args.max_step_size)
 
     cfg.output_filename = "result"
 
