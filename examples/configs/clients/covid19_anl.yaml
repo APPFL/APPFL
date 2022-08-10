@@ -1,0 +1,19 @@
+server:
+  device: cuda:0
+  data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
+  output_dir: "./log_funcx_appfl/server"
+  s3_bucket: anl-appfl
+  
+clients:
+  # @Argonne: ALCF ThetaGPU clusters 
+  - name: thetagpu-1
+    endpoint_id: bf4897e1-83c6-4f29-9b12-b28c289cf7d8
+    device: cuda:0
+    data_split: 0
+    data_dir  : "/eagle/covid-xray/archive/"
+    output_dir: "/eagle/covid-xray/log/theta-client-1"
+    get_data:
+      script_file: "./datasets/covid19_argonne.py"
+      call:   "get_data"
+    data_pipeline: 
+      resize: 224

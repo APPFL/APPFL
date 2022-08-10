@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, List, Dict 
 from omegaconf import DictConfig, OmegaConf
 
-
+from typing import Optional
 from .fed.federated import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
@@ -27,12 +27,12 @@ class Config:
 
     # Train data batch info
     batch_training: bool = True  ## TODO: revisit
-    train_data_batch_size: int = 64
+    train_data_batch_size: int = 1024
     train_data_shuffle: bool = False
 
     # Indication of whether to validate or not using testing data
-    validation: bool = True
-    test_data_batch_size: int = 64
+    validation: bool = False
+    test_data_batch_size: int = 1024
     test_data_shuffle: bool = False
 
     # Checking data sanity
@@ -108,6 +108,7 @@ class ClientTask:
     success      : bool = False
     start_time   : float= -1
     end_time     : float= -1
+    log          : Optional[Dict] = field(default_factory=dict)
 
 @dataclass
 class FuncXClientConfig:
@@ -132,8 +133,8 @@ class FuncXConfig(Config):
     logging_tasks: List = field(default_factory=list) 
     
     # Testing and validation params
-    client_do_validation: bool = True
-    client_do_testing   : bool = True
+    client_do_validation: bool = False
+    client_do_testing   : bool = False
     server_do_validation: bool = False
     server_do_testing   : bool = False
     

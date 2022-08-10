@@ -1,6 +1,8 @@
 import logging
 import os
 from collections import OrderedDict
+
+from appfl.misc.logging import ClientLogger
 from .algorithm import BaseClient
 
 import torch
@@ -26,25 +28,40 @@ class ClientOptim(BaseClient):
 
         super(ClientOptim, self).client_log_title()
 
-    def update(self):
+    def update(self, cli_logger):
         
         """Inputs for the local model update"""
-
         self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
         """ Multiple local update """
         start_time=time.time()
+
         for t in range(self.num_local_epochs):
 
             if self.cfg.validation == True and self.test_dataloader != None:
+                cli_logger.start_timer("val_before_update_train_set", t)
                 train_loss, train_accuracy = super(ClientOptim, self).client_validation(
                     self.dataloader
                 )
+                cli_logger.add_info(
+                    "val_before_update_train_set",{
+                        "train_loss": train_loss, "train_accuracy": train_accuracy
+                    }
+                )
+                cli_logger.stop_timer("val_before_update_train_set", t)
+
+                cli_logger.start_timer("val_before_update_val_set", t)
                 test_loss, test_accuracy = super(ClientOptim, self).client_validation(
                     self.test_dataloader
                 )
+                cli_logger.add_info(
+                    "val_before_update_val_set",{
+                        "val_loss": test_loss, "val_accuracy": test_accuracy
+                    }
+                )
+                cli_logger.stop_timer("val_before_update_val_set", t)
                 per_iter_time = time.time() - start_time
                 super(ClientOptim, self).client_log_content(
                     t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
@@ -52,6 +69,7 @@ class ClientOptim(BaseClient):
                 ## return to train mode
                 self.model.train()
 
+            cli_logger.start_timer("train_one_epoch", t)
             start_time=time.time()
             for data, target in self.dataloader:
                 data = data.to(self.cfg.device)
@@ -68,7 +86,8 @@ class ClientOptim(BaseClient):
                         self.clip_value,
                         norm_type=self.clip_norm,
                     )
-
+            cli_logger.stop_timer("train_one_epoch", t)
+        
             ## save model.state_dict()
             if self.cfg.save_model_state_dict == True:
                 path = self.cfg.output_dirname + "/client_%s" % (self.id)
@@ -79,13 +98,32 @@ class ClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
 
-        if self.test_dataloader != None:
+        if self.cfg.validation == True and self.test_dataloader != None:
+            cli_logger.start_timer("val_after_update_train_set", t)
             train_loss, train_accuracy = super(
                 ClientOptim, self
             ).client_validation(self.dataloader)
+            cli_logger.stop_timer("val_after_update_train_set", t)
+
+            cli_logger.add_info(
+                    "val_after_update_train_set",{
+                        "train_loss": train_loss, "train_accuracy": train_accuracy
+                    }
+                )
+            
+
+            cli_logger.start_timer("val_after_update_val_set", t)
             test_loss, test_accuracy = super(
                 ClientOptim, self
             ).client_validation(self.test_dataloader)
+            cli_logger.stop_timer("val_after_update_val_set", t)
+            
+            cli_logger.add_info(
+                    "val_after_update_val_set",{
+                        "val_loss": test_loss, "val_accuracy": test_accuracy
+                    }
+                )
+                
             per_iter_time = time.time() - start_time
             super(ClientOptim, self).client_log_content(
                 self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
@@ -109,6 +147,9 @@ class ClientOptim(BaseClient):
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
-
-        return self.local_state
+        
+        if cli_logger is not None:
+            return self.local_state, cli_logger
+        else:
+            return self.local_state
  

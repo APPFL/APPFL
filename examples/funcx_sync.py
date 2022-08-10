@@ -48,7 +48,9 @@ def main():
     cfg.use_tensorboard= args.use_tensorboard
     
     ## config logger
-    mLogging.config_logger(cfg)
+    mLogging.config_logger(cfg,
+        osp.basename(args.config), osp.basename(args.client_config)
+    )
 
     ## validation
     cfg.validation = True   

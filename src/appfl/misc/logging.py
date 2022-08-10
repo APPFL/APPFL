@@ -1,9 +1,11 @@
 import imp
 import logging
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import os
 from datetime import datetime
 import json
+import time
+TIME_STR = "%m%d%y_%H%M%S"
 class EvalLogger:
     def __init__(self, cfg: DictConfig) -> None:
         self.cfg = cfg
@@ -60,13 +62,17 @@ class EvalLogger:
     def save_log(self, output_file):
         out_dict = {"val": self.val_results, "test": self.test_results}
         with open(output_file, "w") as fo:
-            json.dump(out_dict, fo)
+            json.dump(out_dict, fo, indent=2)
 
 class mLogging:
     __logger = None
     @classmethod
-    def config_logger(cls, cfg: DictConfig):
+    def config_logger(cls, cfg: DictConfig, cfg_file_name = None, client_cfg_file_name = None):
         run_str = "%s_%s_%s" % (cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)
+        if cfg_file_name is not None and client_cfg_file_name is not None:
+            run_str = "%s_%s_%s" % (
+                run_str, cfg_file_name.replace(".yaml", ""), client_cfg_file_name.replace(".yaml","")
+            ) 
         dir     = os.path.join(cfg.server.output_dir,
                                 "outputs_%s" % run_str)
         
@@ -74,7 +80,7 @@ class mLogging:
             os.makedirs(dir, exist_ok = True)
         
         
-        time_stamp = datetime.now().strftime("%m%d%y_%H%M%S")
+        time_stamp = datetime.now().strftime(TIME_STR)
         fmt = logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') 
         log_fname  = os.path.join(
             dir,
@@ -111,7 +117,6 @@ class mLogging:
         cls.__logger = new_inst
         new_inst.eval_logger= EvalLogger(cfg)
         
-
     @classmethod
     def get_logger(cls):
         if cls.__logger is None:
@@ -135,6 +140,7 @@ class mLogging:
         import csv
         header = ['timestamp','task_name','client_name','status','execution_time']
         lgg = cls.__logger
+        # Save csv file
         with open(os.path.join(
                 lgg.dir, "log_funcx_%s.csv" % lgg.timestamp
             ), "w") as fo:
@@ -148,7 +154,24 @@ class mLogging:
                     "success" if tlog.success else "failed",        
                     "%.02f" % (tlog.end_time - tlog.start_time)    
                 ])
-        # Save log
+
+        # Save json file
+        with open(os.path.join(
+                lgg.dir, "log_funcx_%s.yaml" % lgg.timestamp
+            ), "w") as fo:
+            log_tasks = []
+            for i, tlog in enumerate(cfg.logging_tasks):
+                l_tsk = {}
+                l_tsk['task_name']= tlog.task_name
+                l_tsk['endpoint'] = cfg.clients[tlog.client_idx].name
+                l_tsk['start_at'] = str(datetime.fromtimestamp(tlog.start_time))
+                l_tsk['end_at']   = str(datetime.fromtimestamp(tlog.end_time))
+                l_tsk['events']   = dict(tlog.log.events)
+                l_tsk['timing']   = dict(tlog.log.timing)
+                log_tasks.append(l_tsk)
+            fo.write(OmegaConf.to_yaml(log_tasks))
+            
+        # Save eval log
         lgg.eval_logger.save_log(os.path.join(lgg.dir, "log_eval_%s.json" % lgg.timestamp))
 
     @classmethod
@@ -183,3 +206,59 @@ class mLogging:
             c+= ("%10s|" % (data_info_at_server[k]))
         logger.info(c)
         logger.info(b)
+
+
+class ClientLogger:
+    def __init__(self) -> None:
+        self.info  = {}
+        self.events= {}
+        self.timing= {} 
+
+    def to_dict(self):
+        return {
+            "events": self.events,
+            "timing": self.timing,
+            "info"  : self.info
+        }
+    def __get_step_str(self, step):
+        return "epoch_%d" % (step + 1)
+
+    def add_info(self, name:str, value, step = None):
+        if step == None:
+            self.info[name] = value
+        else:
+            step = self.__get_step_str(step)
+            if step not in self.info:
+                self.info[step] = {}
+            self.info[step][name] = value
+                
+    def mark_event(self, name:str, step=None):
+        time_stp = str(datetime.now())
+        if step == None:
+            self.events[name] = time_stp
+        else:
+            step = self.__get_step_str(step)
+            if step not in self.events:
+                self.events[step] = {}
+            self.events[step][name] = time_stp
+
+    def start_timer(self, name:str, step = None):
+        if step == None:
+            self.timing[name] = time.time()
+        else:
+            step = self.__get_step_str(step)
+            if step not in self.timing:
+                self.timing[step]  = {}
+            self.timing[step][name]= time.time() 
+
+    def stop_timer(self, name:str, step = None):
+        if step == None:
+            self.timing[name] = round(time.time() - self.timing[name],3)
+        else:
+            step = self.__get_step_str(step)
+            self.timing[step][name] = round(time.time() - self.timing[step][name],3)
+
+    @staticmethod
+    def to_str(client_log):
+        o = OmegaConf.create(client_log)
+        return OmegaConf.to_yaml(o)

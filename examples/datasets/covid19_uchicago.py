@@ -10,6 +10,7 @@ def get_data(
     import torchvision.transforms as transforms
     import torch
     import numpy as np
+    import os.path as osp
 
     class UChicagoCXRCovidDatset(Dataset):
         def __init__(self, main_path, annotations_file, transform):
@@ -27,9 +28,9 @@ def get_data(
             image = self.transform(image)
             
             if self.truth_df.examCOVIDstatus.iloc[idx] == 'Negative':
-                label = torch.FloatTensor([0])
+                label = 0 #torch.FloatTensor([0])
             else:
-                label = torch.FloatTensor([1])
+                label = 1 #torch.FloatTensor([1])
             return image, label
 
     num_pixel = cfg.clients[client_idx].data_pipeline.num_pixels
@@ -65,14 +66,8 @@ def get_data(
             transforms.Normalize([temean, temean, temean], [tesd, tesd, tesd])
         ]
     )
-  
-
     ## Dataset
-    # train_dataset = UChicagoCXRCovidDatset(main_path = './ImageData',
-    #                                        annotations_file = './train_annotations',
-    #                                        transform = train_transform)
     data_dir = cfg.clients[client_idx].data_dir
-
     dataset = None
 
     if mode == "train":
@@ -80,11 +75,8 @@ def get_data(
         dataset = UChicagoCXRCovidDatset(main_path = data_dir,
                                             annotations_file = cfg.clients[client_idx].data_pipeline.train_annotation_dir,
                                             transform = train_transform)
-        split_train_data_raw = np.array_split(range(len(dataset)), cfg.num_clients)        
-        dataset = torch.utils.data.Subset(dataset, split_train_data_raw[client_idx])
     else:
         dataset = UChicagoCXRCovidDatset(main_path = data_dir,
                                            annotations_file = cfg.clients[client_idx].data_pipeline.test_annotation_dir,
-                                           transform = test_transform)
-    
+                                           transform = test_transform)    
     return dataset

@@ -1,3 +1,5 @@
+from http import client
+from appfl.misc.logging import ClientLogger
 from omegaconf import DictConfig, OmegaConf
 from funcx import FuncXClient, FuncXExecutor
 import torch.nn as nn
@@ -82,11 +84,12 @@ class APPFLFuncXTrainingClients:
                     task_id    = task_id,
                     task_name  = task_name,
                     client_idx = client_id,
-                    start_time = time.time()
+                    start_time = time.time(),
                 ))
-    def __set_task_success_status(self, task_id, completion_time):
+    def __set_task_success_status(self, task_id, completion_time, client_log = None):
         self.executing_tasks[task_id].end_time= float(completion_time)
         self.executing_tasks[task_id].success = True
+        self.executing_tasks[task_id].log     = client_log
 
     def __finalize_task(self, task_id):
         # Save task to log file
@@ -126,15 +129,22 @@ class APPFLFuncXTrainingClients:
 
     def __handle_funcx_result(self, res, task_id):
         """Handle returned results from Funcx"""
+        client_log = {}
+        if type(res) == tuple:
+            res, client_log = res
+            self.logger.info("\n" + ClientLogger.to_str(client_log))
+        else:
+            client_log = None
+        
         res = self.__process_client_results(res)
-        self.__set_task_success_status(task_id, time.time())
-        client_task  = self.executing_tasks[task_id]
+        self.__set_task_success_status(task_id, time.time(), client_log)
+        client_task   = self.executing_tasks[task_id]
         self.logger.info("Recieved results of task '%s' from %s." %(
             client_task.task_name, 
             self.clients[client_task.client_idx].client_cfg.name)
         )
         self.__finalize_task(task_id)
-        return res      
+        return res
 
     def __handle_future_result(self, future):
         """Handle returned Future object from Funcx"""

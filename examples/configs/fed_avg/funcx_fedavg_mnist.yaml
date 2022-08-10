@@ -9,7 +9,7 @@ algorithm:
     server_momentum_param_2: 0.99
     ## Clients optimizer
     optim: "SGD"
-    num_local_epochs: 10
+    num_local_epochs: 1
     optim_args: 
         lr: 0.001
     ## Differential Privacy
@@ -29,7 +29,7 @@ model:
   num_pixel:   28 
   
 training:
-  num_epochs: 2
+  num_epochs: 1
   save_model_filename: "MNIST_CNN"
   save_model_dirname: "./save_models"
 

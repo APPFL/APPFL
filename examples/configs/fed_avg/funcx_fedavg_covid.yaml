@@ -9,7 +9,7 @@ algorithm:
     # server_momentum_param_2: 0.99
     ## Clients optimizer
     optim: "Adam"
-    num_local_epochs: 2
+    num_local_epochs: 1
     optim_args: 
         lr: 0.001
     ## Differential Privacy
@@ -28,11 +28,11 @@ model:
 
 training:
   num_epochs: 3
-  save_model_filename: "CheXpert_DenseNet"
+  save_model_filename: "Covid_DenseNet"
   save_model_dirname: "./save_models"
 
 dataset:
-  name: CheXpert
+  name: CovidDataset
 
 func:
   get_model:

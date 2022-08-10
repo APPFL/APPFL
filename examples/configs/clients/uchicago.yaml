@@ -1,0 +1,17 @@
+server:
+  device: cuda:0
+  data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
+  output_dir: "./log_funcx_appfl/server"
+  s3_bucket: anl-appfl
+  
+clients:
+  ## CSL@UIUC clusters
+  - name: uchicago-gpu
+    endpoint_id: 83d214ed-c5d5-45a0-aa42-9a6e1766a315
+    device:  cuda:0
+    data_split: 0
+    data_dir  : "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
+    output_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
+    get_data:
+      script_file: "./datasets/torchvision_datasets.py"
+      call: get_data
