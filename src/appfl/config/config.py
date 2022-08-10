@@ -133,8 +133,8 @@ class FuncXConfig(Config):
     logging_tasks: List = field(default_factory=list) 
     
     # Testing and validation params
-    client_do_validation: bool = False
-    client_do_testing   : bool = False
+    client_do_validation: bool = True
+    client_do_testing   : bool = True
     server_do_validation: bool = False
     server_do_testing   : bool = False
     

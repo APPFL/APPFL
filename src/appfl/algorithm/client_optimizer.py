@@ -40,14 +40,14 @@ class ClientOptim(BaseClient):
 
         for t in range(self.num_local_epochs):
 
-            if self.cfg.validation == True and self.test_dataloader != None:
+            if (t == 0) and self.test_dataloader != None: # For now, just run the evaluation once, before training
                 cli_logger.start_timer("val_before_update_train_set", t)
                 train_loss, train_accuracy = super(ClientOptim, self).client_validation(
                     self.dataloader
                 )
                 cli_logger.add_info(
                     "val_before_update_train_set",{
-                        "train_loss": train_loss, "train_accuracy": train_accuracy
+                        "train_loss": train_loss, "train_acc": train_accuracy
                     }
                 )
                 cli_logger.stop_timer("val_before_update_train_set", t)
@@ -58,7 +58,7 @@ class ClientOptim(BaseClient):
                 )
                 cli_logger.add_info(
                     "val_before_update_val_set",{
-                        "val_loss": test_loss, "val_accuracy": test_accuracy
+                        "val_loss": test_loss, "val_acc": test_accuracy
                     }
                 )
                 cli_logger.stop_timer("val_before_update_val_set", t)
@@ -69,6 +69,7 @@ class ClientOptim(BaseClient):
                 ## return to train mode
                 self.model.train()
 
+            # Do training for one epoch
             cli_logger.start_timer("train_one_epoch", t)
             start_time=time.time()
             for data, target in self.dataloader:
@@ -98,36 +99,36 @@ class ClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
 
-        if self.cfg.validation == True and self.test_dataloader != None:
-            cli_logger.start_timer("val_after_update_train_set", t)
-            train_loss, train_accuracy = super(
-                ClientOptim, self
-            ).client_validation(self.dataloader)
-            cli_logger.stop_timer("val_after_update_train_set", t)
-
-            cli_logger.add_info(
-                    "val_after_update_train_set",{
-                        "train_loss": train_loss, "train_accuracy": train_accuracy
-                    }
-                )
-            
-
-            cli_logger.start_timer("val_after_update_val_set", t)
-            test_loss, test_accuracy = super(
-                ClientOptim, self
-            ).client_validation(self.test_dataloader)
-            cli_logger.stop_timer("val_after_update_val_set", t)
-            
-            cli_logger.add_info(
-                    "val_after_update_val_set",{
-                        "val_loss": test_loss, "val_accuracy": test_accuracy
-                    }
-                )
+            # if self.cfg.validation == True and self.test_dataloader != None:
+            #     cli_logger.start_timer("val_after_update_train_set", t)
+            #     train_loss, train_accuracy = super(
+            #         ClientOptim, self
+            #     ).client_validation(self.dataloader)
+            #     cli_logger.stop_timer("val_after_update_train_set", t)
                 
-            per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(
-                self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
-            )
+            #     # Add validation results at client
+            #     cli_logger.add_info(
+            #             "val_after_update_train_set",{
+            #                 "train_loss": train_loss, "train_accuracy": train_accuracy
+            #             }
+            #         )
+
+            #     cli_logger.start_timer("val_after_update_val_set", t)
+            #     test_loss, test_accuracy = super(
+            #         ClientOptim, self
+            #     ).client_validation(self.test_dataloader)
+            #     cli_logger.stop_timer("val_after_update_val_set", t)
+                
+            #     cli_logger.add_info(
+            #             "val_after_update_val_set",{
+            #                 "val_loss": test_loss, "val_accuracy": test_accuracy
+            #             }
+            #         )
+       
+            # per_iter_time = time.time() - start_time
+            # super(ClientOptim, self).client_log_content(
+            #     self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
+            # )
         
         self.round += 1
 

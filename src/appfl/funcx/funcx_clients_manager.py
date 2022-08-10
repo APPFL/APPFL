@@ -132,7 +132,7 @@ class APPFLFuncXTrainingClients:
         client_log = {}
         if type(res) == tuple:
             res, client_log = res
-            self.logger.info("\n" + ClientLogger.to_str(client_log))
+            self.logger.info("--- Client logs ---\n" + ClientLogger.to_str(client_log))
         else:
             client_log = None
         
@@ -144,7 +144,7 @@ class APPFLFuncXTrainingClients:
             self.clients[client_task.client_idx].client_cfg.name)
         )
         self.__finalize_task(task_id)
-        return res
+        return res, client_log
 
     def __handle_future_result(self, future):
         """Handle returned Future object from Funcx"""
@@ -164,8 +164,6 @@ class APPFLFuncXTrainingClients:
         func_uuid = self.fxc.register_function(exct_func)
         batch     = self.fxc.create_batch()
         for client_idx, client_cfg in enumerate(self.cfg.clients):
-            # res = exct_func(self.cfg, client_idx, *args, **kwargs)
-            # import ipdb; ipdb.set_trace()
             # select device
             batch.add(
                 self.cfg,
@@ -201,6 +199,7 @@ class APPFLFuncXTrainingClients:
     def receive_sync_endpoints_updates(self):
         stop_aggregate    = False
         client_results    = OrderedDict()
+        client_logs       = OrderedDict()
         while (not stop_aggregate):
             results = self.fxc.get_batch_result(list(self.executing_tasks))
             for task_id in results:
@@ -210,7 +209,7 @@ class APPFLFuncXTrainingClients:
                         ## Training at client is succeeded
                         if 'result' in results[task_id]:
                             client_idx = self.executing_tasks[task_id].client_idx
-                            client_results[client_idx] = self.__handle_dict_result(
+                            client_results[client_idx], client_logs[client_idx] = self.__handle_dict_result(
                                 results[task_id], task_id)
                         else:
                             # TODO: handling situations when training has errors
@@ -229,7 +228,7 @@ class APPFLFuncXTrainingClients:
                                 results[task_id]['exception'].reraise()
             if len(self.executing_tasks) == 0:
                 stop_aggregate = True
-        return client_results
+        return client_results, client_logs
     
     def register_async_call_back_func(self, call_back_func, invoke_async_func_on_complete = True):
         # Callback function

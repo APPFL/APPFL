@@ -14,7 +14,7 @@ class EvalLogger:
         self.main_logger = mLogging.get_logger()
 
     def __format(self, key, val):
-        c = "%8s:" % key
+        c = "%10s:" % key
         if type(val) == int:
             c+= "%5s"    % val 
         else:
@@ -262,3 +262,13 @@ class ClientLogger:
     def to_str(client_log):
         o = OmegaConf.create(client_log)
         return OmegaConf.to_yaml(o)
+    
+def get_eval_results_from_logs(logs):
+    val_results = {}
+    for client_idx in logs:
+        val_results[client_idx] = {
+                **logs[client_idx]['info']['val_before_update_train_set'],
+                **logs[client_idx]['info']['val_before_update_val_set']
+            }
+            
+    return val_results

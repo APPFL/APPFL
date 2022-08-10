@@ -69,12 +69,16 @@ def get_data(
     ## Dataset
     data_dir = cfg.clients[client_idx].data_dir
     dataset = None
-
+    
     if mode == "train":
         #train dataset
         dataset = UChicagoCXRCovidDatset(main_path = data_dir,
                                             annotations_file = cfg.clients[client_idx].data_pipeline.train_annotation_dir,
                                             transform = train_transform)
+    elif mode == "val":
+        dataset = UChicagoCXRCovidDatset(main_path = data_dir,
+                                           annotations_file = cfg.clients[client_idx].data_pipeline.val_annotation_dir,
+                                           transform = test_transform) 
     else:
         dataset = UChicagoCXRCovidDatset(main_path = data_dir,
                                            annotations_file = cfg.clients[client_idx].data_pipeline.test_annotation_dir,

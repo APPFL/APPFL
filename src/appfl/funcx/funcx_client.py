@@ -24,7 +24,8 @@ def client_training(
     client_idx,
     weights,
     global_state,
-    loss_fn
+    loss_fn,
+    do_validation=False,
     ):
     from appfl.misc.logging import ClientLogger
     ## Prepare logger
@@ -43,9 +44,9 @@ def client_training(
     
     cli_logger.start_timer('load_dataset')
     ## Prepare training/validation data
-    train_dataset   = get_dataset(cfg, client_idx, mode='train')
-    train_dataloader= get_dataloader(cfg, train_dataset, mode='train')
-    if cfg.client_do_validation:
+    train_dataset      = get_dataset(cfg, client_idx, mode='train')
+    train_dataloader   = get_dataloader(cfg, train_dataset, mode='train')
+    if do_validation:
         val_dataset    = get_dataset(cfg, client_idx, mode='val')
         val_dataloader = get_dataloader(cfg, val_dataset, mode='val') 
     else:
@@ -77,10 +78,10 @@ def client_training(
     cli_logger.stop_timer("download_global_state")
 
     ## Initial state for a client
-    cli_logger.start_timer("download_global_state")
+    cli_logger.start_timer("load_global_state_to_device")
     client.model.to(cfg.clients[client_idx].device)
     client.model.load_state_dict(global_state)
-    cli_logger.stop_timer("download_global_state")
+    cli_logger.stop_timer("load_global_state_to_device")
 
     ## Perform a client update
     cli_logger.start_timer("training_client_update")
@@ -102,6 +103,10 @@ def client_testing(
     global_state,
     loss_fn
     ):
+    from appfl.misc.logging import ClientLogger
+    ## Prepare logger
+    cli_logger = ClientLogger()
+    cli_logger.mark_event("start_endpoint_execution")
     ## Import libaries
     import os.path as osp
     from appfl.misc import client_log, get_dataloader
@@ -110,9 +115,12 @@ def client_testing(
     ## Load client configs
     cfg.device         = cfg.clients[client_idx].device
     cfg.output_dirname = cfg.clients[client_idx].output_dir
+    
     ## Prepare testing data
+    cli_logger.start_timer('load_dataset')
     test_dataset   = get_dataset(cfg, client_idx, mode='test')
     test_dataloader= get_dataloader(cfg, test_dataset, mode='test')
+    cli_logger.stop_timer('load_dataset')
     # Get training model
     model = get_model(cfg)
     ## Prepare output directory
@@ -131,12 +139,21 @@ def client_testing(
             **cfg.fed.args)
     ## Download global state
     temp_dir = osp.join(cfg.output_dirname, "tmp")
+    cli_logger.start_timer("download_global_state")
     global_state = load_global_state(cfg, global_state, temp_dir)
+    cli_logger.start_timer("download_global_state")
+    
     ## Initial state for a client
+    cli_logger.start_timer("load_global_state_to_device")
     client.model.to(cfg.clients[client_idx].device)
     client.model.load_state_dict(global_state)
+    cli_logger.stop_timer("load_global_state_to_device")
+    
     ## Do validation
-    return client.client_validation(test_dataloader)
+    cli_logger.start_timer("do_testing")
+    res = client.client_validation(test_dataloader)
+    cli_logger.start_timer("do_testing")
+    return res, cli_logger.to_dict()
 
 if __name__ == '__main__':
     from omegaconf import OmegaConf

@@ -41,7 +41,7 @@ class APPFLFuncXServer(abc.ABC):
         ## Geting the total number of data samples at clients
         mode = ['train', 'val', 'test']
         self.trn_endps.send_task_to_all_clients(client_validate_data, mode)
-        data_info_at_client = self.trn_endps.receive_sync_endpoints_updates()
+        data_info_at_client, _ = self.trn_endps.receive_sync_endpoints_updates()
         assert len(data_info_at_client) > 0, "Number of clients need to be larger than 0"
         ## Logging 
         mLogging.log_client_data_info(self.cfg, data_info_at_client)
@@ -106,12 +106,12 @@ class APPFLFuncXServer(abc.ABC):
         global_state = self.server.model.state_dict()
         _  = self.trn_endps.send_task_to_all_clients(client_testing,
                             self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn)
-        eval_results = self.trn_endps.receive_sync_endpoints_updates()
+        eval_results, _ = self.trn_endps.receive_sync_endpoints_updates()
         # TODO: handle this, refactor evaluation code
         for client_idx in eval_results:
             eval_results[client_idx] = {
-                'loss': eval_results[client_idx][0],
-                'acc' : eval_results[client_idx][1]
+                'test_loss': eval_results[client_idx][0],
+                'test_acc' : eval_results[client_idx][1]
             }
         return eval_results
         
@@ -143,11 +143,17 @@ class APPFLFuncXServer(abc.ABC):
             test_loss, test_accuracy = self.__evaluate_global_model_at_server(self.server_testing_dataloader)
             self.eval_logger.log_server_testing({'acc': test_accuracy, 'loss': test_loss})
 
-    def _do_client_validation(self, step:int):
-        """Perform validation at clients"""
+    def _do_client_validation(self, step:int, client_logs):
+        """Parse validation results at clients from client logs"""
         if self.cfg.client_do_validation:
-            validation_results = self.__evaluate_global_model_at_clients(mode='val')
+            validation_results = get_eval_results_from_logs(client_logs)
             self.eval_logger.log_client_validation(validation_results, step)
+            if self.cfg.use_tensorboard:
+                # Add them to tensorboard
+                for client_idx in validation_results:
+                    client_name = self.cfg.clients[client_idx].name
+                    for val_k in validation_results[client_idx]:
+                        self.writer.add_scalar("[%s]_%s" % (client_name, val_k), validation_results[client_idx][val_k], step)
     
     def _do_client_testing(self):
         """Perform tesint at clients """
@@ -209,10 +215,13 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
             local_update_start = time.time()
             ## Boardcast global state and start training at funcX endpoints
             _  = self.trn_endps.send_task_to_all_clients(client_training,
-                        self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn)
+                        self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn,
+                        do_validation = self.cfg.client_do_validation)
         
             ## Aggregate local updates from clients
-            local_states = [self.trn_endps.receive_sync_endpoints_updates()]
+            local_states, client_logs = self.trn_endps.receive_sync_endpoints_updates()
+            local_states = [local_states]
+            self._do_client_validation(t, client_logs)
             self.cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
             ## Perform global update
@@ -225,9 +234,6 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
             """ Validation """
             if (t+1) % self.cfg.server_validation_step == 0:
                 self._do_server_validation(t+1)
-            
-            if (t+1) % self.cfg.server_validation_step == 0:
-                self._do_client_validation(t+1)
 
             self.server.logging_iteration(self.cfg, self.logger, t)
             """ Saving checkpoint """
