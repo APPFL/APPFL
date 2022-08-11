@@ -19,9 +19,9 @@ class ServerFedSDLBFGS(FedServer):
         self.delta = kwargs["delta"]
 
         """ Gradient history for L-BFGS """
-        self.s_vectors = [OrderedDict()] * self.p
-        self.ybar_vectors = [OrderedDict()] * self.p
-        self.rho_values = [OrderedDict()] * self.p
+        self.s_vectors = [] 
+        self.ybar_vectors = []
+        self.rho_values = []
         self.prev_params = OrderedDict()
         self.prev_grad = OrderedDict()
         self.k = 0
@@ -42,6 +42,7 @@ class ServerFedSDLBFGS(FedServer):
             self.make_sgd_step()
         else:
             self.make_lbfgs_step()
+
         self.k += 1
 
 
@@ -55,25 +56,32 @@ class ServerFedSDLBFGS(FedServer):
 
     def make_lbfgs_step(self):
 
+        self.s_vectors.append(OrderedDict())
+        self.ybar_vectors.append(OrderedDict())
+        self.rho_values.append(OrderedDict())
+
+        if self.k > self.p:
+            del self.s_vectors[0]
+            del self.ybar_vectors[0]
+            del self.rho_values[0]
+
         for name, _ in self.model.named_parameters():
 
             shape = self.model.state_dict()[name].shape
-            k = self.k % self.p
 
             # Create newest s vector
             s_vector = self.model.state_dict()[name].reshape(-1) - self.prev_params[name]
-            self.s_vectors[k][name] = s_vector
+            self.s_vectors[-1][name] = s_vector
 
             # Create newest ybar vector
             y_vector = self.pseudo_grad[name].reshape(-1) - self.prev_grad[name]
             gamma = self.compute_gamma(y_vector, s_vector)
             ybar_vector = self.compute_ybar_vector(y_vector, s_vector, gamma)
-            self.ybar_vectors[k][name] = ybar_vector
+            self.ybar_vectors[-1][name] = ybar_vector
 
             # Create newest rho
             rho = 1.0 / (s_vector.dot(ybar_vector))
-            print(rho)
-            self.rho_values[k][name] = rho
+            self.rho_values[-1][name] = rho
 
             # Perform recursive computations and step
             v_vector = self.compute_step_approximation(name, gamma)
@@ -135,27 +143,46 @@ class ServerFedSDLBFGS(FedServer):
         return val
 
 
+    # def compute_step_approximation(self, name, gamma):
+    #     """ Algorithm 2 """
+    #     u = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
+    #     mu_values = []
+    #     p = min(self.k - 1, self.p)
+    #     r = range(p)
+
+    #     for i in r:
+    #         j = (self.k - i - 1) % p
+    #         try:
+    #             mu = self.rho_values[j][name] * u.dot(self.s_vectors[j][name])
+    #             mu_values.append(mu)
+    #             u = u - (mu * self.ybar_vectors[j][name])
+    #         except IndexError:
+    #             __import__('pdb').set_trace()
+
+    #     v = (1.0 / gamma) * u
+    #     for i in r:
+    #         j = (self.k - p + i) % p
+    #         nu = self.rho_values[j][name] * v.dot(self.ybar_vectors[j][name])
+    #         v = v + ((mu_values[-(i + 1)] - nu) * self.s_vectors[j][name])
+    #     
+    #     return v
+
     def compute_step_approximation(self, name, gamma):
-        """ Lines 4-12 in Procedure 1 """
+        """ Algorithm 3 """
         u = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
         mu_values = []
-        p = min(self.k - 1, self.p)
-        r = range(p)
+        m = min(self.k - 1, self.p)
+        r = range(m)
 
-        for i in r:
-            j = (self.k - i - 1) % p
-            try:
-                mu = self.rho_values[j][name] * u.dot(self.s_vectors[j][name])
-                mu_values.append(mu)
-                u = u - (mu * self.ybar_vectors[j][name])
-            except IndexError:
-                __import__('pdb').set_trace()
+        for i in reversed(r):
+            mu = self.rho_values[i][name] * u.dot(self.s_vectors[i][name])
+            mu_values.append(mu)
+            u = u - (mu * self.ybar_vectors[i][name])
 
         v = (1.0 / gamma) * u
         for i in r:
-            j = (self.k - p + i) % p
-            nu = self.rho_values[j][name] * v.dot(self.ybar_vectors[j][name])
-            v = v + ((mu_values[-(i + 1)] - nu) * self.s_vectors[j][name])
+            nu = self.rho_values[i][name] * v.dot(self.ybar_vectors[i][name])
+            v = v + ((mu_values[-(i + 1)] - nu) * self.s_vectors[i][name])
         
         return v
 
