@@ -86,14 +86,14 @@ class ServerFedSDLBFGS(FedServer):
             # Perform recursive computations and step
             v_vector = self.compute_step_approximation(name, gamma)
 
-            # try: 
-            #     hessian = self.realize_hessian(name, gamma, shape)
-            #     eigvals = linalg.eigvals(hessian)
-            #     if (eigvals.real < 0.0).any():
-            #         __import__('pdb').set_trace()
-            # except RuntimeError:
-            #     # occurs if there is not enough memory to realize the hessian
-            #     pass
+            try: 
+                hessian = self.realize_hessian(name, gamma, shape)
+                eigvals = linalg.eigvals(hessian)
+                if (eigvals.real < 0.0).any():
+                    __import__('pdb').set_trace()
+            except RuntimeError:
+                # occurs if there is not enough memory to realize the hessian
+                pass
             self.step[name] = -(self.max_step_size / self.k) * v_vector.reshape(shape)
 
             # Store information for next step
@@ -107,7 +107,7 @@ class ServerFedSDLBFGS(FedServer):
         m = min(self.p, self.k - 1)
         r = range(m)
 
-        for i in reversed(r):
+        for i in r:
             rs = self.rho_values[i][name] * self.s_vectors[i][name]
             I = torch.eye(shape.numel(), device=self.device) - (self.ybar_vectors[i][name].outer(rs))
             proj = rs.outer(self.s_vectors[i][name])
