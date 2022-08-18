@@ -53,7 +53,6 @@ parser.add_argument('--server_lr', type=float, required=False)
 parser.add_argument('--mparam_1', type=float, required=False)    
 parser.add_argument('--mparam_2', type=float, required=False)    
 parser.add_argument('--adapt_param', type=float, required=False)    
-parser.add_argument('--max_step_size', type=float, required=False)
  
 args = parser.parse_args()    
 
@@ -148,7 +147,7 @@ def main():
     cfg.num_epochs = args.num_epochs
 
     ## outputs        
-    cfg.output_dirname = "./outputs_%s_%s_%s_%s_%s_%s_%s_%s"%(args.dataset, args.model, args.server, args.client_optimizer, args.num_local_epochs, args.client_lr, cfg.fed.args.delta, cfg.fed.args.search_control)    
+    cfg.output_dirname = "./outputs_%s_%s_%s_%s_%s_%s_%s"%(args.dataset, args.model, args.server, args.client_optimizer, args.num_local_epochs, args.client_lr, cfg.fed.args.delta)    
     if args.server_lr != None:
         cfg.fed.args.server_learning_rate = args.server_lr
         cfg.output_dirname += "_ServerLR_%s" %(args.server_lr)
@@ -164,10 +163,6 @@ def main():
     if args.mparam_2 != None:
         cfg.fed.args.server_momentum_param_2 = args.mparam_2  
         cfg.output_dirname += "_MParam2_%s" %(args.mparam_2)        
-
-    if args.max_step_size != None:
-        cfg.fed.args.max_step_size = args.max_step_size
-        cfg.output_dirname += "_MStepSize_%s" % (args.max_step_size)
 
     cfg.output_filename = "result"          
     

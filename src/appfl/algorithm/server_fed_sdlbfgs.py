@@ -17,6 +17,7 @@ class ServerFedSDLBFGS(FedServer):
         # delta - lower bound on gamma_k
         self.p = kwargs["history"]
         self.delta = kwargs["delta"]
+        self.clip_thresh = kwargs["clip_thresh"]
 
         """ Gradient history for L-BFGS """
         self.s_vectors = [] 
@@ -25,11 +26,6 @@ class ServerFedSDLBFGS(FedServer):
         self.prev_params = OrderedDict()
         self.prev_grad = OrderedDict()
         self.k = 0
-
-        # Configuration for learning rate or backwards line search
-        self.max_step_size = kwargs["max_step_size"]
-        self.increment = kwargs["increment"]
-        self.search_control = kwargs["search_control"]
 
 
 
@@ -86,20 +82,52 @@ class ServerFedSDLBFGS(FedServer):
             # Perform recursive computations and step
             v_vector = self.compute_step_approximation(name, gamma)
 
-            try: 
-                hessian = self.realize_hessian(name, gamma, shape)
-                eigvals = linalg.eigvals(hessian)
-                if (eigvals.real < 0.0).any():
-                    __import__('pdb').set_trace()
-            except RuntimeError:
-                # occurs if there is not enough memory to realize the hessian
-                pass
-            self.step[name] = -(self.max_step_size / self.k) * v_vector.reshape(shape)
+            s_norm = s_vector.norm()
+            ybar_norm = ybar_vector.norm()
+            norm = v_vector.norm()
+            pseudo_norm = copy.deepcopy(self.pseudo_grad[name]).norm()
+
+            # with open("rho_and_norms.csv", 'a+') as f:
+            #     for name, _ in self.rho_values[-1].items():
+            #         string_arr = [
+            #                 f'{self.k}',
+            #                 f'{name}',
+            #                 #f'{self.max_step_size / self.k}',
+            #                 f'{self.max_step_size}',
+            #                 f'{self.model.__class__.__name__}',
+            #                 f'{s_norm.item()}',
+            #                 f'{ybar_norm.item()}',
+            #                 f'{rho.item()}',
+            #                 f'{norm.item()}',
+            #                 f'{pseudo_norm.item()}',
+            #                 ]
+            #         f.write(','.join(string_arr))
+            #         f.write('\n')
+
+            # try: 
+            #     hessian = self.realize_hessian(name, gamma, shape)
+            # except RuntimeError:
+            #     # occurs if there is not enough memory to realize the hessian
+            #     pass
+            # self.step[name] = -(self.max_step_size / self.k) * v_vector.reshape(shape)
+            
+            # Clip approx hessian-vector norm
+            self.step[name] = -self.server_learning_rate * self.clip_tensor(v_vector.reshape(shape), self.clip_thresh)
 
             # Store information for next step
             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
             self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
 
+
+
+    def clip_tensor(self, tensor, clip_thresh):
+        """ 
+        Clips a tensor so that the norm of that tensor is upper bounded by
+        the clip_thresh 
+        """
+        norm = tensor.norm()
+        thresh = min(clip_thresh / norm, 1)
+        return tensor * thresh
 
     
     def realize_hessian(self, name, gamma, shape):
@@ -112,6 +140,11 @@ class ServerFedSDLBFGS(FedServer):
             I = torch.eye(shape.numel(), device=self.device) - (self.ybar_vectors[i][name].outer(rs))
             proj = rs.outer(self.s_vectors[i][name])
             H = (I.transpose(0, 1) @ H @ I) + proj
+
+            eigvals = linalg.eigvals(H)
+            if (eigvals.real < 0.0).any():
+                # Simulate ctrl c
+                raise KeyboardInterrupt()
 
         return H
         
