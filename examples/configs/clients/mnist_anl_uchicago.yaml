@@ -6,12 +6,12 @@ server:
   
 clients:
   ## CSL@UIUC clusters
-  - name: uiuc-cig-01-gpu-01
-    endpoint_id: 32737688-2eef-4595-a004-3d67992f20a1
-    device:  cuda:0 
+  - name: uchicago-gpu
+    endpoint_id: 83d214ed-c5d5-45a0-aa42-9a6e1766a315
+    device: cuda:0
     data_split: 0
-    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/clients-data"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-cig-01-gpu-01"
+    data_dir  : "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
+    output_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
     get_data:
       script_file: "./datasets/torchvision_datasets.py"
       call: get_data

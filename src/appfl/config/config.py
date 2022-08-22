@@ -27,12 +27,12 @@ class Config:
 
     # Train data batch info
     batch_training: bool = True  ## TODO: revisit
-    train_data_batch_size: int = 1024
-    train_data_shuffle: bool = False
+    train_data_batch_size: int = 64
+    train_data_shuffle: bool = True
 
     # Indication of whether to validate or not using testing data
     validation: bool = False
-    test_data_batch_size: int = 1024
+    test_data_batch_size: int = 64
     test_data_shuffle: bool = False
 
     # Checking data sanity
@@ -141,3 +141,6 @@ class FuncXConfig(Config):
     # Testing and validation frequency
     client_validation_step: int = 1
     server_validation_step: int = 1
+
+    # Cloud storage
+    use_cloud_transfer: bool = True

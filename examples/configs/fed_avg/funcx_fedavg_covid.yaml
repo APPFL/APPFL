@@ -23,11 +23,14 @@ algorithm:
     clip_value: False
     clip_norm: 1
 
+# model:
+#   num_output: 2
 model:
-  num_output: 2
-
+  num_pixel: 32
+  num_classes: 2
+  num_channel: 3
 training:
-  num_epochs: 3
+  num_epochs: 20
   save_model_filename: "Covid_DenseNet"
   save_model_dirname: "./save_models"
 
@@ -36,5 +39,5 @@ dataset:
 
 func:
   get_model:
-    script_file: "./models/densenet.py"
+    script_file: "./models/funcx_cnn.py"
     call: "get_model"

@@ -222,7 +222,6 @@ class APPFLFuncXTrainingClients:
                             # Raise/Reraise the exception at client
                             excpt = results[task_id]['exception']
                             if type(excpt) == Exception:
-                                # import ipdb; ipdb.set_trace() 
                                 raise excpt
                             else:
                                 results[task_id]['exception'].reraise()

@@ -2,7 +2,7 @@ from omegaconf import DictConfig
 from funcx import FuncXClient
 import torch.nn as nn
 from .misc import Dataset
-from .funcx.funcx_sync_server import APPFLFuncXSyncServer
+from .funcx.funcx_test_server import APPFLFuncXTestServer
 
 def run_server(
     cfg: DictConfig, 
@@ -12,7 +12,7 @@ def run_server(
     test_data: Dataset = Dataset(),
     val_data : Dataset = Dataset()
     ):
-    serv = APPFLFuncXSyncServer(cfg, fxc)
+    serv = APPFLFuncXTestServer(cfg, fxc)
 
     serv.set_server_dataset(
         validation_dataset=val_data,

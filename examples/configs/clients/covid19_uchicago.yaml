@@ -18,5 +18,4 @@ clients:
       train_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/train_annotations"
       test_annotation_dir:  "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/test_annotations"
       val_annotation_dir:   "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/val_annotations"
-      num_pixels: 224
-      resize: 224
+      num_pixels: 32

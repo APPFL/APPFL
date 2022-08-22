@@ -294,14 +294,13 @@ class BaseClient:
                 target = target.to(self.cfg.device)
                 output = self.model(img)
                 loss += self.loss_fn(output, target).item()
-
                 if output.shape[1] == 1:
                     pred = torch.round(output)
                 else:
                     pred = output.argmax(dim=1, keepdim=True)
 
                 correct += pred.eq(target.view_as(pred)).sum().item()
-
+            
         # FIXME: do we need to sent the model to cpu again?
         # self.model.to("cpu")
 

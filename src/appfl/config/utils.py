@@ -62,7 +62,6 @@ def load_funcx_device_config(cfg: FuncXConfig,
             client['data_pipeline']= OmegaConf.create(client['data_pipeline'])
         # else:
         #     client['data_pipeline']= OmegaConf.create({})
-        # import ipdb; ipdb.set_trace()
         client_cfg = OmegaConf.structured(FuncXClientConfig(**client))
         cfg.clients.append(client_cfg)
     

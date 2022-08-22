@@ -21,11 +21,14 @@ def get_data(
             self.annot_file = osp.join(self.datadir, "%s.txt" % mode)
             self.data_list  = [] 
             self.labels     = []
+            skip=10
             with open(self.annot_file, "r") as fi:
                 rd = csv.reader(fi, delimiter=' ')
-                for row in rd:
-                    self.data_list.append(row[1])
-                    self.labels.append(0 if row[2] == 'negative' else 1)
+                for i, row in enumerate(rd):
+                    if i % skip == 0:
+                        self.data_list.append(row[1])
+                        assert row[2] in ['negative', 'positive']
+                        self.labels.append(0 if row[2] == 'negative' else 1)
             self.transform = transform
 
         def __len__(self):
@@ -40,10 +43,12 @@ def get_data(
             return image, label
 
     # TODO: Caclucate mean/std of Argonne dataset
-    trmean = 0.6181
-    trsd = 0.2510
-    temean = 0.6250
-    tesd = 0.2498
+    trmean = 0.5251
+    trsd   = 0.1942
+    temean = 0.5251
+    tesd   = 0.1942
+    # temean = 0.5078
+    # tesd   = 0.2228
 
     #num_pixel = cfg.clients[client_idx].get_data.transforms.resize
     num_pixel = cfg.clients[client_idx].data_pipeline.resize
@@ -54,7 +59,10 @@ def get_data(
             transforms.Resize(num_pixel),
             transforms.CenterCrop(num_pixel),
             transforms.ToTensor(),
-            transforms.Normalize([trmean, trmean, trmean], [trsd, trsd, trsd])
+            transforms.Normalize(
+                # [trmean, trmean, trmean], [trsd, trsd, trsd]
+                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+                )
         ]
     )
     test_transform = transforms.Compose(
@@ -62,7 +70,10 @@ def get_data(
             transforms.Resize(num_pixel),
             transforms.CenterCrop(num_pixel),
             transforms.ToTensor(),
-            transforms.Normalize([temean, temean, temean], [tesd, tesd, tesd])
+            transforms.Normalize(
+                # [temean, temean, temean], [tesd, tesd, tesd]
+                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+                )
         ]
     )
     dataset = None

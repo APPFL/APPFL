@@ -7,11 +7,11 @@ def get_model():
         """
         def __init__(self, num_output):
             super(DenseNet121, self).__init__()
-            self.densenet121 = torchvision.models.densenet121(pretrained = False)
+            self.densenet121 = torchvision.models.densenet121(pretrained = True)
             num_features = self.densenet121.classifier.in_features
             self.densenet121.classifier = nn.Sequential(
                 nn.Linear(num_features, num_output),
-                nn.Sigmoid()
+                # nn.Sigmoid()
             )
         def forward(self, x):
             x = self.densenet121(x)

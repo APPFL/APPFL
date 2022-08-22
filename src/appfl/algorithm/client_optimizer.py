@@ -39,19 +39,21 @@ class ClientOptim(BaseClient):
         start_time=time.time()
 
         for t in range(self.num_local_epochs):
-
+            
             if (t == 0) and self.test_dataloader != None: # For now, just run the evaluation once, before training
-                cli_logger.start_timer("val_before_update_train_set", t)
-                train_loss, train_accuracy = super(ClientOptim, self).client_validation(
-                    self.dataloader
-                )
-                cli_logger.add_info(
-                    "val_before_update_train_set",{
-                        "train_loss": train_loss, "train_acc": train_accuracy
-                    }
-                )
-                cli_logger.stop_timer("val_before_update_train_set", t)
+                ## validate on train set
+                # cli_logger.start_timer("val_before_update_train_set", t)
+                # train_loss, train_accuracy = super(ClientOptim, self).client_validation(
+                #     self.dataloader
+                # )
+                # cli_logger.add_info(
+                #     "val_before_update_train_set",{
+                #         "train_loss": train_loss, "train_acc": train_accuracy
+                #     }
+                # )
+                # cli_logger.stop_timer("val_before_update_train_set", t)
 
+                ## validate on val set
                 cli_logger.start_timer("val_before_update_val_set", t)
                 test_loss, test_accuracy = super(ClientOptim, self).client_validation(
                     self.test_dataloader
@@ -62,22 +64,25 @@ class ClientOptim(BaseClient):
                     }
                 )
                 cli_logger.stop_timer("val_before_update_val_set", t)
-                per_iter_time = time.time() - start_time
-                super(ClientOptim, self).client_log_content(
-                    t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
-                )
+                
+                # per_iter_time = time.time() - start_time
+                # super(ClientOptim, self).client_log_content(
+                #     t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
+                # )
                 ## return to train mode
                 self.model.train()
 
             # Do training for one epoch
             cli_logger.start_timer("train_one_epoch", t)
-            start_time=time.time()
-            for data, target in self.dataloader:
+            for i, (data, target) in enumerate(self.dataloader):
+                self.outfile.write("epoch [%d][%d/%d] %s" % (t, i+1, len(self.dataloader), str(data.shape)))
+                self.outfile.flush()
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
+                print(loss)
                 loss.backward()
                 optimizer.step()
 
@@ -99,37 +104,32 @@ class ClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
 
-            # if self.cfg.validation == True and self.test_dataloader != None:
-            #     cli_logger.start_timer("val_after_update_train_set", t)
-            #     train_loss, train_accuracy = super(
-            #         ClientOptim, self
-            #     ).client_validation(self.dataloader)
-            #     cli_logger.stop_timer("val_after_update_train_set", t)
+            if (t == self.num_local_epochs-1)  and self.test_dataloader != None:
+                # cli_logger.start_timer("val_after_update_train_set", t)
+                # train_loss, train_accuracy = super(
+                #     ClientOptim, self
+                # ).client_validation(self.dataloader)
+                # cli_logger.stop_timer("val_after_update_train_set", t)
                 
-            #     # Add validation results at client
-            #     cli_logger.add_info(
-            #             "val_after_update_train_set",{
-            #                 "train_loss": train_loss, "train_accuracy": train_accuracy
-            #             }
-            #         )
+                # Add validation results at client
+                # cli_logger.add_info(
+                #         "val_after_update_train_set",{
+                #             "train_loss": train_loss, "train_accuracy": train_accuracy
+                #         }
+                #     )
 
-            #     cli_logger.start_timer("val_after_update_val_set", t)
-            #     test_loss, test_accuracy = super(
-            #         ClientOptim, self
-            #     ).client_validation(self.test_dataloader)
-            #     cli_logger.stop_timer("val_after_update_val_set", t)
+                cli_logger.start_timer("val_after_update_val_set", t)
+                test_loss, test_accuracy = super(
+                    ClientOptim, self
+                ).client_validation(self.test_dataloader)
+                cli_logger.stop_timer("val_after_update_val_set", t)
                 
-            #     cli_logger.add_info(
-            #             "val_after_update_val_set",{
-            #                 "val_loss": test_loss, "val_accuracy": test_accuracy
-            #             }
-            #         )
-       
-            # per_iter_time = time.time() - start_time
-            # super(ClientOptim, self).client_log_content(
-            #     self.num_local_epochs, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
-            # )
-        
+                cli_logger.add_info(
+                        "val_after_update_val_set",{
+                            "val_loss": test_loss, "val_accuracy": test_accuracy
+                        }
+                    )
+                self.model.train()
         self.round += 1
 
         self.primal_state = copy.deepcopy(self.model.state_dict())

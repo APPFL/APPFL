@@ -27,6 +27,9 @@ def load_global_state(cfg, global_state, temp_dir):
     return global_state
 
 def send_client_state(cfg, client_state, client_idx, temp_dir):
+    if cfg.use_cloud_transfer == False:
+        return client_state
+        
     client_state = LargeObjectWrapper(client_state, "client-%d" % client_idx)
     if not client_state.can_send_directly:
         # Save client's weight to file:

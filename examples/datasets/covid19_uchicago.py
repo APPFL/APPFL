@@ -45,6 +45,7 @@ def get_data(
         trsd = 0.2510
         temean = 0.6250
         tesd = 0.2498
+        
     train_transform = transforms.Compose(
         [   transforms.ToPILImage(),
             transforms.Resize(num_pixel),

@@ -36,12 +36,15 @@ class APPFLFuncXServer(abc.ABC):
         self.best_accuracy = 0.0
         self.data_info_at_client = None
 
+    def _run_sync_task(self, exc_func, *args, **kwargs):
+        self.trn_endps.send_task_to_all_clients(exc_func, *args, **kwargs)
+        return self.trn_endps.receive_sync_endpoints_updates()
+        
     def _validate_clients_data(self):
         """ Checking data at clients """
         ## Geting the total number of data samples at clients
         mode = ['train', 'val', 'test']
-        self.trn_endps.send_task_to_all_clients(client_validate_data, mode)
-        data_info_at_client, _ = self.trn_endps.receive_sync_endpoints_updates()
+        data_info_at_client, _ = self._run_sync_task(client_validate_data, mode)
         assert len(data_info_at_client) > 0, "Number of clients need to be larger than 0"
         ## Logging 
         mLogging.log_client_data_info(self.cfg, data_info_at_client)
@@ -104,9 +107,8 @@ class APPFLFuncXServer(abc.ABC):
     def __evaluate_global_model_at_clients(self, mode = 'val'):
         assert mode in ['val', 'test']
         global_state = self.server.model.state_dict()
-        _  = self.trn_endps.send_task_to_all_clients(client_testing,
+        eval_results, _ = self._run_sync_task(client_testing,
                             self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn)
-        eval_results, _ = self.trn_endps.receive_sync_endpoints_updates()
         # TODO: handle this, refactor evaluation code
         for client_idx in eval_results:
             eval_results[client_idx] = {
@@ -153,8 +155,8 @@ class APPFLFuncXServer(abc.ABC):
                 for client_idx in validation_results:
                     client_name = self.cfg.clients[client_idx].name
                     for val_k in validation_results[client_idx]:
-                        self.writer.add_scalar("[%s]_%s" % (client_name, val_k), validation_results[client_idx][val_k], step)
-    
+                        self.writer.add_scalar("%s-%s" % (client_name, val_k), validation_results[client_idx][val_k], step)
+
     def _do_client_testing(self):
         """Perform tesint at clients """
         if self.cfg.client_do_testing:
@@ -169,21 +171,12 @@ class APPFLFuncXServer(abc.ABC):
         """ Saving model"""
         if (step + 1) % self.cfg.checkpoints_interval == 0 or step + 1 == self.cfg.num_epochs:
             if self.cfg.save_model == True:
-                save_model_iteration(step + 1, self.server.model, self.cfg)
+                save_model_iteration(step + 1, self.server.model.state_dict(), self.cfg)
 
     @abc.abstractmethod
     def _do_training(self):
         pass 
 
-    @abc.abstractmethod
-    def run(self, model: nn.Module, loss_fn: nn.Module):
-        pass
-    
-class APPFLFuncXSyncServer(APPFLFuncXServer):
-    def __init__(self, cfg: DictConfig, fxc: FuncXClient):
-        super(APPFLFuncXSyncServer, self).__init__(cfg, fxc)
-        cfg["logginginfo"]["comm_size"] = 1
-    
     def run(self, model: nn.Module, loss_fn: nn.Module):
         # Set model, and loss function
         self._initialize_training(model, loss_fn)
@@ -201,148 +194,3 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
         self._do_server_testing()
         # Wrap-up
         self._finalize_experiment()
-    
-    def _do_training(self):
-        """ Looping over all epochs """
-        start_time = time.time()
-        for t in range(self.cfg.num_epochs):
-            self.logger.info(" ====== Epoch [%d/%d] ====== " % (t+1, self.cfg.num_epochs))
-            per_iter_start = time.time()
-            """ Do one training steps"""
-            """ Training """
-            ## Get current global state
-            global_state = self.server.model.state_dict()
-            local_update_start = time.time()
-            ## Boardcast global state and start training at funcX endpoints
-            _  = self.trn_endps.send_task_to_all_clients(client_training,
-                        self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn,
-                        do_validation = self.cfg.client_do_validation)
-        
-            ## Aggregate local updates from clients
-            local_states, client_logs = self.trn_endps.receive_sync_endpoints_updates()
-            local_states = [local_states]
-            self._do_client_validation(t, client_logs)
-            self.cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
-
-            ## Perform global update
-            global_update_start = time.time()
-            self.server.update(local_states)
-            self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
-            self.cfg["logginginfo"]["PerIter_time"]      = time.time() - per_iter_start
-            self.cfg["logginginfo"]["Elapsed_time"]      = time.time() - start_time
-            
-            """ Validation """
-            if (t+1) % self.cfg.server_validation_step == 0:
-                self._do_server_validation(t+1)
-
-            self.server.logging_iteration(self.cfg, self.logger, t)
-            """ Saving checkpoint """
-            self._save_checkpoint(t)
-
-class APPFLFuncXAsyncServer(APPFLFuncXServer):
-    def __init__(self, cfg: DictConfig, fxc: FuncXClient):
-        super(APPFLFuncXAsyncServer, self).__init__(cfg, fxc)
-        cfg["logginginfo"]["comm_size"] = 1
-
-        # Save the version of global model initialized at each client 
-        self.client_init_step ={
-            i : 0 for i in range(self.cfg.num_clients)
-        }
-
-    def _initialize_server_model(self):
-        """ Initialize server with only 1 client """
-        self.server  = eval(self.cfg.fed.servername)(
-            copy.deepcopy(self.model), self.loss_fn, 1, "cpu", **self.cfg.fed.args, weights = self.weights      
-        )
-        # Send server model to device
-        self.server.model.to("cpu")
-
-    def run(self, model: nn.Module, loss_fn: nn.Module):
-        # TODO: combine into one run function
-        # Set model, and loss function
-        self._initialize_training(model, loss_fn)
-        # Validate data at clients
-        # training_size_at_client = self._validate_clients_data()
-        # Calculate weight
-        self.weights = None
-        # Initialze model at server
-        self._initialize_server_model()
-        # Do training
-        self._do_training()
-        # Do client testing
-        self._do_client_testing()
-        # Wrap-up
-        self._finalize_experiment()
-        # Shutdown all clients
-        self.trn_endps.shutdown_all_clients()
-
-    def _do_training(self):
-        ## Get current global state
-        stop_aggregate     = False
-        start_time         = time.time()
-        def global_update(res, client_idx):
-            # TODO: fix this
-            client_results = {0: res}
-            local_states = [client_results]
-            # TODO: fix local update time
-            self.cfg["logginginfo"]["LocalUpdate_time"]  = 0
-            self.cfg["logginginfo"]["PerIter_time"]      = 0
-            self.cfg["logginginfo"]["Elapsed_time"]      = 0
-            
-            # TODO: add semaphore to protect this update operator
-            # Perform global update
-            global_update_start = time.time()
-            init_step           = self.client_init_step[client_idx]
-            
-            self.server.update(local_states, init_step = init_step)
-            global_step         = self.server.global_step
-            
-            self.cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
-            self.logger.info("Async FL global model updated. GLB step = %02d | Staleness = %02d" 
-                                % (global_step, global_step - init_step - 1))
-
-            # Save new init step of client
-            self.client_init_step[client_idx] = self.server.global_step
-
-            # Update callback func
-            self.trn_endps.register_async_func(
-                client_training, 
-                self.weights, self.server.model.state_dict(), self.loss_fn
-            )
-
-            # Training eval log
-            self.server.logging_iteration(self.cfg, self.logger, global_step - 1)
-            
-            # Saving checkpoint
-            self._save_checkpoint(global_step -1)
-
-        def stopping_criteria():
-            return self.server.global_step > self.cfg.num_epochs
-        
-        # Register callback function: global_update
-        self.trn_endps.register_async_call_back_func(global_update)
-        # Register async function: client training
-        self.trn_endps.register_async_func(
-            client_training, 
-            self.weights, self.server.model.state_dict(), self.loss_fn
-        )
-        # Register the stopping criteria
-        self.trn_endps.register_stopping_criteria(
-            stopping_criteria
-        )
-        # Start asynchronous FL
-        start_time = time.time()
-        # Assigning training tasks to all available clients
-        self.trn_endps.run_async_task_on_available_clients()
-
-        # Run async event loop
-        while (not stop_aggregate):
-            if self.server.global_step % 2 == 0:
-                self._do_server_validation(self.server.global_step)
-            
-            # Define some stopping criteria
-            if stopping_criteria():
-                self.logger.info("Training is finished!")
-                stop_aggregate = True
-
-        self.cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time

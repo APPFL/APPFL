@@ -2,7 +2,7 @@ from omegaconf import DictConfig
 from funcx import FuncXClient
 import torch.nn as nn
 from .misc import Dataset
-from .funcx.funcx_server import APPFLFuncXAsyncServer
+from .funcx.funcx_async_server import APPFLFuncXAsyncServer
 
 def run_server(
     cfg: DictConfig, 

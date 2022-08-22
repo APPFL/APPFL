@@ -10,7 +10,7 @@ from appfl.misc.data import *
 from appfl.misc.utils import *
 from appfl.misc.logging import *
 from models.cnn  import *
-import appfl.run_funcx_server as funcx_server
+import appfl.run_funcx_test_server as funcx_server
 import argparse
 
 from funcx import FuncXClient

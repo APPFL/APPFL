@@ -5,15 +5,28 @@ server:
   s3_bucket: anl-appfl
   
 clients:
-  # @Argonne: ALCF ThetaGPU clusters 
-  - name: thetagpu-1
-    endpoint_id: bf4897e1-83c6-4f29-9b12-b28c289cf7d8
-    device: cuda:0
+  - name: uiuc-cig-01-gpu-02
+    endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
+    device:  cuda:0 
     data_split: 0
-    data_dir  : "/eagle/covid-xray/archive/"
-    output_dir: "/eagle/covid-xray/log/theta-client-1"
+    data_dir  : "/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/"
+    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-cig-01-gpu-02"
     get_data:
       script_file: "./datasets/covid19_argonne.py"
       call:   "get_data"
     data_pipeline: 
-      resize: 224
+      resize: 32
+      num_pixel: 32
+
+  # @Argonne: ALCF ThetaGPU clusters 
+  # - name: thetagpu-1
+  #   endpoint_id: bf4897e1-83c6-4f29-9b12-b28c289cf7d8
+  #   device: cuda:0
+  #   data_split: 0
+  #   data_dir  : "/eagle/covid-xray/archive/"
+  #   output_dir: "/eagle/covid-xray/log/theta-client-1"
+  #   get_data:
+  #     script_file: "./datasets/covid19_argonne.py"
+  #     call:   "get_data"
+  #   data_pipeline: 
+  #     resize: 224
