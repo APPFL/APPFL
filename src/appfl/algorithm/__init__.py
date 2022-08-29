@@ -9,5 +9,6 @@ from .server_fed_adagrad import *
 from .server_fed_adam import *
 from .server_fed_yogi import *
 from .server_fed_sdlbfgs import *
+from .server_fed_shampoo import *
 from .iceadmm import *
 from .iiadmm import *

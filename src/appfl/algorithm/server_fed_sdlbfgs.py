@@ -110,9 +110,12 @@ class ServerFedSDLBFGS(FedServer):
             #     # occurs if there is not enough memory to realize the hessian
             #     pass
             # self.step[name] = -(self.max_step_size / self.k) * v_vector.reshape(shape)
+
+            # Fixed learning rate
+            self.step[name] = -self.server_learning_rate * v_vector.reshape(shape)
             
             # Clip approx hessian-vector norm
-            self.step[name] = -self.server_learning_rate * self.clip_tensor(v_vector.reshape(shape), self.clip_thresh)
+            # self.step[name] = -self.server_learning_rate * self.clip_tensor(v_vector.reshape(shape), self.clip_thresh)
 
             # Store information for next step
             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
@@ -211,11 +214,43 @@ class ServerFedSDLBFGS(FedServer):
             mu = self.rho_values[i][name] * u.dot(self.s_vectors[i][name])
             mu_values.append(mu)
             u = u - (mu * self.ybar_vectors[i][name])
+            with open("u_v_mu_nu_norms.csv", 'a+') as f:
+                for name, _ in self.rho_values[-1].items():
+                    string_arr = [
+                            f'{self.k}',
+                            f'{name}',
+                            #f'{self.max_step_size / self.k}',
+                            f'{self.server_learning_rate}',
+                            f'{self.model.__class__.__name__}',
+                            f'{mu.item()}',
+                            f'{u.norm().item()}',
+                            'u step'
+                            ]
+                    f.write(','.join(string_arr))
+                    f.write('\n')
+            if u.norm() == 0 or u.isnan().any():
+                raise KeyboardInterrupt()
 
         v = (1.0 / gamma) * u
         for i in r:
             nu = self.rho_values[i][name] * v.dot(self.ybar_vectors[i][name])
             v = v + ((mu_values[-(i + 1)] - nu) * self.s_vectors[i][name])
+            with open("u_v_mu_nu_norms.csv", 'a+') as f:
+                for name, _ in self.rho_values[-1].items():
+                    string_arr = [
+                            f'{self.k}',
+                            f'{name}',
+                            #f'{self.max_step_size / self.k}',
+                            f'{self.server_learning_rate}',
+                            f'{self.model.__class__.__name__}',
+                            f'{nu.item()}',
+                            f'{v.norm().item()}',
+                            'v step'
+                            ]
+                    f.write(','.join(string_arr))
+                    f.write('\n')
+            if v.norm() == 0 or v.isnan().any():
+                raise KeyboardInterrupt()
         
         return v
 
