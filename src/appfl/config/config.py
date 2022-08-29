@@ -13,7 +13,7 @@ class Config:
     fed: Any = Federated()
 
     # Compute device
-    device: str = "cpu"
+    device: str = "cuda:0"
 
     # Number of training epochs
     num_clients: int = 1
@@ -22,12 +22,12 @@ class Config:
     num_epochs: int = 2
 
     # Number of workers in DataLoader
-    num_workers: int = 0
+    num_workers: int = 8
 
     # Train data batch info
     batch_training: bool = True  ## TODO: revisit
     train_data_batch_size: int = 64
-    train_data_shuffle: bool = False
+    train_data_shuffle: bool = True
 
     # Indication of whether to validate or not using testing data
     validation: bool = True
