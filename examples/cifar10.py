@@ -35,8 +35,8 @@ parser.add_argument('--num_channel', type=int, default=3)
 parser.add_argument('--num_classes', type=int, default=10)   
 parser.add_argument('--num_pixel', type=int, default=32)   
 parser.add_argument('--model', type=str, default="CNN")   
-parser.add_argument('--train_data_batch_size', type=int, default=128)   
-parser.add_argument('--test_data_batch_size', type=int, default=128)   
+parser.add_argument('--train_data_batch_size', type=int, default=64)   
+parser.add_argument('--test_data_batch_size', type=int, default=64)   
 
 
 ## clients
@@ -53,6 +53,9 @@ parser.add_argument('--server_lr', type=float, required=False)
 parser.add_argument('--mparam_1', type=float, required=False)    
 parser.add_argument('--mparam_2', type=float, required=False)    
 parser.add_argument('--adapt_param', type=float, required=False)    
+
+parser.add_argument('--history', type=float, required=False)    
+parser.add_argument('--delta', type=float, required=False)    
  
 args = parser.parse_args()    
 
@@ -162,7 +165,12 @@ def main():
         
     if args.mparam_2 != None:
         cfg.fed.args.server_momentum_param_2 = args.mparam_2  
-        cfg.output_dirname += "_MParam2_%s" %(args.mparam_2)        
+        cfg.output_dirname += "_MParam2_%s" %(args.mparam_2)    
+    
+    if args.history != None:
+        cfg.history = args.history
+    if args.delta != None:        
+        cfg.delta = args.delta
 
     cfg.output_filename = "result"          
     
