@@ -67,6 +67,7 @@ def run_serial(
         weights[k] = len(train_data[k]) / total_num_data
 
     "Run validation if test data is given or the configuration is enabled."
+    test_dataloader = None
     if cfg.validation == True and len(test_data) > 0:
         test_dataloader = DataLoader(
             test_data,
