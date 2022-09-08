@@ -148,6 +148,10 @@ def main():
     ## server
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
+    if args.history != None:
+        cfg.fed.args.history = args.history    
+    if args.delta != None:        
+        cfg.fed.args.delta = args.delta    
 
     ## outputs        
     cfg.output_dirname = "./outputs_%s_%s_%s_%s_%s_%s_%s"%(args.dataset, args.model, args.server, args.client_optimizer, args.num_local_epochs, args.client_lr, cfg.fed.args.delta)    
@@ -167,10 +171,7 @@ def main():
         cfg.fed.args.server_momentum_param_2 = args.mparam_2  
         cfg.output_dirname += "_MParam2_%s" %(args.mparam_2)    
     
-    if args.history != None:
-        cfg.fed.args.history = args.history
-    if args.delta != None:        
-        cfg.fed.args.delta = args.delta
+
 
     cfg.output_filename = "result"          
     
