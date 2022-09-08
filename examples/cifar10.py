@@ -154,7 +154,7 @@ def main():
         cfg.fed.args.delta = args.delta    
 
     ## outputs        
-    cfg.output_dirname = "./outputs_%s_%s_%s_%s_%s_%s_%s"%(args.dataset, args.model, args.server, args.client_optimizer, args.num_local_epochs, args.client_lr, cfg.fed.args.delta)    
+    cfg.output_dirname = "./outputs_%s_%s_%s_%s_%s_%s"%(args.dataset, args.model, args.server, args.client_optimizer, args.num_local_epochs, args.client_lr)    
     if args.server_lr != None:
         cfg.fed.args.server_learning_rate = args.server_lr
         cfg.output_dirname += "_ServerLR_%s" %(args.server_lr)
