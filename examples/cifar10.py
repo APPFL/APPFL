@@ -168,9 +168,9 @@ def main():
         cfg.output_dirname += "_MParam2_%s" %(args.mparam_2)    
     
     if args.history != None:
-        cfg.history = args.history
+        cfg.fed.args.history = args.history
     if args.delta != None:        
-        cfg.delta = args.delta
+        cfg.fed.args.delta = args.delta
 
     cfg.output_filename = "result"          
     
