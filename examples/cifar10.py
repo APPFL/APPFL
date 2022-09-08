@@ -54,7 +54,7 @@ parser.add_argument('--mparam_1', type=float, required=False)
 parser.add_argument('--mparam_2', type=float, required=False)    
 parser.add_argument('--adapt_param', type=float, required=False)    
 
-parser.add_argument('--history', type=float, required=False)    
+parser.add_argument('--history', type=int, required=False)    
 parser.add_argument('--delta', type=float, required=False)    
  
 args = parser.parse_args()    
