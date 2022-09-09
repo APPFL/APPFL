@@ -35,6 +35,7 @@ def client_training(
     ## Import libaries
     import os.path as osp
     from appfl.algorithm.client_optimizer import ClientOptim
+    from appfl.algorithm.funcx_client_optimizer import FuncxClientOptim
     from appfl.misc import client_log, get_dataloader
     from appfl.funcx.client_utils import get_dataset, load_global_state, send_client_state, get_model
    

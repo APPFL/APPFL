@@ -12,3 +12,4 @@ from .server_fed_async import *
 from .server_federated import *
 from .iceadmm import *
 from .iiadmm import *
+from .funcx_client_optimizer import *

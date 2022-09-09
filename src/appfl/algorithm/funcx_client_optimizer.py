@@ -40,7 +40,7 @@ class FuncxClientOptim(BaseClient):
         start_time=time.time()
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            cli_logger.start_timer("val_before_update_val_set", 0)
+            cli_logger.start_timer("val_before_update_val_set")
             test_loss, test_accuracy = super(FuncxClientOptim, self).client_validation(
                 self.test_dataloader
             )
@@ -49,7 +49,7 @@ class FuncxClientOptim(BaseClient):
                         "val_loss": test_loss, "val_acc": test_accuracy
                     }
                 )
-            cli_logger.stop_timer("val_before_update_val_set", t)
+            cli_logger.stop_timer("val_before_update_val_set")
             per_iter_time = time.time() - start_time
             super(FuncxClientOptim, self).client_log_content(
                 0, per_iter_time, 0, 0, test_loss, test_accuracy
@@ -113,19 +113,19 @@ class FuncxClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
 
-            if (t == self.num_local_epochs-1)  and self.test_dataloader != None:
-                cli_logger.start_timer("val_after_update_val_set", t)
-                test_loss, test_accuracy = super(
-                    FuncxClientOptim, self
-                ).client_validation(self.test_dataloader)
-                cli_logger.stop_timer("val_after_update_val_set", t)
+            # if (t == self.num_local_epochs-1)  and self.test_dataloader != None:
+            #     cli_logger.start_timer("val_after_update_val_set", t)
+            #     test_loss, test_accuracy = super(
+            #         FuncxClientOptim, self
+            #     ).client_validation(self.test_dataloader)
+            #     cli_logger.stop_timer("val_after_update_val_set", t)
                 
-                cli_logger.add_info(
-                        "val_after_update_val_set",{
-                            "val_loss": test_loss, "val_accuracy": test_accuracy
-                        }
-                    )
-                self.model.train()
+            #     cli_logger.add_info(
+            #             "val_after_update_val_set",{
+            #                 "val_loss": test_loss, "val_accuracy": test_accuracy
+            #             }
+            #         )
+            #     self.model.train()
 
         self.round += 1
 
