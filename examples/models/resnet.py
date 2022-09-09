@@ -16,3 +16,4 @@ def get_model():
             return x
     ## User-defined model
     return ResNet
+

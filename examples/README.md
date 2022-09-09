@@ -21,7 +21,8 @@ For files starting with `grpc_`, we use gRPC protocol for communication instead.
 
 All the examples require the same number of MPI processes.
 Below shows how to execute the MNIST example.
-For other examples, replace the file name with an appropriate example name.
+For Coronahack and FEMNIST check the dataset directory for preprocessing the data and replace the file name with an appropriate example name.
+
 
 ### MPI communication
 
@@ -43,6 +44,12 @@ Note that our gPRC implementation itself does not require any MPI communication.
 mpiexec -n 5 python grpc_mnist.py
 ```
 
+### Running Serial
+
+```bash
+python mnist_no_mpi.py
+```
+
 ## FEMNIST
 
 ### MPI communication
@@ -56,3 +63,4 @@ mpiexec -n 204 python femnist.py --server ServerFedAvg --num_epochs 6 --client_l
 ```bash
 mpiexec -n 204 python grpc_femnist.py
 ```
+

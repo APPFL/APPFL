@@ -10,11 +10,9 @@ from torchvision.transforms import ToTensor
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
-from models.utils import get_model
+from models.cnn import *
 
 import appfl.run_serial as rs
-import appfl.run_mpi as rm
-from mpi4py import MPI
 
 import argparse
 
@@ -29,7 +27,6 @@ parser.add_argument("--dataset", type=str, default="MNIST")
 parser.add_argument("--num_channel", type=int, default=1)
 parser.add_argument("--num_classes", type=int, default=10)
 parser.add_argument("--num_pixel", type=int, default=28)
-parser.add_argument("--model", type=str, default="CNN")
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
@@ -46,30 +43,21 @@ parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
 
+
 args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
  
 
-def get_data(comm: MPI.Comm):
+def get_data():
     dir = os.getcwd() + "/datasets/RawData"
 
-    comm_rank = comm.Get_rank()
-
     # Root download the data if not already available.
-    if comm_rank == 0:
-        # test data for a server
-        test_data_raw = eval("torchvision.datasets." + args.dataset)(
-            dir, download=True, train=False, transform=ToTensor()
-        )
-
-    comm.Barrier()
-    if comm_rank > 0:
-        # test data for a server
-        test_data_raw = eval("torchvision.datasets." + args.dataset)(
-            dir, download=False, train=False, transform=ToTensor()
-        )
+    # test data for a server
+    test_data_raw = eval("torchvision.datasets." + args.dataset)(
+        dir, download=True, train=False, transform=ToTensor()
+    )
 
     test_data_input = []
     test_data_label = []
@@ -105,13 +93,14 @@ def get_data(comm: MPI.Comm):
     return train_datasets, test_dataset
 
 
+def get_model():
+    ## User-defined model
+    model = CNN(args.num_channel, args.num_classes, args.num_pixel)
+    return model
+
 
 ## Run
 def main():
-
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
 
     """ Configuration """
     cfg = OmegaConf.structured(Config)
@@ -163,7 +152,7 @@ def main():
     start_time = time.time()
 
     """ User-defined model """
-    model = get_model(args)
+    model = get_model()
     loss_fn = torch.nn.CrossEntropyLoss()   
 
     ## loading models
@@ -174,7 +163,7 @@ def main():
         model = load_model(cfg)
 
     """ User-defined data """
-    train_datasets, test_dataset = get_data(comm)
+    train_datasets, test_dataset = get_data()
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:
@@ -194,28 +183,12 @@ def main():
         cfg.save_model_filename = "Model"
 
     """ Running """
-    if comm_size > 1:
-        if comm_rank == 0:
-            rm.run_server(
-                cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
-            )
-        else:
-            rm.run_client(
-                cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset
-            )
-        print("------DONE------", comm_rank)
-    else:
-        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+    rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
         
 
 
 if __name__ == "__main__":
     main()
 
-
-# To run CUDA-aware MPI:
-# mpiexec -np 2 --mca opal_cuda_support 1 python ./mnist.py
-# To run MPI:
-# mpiexec -np 2 python ./mnist.py
 # To run:
-# python ./mnist.py
+# python ./mnist_no_mpi.py
