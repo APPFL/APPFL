@@ -1,5 +1,6 @@
 import os
 import time
+from turtle import forward
 
 import numpy as np
 import torch
@@ -30,8 +31,8 @@ parser.add_argument("--num_pixel", type=int, default=28)
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
-parser.add_argument("--client_optimizer", type=str, default="Adam")
-parser.add_argument("--client_lr", type=float, default=1e-5)
+parser.add_argument("--client_optimizer", type=str, default="SGD")
+parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
@@ -59,8 +60,7 @@ class DenseNet121(nn.Module):
             self.densenet121 = torchvision.models.densenet121(pretrained = True)
             num_features = self.densenet121.classifier.in_features
             self.densenet121.classifier = nn.Sequential(
-                nn.Linear(num_features, num_output),
-                nn.Sigmoid()
+                nn.Linear(num_features, num_output)
             )
         def forward(self, x):
             x = self.densenet121(x)
@@ -140,22 +140,24 @@ def get_data():
 
     train_data_raw = ArgonneCXRCovidDatset(data_dir, data_transforms['train'], 'train')
 
-    split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)
-    train_datasets = []
-    for i in range(args.num_clients):
+    train_datasets = [train_data_raw]
+    
+    # split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)
+    
+    # for i in range(args.num_clients):
 
-        train_data_input = []
-        train_data_label = []
-        for idx in split_train_data_raw[i]:
-            train_data_input.append(train_data_raw[idx][0].tolist())
-            train_data_label.append(train_data_raw[idx][1])
+    #     train_data_input = []
+    #     train_data_label = []
+    #     for idx in split_train_data_raw[i]:
+    #         train_data_input.append(train_data_raw[idx][0].tolist())
+    #         train_data_label.append(train_data_raw[idx][1])
 
-        train_datasets.append(
-            Dataset(
-                torch.FloatTensor(train_data_input),
-                torch.tensor(train_data_label),
-            )
-        )
+    #     train_datasets.append(
+    #         Dataset(
+    #             torch.FloatTensor(train_data_input),
+    #             torch.tensor(train_data_label),
+    #         )
+    #     )
     return train_datasets, test_dataset
 
 
@@ -164,6 +166,8 @@ def get_model():
     model = DenseNet121(2)
     return model
 
+def appl_fix_loss(output, target):
+    return torch.nn.BCEWithLogitsLoss()(output, target.unsqueeze(-1))
 
 ## Run
 def main():
@@ -219,6 +223,7 @@ def main():
 
     """ User-defined model """
     model = get_model()
+    # loss_fn = appl_fix_loss
     loss_fn = torch.nn.CrossEntropyLoss()   
 
     ## loading models

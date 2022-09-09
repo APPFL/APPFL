@@ -31,7 +31,6 @@ class ClientOptim(BaseClient):
         """Inputs for the local model update"""
 
         self.model.to(self.cfg.device)
-
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
         """ Multiple local update """
@@ -68,7 +67,7 @@ class ClientOptim(BaseClient):
                         self.clip_value,
                         norm_type=self.clip_norm,
                     )
-
+            import ipdb; ipdb.set_trace()
             ## save model.state_dict()
             if self.cfg.save_model_state_dict == True:
                 path = self.cfg.output_dirname + "/client_%s" % (self.id)

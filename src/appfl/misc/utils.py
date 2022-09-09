@@ -13,7 +13,6 @@ def validation(self, dataloader):
 
     self.model.to(self.device)
     self.model.eval()
-
     loss = 0
     correct = 0
     tmpcnt = 0

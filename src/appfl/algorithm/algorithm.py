@@ -307,7 +307,6 @@ class BaseClient:
 
         loss = loss / tmpcnt
         accuracy = 100.0 * correct / tmptotal
-
         return loss, accuracy
 
     """ 
