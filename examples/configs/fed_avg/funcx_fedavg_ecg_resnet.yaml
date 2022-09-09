@@ -41,5 +41,5 @@ func:
     script_file: "./models/ecg_resnet34.py"
     call: "get_model"
 
-train_data_batch_size: 512
-test_data_batch_size: 512
+train_data_batch_size: 1024
+test_data_batch_size:  1024
