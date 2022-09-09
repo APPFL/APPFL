@@ -178,7 +178,7 @@ def get_dataloader(cfg, dataset, mode):
     if mode == 'train':
         ## Configure training at client
         batch_size = cfg.train_data_batch_size
-        shuffle    = cfg.test_data_shuffle
+        shuffle    = cfg.train_data_shuffle
     else:
         batch_size = cfg.test_data_batch_size
         shuffle    = cfg.test_data_shuffle

@@ -28,8 +28,8 @@ clients:
   #     script_file: "./datasets/covid19_argonne.py"
   #     call:   "get_data"
   #   data_pipeline: 
-  #     resize: 32
-  #     num_pixel: 32
+  #     resize: 224
+  #     num_pixel: 224
 
   # @Argonne: ALCF ThetaGPU clusters 
   # - name: thetagpu-1

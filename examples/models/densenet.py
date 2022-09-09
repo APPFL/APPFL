@@ -11,7 +11,6 @@ def get_model():
             num_features = self.densenet121.classifier.in_features
             self.densenet121.classifier = nn.Sequential(
                 nn.Linear(num_features, num_output),
-                # nn.Sigmoid()
             )
         def forward(self, x):
             x = self.densenet121(x)

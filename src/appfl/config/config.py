@@ -31,7 +31,7 @@ class Config:
     train_data_shuffle: bool = True
 
     # Indication of whether to validate or not using testing data
-    validation: bool = False
+    validation: bool = True
     test_data_batch_size: int = 64
     test_data_shuffle: bool = False
 
@@ -135,8 +135,8 @@ class FuncXConfig(Config):
     # Testing and validation params
     client_do_validation: bool = True
     client_do_testing   : bool = True
-    server_do_validation: bool = False
-    server_do_testing   : bool = False
+    server_do_validation: bool = True
+    server_do_testing   : bool = True
     
     # Testing and validation frequency
     client_validation_step: int = 1

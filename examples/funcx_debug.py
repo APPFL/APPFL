@@ -47,6 +47,9 @@ def main():
     load_funcx_device_config(cfg, args.client_config)
     load_funcx_config(cfg, args.config)
 
+    ## using funcx ClientOptimizer object
+    cfg.fed.clientname = "FuncxClientOptim"
+
     ## tensorboard
     cfg.use_tensorboard= args.use_tensorboard
     

@@ -11,7 +11,7 @@ algorithm:
     optim: "Adam"
     num_local_epochs: 1
     optim_args: 
-        lr: 0.001
+        lr: 0.0001
     ## Differential Privacy
     epsilon: False
     ##  epsilon: 1      (stronger privacy as the value decreases)
@@ -24,12 +24,11 @@ algorithm:
     clip_norm: 1
 
 model:
-  num_pixel: 224
-  num_classes: 2
-  num_channel: 3
+  num_output: 2
+
 training:
   num_epochs: 20
-  save_model_filename: "Covid_DenseNet"
+  save_model_filename: "Covid_Resnet"
   save_model_dirname: "./save_models"
 
 dataset:
@@ -37,5 +36,5 @@ dataset:
 
 func:
   get_model:
-    script_file: "./models/funcx_cnn.py"
+    script_file: "./models/resnet.py"
     call: "get_model"

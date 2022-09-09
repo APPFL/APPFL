@@ -74,10 +74,10 @@ class APPFLFuncXServer(abc.ABC):
         """ Server test-set data loader"""
         if self.cfg.server_do_validation: 
             val_loader = get_dataloader(self.cfg, validation_dataset, mode='val')
-            val_size   = len(val_loader) if val_loader is not None else 0
+            val_size   = len(validation_dataset) if val_loader is not None else 0
         if self.cfg.server_do_testing:
             test_loader= get_dataloader(self.cfg, testing_dataset,    mode='test')
-            test_size  = len(test_loader)if val_loader is not None else 0
+            test_size  = len(testing_dataset)if test_loader is not None else 0
         if val_loader is None:
             self.cfg.server_do_validation = False
             self.logger.warning("Validation dataset at server is empty")

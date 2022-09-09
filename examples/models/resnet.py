@@ -7,12 +7,12 @@ def get_model():
         """
         def __init__(self, num_output):
             super(ResNet, self).__init__()
-            self.ResNet50 = torchvision.models.resnet50(pretrained=False)
-            self.ResNet50.fc = nn.Sequential(
-            nn.Linear(2048, num_output)
+            self.ResNet18 = torchvision.models.resnet18(pretrained=False)
+            self.ResNet18.fc = nn.Sequential(
+            nn.Linear(512, num_output)
         )
         def forward(self, x):
-            x = self.ResNet50(x)
+            x = self.ResNet18(x)
             return x
     ## User-defined model
     return ResNet

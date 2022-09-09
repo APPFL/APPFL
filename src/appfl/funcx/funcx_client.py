@@ -80,7 +80,6 @@ def client_training(
 
     ## Initial state for a client
     cli_logger.start_timer("load_global_state_to_device")
-    client.model.to(cfg.clients[client_idx].device)
     client.model.load_state_dict(global_state)
     cli_logger.stop_timer("load_global_state_to_device")
 
@@ -105,6 +104,7 @@ def client_testing(
     loss_fn
     ):
     from appfl.misc.logging import ClientLogger
+    from appfl.algorithm.funcx_client_optimizer import FuncxClientOptim
     ## Prepare logger
     cli_logger = ClientLogger()
     cli_logger.mark_event("start_endpoint_execution")

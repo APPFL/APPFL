@@ -70,7 +70,6 @@ class FuncxClientOptim(BaseClient):
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
-                print(loss)
                 loss.backward()
                 optimizer.step()
                 
@@ -90,18 +89,18 @@ class FuncxClientOptim(BaseClient):
             cli_logger.stop_timer("train_one_epoch", t)
 
             ## Validation
-            train_loss = train_loss / len(self.dataloader)
-            train_accuracy = 100.0 * train_correct / tmptotal
-            if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, test_accuracy = super(FuncxClientOptim, self).client_validation(
-                    self.test_dataloader
-                )
-                per_iter_time = time.time() - start_time
-                super(FuncxClientOptim, self).client_log_content(
-                    t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
-                )
-                ## return to train mode
-                self.model.train()
+            # train_loss = train_loss / len(self.dataloader)
+            # train_accuracy = 100.0 * train_correct / tmptotal
+            # if self.cfg.validation == True and self.test_dataloader != None:
+            #     test_loss, test_accuracy = super(FuncxClientOptim, self).client_validation(
+            #         self.test_dataloader
+            #     )
+            #     per_iter_time = time.time() - start_time
+            #     super(FuncxClientOptim, self).client_log_content(
+            #         t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
+            #     )
+            #     ## return to train mode
+            #     self.model.train()
 
             ## save model.state_dict()
             if self.cfg.save_model_state_dict == True:
@@ -118,6 +117,7 @@ class FuncxClientOptim(BaseClient):
             #     test_loss, test_accuracy = super(
             #         FuncxClientOptim, self
             #     ).client_validation(self.test_dataloader)
+            #     print(test_loss, test_accuracy)
             #     cli_logger.stop_timer("val_after_update_val_set", t)
                 
             #     cli_logger.add_info(
