@@ -127,6 +127,7 @@ class FuncXConfig(Config):
     get_model    : ExecutableFunc = field(default_factory=ExecutableFunc)
     clients      : List[FuncXClientConfig] = field(default_factory=list)
     dataset      : str  = ""
+    loss         : str  = "CrossEntropy"
     model_args   : List = field(default_factory=list)
     model_kwargs : Dict = field(default_factory=dict)
     server       : FuncXServerConfig

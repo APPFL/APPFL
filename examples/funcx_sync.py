@@ -63,7 +63,7 @@ def main():
     """ User-defined model """
     ModelClass     = get_executable_func(cfg.get_model)()
     model          = ModelClass(*cfg.model_args, **cfg.model_kwargs) 
-    loss_fn        = torch.nn.CrossEntropyLoss()  
+    loss_fn        = get_loss_func(cfg.loss)
 
     """ User-defined data """
     ## save a copy of config to logfile

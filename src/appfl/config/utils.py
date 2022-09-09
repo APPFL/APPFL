@@ -29,6 +29,13 @@ def load_funcx_config(cfg: FuncXConfig,
     ## Load module configs for get_model and get_dataset method
     if 'get_data' in data['func']:
         cfg.get_data = load_exct_func_cfg(data['func']['get_data'])
+    
+    if 'loss' in data:
+        cfg.loss = data['loss']
+    if 'train_data_batch_size' in data:
+        cfg.train_data_batch_size = data['train_data_batch_size']
+    if 'test_data_batch_size' in data:
+        cfg.test_data_batch_size = data['test_data_batch_size']
     cfg.get_model= load_exct_func_cfg(data['func']['get_model'])
     
     ## Load FL algorithm configs
