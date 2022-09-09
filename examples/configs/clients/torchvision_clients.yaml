@@ -6,23 +6,33 @@ server:
   
 clients:
   ## CSL@UIUC clusters
-  - name: uiuc-cig-01-gpu-01
-    endpoint_id: 32737688-2eef-4595-a004-3d67992f20a1
+  - name: uiuc-cig-02-gpu-00
+    endpoint_id: 4420b006-c767-4ee3-a72a-d0212a657387
     device:  cuda:0 
     data_split: 0
     data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/clients-data"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-cig-01-gpu-01"
+    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL/examples/log_funcx_appfl/uiuc-cig-02-gpu-00"
     get_data:
       script_file: "./datasets/torchvision_datasets.py"
       call: get_data
+      
+  # - name: uiuc-cig-01-gpu-01
+  #   endpoint_id: 32737688-2eef-4595-a004-3d67992f20a1
+  #   device:  cuda:0 
+  #   data_split: 0
+  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/clients-data"
+  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-cig-01-gpu-01"
+  #   get_data:
+  #     script_file: "./datasets/torchvision_datasets.py"
+  #     call: get_data
 
-  - name: uiuc-cig-01-gpu-02
-    endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
-    device:  cuda:1 
-    data_split: 1
-    data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/clients-data"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-cig-01-gpu-02"
-    get_data:
-      script_file: "./datasets/torchvision_datasets.py"
-      call: get_data
+  # - name: uiuc-cig-01-gpu-02
+  #   endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
+  #   device:  cuda:1 
+  #   data_split: 1
+  #   data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/clients-data"
+  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-cig-01-gpu-02"
+  #   get_data:
+  #     script_file: "./datasets/torchvision_datasets.py"
+  #     call: get_data
   

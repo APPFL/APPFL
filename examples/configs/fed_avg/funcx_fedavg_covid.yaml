@@ -23,10 +23,8 @@ algorithm:
     clip_value: False
     clip_norm: 1
 
-# model:
-#   num_output: 2
 model:
-  num_pixel: 32
+  num_pixel: 224
   num_classes: 2
   num_channel: 3
 training:
