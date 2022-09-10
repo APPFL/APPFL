@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import json
 import time
+import torch
 TIME_STR = "%m%d%y_%H%M%S"
 class EvalLogger:
     def __init__(self, cfg: DictConfig) -> None:
@@ -207,6 +208,11 @@ class mLogging:
         logger.info(c)
         logger.info(b)
 
+    @classmethod
+    def save_checkpoint(cls, step, state_dict):
+        lgg = cls.__logger
+        file= os.path.join(lgg.dir, "checkpoint_%d.pt" % step)
+        torch.save(state_dict, file)
 
 class ClientLogger:
     def __init__(self) -> None:

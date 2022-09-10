@@ -39,7 +39,7 @@ def main():
     cfg.reproduce = True
     cfg.save_model_state_dict = True
     cfg.save_model = True
-    cfg.checkpoints_interval = 2
+    cfg.checkpoints_interval = 1
     if cfg.reproduce == True:
         set_seed(1)
 

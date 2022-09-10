@@ -171,7 +171,8 @@ class APPFLFuncXServer(abc.ABC):
         """ Saving model"""
         if (step + 1) % self.cfg.checkpoints_interval == 0 or step + 1 == self.cfg.num_epochs:
             if self.cfg.save_model == True:
-                save_model_iteration(step + 1, self.server.model.state_dict(), self.cfg)
+                mLogging.save_checkpoint(step + 1, self.server.model.state_dict())
+                # save_model_iteration(step + 1, self.server.model.state_dict(), self.cfg)
 
     @abc.abstractmethod
     def _do_training(self):

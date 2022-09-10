@@ -45,7 +45,8 @@ def load_funcx_config(cfg: FuncXConfig,
     cfg.fed.args = OmegaConf.create(data['algorithm']['args'])
     ## Load training configs
     cfg.num_epochs         = data['training']['num_epochs']
-    cfg.save_model_dirname = data['training']['save_model_dirname']
+    if 'save_model_dirname' in data['training']:
+        cfg.save_model_dirname = data['training']['save_model_dirname']
     cfg.save_model_filename= data['training']['save_model_filename']
     ## Load model configs
     cfg.model_kwargs       = data['model']

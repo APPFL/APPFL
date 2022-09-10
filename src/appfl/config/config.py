@@ -59,7 +59,7 @@ class Config:
     save_model: bool = False
     save_model_dirname: str = ""
     save_model_filename: str = ""
-    checkpoints_interval: int = 2
+    checkpoints_interval: int = 1
 
     # Saving state_dict (clients)
     save_model_state_dict: bool = False

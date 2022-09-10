@@ -21,7 +21,7 @@ def get_data(
             self.annot_file = osp.join(self.datadir, "%s.txt" % mode)
             self.data_list  = [] 
             self.labels     = []
-            skip=1
+            skip=20
             with open(self.annot_file, "r") as fi:
                 rd = csv.reader(fi, delimiter=' ')
                 for i, row in enumerate(rd):

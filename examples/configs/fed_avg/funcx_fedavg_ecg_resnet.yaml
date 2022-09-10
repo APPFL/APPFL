@@ -9,7 +9,7 @@ algorithm:
     # server_momentum_param_2: 0.99
     ## Clients optimizer
     optim: "Adam"
-    num_local_epochs: 1
+    num_local_epochs: 2
     optim_args: 
         lr: 0.0004
     ## Differential Privacy
@@ -29,7 +29,7 @@ model:
   num_classes: 1
 
 training:
-  num_epochs: 20
+  num_epochs: 10
   save_model_filename: "ECG_Resnet"
   save_model_dirname: "./save_models"
 
@@ -41,5 +41,5 @@ func:
     script_file: "./models/ecg_resnet34.py"
     call: "get_model"
 
-train_data_batch_size: 1024
-test_data_batch_size:  1024
+train_data_batch_size: 64
+test_data_batch_size:  64

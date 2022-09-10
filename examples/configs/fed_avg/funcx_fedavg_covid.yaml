@@ -9,7 +9,7 @@ algorithm:
     # server_momentum_param_2: 0.99
     ## Clients optimizer
     optim: "Adam"
-    num_local_epochs: 1
+    num_local_epochs: 2
     optim_args: 
         lr: 0.0004
     ## Differential Privacy
@@ -27,9 +27,8 @@ model:
   num_output: 2
 
 training:
-  num_epochs: 20
+  num_epochs: 10
   save_model_filename: "Covid_Resnet"
-  save_model_dirname: "./save_models"
 
 dataset:
   name: CovidDataset
