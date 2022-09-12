@@ -34,7 +34,7 @@ class ServerFedSDLBFGS(FedServer):
         super(ServerFedSDLBFGS, self).update_m_vector()
 
         # Initial step, necessary so we can get g_{k - 1}
-        if self.k == 0:
+        if self.k == 0:        
             self.make_sgd_step()
         else:
             self.make_lbfgs_step()
@@ -44,10 +44,47 @@ class ServerFedSDLBFGS(FedServer):
 
 
     def make_sgd_step(self):
+        
         for name, _ in self.model.named_parameters():
             self.step[name] = -self.pseudo_grad[name]
             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
             self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
+
+    # def make_sgd_step(self):
+        
+    #     if self.k == 0:
+    #         for name, _ in self.model.named_parameters():
+    #             self.step[name] = -self.pseudo_grad[name]
+    #             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
+    #             self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
+    #     else:
+    #         self.s_vectors.append(OrderedDict())
+    #         self.ybar_vectors.append(OrderedDict())
+    #         self.rho_values.append(OrderedDict())
+
+    #         for name, _ in self.model.named_parameters():
+
+    #             shape = self.model.state_dict()[name].shape
+
+    #             # Create newest s vector
+    #             s_vector = self.model.state_dict()[name].reshape(-1) - self.prev_params[name]
+    #             self.s_vectors[-1][name] = s_vector
+
+    #             # Create newest ybar vector
+    #             y_vector = self.pseudo_grad[name].reshape(-1) - self.prev_grad[name]
+    #             gamma = self.compute_gamma(y_vector, s_vector)
+    #             ybar_vector = self.compute_ybar_vector(y_vector, s_vector, gamma)
+    #             self.ybar_vectors[-1][name] = ybar_vector
+
+    #             # Create newest rho
+    #             rho = 1.0 / (s_vector.dot(ybar_vector))
+    #             self.rho_values[-1][name] = rho
+
+                 
+    #             self.step[name] = -self.pseudo_grad[name]
+    #             self.prev_params[name] = copy.deepcopy(self.model.state_dict()[name].reshape(-1))
+    #             self.prev_grad[name] = copy.deepcopy(self.pseudo_grad[name].reshape(-1))
+
 
 
     def make_lbfgs_step(self):
