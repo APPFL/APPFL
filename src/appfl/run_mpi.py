@@ -252,13 +252,6 @@ def run_client(
         for _, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
 
-    ## name of parameters
-    model_name = []
-    for client in clients:
-        for name, _ in client.model.named_parameters():
-            model_name.append(name)
-        break
-
     do_continue = comm.bcast(None, root=0)
 
     local_states = OrderedDict()
@@ -270,10 +263,7 @@ def run_client(
         """ Update "local_states" based on "global_state" """
         for client in clients:
             cid = client.id
-            ## initial point for a client model
-            for name in client.model.state_dict():
-                if name not in model_name:
-                    global_state[name] = client.model.state_dict()[name]
+            ## initial point for a client model            
             client.model.load_state_dict(global_state)
 
             ## client update
