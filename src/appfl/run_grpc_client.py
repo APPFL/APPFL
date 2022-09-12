@@ -127,11 +127,6 @@ def run_client(
         **cfg.fed.args,
     )
 
-    ## name of parameters
-    model_name = []
-    for name, _ in fed_client.model.named_parameters():
-        model_name.append(name)
-
     # Start federated learning.
     cur_round_number, job_todo = comm.get_job(Job.INIT)
     prev_round_number = 0
