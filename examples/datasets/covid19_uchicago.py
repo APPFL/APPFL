@@ -52,9 +52,9 @@ def get_data(
             transforms.CenterCrop(num_pixel),
             #transforms.RandomResizedCrop(args.num_pixel),            
             transforms.ToTensor(),
-            #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
             #norm values when num_pixel=32
-            transforms.Normalize([trmean, trmean, trmean], [trsd, trsd, trsd])
+            # transforms.Normalize([trmean, trmean, trmean], [trsd, trsd, trsd])
         ]
     )
     test_transform = transforms.Compose(
@@ -62,9 +62,9 @@ def get_data(
             transforms.Resize(num_pixel),
             transforms.CenterCrop(num_pixel),
             transforms.ToTensor(),
-            #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
             #norm values when num_pixel=32
-            transforms.Normalize([temean, temean, temean], [tesd, tesd, tesd])
+            # transforms.Normalize([temean, temean, temean], [tesd, tesd, tesd])
         ]
     )
     ## Dataset

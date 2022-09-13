@@ -6,12 +6,12 @@ server:
   
 clients:
   # @UIUC: Argonne Covid dataset 
-  - name: uiuc-cig-01-gpu-02
-    endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
-    device:  cuda:1 
+  - name: uiuc-cig-02-gpu-00
+    endpoint_id: 4420b006-c767-4ee3-a72a-d0212a657387
+    device:  cuda:0 
     data_split: 0
     data_dir  : "/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/"
-    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/examples/log_funcx_appfl/uiuc-cig-01-gpu-02"
+    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL/examples/log_funcx_appfl/uiuc-cig-02-gpu-00"
     get_data:
       script_file: "./datasets/covid19_argonne.py"
       call:   "get_data"
