@@ -50,6 +50,7 @@ class ClientOptim(BaseClient):
             self.model.train()        
 
         ## local training 
+        max_norm=0.0
         for t in range(self.num_local_epochs):
             start_time=time.time()
             train_loss = 0
@@ -63,8 +64,27 @@ class ClientOptim(BaseClient):
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
                 loss.backward()
+ 
+                ## norm of gradient    
+                inf_norm = 0.0            
+                for name, param in self.model.named_parameters():
+                    if torch.norm(param.grad, float('inf')) > inf_norm:
+                        inf_norm = torch.norm(param.grad, float('inf'))
+
+                if inf_norm > max_norm:
+                    max_norm = inf_norm
+ 
+                # threshold = 1
+                # for p in self.model.parameters():
+                #     if p.grad.norm() > threshold:
+                #         # print(p.grad.norm())
+                #         torch.nn.utils.clip_grad_norm_(p, threshold)
+                #         # print(p.grad.norm())
+
                 optimizer.step()
+
                 
+                 
                 train_loss += loss.item()
                 if output.shape[1] == 1:
                     pred = torch.round(output)
@@ -72,6 +92,7 @@ class ClientOptim(BaseClient):
                     pred = output.argmax(dim=1, keepdim=True)
                 train_correct += pred.eq(target.view_as(pred)).sum().item()
 
+                
                 if self.clip_value != False:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
@@ -102,7 +123,7 @@ class ClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
 
-
+        print("max_norm=",max_norm)
 
 
  
