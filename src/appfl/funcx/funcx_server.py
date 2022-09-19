@@ -52,7 +52,7 @@ class APPFLFuncXServer(abc.ABC):
 
     def _set_client_weights(self, mode = "samples_size"):
         assert self.data_info_at_client is not None, "Please call the validate clients' data first"
-        if mode == "samples_size":
+        if mode == "sample_size":
             total_num_data = 0
             for k in range(self.cfg.num_clients):
                 total_num_data += self.data_info_at_client[k]['train']
@@ -184,7 +184,7 @@ class APPFLFuncXServer(abc.ABC):
         # Validate data at clients
         self._validate_clients_data()
         # Calculate weight
-        self._set_client_weights()
+        self._set_client_weights(mode=self.cfg.fed.args.client_weights)
         # Initialze model at server
         self._initialize_server_model()
         # Do training
