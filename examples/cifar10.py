@@ -43,7 +43,8 @@ parser.add_argument('--test_data_batch_size', type=int, default=64)
 parser.add_argument('--num_clients', type=int, default=1)    
 parser.add_argument('--client_optimizer', type=str, default="Adam")    
 parser.add_argument('--client_lr', type=float, default=1e-3)    
-parser.add_argument('--num_local_epochs', type=int, default=20)    
+parser.add_argument('--num_local_epochs', type=int, default=1)    
+parser.add_argument("--batch_training",type=int, default=0)
 
 ## server
 parser.add_argument('--server', type=str, default="ServerFedAvg")    
@@ -125,13 +126,14 @@ def main():
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size() 
 
-    ## Reproducibility
-    set_seed(1)
-
     """ Configuration """     
     cfg = OmegaConf.structured(Config) 
 
     cfg.device = args.device
+    cfg.reproduce = True
+    if cfg.reproduce == True:
+        set_seed(1)
+
     cfg.save_model_state_dict = args.save_model_state_dict
 
     ## dataset
@@ -144,6 +146,7 @@ def main():
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
+    cfg.batch_training = args.batch_training 
     
     ## server
     cfg.fed.servername = args.server
