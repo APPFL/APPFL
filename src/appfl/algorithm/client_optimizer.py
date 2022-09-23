@@ -4,7 +4,7 @@ from collections import OrderedDict
 from .algorithm import BaseClient
 
 import torch
-from torch.optim import *
+from torch.optim import * 
 
 from torch.utils.data import DataLoader
 import copy
@@ -33,6 +33,11 @@ class ClientOptim(BaseClient):
         self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        
+        # optimizer = LBFGS(self.model.parameters(), history_size=10, max_iter=4)
+
+        # optimizer = LBFGS(self.model.parameters())
+
  
 
         """ Multiple local update """
@@ -60,19 +65,33 @@ class ClientOptim(BaseClient):
                 tmptotal += len(target)
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
+
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
                 loss.backward()
+                optimizer.step()      
  
-                ## norm of gradient    
-                inf_norm = 0.0            
-                for name, param in self.model.named_parameters():
-                    if torch.norm(param.grad, float('inf')) > inf_norm:
-                        inf_norm = torch.norm(param.grad, float('inf'))
+                # ## L-BFGS Trials
+                # def closure():
+                #     logits=self.model(data)
+                #     optimizer.zero_grad()
+                #     loss=self.loss_fn(logits,target)
+                #     loss.backward(retain_graph=True)
+                #     return loss
+                # loss = optimizer.step(closure)                    
+                # output=self.model(data)
+                # pred = output.argmax(dim=1, keepdim=True)
 
-                if inf_norm > max_norm:
-                    max_norm = inf_norm
+                 
+                # ## norm of gradient    
+                # inf_norm = 0.0            
+                # for name, param in self.model.named_parameters():
+                #     if torch.norm(param.grad, float('inf')) > inf_norm:
+                #         inf_norm = torch.norm(param.grad, float('inf'))
+
+                # if inf_norm > max_norm:
+                #     max_norm = inf_norm
  
                 # threshold = 1
                 # for p in self.model.parameters():
@@ -80,12 +99,8 @@ class ClientOptim(BaseClient):
                 #         # print(p.grad.norm())
                 #         torch.nn.utils.clip_grad_norm_(p, threshold)
                 #         # print(p.grad.norm())
-
-                optimizer.step()
-
-                
-                 
-                train_loss += loss.item()
+ 
+                train_loss += loss.item()                
                 if output.shape[1] == 1:
                     pred = torch.round(output)
                 else:
@@ -123,9 +138,7 @@ class ClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
 
-        print("max_norm=",max_norm)
-
-
+        # print("max_norm=",max_norm)
  
         self.round += 1
 
