@@ -57,4 +57,15 @@
     +--------------------+--------------+--------------------------------------+
    ```
 
-   Then, please provide the endpoint information to the federated learning server's  owner.
+## Training with your client
+   1. Update your client's information under a client config file. Example config files can be found under `configs/clients`.
+   2. Update your experiment settings under an experiment config file. Example config files of the `fed_avg` algorithm can be found under `configs/fed_avg`.
+   3. Start the APPFL-FuncX federated learning server:
+   ```
+      python funcx_sync.py \
+         --client_config <CLIENT_CONFIG_FILE> \
+         --config <EXPERIMENT_CONFIG_FILE>
+   ```
+
+## Sharing your client's information
+   If you want to join another federated learning experiment, please provide the endpoint information to the federated learning server's owner. Please also make sure that all members need to be under the same Globus Group.
