@@ -26,6 +26,8 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
             ## Get current global state
             global_state = self.server.model.state_dict()
             local_update_start = time.time()
+            ## Perform LR decay
+            self._lr_step(t)
             ## Boardcast global state and start training at funcX endpoints and aggregate local updates from clients
             local_states, client_logs = self._run_sync_task(
                 client_training,

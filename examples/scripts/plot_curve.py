@@ -29,28 +29,29 @@ def main(args):
     
     f, axs = plt.subplots(1, 2, figsize=(18,7))
     f.suptitle(osp.basename(osp.dirname(args.logfile)), fontsize=15)
+    skip = 1
     for client_name in val_clients_arr:
         axs[0].plot(
-            val_clients_arr[client_name]['step'],
-            val_clients_arr[client_name]['val_acc'],
+            val_clients_arr[client_name]['step'][skip:],
+            val_clients_arr[client_name]['val_acc'][skip:],
             label = client_name
         )
     axs[0].set_xlabel("Global step")
     axs[0].set_ylabel("Val Accuracy")
     axs[0].legend(loc="upper right")
-    axs[0].set_xticks(val_clients_arr[client_name]['step'])
-    axs[0].set_xticklabels(val_clients_arr[client_name]['step'])
+    axs[0].set_xticks(val_clients_arr[client_name]['step'][skip:])
+    axs[0].set_xticklabels(val_clients_arr[client_name]['step'][skip:])
     for client_name in val_clients_arr:
         axs[1].plot(
-            val_clients_arr[client_name]['step'],
-            val_clients_arr[client_name]['val_loss'],
+            val_clients_arr[client_name]['step'][skip:],
+            val_clients_arr[client_name]['val_loss'][skip:],
             label = client_name
         )
     axs[1].set_xlabel("Global step")
     axs[1].set_ylabel("Val Loss")
     axs[1].legend(loc="upper right")
-    axs[1].set_xticks(val_clients_arr[client_name]['step'])
-    axs[1].set_xticklabels(val_clients_arr[client_name]['step'])
+    axs[1].set_xticks(val_clients_arr[client_name]['step'][skip:])
+    axs[1].set_xticklabels(val_clients_arr[client_name]['step'][skip:])
     axs[0].grid()
     axs[1].grid()
     

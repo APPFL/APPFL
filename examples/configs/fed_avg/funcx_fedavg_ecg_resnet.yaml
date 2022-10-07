@@ -20,6 +20,8 @@ algorithm:
     ## clip_value: False (no-clipping)
     ## clip_value: 10    (clipping)
     ## clip_value: 1
+    client_weights: "equal"
+    server_lr_decay_exp_gamma : 0.975
     clip_value: False
     clip_norm: 1
 
@@ -29,7 +31,7 @@ model:
   num_classes: 1
 
 training:
-  num_epochs: 10
+  num_epochs: 30
   save_model_filename: "ECG_Resnet"
   save_model_dirname: "./save_models"
 

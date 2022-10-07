@@ -17,16 +17,3 @@ clients:
       meta_path : "/mnt/data0-nfs/hthieu/anl/palisades/data/freeze/BROAD_ml4h_klarqvist___physionet__meta_data__graded_splits__72a414d507ba485db4bc5da0e97ecf2b.pq"
       h5py_path : "/mnt/data0-nfs/hthieu/anl/palisades/data/freeze/BROAD_ml4h_klarqvist___physionet__waveforms__596f28a0e7254e3da30c369769f7312e__combined.h5"
   
-  # - name: uiuc-cig-02-gpu-00
-  #   endpoint_id: 4420b006-c767-4ee3-a72a-d0212a657387
-  #   device:  cuda:0 
-  #   data_split: 0
-  #   output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL/examples/log_funcx_appfl/uiuc-cig-02-gpu-00"
-  #   get_data:
-  #     script_file: "./datasets/ecg_anl.py"
-  #     call:   "get_data"
-  #   data_pipeline: 
-  #     resize: 224
-  #     num_pixel: 224
-  #     meta_path : "/mnt/data0-nfs/hthieu/anl/palisades/data/freeze/BROAD_ml4h_klarqvist___physionet__meta_data__graded_splits__72a414d507ba485db4bc5da0e97ecf2b.pq"
-  #     h5py_path : "/mnt/data0-nfs/hthieu/anl/palisades/data/freeze/BROAD_ml4h_klarqvist___physionet__waveforms__596f28a0e7254e3da30c369769f7312e__combined.h5"

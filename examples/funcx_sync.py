@@ -77,7 +77,7 @@ def main():
     server_val_dataset  = None
     """ APPFL with funcX """
     ## create funcX client object
-    fxc = FuncXClient()
+    fxc = FuncXClient(force_login=True)
     ## run funcX server
     funcx_server.run_server(cfg, model, loss_fn, fxc, server_test_dataset, server_val_dataset)
 

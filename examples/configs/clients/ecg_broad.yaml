@@ -1,0 +1,18 @@
+server:
+  device: cuda:0
+  data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
+  output_dir: "./log_funcx_appfl/server"
+  s3_bucket: anl-appfl
+  
+clients:
+  - name: broad-ecg
+    endpoint_id: 1fa9a62a-e6cf-4329-9faf-bcda2dd158f5
+    device:  cuda:0
+    data_split: 0
+    output_dir: "/home/mklarqvi/palisades_output"
+    get_data:
+      script_file: "./datasets/ecg_broad.py"
+      call:   "get_data"
+    data_pipeline:
+      meta_path : "/home/mklarqvi/palisades/data/freeze/ecg_ages_meta__qc.pq"
+      h5py_path : "/home/mklarqvi/palisades/data/freeze/BROAD_ml4h_mdrk__ukb_resting_ecgs__processed__bddc862456eb4a65a28618789342f945__combined.h5"

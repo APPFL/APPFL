@@ -177,6 +177,12 @@ class APPFLFuncXServer(abc.ABC):
     @abc.abstractmethod
     def _do_training(self):
         pass 
+    
+    def _lr_step(self, step):
+        if step == 0:
+            return
+        self.trn_endps.cfg.fed.args.optim_args.lr *=  self.cfg.fed.args.server_lr_decay_exp_gamma
+        self.logger.info("Learing rate at step %d %.06f is set to " % (step + 1, self.trn_endps.cfg.fed.args.optim_args.lr))
 
     def run(self, model: nn.Module, loss_fn: nn.Module):
         # Set model, and loss function
