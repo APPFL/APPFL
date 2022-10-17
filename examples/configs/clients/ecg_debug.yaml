@@ -11,7 +11,7 @@ clients:
     data_split: 0
     output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL/examples/log_funcx_appfl/uiuc-cig-02-gpu-00"
     get_data:
-      script_file: "./datasets/ecg_anl.py"
+      script_file: "./datasets/ecg_broad.py"
       call:   "get_data"
     data_pipeline:
       meta_path : "/mnt/data0-nfs/hthieu/anl/palisades/data/freeze/BROAD_ml4h_klarqvist___physionet__meta_data__graded_splits__72a414d507ba485db4bc5da0e97ecf2b.pq"

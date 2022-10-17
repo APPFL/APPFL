@@ -1,0 +1,16 @@
+server:
+  device: cuda:0
+  data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
+  output_dir: "./log_funcx_appfl/server"
+  s3_bucket: anl-appfl
+  
+clients:
+  - name: broad-ecg
+    endpoint_id: 1fa9a62a-e6cf-4329-9faf-bcda2dd158f5
+    device:  cuda:0
+    data_split: 0
+    output_dir: "/home/mklarqvi/palisades_output"
+    data_dir:   "/home/mklarqvi/palisades_output"
+    get_data:
+      script_file: "./datasets/torchvision_datasets.py"
+      call:   "get_data"

@@ -10,6 +10,7 @@ def get_data(
     import blosc
     import h5py
     import numpy as np
+    import torch
 
     class EcgDataset(Dataset):
         def __init__(self, hdf5_path, keys, labels, transform=None, target_transform=None):
@@ -40,7 +41,7 @@ def get_data(
                 ecg = self.transform(ecg)
             if self.target_transform:
                 label = self.target_transform(label)
-            return ecg, label
+            return torch.tensor(ecg, dtype=torch.float), torch.tensor(label.astype(np.float), dtype=torch.float)
 
         def _uncompress_data(self, key, stored_dtype = np.int16):
             handle = self.hdf5[key]
@@ -75,5 +76,5 @@ def get_data(
     elif mode == "val":
         dataset = EcgDataset(h5py_path, X_validation.values, meta_data.loc[X_validation].ecg_age_years)
     else:
-        dataset = EcgDataset(h5py_path, h5py_path, X_test.values, meta_data.loc[X_test].ecg_age_years)
+        dataset = EcgDataset(h5py_path, X_test.values, meta_data.loc[X_test].ecg_age_years)
     return dataset

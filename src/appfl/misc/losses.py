@@ -1,7 +1,7 @@
 import torch
 
 def mse_loss(pred, y):
-    return torch.nn.MSELoss()(pred, y.unsqueeze(-1))
+    return torch.nn.MSELoss()(pred.float(), y.float().unsqueeze(-1))
 
 def get_loss_func(loss_name = "CrossEntropy"):
     if loss_name == "CrossEntropy":

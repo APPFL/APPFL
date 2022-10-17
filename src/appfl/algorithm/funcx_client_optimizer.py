@@ -63,7 +63,7 @@ class FuncxClientOptim(BaseClient):
             train_loss = 0
             train_correct = 0            
             tmptotal = 0
-            for data, target in self.dataloader:                
+            for data, target in self.dataloader:             
                 tmptotal += len(target)
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
