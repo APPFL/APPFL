@@ -43,12 +43,14 @@ class Federated:
             "server_momentum_param_2": 0.99,
 
             ## SD L-BFGS specific configurations
-            "history": 10,
+            "history_size": 10,
             "delta": 1.0,
-            "clip_thresh": 1.0,
+            "lr_decay": True,
+            "weight_decay": 0.0,
+            "tolerance_grad": 1e-5,
+            "tolerance_change": 1e-9,
 
             ## Shampoo specific configurations
-            "weight_decay": 0.0,
             "second_order_epsilon": 1.0,
             "update_freq": 1,
 
