@@ -19,6 +19,19 @@ def get_data(
             self.hdf5_path = hdf5_path
             self.transform = transform
             self.target_transform = target_transform
+            self.normalize_df = np.array(
+                [[-813.318497,813.318497,1626.636994],
+                [-927.557905,927.557905,1855.115811],
+                [-616.430969,616.430969,1232.861938],
+                [-779.541208,779.541208,1559.082417],
+                [-598.479875,598.479875,1196.959749],
+                [-703.899302,703.899302,1407.798603],
+                [-1011.058909,1011.058909,2022.117818],
+                [-1519.952699,1519.952699,3039.905399],
+                [-1354.500198,1354.500198,2709.000397],
+                [-1705.832194,1705.832194,3411.664388],
+                [-1745.244320,1745.244320,3490.488641],
+                [-1486.945966,1486.945966,2973.891932]])
 
         def __len__(self):
             return len(self.keys)
@@ -40,6 +53,9 @@ def get_data(
                 ecg = self.transform(ecg)
             if self.target_transform:
                 label = self.target_transform(label)
+            if self.normalize_df is not None:
+                # Assumed min,max,range as columns in pd.DataFrame
+                ecg = np.stack([ 2 * ( (ecg[i] - self.normalize_df[i,0]) / (self.normalize_df[i,2]) ) - 1 for i in range(ecg.shape[0]) ])
             return ecg, label
 
         def _uncompress_data(self, key, stored_dtype = np.int16):

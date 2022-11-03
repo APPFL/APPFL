@@ -12,14 +12,28 @@ def get_data(
     import numpy as np
     import torch
 
+    
     class EcgDataset(Dataset):
-        def __init__(self, hdf5_path, keys, labels, transform=None, target_transform=None):
+        def __init__(self, hdf5_path, keys, labels, normalize_df=None, transform=None, target_transform=None):
             self.keys = keys
             self.labels = labels
             self.hdf5 = None
             self.hdf5_path = hdf5_path
             self.transform = transform
             self.target_transform = target_transform
+            self.normalize_df = np.array(
+                [[-139.941898,139.941898,279.883795],
+                [-134.566014, 134.566014,269.132029],
+                [-78.064679 , 78.064679 ,156.129359],
+                [-129.421262,129.421262 ,258.842523],
+                [-92.999893 ,92.999893  ,185.999786],
+                [-88.909598 ,88.909598  ,177.819196],
+                [-163.487644,163.487644 ,326.975288],
+                [-202.913316,202.913316 ,405.826632],
+                [-194.017951,194.017951 ,388.035902],
+                [-222.348100,222.348100 ,444.696201],
+                [-249.415011,249.415011 ,498.830022],
+                [-216.065147,216.065147 ,432.130294]])
 
         def __len__(self):
             return len(self.keys)
@@ -41,6 +55,9 @@ def get_data(
                 ecg = self.transform(ecg)
             if self.target_transform:
                 label = self.target_transform(label)
+            if self.normalize_df is not None:
+                # Assumed min,max,range as columns in pd.DataFrame
+                ecg = np.stack([ 2 * ( (ecg[i] - self.normalize_df[i,0]) / (self.normalize_df[i,2]) ) - 1 for i in range(ecg.shape[0]) ])
             return torch.tensor(ecg, dtype=torch.float), torch.tensor(label.astype(np.float), dtype=torch.float)
 
         def _uncompress_data(self, key, stored_dtype = np.int16):
