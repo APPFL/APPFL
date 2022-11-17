@@ -20,6 +20,7 @@ algorithm:
     ## clip_value: False (no-clipping)
     ## clip_value: 10    (clipping)
     ## clip_value: 1
+    server_lr_decay_exp_gamma : 0.975 
     client_weights: "equal"
     clip_value: False
     clip_norm: 1

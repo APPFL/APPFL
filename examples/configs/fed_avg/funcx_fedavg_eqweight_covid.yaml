@@ -11,7 +11,7 @@ algorithm:
     optim: "Adam"
     num_local_epochs: 2
     optim_args: 
-        lr: 0.004
+        lr: 0.0004
     server_lr_decay_exp_gamma : 0.975   
     ## Differential Privacy
     epsilon: False
@@ -29,7 +29,7 @@ model:
   num_output: 2
 
 training:
-  num_epochs: 20
+  num_epochs: 30
   save_model_filename: "Covid_Resnet"
 
 dataset:

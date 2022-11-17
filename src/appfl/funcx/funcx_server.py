@@ -184,7 +184,8 @@ class APPFLFuncXServer(abc.ABC):
         self.trn_endps.cfg.fed.args.optim_args.lr *=  self.cfg.fed.args.server_lr_decay_exp_gamma
         self.logger.info("Learing rate at step %d %.06f is set to " % (step + 1, self.trn_endps.cfg.fed.args.optim_args.lr))
 
-    def run(self, model: nn.Module, loss_fn: nn.Module):
+    def run(self, model: nn.Module, loss_fn: nn.Module, mode='train'):
+        assert mode in ['train', 'clients_testing']
         # Set model, and loss function
         self._initialize_training(model, loss_fn)
         # Validate data at clients
@@ -193,8 +194,18 @@ class APPFLFuncXServer(abc.ABC):
         self._set_client_weights(mode=self.cfg.fed.args.client_weights)
         # Initialze model at server
         self._initialize_server_model()
-        # Do training
-        self._do_training()
+        if mode == "train":
+            # Do training
+            self._do_training()
+        elif mode == 'clients_testing':
+            assert self.cfg.load_model == True
+            self.cfg["logginginfo"]["GlobalUpdate_time"] = 0.0
+            self.cfg["logginginfo"]["PerIter_time"]      = 0.0
+            self.cfg["logginginfo"]["Elapsed_time"]      = 0.0
+            self.cfg["logginginfo"]["Validation_time"]   = 0.0
+            self.cfg["logginginfo"]["test_loss"]         = 0.0
+            self.cfg["logginginfo"]["test_accuracy"]     = 0.0
+            self.cfg["logginginfo"]["BestAccuracy"]      = 0.0
         # Do client testing
         self._do_client_testing()
         # Do server testing

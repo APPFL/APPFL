@@ -1,12 +1,13 @@
 from asyncio.log import logger
 import imp
 from multiprocessing.spawn import prepare
-from ..misc import mLogging, dump_data_to_file, load_data_from_file
+from ..misc import mLogging, dump_data_to_file, load_data_from_file, id_generator
 import boto3
 from botocore.exceptions import ClientError
 import os
 import os.path as osp
 import sys
+import time
 class LargeObjectWrapper(object):
     MAX_SIZE_LIMIT = 1 * 1024 * 1024 
     DEBUG = True
@@ -44,6 +45,7 @@ class CloudStorage(object):
             new_inst.client = boto3.client('s3')
             new_inst.temp_dir= temp_dir
             new_inst.logger = logger
+            new_inst.session_id = id_generator() + str(time.time())
             # new_inst.logging = mLogging.get_logger()
             cls.instc = new_inst
         return cls.instc
@@ -85,7 +87,7 @@ class CloudStorage(object):
 
     def upload_file(self, file_path: str, object_name: str=None):
         if object_name is None:
-            object_name = osp.basename(file_path)
+            object_name = self.instc.session_id + '_' + osp.basename(file_path)
         return self.__upload_file(file_path, object_name)
 
     def download_file(self, object_name, file_path):

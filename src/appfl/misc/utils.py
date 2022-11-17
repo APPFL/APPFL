@@ -11,7 +11,7 @@ import logging
 import random
 import numpy as np
 import copy
-
+import string
 import torch
 import pickle as pkl
 
@@ -195,3 +195,6 @@ def load_source_file(file_path):
     with open(file_path) as fi:
         source = fi.read()
     return source
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))

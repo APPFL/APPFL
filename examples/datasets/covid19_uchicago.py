@@ -24,7 +24,10 @@ def get_data(
         def __getitem__(self, idx):
             img_path = os.path.join(self.main_path, self.truth_df.fmtImName_sd.iloc[idx])
             image = cv2.imread(img_path) #NEEDS TO BE (3,32,32)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            try:
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            except:
+                raise RuntimeError("File broken " + img_path)
             image = self.transform(image)
             
             if self.truth_df.examCOVIDstatus.iloc[idx] == 'Negative':

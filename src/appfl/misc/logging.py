@@ -62,21 +62,25 @@ class EvalLogger:
     
     def save_log(self, output_file):
         out_dict = {"val": self.val_results, "test": self.test_results}
+        if self.cfg.load_model == True:
+            out_dict['checkpoint_dirname'] = self.cfg.load_model_dirname
+            out_dict['checkpoint_filename']= self.cfg.load_model_filename 
         with open(output_file, "w") as fo:
             json.dump(out_dict, fo, indent=2)
 
 class mLogging:
     __logger = None
     @classmethod
-    def config_logger(cls, cfg: DictConfig, cfg_file_name = None, client_cfg_file_name = None):
+    def config_logger(cls, cfg: DictConfig, cfg_file_name = None, client_cfg_file_name = None, mode='train'):
         run_str = "%s_%s_%s" % (cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)
         if cfg_file_name is not None and client_cfg_file_name is not None:
             run_str = "%s_%s_%s" % (
                 run_str, cfg_file_name.replace(".yaml", ""), client_cfg_file_name.replace(".yaml","")
             ) 
         dir     = os.path.join(cfg.server.output_dir,
-                                "outputs_%s" % run_str)
+                                "%s_%s" % ('outputs' if mode=='train' else 'eval', run_str))
         
+        cfg.server.output_dir = dir
         if os.path.isdir(dir) == False:
             os.makedirs(dir, exist_ok = True)
         

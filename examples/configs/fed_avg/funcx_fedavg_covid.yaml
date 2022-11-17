@@ -12,6 +12,7 @@ algorithm:
     num_local_epochs: 2
     optim_args: 
         lr: 0.0004
+    server_lr_decay_exp_gamma : 0.975   
     ## Differential Privacy
     epsilon: False
     ##  epsilon: 1      (stronger privacy as the value decreases)
@@ -22,12 +23,13 @@ algorithm:
     ## clip_value: 1
     clip_value: False
     clip_norm: 1
+    client_weights: "sample_size"
 
 model:
   num_output: 2
 
 training:
-  num_epochs: 10
+  num_epochs: 30
   save_model_filename: "Covid_Resnet"
 
 dataset:
