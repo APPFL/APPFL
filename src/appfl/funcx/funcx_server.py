@@ -110,11 +110,16 @@ class APPFLFuncXServer(abc.ABC):
         eval_results, _ = self._run_sync_task(client_testing,
                             self.weights, LargeObjectWrapper(global_state, "server_state"), self.loss_fn)
         # TODO: handle this, refactor evaluation code
+        
         for client_idx in eval_results:
+            cli_eval = eval_results[client_idx][1] 
+            cli_eval = cli_eval if type(cli_eval) == dict else {
+                'test_acc': cli_eval
+                }
             eval_results[client_idx] = {
                 'test_loss': eval_results[client_idx][0],
-                'test_acc' : eval_results[client_idx][1]
-            }
+                **cli_eval 
+                }
         return eval_results
         
     def _do_server_validation(self, step:int):

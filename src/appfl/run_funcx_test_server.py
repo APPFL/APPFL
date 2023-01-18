@@ -10,7 +10,8 @@ def run_server(
     loss_fn: nn.Module,
     fxc: FuncXClient,
     test_data: Dataset = Dataset(),
-    val_data : Dataset = Dataset()
+    val_data : Dataset = Dataset(),
+    mode = 'train'
     ):
     serv = APPFLFuncXTestServer(cfg, fxc)
 
@@ -19,4 +20,4 @@ def run_server(
         testing_dataset= test_data
         ) 
     
-    serv.run(model, loss_fn)
+    serv.run(model, loss_fn, mode)

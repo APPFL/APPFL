@@ -5,9 +5,12 @@ server:
   s3_bucket: anl-appfl
   
 clients:
-  - name: uiuc-cig-01-gpu-02
-    endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
+  - name: uiuc-cig-02-gpu-00
+    endpoint_id: 1975c412-9816-4828-bf30-2549b81f7c4c
     device:  cuda:0 
+  # - name: uiuc-cig-01-gpu-02
+  #   endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
+  #   device:  cuda:0 
     data_split: 0
     data_dir  : "/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/"
     output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL/examples/log_funcx_appfl/uiuc-cig-02-gpu-00"

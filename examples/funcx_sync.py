@@ -60,6 +60,7 @@ def main():
 
     ## using funcx ClientOptimizer object
     cfg.fed.clientname = "FuncxClientOptim"
+    
     ## tensorboard
     cfg.use_tensorboard= args.use_tensorboard
     

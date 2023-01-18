@@ -7,6 +7,7 @@ from .algorithm import BaseClient
 
 import torch
 from torch.optim import *
+from torch.nn import functional as F
 
 from torch.utils.data import DataLoader
 import copy
@@ -14,7 +15,7 @@ import copy
 import numpy as np
 import time
 
-
+from sklearn import metrics
 class FuncxClientOptim(BaseClient):
     def __init__(
         self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, **kwargs
@@ -27,6 +28,50 @@ class FuncxClientOptim(BaseClient):
         self.round = 0
 
         super(FuncxClientOptim, self).client_log_title()
+
+    def client_validation(self, dataloader):
+
+        if self.loss_fn is None or dataloader is None:
+            return 0.0, 0.0
+
+        self.model.to(self.cfg.device)
+        self.model.eval()
+        loss = 0
+        correct = 0
+        tmpcnt = 0
+        tmptotal = 0
+
+        preds   = []
+        targets = []
+        with torch.no_grad():
+            for img, target in dataloader:
+                tmpcnt += 1
+                tmptotal += len(target)
+                img     = img.to(self.cfg.device)
+                target  = target.to(self.cfg.device)
+                output  = self.model(img)
+                loss    += self.loss_fn(output, target).item()
+                
+                if output.shape[1] == 1:
+                    pred = torch.round(output)
+                else:
+                    pred = F.softmax(output)
+                    # pred = output.argmax(dim=1, keepdim=True)
+                preds.append(pred.cpu().detach().numpy())
+                targets.append(target.cpu().detach().numpy())
+
+        # FIXME: do we need to sent the model to cpu again?
+        # self.model.to("cpu")
+        
+        targets = np.concatenate(targets)
+        preds   = np.concatenate(preds)
+
+        preds_binary = preds.argmax(axis=1) 
+        acc = (preds_binary == targets).mean()
+        prec,rec, f1, sprt  = metrics.precision_recall_fscore_support(preds_binary, targets, average="binary")
+        auc = metrics.roc_auc_score(targets, preds[:, 1])
+        # correct += pred.eq(preds.argmax(dim=1, keepdim=True).view_as(pred)).sum().item()    
+        return loss, {'acc': acc, 'prec': prec, 'rec': rec, 'f1': f1, 'auc': auc}
 
     def update(self, cli_logger):
         

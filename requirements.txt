@@ -63,3 +63,5 @@ websockets==9.1
 boto3==1.24.33
 opencv-python
 pandas
+scikit-learn
+pip install protobuf==3.20.*
