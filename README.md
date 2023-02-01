@@ -5,6 +5,8 @@
 [![DOI](https://zenodo.org/badge/414722606.svg)](https://zenodo.org/badge/latestdoi/414722606)
 [![Documentation Status](https://readthedocs.org/projects/appfl/badge/?version=latest)](https://appfl.readthedocs.io/en/latest/?badge=latest)
 
+[![build](https://github.com/APPFL/APPFL/actions/workflows/build.yml/badge.svg?branch=CI_Action&event=push)](https://github.com/APPFL/APPFL/actions/workflows/build.yml)
+
 APPFL is an open-source software framework that allows research communities to implement, test, and validate various ideas for privacy-preserving federated learning (PPFL).
 With this framework, developers and/or users can
 
