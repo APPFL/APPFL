@@ -13,37 +13,66 @@ import numpy as np
 import time
 
 
-class ClientOptim(BaseClient):
+class ClientSdlbfgs(BaseClient):
     def __init__(
         self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, **kwargs
     ):
-        super(ClientOptim, self).__init__(
+        super(ClientSdlbfgs, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
 
         self.round = 0
+        
+        self.prev_images = torch.tensor([])
+        self.prev_labels = torch.tensor([]) 
+        for i, (images, labels) in enumerate(dataloader):
+            if i == 0:
+                images = images.to(self.cfg.device)
+                labels = labels.to(self.cfg.device)
+                self.prev_images = copy.deepcopy(images)
+                self.prev_labels = copy.deepcopy(labels)
+            else:
+                break
+        
+        
+        self.prev_grad = OrderedDict()
+        self.prev_data = OrderedDict()
+        self.s_vec =OrderedDict()
+        self.y_vec =OrderedDict()
+        self.grad =OrderedDict()
 
-        super(ClientOptim, self).client_log_title()
+        super(ClientSdlbfgs, self).client_log_title()
 
     def update(self):
         
         """Inputs for the local model update"""
 
         self.model.to(self.cfg.device)
+        
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
  
+        """ initial point  """
+        optimizer.zero_grad()
+        outputs = self.model(self.prev_images)    
+        loss = self.loss_fn(outputs, self.prev_labels) 
+        loss.backward() 
+ 
+        for name, p in self.model.named_parameters():
+            self.prev_data[name]=copy.deepcopy(p.data.reshape(-1))
+            self.prev_grad[name]=copy.deepcopy(p.grad.reshape(-1))
+
 
         """ Multiple local update """
         start_time=time.time()
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            test_loss, test_accuracy = super(ClientOptim, self).client_validation(
+            test_loss, test_accuracy = super(ClientSdlbfgs, self).client_validation(
                 self.test_dataloader
             )
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(
+            super(ClientSdlbfgs, self).client_log_content(
                 0, per_iter_time, 0, 0, test_loss, test_accuracy
             )
             ## return to train mode
@@ -82,11 +111,11 @@ class ClientOptim(BaseClient):
             train_loss = train_loss / len(self.dataloader)
             train_accuracy = 100.0 * train_correct / tmptotal
             if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, test_accuracy = super(ClientOptim, self).client_validation(
+                test_loss, test_accuracy = super(ClientSdlbfgs, self).client_validation(
                     self.test_dataloader
                 )
                 per_iter_time = time.time() - start_time
-                super(ClientOptim, self).client_log_content(
+                super(ClientSdlbfgs, self).client_log_content(
                     t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
@@ -107,13 +136,22 @@ class ClientOptim(BaseClient):
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
 
-        """ Differential Privacy  """
-        if self.epsilon != False:
-            sensitivity = 0
-            if self.clip_value != False:
-                sensitivity = 2.0 * self.clip_value * self.optim_args.lr
-            scale_value = sensitivity / self.epsilon
-            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+        ## store s_vec and grad
+        for name, p in self.model.named_parameters():
+            self.s_vec[name] = p.data.reshape(-1) - self.prev_data[name]        
+            self.grad[name]  = p.grad.reshape(-1)
+ 
+ 
+            
+        ## gradient of the loss function built upon previous images        
+        optimizer.zero_grad()
+        outputs = self.model(self.prev_images)
+        loss = self.loss_fn(outputs, self.prev_labels) 
+        loss.backward() 
+        ## store y_vec
+        for name, p in self.model.named_parameters():
+            self.y_vec[name] = p.grad.reshape(-1) - self.prev_grad[name] 
+
 
         """ Update local_state """
         self.local_state = OrderedDict()
@@ -121,6 +159,9 @@ class ClientOptim(BaseClient):
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
+        self.local_state["svec"] = copy.deepcopy(self.s_vec)
+        self.local_state["yvec"] = copy.deepcopy(self.y_vec)
+        self.local_state["grad"] = copy.deepcopy(self.grad)
 
         return self.local_state
  

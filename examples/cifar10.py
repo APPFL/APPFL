@@ -27,33 +27,41 @@ from torch.utils.data import DataLoader
 
 parser = argparse.ArgumentParser() 
 
-parser.add_argument('--device', type=str, default="cpu")    
-
-## dataset and model
-parser.add_argument('--dataset', type=str, default="CIFAR10")   
-parser.add_argument('--num_channel', type=int, default=3)   
-parser.add_argument('--num_classes', type=int, default=10)   
-parser.add_argument('--num_pixel', type=int, default=32)   
-parser.add_argument('--model', type=str, default="CNN")   
-parser.add_argument('--train_data_batch_size', type=int, default=128)   
-parser.add_argument('--test_data_batch_size', type=int, default=128)   
-
-
-## clients
-parser.add_argument('--num_clients', type=int, default=1)    
-parser.add_argument('--client_optimizer', type=str, default="Adam")    
-parser.add_argument('--client_lr', type=float, default=1e-3)    
-parser.add_argument('--num_local_epochs', type=int, default=20)    
-
 ## server
 parser.add_argument('--server', type=str, default="ServerFedAvg")    
 parser.add_argument('--num_epochs', type=int, default=1)    
 
 parser.add_argument('--server_lr', type=float, required=False)    
+
+parser.add_argument("--history", type=int, required=False)
+parser.add_argument("--delta", type=float, required=False)
+
 parser.add_argument('--mparam_1', type=float, required=False)    
 parser.add_argument('--mparam_2', type=float, required=False)    
 parser.add_argument('--adapt_param', type=float, required=False)    
  
+## clients
+parser.add_argument('--device', type=str, default="cpu")    
+parser.add_argument('--num_clients', type=int, default=1)    
+parser.add_argument("--client", type=str, default="ClientOptim")
+parser.add_argument("--client_optimizer", type=str, default="SGD")
+parser.add_argument('--client_lr', type=float, default=1e-1)    
+parser.add_argument('--num_local_epochs', type=int, default=1)    
+
+
+## dataset  
+parser.add_argument('--dataset', type=str, default="CIFAR10")   
+parser.add_argument('--num_channel', type=int, default=3)   
+parser.add_argument('--num_classes', type=int, default=10)   
+parser.add_argument('--num_pixel', type=int, default=32)   
+parser.add_argument("--batch_training", type=int, default=1)
+parser.add_argument("--train_data_batch_size", type=int, default=50)
+parser.add_argument("--train_data_shuffle", type=int, default=1)
+
+ 
+## model
+parser.add_argument("--model", type=str, default="resnet18")
+
 args = parser.parse_args()    
 
 args.save_model_state_dict = False
@@ -122,31 +130,41 @@ def main():
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size() 
 
-    ## Reproducibility
-    set_seed(1)
-
+    
     """ Configuration """     
     cfg = OmegaConf.structured(Config) 
 
-    cfg.device = args.device
-    cfg.save_model_state_dict = args.save_model_state_dict
-
-    ## dataset
-    cfg.train_data_batch_size = args.train_data_batch_size
-    cfg.test_data_batch_size = args.test_data_batch_size
-    cfg.train_data_shuffle = True
-
-    ## clients
-    cfg.num_clients = args.num_clients
-    cfg.fed.args.optim = args.client_optimizer
-    cfg.fed.args.optim_args.lr = args.client_lr
-    cfg.fed.args.num_local_epochs = args.num_local_epochs
-    
+    ## Reproducibility
+    cfg.reproduce = True
+    if cfg.reproduce == True:
+        torch.manual_seed(1)
+        
+ 
     ## server
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
+    if args.server == "ServerFedSDLBFGS":
+        cfg.fed.args.history = args.history
+        cfg.fed.args.delta = args.delta
 
-    ## outputs        
+
+    ## clients
+    cfg.device = args.device
+    cfg.fed.clientname = args.client
+    cfg.num_clients = args.num_clients
+    cfg.fed.args.optim = args.client_optimizer
+    cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.num_local_epochs = args.num_local_epochs    
+    cfg.batch_training = args.batch_training
+    cfg.train_data_batch_size = args.train_data_batch_size
+    cfg.train_data_shuffle = args.train_data_shuffle
+     
+    
+
+    ## outputs      
+    cfg.use_tensorboard = False
+    cfg.save_model_state_dict = args.save_model_state_dict  
+
     cfg.output_dirname = "./outputs_%s_%s_%s_%s_%s_%s"%(args.dataset, args.model, args.server, args.client_optimizer, args.num_local_epochs, args.client_lr)    
     if args.server_lr != None:
         cfg.fed.args.server_learning_rate = args.server_lr

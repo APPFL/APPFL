@@ -62,6 +62,7 @@ class FedServer(BaseServer):
         """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())
         super(FedServer, self).primal_recover_from_local_states(local_states)
+        
 
         """ residual calculation """
         super(FedServer, self).primal_residual_at_server()

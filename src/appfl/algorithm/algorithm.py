@@ -38,11 +38,17 @@ class BaseServer:
         self.dual_states = OrderedDict()
         self.primal_states_curr = OrderedDict()
         self.primal_states_prev = OrderedDict()
+        self.svecs = OrderedDict()
+        self.yvecs = OrderedDict()
+        self.grads = OrderedDict()
         for i in range(num_clients):
             self.primal_states[i] = OrderedDict()
             self.dual_states[i] = OrderedDict()
             self.primal_states_curr[i] = OrderedDict()
             self.primal_states_prev[i] = OrderedDict()
+            self.svecs[i] = OrderedDict()
+            self.yvecs[i] = OrderedDict()
+            self.grads[i] = OrderedDict()
 
     def get_model(self) -> nn.Module:
         """Get the model
@@ -73,6 +79,23 @@ class BaseServer:
             if states is not None:
                 for sid, state in states.items():
                     self.penalty[sid] = copy.deepcopy(state["penalty"][sid])
+
+    def grad_recover_from_local_states(self, local_states):
+        for _, states in enumerate(local_states):
+            if states is not None:
+                for sid, state in states.items():
+                    self.grads[sid] = copy.deepcopy(state["grad"])
+
+    def svec_recover_from_local_states(self, local_states):
+        for _, states in enumerate(local_states):
+            if states is not None:
+                for sid, state in states.items():
+                    self.svecs[sid] = copy.deepcopy(state["svec"])
+    def yvec_recover_from_local_states(self, local_states):
+        for _, states in enumerate(local_states):
+            if states is not None:
+                for sid, state in states.items():
+                    self.yvecs[sid] = copy.deepcopy(state["yvec"])
 
     def primal_residual_at_server(self) -> float:
         primal_res = 0
