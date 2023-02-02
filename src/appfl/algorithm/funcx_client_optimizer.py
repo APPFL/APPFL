@@ -1,23 +1,28 @@
-import logging
-import os
-from collections import OrderedDict
-
-from appfl.misc.logging import ClientLogger
-from .algorithm import BaseClient
-
-import torch
-from torch.optim import *
-
-from torch.utils.data import DataLoader
 import copy
-
-import numpy as np
+import os
 import time
+import torch
+
+from collections import OrderedDict
+from torch.optim import *
+from torch.utils.data import DataLoader
+
+from appfl.algorithm import BaseClient
+from appfl.misc.logging import ClientLogger
 
 
 class FuncxClientOptim(BaseClient):
     def __init__(
-        self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, **kwargs
+        self,
+        id,
+        weight,
+        model,
+        loss_fn,
+        dataloader,
+        cfg,
+        outfile,
+        test_dataloader,
+        **kwargs
     ):
         super(FuncxClientOptim, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
@@ -29,15 +34,14 @@ class FuncxClientOptim(BaseClient):
         super(FuncxClientOptim, self).client_log_title()
 
     def update(self, cli_logger):
-        
+
         """Inputs for the local model update"""
         self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
- 
 
         """ Multiple local update """
-        start_time=time.time()
+        start_time = time.time()
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
             cli_logger.start_timer("val_before_update_val_set")
@@ -45,25 +49,24 @@ class FuncxClientOptim(BaseClient):
                 self.test_dataloader
             )
             cli_logger.add_info(
-                    "val_before_update_val_set",{
-                        "val_loss": test_loss, "val_acc": test_accuracy
-                    }
-                )
+                "val_before_update_val_set",
+                {"val_loss": test_loss, "val_acc": test_accuracy},
+            )
             cli_logger.stop_timer("val_before_update_val_set")
             per_iter_time = time.time() - start_time
             super(FuncxClientOptim, self).client_log_content(
                 0, per_iter_time, 0, 0, test_loss, test_accuracy
             )
             ## return to train mode
-            self.model.train()        
+            self.model.train()
 
-        ## local training 
+        ## local training
         for t in range(self.num_local_epochs):
             cli_logger.start_timer("train_one_epoch", t)
             train_loss = 0
-            train_correct = 0            
+            train_correct = 0
             tmptotal = 0
-            for data, target in self.dataloader:             
+            for data, target in self.dataloader:
                 tmptotal += len(target)
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
@@ -72,7 +75,7 @@ class FuncxClientOptim(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
                 optimizer.step()
-                
+
                 train_loss += loss.item()
                 if output.shape[1] == 1:
                     pred = torch.round(output)
@@ -119,7 +122,7 @@ class FuncxClientOptim(BaseClient):
             #     ).client_validation(self.test_dataloader)
             #     print(test_loss, test_accuracy)
             #     cli_logger.stop_timer("val_after_update_val_set", t)
-                
+
             #     cli_logger.add_info(
             #             "val_after_update_val_set",{
             #                 "val_loss": test_loss, "val_accuracy": test_accuracy
@@ -145,9 +148,8 @@ class FuncxClientOptim(BaseClient):
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
-        
+
         if cli_logger is not None:
             return self.local_state, cli_logger
         else:
             return self.local_state
- 

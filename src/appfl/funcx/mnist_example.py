@@ -1,9 +1,7 @@
-def get_data(
-    cfg,
-    client_idx: int):
+def get_data(cfg, client_idx: int):
     # TODO: Support other datasets, not only MNIST at client
     import torchvision
-    from   torchvision.transforms import ToTensor
+    from torchvision.transforms import ToTensor
     import numpy as np
     import os
     import os.path as osp
@@ -11,28 +9,29 @@ def get_data(
     from appfl.misc.data import Dataset
 
     ## Prepare local dataset directory
-    data_dir       = cfg.clients[client_idx].data_dir
-    local_dir      = osp.join(data_dir,"RawData")
+    data_dir = cfg.clients[client_idx].data_dir
+    local_dir = osp.join(data_dir, "RawData")
     train_data_raw = eval("torchvision.datasets." + cfg.dataset)(
-        local_dir, download = True, train = True, transform= ToTensor()
+        local_dir, download=True, train=True, transform=ToTensor()
     )
     ## TODO: for development, temporary use a smaller dataset size at client
     # split_train_data_raw = np.array_split(range(len(train_data_raw)),  500)
-    split_train_data_raw = np.array_split(range(len(train_data_raw)),  cfg.num_clients)
+    split_train_data_raw = np.array_split(range(len(train_data_raw)), cfg.num_clients)
     train_datasets = []
     train_data_input = []
     train_data_label = []
-    
+
     for idx in split_train_data_raw[client_idx]:
         train_data_input.append(train_data_raw[idx][0].tolist())
         train_data_label.append(train_data_raw[idx][1])
-    
+
     train_dataset = Dataset(
-            torch.FloatTensor(train_data_input),
-            torch.tensor(train_data_label),
-        )
+        torch.FloatTensor(train_data_input),
+        torch.tensor(train_data_label),
+    )
     return train_dataset
-    
+
+
 def get_model():
     import torch
     import torch.nn as nn
@@ -44,7 +43,9 @@ def get_model():
             self.conv1 = nn.Conv2d(
                 num_channel, 32, kernel_size=5, padding=0, stride=1, bias=True
             )
-            self.conv2 = nn.Conv2d(32, 64, kernel_size=5, padding=0, stride=1, bias=True)
+            self.conv2 = nn.Conv2d(
+                32, 64, kernel_size=5, padding=0, stride=1, bias=True
+            )
             self.maxpool = nn.MaxPool2d(kernel_size=(2, 2))
             self.act = nn.ReLU(inplace=True)
 
@@ -70,4 +71,5 @@ def get_model():
             x = self.act(self.fc1(x))
             x = self.fc2(x)
             return x
+
     return CNN

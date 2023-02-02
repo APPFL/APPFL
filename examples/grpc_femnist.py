@@ -98,7 +98,9 @@ def main():
         else:
             # Give server some time to launch.
             time.sleep(5)
-            grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1], comm_rank)
+            grpc_client.run_client(
+                cfg, comm_rank - 1, model, train_datasets[comm_rank - 1], comm_rank
+            )
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.

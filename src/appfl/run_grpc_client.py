@@ -1,20 +1,17 @@
-from omegaconf import DictConfig
-
-import torch
-import torch.nn as nn
-from torch.optim import *
-from torch.utils.data import DataLoader
-
 import copy
-import numpy as np
 import logging
 import time
+import torch
+import torch.nn as nn
 
-from .misc import *
-from .algorithm import *
+from omegaconf import DictConfig
+from torch.utils.data import DataLoader
 
-from .protos.federated_learning_pb2 import Job
-from .protos.client import FLClient
+
+from appfl.algorithm import *
+from appfl.misc import Dataset, client_log, save_model_iteration
+from appfl.protos.federated_learning_pb2 import Job
+from appfl.protos.client import FLClient
 
 
 def update_model_state(comm, model, round_number):

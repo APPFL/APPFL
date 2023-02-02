@@ -32,8 +32,7 @@ def get_data(num_clients: int):
     )
 
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
-    
-    
+
     train_datasets = []
     for i in range(num_clients):
 
@@ -50,9 +49,9 @@ def get_data(num_clients: int):
             )
         )
 
-     # test data for a server
+    # test data for a server
     test_data_raw = eval("torchvision.datasets." + DataSet_name)(
-        f"./_data", download=True,  train=False, transform=ToTensor()
+        f"./_data", download=True, train=False, transform=ToTensor()
     )
 
     test_data_input = []
@@ -117,7 +116,7 @@ def main():
     start_time = time.time()
     train_datasets, test_dataset = get_data(args.nclients)
 
-    """ Configuration """     
+    """ Configuration """
     cfg = OmegaConf.structured(Config)
 
     """ get model         
@@ -128,22 +127,27 @@ def main():
     cfg = OmegaConf.structured(Config)
     model = CNN(num_channel, num_classes, num_pixel)
     loss_fn = torch.nn.CrossEntropyLoss()
-    
 
     logger = logging.getLogger(__name__)
     logger.info(
         f"----------Loaded Datasets and Model----------Elapsed Time={time.time() - start_time}"
     )
- 
+
     cfg.server.host = args.host
     cfg.server.port = args.port
     cfg.server.use_tls = args.use_tls
     cfg.server.api_key = args.api_key
 
-    logger.debug(OmegaConf.to_yaml(cfg)) 
-    
+    logger.debug(OmegaConf.to_yaml(cfg))
+
     grpc_client.run_client(
-        cfg, args.client_id, model, loss_fn, train_datasets[args.client_id], 0, test_dataset
+        cfg,
+        args.client_id,
+        model,
+        loss_fn,
+        train_datasets[args.client_id],
+        0,
+        test_dataset,
     )
     logger.info("------DONE------")
 

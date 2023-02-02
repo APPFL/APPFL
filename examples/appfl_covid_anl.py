@@ -59,7 +59,7 @@ with open("../examples/datasets/covid19_argonne.py") as fi:
 ## Run
 def main():
 
-    """ Configuration """
+    """Configuration"""
     cfg = OmegaConf.structured(FuncXConfig)
 
     cfg.device = args.device
@@ -67,8 +67,8 @@ def main():
     if cfg.reproduce == True:
         set_seed(1)
 
-    load_funcx_device_config(cfg,"configs/clients/covid19_anl.yaml")
-    load_funcx_config(cfg,       "configs/fed_avg/funcx_fedavg_covid.yaml")
+    load_funcx_device_config(cfg, "configs/clients/covid19_anl.yaml")
+    load_funcx_config(cfg, "configs/fed_avg/funcx_fedavg_covid.yaml")
 
     ## clients
     cfg.num_clients = args.num_clients
@@ -98,7 +98,7 @@ def main():
 
     """ User-defined model """
     model = get_model()(2)
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = torch.nn.CrossEntropyLoss()
 
     ## loading models
     cfg.load_model = False
@@ -108,8 +108,8 @@ def main():
         model = load_model(cfg)
 
     """ User-defined data """
-    train_datasets = [get_data(cfg, 0, 'train')]
-    test_dataset = get_data(cfg, 0, 'test')
+    train_datasets = [get_data(cfg, 0, "train")]
+    test_dataset = get_data(cfg, 0, "test")
 
     print(
         "-------Loading_Time=",
@@ -124,7 +124,6 @@ def main():
 
     """ Running """
     rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
-        
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
- 
+
 
 def get_data(comm: MPI.Comm):
     dir = os.getcwd() + "/datasets/RawData"
@@ -103,7 +103,6 @@ def get_data(comm: MPI.Comm):
             )
         )
     return train_datasets, test_dataset
-
 
 
 ## Run
@@ -164,7 +163,7 @@ def main():
 
     """ User-defined model """
     model = get_model(args)
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = torch.nn.CrossEntropyLoss()
 
     ## loading models
     cfg.load_model = False
@@ -201,12 +200,17 @@ def main():
             )
         else:
             rm.run_client(
-                cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset
+                cfg,
+                comm,
+                model,
+                loss_fn,
+                args.num_clients,
+                train_datasets,
+                test_dataset,
             )
         print("------DONE------", comm_rank)
     else:
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
-        
 
 
 if __name__ == "__main__":
