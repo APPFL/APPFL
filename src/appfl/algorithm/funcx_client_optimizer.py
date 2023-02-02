@@ -1,15 +1,16 @@
 import copy
+import numpy as np
 import os
 import time
 import torch
 
 from collections import OrderedDict
+from sklearn import metrics
 from torch.optim import *
 from torch.utils.data import DataLoader
 
 from appfl.algorithm import BaseClient
 from appfl.misc.logging import ClientLogger
-
 
 class FuncxClientOptim(BaseClient):
     def __init__(

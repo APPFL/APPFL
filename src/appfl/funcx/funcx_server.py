@@ -125,11 +125,22 @@ class APPFLFuncXServer(abc.ABC):
             self.loss_fn,
         )
         # TODO: handle this, refactor evaluation code
+        
         for client_idx in eval_results:
+            cli_eval = eval_results[client_idx][1] 
+            cli_eval = cli_eval if type(cli_eval) == dict else {
+                'test_acc': cli_eval
+                }
             eval_results[client_idx] = {
+<<<<<<< HEAD
                 "test_loss": eval_results[client_idx][0],
                 "test_acc": eval_results[client_idx][1],
             }
+=======
+                'test_loss': eval_results[client_idx][0],
+                **cli_eval 
+                }
+>>>>>>> 6aa68ff74e8be4cfacc1c851407ebce47622515e
         return eval_results
 
     def _do_server_validation(self, step: int):

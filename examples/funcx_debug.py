@@ -43,7 +43,8 @@ def main():
     cfg.save_model_state_dict = True
     cfg.save_model = True
     cfg.checkpoints_interval = 1
-    if cfg.reproduce == True:
+
+    if cfg.reproduce:
         set_seed(1)
 
     ## loading funcX configs from file
@@ -84,7 +85,6 @@ def main():
     funcx_server.run_server(
         cfg, model, loss_fn, fxc, server_test_dataset, server_val_dataset
     )
-
 
 if __name__ == "__main__":
     main()
