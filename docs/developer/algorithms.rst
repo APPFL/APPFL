@@ -90,3 +90,12 @@ Each algorithm, specified in ``Config.fed``, can be configured in the dataclasse
     :linenos:
     :caption: The main configuration class
 
+Implemented FL Algorithms 
+----------------
+
+Global Update Methods
+++++++++++++++++++++++++
+.. literalinclude:: /../src/appfl/config/fed/federated.py
+    :language: python
+    :linenos: 
+    :caption: Global update methods
