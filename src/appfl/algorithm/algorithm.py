@@ -1,14 +1,11 @@
 import copy
-from typing import Dict, Tuple
-
-from collections import OrderedDict
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
-from omegaconf import DictConfig
+from typing import Dict
 
-import os
-import logging
+from collections import OrderedDict
+from omegaconf import DictConfig
+from torch.utils.data import DataLoader
 
 
 class BaseServer:
@@ -23,7 +20,12 @@ class BaseServer:
     """
 
     def __init__(
-        self, weights: OrderedDict, model: nn.Module, loss_fn: nn.Module, num_clients: int, device
+        self,
+        weights: OrderedDict,
+        model: nn.Module,
+        loss_fn: nn.Module,
+        num_clients: int,
+        device,
     ):
         self.model = model
         self.loss_fn = loss_fn
@@ -300,7 +302,7 @@ class BaseClient:
                     pred = output.argmax(dim=1, keepdim=True)
 
                 correct += pred.eq(target.view_as(pred)).sum().item()
-            
+
         # FIXME: do we need to sent the model to cpu again?
         # self.model.to("cpu")
 

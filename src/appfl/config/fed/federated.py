@@ -1,6 +1,7 @@
+import torch
+
 from dataclasses import dataclass
 from omegaconf import DictConfig, OmegaConf
-import torch
 
 """ Numerous global update techniques are implemented:        
     (1) ServerFedAvg            : averaging local model parameters to update global model parameters    
@@ -57,6 +58,6 @@ class Federated:
             "clip_value": False,
             "clip_norm": 1,
             "client_weights": "sample_size",
-            "server_lr_decay_exp_gamma": 1.0
+            "server_lr_decay_exp_gamma": 1.0,
         }
     )

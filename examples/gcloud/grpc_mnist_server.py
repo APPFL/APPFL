@@ -60,17 +60,15 @@ def main():
     start_time = time.time()
     model = CNN(num_channel, num_classes, num_pixel)
     loss_fn = torch.nn.CrossEntropyLoss()
-    
-    logger = logging.getLogger(__name__)
-    logger.info(
-        f"----------Loading_Time={time.time() - start_time}"
-    )
 
-    """ Configuration """     
+    logger = logging.getLogger(__name__)
+    logger.info(f"----------Loading_Time={time.time() - start_time}")
+
+    """ Configuration """
     cfg = OmegaConf.structured(Config)
 
     logger.debug(OmegaConf.to_yaml(cfg))
-    
+
     cfg.num_epochs = args.num_epochs
 
     """ saving models """

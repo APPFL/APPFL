@@ -1,4 +1,4 @@
-from .server_federated import FedServer
+from appfl.algorithm.server_federated import FedServer
 import torch
 
 

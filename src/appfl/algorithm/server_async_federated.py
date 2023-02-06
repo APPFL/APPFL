@@ -1,18 +1,21 @@
-import logging
+import copy
+import torch
 
 from collections import OrderedDict
-from .algorithm import BaseServer, BaseClient
-from .server_federated import FedServer
-
-import torch
 from torch.optim import *
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
-import copy
+
+from appfl.algorithm.server_federated import FedServer
+
 
 class AsyncFedServer(FedServer):
-    def __init__(self, weights, model, loss_fn, num_clients, device, global_step = 0, **kwargs):
-        super(AsyncFedServer, self).__init__(weights, model, loss_fn, num_clients, device, **kwargs)
+    def __init__(
+        self, weights, model, loss_fn, num_clients, device, global_step=0, **kwargs
+    ):
+        super(AsyncFedServer, self).__init__(
+            weights, model, loss_fn, num_clients, device, **kwargs
+        )
         self.global_step = global_step
 
     def compute_pseudo_gradient(self):

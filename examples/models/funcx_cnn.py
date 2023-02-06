@@ -9,7 +9,9 @@ def get_model():
             self.conv1 = nn.Conv2d(
                 num_channel, 32, kernel_size=5, padding=0, stride=1, bias=True
             )
-            self.conv2 = nn.Conv2d(32, 64, kernel_size=5, padding=0, stride=1, bias=True)
+            self.conv2 = nn.Conv2d(
+                32, 64, kernel_size=5, padding=0, stride=1, bias=True
+            )
             self.maxpool = nn.MaxPool2d(kernel_size=(2, 2))
             self.act = nn.ReLU(inplace=True)
 
@@ -35,4 +37,5 @@ def get_model():
             x = self.act(self.fc1(x))
             x = self.fc2(x)
             return x
+
     return CNN

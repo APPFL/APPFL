@@ -1,20 +1,22 @@
+import copy
 import logging
-
-log = logging.getLogger(__name__)
+import torch
 
 from collections import OrderedDict
-from .algorithm import BaseServer, BaseClient
-
-import torch
 from torch.optim import *
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
-import copy
+
+from appfl.algorithm import BaseServer, BaseClient
+
+log = logging.getLogger(__name__)
 
 
 class ICEADMMServer(BaseServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
-        super(ICEADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
+        super(ICEADMMServer, self).__init__(
+            weights, model, loss_fn, num_clients, device
+        )
         self.__dict__.update(kwargs)
 
         self.is_first_iter = 1

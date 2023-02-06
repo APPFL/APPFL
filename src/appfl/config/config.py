@@ -1,13 +1,14 @@
-from email.policy import default
 from dataclasses import dataclass, field
-from typing import Any, List, Dict 
+from email.policy import default
 from omegaconf import DictConfig, OmegaConf
+from typing import Any, List, Dict, Optional
 
-from typing import Optional
-from .fed.federated import *
-from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
-from .fed.iiadmm import *
-from ..misc import *
+from appfl.config.fed.federated import Federated
+
+# from appfl.config.fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
+# from appfl.config.fed.iiadmm import *
+# from appfl.misc import *
+
 
 @dataclass
 class Config:
@@ -43,10 +44,10 @@ class Config:
 
     # PCA on Trajectory
     pca_dir: str = ""
-    params_start: int=0
-    params_end: int=49
-    ncomponents: int=40
-    
+    params_start: int = 0
+    params_end: int = 49
+    ncomponents: int = 40
+
     # Tensorboard
     use_tensorboard: bool = False
 
@@ -67,7 +68,7 @@ class Config:
     # Logging and recording outputs
     output_dirname: str = "output"
     output_filename: str = "result"
-    
+
     logginginfo: DictConfig = OmegaConf.create({})
     summary_file: str = ""
 
@@ -85,60 +86,64 @@ class Config:
     client: DictConfig = OmegaConf.create({"id": 1})
 
 
-@dataclass 
+@dataclass
 class FuncXServerConfig:
-    device      : str = "cpu"
-    output_dir  : str = "./"
-    data_dir    : str = "./"
-    s3_bucket   : str = None
+    device: str = "cpu"
+    output_dir: str = "./"
+    data_dir: str = "./"
+    s3_bucket: str = None
+
 
 @dataclass
 class ExecutableFunc:
-    module       : str = ""
-    call         : str = ""
-    script_file  : str = ""
-    source       : str = ""
+    module: str = ""
+    call: str = ""
+    script_file: str = ""
+    source: str = ""
+
 
 @dataclass
 class ClientTask:
-    task_id      : str  = ""
-    task_name    : str  = ""
-    client_idx   : int  = ""
-    pending      : bool = True
-    success      : bool = False
-    start_time   : float= -1
-    end_time     : float= -1
-    log          : Optional[Dict] = field(default_factory=dict)
+    task_id: str = ""
+    task_name: str = ""
+    client_idx: int = ""
+    pending: bool = True
+    success: bool = False
+    start_time: float = -1
+    end_time: float = -1
+    log: Optional[Dict] = field(default_factory=dict)
+
 
 @dataclass
 class FuncXClientConfig:
-    data_split  : Any 
-    name        : str = ""
-    endpoint_id : str = ""
-    device      : str = "cpu"
-    output_dir  : str = "./"
-    data_dir    : str = "./"
-    get_data    :  DictConfig = OmegaConf.create({})
+    data_split: Any
+    name: str = ""
+    endpoint_id: str = ""
+    device: str = "cpu"
+    output_dir: str = "./"
+    data_dir: str = "./"
+    get_data: DictConfig = OmegaConf.create({})
     data_pipeline: DictConfig = OmegaConf.create({})
+
 
 @dataclass
 class FuncXConfig(Config):
-    get_data     : ExecutableFunc = field(default_factory=ExecutableFunc)
-    get_model    : ExecutableFunc = field(default_factory=ExecutableFunc)
-    clients      : List[FuncXClientConfig] = field(default_factory=list)
-    dataset      : str  = ""
-    loss         : str  = "CrossEntropy"
-    model_args   : List = field(default_factory=list)
-    model_kwargs : Dict = field(default_factory=dict)
-    server       : FuncXServerConfig
-    logging_tasks: List = field(default_factory=list) 
-    
+    server: FuncXServerConfig
+    get_data: ExecutableFunc = field(default_factory=ExecutableFunc)
+    get_model: ExecutableFunc = field(default_factory=ExecutableFunc)
+    clients: List[FuncXClientConfig] = field(default_factory=list)
+    dataset: str = ""
+    loss: str = "CrossEntropy"
+    model_args: List = field(default_factory=list)
+    model_kwargs: Dict = field(default_factory=dict)
+    logging_tasks: List = field(default_factory=list)
+
     # Testing and validation params
     client_do_validation: bool = True
-    client_do_testing   : bool = True
+    client_do_testing: bool = True
     server_do_validation: bool = True
-    server_do_testing   : bool = True
-    
+    server_do_testing: bool = True
+
     # Testing and validation frequency
     client_validation_step: int = 1
     server_validation_step: int = 1

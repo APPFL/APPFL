@@ -4,15 +4,15 @@ import numpy as np
 
 import grpc
 
-from .federated_learning_pb2 import Header, WeightRequest
-from .federated_learning_pb2 import DataBuffer
-from .federated_learning_pb2 import JobRequest
-from .federated_learning_pb2 import LearningResults
-from .federated_learning_pb2 import TensorRequest
-from .federated_learning_pb2 import TensorRecord
-from .federated_learning_pb2 import WeightRequest
-from .federated_learning_pb2_grpc import FederatedLearningStub
-from . import utils
+from appfl.protos.federated_learning_pb2 import Header, WeightRequest
+from appfl.protos.federated_learning_pb2 import DataBuffer
+from appfl.protos.federated_learning_pb2 import JobRequest
+from appfl.protos.federated_learning_pb2 import LearningResults
+from appfl.protos.federated_learning_pb2 import TensorRequest
+from appfl.protos.federated_learning_pb2 import TensorRecord
+from appfl.protos.federated_learning_pb2 import WeightRequest
+from appfl.protos.federated_learning_pb2_grpc import FederatedLearningStub
+from appfl.protos.utils import construct_tensor_record, proto_to_databuffer
 
 
 class FLClient:
@@ -97,11 +97,10 @@ class FLClient:
 
     def send_learning_results(self, penalty, primal, dual, round_number):
         primal_tensors = [
-            utils.construct_tensor_record(k, np.array(v.cpu()))
-            for k, v in primal.items()
+            construct_tensor_record(k, np.array(v.cpu())) for k, v in primal.items()
         ]
         dual_tensors = [
-            utils.construct_tensor_record(k, np.array(v.cpu())) for k, v in dual.items()
+            construct_tensor_record(k, np.array(v.cpu())) for k, v in dual.items()
         ]
         proto = LearningResults(
             header=self.header,
@@ -112,9 +111,7 @@ class FLClient:
         )
 
         databuffer = []
-        databuffer += utils.proto_to_databuffer(
-            proto, max_message_size=self.max_message_size
-        )
+        databuffer += proto_to_databuffer(proto, max_message_size=self.max_message_size)
         start = time.time()
         self.stub.SendLearningResults(iter(databuffer), metadata=self.metadata)
         end = time.time()

@@ -1,28 +1,33 @@
-from ast import With
-from asyncio.log import logger
-from datetime import datetime
-from logging import handlers
-from pickle import NONE
-import torch
+# from ast import With
+# from asyncio.log import logger
+# from datetime import datetime
+# from logging import handlers
+# from pickle import NONE
+# import torch
+
+import copy
+import logging
+import numpy as np
 import os
 import os.path as osp
-from omegaconf import DictConfig
-import logging
+import pickle as pkl
 import random
-import numpy as np
-import copy
 import string
 import torch
-import pickle as pkl
+
+from omegaconf import DictConfig
+
 
 def get_executable_func(func_cfg):
     if func_cfg.module != "":
         import importlib
+
         mdl = importlib.import_module(func_cfg.module)
         return getattr(mdl, func_cfg.call)
     elif func_cfg.source != "":
         exec(func_cfg.source, globals())
         return eval(func_cfg.call)
+
 
 def validation(self, dataloader):
 
@@ -63,22 +68,20 @@ def validation(self, dataloader):
 
 
 def create_custom_logger(logger, cfg: DictConfig):
-    dir = cfg.output_dirname
-    if os.path.isdir(dir) == False:
-        os.makedirs(dir, exist_ok = True)
+    dir_ = cfg.output_dirname
+    if not os.path.isdir(dir_):
+        os.makedirs(dir_, exist_ok=True)
     output_filename = cfg.output_filename + "_server"
-    
+
     # TODO: use timestamp instead
     file_ext = ".txt"
-    filename = dir + "/%s%s" % (output_filename, file_ext)
+    filename = dir_ + "/%s%s" % (output_filename, file_ext)
     uniq = 1
     while os.path.exists(filename):
-        filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
+        filename = dir_ + "/%s_%d%s" % (output_filename, uniq, file_ext)
         uniq += 1
 
-    fmt = logging.Formatter(
-        '%(asctime)s %(levelname)-8s %(message)s'
-    )
+    fmt = logging.Formatter("%(asctime)s %(levelname)-8s %(message)s")
 
     logger.setLevel(logging.INFO)
     # Create handlers
@@ -93,10 +96,11 @@ def create_custom_logger(logger, cfg: DictConfig):
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
     return logger
-            
+
+
 def client_log(dir, output_filename):
-    if os.path.isdir(dir) == False:
-        os.makedirs(dir, exist_ok = True)
+    if not os.path.isdir(dir):
+        os.makedirs(dir, exist_ok=True)
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)
     uniq = 1
@@ -117,19 +121,19 @@ def load_model(cfg: DictConfig):
 
 
 def save_model_iteration(t, model, cfg: DictConfig):
-    dir = cfg.save_model_dirname
-    if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+    dir_ = cfg.save_model_dirname
+    if not os.path.isdir(dir_):
+        os.mkdir(dir_)
 
     file_ext = ".pt"
-    file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
+    file = dir_ + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
     uniq = 1
     while os.path.exists(file):
-        file = dir + "/%s_Round_%s_%d%s" % (cfg.save_model_filename, t, uniq, file_ext)
+        file = dir_ + "/%s_Round_%s_%d%s" % (cfg.save_model_filename, t, uniq, file_ext)
         uniq += 1
 
     torch.save(model, file)
- 
+
 
 def set_seed(seed=233):
     random.seed(seed)
@@ -139,14 +143,16 @@ def set_seed(seed=233):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-TORCH_EXT = ['.pt', '.pth']
-PICKLE_EXT= ['.pkl']
+
+TORCH_EXT = [".pt", ".pth"]
+PICKLE_EXT = [".pkl"]
+
 
 def load_data_from_file(file_path: str, to_device=None):
     """Read data from file using the corresponding readers"""
     # Load files to memory
     file_ext = osp.splitext(osp.basename(file_path))[-1]
-    if  file_ext in TORCH_EXT:
+    if file_ext in TORCH_EXT:
         results = torch.load(file_path, map_location=to_device)
     elif file_ext in PICKLE_EXT:
         with open(file_path, "rb") as fi:
@@ -154,6 +160,7 @@ def load_data_from_file(file_path: str, to_device=None):
     else:
         raise RuntimeError("File extension %s is not supported" % file_ext)
     return results
+
 
 def dump_data_to_file(obj, file_path: str):
     """Write data to file using the corresponding readers"""
@@ -167,34 +174,39 @@ def dump_data_to_file(obj, file_path: str):
         raise RuntimeError("File extension %s is not supported" % file_ext)
     return True
 
+
 from torch.utils.data import DataLoader
+
+
 def get_dataloader(cfg, dataset, mode):
-    """ Create a data loader object from the dataset and config file"""
+    """Create a data loader object from the dataset and config file"""
     if dataset is None:
         return None
     if len(dataset) == 0:
         return None
-    assert mode in ['train', 'val', 'test']
-    if mode == 'train':
+    assert mode in ["train", "val", "test"]
+    if mode == "train":
         ## Configure training at client
         batch_size = cfg.train_data_batch_size
-        shuffle    = cfg.train_data_shuffle
+        shuffle = cfg.train_data_shuffle
     else:
         batch_size = cfg.test_data_batch_size
-        shuffle    = cfg.test_data_shuffle
+        shuffle = cfg.test_data_shuffle
 
     return DataLoader(
-            dataset,
-            batch_size  = batch_size,
-            num_workers = cfg.num_workers,
-            shuffle     = shuffle,
-            pin_memory  = True
-        )
+        dataset,
+        batch_size=batch_size,
+        num_workers=cfg.num_workers,
+        shuffle=shuffle,
+        pin_memory=True,
+    )
+
 
 def load_source_file(file_path):
     with open(file_path) as fi:
         source = fi.read()
     return source
 
+
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
+    return "".join(random.choice(chars) for _ in range(size))
