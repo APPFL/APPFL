@@ -2,9 +2,9 @@ name: build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ CI_Action ]
   pull_request:
-    branches: [ main ]
+    branches: [ CI_Action ]
 
 jobs:
   build:
@@ -23,9 +23,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install package and dependencies
       run: |
-        sudo apt install libopenmpi-dev
+        sudo apt install openmpi-bin openmpi-common libopenmpi-dev
         python -m pip install --upgrade pip   
-        python -m pip install flake8             
+        python -m pip install flake8 pytest mpi4py           
         python -m pip install -e ".[dev,examples,analytics]"
     - name: Lint with flake8
       run: |
@@ -36,3 +36,4 @@ jobs:
     - name: Test with examples
       run: |
         python ./examples/cifar10.py
+        mpirun -n 3 pytest --with-mpi

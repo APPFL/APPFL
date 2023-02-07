@@ -9,7 +9,10 @@ import numpy as np
 
 from appfl.config import *
 from appfl.misc.data import *
-import appfl.run as rt
+import appfl.run_serial as rs
+import appfl.run_mpi as rm
+# import appfl.run_grpc_client as rgc
+# import appfl.run_grpc_server as rgs
 
 
 class CNN(nn.Module):
@@ -96,7 +99,7 @@ def test_mnist_fedavg():
     model = CNN(1, 10, 28)
     train_datasets, test_dataset = process_data(num_clients)
 
-    rt.run_serial(cfg, model, train_datasets, test_dataset, "test_mnist")
+    rs.run_serial(cfg, model, train_datasets, test_dataset, "test_mnist")
 
 
 @pytest.mark.mpi(min_size=3)
@@ -116,9 +119,9 @@ def test_mnist_fedavg_mpi():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
+            rm.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, num_clients, train_datasets)
     else:
         assert 0
 
@@ -139,9 +142,9 @@ def test_mnist_iceadmm_mpi():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
+            rm.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, num_clients, train_datasets)
     else:
         assert 0
 
@@ -162,9 +165,9 @@ def test_mnist_iiadmm_mpi():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
+            rm.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, num_clients, train_datasets)
     else:
         assert 0
 
@@ -176,7 +179,7 @@ def test_mnist_fedavg_notest():
     model = CNN(1, 10, 28)
     train_datasets, test_dataset = process_data(num_clients)
 
-    rt.run_serial(cfg, model, train_datasets, Dataset(), "test_mnist")
+    rs.run_serial(cfg, model, train_datasets, Dataset(), "test_mnist")
 
 
 @pytest.mark.mpi(min_size=3)
@@ -196,9 +199,9 @@ def test_mnist_fedavg_mpi_notest():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, Dataset(), "test_mnist")
+            rm.run_server(cfg, comm, model, num_clients, Dataset(), "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, num_clients, train_datasets)
     else:
         assert 0
 
