@@ -38,10 +38,13 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Pytest
+    - name: Pytest with MNIST without MPI
       run: |
-        mpirun -n 3 pytest --with-mpi
-    - name: Test with examples
+        pytest
+    - name: Pytest with MNIST with MPI
+      run: |
+        mpirun -n 3 pytest --with-mpi ""
+    - name: Test with examples/cifar10
       run: |
         python ./examples/cifar10.py
     

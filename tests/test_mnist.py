@@ -7,203 +7,344 @@ from torchvision.transforms import ToTensor
 import math
 import numpy as np
 
+import os
+import time
+
+from appfl.misc.utils import *
 from appfl.config import *
 from appfl.misc.data import *
 import appfl.run_serial as rs
 import appfl.run_mpi as rm
-# import appfl.run_grpc_client as rgc
-# import appfl.run_grpc_server as rgs
+from mpi4py import MPI
+
+import sys
+import os
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+target = parent + "/examples"
+sys.path.append(target)
+from models.cnn import *
+from models.utils import get_model
+
+import argparse
+
+""" read arguments """
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--device", type=str, default="cpu")
+
+## dataset
+parser.add_argument("--dataset", type=str, default="MNIST")
+parser.add_argument("--num_channel", type=int, default=1)
+parser.add_argument("--num_classes", type=int, default=10)
+parser.add_argument("--num_pixel", type=int, default=28)
+parser.add_argument("--model", type=str, default="CNN")
+
+## clients
+parser.add_argument("--num_clients", type=int, default=1)
+parser.add_argument("--client_optimizer", type=str, default="Adam")
+parser.add_argument("--client_lr", type=float, default=1e-3)
+parser.add_argument("--num_local_epochs", type=int, default=1)
+
+## server
+parser.add_argument("--server", type=str, default="ServerFedAvg")
+parser.add_argument("--num_epochs", type=int, default=2)
+
+parser.add_argument("--server_lr", type=float, required=False)
+parser.add_argument("--mparam_1", type=float, required=False)
+parser.add_argument("--mparam_2", type=float, required=False)
+parser.add_argument("--adapt_param", type=float, required=False)
+parser.add_argument("--with-mpi", type=str, default="")
 
 
-class CNN(nn.Module):
-    def __init__(self, num_channel, num_classes, num_pixel):
-        super().__init__()
-        self.conv1 = nn.Conv2d(
-            num_channel, 32, kernel_size=5, padding=0, stride=1, bias=True
+args = parser.parse_args()
+
+if torch.cuda.is_available():
+    args.device = "cuda"
+
+
+def test_mnist_no_mpi():
+
+    def get_model():
+        ## User-defined model
+        model = CNN(args.num_channel, args.num_classes, args.num_pixel)
+        return model
+
+    def get_data():
+        dir = os.getcwd() + "/datasets/RawData"
+
+        # Root download the data if not already available.
+        # test data for a server
+        test_data_raw = eval("torchvision.datasets." + args.dataset)(
+            dir, download=True, train=False, transform=ToTensor()
         )
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=5, padding=0, stride=1, bias=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=(2, 2))
-        self.act = nn.ReLU(inplace=True)
 
-        X = num_pixel
-        X = math.floor(1 + (X + 2 * 0 - 1 * (5 - 1) - 1) / 1)
-        X = X / 2
-        X = math.floor(1 + (X + 2 * 0 - 1 * (5 - 1) - 1) / 1)
-        X = X / 2
-        X = int(X)
+        test_data_input = []
+        test_data_label = []
+        for idx in range(len(test_data_raw)):
+            test_data_input.append(test_data_raw[idx][0].tolist())
+            test_data_label.append(test_data_raw[idx][1])
 
-        self.fc1 = nn.Linear(64 * X * X, 512)
-        self.fc2 = nn.Linear(512, num_classes)
+        test_dataset = Dataset(
+            torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+        )
 
-    def forward(self, x):
-        x = self.act(self.conv1(x))
-        x = self.maxpool(x)
-        x = self.act(self.conv2(x))
-        x = self.maxpool(x)
-        x = torch.flatten(x, 1)
-        x = self.act(self.fc1(x))
-        x = self.fc2(x)
-        return x
+        # training data for multiple clients
+        train_data_raw = eval("torchvision.datasets." + args.dataset)(
+            dir, download=False, train=True, transform=ToTensor()
+        )
 
+        split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)
+        train_datasets = []
+        for i in range(args.num_clients):
 
-def process_data(num_clients):
+            train_data_input = []
+            train_data_label = []
+            for idx in split_train_data_raw[i]:
+                train_data_input.append(train_data_raw[idx][0].tolist())
+                train_data_label.append(train_data_raw[idx][1])
 
-    # test data for a server
-    test_data_raw = torchvision.datasets.MNIST(
-        "./_data", download=False, train=False, transform=ToTensor()
-    )
-
-    test_data_input = []
-    test_data_label = []
-    for idx in range(len(test_data_raw)):
-        test_data_input.append(test_data_raw[idx][0].tolist())
-        test_data_label.append(test_data_raw[idx][1])
-
-    test_dataset = Dataset(
-        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
-    )
-
-    # training data for multiple clients
-    train_data_raw = torchvision.datasets.MNIST(
-        "./_data", download=False, train=True, transform=ToTensor()
-    )
-
-    split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
-    train_datasets = []
-    for i in range(num_clients):
-
-        train_data_input = []
-        train_data_label = []
-        for idx in split_train_data_raw[i]:
-            train_data_input.append(train_data_raw[idx][0].tolist())
-            train_data_label.append(train_data_raw[idx][1])
-
-        train_datasets.append(
-            Dataset(
-                torch.FloatTensor(train_data_input),
-                torch.tensor(train_data_label),
+            train_datasets.append(
+                Dataset(
+                    torch.FloatTensor(train_data_input),
+                    torch.tensor(train_data_label),
+                )
             )
+        return train_datasets, test_dataset
+    
+    """ Configuration """
+    cfg = OmegaConf.structured(Config)
+
+    cfg.device = args.device
+    cfg.reproduce = True
+    if cfg.reproduce == True:
+        set_seed(1)
+
+    ## clients
+    cfg.num_clients = args.num_clients
+    cfg.fed.args.optim = args.client_optimizer
+    cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.num_local_epochs = args.num_local_epochs
+
+    ## server
+    cfg.fed.servername = args.server
+    cfg.num_epochs = args.num_epochs
+
+    ## outputs
+
+    cfg.use_tensorboard = False
+
+    cfg.save_model_state_dict = False
+
+    cfg.output_dirname = "./outputs_%s_%s_%s" % (
+        args.dataset,
+        args.server,
+        args.client_optimizer,
+    )
+    if args.server_lr != None:
+        cfg.fed.args.server_learning_rate = args.server_lr
+        cfg.output_dirname += "_ServerLR_%s" % (args.server_lr)
+
+    if args.adapt_param != None:
+        cfg.fed.args.server_adapt_param = args.adapt_param
+        cfg.output_dirname += "_AdaptParam_%s" % (args.adapt_param)
+
+    if args.mparam_1 != None:
+        cfg.fed.args.server_momentum_param_1 = args.mparam_1
+        cfg.output_dirname += "_MParam1_%s" % (args.mparam_1)
+
+    if args.mparam_2 != None:
+        cfg.fed.args.server_momentum_param_2 = args.mparam_2
+        cfg.output_dirname += "_MParam2_%s" % (args.mparam_2)
+
+    cfg.output_filename = "result"
+
+    start_time = time.time()
+
+    """ User-defined model """
+    model = get_model()
+    loss_fn = torch.nn.CrossEntropyLoss()   
+
+    ## loading models
+    cfg.load_model = False
+    if cfg.load_model == True:
+        cfg.load_model_dirname = "./save_models"
+        cfg.load_model_filename = "Model"
+        model = load_model(cfg)
+
+    """ User-defined data """
+    train_datasets, test_dataset = get_data()
+
+    ## Sanity check for the user-defined data
+    if cfg.data_sanity == True:
+        data_sanity_check(
+            train_datasets, test_dataset, args.num_channel, args.num_pixel
         )
 
-    return train_datasets, test_dataset
+    print(
+        "-------Loading_Time=",
+        time.time() - start_time,
+    )
 
+    """ saving models """
+    cfg.save_model = False
+    if cfg.save_model == True:
+        cfg.save_model_dirname = "./save_models"
+        cfg.save_model_filename = "Model"
 
-# Let's download the data first.
-torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
-
-
-def test_mnist_fedavg():
-
-    num_clients = 2
-    cfg = OmegaConf.structured(Config)
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
-
-    rs.run_serial(cfg, model, train_datasets, test_dataset, "test_mnist")
-
+    """ Running """
+    rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
 
 @pytest.mark.mpi(min_size=3)
-def test_mnist_fedavg_mpi():
-    print
+def test_mnist_with_mpi():
 
-    from mpi4py import MPI
+    def get_data(comm: MPI.Comm):
+        dir = os.getcwd() + "/datasets/RawData"
+
+        comm_rank = comm.Get_rank()
+
+        # Root download the data if not already available.
+        if comm_rank == 0:
+            # test data for a server
+            test_data_raw = eval("torchvision.datasets." + args.dataset)(
+                dir, download=True, train=False, transform=ToTensor()
+            )
+
+        comm.Barrier()
+        if comm_rank > 0:
+            # test data for a server
+            test_data_raw = eval("torchvision.datasets." + args.dataset)(
+                dir, download=False, train=False, transform=ToTensor()
+            )
+
+        test_data_input = []
+        test_data_label = []
+        for idx in range(len(test_data_raw)):
+            test_data_input.append(test_data_raw[idx][0].tolist())
+            test_data_label.append(test_data_raw[idx][1])
+
+        test_dataset = Dataset(
+            torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+        )
+
+        # training data for multiple clients
+        train_data_raw = eval("torchvision.datasets." + args.dataset)(
+            dir, download=False, train=True, transform=ToTensor()
+        )
+
+        split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)
+        train_datasets = []
+        for i in range(args.num_clients):
+
+            train_data_input = []
+            train_data_label = []
+            for idx in split_train_data_raw[i]:
+                train_data_input.append(train_data_raw[idx][0].tolist())
+                train_data_label.append(train_data_raw[idx][1])
+
+            train_datasets.append(
+                Dataset(
+                    torch.FloatTensor(train_data_input),
+                    torch.tensor(train_data_label),
+                )
+            )
+        return train_datasets, test_dataset
 
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
-    num_clients = 2
+    """ Configuration """
     cfg = OmegaConf.structured(Config)
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
 
+    cfg.device = args.device
+    cfg.reproduce = True
+    if cfg.reproduce == True:
+        set_seed(1)
+
+    ## clients
+    cfg.num_clients = args.num_clients
+    cfg.fed.args.optim = args.client_optimizer
+    cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.num_local_epochs = args.num_local_epochs
+
+    ## server
+    cfg.fed.servername = args.server
+    cfg.num_epochs = args.num_epochs
+
+    ## outputs
+
+    cfg.use_tensorboard = False
+
+    cfg.save_model_state_dict = False
+
+    cfg.output_dirname = "./outputs_%s_%s_%s" % (
+        args.dataset,
+        args.server,
+        args.client_optimizer,
+    )
+    if args.server_lr != None:
+        cfg.fed.args.server_learning_rate = args.server_lr
+        cfg.output_dirname += "_ServerLR_%s" % (args.server_lr)
+
+    if args.adapt_param != None:
+        cfg.fed.args.server_adapt_param = args.adapt_param
+        cfg.output_dirname += "_AdaptParam_%s" % (args.adapt_param)
+
+    if args.mparam_1 != None:
+        cfg.fed.args.server_momentum_param_1 = args.mparam_1
+        cfg.output_dirname += "_MParam1_%s" % (args.mparam_1)
+
+    if args.mparam_2 != None:
+        cfg.fed.args.server_momentum_param_2 = args.mparam_2
+        cfg.output_dirname += "_MParam2_%s" % (args.mparam_2)
+
+    cfg.output_filename = "result"
+
+    start_time = time.time()
+
+    """ User-defined model """
+    model = get_model(args)
+    loss_fn = torch.nn.CrossEntropyLoss()   
+
+    ## loading models
+    cfg.load_model = False
+    if cfg.load_model == True:
+        cfg.load_model_dirname = "./save_models"
+        cfg.load_model_filename = "Model"
+        model = load_model(cfg)
+
+    """ User-defined data """
+    train_datasets, test_dataset = get_data(comm)
+
+    ## Sanity check for the user-defined data
+    if cfg.data_sanity == True:
+        data_sanity_check(
+            train_datasets, test_dataset, args.num_channel, args.num_pixel
+        )
+
+    print(
+        "-------Loading_Time=",
+        time.time() - start_time,
+    )
+
+    """ saving models """
+    cfg.save_model = False
+    if cfg.save_model == True:
+        cfg.save_model_dirname = "./save_models"
+        cfg.save_model_filename = "Model"
+
+    """ Running """
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
+            rm.run_server(
+                cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
+            )
         else:
-            rm.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(
+                cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset
+            )
+        print("------DONE------", comm_rank)
     else:
         assert 0
-
-
-@pytest.mark.mpi(min_size=3)
-def test_mnist_iceadmm_mpi():
-
-    from mpi4py import MPI
-
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
-
-    num_clients = 2
-    cfg = OmegaConf.structured(Config(fed=ICEADMM()))
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
-
-    if comm_size > 1:
-        if comm_rank == 0:
-            rm.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
-        else:
-            rm.run_client(cfg, comm, model, num_clients, train_datasets)
-    else:
-        assert 0
-
-
-@pytest.mark.mpi(min_size=3)
-def test_mnist_iiadmm_mpi():
-
-    from mpi4py import MPI
-
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
-
-    num_clients = 2
-    cfg = OmegaConf.structured(Config(fed=IIADMM()))
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
-
-    if comm_size > 1:
-        if comm_rank == 0:
-            rm.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
-        else:
-            rm.run_client(cfg, comm, model, num_clients, train_datasets)
-    else:
-        assert 0
-
-
-def test_mnist_fedavg_notest():
-
-    num_clients = 2
-    cfg = OmegaConf.structured(Config)
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
-
-    rs.run_serial(cfg, model, train_datasets, Dataset(), "test_mnist")
-
-
-@pytest.mark.mpi(min_size=3)
-def test_mnist_fedavg_mpi_notest():
-    print
-
-    from mpi4py import MPI
-
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
-
-    num_clients = 2
-    cfg = OmegaConf.structured(Config)
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
-
-    if comm_size > 1:
-        if comm_rank == 0:
-            rm.run_server(cfg, comm, model, num_clients, Dataset(), "test_mnist")
-        else:
-            rm.run_client(cfg, comm, model, num_clients, train_datasets)
-    else:
-        assert 0
-
-
-# mpirun -n 3 python -m pytest --with-mpi
