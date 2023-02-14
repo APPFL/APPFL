@@ -13,6 +13,8 @@ from appfl.misc import (
     validation,
     get_eval_results_from_logs,
 )
+
+from appfl.algorithm import *
 from appfl.funcx.funcx_client import client_testing, client_validate_data
 from appfl.funcx.funcx_clients_manager import APPFLFuncXTrainingClients
 
@@ -39,6 +41,15 @@ class APPFLFuncXServer(abc.ABC):
         ## Runtime variables
         self.best_accuracy = 0.0
         self.data_info_at_client = None
+
+        ## Save best checkpoint
+        if self.cfg.save_best_checkpoint:
+            if  self.cfg.higher_is_better:
+                self.best_eval = -1e8  
+                self.is_better = lambda x, y: x > y 
+            else:
+                self.best_eval = 1e8
+                self.is_better = lambda x, y: x < y 
 
     def _run_sync_task(self, exc_func, *args, **kwargs):
         self.trn_endps.send_task_to_all_clients(exc_func, *args, **kwargs)
@@ -132,15 +143,9 @@ class APPFLFuncXServer(abc.ABC):
                 'test_acc': cli_eval
                 }
             eval_results[client_idx] = {
-<<<<<<< HEAD
-                "test_loss": eval_results[client_idx][0],
-                "test_acc": eval_results[client_idx][1],
-            }
-=======
                 'test_loss': eval_results[client_idx][0],
                 **cli_eval 
-                }
->>>>>>> 6aa68ff74e8be4cfacc1c851407ebce47622515e
+            }
         return eval_results
 
     def _do_server_validation(self, step: int):
@@ -194,6 +199,7 @@ class APPFLFuncXServer(abc.ABC):
                             validation_results[client_idx][val_k],
                             step,
                         )
+            return validation_results
 
     def _do_client_testing(self):
         """Perform tesint at clients"""
@@ -213,7 +219,18 @@ class APPFLFuncXServer(abc.ABC):
             if self.cfg.save_model == True:
                 mLogging.save_checkpoint(step + 1, self.server.model.state_dict())
                 # save_model_iteration(step + 1, self.server.model.state_dict(), self.cfg)
-
+    
+    def _save_best_checkpoint(self, eval_dict):
+        if self.cfg.save_best_checkpoint:
+            # Temporally use the validation loss, it should be able to use any metric
+            eval = 0.0
+            for cli_idx in self.weights:
+                eval += self.weights[cli_idx] * eval_dict[cli_idx]['val_loss']
+            
+            if self.is_better(eval, self.best_eval): 
+                self.logger.info("Saving best checkpoint")
+                mLogging.save_checkpoint("best", self.server.model.state_dict())
+    
     @abc.abstractmethod
     def _do_training(self):
         pass

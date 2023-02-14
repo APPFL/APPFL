@@ -11,6 +11,7 @@ from appfl.misc.utils import *
 from appfl.misc.logging import *
 from models.cnn import *
 import appfl.run_funcx_server as funcx_server
+from appfl.misc.losses import get_loss_func
 import argparse
 
 from funcx import FuncXClient

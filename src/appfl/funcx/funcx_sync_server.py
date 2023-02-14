@@ -38,11 +38,13 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
             )
 
             local_states = [local_states]
-            self._do_client_validation(t, client_logs)
+            client_eval = self._do_client_validation(t, client_logs)
             self.cfg["logginginfo"]["LocalUpdate_time"] = (
                 time.time() - local_update_start
             )
-
+            """ Saving best checkpoint """
+            self._save_best_checkpoint(client_eval)
+            
             ## Perform global update
             global_update_start = time.time()
             self.server.update(local_states)
@@ -57,5 +59,6 @@ class APPFLFuncXSyncServer(APPFLFuncXServer):
                 self._do_server_validation(t + 1)
 
             self.server.logging_iteration(self.cfg, self.logger, t)
+            
             """ Saving checkpoint """
             self._save_checkpoint(t)

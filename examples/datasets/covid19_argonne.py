@@ -14,8 +14,8 @@ def get_data(
     from glob import glob
 
     class ArgonneCXRCovidDatset(Dataset):
-        def __init__(self, data_dir, transform, mode='train'):
-            assert mode in ['train', 'test']
+        def __init__(self, data_dir, transform, mode="train"):
+            assert mode in ["train", "test", "val"]
             self.datadir = data_dir
             self.img_dir = osp.join(self.datadir, "data")
             self.annot_file = osp.join(self.datadir, "%s_%s.txt" % (cfg.clients[client_idx].data_pipeline.split_file, mode))
@@ -41,14 +41,6 @@ def get_data(
             image = self.transform(image)
             label = self.labels[idx]
             return image, label
-
-    # TODO: Caclucate mean/std of Argonne dataset
-    trmean = 0.5251
-    trsd   = 0.1942
-    temean = 0.5251
-    tesd   = 0.1942
-    # temean = 0.5078
-    # tesd   = 0.2228
 
     #num_pixel = cfg.clients[client_idx].get_data.transforms.resize
     num_pixel = cfg.clients[client_idx].data_pipeline.resize
@@ -79,6 +71,8 @@ def get_data(
     dataset = None
     if mode == "train":
         dataset = ArgonneCXRCovidDatset(data_dir, train_transform)
+    elif mode == "val":
+        dataset  = ArgonneCXRCovidDatset(data_dir, test_transform, mode='val')
     else:
         dataset  = ArgonneCXRCovidDatset(data_dir, test_transform, mode='test')
     return dataset

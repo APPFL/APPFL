@@ -18,11 +18,13 @@ class EvalLogger:
         self.main_logger = mLogging.get_logger()
 
     def __format(self, key, val):
+        if type(val) == list:
+            return ""
         c = "%10s:" % key
         if type(val) == int:
             c += "%5s" % val
-        else:
-            c += "%10.3f" % val
+        elif type:
+            c += "%10.4f" % val
         return c
 
     def log_info_client_results(self, results, rs_name=""):
@@ -228,9 +230,12 @@ class mLogging:
         logger.info(b)
 
     @classmethod
-    def save_checkpoint(cls, step, state_dict):
+    def save_checkpoint(cls, ckpt_name, state_dict):
         lgg = cls.__logger
-        file = os.path.join(lgg.dir, "checkpoint_%d.pt" % step)
+        if type(ckpt_name) == int:
+            file = os.path.join(lgg.dir, "checkpoint_%d.pt" % ckpt_name)
+        else:
+            file = os.path.join(lgg.dir, "%s.pt" % str(ckpt_name))
         torch.save(state_dict, file)
 
 

@@ -150,3 +150,8 @@ class FuncXConfig(Config):
 
     # Cloud storage
     use_cloud_transfer: bool = True
+
+    # Save best checkpoint
+    save_best_checkpoint: bool = True
+    main_metric: str = "auc"
+    higher_is_better: bool = True

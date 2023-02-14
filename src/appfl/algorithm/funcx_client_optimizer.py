@@ -8,6 +8,7 @@ from collections import OrderedDict
 from sklearn import metrics
 from torch.optim import *
 from torch.utils.data import DataLoader
+from torch.nn import functional as F
 
 from appfl.algorithm import BaseClient
 from appfl.misc.logging import ClientLogger
@@ -73,10 +74,18 @@ class FuncxClientOptim(BaseClient):
 
         preds_binary = preds.argmax(axis=1) 
         acc = (preds_binary == targets).mean()
-        prec,rec, f1, sprt  = metrics.precision_recall_fscore_support(preds_binary, targets, average="binary")
-        auc = metrics.roc_auc_score(targets, preds[:, 1])
-        # correct += pred.eq(preds.argmax(dim=1, keepdim=True).view_as(pred)).sum().item()    
-        return loss, {'acc': acc, 'prec': prec, 'rec': rec, 'f1': f1, 'auc': auc}
+
+        # Compute precision, recall, AUC, AP for binary classification
+        arr_precs, arr_recalls, threshold = metrics.precision_recall_curve(targets, preds[:,1])
+        prec, rec, f1, sprt  = metrics.precision_recall_fscore_support(targets, preds_binary, average="binary")
+        try:
+            auc = metrics.roc_auc_score(targets, preds[:, 1])
+        except:
+            auc = None
+        ap  = metrics.average_precision_score(targets, preds[:,1])
+
+        return loss, {"acc": acc, "prec": prec, "rec": rec, 'f1': f1, 'auc': auc, 'ap': ap, 
+            'lst_precs': arr_precs.tolist(), "lst_recalls" : arr_recalls.tolist()}
 
     def update(self, cli_logger):
 
@@ -87,12 +96,15 @@ class FuncxClientOptim(BaseClient):
 
         """ Multiple local update """
         start_time = time.time()
+        
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
             cli_logger.start_timer("val_before_update_val_set")
+            # TODO: should also support other metrics, not only the loss and accuracy 
             test_loss, test_accuracy = super(FuncxClientOptim, self).client_validation(
                 self.test_dataloader
             )
+            
             cli_logger.add_info(
                 "val_before_update_val_set",
                 {"val_loss": test_loss, "val_acc": test_accuracy},
