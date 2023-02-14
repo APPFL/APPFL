@@ -76,6 +76,9 @@ class FuncxClientOptim(BaseClient):
         acc = (preds_binary == targets).mean()
 
         # Compute precision, recall, AUC, AP for binary classification
+        # Plot the ROC
+        fpr, tpr, _ = metrics.roc_curve(targets,   preds[:,1])
+        # Plot the Recall-Precision Curve
         arr_precs, arr_recalls, threshold = metrics.precision_recall_curve(targets, preds[:,1])
         prec, rec, f1, sprt  = metrics.precision_recall_fscore_support(targets, preds_binary, average="binary")
         try:
@@ -85,7 +88,7 @@ class FuncxClientOptim(BaseClient):
         ap  = metrics.average_precision_score(targets, preds[:,1])
 
         return loss, {"acc": acc, "prec": prec, "rec": rec, 'f1': f1, 'auc': auc, 'ap': ap, 
-            'lst_precs': arr_precs.tolist(), "lst_recalls" : arr_recalls.tolist()}
+            'tpr': tpr.tolist(), "fpr" : fpr.tolist(), 'arr_precs':arr_precs.tolist(), 'arr_recalls': arr_recalls.tolist()}
 
     def update(self, cli_logger):
 
