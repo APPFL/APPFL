@@ -227,8 +227,9 @@ class APPFLFuncXServer(abc.ABC):
             for cli_idx in self.weights:
                 eval += self.weights[cli_idx] * eval_dict[cli_idx]['val_loss']
             
-            if self.is_better(eval, self.best_eval): 
+            if eval < self.best_eval: 
                 self.logger.info("Saving best checkpoint")
+                self.best_eval = eval
                 mLogging.save_checkpoint("best", self.server.model.state_dict())
     
     @abc.abstractmethod
