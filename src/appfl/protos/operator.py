@@ -1,16 +1,19 @@
+import copy
 import logging
-from collections import OrderedDict
-
+import numpy as np
 import torch
+
+from collections import OrderedDict
 from torch.utils.data import DataLoader
 
-import numpy as np
-import copy
-
-from appfl.misc.utils import *
 from appfl.algorithm import *
-
-from .federated_learning_pb2 import Job
+from appfl.misc.utils import (
+    create_custom_logger,
+    load_model,
+    validation,
+    save_model_iteration,
+)
+from appfl.protos.federated_learning_pb2 import Job
 
 
 class FLOperator:

@@ -10,7 +10,6 @@ class ICEADMM:
     args: DictConfig = OmegaConf.create(
         {
             "num_local_epochs": 1,
-            
             "accum_grad": True,
             "coeff_grad": True,
             ## Optimizer for a gradient calculation (esp., to use zero.grad)

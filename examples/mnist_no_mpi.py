@@ -48,7 +48,7 @@ args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
- 
+
 
 def get_data():
     dir = os.getcwd() + "/datasets/RawData"
@@ -102,7 +102,7 @@ def get_model():
 ## Run
 def main():
 
-    """ Configuration """
+    """Configuration"""
     cfg = OmegaConf.structured(Config)
 
     cfg.device = args.device
@@ -153,7 +153,7 @@ def main():
 
     """ User-defined model """
     model = get_model()
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = torch.nn.CrossEntropyLoss()
 
     ## loading models
     cfg.load_model = False
@@ -184,7 +184,6 @@ def main():
 
     """ Running """
     rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
-        
 
 
 if __name__ == "__main__":

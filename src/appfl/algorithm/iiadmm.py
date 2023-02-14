@@ -1,16 +1,15 @@
+import copy
 import logging
-
-log = logging.getLogger(__name__)
+import torch
 
 from collections import OrderedDict
-from .algorithm import BaseServer, BaseClient
-
-import torch
 from torch.optim import *
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
-import copy
-import math
+
+from appfl.algorithm import BaseServer, BaseClient
+
+log = logging.getLogger(__name__)
 
 
 class IIADMMServer(BaseServer):

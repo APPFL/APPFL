@@ -65,7 +65,7 @@ def main():
     args.num_classes = num_classes
     args.num_pixel = num_piexl
     model = get_model(args)
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = torch.nn.CrossEntropyLoss()
 
     print(
         "----------Loaded Datasets and Model----------Elapsed Time=",
@@ -77,7 +77,9 @@ def main():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(cfg, comm, loss_fn, model, num_clients, test_dataset, DataSet_name)
+            rm.run_server(
+                cfg, comm, loss_fn, model, num_clients, test_dataset, DataSet_name
+            )
         else:
             rm.run_client(cfg, comm, loss_fn, model, num_clients, train_datasets)
         print("------DONE------", comm_rank)

@@ -1,5 +1,6 @@
 def get_model():
     import torch.nn as nn
+
     def conv_block(in_planes, out_planes, stride=1, groups=1, dilation=1):
         return nn.Conv1d(
             in_planes,
@@ -11,6 +12,7 @@ def get_model():
             bias=False,
             dilation=dilation,
         )
+
     class BasicBlock(nn.Module):
         expansion = 1
 
@@ -32,7 +34,7 @@ def get_model():
                 raise ValueError("BasicBlock only supports groups=1 and base_width=64")
             if dilation > 1:
                 raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
-            
+
             # Both self.conv1 and self.downsample layers downsample the input when stride != 1
             self.conv1 = conv_block(inplanes, planes, stride)
             self.bn1 = norm_layer(inplanes)
@@ -45,7 +47,7 @@ def get_model():
 
         def forward(self, x):
             identity = x
-            
+
             # BN > RELU > Dropout > Conv
             out = self.bn1(x)
             out = self.relu(out)
@@ -66,7 +68,9 @@ def get_model():
             return out
 
     def conv_subsumpling(in_planes, out_planes, stride=1):
-        return nn.Conv1d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+        return nn.Conv1d(
+            in_planes, out_planes, kernel_size=1, stride=stride, bias=False
+        )
 
     class EcgResNet34(nn.Module):
         def __init__(
@@ -98,18 +102,30 @@ def get_model():
                 )
             self.groups = groups
             self.base_width = width_per_group
-            self.conv1 = conv_block(12, self.inplanes, stride=1) # 12 leads
+            self.conv1 = conv_block(12, self.inplanes, stride=1)  # 12 leads
             self.bn1 = norm_layer(self.inplanes)
             self.relu = nn.ReLU(inplace=True)
             self.layer1 = self._make_layer(block, 64, layers[0])
             self.layer2 = self._make_layer(
-                block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0],
+                block,
+                128,
+                layers[1],
+                stride=2,
+                dilate=replace_stride_with_dilation[0],
             )
             self.layer3 = self._make_layer(
-                block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1],
+                block,
+                256,
+                layers[2],
+                stride=2,
+                dilate=replace_stride_with_dilation[1],
             )
             self.layer4 = self._make_layer(
-                block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2],
+                block,
+                512,
+                layers[3],
+                stride=2,
+                dilate=replace_stride_with_dilation[2],
             )
             self.avgpool = nn.AdaptiveAvgPool1d(1)
             # change to regression
@@ -117,7 +133,9 @@ def get_model():
 
             for m in self.modules():
                 if isinstance(m, nn.Conv1d):
-                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+                    nn.init.kaiming_normal_(
+                        m.weight, mode="fan_out", nonlinearity="relu"
+                    )
                 elif isinstance(m, (nn.BatchNorm1d, nn.GroupNorm)):
                     nn.init.constant_(m.weight, 1)
                     nn.init.constant_(m.bias, 0)
@@ -187,4 +205,5 @@ def get_model():
             x = self.fc(x)
 
             return x
+
     return EcgResNet34

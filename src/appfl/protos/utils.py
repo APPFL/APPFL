@@ -1,5 +1,5 @@
-from .federated_learning_pb2 import DataBuffer
-from .federated_learning_pb2 import TensorRecord
+from appfl.protos.federated_learning_pb2 import DataBuffer
+from appfl.protos.federated_learning_pb2 import TensorRecord
 
 
 def construct_tensor_record(name, nparray):

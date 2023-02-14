@@ -15,25 +15,28 @@ import copy
 import cv2
 import os.path as osp
 import csv
+
 cudnn.benchmark = True
 
 from appfl.misc.data import Dataset
+
+
 class ArgonneCXRCovidDatset(Dataset):
-    def __init__(self, data_dir, transform, mode='train'):
-        assert mode in ['train', 'test']
+    def __init__(self, data_dir, transform, mode="train"):
+        assert mode in ["train", "test"]
         self.datadir = data_dir
         self.img_dir = osp.join(self.datadir, mode)
         self.annot_file = osp.join(self.datadir, "%s.txt" % mode)
-        self.data_list  = [] 
-        self.labels     = []
-        skip=10
+        self.data_list = []
+        self.labels = []
+        skip = 10
         with open(self.annot_file, "r") as fi:
-            rd = csv.reader(fi, delimiter=' ')
+            rd = csv.reader(fi, delimiter=" ")
             for i, row in enumerate(rd):
                 if i % skip == 0:
                     self.data_list.append(row[1])
-                    assert row[2] in ['negative', 'positive']
-                    self.labels.append(0 if row[2] == 'negative' else 1)
+                    assert row[2] in ["negative", "positive"]
+                    self.labels.append(0 if row[2] == "negative" else 1)
         self.transform = transform
 
     def __len__(self):
@@ -41,7 +44,7 @@ class ArgonneCXRCovidDatset(Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.data_list[idx])
-        image = cv2.imread(img_path) #NEEDS TO BE (3,32,32)
+        image = cv2.imread(img_path)  # NEEDS TO BE (3,32,32)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = self.transform(image)
         label = self.labels[idx]
@@ -49,53 +52,65 @@ class ArgonneCXRCovidDatset(Dataset):
 
 
 class DenseNet121(nn.Module):
-        """
-        DenseNet121 model with additional Sigmoid layer for classification
-        """
-        def __init__(self, num_output):
-            super(DenseNet121, self).__init__()
-            self.densenet121 = torchvision.models.densenet121(pretrained = True)
-            num_features = self.densenet121.classifier.in_features
-            self.densenet121.classifier = nn.Sequential(
-                nn.Linear(num_features, num_output),
-                # nn.Sigmoid()
-            )
-        def forward(self, x):
-            x = self.densenet121(x)
-            return x
+    """
+    DenseNet121 model with additional Sigmoid layer for classification
+    """
 
-num_pixel=224
+    def __init__(self, num_output):
+        super(DenseNet121, self).__init__()
+        self.densenet121 = torchvision.models.densenet121(pretrained=True)
+        num_features = self.densenet121.classifier.in_features
+        self.densenet121.classifier = nn.Sequential(
+            nn.Linear(num_features, num_output),
+            # nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.densenet121(x)
+        return x
+
+
+num_pixel = 224
 data_transforms = {
-    'train': transforms.Compose([
-        transforms.ToPILImage(),
+    "train": transforms.Compose(
+        [
+            transforms.ToPILImage(),
             transforms.Resize(num_pixel),
             transforms.CenterCrop(num_pixel),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-    'test': transforms.Compose([
-       transforms.ToPILImage(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    ),
+    "test": transforms.Compose(
+        [
+            transforms.ToPILImage(),
             transforms.Resize(num_pixel),
             transforms.CenterCrop(num_pixel),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    ),
 }
 
-data_dir = '/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/'
+data_dir = "/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/"
 
-image_datasets = {x: ArgonneCXRCovidDatset(data_dir, data_transforms[x], x)
-                  for x in ['train', 'test']}
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=64,
-                                             shuffle=True, num_workers=4)
-              for x in ['train', 'test']}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
+image_datasets = {
+    x: ArgonneCXRCovidDatset(data_dir, data_transforms[x], x) for x in ["train", "test"]
+}
+dataloaders = {
+    x: torch.utils.data.DataLoader(
+        image_datasets[x], batch_size=64, shuffle=True, num_workers=4
+    )
+    for x in ["train", "test"]
+}
+dataset_sizes = {x: len(image_datasets[x]) for x in ["train", "test"]}
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 ######################################################################
 # Training the model
 # ------------------
+
 
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     since = time.time()
@@ -104,15 +119,15 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     best_acc = 0.0
 
     for epoch in range(num_epochs):
-        print(f'Epoch {epoch}/{num_epochs - 1}')
-        print('-' * 10)
+        print(f"Epoch {epoch}/{num_epochs - 1}")
+        print("-" * 10)
 
         # Each epoch has a training and validation phase
-        for phase in ['train', 'test']:
-            if phase == 'train':
+        for phase in ["train", "test"]:
+            if phase == "train":
                 model.train()  # Set model to training mode
             else:
-                model.eval()   # Set model to evaluate mode
+                model.eval()  # Set model to evaluate mode
 
             running_loss = 0.0
             running_corrects = 0
@@ -127,37 +142,37 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
                 # forward
                 # track history if only in train
-                with torch.set_grad_enabled(phase == 'train'):
+                with torch.set_grad_enabled(phase == "train"):
                     outputs = model(inputs)
                     _, preds = torch.max(outputs, 1)
                     loss = criterion(outputs, labels)
 
                     # backward + optimize only if in training phase
-                    if phase == 'train':
+                    if phase == "train":
                         loss.backward()
                         optimizer.step()
 
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
-            if phase == 'train':
+            if phase == "train":
                 scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
             epoch_acc = running_corrects.double() / dataset_sizes[phase]
 
-            print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
+            print(f"{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}")
 
             # deep copy the model
-            if phase == 'test' and epoch_acc > best_acc:
+            if phase == "test" and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
         print()
 
     time_elapsed = time.time() - since
-    print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
-    print(f'Best val Acc: {best_acc:4f}')
+    print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
+    print(f"Best val Acc: {best_acc:4f}")
 
     # load best model weights
     model.load_state_dict(best_model_wts)
@@ -179,8 +194,9 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 # Train and evaluate
 # ^^^^^^^^^^^^^^^^^^
 
-model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                       num_epochs=25)
+model_ft = train_model(
+    model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=25
+)
 
 ######################################################################
 
@@ -226,8 +242,9 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=7, gamma=0.1)
 # network. However, forward does need to be computed.
 #
 
-model_conv = train_model(model_conv, criterion, optimizer_conv,
-                         exp_lr_scheduler, num_epochs=25)
+model_conv = train_model(
+    model_conv, criterion, optimizer_conv, exp_lr_scheduler, num_epochs=25
+)
 
 ######################################################################
 #

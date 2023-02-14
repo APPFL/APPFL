@@ -1,21 +1,27 @@
-import logging
-import os
-from collections import OrderedDict
-from .algorithm import BaseClient
-
-import torch
-from torch.optim import *
-
-from torch.utils.data import DataLoader
 import copy
-
-import numpy as np
+import os
 import time
+import torch
+
+from collections import OrderedDict
+from torch.optim import *
+from torch.utils.data import DataLoader
+
+from appfl.algorithm.algorithm import BaseClient
 
 
 class ClientOptim(BaseClient):
     def __init__(
-        self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, **kwargs
+        self,
+        id,
+        weight,
+        model,
+        loss_fn,
+        dataloader,
+        cfg,
+        outfile,
+        test_dataloader,
+        **kwargs
     ):
         super(ClientOptim, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
@@ -27,16 +33,15 @@ class ClientOptim(BaseClient):
         super(ClientOptim, self).client_log_title()
 
     def update(self):
-        
+
         """Inputs for the local model update"""
 
         self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
- 
 
         """ Multiple local update """
-        start_time=time.time()
+        start_time = time.time()
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
             test_loss, test_accuracy = super(ClientOptim, self).client_validation(
@@ -47,15 +52,15 @@ class ClientOptim(BaseClient):
                 0, per_iter_time, 0, 0, test_loss, test_accuracy
             )
             ## return to train mode
-            self.model.train()        
+            self.model.train()
 
-        ## local training 
+        ## local training
         for t in range(self.num_local_epochs):
-            start_time=time.time()
+            start_time = time.time()
             train_loss = 0
-            train_correct = 0            
+            train_correct = 0
             tmptotal = 0
-            for data, target in self.dataloader:                
+            for data, target in self.dataloader:
                 tmptotal += len(target)
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
@@ -64,7 +69,7 @@ class ClientOptim(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
                 optimizer.step()
-                
+
                 train_loss += loss.item()
                 if output.shape[1] == 1:
                     pred = torch.round(output)
@@ -87,7 +92,12 @@ class ClientOptim(BaseClient):
                 )
                 per_iter_time = time.time() - start_time
                 super(ClientOptim, self).client_log_content(
-                    t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
+                    t + 1,
+                    per_iter_time,
+                    train_loss,
+                    train_accuracy,
+                    test_loss,
+                    test_accuracy,
                 )
                 ## return to train mode
                 self.model.train()
@@ -102,10 +112,6 @@ class ClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
 
-
-
-
- 
         self.round += 1
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
@@ -126,4 +132,3 @@ class ClientOptim(BaseClient):
         self.local_state["penalty"][self.id] = 0.0
 
         return self.local_state
- 

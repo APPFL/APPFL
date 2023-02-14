@@ -1,15 +1,15 @@
-from concurrent import futures
+import grpc
 import logging
 
-import grpc
-from .federated_learning_pb2 import MessageStatus
-from .federated_learning_pb2 import Job
-from .federated_learning_pb2 import JobResponse
-from .federated_learning_pb2 import WeightResponse
-from .federated_learning_pb2 import LearningResults
-from .federated_learning_pb2 import Acknowledgment
-from . import utils
-from . import federated_learning_pb2_grpc
+from concurrent import futures
+
+from appfl.protos.federated_learning_pb2 import MessageStatus
+from appfl.protos.federated_learning_pb2 import JobResponse
+from appfl.protos.federated_learning_pb2 import WeightResponse
+from appfl.protos.federated_learning_pb2 import LearningResults
+from appfl.protos.federated_learning_pb2 import Acknowledgment
+from appfl.protos.utils import construct_tensor_record
+from appfl.protos import federated_learning_pb2_grpc
 
 
 class FLServicer(federated_learning_pb2_grpc.FederatedLearningServicer):
@@ -38,7 +38,7 @@ class FLServicer(federated_learning_pb2_grpc.FederatedLearningServicer):
             request.round_number,
         )
         nparray = self.operator.get_tensor(request.name)
-        return utils.construct_tensor_record(request.name, nparray)
+        return construct_tensor_record(request.name, nparray)
 
     def GetWeight(self, request, context):
         self.logger.debug(

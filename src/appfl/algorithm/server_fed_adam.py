@@ -1,5 +1,6 @@
-from .server_federated import FedServer
 import torch
+
+from appfl.algorithm.server_federated import FedServer
 
 
 class ServerFedAdam(FedServer):
