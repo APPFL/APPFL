@@ -19,7 +19,7 @@ class EvalLogger:
         if type(val) == int:
             c+= "%5s"    % val 
         else:
-            c+= "%10.3f" % val
+            c+= "%10.4f" % val
         return c
 
     def log_info_client_results(self, results, rs_name = ''):

@@ -5,20 +5,31 @@ server:
   s3_bucket: anl-appfl
   
 clients:
+  # @UIUC: Argonne Covid dataset 
+  - name: uiuc-cig-01-gpu-02
+    endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
+    device:  cuda:0 
+    data_split: 0
+    data_dir  : "/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/"
+    output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL/examples/log_funcx_appfl/uiuc-cig-02-gpu-00"
+    get_data:
+      script_file: "./datasets/covid19_argonne.py"
+      call:   "get_data"
+    data_pipeline: 
+      resize: 224
+      num_pixel: 224
+      split_file: "split1"
+  
   - name: uchicago-gpu
     endpoint_id: 83d214ed-c5d5-45a0-aa42-9a6e1766a315
     device: cuda:0
     data_split: 0
-    # data_dir  : "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/ImageData_New/"
     data_dir  : "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/ImageData/"
     output_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
     get_data:
       script_file: "./datasets/covid19_uchicago.py"
       call:   "get_data"
-    data_pipeline: 
-      # train_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/train_annotations_new.csv"
-      # test_annotation_dir:  "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/val_annotations_new.csv"
-      # val_annotation_dir:   "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/test_annotations_new.csv"
+    data_pipeline:
       train_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/train_annotations"
       test_annotation_dir:  "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/test_annotations"
       val_annotation_dir:   "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/val_annotations"

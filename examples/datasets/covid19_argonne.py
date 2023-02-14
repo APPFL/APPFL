@@ -17,8 +17,8 @@ def get_data(
         def __init__(self, data_dir, transform, mode='train'):
             assert mode in ['train', 'test']
             self.datadir = data_dir
-            self.img_dir = osp.join(self.datadir, mode)
-            self.annot_file = osp.join(self.datadir, "%s.txt" % mode)
+            self.img_dir = osp.join(self.datadir, "data")
+            self.annot_file = osp.join(self.datadir, "%s_%s.txt" % (cfg.clients[client_idx].data_pipeline.split_file, mode))
             self.data_list  = [] 
             self.labels     = []
             skip=1

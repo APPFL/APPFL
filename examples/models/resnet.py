@@ -7,7 +7,7 @@ def get_model():
         """
         def __init__(self, num_output):
             super(ResNet, self).__init__()
-            self.ResNet18 = torchvision.models.resnet18(pretrained=False)
+            self.ResNet18 = torchvision.models.resnet18(pretrained=True)
             self.ResNet18.fc = nn.Sequential(
             nn.Linear(512, num_output)
         )
