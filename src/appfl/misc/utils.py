@@ -174,9 +174,7 @@ def dump_data_to_file(obj, file_path: str):
         raise RuntimeError("File extension %s is not supported" % file_ext)
     return True
 
-
 from torch.utils.data import DataLoader
-
 
 def get_dataloader(cfg, dataset, mode):
     """Create a data loader object from the dataset and config file"""

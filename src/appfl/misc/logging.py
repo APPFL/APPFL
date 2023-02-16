@@ -95,9 +95,14 @@ class mLogging:
                 cfg_file_name.replace(".yaml", ""),
                 client_cfg_file_name.replace(".yaml", ""),
             )
+        
+        mode_prefix = {
+            "train": "outputs", "clients_testing" : "eval", "attack": "attack"
+        }
+        
         dir = os.path.join(
             cfg.server.output_dir,
-            "%s_%s" % ("outputs" if mode == "train" else "eval", run_str),
+            "%s_%s" % (mode_prefix[mode], run_str),
         )
 
         cfg.server.output_dir = dir

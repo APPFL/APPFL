@@ -3,7 +3,8 @@ import copy
 import time
 import torch.nn as nn
 
-from appfl.funcx.cloud_storage import LargeObjectWrapper
+from appfl.funcx.cloud_storage import LargeObjectWrapper, CloudStorage
+import os.path as osp
 from funcx import FuncXClient
 
 from appfl.misc import (
@@ -15,7 +16,7 @@ from appfl.misc import (
 )
 
 from appfl.algorithm import *
-from appfl.funcx.funcx_client import client_testing, client_validate_data
+from appfl.funcx.funcx_client import client_testing, client_validate_data, client_attack
 from appfl.funcx.funcx_clients_manager import APPFLFuncXTrainingClients
 
 
@@ -247,8 +248,22 @@ class APPFLFuncXServer(abc.ABC):
             % (step + 1, self.trn_endps.cfg.fed.args.optim_args.lr)
         )
 
+    def _do_client_attack(self):
+        global_state = self.server.model.state_dict()
+        attack_info, _ = self._run_sync_task(
+            client_attack,
+            self.weights,
+            LargeObjectWrapper(global_state, "server_state"),
+            self.loss_fn,
+        )
+        for cli in attack_info:
+            _, obj_name, file_name = CloudStorage.get_cloud_object_info(attack_info[cli])
+            CloudStorage.get_instance().download_file(
+                obj_name, 
+                osp.join(self.cfg.server.output_dir, "%s_%s" % (self.cfg.clients[cli].name, file_name)))
+
     def run(self, model: nn.Module, loss_fn: nn.Module, mode="train"):
-        assert mode in ["train", "clients_testing"]
+        assert mode in ["train", "clients_testing", "attack"]
         # Set model, and loss function
         self._initialize_training(model, loss_fn)
         # Validate data at clients
@@ -257,7 +272,13 @@ class APPFLFuncXServer(abc.ABC):
         self._set_client_weights(mode=self.cfg.fed.args.client_weights)
         # Initialze model at server
         self._initialize_server_model()
-        if mode == "train":
+        
+        if mode == "attack":
+            assert self.cfg.load_model == True
+            self._do_client_attack()
+            return
+            
+        elif mode == "train":
             # Do training
             self._do_training()
         elif mode == "clients_testing":
@@ -269,6 +290,7 @@ class APPFLFuncXServer(abc.ABC):
             self.cfg["logginginfo"]["test_loss"] = 0.0
             self.cfg["logginginfo"]["test_accuracy"] = 0.0
             self.cfg["logginginfo"]["BestAccuracy"] = 0.0
+        
         # Do client testing
         self._do_client_testing()
         # Do server testing

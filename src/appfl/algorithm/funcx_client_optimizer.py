@@ -90,6 +90,48 @@ class FuncxClientOptim(BaseClient):
         return loss, {"acc": acc, "prec": prec, "rec": rec, 'f1': f1, 'auc': auc, 'ap': ap, 
             'tpr': tpr.tolist(), "fpr" : fpr.tolist(), 'arr_precs':arr_precs.tolist(), 'arr_recalls': arr_recalls.tolist()}
 
+    
+
+    def client_attack(self, dataloader):
+        
+        if self.loss_fn is None or dataloader is None:
+            return 0.0, 0.0
+
+        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        self.model.to(self.cfg.device)
+        # self.model.eval()
+        self.model.train()
+        tmpcnt = 0
+        tmptotal = 0
+        attack_info = []
+        # with torch.no_grad():
+        for i, (img, target) in enumerate(dataloader):
+            tmpcnt += 1
+            tmptotal += len(target)
+
+            img     = img.to(self.cfg.device)
+            target  = target.to(self.cfg.device)
+            optimizer.zero_grad()
+            output  = self.model(img)
+            
+            loss    = self.loss_fn(output, target)
+            loss.backward()
+            grad_dict = {name: param.grad.detach().cpu().numpy() for name,
+                    param in self.model.named_parameters()}
+            
+            attack_info.append(
+                {
+                    "input": torch.unsqueeze(img, dim=0).detach().cpu().numpy(),
+                    "target": target.detach().cpu().numpy(),
+                    "grad": grad_dict   
+                }
+            )
+            # We only take 3 samples, fix this 
+            if (i==4):
+                break
+        return attack_info
+        
+
     def update(self, cli_logger):
 
         """Inputs for the local model update"""

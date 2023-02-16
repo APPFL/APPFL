@@ -31,6 +31,8 @@ parser.add_argument('--reproduce', action='store_true', default=True)
 parser.add_argument('--use_tensorboard', action='store_true', default=True)
 
 parser.add_argument('--clients-test', action='store_true', default=False)
+parser.add_argument('--clients-privacy-attack', action='store_true', default=False)
+
 parser.add_argument('--load-model', action='store_true', default=False) 
 parser.add_argument("--load-model-dirname", type=str, default= "")
 parser.add_argument("--load-model-filename", type=str, default= "")
@@ -54,7 +56,12 @@ def main():
         set_seed(1)
 
     ## execution mode
-    mode = 'clients_testing' if args.clients_test else 'train'
+    if args.clients_test:
+        mode = "clients_testing" 
+    elif args.clients_privacy_attack:
+        mode = "attack"
+    else:
+        mode = "train"
 
     ## loading funcX configs from file
     load_funcx_device_config(cfg, args.client_config)

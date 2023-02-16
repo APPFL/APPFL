@@ -152,6 +152,59 @@ def client_testing(cfg, client_idx, weights, global_state, loss_fn):
     cli_logger.start_timer("do_testing")
     return res, cli_logger.to_dict()
 
+from torch.utils.data import DataLoader
+
+def client_attack(cfg, client_idx, weights, global_state, loss_fn):
+    from appfl.misc.logging import ClientLogger
+    from appfl.algorithm.funcx_client_optimizer import FuncxClientOptim
+    from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
+    ## Prepare logger
+    cli_logger = ClientLogger()
+    cli_logger.mark_event("start_endpoint_execution")
+    ## Import libaries
+    import os.path as osp
+    from appfl.misc import client_log, get_dataloader
+    from appfl.algorithm.client_optimizer import ClientOptim
+    from appfl.funcx.client_utils import get_dataset, load_global_state, get_model
+
+    ## Load client configs
+    cfg.device = cfg.clients[client_idx].device
+    cfg.output_dirname = cfg.clients[client_idx].output_dir
+
+    ## Prepare testing data
+    attack_dataset = get_dataset(cfg, client_idx, mode="test")
+    attack_dataloader = DataLoader(
+        attack_dataset,
+        batch_size=1,
+        num_workers=cfg.num_workers,
+        shuffle=False,
+        pin_memory=True,
+    )
+    
+    # Get training model
+    model = get_model(cfg)
+    ## Prepare output directory
+    output_filename = cfg.output_filename + "_client_test_%s" % (client_idx)
+    outfile = client_log(cfg.output_dirname, output_filename)
+    
+    ## Instantiate training agent at client
+    client = eval(cfg.fed.clientname)(
+        client_idx, weights, model, loss_fn, None, cfg, outfile, None, **cfg.fed.args
+    )
+    
+    ## Download global state
+    temp_dir = osp.join(cfg.output_dirname, "tmp")
+    global_state = load_global_state(cfg, global_state, temp_dir)
+    
+    ## Initial state for a client 
+    client.model.to(cfg.clients[client_idx].device)
+    client.model.load_state_dict(global_state)
+ 
+    ## Do validation
+    attack_info = client.client_attack(attack_dataloader)
+    CloudStorage.init(cfg, temp_dir)
+    return CloudStorage.upload_object(LargeObjectWrapper(attack_info, "attack_info"), ext="pkl"), cli_logger.to_dict()
+    
 
 if __name__ == "__main__":
     from omegaconf import OmegaConf
