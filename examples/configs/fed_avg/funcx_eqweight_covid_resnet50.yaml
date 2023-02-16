@@ -1,0 +1,41 @@
+algorithm:
+  servername: 'ServerFedAvg'
+  clientname: 'ClientOptim'
+  args:
+    ## Server update
+    # server_learning_rate: 0.01
+    server_adapt_param: 0.000 #TODO: what is this param?
+    # server_momentum_param_1: 0.9
+    # server_momentum_param_2: 0.99
+    ## Clients optimizer
+    optim: "Adam"
+    num_local_epochs: 2
+    optim_args: 
+        lr: 0.0001
+    server_lr_decay_exp_gamma : 0.975   
+    ## Differential Privacy
+    epsilon: False
+    ##  epsilon: 1      (stronger privacy as the value decreases)
+    ##  epsilon: 0.05
+    ## Gradient Clipping
+    ## clip_value: False (no-clipping)
+    ## clip_value: 10    (clipping)
+    ## clip_value: 1
+    clip_value: False
+    clip_norm: 1
+    client_weights: "equal"
+
+model:
+  num_output: 2
+
+training:
+  num_epochs: 30
+  save_model_filename: "Covid_Resnet"
+
+dataset:
+  name: CovidDataset
+
+func:
+  get_model:
+    script_file: "./models/resnet50.py"
+    call: "get_model"

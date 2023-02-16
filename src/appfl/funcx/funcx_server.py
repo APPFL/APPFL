@@ -222,13 +222,13 @@ class APPFLFuncXServer(abc.ABC):
     
     def _save_best_checkpoint(self, eval_dict):
         if self.cfg.save_best_checkpoint:
-            # Temporally use the validation loss, it should be able to use any metric
+            # Temporally use the validation accuracy, it should be able to use any metric
             eval = 0.0
             for cli_idx in self.weights:
-                eval += self.weights[cli_idx] * eval_dict[cli_idx]['val_loss']
+                eval += self.weights[cli_idx] * eval_dict[cli_idx]['val_acc']
             
-            if eval < self.best_eval: 
-                self.logger.info("Saving best checkpoint")
+            if eval > self.best_eval: 
+                self.logger.info("Saving best checkpoint, the best acc is %.02f" % eval)
                 self.best_eval = eval
                 mLogging.save_checkpoint("best", self.server.model.state_dict())
     
