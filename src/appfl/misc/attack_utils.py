@@ -23,8 +23,7 @@ def clip_gradients(args, model):
     if args.dp == 'laplace':
         # Laplace use 1 norm
         for k, v in model.named_parameters():
-            print(v.grad.norm(1))
-            v.grad /= max(1, v.grad.norm(1) / args.clipval)
+            v.grad /= max(1, v.grad.norm(1) / args.clip_value)
     # elif self.dp_mechanism == 'Gaussian':
     #     # Gaussian use 2 norm
     #     for k, v in net.named_parameters():
