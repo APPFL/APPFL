@@ -12,6 +12,7 @@ from torch.nn import functional as F
 
 from appfl.algorithm import BaseClient
 from appfl.misc.logging import ClientLogger
+from appfl.misc.attack_utils import add_noise
 
 class FuncxClientOptim(BaseClient):
     def __init__(
@@ -98,12 +99,16 @@ class FuncxClientOptim(BaseClient):
             return 0.0, 0.0
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        
+        attack_info = {}
+        attack_info["model_state_dict_before"] = self.model.cpu().state_dict()
         self.model.to(self.cfg.device)
         # self.model.eval()
         self.model.train()
         tmpcnt = 0
         tmptotal = 0
-        attack_info = []
+        
+        batch_grad = []
         # with torch.no_grad():
         for i, (img, target) in enumerate(dataloader):
             tmpcnt += 1
@@ -119,7 +124,7 @@ class FuncxClientOptim(BaseClient):
             grad_dict = {name: param.grad.detach().cpu().numpy() for name,
                     param in self.model.named_parameters()}
             
-            attack_info.append(
+            batch_grad.append(
                 {
                     "input": torch.unsqueeze(img, dim=0).detach().cpu().numpy(),
                     "target": target.detach().cpu().numpy(),
@@ -127,8 +132,12 @@ class FuncxClientOptim(BaseClient):
                 }
             )
             # We only take 3 samples, fix this 
-            if (i==4):
+            if (i==2):
                 break
+
+        attack_info["batch_grad"] = batch_grad
+        add_noise(self, self.model)
+        attack_info["model_state_dict_after"] = self.model.cpu().state_dict()
         return attack_info
         
 

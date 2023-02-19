@@ -21,5 +21,5 @@ python funcx_sync.py \
     --config configs/fed_avg/funcx_fedavg_covid.yaml \
     --clients-test \
     --load-model \
-    --load-model-dirname log_funcx_appfl/server/outputs_CovidDataset_ServerFedAvg_Adam_funcx_fedavg_covid_covid19_uchicago \
+    --load-model-dirname log_funcx_appfl/server/outputs_CovidDataset_ServerFedAvg_Adam_funcx_fedavg_covid_covid19newsplit1_anl_uchicago \
     --load-model-filename checkpoint_30
