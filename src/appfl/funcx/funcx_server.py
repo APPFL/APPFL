@@ -274,7 +274,6 @@ class APPFLFuncXServer(abc.ABC):
         self._initialize_server_model()
         
         if mode == "attack":
-            assert self.cfg.load_model == True
             self._do_client_attack()
             return
             

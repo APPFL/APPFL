@@ -171,6 +171,10 @@ def client_attack(cfg, client_idx, weights, global_state, loss_fn):
     cfg.device = cfg.clients[client_idx].device
     cfg.output_dirname = cfg.clients[client_idx].output_dir
 
+    ## Prepare training/validation data
+    train_dataset = get_dataset(cfg, client_idx, mode="train")
+    train_dataloader = get_dataloader(cfg, train_dataset, mode="train")
+
     ## Prepare testing data
     attack_dataset = get_dataset(cfg, client_idx, mode="test")
     attack_dataloader = DataLoader(
@@ -189,7 +193,7 @@ def client_attack(cfg, client_idx, weights, global_state, loss_fn):
     
     ## Instantiate training agent at client
     client = eval(cfg.fed.clientname)(
-        client_idx, weights, model, loss_fn, None, cfg, outfile, None, **cfg.fed.args
+        client_idx, weights, model, loss_fn, train_dataloader, cfg, outfile, None, **cfg.fed.args
     )
     
     ## Download global state
