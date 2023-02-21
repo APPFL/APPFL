@@ -1,0 +1,32 @@
+algorithm:
+  servername: 'ServerFedAvg'
+  clientname: 'ClientOptim'
+  args:
+    ## Server update
+    server_adapt_param: 0.000
+    ## Clients optimizer
+    optim: "SGD"
+    num_local_epochs: 1
+    optim_args: 
+        lr: 0.01
+    server_lr_decay_exp_gamma : 0.975   
+    ## Differential Privacy
+    epsilon: False
+    clip_value: False
+    clip_norm: 1
+    client_weights: "sample_size"
+
+model:
+  num_output: 2
+
+training:
+  num_epochs: 1
+  save_model_filename: "Covid_Resnet"
+
+dataset:
+  name: CovidDataset
+
+func:
+  get_model:
+    script_file: "./models/resnet.py"
+    call: "get_model"
