@@ -88,10 +88,9 @@ class FuncxClientOptim(BaseClient):
             auc = None
         ap  = metrics.average_precision_score(targets, preds[:,1])
 
-        return loss, {"acc": acc, "prec": prec, "rec": rec, 'f1': f1, 'auc': auc, 'ap': ap, 
-            'tpr': tpr.tolist(), "fpr" : fpr.tolist(), 'arr_precs':arr_precs.tolist(), 'arr_recalls': arr_recalls.tolist()}
-
-    
+        return loss, {"acc": acc, "prec": prec, "rec": rec, "f1": f1, "auc": auc, "ap": ap, 
+            "tpr": tpr.tolist(), "fpr" : fpr.tolist(), "arr_precs": arr_precs.tolist(), "arr_recalls": arr_recalls.tolist(), 
+            "preds": preds[:,1].tolist(), 'targets': targets.tolist()}
 
     def client_attack(self, dataloader):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
@@ -240,7 +239,6 @@ class FuncxClientOptim(BaseClient):
             #     )
             #     ## return to train mode
             #     self.model.train()
-
             ## save model.state_dict()
             if self.cfg.save_model_state_dict == True:
                 path = self.cfg.output_dirname + "/client_%s" % (self.id)
@@ -250,7 +248,6 @@ class FuncxClientOptim(BaseClient):
                     self.model.state_dict(),
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
-
             # if (t == self.num_local_epochs-1)  and self.test_dataloader != None:
             #     cli_logger.start_timer("val_after_update_val_set", t)
             #     test_loss, test_accuracy = super(
@@ -265,7 +262,6 @@ class FuncxClientOptim(BaseClient):
             #             }
             #         )
             #     self.model.train()
-
         self.round += 1
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
