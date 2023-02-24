@@ -89,4 +89,3 @@ Each algorithm, specified in ``Config.fed``, can be configured in the dataclasse
     :language: python
     :linenos:
     :caption: The main configuration class
-
