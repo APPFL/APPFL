@@ -13,7 +13,6 @@ import appfl.run_mpi as rm
 from mpi4py import MPI
 
 DataSet_name = "FEMNIST"
-num_clients = 203
 num_channel = 1  # 1 if gray, 3 if color
 num_classes = 62  # number of the image classes
 num_pixel = 28  # image size = (num_pixel, num_pixel)
@@ -87,6 +86,7 @@ def main():
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
+    num_clients = len(train_datasets)
     model = get_model(comm)
     loss_fn = torch.nn.CrossEntropyLoss()
     print(
@@ -99,9 +99,9 @@ def main():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(cfg, comm, model, num_clients, test_dataset, DataSet_name)
+            rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, DataSet_name)
         else:
-            rm.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
         print("------DONE------", comm_rank)
     else:
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, DataSet_name)
