@@ -88,6 +88,7 @@ def main():
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
     model = get_model(comm)
+    loss_fn = torch.nn.CrossEntropyLoss()
     print(
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
@@ -103,7 +104,7 @@ def main():
             rm.run_client(cfg, comm, model, num_clients, train_datasets)
         print("------DONE------", comm_rank)
     else:
-        rs.run_serial(cfg, model, train_datasets, test_dataset, DataSet_name)
+        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, DataSet_name)
 
 
 if __name__ == "__main__":
