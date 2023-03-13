@@ -60,12 +60,23 @@ class APPFLFuncXServer(abc.ABC):
         """Checking data at clients"""
         ## Geting the total number of data samples at clients
         mode = ["train", "val", "test"]
-        data_info_at_client, _ = self._run_sync_task(client_validate_data, mode)
+        resp, _ = self._run_sync_task(
+            client_validate_data, 
+            mode,
+            self.cfg.export_data_stats
+            )
+        
+        data_info_at_client = {k: resp[k][0] for k in resp}
+        data_stats_at_client = {k: resp[k][1] for k in resp}
+
         assert (
             len(data_info_at_client) > 0
         ), "Number of clients need to be larger than 0"
+        
         ## Logging
         mLogging.log_client_data_info(self.cfg, data_info_at_client)
+        mLogging.save_data_stats(self.cfg, data_stats_at_client)
+
         self.data_info_at_client = data_info_at_client
 
     def _set_client_weights(self, mode="samples_size"):
@@ -79,7 +90,7 @@ class APPFLFuncXServer(abc.ABC):
             ## weight calculation
             weights = {}
             for k in range(self.cfg.num_clients):
-                weights[k] = self.data_info_at_client[k]["train"] / total_num_data
+                weights[k] = self.data_info_at_client[k]["train"] / max(total_num_data,1)
         elif mode == "equal":
             weights = {k: 1 / self.cfg.num_clients for k in range(self.cfg.num_clients)}
         else:

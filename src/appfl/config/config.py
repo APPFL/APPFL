@@ -155,3 +155,6 @@ class FuncXConfig(Config):
     save_best_checkpoint: bool = True
     main_metric: str = "auc"
     higher_is_better: bool = True
+
+    # Export dataset's stats
+    export_data_stats: bool = False 

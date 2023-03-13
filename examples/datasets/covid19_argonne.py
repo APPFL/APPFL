@@ -8,6 +8,7 @@ def get_data(
     import os.path as osp
     import csv
     from appfl.misc.data import Dataset
+    from torch.utils.data import DataLoader
     import torchvision.transforms as transforms
     import torch
     import numpy as np
@@ -42,37 +43,76 @@ def get_data(
             label = self.labels[idx]
             return image, label
 
-    #num_pixel = cfg.clients[client_idx].get_data.transforms.resize
-    num_pixel = cfg.clients[client_idx].data_pipeline.resize
+        def run_stats(self, batch_size=1024, num_workers=4):
+            N = len(self)
+            dtld = DataLoader(self, batch_size=batch_size,shuffle=False, num_workers=num_workers, drop_last = False)
+            _mean = torch.zeros(3)
+            _std = torch.zeros(3)
+            _max = torch.Tensor([-1e8, -1e8, -1e8])
+            _min = torch.Tensor([1e8, 1e8, 1e8])
+            n_hist_bins = 255
+            hist_range = (-3.0, 3.0)
+            _hist = torch.zeros(n_hist_bins)
+            
+            for img, lbl in dtld:
+                _mean += img.view(len(img),3,-1).mean(dim=-1).sum(0)/N
+                _std += img.view(len(img),3,-1).std(dim=-1).sum(0)/N
+                _max = torch.maximum(img.view(len(img),3,-1).amax(-1).amax(0), _max)
+                _min = torch.minimum(img.view(len(img),3,-1).amin(-1).amin(0), _min)
+                _hist, _bins = torch.histogram(img[:,0,...], range = hist_range, density=True, bins=n_hist_bins) #
+                _hist += _hist * img.shape[0]/N
+                
+            return {"mean": _mean.tolist(), "std": _std.tolist(),
+                    "max": _max.tolist(), "min": _min.tolist(), 
+                    "hist": _hist.tolist(), "bins": _bins.tolist()
+                    }
+        
+    pixel_resize = cfg.clients[client_idx].data_pipeline.resize
+    pixel_crop = cfg.clients[client_idx].data_pipeline.center_crop
     data_dir  = cfg.clients[client_idx].data_dir
 
-    train_transform = transforms.Compose(
-        [   transforms.ToPILImage(),
-            transforms.Resize(num_pixel),
-            transforms.CenterCrop(num_pixel),
+    train_transform =[   
+            transforms.ToPILImage(),
+            transforms.Resize(pixel_resize),
+            transforms.CenterCrop(pixel_crop),
+            transforms.ToTensor(),]
+    if "train_mean" in cfg.clients[client_idx].data_pipeline:
+        train_transform.append(transforms.Normalize(
+                cfg.clients[client_idx].data_pipeline.train_mean,
+                cfg.clients[client_idx].data_pipeline.train_std
+            ))
+    train_transform = transforms.Compose(train_transform)
+
+    val_transform =[   
+        transforms.ToPILImage(),
+            transforms.Resize(pixel_resize),
+            transforms.CenterCrop(pixel_crop),
+            transforms.ToTensor(),]
+    if "train_mean" in cfg.clients[client_idx].data_pipeline:
+        val_transform.append(transforms.Normalize(
+                cfg.clients[client_idx].data_pipeline.train_mean,
+                cfg.clients[client_idx].data_pipeline.train_std
+            ))
+    val_transform = transforms.Compose(val_transform)
+
+    test_transform = [   
+            transforms.ToPILImage(),
+            transforms.Resize(pixel_resize),
+            transforms.CenterCrop(pixel_crop),
             transforms.ToTensor(),
-            transforms.Normalize(
-                # [trmean, trmean, trmean], [trsd, trsd, trsd]
-                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
-                )
         ]
-    )
-    test_transform = transforms.Compose(
-        [   transforms.ToPILImage(),
-            transforms.Resize(num_pixel),
-            transforms.CenterCrop(num_pixel),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                # [temean, temean, temean], [tesd, tesd, tesd]
-                [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
-                )
-        ]
-    )
+    if "test_mean" in cfg.clients[client_idx].data_pipeline:
+        test_transform.append(transforms.Normalize(
+                cfg.clients[client_idx].data_pipeline.test_mean,
+                cfg.clients[client_idx].data_pipeline.test_std
+            ))
+    test_transform = transforms.Compose(test_transform)
+    
     dataset = None
     if mode == "train":
         dataset = ArgonneCXRCovidDatset(data_dir, train_transform)
     elif mode == "val":
-        dataset  = ArgonneCXRCovidDatset(data_dir, test_transform, mode='val')
+        dataset  = ArgonneCXRCovidDatset(data_dir, val_transform, mode='val')
     else:
         dataset  = ArgonneCXRCovidDatset(data_dir, test_transform, mode='test')
     return dataset

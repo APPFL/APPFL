@@ -160,6 +160,18 @@ class mLogging:
         return cls.__logger.writer
 
     @classmethod
+    def save_data_stats(cls, cfg, data_stats_at_client):
+        if data_stats_at_client is None:
+            return
+        data_stats = {}
+        for client_idx in range(cfg.num_clients):
+            data_stats[cfg.clients[client_idx].name] = data_stats_at_client[client_idx]
+        logger = cls.get_logger()
+        logger.info(data_stats)
+        with open(os.path.join(cls.__logger.dir, "data_stats.json"), "w") as fo:
+            json.dump(data_stats, fo, indent=2)
+
+    @classmethod
     def save_funcx_log(cls, cfg):
         import csv
 

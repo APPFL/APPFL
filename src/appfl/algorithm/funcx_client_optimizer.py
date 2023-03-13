@@ -62,8 +62,8 @@ class FuncxClientOptim(BaseClient):
                 if output.shape[1] == 1:
                     pred = torch.round(output)
                 else:
-                    pred = F.softmax(output)
-                    # pred = output.argmax(dim=1, keepdim=True)
+                    pred = F.softmax(output, dim=1)
+                    
                 preds.append(pred.cpu().detach().numpy())
                 targets.append(target.cpu().detach().numpy())
 

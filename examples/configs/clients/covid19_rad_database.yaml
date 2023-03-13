@@ -5,19 +5,19 @@ server:
   s3_bucket: anl-appfl
   
 clients:
-  - name: uiuc-cig-01-gpu-02
+  - name: rad-database-eval-endpoint
     endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
     device:  cuda:0 
     data_split: 0
-    data_dir  : "/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/"
+    data_dir  : "/mnt/data0-nfs/shared-datasets/COVID-19_Radiography_Dataset/"
     output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL/examples/log_funcx_appfl/uiuc-cig-02-gpu-00"
     get_data:
-      script_file: "./datasets/covid19_argonne.py"
+      script_file: "./datasets/covid19_rad_database.py"
       call:   "get_data"
     data_pipeline: 
-      resize: 256
-      center_crop: 224
-      split_file: "split2"
+      pixel_resize: 256
+      pixel_crop: 224
+      split_file: "splits/rad_database_split1"
       train_mean: [0.485, 0.456, 0.406]
       train_std: [0.229, 0.224, 0.225]
       test_mean: [0.485, 0.456, 0.406]

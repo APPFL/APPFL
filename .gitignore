@@ -10,3 +10,5 @@ venv
 src/appfl.egg-info/
 **/__pycache__/
 **/.ipynb_checkpoints/
+examples/**/*.png
+examples/experiments/

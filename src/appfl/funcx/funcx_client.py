@@ -1,4 +1,4 @@
-def client_validate_data(cfg, client_idx, mode="train"):
+def client_validate_data(cfg, client_idx, mode="train", export_data_stats = False):
     modes = [mode] if type(mode) == str else mode
 
     ## Prepare logger
@@ -9,13 +9,18 @@ def client_validate_data(cfg, client_idx, mode="train"):
     from appfl.funcx.client_utils import get_dataset
 
     data_info = {}
+    data_stats = {}
     for m in modes:
         cli_logger.start_timer("load_%s_dataset" % m)
         dataset = get_dataset(cfg, client_idx, mode=m)
         data_info[m] = len(dataset)
         cli_logger.stop_timer("load_%s_dataset" % m)
+        if export_data_stats == True:
+            data_stats[m] = dataset.run_stats()
+        else:
+            data_stats = None
     cli_logger.mark_event("stop_endpoint_execution")
-    return data_info, cli_logger.to_dict()
+    return (data_info, data_stats), cli_logger.to_dict()
 
 
 def client_training(

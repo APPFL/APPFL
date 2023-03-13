@@ -15,6 +15,10 @@ clients:
       script_file: "./datasets/covid19_argonne.py"
       call:   "get_data"
     data_pipeline: 
-      resize: 256
-      center_crop: 224
-      split_file: "split1"
+      resize: 224
+      num_pixel: 224
+      split_file: "split2"
+      train_mean: [0.49962, 0.49962, 0.49962]
+      train_std: [0.20546, 0.20546, 0.20546]
+      test_mean: [0.55110, 0.55071, 0.55195]
+      test_std: [0.19244, 0.19234, 0.19264]

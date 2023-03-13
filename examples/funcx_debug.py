@@ -27,17 +27,17 @@ parser.add_argument("--client_config", type=str, required= True)
 parser.add_argument("--config", type=str, default= "configs/fed_async/funcx_fed_async_mnist.yaml") 
 
 ## other agruments
-parser.add_argument('--reproduce', action='store_true', default=True) 
-parser.add_argument('--use_tensorboard', action='store_true', default=True)
+parser.add_argument("--reproduce", action='store_true', default=True) 
+parser.add_argument("--use_tensorboard", action='store_true', default=True)
 
-parser.add_argument('--clients-test', action='store_true', default=False)
-parser.add_argument('--clients-privacy-attack', action='store_true', default=False)
+parser.add_argument("--clients-test", action='store_true', default=False)
+parser.add_argument("--clients-privacy-attack", action='store_true', default=False)
 
-parser.add_argument('--load-model', action='store_true', default=False) 
+parser.add_argument("--load-model", action='store_true', default=False) 
 parser.add_argument("--load-model-dirname", type=str, default= "")
 parser.add_argument("--load-model-filename", type=str, default= "")
-parser.add_argument('--use-tensorboard', action='store_true', default=True)
-
+parser.add_argument("--use-tensorboard", action='store_true', default=True)
+parser.add_argument("--export-data-stats", action="store_true", default=False)
 args = parser.parse_args()
 
 def main():
@@ -51,7 +51,8 @@ def main():
     cfg.load_model = args.load_model
     cfg.load_model_dirname  = args.load_model_dirname
     cfg.load_model_filename = args.load_model_filename
-
+    cfg.export_data_stats = args.export_data_stats
+    
     if cfg.reproduce == True:
         set_seed(1)
 
