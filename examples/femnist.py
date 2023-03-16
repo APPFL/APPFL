@@ -146,8 +146,6 @@ def main():
 
     # Testing code to check the configuration
     print(OmegaConf.to_yaml(cfg))
-    print(args)
-    print(num_clients)
 
     if comm_size > 1:
         if comm_rank == 0:
