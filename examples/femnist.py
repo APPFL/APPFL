@@ -101,13 +101,14 @@ def get_data(comm: MPI.Comm):
     # training data for multiple clients
     train_data_raw = {}
     train_datasets = []
-    train_data_input_resize = []   
+    
     for idx in range(36):
         with open("%s/train/all_data_%s_niid_05_keep_0_train_9.json" % (dir, idx)) as f:
             train_data_raw[idx] = json.load(f)
 
         for client in train_data_raw[idx]["users"]:            
 
+            train_data_input_resize = []   
             if args.num_channel == 1:
                 for data_input in train_data_raw[idx]["user_data"][client]["x"]:
                     data_input = np.asarray(data_input)                
