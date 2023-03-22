@@ -134,12 +134,12 @@ def get_data(comm: MPI.Comm):
                 print("Not Supporting Channel")
                 break;
 
-        train_datasets.append(
-            Dataset(
-                torch.FloatTensor(train_data_input_resize),
-                torch.tensor(train_data_raw[idx]["user_data"][client]["y"]),
+            train_datasets.append(
+                Dataset(
+                    torch.FloatTensor(train_data_input_resize),
+                    torch.tensor(train_data_raw[idx]["user_data"][client]["y"]),
+                )
             )
-        )
     
     return train_datasets, test_dataset
 
