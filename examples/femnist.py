@@ -52,7 +52,7 @@ if torch.cuda.is_available():
     args.device = "cuda"
 
 
-dir = os.getcwd() + "/datasets/RawData/%s" % (DataSet_name)
+dir = os.getcwd()
 
 def get_data(comm: MPI.Comm):
     # test data for a server    
@@ -81,8 +81,8 @@ def get_data(comm: MPI.Comm):
                         G.append(data_input[i+1])
                         B.append(data_input[i+2])
                     R = np.asarray(R)
-                    G = np.asarray(R)
-                    B = np.asarray(R)
+                    G = np.asarray(G)
+                    B = np.asarray(B)
                     R.resize(args.num_pixel, args.num_pixel)
                     G.resize(args.num_pixel, args.num_pixel)
                     B.resize(args.num_pixel, args.num_pixel)
@@ -124,8 +124,8 @@ def get_data(comm: MPI.Comm):
                         G.append(data_input[i+1])
                         B.append(data_input[i+2])
                     R = np.asarray(R)
-                    G = np.asarray(R)
-                    B = np.asarray(R)
+                    G = np.asarray(G)
+                    B = np.asarray(B)
                     R.resize(args.num_pixel, args.num_pixel)
                     G.resize(args.num_pixel, args.num_pixel)
                     B.resize(args.num_pixel, args.num_pixel)
@@ -194,22 +194,22 @@ def main():
     print(num_clients)
     
 
-    print("///////////////////////////////////")
-    print(len(train_datasets[0]))
+    # print("///////////////////////////////////")
+    # print(len(train_datasets[0]))
 
-    dl = DataLoader(
-        train_datasets[0],
-        num_workers=cfg.num_workers,
-        batch_size=len(train_datasets[0]),
-        shuffle=cfg.train_data_shuffle,
-        pin_memory=True,
-    )
-    for data, target in dl:
-        print(len(data[0]))
-        print(data[0])
-        print(target)    
-        break;
-    print("///////////////////////////////////")
+    # dl = DataLoader(
+    #     train_datasets[0],
+    #     num_workers=cfg.num_workers,
+    #     batch_size=len(train_datasets[0]),
+    #     shuffle=cfg.train_data_shuffle,
+    #     pin_memory=True,
+    # )
+    # for data, target in dl:
+    #     print(len(data[0]))
+    #     print(data[0])
+    #     print(target)    
+    #     break;
+    # print("///////////////////////////////////")
 
     if comm_size > 1:
         if comm_rank == 0:
