@@ -6,5 +6,5 @@ def get_model(args):
     if args.model == "CNN":
         model = CNN(args.num_channel, args.num_classes, args.num_pixel)
     if args.model == "resnet18":
-        model = resnet18(num_classes=args.num_classes)        
+        model = resnet18(num_classes=args.num_classes, num_channel=args.num_channel)        
     return model

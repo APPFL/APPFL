@@ -66,7 +66,7 @@ def get_data(comm: MPI.Comm):
 
             for data_input in test_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
-                data_input.resize(28, 28)
+                data_input.resize(args.num_pixel, args.num_pixel)
                 test_data_input.append([data_input])
 
             for data_label in test_data_raw[idx]["user_data"][client]["y"]:
@@ -87,7 +87,7 @@ def get_data(comm: MPI.Comm):
             train_data_input_resize = []
             for data_input in train_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
-                data_input.resize(28, 28)
+                data_input.resize(args.num_pixel, args.num_pixel)
                 train_data_input_resize.append([data_input])
 
             train_datasets.append(
@@ -120,7 +120,7 @@ def main():
             train_datasets, test_dataset, args.num_channel, args.num_pixel
         )
 
-    num_clients = len(train_datasets)    
+    args.num_clients = len(train_datasets)        
     model = get_model(args)
     loss_fn = torch.nn.CrossEntropyLoss()   
     print(
@@ -149,9 +149,9 @@ def main():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, args.dataset)
+            rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset)
         else:
-            rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets)
         print("------DONE------", comm_rank)
     else:
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
