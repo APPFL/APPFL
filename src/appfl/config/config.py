@@ -158,3 +158,6 @@ class FuncXConfig(Config):
 
     # Export dataset's stats
     export_data_stats: bool = False 
+
+    # Learning rate decay
+    decay_epochs:  List = field(default_factory=list)

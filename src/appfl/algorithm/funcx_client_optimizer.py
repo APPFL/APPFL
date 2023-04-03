@@ -50,6 +50,7 @@ class FuncxClientOptim(BaseClient):
 
         preds   = []
         targets = []
+        outputs = []
         with torch.no_grad():
             for img, target in dataloader:
                 tmpcnt += 1
@@ -66,12 +67,14 @@ class FuncxClientOptim(BaseClient):
                     
                 preds.append(pred.cpu().detach().numpy())
                 targets.append(target.cpu().detach().numpy())
-
+                outputs.append(output.cpu().detach().numpy())
         # FIXME: do we need to sent the model to cpu again?
         # self.model.to("cpu")
         
         targets = np.concatenate(targets)
         preds   = np.concatenate(preds)
+        outputs = np.concatenate(outputs)
+        outputs = [outputs[i].tolist() for i in range(len(outputs))]
 
         preds_binary = preds.argmax(axis=1) 
         acc = (preds_binary == targets).mean()
@@ -90,7 +93,7 @@ class FuncxClientOptim(BaseClient):
 
         return loss, {"acc": acc, "prec": prec, "rec": rec, "f1": f1, "auc": auc, "ap": ap, 
             "tpr": tpr.tolist(), "fpr" : fpr.tolist(), "arr_precs": arr_precs.tolist(), "arr_recalls": arr_recalls.tolist(), 
-            "preds": preds[:,1].tolist(), 'targets': targets.tolist()}
+            "preds": preds[:,1].tolist(), 'targets': targets.tolist(), "outputs" : outputs}
 
     def client_attack(self, dataloader):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)

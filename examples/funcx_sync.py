@@ -104,6 +104,5 @@ def main():
         cfg, model, loss_fn, fxc, server_test_dataset, server_val_dataset, mode=mode
     )
 
-
 if __name__ == "__main__":
     main()

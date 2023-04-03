@@ -7,8 +7,9 @@ import torch
 from datetime import datetime
 from omegaconf import DictConfig, OmegaConf
 
-TIME_STR = "%m%d%y_%H%M%S"
+import os.path as osp
 
+TIME_STR = "%m%d%y_%H%M%S"
 
 class EvalLogger:
     def __init__(self, cfg: DictConfig) -> None:
@@ -69,10 +70,14 @@ class EvalLogger:
         self.log_info_server_results(rs, "SER-VAL")
 
     def save_log(self, output_file):
-        out_dict = {"val": self.val_results, "test": self.test_results}
+        out_dict = {}
         if self.cfg.load_model == True:
             out_dict["checkpoint_dirname"] = self.cfg.load_model_dirname
             out_dict["checkpoint_filename"] = self.cfg.load_model_filename
+
+        out_dict["val"] = self.val_results
+        out_dict["test"] = self.test_results
+        
         with open(output_file, "w") as fo:
             json.dump(out_dict, fo, indent=2)
 
@@ -88,10 +93,10 @@ class mLogging:
         client_cfg_file_name=None,
         mode="train",
     ):
-        run_str = "%s_%s_%s" % (cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)
+        run_str = "" #"%s_%s_%s" % (cfg.dataset, cfg.fed.servername, cfg.fed.args.optim)
         if cfg_file_name is not None and client_cfg_file_name is not None:
-            run_str = "%s_%s_%s" % (
-                run_str,
+            run_str = "%s_%s" % (
+                # run_str,
                 cfg_file_name.replace(".yaml", ""),
                 client_cfg_file_name.replace(".yaml", ""),
             )
@@ -210,7 +215,11 @@ class mLogging:
 
         # Save eval log
         lgg.eval_logger.save_log(
-            os.path.join(lgg.dir, "log_eval_%s.json" % lgg.timestamp)
+            os.path.join(lgg.dir, "log_eval_%s_%s.json" % (
+                        osp.basename(cfg.load_model_dirname),
+                        cfg.load_model_filename,
+                        # lgg.timestamp
+                        ))
         )
 
     @classmethod

@@ -173,13 +173,11 @@ class APPFLFuncXTrainingClients:
         func_uuid = self.fxc.register_function(exct_func)
         batch = self.fxc.create_batch()
         for client_idx, client_cfg in enumerate(self.cfg.clients):
-            # import ipdb; ipdb.set_trace()
             # select device
-            args = [self.cfg, client_idx, *args]
             batch.add(
                 func_uuid,
                 client_cfg.endpoint_id,
-                args,
+                [self.cfg, client_idx, *args],
                 kwargs,
             )
         # Execute training tasks at clients

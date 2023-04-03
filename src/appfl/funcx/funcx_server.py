@@ -249,8 +249,9 @@ class APPFLFuncXServer(abc.ABC):
         pass
 
     def _lr_step(self, step):
-        if step == 0:
+        if step not in self.cfg.decay_epochs:
             return
+        
         self.trn_endps.cfg.fed.args.optim_args.lr *= (
             self.cfg.fed.args.server_lr_decay_exp_gamma
         )
