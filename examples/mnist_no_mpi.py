@@ -20,7 +20,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--device", type=str, default="cpu")
+parser.add_argument("--device", type=str, default="cuda")
 
 ## dataset
 parser.add_argument("--dataset", type=str, default="MNIST")
@@ -30,7 +30,8 @@ parser.add_argument("--num_pixel", type=int, default=28)
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
-parser.add_argument("--client_optimizer", type=str, default="Adam")
+parser.add_argument("--client_optimizer", type=str, default="LBFGS")
+
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
@@ -112,7 +113,9 @@ def main():
 
     ## clients
     cfg.num_clients = args.num_clients
-    cfg.fed.args.optim = args.client_optimizer
+    cfg.fed.args.optim = args.client_optimizer    
+    if args.client_optimizer == "LBFGS":        
+        cfg.batch_training = False        
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
 
