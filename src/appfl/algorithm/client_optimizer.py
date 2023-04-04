@@ -73,12 +73,16 @@ class ClientOptim(BaseClient):
 
     def counting_correct(self, output, target, train_correct):
         
-        if output.shape[1] == 1:
-            pred = torch.round(output)
-        else:
+        if self.loss_fn == "CrossEntropyLoss()":
             pred = output.argmax(dim=1, keepdim=True)
+            train_correct += pred.eq(target.view_as(pred)).sum().item()
         
-        train_correct += pred.eq(target.view_as(pred)).sum().item()
+        elif self.loss_fn == "BCELoss()" or self.loss_fn == "BCEWithLogitsLoss()":
+            pred = torch.round(output)
+            train_correct += pred.eq(target.view_as(pred)).sum().item()
+            
+        else:
+            train_correct = -1
 
         return train_correct
 
