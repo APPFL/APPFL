@@ -26,18 +26,70 @@ class ClientOptim(BaseClient):
 
         super(ClientOptim, self).client_log_title()
 
+    
+    def training(self):
+        
+        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        
+        train_loss = 0
+        train_correct = 0            
+        tmptotal = 0
+
+        for data, target in self.dataloader:                
+            
+            tmptotal += len(target)            
+
+            data, target = data.to(self.cfg.device), target.to(self.cfg.device)
+
+            output = self.model(data)
+
+            train_correct = self.counting_correct(output, target, train_correct)
+            
+            loss = self.loss_fn(output, target)
+
+            train_loss += loss.item()
+
+            optimizer.zero_grad()
+
+            loss.backward()      
+
+            self.clipping_gradient() ## works only when "self.clip_value != False"
+
+            optimizer.step()        
+        
+        train_loss = train_loss / len(self.dataloader)
+  
+        train_accuracy = 100.0 * train_correct / tmptotal        
+        
+        return train_loss, train_accuracy         
+     
+    def clipping_gradient(self):                    
+        if self.clip_value != False:
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(),
+                self.clip_value,
+                norm_type=self.clip_norm,
+            )     
+
+    def counting_correct(self, output, target, train_correct):
+        
+        if output.shape[1] == 1:
+            pred = torch.round(output)
+        else:
+            pred = output.argmax(dim=1, keepdim=True)
+        
+        train_correct += pred.eq(target.view_as(pred)).sum().item()
+
+        return train_correct
+
     def update(self):
         
         """Inputs for the local model update"""
 
         self.model.to(self.cfg.device)
-
-        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
  
-
-        """ Multiple local update """
-        start_time=time.time()
         ## initial evaluation
+        start_time=time.time()
         if self.cfg.validation == True and self.test_dataloader != None:
             test_loss, test_accuracy = super(ClientOptim, self).client_validation(
                 self.test_dataloader
@@ -47,40 +99,17 @@ class ClientOptim(BaseClient):
                 0, per_iter_time, 0, 0, test_loss, test_accuracy
             )
             ## return to train mode
-            self.model.train()        
+            self.model.train()       
+ 
 
-        ## local training 
+        """ Multiple local update """
+        start_time=time.time()
         for t in range(self.num_local_epochs):
             start_time=time.time()
-            train_loss = 0
-            train_correct = 0            
-            tmptotal = 0
-            for data, target in self.dataloader:                
-                tmptotal += len(target)
-                data = data.to(self.cfg.device)
-                target = target.to(self.cfg.device)
-                optimizer.zero_grad()
-                output = self.model(data)
-                loss = self.loss_fn(output, target)
-                loss.backward()
-                optimizer.step()
-                
-                train_loss += loss.item()
-                if output.shape[1] == 1:
-                    pred = torch.round(output)
-                else:
-                    pred = output.argmax(dim=1, keepdim=True)
-                train_correct += pred.eq(target.view_as(pred)).sum().item()
+            ## training
+            train_loss, train_accuracy = self.training()
 
-                if self.clip_value != False:
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.clip_value,
-                        norm_type=self.clip_norm,
-                    )
-            ## Validation
-            train_loss = train_loss / len(self.dataloader)
-            train_accuracy = 100.0 * train_correct / tmptotal
+            ## validation with test dataset
             if self.cfg.validation == True and self.test_dataloader != None:
                 test_loss, test_accuracy = super(ClientOptim, self).client_validation(
                     self.test_dataloader
@@ -102,10 +131,7 @@ class ClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
 
-
-
-
- 
+  
         self.round += 1
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
