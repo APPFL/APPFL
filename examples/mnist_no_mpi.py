@@ -30,7 +30,7 @@ parser.add_argument("--num_pixel", type=int, default=28)
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
-parser.add_argument("--client_optimizer", type=str, default="LBFGS")
+parser.add_argument("--client_optimizer", type=str, default="Adam")
 
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
@@ -114,8 +114,17 @@ def main():
     ## clients
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer    
+    
     if args.client_optimizer == "LBFGS":        
         cfg.batch_training = False        
+        cfg.fed.args.optim_args.lr = 10.0
+        cfg.fed.args.optim_args.max_iter=10000
+        cfg.fed.args.optim_args.tolerance_grad=1e-10
+        cfg.fed.args.optim_args.tolerance_change=1e-10
+        cfg.fed.args.optim_args.history_size=1000
+        cfg.fed.args.optim_args.line_search_fn="strong_wolfe"        
+        
+
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
 
