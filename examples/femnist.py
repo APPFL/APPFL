@@ -15,8 +15,6 @@ from models.utils import get_model
 
 import argparse
 
-from torch.utils.data import DataLoader
-
 """ read arguments """
 
 parser = argparse.ArgumentParser()
@@ -52,7 +50,8 @@ if torch.cuda.is_available():
     args.device = "cuda"
 
 
-dir = os.getcwd()
+dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
+
 
 def get_data(comm: MPI.Comm):
     # test data for a server    
@@ -65,35 +64,13 @@ def get_data(comm: MPI.Comm):
 
         for client in test_data_raw[idx]["users"]:
 
-            if args.num_channel == 1:
-                for data_input in test_data_raw[idx]["user_data"][client]["x"]:
-                    data_input = np.asarray(data_input)                
-                    data_input.resize(args.num_pixel, args.num_pixel)
-                    test_data_input.append([data_input])
-            elif args.num_channel == 3:                
-                for data_input in test_data_raw[idx]["user_data"][client]["x"]:
-                    R = []
-                    G = []
-                    B = []
-                    data_input = np.asarray(data_input)
-                    for i in range(int(data_input.size/3)):
-                        R.append(data_input[i])
-                        G.append(data_input[i+1])
-                        B.append(data_input[i+2])
-                    R = np.asarray(R)
-                    G = np.asarray(G)
-                    B = np.asarray(B)
-                    R.resize(args.num_pixel, args.num_pixel)
-                    G.resize(args.num_pixel, args.num_pixel)
-                    B.resize(args.num_pixel, args.num_pixel)
-                    test_data_input.append([R,G,B])
-            else:
-                print("Not Supporting Channel")
-                break;
+            for data_input in test_data_raw[idx]["user_data"][client]["x"]:
+                data_input = np.asarray(data_input)
+                data_input.resize(args.num_pixel, args.num_pixel)
+                test_data_input.append([data_input])
 
             for data_label in test_data_raw[idx]["user_data"][client]["y"]:
                 test_data_label.append(data_label)        
-    
     test_dataset = Dataset(
         torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
     )
@@ -101,39 +78,17 @@ def get_data(comm: MPI.Comm):
     # training data for multiple clients
     train_data_raw = {}
     train_datasets = []
-    
     for idx in range(36):
         with open("%s/train/all_data_%s_niid_05_keep_0_train_9.json" % (dir, idx)) as f:
             train_data_raw[idx] = json.load(f)
 
-        for client in train_data_raw[idx]["users"]:            
+        for client in train_data_raw[idx]["users"]:
 
-            train_data_input_resize = []   
-            if args.num_channel == 1:
-                for data_input in train_data_raw[idx]["user_data"][client]["x"]:
-                    data_input = np.asarray(data_input)                
-                    data_input.resize(args.num_pixel, args.num_pixel)
-                    train_data_input_resize.append([data_input])
-            elif args.num_channel == 3:                
-                for data_input in train_data_raw[idx]["user_data"][client]["x"]:
-                    R = []
-                    G = []
-                    B = []
-                    data_input = np.asarray(data_input)
-                    for i in range(int(data_input.size/3)):
-                        R.append(data_input[i])
-                        G.append(data_input[i+1])
-                        B.append(data_input[i+2])
-                    R = np.asarray(R)
-                    G = np.asarray(G)
-                    B = np.asarray(B)
-                    R.resize(args.num_pixel, args.num_pixel)
-                    G.resize(args.num_pixel, args.num_pixel)
-                    B.resize(args.num_pixel, args.num_pixel)
-                    train_data_input_resize.append([R,G,B])
-            else:
-                print("Not Supporting Channel")
-                break;
+            train_data_input_resize = []
+            for data_input in train_data_raw[idx]["user_data"][client]["x"]:
+                data_input = np.asarray(data_input)
+                data_input.resize(args.num_pixel, args.num_pixel)
+                train_data_input_resize.append([data_input])
 
             train_datasets.append(
                 Dataset(
@@ -160,12 +115,12 @@ def main():
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
 
-    
-    data_sanity_check(
-        train_datasets, test_dataset, args.num_channel, args.num_pixel
-    )
+    if cfg.data_sanity == True:
+        data_sanity_check(
+            train_datasets, test_dataset, args.num_channel, args.num_pixel
+        )
 
-    num_clients = len(train_datasets)    
+    args.num_clients = len(train_datasets)       
     model = get_model(args)
     loss_fn = torch.nn.CrossEntropyLoss()   
     print(
@@ -191,32 +146,12 @@ def main():
 
     # Testing code to check the configuration
     print(OmegaConf.to_yaml(cfg))
-    print(args)
-    print(num_clients)
-    
-
-    # print("///////////////////////////////////")
-    # print(len(train_datasets[0]))
-
-    # dl = DataLoader(
-    #     train_datasets[0],
-    #     num_workers=cfg.num_workers,
-    #     batch_size=len(train_datasets[0]),
-    #     shuffle=cfg.train_data_shuffle,
-    #     pin_memory=True,
-    # )
-    # for data, target in dl:
-    #     print(len(data[0]))
-    #     print(data[0])
-    #     print(target)    
-    #     break;
-    # print("///////////////////////////////////")
 
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, args.dataset)
+            rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset)
         else:
-            rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets)
         print("------DONE------", comm_rank)
     else:
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
