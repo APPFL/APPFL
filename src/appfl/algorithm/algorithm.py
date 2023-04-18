@@ -56,11 +56,10 @@ class BaseServer:
         for key, value in weights.items():
             self.weights[key] = value
 
-    def primal_recover_from_local_states(self, local_states):
-        for _, states in enumerate(local_states):
-            if states is not None:
-                for sid, state in states.items():
-                    self.primal_states[sid] = copy.deepcopy(state["primal"])
+    def primal_recover_from_local_states(self, local_states):        
+        for sid, states in enumerate(local_states):
+            if states is not None:                
+                self.primal_states[sid] = copy.deepcopy(states["primal"])
 
     def dual_recover_from_local_states(self, local_states):
         for _, states in enumerate(local_states):

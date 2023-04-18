@@ -123,17 +123,18 @@ def run_server(
         local_update_start = time.time()
         global_state = comm.bcast(global_state, root=0)
         
-        local_states={}
+
+        local_states= [None for i in range(num_clients)]        
         for rank in range(comm_size):
             ls = ""
             if rank == 0:
                 continue;
             else:
                 for _, cid in enumerate(num_client_groups[rank - 1]):
-                    local_states[cid] = comm.recv(source=rank, tag=cid)                      
-        
+                    local_states[cid] = comm.recv(source=rank, tag=cid)
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
+        print("Start Server Update")
         global_update_start = time.time()
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
@@ -278,10 +279,8 @@ def run_client(
             client.model.load_state_dict(global_state)
 
             ## client update     
-            ls = client.update() 
-            lscpu = copy.deepcopy(ls)     
-            print("Using manual send")
-            req = comm.send(lscpu, 0, tag=cid)                 
+            ls = client.update()                            
+            req = comm.send(ls, 0, tag=cid)                 
 
         do_continue = comm.bcast(None, root=0)
 
