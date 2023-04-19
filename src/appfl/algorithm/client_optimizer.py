@@ -112,7 +112,7 @@ class ClientOptim(BaseClient):
         if (self.cfg.device == "cuda"):
             # print("Update Memory to CPU")
             for k in self.primal_state:
-                self.primal_state[k].cpu()
+                self.primal_state[k] = self.primal_state[k].cpu()
                 #del self.model.state_dict()[k]
 
 
@@ -134,7 +134,9 @@ class ClientOptim(BaseClient):
 
         # if self.id == 3:
         #     for k in self.local_state["primal"]:
-        #         print(k, self.local_state["primal"][k].size())
+        #         print("Client")
+        #         print(k, self.local_state["primal"][k].is_cuda)
+        #         break;
 
         return self.local_state
  
