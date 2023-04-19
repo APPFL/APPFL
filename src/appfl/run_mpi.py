@@ -134,7 +134,7 @@ def run_server(
                     local_states[cid] = comm.recv(source=rank, tag=cid)
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
-        print("Start Server Update")
+        #print("Start Server Update")
         global_update_start = time.time()
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
