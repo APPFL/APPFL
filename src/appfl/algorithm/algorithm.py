@@ -59,7 +59,7 @@ class BaseServer:
     def primal_recover_from_local_states(self, local_states):        
         for sid, states in enumerate(local_states):
             if states is not None:                
-                self.primal_states[sid] = copy.deepcopy(states["primal"])
+                self.primal_states[sid] = states["primal"]
 
     def dual_recover_from_local_states(self, local_states):
         for _, states in enumerate(local_states):
