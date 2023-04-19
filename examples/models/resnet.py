@@ -105,23 +105,13 @@ class ResNet(models.resnet.ResNet):
         
 
 def resnet18(num_channel, num_pixel, num_classes=None):
-
-    
     if num_classes is not None:
         resnetmodel = models.resnet18(pretrained=False, num_classes=num_classes)
     else:
         resnetmodel = models.resnet18(pretrained=True)
 
-    if num_channel == 1:        
-        
+    if num_channel == 1: 
         model = ResNet(block=BasicBlock, layers=[2, 2, 2, 2],num_classes=num_classes, grayscale=True)
-        
-        # model = nn.Sequential()
-        # model.append(nn.ZeroPad2d(244-num_pixel)) #deafult input size for resnet18 is 244
-        # resnetmodel.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3,
-        #                        bias=False)
-        # model.append(resnetmodel)
-
         return model 
     else:        
         return resnetmodel

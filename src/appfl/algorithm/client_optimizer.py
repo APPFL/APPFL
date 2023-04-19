@@ -101,21 +101,13 @@ class ClientOptim(BaseClient):
                     self.model.state_dict(),
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
-
-
-
-
  
         self.round += 1
 
         self.primal_state = copy.deepcopy(self.model.state_dict())
-        if (self.cfg.device == "cuda"):
-            # print("Update Memory to CPU")
+        if (self.cfg.device == "cuda"):            
             for k in self.primal_state:
                 self.primal_state[k] = self.primal_state[k].cpu()
-                #del self.model.state_dict()[k]
-
-
 
         """ Differential Privacy  """
         if self.epsilon != False:
@@ -131,12 +123,6 @@ class ClientOptim(BaseClient):
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
-
-        # if self.id == 3:
-        #     for k in self.local_state["primal"]:
-        #         print("Client")
-        #         print(k, self.local_state["primal"][k].is_cuda)
-        #         break;
 
         return self.local_state
  

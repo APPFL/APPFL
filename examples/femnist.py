@@ -141,11 +141,7 @@ def main():
     cfg.num_epochs = args.num_epochs
 
     ## outputs
-
     cfg.use_tensorboard = True
-
-    # Testing code to check the configuration
-    print(OmegaConf.to_yaml(cfg))
 
     if comm_size > 1:
         if comm_rank == 0:

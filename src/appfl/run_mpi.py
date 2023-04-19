@@ -122,8 +122,7 @@ def run_server(
 
         local_update_start = time.time()
         global_state = comm.bcast(global_state, root=0)
-        
-
+                
         local_states= [None for i in range(num_clients)]        
         for rank in range(comm_size):
             ls = ""
@@ -132,6 +131,7 @@ def run_server(
             else:
                 for _, cid in enumerate(num_client_groups[rank - 1]):
                     local_states[cid] = comm.recv(source=rank, tag=cid)
+
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
         #print("Start Server Update")
@@ -280,7 +280,7 @@ def run_client(
 
             ## client update     
             ls = client.update()                            
-            req = comm.send(ls, 0, tag=cid)                 
+            req = comm.send(ls, 0, tag=cid)                                    
 
         do_continue = comm.bcast(None, root=0)
 
