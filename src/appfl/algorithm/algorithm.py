@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 
 import os
 import logging
-
+import numpy as np
 
 class BaseServer:
     """Abstract class of PPFL algorithm for server that aggregates and updates model parameters.
@@ -310,24 +310,35 @@ class BaseClient:
 
         return loss, accuracy
 
-    """ 
-    Differential Privacy 
+    
+    def output_perturbation(self, step_vec):
+        """ Output perturbation method that ensures differential privacy 
+        
         (Laplacian mechanism) 
-        - Noises from a Laplace dist. with zero mean and "scale_value" are added to the primal_state 
-        - Variance = 2*(scale_value)^2
-        - scale_value = sensitivty/epsilon, where sensitivity is determined by data, algorithm.
-    """
+        Generates noise from a Laplace distribution with zero mean and "scale"            
+            - sensitivity = 2.0 * self.clip_value      
+            - scale = sensitivty / self.epsilon                    
+            - variance = 2*(scale)^2
 
-    def laplace_mechanism_output_perturb(self, scale_value):
-        """Differential privacy for output perturbation based on Laplacian distribution.
-        This output perturbation adds Laplace noise to ``primal_state``.
-
-        Args:
-            scale_value: scaling vector to control the variance of Laplacian distribution
+        (Gaussian mechanism) 
+        Generates noise from a Gaussian distribution with zero mean and "std"            
+            - sensitivity = 2.0 * self.clip_value             
+            - variance = 2.0 * sensitivity^2 log (1.25 / self.delta) / self.epsilon^2 
         """
+        if self.dp == "laplace":                
+            # clipping the "step_vec" by the clip_value            
+            step_vec *= (self.clip_value / torch.norm(step_vec,1))                
+            # sampling from the Laplace distribution
+            mean = torch.zeros(step_vec.shape[0])
+            scale =  torch.zeros(step_vec.shape[0]) + 2.0 * self.clip_value / self.epsilon                
+            noise_vec = torch.distributions.laplace.Laplace(mean, scale).sample().to(self.cfg.device)                
 
-        for name, param in self.model.named_parameters():
-            mean = torch.zeros_like(param.data)
-            scale = torch.zeros_like(param.data) + scale_value
-            m = torch.distributions.laplace.Laplace(mean, scale)
-            self.primal_state[name] += m.sample()
+        if self.dp == "gaussian":
+            # clipping the "step_vec" by the clip_value            
+            step_vec *= (self.clip_value / torch.norm(step_vec,2))                
+            # sampling from the Gaussian distribution
+            mean = torch.zeros(step_vec.shape[0])
+            std =  torch.zeros(step_vec.shape[0]) + np.sqrt(2.0*np.log(1.25/self.delta)) * 2.0 * self.clip_value  / self.epsilon
+            noise_vec = torch.normal(mean=mean, std=std).to(self.cfg.device)    
+        
+        return noise_vec
