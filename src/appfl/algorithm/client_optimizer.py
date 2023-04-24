@@ -34,51 +34,7 @@ class ClientOptim(BaseClient):
         self.round = 0
 
         super(ClientOptim, self).client_log_title()
-
-    def training_closure(self):
-        """
-        This function trains the model using "optimizer" such as LBFGS which requires to reevaluate the function multiple times,
-        """
-        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
-
-        train_loss = 0
-        train_correct = 0
-        tmptotal = 0
-
-        for data, target in self.dataloader:
-
-            tmptotal += len(target)
-
-            data, target = data.to(self.cfg.device), target.to(self.cfg.device)
-
-            def closure():
-                # Zero gradients
-                optimizer.zero_grad()
-
-                # Forward pass
-                output = self.model(data)
-
-                # Compute loss
-                loss = self.loss_fn(output, target)
-
-                # Backward pass
-                loss.backward()
-
-                return loss
-
-            optimizer.step(closure)
-
-            loss = closure()
-            train_loss += loss.data.item()
-            output = self.model(data)
-            train_correct = self.counting_correct(output, target, train_correct)
-
-        train_loss = train_loss / len(self.dataloader)
-
-        train_accuracy = 100.0 * train_correct / tmptotal
-
-        return train_loss, train_accuracy
-
+    
     def training(self):
         """
         This function trains the model using "optimizer" such as SGD, Adam, and so on
@@ -167,13 +123,8 @@ class ClientOptim(BaseClient):
         """ Multiple local update """
         for t in range(self.num_local_epochs):
             start_time = time.time()
-
-            ## training
-            if self.cfg.fed.args.optim == "LBFGS":
-                ## Some optimization algorithms such as Conjugate Gradient and LBFGS need to reevaluate the function multiple times, so you have to pass in a closure that allows them to recompute your model.
-                train_loss, train_accuracy = self.training_closure()
-            else:
-                train_loss, train_accuracy = self.training()
+            
+            train_loss, train_accuracy = self.training()
 
             ## validation with test dataset
             if self.cfg.validation == True and self.test_dataloader != None:
@@ -222,3 +173,52 @@ class ClientOptim(BaseClient):
         self.local_state["penalty"][self.id] = 0.0
 
         return self.local_state
+
+
+
+class ClientOptimClosure(ClientOptim):
+    
+    def training(self):
+        """
+        This function trains the model using "optimizer" such as LBFGS which requires to reevaluate the function multiple times,
+        """
+        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+
+        train_loss = 0
+        train_correct = 0
+        tmptotal = 0
+
+        for data, target in self.dataloader:
+
+            tmptotal += len(target)
+
+            data, target = data.to(self.cfg.device), target.to(self.cfg.device)
+
+            def closure():
+                # Zero gradients
+                optimizer.zero_grad()
+
+                # Forward pass
+                output = self.model(data)
+
+                # Compute loss
+                loss = self.loss_fn(output, target)
+
+                # Backward pass
+                loss.backward()
+
+                return loss
+
+            optimizer.step(closure)
+
+            loss = closure()
+            train_loss += loss.data.item()
+            output = self.model(data)
+            train_correct = self.counting_correct(output, target, train_correct)
+
+        train_loss = train_loss / len(self.dataloader)
+
+        train_accuracy = 100.0 * train_correct / tmptotal
+
+        return train_loss, train_accuracy
+
