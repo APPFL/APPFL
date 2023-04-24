@@ -45,16 +45,15 @@ class Federated:
             "optim_args": {
                 "lr": 0.001,
             },
-            ## Differential Privacy
-            ##  epsilon: False  (non-private)
-            ##  epsilon: 1      (stronger privacy as the value decreases)
-            ##  epsilon: 0.05
-            "epsilon": False,
-            ## Gradient Clipping
-            ## clip_value: False (no-clipping)
-            ## clip_value: 10    (clipping)
-            ## clip_value: 1
-            "clip_value": False,
-            "clip_norm": 1,
+            ## Differential Privacy (DP)  
+            "dp": "none", # non-private
+            # "dp": "laplace", # (pure) epsilon-DP
+            # "dp": "gaussian", # (approximate) (epsilon, delta)-DP
+            
+            ## parameters related to "dp" (only activate when "dp" is not "none")
+            "epsilon": 10.0, # stronger privacy as it decreases
+            "delta": 0.0001, # stronger privacy as it decreases
+            "clip_value": 10.0, # sensitivity increases as it increases
+
         }
     )
