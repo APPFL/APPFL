@@ -116,7 +116,7 @@ def main():
     cfg.fed.args.optim = args.client_optimizer    
     
     if args.client_optimizer == "LBFGS":           
-        cfg.fed.clientname = "ClientOptimClosure"
+        cfg.fed.clientname = "ClientOptimClosure" ## LBFGS requires to reevalute functions for multiple times (have to pass in a closure)
         cfg.batch_training = False   ## mini-batch training is not supported by the vanilla LBFGS 
         cfg.fed.args.optim_args.lr = 10.0 ## learning rate (default: 1)
         cfg.fed.args.optim_args.max_iter=10000 ## maximal number of iterations per optimization step (default: 20)
