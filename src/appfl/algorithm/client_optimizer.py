@@ -106,27 +106,14 @@ class ClientOptim(BaseClient):
             optimizer.zero_grad()
 
             loss.backward()
-
-            self.clipping_gradient()  ## works only when "self.clip_value != False"
-
+ 
             optimizer.step()
 
         train_loss = train_loss / len(self.dataloader)
 
         train_accuracy = 100.0 * train_correct / tmptotal
 
-        return train_loss, train_accuracy
-
-    def clipping_gradient(self):
-        """
-        This function clips the current gradient such that the "self.clip_norm" of the gradient is less than or equal to "self.clip_value"
-        """
-        if self.clip_value != False:
-            torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(),
-                self.clip_value,
-                norm_type=self.clip_norm,
-            )
+        return train_loss, train_accuracy 
 
     def counting_correct(self, output, target, train_correct):
         """
@@ -144,6 +131,18 @@ class ClientOptim(BaseClient):
             train_correct = -1
 
         return train_correct
+
+    def _gather_flat(self):
+        views = []
+        for p in self.model.parameters():
+            if p.data is None:
+                view = p.new(p.numel()).zero_()
+            elif p.data.is_sparse:
+                view = p.data.to_dense().view(-1)
+            else:
+                view = p.data.view(-1)
+            views.append(view)
+        return torch.cat(views, 0)
 
     def update(self):
 
@@ -163,6 +162,13 @@ class ClientOptim(BaseClient):
             )
             ## return to train mode
             self.model.train()
+        
+        ## store an initial model for differential privacy
+        if self.dp != "none":            
+            init_model_vec = self._gather_flat()
+          
+
+
 
         """ Multiple local update """
         for t in range(self.num_local_epochs):
@@ -203,18 +209,25 @@ class ClientOptim(BaseClient):
                 )
 
         self.round += 1
-
-        self.primal_state = copy.deepcopy(self.model.state_dict())
+        
 
         """ Differential Privacy  """
-        if self.epsilon != False:
-            sensitivity = 0
-            if self.clip_value != False:
-                sensitivity = 2.0 * self.clip_value * self.optim_args.lr
-            scale_value = sensitivity / self.epsilon
-            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+        if self.dp != "none": 
+            # compute a step moved without DP
+            curr_model_vec = self._gather_flat()
+            step_vec = init_model_vec - curr_model_vec
+            # generate a noise to be added for ensuring DP
+            noise_vec = super(ClientOptim, self).output_perturbation(step_vec)                          
+            # update model
+            new_model_vec = init_model_vec - step_vec + noise_vec
+            # TODO: new_model_vec to model 
+            
 
-        """ Update local_state """
+
+      
+        self.primal_state = copy.deepcopy(self.model.state_dict())  
+        
+        """ Update local_state """        
         self.local_state = OrderedDict()
         self.local_state["primal"] = copy.deepcopy(self.primal_state)
         self.local_state["dual"] = OrderedDict()

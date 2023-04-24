@@ -35,6 +35,12 @@ parser.add_argument("--client_optimizer", type=str, default="Adam") ## optimizer
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
+## data privacy preservation via differential privacy (DP)
+parser.add_argument("--dp", type=str, default="gaussian") ## none, laplace, gaussian
+parser.add_argument("--epsilon", type=float, default=10.0) # stronger privacy as it decreases
+parser.add_argument("--delta", type=float, default= 0.0001) # stronger privacy as it decreases 
+parser.add_argument("--clip_value", type=float, default=10.0) # sensitivity increases as it increases
+
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg")
 parser.add_argument("--num_epochs", type=int, default=2)
@@ -126,6 +132,13 @@ def main():
 
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
+
+    ## data privacy
+    cfg.fed.args.dp = args.dp
+    cfg.fed.args.epsilon = args.epsilon
+    cfg.fed.args.delta = args.delta
+    cfg.fed.args.clip_value = args.clip_value
+
 
     ## server
     cfg.fed.servername = args.server
