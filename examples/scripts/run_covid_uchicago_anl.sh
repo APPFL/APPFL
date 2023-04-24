@@ -28,5 +28,5 @@
 #     --config configs/fed_avg/funcx_eqweight_covid_freeze_bn.yaml
 
 python funcx_sync.py \
-    --client_config configs/clients/covid19newsplit2_anl_uchicago_imgnet_norm.yaml \
-    --config configs/fed_avg/funcx_fedavg_covid_sgd_freeze_bn.yaml
+    --client_config configs/clients/covid19newsplit2_anl_uchicago_eqprevalence.yaml \
+    --config configs/fed_avg/funcx_fedavg_covid_sgd.yaml

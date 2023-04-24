@@ -6,7 +6,7 @@ server:
   
 clients:
   - name: uiuc-cig-01-gpu-02
-    endpoint_id: a719450f-4721-4ef1-a5e8-5a22b772d354
+    endpoint_id: c575f4f8-8162-4497-9891-db3c0ab2bb8f
     device:  cuda:0 
     data_split: 0
     data_dir  : "/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/"

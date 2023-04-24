@@ -1,0 +1,25 @@
+server:
+  device: cuda:0
+  data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
+  output_dir: "./log_funcx_appfl/server"
+  s3_bucket: anl-appfl
+  
+clients:
+  - name: uchicago-gpu
+    endpoint_id: 83d214ed-c5d5-45a0-aa42-9a6e1766a315
+    device: cuda:0
+    data_split: 0
+    data_dir  : "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/ImageData/"
+    output_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
+    get_data:
+      script_file: "./datasets/covid19_uchicago.py"
+      call:   "get_data"
+    data_pipeline: 
+      train_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/train_annotations_equalprevalence.csv"
+      test_annotation_dir:  "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/test_annotations_equalprevalence.csv"
+      val_annotation_dir:   "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/val_annotations_equalprevalence.csv"
+      num_pixels: 224
+      train_mean: [0.485, 0.456, 0.406]
+      train_std: [0.229, 0.224, 0.225]
+      test_mean: [0.485, 0.456, 0.406]
+      test_std: [0.229, 0.224, 0.225]

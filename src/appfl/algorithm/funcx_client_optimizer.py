@@ -229,9 +229,10 @@ class FuncxClientOptim(BaseClient):
                     )
             cli_logger.stop_timer("train_one_epoch", t)
 
-            ## Validation
-            # train_loss = train_loss / len(self.dataloader)
-            # train_accuracy = 100.0 * train_correct / tmptotal
+            # Validation
+            train_loss = train_loss / len(self.dataloader)
+            train_accuracy = 100.0 * train_correct/ tmptotal
+
             # if self.cfg.validation == True and self.test_dataloader != None:
             #     test_loss, test_accuracy = super(FuncxClientOptim, self).client_validation(
             #         self.test_dataloader
@@ -251,20 +252,19 @@ class FuncxClientOptim(BaseClient):
                     self.model.state_dict(),
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
-            # if (t == self.num_local_epochs-1)  and self.test_dataloader != None:
-            #     cli_logger.start_timer("val_after_update_val_set", t)
-            #     test_loss, test_accuracy = super(
-            #         FuncxClientOptim, self
-            #     ).client_validation(self.test_dataloader)
-            #     print(test_loss, test_accuracy)
-            #     cli_logger.stop_timer("val_after_update_val_set", t)
-
-            #     cli_logger.add_info(
-            #             "val_after_update_val_set",{
-            #                 "val_loss": test_loss, "val_accuracy": test_accuracy
-            #             }
-            #         )
-            #     self.model.train()
+            if (t == self.num_local_epochs-1)  and self.test_dataloader != None:
+                # cli_logger.start_timer("val_after_update_val_set", t)
+                # test_loss, test_accuracy = super(
+                #     FuncxClientOptim, self
+                # ).client_validation(self.test_dataloader)
+                # print(test_loss, test_accuracy)
+                # cli_logger.stop_timer("val_after_update_val_set", t)
+                cli_logger.add_info(
+                        "train_info",{
+                            "train_loss": train_loss, "train_accuracy": train_accuracy
+                        }
+                    )
+                self.model.train()
         self.round += 1
 
         self.primal_state = copy.deepcopy(self.model.state_dict())

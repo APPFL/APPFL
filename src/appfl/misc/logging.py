@@ -322,7 +322,7 @@ def get_eval_results_from_logs(logs):
     val_results = {}
     for client_idx in logs:
         val_results[client_idx] = {
-            # **logs[client_idx]['info']['val_before_update_train_set'],
+            **logs[client_idx]['info']['train_info'],
             **logs[client_idx]["info"]["val_before_update_val_set"]
         }
 
