@@ -65,7 +65,8 @@ As an example of using LBFGS, one can simply add the followings in the example f
     parser.add_argument("--client_optimizer", type=str, default="LBFGS")
 
     if args.client_optimizer == "LBFGS":        
-        cfg.batch_training = False   
+        cfg.fed.clientname = "ClientOptimClosure" ## LBFGS requires to reevalute functions for multiple times (have to pass in a closure)
+        cfg.batch_training = False ## mini-batch training is not supported by the vanilla LBFGS 
         cfg.fed.args.optim_args.lr = 10.0  
         cfg.fed.args.optim_args.max_iter=10000 
         cfg.fed.args.optim_args.tolerance_grad=1e-10 ality (default: 1e-5).
