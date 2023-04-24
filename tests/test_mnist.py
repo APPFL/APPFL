@@ -94,12 +94,7 @@ def test_mnist_fedavg():
 
     num_clients = 2
     cfg = OmegaConf.structured(Config)
-    cfg.fed.args.num_local_epochs=2
-    """ Include the followings if you want to test a specific client optimizer (e.g., LBFGS):
-    cfg.fed.clientname = "ClientOptimClosure"
-    cfg.fed.args.optim = "LBFGS"    
-    cfg.batch_training = False 
-    """    
+    cfg.fed.args.num_local_epochs=2 
 
     model = CNN(1, 10, 28)
     loss_fn = torch.nn.CrossEntropyLoss()
