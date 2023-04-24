@@ -108,6 +108,23 @@ def test_mnist_fedavg():
 
     rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, "test_mnist")
 
+def test_mnist_fedavg_lbfgs():
+
+    num_clients = 2
+    cfg = OmegaConf.structured(Config)
+    cfg.fed.args.num_local_epochs=2    
+    
+    cfg.fed.clientname = "ClientOptimClosure"
+    cfg.fed.args.optim = "LBFGS"    
+    cfg.batch_training = False     
+
+    model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
+
+    train_datasets, test_dataset = process_data(num_clients)
+
+    rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, "test_mnist")
+
 
 @pytest.mark.mpi(min_size=3)
 def test_mnist_fedavg_mpi():
