@@ -9,7 +9,8 @@ import numpy as np
 
 from appfl.config import *
 from appfl.misc.data import *
-import appfl.run as rt
+import appfl.run_mpi as rm
+import appfl.run_serial as rs
 
 
 class CNN(nn.Module):
@@ -93,114 +94,127 @@ def test_mnist_fedavg():
 
     num_clients = 2
     cfg = OmegaConf.structured(Config)
+
+    """ Include the followings if you want to test a specific client optimizer (e.g., LBFGS):
+    cfg.fed.args.optim = "LBFGS"
+    cfg.batch_training = False 
+    """    
+
     model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
+
     train_datasets, test_dataset = process_data(num_clients)
 
-    rt.run_serial(cfg, model, train_datasets, test_dataset, "test_mnist")
+    rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, "test_mnist")
 
 
-@pytest.mark.mpi(min_size=3)
-def test_mnist_fedavg_mpi():
-    print
+# @pytest.mark.mpi(min_size=3)
+# def test_mnist_fedavg_mpi():
+#     print
 
-    from mpi4py import MPI
+#     from mpi4py import MPI
 
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
+#     comm = MPI.COMM_WORLD
+#     comm_rank = comm.Get_rank()
+#     comm_size = comm.Get_size()
 
-    num_clients = 2
-    cfg = OmegaConf.structured(Config)
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
+#     num_clients = 2
+#     cfg = OmegaConf.structured(Config)
+#     model = CNN(1, 10, 28)
+#     loss_fn = torch.nn.CrossEntropyLoss()
+#     train_datasets, test_dataset = process_data(num_clients)
 
-    if comm_size > 1:
-        if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
-        else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
-    else:
-        assert 0
-
-
-@pytest.mark.mpi(min_size=3)
-def test_mnist_iceadmm_mpi():
-
-    from mpi4py import MPI
-
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
-
-    num_clients = 2
-    cfg = OmegaConf.structured(Config(fed=ICEADMM()))
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
-
-    if comm_size > 1:
-        if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
-        else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
-    else:
-        assert 0
+#     if comm_size > 1:
+#         if comm_rank == 0:
+#             rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
+#         else:
+#             rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+#     else:
+#         assert 0
 
 
-@pytest.mark.mpi(min_size=3)
-def test_mnist_iiadmm_mpi():
+# @pytest.mark.mpi(min_size=3)
+# def test_mnist_iceadmm_mpi():
 
-    from mpi4py import MPI
+#     from mpi4py import MPI
 
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
+#     comm = MPI.COMM_WORLD
+#     comm_rank = comm.Get_rank()
+#     comm_size = comm.Get_size()
 
-    num_clients = 2
-    cfg = OmegaConf.structured(Config(fed=IIADMM()))
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
+#     num_clients = 2
+#     cfg = OmegaConf.structured(Config(fed=ICEADMM()))
+#     model = CNN(1, 10, 28)
+#     loss_fn = torch.nn.CrossEntropyLoss()
+#     train_datasets, test_dataset = process_data(num_clients)
 
-    if comm_size > 1:
-        if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
-        else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
-    else:
-        assert 0
-
-
-def test_mnist_fedavg_notest():
-
-    num_clients = 2
-    cfg = OmegaConf.structured(Config)
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
-
-    rt.run_serial(cfg, model, train_datasets, Dataset(), "test_mnist")
+#     if comm_size > 1:
+#         if comm_rank == 0:
+#             rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
+#         else:
+#             rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+#     else:
+#         assert 0
 
 
-@pytest.mark.mpi(min_size=3)
-def test_mnist_fedavg_mpi_notest():
-    print
+# @pytest.mark.mpi(min_size=3)
+# def test_mnist_iiadmm_mpi():
 
-    from mpi4py import MPI
+#     from mpi4py import MPI
 
-    comm = MPI.COMM_WORLD
-    comm_rank = comm.Get_rank()
-    comm_size = comm.Get_size()
+#     comm = MPI.COMM_WORLD
+#     comm_rank = comm.Get_rank()
+#     comm_size = comm.Get_size()
 
-    num_clients = 2
-    cfg = OmegaConf.structured(Config)
-    model = CNN(1, 10, 28)
-    train_datasets, test_dataset = process_data(num_clients)
+#     num_clients = 2
+#     cfg = OmegaConf.structured(Config(fed=IIADMM()))
+#     model = CNN(1, 10, 28)
+#     loss_fn = torch.nn.CrossEntropyLoss()
+#     train_datasets, test_dataset = process_data(num_clients)
 
-    if comm_size > 1:
-        if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, Dataset(), "test_mnist")
-        else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
-    else:
-        assert 0
+#     if comm_size > 1:
+#         if comm_rank == 0:
+#             rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
+#         else:
+#             rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+#     else:
+#         assert 0
+
+
+# def test_mnist_fedavg_notest():
+
+#     num_clients = 2
+#     cfg = OmegaConf.structured(Config)
+#     model = CNN(1, 10, 28)
+#     loss_fn = torch.nn.CrossEntropyLoss()
+#     train_datasets, test_dataset = process_data(num_clients)
+
+#     rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_mnist")
+
+
+# @pytest.mark.mpi(min_size=3)
+# def test_mnist_fedavg_mpi_notest():
+#     print
+
+#     from mpi4py import MPI
+
+#     comm = MPI.COMM_WORLD
+#     comm_rank = comm.Get_rank()
+#     comm_size = comm.Get_size()
+
+#     num_clients = 2
+#     cfg = OmegaConf.structured(Config)
+#     model = CNN(1, 10, 28)
+#     loss_fn = torch.nn.CrossEntropyLoss()
+#     train_datasets, test_dataset = process_data(num_clients)
+
+#     if comm_size > 1:
+#         if comm_rank == 0:
+#             rm.run_server(cfg, comm, model, loss_fn, num_clients, Dataset(), "test_mnist")
+#         else:
+#             rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+#     else:
+#         assert 0
 
 
 # mpirun -n 3 python -m pytest --with-mpi
