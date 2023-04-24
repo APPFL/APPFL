@@ -30,7 +30,7 @@ parser.add_argument("--num_pixel", type=int, default=28)
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
-parser.add_argument("--client_optimizer", type=str, default="Adam")
+parser.add_argument("--client_optimizer", type=str, default="Adam") ## optimizers supported by PyTorch (e.g., SGD, Adam, or LBFGS)
 
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
@@ -115,15 +115,14 @@ def main():
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer    
     
-    if args.client_optimizer == "LBFGS":        
-        cfg.batch_training = False        
-        cfg.fed.args.optim_args.lr = 10.0
-        cfg.fed.args.optim_args.max_iter=10000
-        cfg.fed.args.optim_args.tolerance_grad=1e-10
-        cfg.fed.args.optim_args.tolerance_change=1e-10
-        cfg.fed.args.optim_args.history_size=1000
-        cfg.fed.args.optim_args.line_search_fn="strong_wolfe"        
-        
+    if args.client_optimizer == "LBFGS":                
+        cfg.batch_training = False   ## mini-batch training is not supported by the vanilla LBFGS 
+        cfg.fed.args.optim_args.lr = 10.0 ## learning rate (default: 1)
+        cfg.fed.args.optim_args.max_iter=10000 ## maximal number of iterations per optimization step (default: 20)
+        cfg.fed.args.optim_args.tolerance_grad=1e-10 ## termination tolerance on first order optimality (default: 1e-5)
+        cfg.fed.args.optim_args.tolerance_change=1e-10 ## termination tolerance on function value/parameter changes (default: 1e-9)
+        cfg.fed.args.optim_args.history_size=1000 ## update history size (default: 100)
+        cfg.fed.args.optim_args.line_search_fn="strong_wolfe"   ## either ‘strong_wolfe’ or None (default: None)
 
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
