@@ -12,7 +12,6 @@ import appfl.run_serial as rs
 import appfl.run_mpi as rm
 from mpi4py import MPI
 from models.utils import get_model
-
 import argparse
 
 """ read arguments """
@@ -53,21 +52,37 @@ if torch.cuda.is_available():
 dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
 
 
+def add_zero_padding(arr, targetsize, originsize):
+    
+    result = np.zeros(targetsize[0]*targetsize[1])
+    result = result.reshape(targetsize)    
+    beginx = int((targetsize[0]/2) - (originsize[0]/2))
+    beginy = int((targetsize[1]/2) - (originsize[1]/2))
+    endx = beginx+originsize[0]
+    endy = beginy+originsize[1]
+    result[beginx:endx, beginy:endy] = arr   
+    return result
+
 def get_data(comm: MPI.Comm):
     # test data for a server    
+    
     test_data_raw = {}
     test_data_input = []
     test_data_label = []
     for idx in range(36):
         with open("%s/test/all_data_%s_niid_05_keep_0_test_9.json" % (dir, idx)) as f:
             test_data_raw[idx] = json.load(f)
-
         for client in test_data_raw[idx]["users"]:
 
             for data_input in test_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
-                data_input.resize(args.num_pixel, args.num_pixel)
-                test_data_input.append([data_input])
+                data_input.resize(args.num_pixel, args.num_pixel)                
+                if(args.model == "resnet18"):
+                    data_input = add_zero_padding(data_input, [244,244],[args.num_pixel,args.num_pixel])                
+                if(args.num_channel == 3):                    
+                    test_data_input.append([data_input,data_input,data_input])
+                else:
+                    test_data_input.append([data_input])
 
             for data_label in test_data_raw[idx]["user_data"][client]["y"]:
                 test_data_label.append(data_label)        
@@ -87,8 +102,13 @@ def get_data(comm: MPI.Comm):
             train_data_input_resize = []
             for data_input in train_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
-                data_input.resize(args.num_pixel, args.num_pixel)
-                train_data_input_resize.append([data_input])
+                data_input.resize(args.num_pixel, args.num_pixel)     
+                if(args.model == "resnet18"):
+                    data_input = add_zero_padding(data_input, [244,244],[args.num_pixel,args.num_pixel])                
+                if(args.num_channel == 3):                    
+                    train_data_input_resize.append([data_input,data_input,data_input])           
+                else:
+                    train_data_input_resize.append([data_input])
 
             train_datasets.append(
                 Dataset(
@@ -127,7 +147,7 @@ def main():
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
-
+    
     cfg.device = args.device  
 
     ## clients
