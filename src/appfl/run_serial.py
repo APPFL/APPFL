@@ -118,7 +118,7 @@ def run_serial(
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
 
-        local_states = [OrderedDict()]
+        local_states = []
 
         global_state = server.model.state_dict()
 
@@ -129,7 +129,7 @@ def run_serial(
             client.model.load_state_dict(global_state)
 
             ## client update
-            local_states[0][k] = client.update()
+            local_states.append(client.update())
 
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 

@@ -62,16 +62,14 @@ class BaseServer:
                 self.primal_states[sid] = states["primal"]
 
     def dual_recover_from_local_states(self, local_states):
-        for _, states in enumerate(local_states):
-            if states is not None:
-                for sid, state in states.items():
-                    self.dual_states[sid] = copy.deepcopy(state["dual"])
+        for sid, states in enumerate(local_states):
+            if states is not None:                
+                self.dual_states[sid] = states["dual"]        
 
     def penalty_recover_from_local_states(self, local_states):
-        for _, states in enumerate(local_states):
-            if states is not None:
-                for sid, state in states.items():
-                    self.penalty[sid] = copy.deepcopy(state["penalty"][sid])
+        for sid, states in enumerate(local_states):
+            if states is not None:     
+                self.penalty[sid] = states["penalty"][sid]
 
     def primal_residual_at_server(self) -> float:
         primal_res = 0
