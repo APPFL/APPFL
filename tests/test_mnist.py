@@ -104,7 +104,7 @@ def test_mnist_fedavg():
     rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, "test_mnist")
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_fedavg_mpi():
     print
 
@@ -130,7 +130,7 @@ def test_mnist_fedavg_mpi():
         assert 0
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_iceadmm_mpi():
 
     from mpi4py import MPI
@@ -155,7 +155,7 @@ def test_mnist_iceadmm_mpi():
         assert 0
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_iiadmm_mpi():
 
     from mpi4py import MPI
@@ -192,7 +192,7 @@ def test_mnist_fedavg_notest():
     rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_mnist")
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_fedavg_mpi_notest():
     print
 
