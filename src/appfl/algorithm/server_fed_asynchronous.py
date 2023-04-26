@@ -1,5 +1,5 @@
 import logging
-
+import copy
 from collections import OrderedDict
 from .server_federated import FedServer
 from ..misc import *
@@ -47,7 +47,7 @@ class ServerFedAsynchronous(FedServer):
             primal_res += torch.sum(torch.square(self.global_state[name]-self.primal_states[client_idx][name].to(self.device)))
         self.prim_res = torch.sqrt(primal_res).item()
 
-    def update(self, local_states: OrderedDict, init_step: int, client_idx: int, E_weight: float):  
+    def update(self, local_states: OrderedDict, init_step: int, client_idx: int, E_weight: float = 1):  
         # Obtain the global and local states
         self.global_state = copy.deepcopy(self.model.state_dict())
         super(FedServer, self).primal_recover_from_local_states(local_states)
