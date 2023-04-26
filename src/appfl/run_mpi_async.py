@@ -1,5 +1,5 @@
 from cmath import nan
-
+import sys
 from collections import OrderedDict
 import torch.nn as nn
 from torch.optim import *
@@ -99,13 +99,21 @@ def run_server(
 
     weight = comm.scatter(weight, root=0)
 
+
+    # =================== Fed Async Implementation Starts Here ================
     staness_func = {
         'name': 'polynomial',
         'args': {'a': 0.5}
     }
     # [FedAsync] Note: cfg.fed.servername = ServerFedAsynchronous at directory '/src/appfl/algorithm/server_fed_asynchronous.py'
     server = eval(cfg.fed.servername)(
-        weights, copy.deepcopy(model), loss_fn, num_clients, device, staness_func=staness_func, **cfg.fed.args
+        weights, 
+        copy.deepcopy(model), 
+        loss_fn, num_clients, 
+        device, 
+        staness_func=staness_func, 
+        alpha=0.9, 
+        **cfg.fed.args
     )
 
     start_time = time.time()
@@ -113,51 +121,94 @@ def run_server(
     # [FedAsync] Record total number of local updates received from clients
     global_step = 0
 
-    # [FedAsync] Send the (initial model, finish flag) to the clients
-    server.model.to("cpu")
-    send_reqs = [comm.isend((server.model.state_dict(), False), dest=i) for i in range(1, num_clients+1)]
-
-    # [FedAsync] Wait for response (local model size) from clients
-    recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
-
-    # [FedAsync] Step for each client
+    # [FedAsync] Record step for each client
     client_model_step = {i : 0 for i in range(0, num_clients)}
 
-    # [FedAsync] Main training loop
+    # [FedAsync] Record the local training time for each client
+    client_local_time = {i : start_time for i in range(0, num_clients)}
+
+    # [FedAsync] Obtain the state dict of the global model
+    server.model.to("cpu")
+    global_model = server.model.state_dict()
+
+    # [FedAsync] Convert the model to bytes
+    gloabl_model_buffer = io.BytesIO()
+    torch.save(global_model, gloabl_model_buffer)
+    global_model_bytes = gloabl_model_buffer.getvalue()
+
+    # [FedAsync] Send (buffer size, finish flag) - INFO - to all clients in a blocking way
+    for i in range(1, num_clients+1):
+        comm.send((len(global_model_bytes), False), dest=i, tag=i)      # dest is the rank of the receiver, tag = dest
+
+    # [FedAsync] Send the buffered model - MODEL - to all clients in a NON-blocking way
+    # dest is the rank of the receiver and tag = dest + comm_size 
+    # we use different tags here to differentiate different types of messages (INFO v.s. MODEL)
+    send_reqs = [comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+comm_size) for i in range(1, num_clients+1)]
+
+    # [FedAsync] Wait for response (buffer size) - INFO - from clients
+    recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
+
+    # [FedAsync] Main global training loop
     while True:
-        # [FedAsync] Wait for results from one client
-        client_idx, state_dict_size = MPI.Request.waitany(recv_reqs)
+        # [FedAsync] Wait for response from any one client
+        client_idx, local_model_size = MPI.Request.waitany(recv_reqs)
+
         if client_idx != MPI.UNDEFINED:
+            # [FedAsync] Record time
+            local_start_time = client_local_time[client_idx]
+            local_update_time = time.time() - client_local_time[client_idx]
+            global_update_start = time.time()
+
+
             # [FedAsync] Increment the global step
             global_step += 1
-            print(f"[Step #{global_step}] Server gets the model with size {state_dict_size} from client #{client_idx}")
+            print(f"[Server Log] [Step #{global_step:3}] Server gets response from client #{client_idx}")
+            
+            # [FedAsync] Allocate a buffer to receive the model byte stream
+            local_model_bytes = np.empty(local_model_size, dtype=np.byte)
 
-            # [FedAsync] Allocate a buffer to receive the byte stream
-            state_dict_bytes = np.empty(state_dict_size, dtype=np.byte)
+            # [FedAsync] Receive the model byte stream
+            comm.Recv(local_model_bytes, source=client_idx+1, tag=client_idx+1+comm_size)
+            print(f"[Server Log] [Step #{global_step:3}] Server gets model from client #{client_idx}")
 
-            # [FedAsync] Receive the byte stream
-            comm.Recv(state_dict_bytes, source=client_idx+1, tag=client_idx+1+comm_size)
+            # [FedAsync] Load the model byte to state dict
+            local_model_buffer = io.BytesIO(local_model_bytes.tobytes())
+            local_model_dict = torch.load(local_model_buffer)
 
-            # [FedAsync] Load the byte to state dict
-            buffer = io.BytesIO(state_dict_bytes.tobytes())
-            state_dict = torch.load(buffer)
-
-            # [FedAsync] Some bugs here
+            # [FedAsync] Prepare the received data to desired format
             local_model = OrderedDict()
-            local_model['primal'] = state_dict
-
+            local_model['primal'] = local_model_dict
+            local_models = OrderedDict()
+            local_models[client_idx] = local_model
+            
             # [FedAsync] Perform global update
-            server.update([local_model], client_model_step[client_idx], client_idx)
+            print(f"[Server Log] [Step #{global_step:3}] Server updates global model on model from client #{client_idx}")
+            server.update([local_models], client_model_step[client_idx], client_idx)
+            global_update_time = time.time() - global_update_start
 
             # [FedAsync] Remove the completed request from list
             recv_reqs.pop(client_idx)
             if global_step < max_updates:
-                # [FedAsync] Send new task to the client
-                comm.isend((server.model.state_dict(), False), dest=client_idx+1)
+                # [FedAsync] Convert the updated model to bytes
+                global_model = server.model.state_dict()
+                gloabl_model_buffer = io.BytesIO()
+                torch.save(global_model, gloabl_model_buffer)
+                global_model_bytes = gloabl_model_buffer.getvalue()
+
+                # [FedAsync] Send (buffer size, finish flag) - INFO - to the client in a blocking way
+                comm.send((len(global_model_bytes), False), dest=client_idx+1, tag=client_idx+1)
+
+                # [FedAsync] Send the buffered model - MODEL - to the client in a NON-blocking way
+                comm.Send(np.frombuffer(global_model_bytes, dtype=np.byte), dest=client_idx+1, tag=client_idx+1+comm_size) 
+
                 # [FedAsync] Add new receiving request to the list
                 recv_reqs.insert(client_idx, comm.irecv(source=client_idx+1, tag=client_idx+1))
-                # [FedAsync] Update the model step for client
+                
+                # [FedAsync] Update the model step for the client
                 client_model_step[client_idx] = global_step
+
+                # [FedAsync] Update the local training time of the client
+                client_local_time[client_idx] = time.time()
 
             # Do server validation
             validation_start = time.time()
@@ -166,28 +217,34 @@ def run_server(
                 test_loss, test_accuracy = validation(server, test_dataloader)
                 if test_accuracy > best_accuracy:
                     best_accuracy = test_accuracy
-                # if cfg.use_tensorboard:
-                #     # Add them to tensorboard
-                #     writer.add_scalar("server_test_accuracy", test_accuracy, t)
-                #     writer.add_scalar("server_test_loss", test_loss, t)
-
+                if cfg.use_tensorboard:
+                    # Add them to tensorboard
+                    writer.add_scalar("server_test_accuracy", test_accuracy, global_step)
+                    writer.add_scalar("server_test_loss", test_loss, global_step)
             cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
+            cfg["logginginfo"]["PerIter_time"] = time.time() - local_start_time
             cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
             cfg["logginginfo"]["test_loss"] = test_loss
             cfg["logginginfo"]["test_accuracy"] = test_accuracy
             cfg["logginginfo"]["BestAccuracy"] = best_accuracy
-            server.logging_iteration(cfg, logger, global_step)
+            cfg["logginginfo"]["LocalUpdate_time"] = local_update_time
+            cfg["logginginfo"]["GlobalUpdate_time"] = global_update_time
+            logger.info(server.log_title())
+            server.logging_iteration(cfg, logger, global_step-1)
+
             # [FedAsync] Break after max updates
             if global_step == max_updates: 
                 break
+    
 
     # [FedAsync] Cancel outstanding requests
     for recv_req in recv_reqs:
         recv_req.cancel()
 
-    # [FedAsync] Send final model and a finished indicator to all clients
-    send_reqs = [comm.isend((server.model.state_dict(), True), dest=i) for i in range(1, num_clients+1)]
+    # [FedAsync] Send a finished indicator to all clients
+    send_reqs = [comm.isend((0, True), dest=i, tag=i) for i in range(1, num_clients+1)]
     MPI.Request.waitall(send_reqs)
+
     server.logging_summary(cfg, logger)
 
 
@@ -274,25 +331,41 @@ def run_client(
         **cfg.fed.args,
     )
 
+    # [FedAsync] Main local training loop
     while True:
-        # [FedAsync] Receive model from the server
-        global_state, done = comm.recv(source=0)
-        if not done:
-            # [FedAsync] Train the model
-            client.model.load_state_dict(global_state)
-            client.update()
-            state_dict = copy.deepcopy(client.primal_state)
-            buffer = io.BytesIO()
-            torch.save(state_dict, buffer)
-            state_dict_bytes = buffer.getvalue()
-            # state_dict_bytes = torch.save(state_dict, torch.ByteStorage()).tobytes()
-            # [FedAsync] Send the size of state dict first
-            comm.send(len(state_dict_bytes), dest=0, tag=comm_rank)
-            # [FedAsync] Send the state dict
-            comm.Send(np.frombuffer(state_dict_bytes, dtype=np.byte), dest=0, tag=comm_rank+comm_size)
-            print(f"[Client #{comm_rank-1}] sends the model back")
-        else:
+        # [FedAsync] Receive model size from the server
+        global_model_size, done = comm.recv(source=0, tag=comm_rank)
+        print(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model size")
+        if done: 
+            print(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
             break
+
+        # [FedAsync] Allocate a buffer to receive the byte stream
+        global_model_bytes = np.empty(global_model_size, dtype=np.byte)
+        
+        # [FedAsync] Receive the byte stream
+        comm.Recv(global_model_bytes, source=0, tag=comm_rank+comm_size)
+        print(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model")
+
+        # [FedAsync] Load the byte to state dict
+        global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
+        global_model = torch.load(global_model_buffer)
+
+        # [FedAsync] Train the model
+        client.model.load_state_dict(global_model)
+        client.update()
+
+        # [Fed Async] Convert local model to bytes
+        local_model = copy.deepcopy(client.primal_state)
+        local_model_buffer = io.BytesIO()
+        torch.save(local_model, local_model_buffer)
+        local_model_bytes = local_model_buffer.getvalue()
+
+        # [FedAsync] Send the size of local model first
+        comm.send(len(local_model_bytes), dest=0, tag=comm_rank)
+        
+        # [FedAsync] Send the state dict
+        comm.Isend(np.frombuffer(local_model_bytes, dtype=np.byte), dest=0, tag=comm_rank+comm_size)
 
     client.outfile.close()
 
