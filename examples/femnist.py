@@ -42,6 +42,7 @@ parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
 
+parser.add_argument("--pretrained", type=int, default=0)
 
 args = parser.parse_args()
 
@@ -77,9 +78,7 @@ def get_data(comm: MPI.Comm):
             for data_input in test_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
                 data_input.resize(args.num_pixel, args.num_pixel)                
-                if(args.model == "resnet18"):
-                    data_input = add_zero_padding(data_input, [244,244],[args.num_pixel,args.num_pixel])                
-                if(args.num_channel == 3):                    
+                if(args.num_channel == 1 and args.pretrained > 0):
                     test_data_input.append([data_input,data_input,data_input])
                 else:
                     test_data_input.append([data_input])
@@ -102,10 +101,8 @@ def get_data(comm: MPI.Comm):
             train_data_input_resize = []
             for data_input in train_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
-                data_input.resize(args.num_pixel, args.num_pixel)     
-                if(args.model == "resnet18"):
-                    data_input = add_zero_padding(data_input, [244,244],[args.num_pixel,args.num_pixel])                
-                if(args.num_channel == 3):                    
+                data_input.resize(args.num_pixel, args.num_pixel)              
+                if(args.num_channel == 1 and args.pretrained > 0):
                     train_data_input_resize.append([data_input,data_input,data_input])           
                 else:
                     train_data_input_resize.append([data_input])

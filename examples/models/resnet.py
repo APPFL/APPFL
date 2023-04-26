@@ -3,6 +3,40 @@ import torch.nn as nn
 import torch
 from torch import Tensor
 
+
+from enum import Enum
+from torchvision.models._api import Weights, WeightsEnum
+from torchvision.models._meta import _IMAGENET_CATEGORIES
+from torchvision.transforms._presets import ImageClassification
+from functools import partial
+
+_COMMON_META = {
+    "min_size": (1, 1),
+    "categories": _IMAGENET_CATEGORIES,
+}
+
+class ResNet18_Weights(WeightsEnum):
+    IMAGENET1K_V1 = Weights(
+        url="https://download.pytorch.org/models/resnet18-f37072fd.pth",
+        transforms=partial(ImageClassification, crop_size=224),
+        meta={
+            **_COMMON_META,
+            "num_params": 11689512,
+            "recipe": "https://github.com/pytorch/vision/tree/main/references/classification#resnet",
+            "_metrics": {
+                "ImageNet-1K": {
+                    "acc@1": 69.758,
+                    "acc@5": 89.078,
+                }
+            },
+            "_ops": 1.814,
+            "_file_size": 44.661,
+            "_docs": """These weights reproduce closely the results of the paper using a simple training recipe.""",
+        },
+    )
+    DEFAULT = IMAGENET1K_V1
+
+
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -104,15 +138,29 @@ class ResNet(models.resnet.ResNet):
         return logits
         
 
-def resnet18(num_channel, num_pixel, num_classes=None):
-    if num_classes is not None:
-        resnetmodel = models.resnet18(pretrained=False, num_classes=num_classes)
-    else:
-        resnetmodel = models.resnet18(pretrained=True)
+def resnet18(num_channel, num_classes=-1, pretrained=0):
+    model = None
 
-    if num_channel == 1: 
-        model = ResNet(block=BasicBlock, layers=[2, 2, 2, 2],num_classes=num_classes, grayscale=True)
-        return model 
-    else:        
-        return resnetmodel
+    if num_channel == 1:   
+        if num_classes < 0 or pretrained > 0:            
+            weights = ResNet18_Weights.verify(ResNet18_Weights.IMAGENET1K_V1)
+            num_classes = len(weights.meta["categories"])
+            model = ResNet(block=BasicBlock, layers=[2, 2, 2, 2],num_classes=num_classes, grayscale=False)
+            model.load_state_dict(weights.get_state_dict(progress=True))
+        else:
+            model = ResNet(block=BasicBlock, layers=[2, 2, 2, 2],num_classes=num_classes, grayscale=True)
+            
+    else:
+        if num_classes < 0 or pretrained > 0:
+            model = models.resnet18(pretrained=True)            
+        else:
+            model = models.resnet18(pretrained=False, num_classes=num_classes)
+            
+
+    
+
+
+
+    return model
+    
 
