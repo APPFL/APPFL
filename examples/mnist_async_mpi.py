@@ -1,23 +1,16 @@
 import os
 import time
-
-import numpy as np
 import torch
-
+import argparse
 import torchvision
-from torchvision.transforms import ToTensor
-
+import numpy as np
+import appfl.run_mpi_async as rma
+from mpi4py import MPI
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.utils import get_model
-
-import appfl.run_serial as rs
-import appfl.run_mpi as rm
-import appfl.run_mpi_async as rma
-from mpi4py import MPI
-
-import argparse
+from torchvision.transforms import ToTensor
 
 """ read arguments """
 
@@ -33,26 +26,31 @@ parser.add_argument("--num_pixel", type=int, default=28)
 parser.add_argument("--model", type=str, default="CNN")
 
 ## clients
-parser.add_argument("--num_clients", type=int, default=2)
+# parser.add_argument("--num_clients", type=int, default=2)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAsynchronous")
-parser.add_argument("--num_epochs", type=int, default=2)
+parser.add_argument("--num_epochs", type=int, default=20)
 
 parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
 
+## Fed Async
+parser.add_argument("--alpha", type=float, default=0.9, help="Mixing parameter for FedAsync Algorithm")
+parser.add_argument("--staleness_func", type=str, choices=['constant', 'polynomial', 'hinge'], default='polynomial')
+parser.add_argument("--a", type=float, default=0.5, help="First parameter for the staleness function")
+parser.add_argument("--b", type=int, default=4, help="Second parameter for Hinge staleness function")
+
 
 args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
- 
 
 def get_data(comm: MPI.Comm):
     dir = os.getcwd() + "/datasets/RawData"
@@ -113,6 +111,9 @@ def main():
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
+    assert comm_size > 1, "This script requires the toal number of processes to be greater than one!"
+    args.num_clients = comm_size - 1
+
     """ Configuration """
     cfg = OmegaConf.structured(Config)
 
@@ -160,6 +161,11 @@ def main():
 
     cfg.output_filename = "result"
 
+    staleness_func = {
+        'name': args.staleness_func,
+        'args': {'a': args.a, 'b': args.b}
+    }
+
     start_time = time.time()
 
     """ User-defined model """
@@ -194,20 +200,16 @@ def main():
         cfg.save_model_filename = "Model"
 
     """ Running """
-    if comm_size > 1:
-        if comm_rank == 0:
-            rma.run_server(
-                cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
-            )
-        else:
-            assert comm_size == args.num_clients + 1
-            rma.run_client(
-                cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset
-            )
-        print("------DONE------", comm_rank)
+    if comm_rank == 0:
+        rma.run_server(
+            cfg, comm, model, loss_fn, args.num_clients, args.alpha, staleness_func, test_dataset, args.dataset
+        )
     else:
-        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
-        
+        assert comm_size == args.num_clients + 1
+        rma.run_client(
+            cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset
+        )
+    print("------DONE------", comm_rank)
 
 
 if __name__ == "__main__":

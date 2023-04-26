@@ -25,9 +25,10 @@ def run_server(
     model: nn.Module,
     loss_fn: nn.Module,
     num_clients: int,
+    alpha: float,
+    staleness_func: dict,
     test_dataset: Dataset = Dataset(),
-    dataset_name: str = "appfl",
-    max_updates: int = 20
+    dataset_name: str = "appfl"
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model in an asynchronous way
 
@@ -101,18 +102,14 @@ def run_server(
 
 
     # =================== Fed Async Implementation Starts Here ================
-    staness_func = {
-        'name': 'polynomial',
-        'args': {'a': 0.5}
-    }
     # [FedAsync] Note: cfg.fed.servername = ServerFedAsynchronous at directory '/src/appfl/algorithm/server_fed_asynchronous.py'
     server = eval(cfg.fed.servername)(
         weights, 
         copy.deepcopy(model), 
         loss_fn, num_clients, 
         device, 
-        staness_func=staness_func, 
-        alpha=0.9, 
+        staness_func=staleness_func, 
+        alpha=alpha, 
         **cfg.fed.args
     )
 
@@ -162,7 +159,7 @@ def run_server(
 
             # [FedAsync] Increment the global step
             global_step += 1
-            print(f"[Server Log] [Step #{global_step:3}] Server gets response from client #{client_idx}")
+            print(f"[Server Log] [Step #{global_step:3}] Server gets model size from client #{client_idx}")
             
             # [FedAsync] Allocate a buffer to receive the model byte stream
             local_model_bytes = np.empty(local_model_size, dtype=np.byte)
@@ -188,7 +185,7 @@ def run_server(
 
             # [FedAsync] Remove the completed request from list
             recv_reqs.pop(client_idx)
-            if global_step < max_updates:
+            if global_step < cfg.num_epochs:
                 # [FedAsync] Convert the updated model to bytes
                 global_model = server.model.state_dict()
                 gloabl_model_buffer = io.BytesIO()
@@ -229,11 +226,13 @@ def run_server(
             cfg["logginginfo"]["BestAccuracy"] = best_accuracy
             cfg["logginginfo"]["LocalUpdate_time"] = local_update_time
             cfg["logginginfo"]["GlobalUpdate_time"] = global_update_time
-            logger.info(server.log_title())
+            print(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
+            if global_step != 1:
+                logger.info(server.log_title())
             server.logging_iteration(cfg, logger, global_step-1)
 
             # [FedAsync] Break after max updates
-            if global_step == max_updates: 
+            if global_step == cfg.num_epochs: 
                 break
     
 
