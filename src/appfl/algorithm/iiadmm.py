@@ -88,15 +88,27 @@ class IIADMMServer(BaseServer):
 
 
 class IIADMMClient(BaseClient):
-    def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(IIADMMClient, self).__init__(id, weight, model, dataloader, device)
-        self.__dict__.update(kwargs)
-        self.loss_fn = eval(self.loss_type)
+    def __init__(
+        self,
+        id,
+        weight,
+        model,
+        loss_fn,
+        dataloader,
+        cfg,
+        outfile,
+        test_dataloader,
+        **kwargs
+    ):
+        super(IIADMMClient, self).__init__(
+            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
+        )
+        self.__dict__.update(kwargs) 
 
         """
         At initial, (1) primal_state = global_state, (2) dual_state = 0
         """
-        self.model.to(device)
+        self.model.to(self.cfg.device)
         for name, param in model.named_parameters():
             self.primal_state[name] = param.data
             self.dual_state[name] = torch.zeros_like(param.data)
@@ -107,7 +119,7 @@ class IIADMMClient(BaseClient):
     def update(self):
 
         self.model.train()
-        self.model.to(self.device)
+        self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
@@ -136,8 +148,8 @@ class IIADMMClient(BaseClient):
                     dual_res = super(IIADMMClient, self).dual_residual_at_client()
                     super(IIADMMClient, self).residual_balancing(prim_res, dual_res)
 
-                data = data.to(self.device)
-                target = target.to(self.device)
+                data = data.to(self.cfg.device)
+                target = target.to(self.cfg.device)
 
                 if self.accum_grad == False:
                     optimizer.zero_grad()

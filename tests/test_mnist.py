@@ -9,7 +9,8 @@ import numpy as np
 
 from appfl.config import *
 from appfl.misc.data import *
-import appfl.run as rt
+import appfl.run_mpi as rm
+import appfl.run_serial as rs
 
 
 class CNN(nn.Module):
@@ -93,13 +94,17 @@ def test_mnist_fedavg():
 
     num_clients = 2
     cfg = OmegaConf.structured(Config)
+    cfg.fed.args.num_local_epochs=2 
+
     model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
+
     train_datasets, test_dataset = process_data(num_clients)
 
-    rt.run_serial(cfg, model, train_datasets, test_dataset, "test_mnist")
+    rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, "test_mnist")
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_fedavg_mpi():
     print
 
@@ -111,19 +116,21 @@ def test_mnist_fedavg_mpi():
 
     num_clients = 2
     cfg = OmegaConf.structured(Config)
+    cfg.fed.args.num_local_epochs=2
     model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
     train_datasets, test_dataset = process_data(num_clients)
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
+            rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
     else:
         assert 0
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_iceadmm_mpi():
 
     from mpi4py import MPI
@@ -134,19 +141,21 @@ def test_mnist_iceadmm_mpi():
 
     num_clients = 2
     cfg = OmegaConf.structured(Config(fed=ICEADMM()))
+    cfg.fed.args.num_local_epochs=2
     model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
     train_datasets, test_dataset = process_data(num_clients)
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
+            rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
     else:
         assert 0
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_iiadmm_mpi():
 
     from mpi4py import MPI
@@ -157,14 +166,16 @@ def test_mnist_iiadmm_mpi():
 
     num_clients = 2
     cfg = OmegaConf.structured(Config(fed=IIADMM()))
+    cfg.fed.args.num_local_epochs=2
     model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
     train_datasets, test_dataset = process_data(num_clients)
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, test_dataset, "test_mnist")
+            rm.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
     else:
         assert 0
 
@@ -173,13 +184,15 @@ def test_mnist_fedavg_notest():
 
     num_clients = 2
     cfg = OmegaConf.structured(Config)
+    cfg.fed.args.num_local_epochs=2
     model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
     train_datasets, test_dataset = process_data(num_clients)
 
-    rt.run_serial(cfg, model, train_datasets, Dataset(), "test_mnist")
+    rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_mnist")
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_fedavg_mpi_notest():
     print
 
@@ -191,14 +204,16 @@ def test_mnist_fedavg_mpi_notest():
 
     num_clients = 2
     cfg = OmegaConf.structured(Config)
+    cfg.fed.args.num_local_epochs=2
     model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
     train_datasets, test_dataset = process_data(num_clients)
 
     if comm_size > 1:
         if comm_rank == 0:
-            rt.run_server(cfg, comm, model, num_clients, Dataset(), "test_mnist")
+            rm.run_server(cfg, comm, model, loss_fn, num_clients, Dataset(), "test_mnist")
         else:
-            rt.run_client(cfg, comm, model, num_clients, train_datasets)
+            rm.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
     else:
         assert 0
 
