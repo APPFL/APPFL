@@ -52,18 +52,6 @@ if torch.cuda.is_available():
 
 dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
 
-
-def add_zero_padding(arr, targetsize, originsize):
-    
-    result = np.zeros(targetsize[0]*targetsize[1])
-    result = result.reshape(targetsize)    
-    beginx = int((targetsize[0]/2) - (originsize[0]/2))
-    beginy = int((targetsize[1]/2) - (originsize[1]/2))
-    endx = beginx+originsize[0]
-    endy = beginy+originsize[1]
-    result[beginx:endx, beginy:endy] = arr   
-    return result
-
 def get_data(comm: MPI.Comm):
     # test data for a server    
     
@@ -77,7 +65,8 @@ def get_data(comm: MPI.Comm):
 
             for data_input in test_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
-                data_input.resize(args.num_pixel, args.num_pixel)                
+                data_input.resize(args.num_pixel, args.num_pixel)
+                # Repeating 1 channel data to use pretrained weight that based on 3 channels data
                 if(args.num_channel == 1 and args.pretrained > 0):
                     test_data_input.append([data_input,data_input,data_input])
                 else:
@@ -101,7 +90,8 @@ def get_data(comm: MPI.Comm):
             train_data_input_resize = []
             for data_input in train_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
-                data_input.resize(args.num_pixel, args.num_pixel)              
+                data_input.resize(args.num_pixel, args.num_pixel) 
+                # Repeating 1 channel data to use pretrained weight that based on 3 channels data
                 if(args.num_channel == 1 and args.pretrained > 0):
                     train_data_input_resize.append([data_input,data_input,data_input])           
                 else:
@@ -180,3 +170,5 @@ if __name__ == "__main__":
 # mpiexec -np 5 python ./femnist.py
 # To run:
 # python ./femnist.py
+# To run with resnet pretrained weight:
+# python ./femnist.py --model resnet18 --pretrained 1

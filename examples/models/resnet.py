@@ -2,78 +2,15 @@ from torchvision import *
 import torch.nn as nn
 import torch
 from torch import Tensor
-
-
 from enum import Enum
 from torchvision.models._api import Weights, WeightsEnum
 from torchvision.models._meta import _IMAGENET_CATEGORIES
+from torchvision.models.resnet import BasicBlock, ResNet18_Weights
 from torchvision.transforms._presets import ImageClassification
 from functools import partial
 
-_COMMON_META = {
-    "min_size": (1, 1),
-    "categories": _IMAGENET_CATEGORIES,
-}
-
-class ResNet18_Weights(WeightsEnum):
-    IMAGENET1K_V1 = Weights(
-        url="https://download.pytorch.org/models/resnet18-f37072fd.pth",
-        transforms=partial(ImageClassification, crop_size=224),
-        meta={
-            **_COMMON_META,
-            "num_params": 11689512,
-            "recipe": "https://github.com/pytorch/vision/tree/main/references/classification#resnet",
-            "_metrics": {
-                "ImageNet-1K": {
-                    "acc@1": 69.758,
-                    "acc@5": 89.078,
-                }
-            },
-            "_ops": 1.814,
-            "_file_size": 44.661,
-            "_docs": """These weights reproduce closely the results of the paper using a simple training recipe.""",
-        },
-    )
-    DEFAULT = IMAGENET1K_V1
-
-
-def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
-
-class BasicBlock(nn.Module):
-    expansion = 1
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
-        self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        residual = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        out += residual
-        out = self.relu(out)
-
-        return out
-
 class ResNet(models.resnet.ResNet):
+    # ResNet 18 Architecture Implementation to adapt grayscale and 28 X 28 pixel size input    
     def __init__(self, block, layers, num_classes, grayscale):        
         if grayscale:
             in_dim = 1
@@ -91,8 +28,7 @@ class ResNet(models.resnet.ResNet):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=1)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1)
         
-        #self.avgpool = nn.AdaptiveAvgPool2d((1, 1))        
-        self.avgpool = nn.AvgPool2d(7, stride=1) # The input size is 7x7
+        self.avgpool = nn.AvgPool2d(7, stride=1)
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
@@ -136,7 +72,6 @@ class ResNet(models.resnet.ResNet):
         logits = self.fc(x)
 
         return logits
-        
 
 def resnet18(num_channel, num_classes=-1, pretrained=0):
     model = None
@@ -155,12 +90,7 @@ def resnet18(num_channel, num_classes=-1, pretrained=0):
             model = models.resnet18(pretrained=True)            
         else:
             model = models.resnet18(pretrained=False, num_classes=num_classes)
-            
-
-    
-
-
-
+      
     return model
     
 
