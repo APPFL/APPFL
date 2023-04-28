@@ -90,24 +90,27 @@ def process_data(num_clients):
 
 
 # Let's download the data first if data does not exist.
-def test_data_validation():    
-    currentpath = os.getcwd()
-    datafolderpath = os.path.join(currentpath, "_data")
-    existsflag = False
-    if(os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
-        mnistfolderpath = os.path.join(datafolderpath, "MNIST")
-        if(os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):
-            existsflag = True
+currentpath = os.getcwd()
+datafolderpath = os.path.join(currentpath, "_data")
+existsflag = False
+if(os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
+    mnistfolderpath = os.path.join(datafolderpath, "MNIST")
+    if(os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):
+        existsflag = True
 
-    if(not existsflag):
-        comm = MPI.COMM_WORLD
-        comm_size = comm.Get_size()
-        if comm_size > 1:
-            comm_rank = comm.Get_rank()
-            if comm_rank == 0:
-                torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
-        else:
+if(not existsflag):
+    comm = MPI.COMM_WORLD
+    comm_size = comm.Get_size()
+    if comm_size > 1:
+        comm_rank = comm.Get_rank()
+        if comm_rank == 0:
+            print("Download by rank0")            
             torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+        comm.Barrier()
+    else:
+        print("Download by serial")
+        torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+    
 
 
 def test_mnist_fedavg():
