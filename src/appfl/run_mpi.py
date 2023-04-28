@@ -267,12 +267,13 @@ def run_client(
     ]
 
     do_continue = comm.bcast(None, root=0)
-
+    
     while do_continue:
         """Receive "global_state" """
         global_state = comm.bcast(None, root=0)
 
         """ Update "local_states" based on "global_state" """
+        reqlist = []
         for client in clients:
             cid = client.id
             ## initial point for a client model            
@@ -280,8 +281,10 @@ def run_client(
 
             ## client update     
             ls = client.update()                            
-            req = comm.send(ls, 0, tag=cid)                                    
+            req = comm.isend(ls, dest=0, tag=cid)
+            reqlist.append(req)
 
+        MPI.Request.Waitall(reqlist)
         do_continue = comm.bcast(None, root=0)
 
     for client in clients:
