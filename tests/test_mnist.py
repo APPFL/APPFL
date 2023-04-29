@@ -12,6 +12,9 @@ from appfl.misc.data import *
 import appfl.run_mpi as rm
 import appfl.run_serial as rs
 
+from mpi4py import MPI
+import os
+
 
 class CNN(nn.Module):
     def __init__(self, num_channel, num_classes, num_pixel):
@@ -86,8 +89,28 @@ def process_data(num_clients):
     return train_datasets, test_dataset
 
 
-# Let's download the data first.
-torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+# Let's download the data first if data does not exist.
+currentpath = os.getcwd()
+datafolderpath = os.path.join(currentpath, "_data")
+existsflag = False
+if(os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
+    mnistfolderpath = os.path.join(datafolderpath, "MNIST")
+    if(os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):
+        existsflag = True
+
+if(not existsflag):
+    comm = MPI.COMM_WORLD
+    comm_size = comm.Get_size()
+    if comm_size > 1:
+        comm_rank = comm.Get_rank()
+        if comm_rank == 0:
+            print("Download by rank0")            
+            torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+        comm.Barrier()
+    else:
+        print("Download by serial")
+        torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+    
 
 
 def test_mnist_fedavg():
@@ -105,10 +128,7 @@ def test_mnist_fedavg():
 
 
 @pytest.mark.mpi(min_size=2)
-def test_mnist_fedavg_mpi():
-    print
-
-    from mpi4py import MPI
+def test_mnist_fedavg_mpi(): 
 
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
@@ -132,9 +152,6 @@ def test_mnist_fedavg_mpi():
 
 @pytest.mark.mpi(min_size=2)
 def test_mnist_iceadmm_mpi():
-
-    from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -157,9 +174,6 @@ def test_mnist_iceadmm_mpi():
 
 @pytest.mark.mpi(min_size=2)
 def test_mnist_iiadmm_mpi():
-
-    from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -181,7 +195,6 @@ def test_mnist_iiadmm_mpi():
 
 
 def test_mnist_fedavg_notest():
-
     num_clients = 2
     cfg = OmegaConf.structured(Config)
     cfg.fed.args.num_local_epochs=2
@@ -194,10 +207,6 @@ def test_mnist_fedavg_notest():
 
 @pytest.mark.mpi(min_size=2)
 def test_mnist_fedavg_mpi_notest():
-    print
-
-    from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
