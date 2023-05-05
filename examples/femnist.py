@@ -28,6 +28,8 @@ parser.add_argument("--num_classes", type=int, default=62)
 parser.add_argument("--num_pixel", type=int, default=28)
 parser.add_argument("--model", type=str, default="CNN")
 
+## algorithm
+parser.add_argument("--fed", type=str, default="IIADMM()")  ## Federated(), ICEADMM(), IIADMM()
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
@@ -115,7 +117,7 @@ def main():
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
-
+    
     ## Reproducibility
     cfg.reproduce = True
     if cfg.reproduce == True:
@@ -137,17 +139,18 @@ def main():
         time.time() - start_time,
     )
     
+    ## settings      
     cfg.device = args.device  
-
-    ## clients
-    cfg.num_clients = args.num_clients
-    cfg.fed.args.optim = args.client_optimizer
-    cfg.fed.args.optim_args.lr = args.client_lr
-    cfg.fed.args.num_local_epochs = args.num_local_epochs
-
-    ## server
-    cfg.fed.servername = args.server
+    cfg.num_clients = args.num_clients    
     cfg.num_epochs = args.num_epochs
+   
+    cfg.fed = eval(args.fed)
+    if args.fed == "Federated()":
+        cfg.fed.args.optim = args.client_optimizer
+        cfg.fed.args.optim_args.lr = args.client_lr
+        cfg.fed.servername = args.server
+        cfg.fed.args.num_local_epochs = args.num_local_epochs
+    
 
     ## outputs
     cfg.use_tensorboard = True
