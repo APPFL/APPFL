@@ -17,56 +17,33 @@ class ServerFedAsynchronous(FedServer):
         num_clients (int): number of clients
         device (str): server's device for running evaluation  
     """
-    def __init__(self, weights, model, loss_fn, num_clients, device, global_step = 0, staness_func = 'constant', **kwargs):
+    def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         weights = [1.0 / num_clients for _ in range(num_clients)] if weights is None else weights
-        self.global_step = global_step
-        # Create staleness function (Sec. 5.2) 
-        self.staleness = self.__staleness_func_factory(
-            stalness_func_name= staness_func['name'],
-            **staness_func['args']
-        )
         super(ServerFedAsynchronous, self).__init__(weights, model, loss_fn, num_clients, device, **kwargs)
+        self.global_step = 0
+        self.staleness = self.__staleness_func_factory(
+            stalness_func_name= self.staleness_func['name'],
+            **self.staleness_func['args']
+        )
 
-    def compute_pseudo_gradient(self, clinet_idx):
+    def compute_pseudo_gradient(self, local_state: dict, client_idx: int):
         for name, _ in self.model.named_parameters():
             self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
-            # TODO: Check the use of weights here
-            # self.pseudo_grad[name] += (self.global_state[name]-self.primal_states[clinet_idx][name])
-            self.pseudo_grad[name] += self.weights[clinet_idx] * (self.global_state[name]-self.primal_states[clinet_idx][name])
+            self.pseudo_grad[name] += self.weights[client_idx] * (self.global_state[name] - local_state[name])
 
-    def compute_step(self, init_step: int, client_idx: int, E_weight: float):
-        self.compute_pseudo_gradient(client_idx)
+    def compute_step(self, local_state: dict, init_step: int, client_idx: int):
+        self.compute_pseudo_gradient(local_state, client_idx)
         for name, _ in self.model.named_parameters():
-            # Apply staleness factor
             alpha_t = self.alpha * self.staleness(self.global_step - init_step)
-            self.step[name] = - alpha_t * self.pseudo_grad[name] * E_weight
+            self.step[name] = - alpha_t * self.pseudo_grad[name]
 
-    def primal_residual_at_server(self, client_idx: int) -> float:
-        primal_res = 0
-        for name, _ in self.model.named_parameters():
-            primal_res += torch.sum(torch.square(self.global_state[name]-self.primal_states[client_idx][name].to(self.device)))
-        self.prim_res = torch.sqrt(primal_res).item()
-
-    def update(self, local_states: OrderedDict, init_step: int, client_idx: int, E_weight: float = 1):  
-        # Obtain the global and local states
+    def update(self, local_state: dict, init_step: int, client_idx: int):  
         self.global_state = copy.deepcopy(self.model.state_dict())
-        super(FedServer, self).primal_recover_from_local_states(local_states)
-        # Calculate residual
-        self.primal_residual_at_server(client_idx)
-        # Change device
-        for name, _ in self.model.named_parameters():
-            self.primal_states[client_idx][name] = self.primal_states[client_idx][name].to(self.device)
-        # Global state computation
-        self.compute_step(init_step, client_idx, E_weight)
+        self.compute_step(local_state, init_step, client_idx)
         for name, _ in self.model.named_parameters():
             self.global_state[name] += self.step[name]
-        # Model update
         self.model.load_state_dict(self.global_state)
-        # Global step update
         self.global_step += 1
-
-    def logging_summary(self, cfg, logger):
-        super(FedServer, self).log_summary(cfg, logger)
 
     def __staleness_func_factory(self, stalness_func_name, **kwargs):
         if stalness_func_name   == "constant":
@@ -80,3 +57,29 @@ class ServerFedAsynchronous(FedServer):
             return lambda u: 1 if u <= b else 1.0/ (a * (u - b) + 1.0)
         else:
             raise NotImplementedError
+        
+    def logging_summary(self, cfg, logger):
+        super(FedServer, self).log_summary(cfg, logger)
+        logger.info("client_learning_rate=%s " % (cfg.fed.args.optim_args.lr))
+        logger.info("model_mixing_parameter=%s " % (cfg.fed.args.alpha))
+        logger.info("staleness_func=%s" % (cfg.fed.args.staleness_func.name))
+
+        if cfg.summary_file != "":
+            with open(cfg.summary_file, "a") as f:
+
+                f.write(
+                    cfg.logginginfo.DataSet_name
+                    + " FedAsync ClientLR "
+                    + str(cfg.fed.args.optim_args.lr)
+                    + " FedAsync Alpha "
+                    + str(cfg.fed.args.alpha)
+                    + " FedAsync Staleness Function"
+                    + str(cfg.fed.args.staleness_func.name)
+                    + " TestAccuracy "
+                    + str(cfg.logginginfo.accuracy)
+                    + " BestAccuracy "
+                    + str(cfg.logginginfo.BestAccuracy)
+                    + " Time "
+                    + str(round(cfg.logginginfo.Elapsed_time, 2))
+                    + "\n"
+                )

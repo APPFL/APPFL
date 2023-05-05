@@ -127,6 +127,7 @@ def main():
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
+    cfg.train_data_shuffle = True
 
     ## server
     cfg.fed.servername = args.server
@@ -161,7 +162,9 @@ def main():
 
     cfg.output_filename = "result"
 
-    staleness_func = {
+    ## fed async
+    cfg.fed.args.alpha = args.alpha
+    cfg.fed.args.staleness_func = {
         'name': args.staleness_func,
         'args': {'a': args.a, 'b': args.b}
     }
@@ -202,7 +205,7 @@ def main():
     """ Running """
     if comm_rank == 0:
         rma.run_server(
-            cfg, comm, model, loss_fn, args.num_clients, args.alpha, staleness_func, test_dataset, args.dataset
+            cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
         )
     else:
         assert comm_size == args.num_clients + 1
