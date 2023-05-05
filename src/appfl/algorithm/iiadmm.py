@@ -26,7 +26,7 @@ class IIADMMServer(BaseServer):
         """
         for i in range(num_clients):
             for name, param in model.named_parameters():
-                self.dual_states[i][name] = torch.zeros_like(param.data)
+                self.dual_states[i][name] = torch.zeros_like(param.data, device = self.device)                
 
     def update(self, local_states: OrderedDict):
 
@@ -47,7 +47,7 @@ class IIADMMServer(BaseServer):
                 ## change device
                 self.primal_states[i][name] = self.primal_states[i][name].to(
                     self.device
-                )
+                ) 
                 ## dual
                 self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[
                     i
