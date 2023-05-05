@@ -7,6 +7,7 @@ import torch
 
 from appfl.config import *
 from appfl.misc.data import *
+from appfl.misc.utils import *
 from models.cnn import *
 import appfl.run_serial as rs
 import appfl.run_mpi as rm
@@ -116,8 +117,9 @@ def main():
     cfg = OmegaConf.structured(Config)
 
     ## Reproducibility
-    torch.manual_seed(1)
-    torch.backends.cudnn.deterministic = True
+    cfg.reproduce = True
+    if cfg.reproduce == True:
+        set_seed(1)
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
