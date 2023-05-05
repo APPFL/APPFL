@@ -29,7 +29,7 @@ parser.add_argument("--num_pixel", type=int, default=28)
 parser.add_argument("--model", type=str, default="CNN")
 
 ## algorithm
-parser.add_argument("--fed", type=str, default="IIADMM()")  ## Federated(), ICEADMM(), IIADMM()
+parser.add_argument("--fed", type=str, default="Federated()")  ## Federated(), ICEADMM(), IIADMM()
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
