@@ -132,7 +132,9 @@ class ICEADMMClient(BaseClient):
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
 
-                self.model.load_state_dict(self.primal_state)
+                for name, param in self.model.named_parameters():
+                    param.data = self.primal_state[name]
+
 
                 if (
                     self.residual_balancing.res_on == True
