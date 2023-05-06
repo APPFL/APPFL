@@ -221,7 +221,7 @@ if __name__ == "__main__":
     main()
 
 
-# To run CUDA-aware MPI:
-# mpiexec -np 2 --mca opal_cuda_support 1 python ./mnist_async_mpi.py
-# To run:
-# mpiexec -np 2 python ./mnist_async_mpi.py
+# To run CUDA-aware MPI with n clients:
+# mpiexec -np n+1 --mca opal_cuda_support 1 python ./mnist_async_mpi.py
+# To run MPI with n clients:
+# mpiexec -np n+1 python ./mnist_async_mpi.py

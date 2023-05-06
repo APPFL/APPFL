@@ -29,7 +29,10 @@ class ServerFedAsynchronous(FedServer):
     def compute_pseudo_gradient(self, local_state: dict, client_idx: int):
         for name, _ in self.model.named_parameters():
             self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
-            self.pseudo_grad[name] += self.weights[client_idx] * (self.global_state[name] - local_state[name])
+            if self.gradient_based:
+                self.pseudo_grad[name] += self.weights[client_idx] * local_state[name]
+            else:
+                self.pseudo_grad[name] += self.weights[client_idx] * (self.global_state[name] - local_state[name])
 
     def compute_step(self, local_state: dict, init_step: int, client_idx: int):
         self.compute_pseudo_gradient(local_state, client_idx)
@@ -63,6 +66,7 @@ class ServerFedAsynchronous(FedServer):
         logger.info("client_learning_rate=%s " % (cfg.fed.args.optim_args.lr))
         logger.info("model_mixing_parameter=%s " % (cfg.fed.args.alpha))
         logger.info("staleness_func=%s" % (cfg.fed.args.staleness_func.name))
+        logger.info("gradient_based=%s" % (cfg.fed.args.gradient_based))
 
         if cfg.summary_file != "":
             with open(cfg.summary_file, "a") as f:
@@ -75,6 +79,8 @@ class ServerFedAsynchronous(FedServer):
                     + str(cfg.fed.args.alpha)
                     + " FedAsync Staleness Function"
                     + str(cfg.fed.args.staleness_func.name)
+                    + " FedAsync Gradient-based"
+                    + str(cfg.fed.args.gradient_based)
                     + " TestAccuracy "
                     + str(cfg.logginginfo.accuracy)
                     + " BestAccuracy "
