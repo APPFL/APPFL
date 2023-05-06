@@ -177,7 +177,7 @@ def run_server(
                 recv_reqs.insert(client_idx, comm.irecv(source=client_idx+1, tag=client_idx+1))
                 
                 # Update the model step for the client
-                client_model_step[client_idx] = global_step
+                client_model_step[client_idx] = server.global_step
 
                 # Update the local training time of the client
                 client_local_time[client_idx] = time.time()
