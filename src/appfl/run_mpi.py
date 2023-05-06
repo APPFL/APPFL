@@ -18,6 +18,8 @@ from .algorithm import *
 
 from mpi4py import MPI
 
+import copy
+
 
 def run_server(
     cfg: DictConfig,
@@ -120,15 +122,24 @@ def run_server(
 
         local_update_start = time.time()
         global_state = comm.bcast(global_state, root=0)
-        local_states = comm.gather(None, root=0)
+                
+        local_states= [None for i in range(num_clients)]        
+        for rank in range(comm_size):
+            ls = ""
+            if rank == 0:
+                continue;
+            else:
+                for _, cid in enumerate(num_client_groups[rank - 1]):
+                    local_states[cid] = comm.recv(source=rank, tag=cid)
+
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
+        #print("Start Server Update")
         global_update_start = time.time()
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
         validation_start = time.time()
-        best_accuracy = 0
         if cfg.validation == True:
             test_loss, test_accuracy = validation(server, test_dataloader)
 
@@ -209,7 +220,9 @@ def run_client(
     num_data = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         num_data[cid] = len(train_data[cid])
+    
     comm.gather(num_data, root=0)
+
     weight = None
     weight = comm.scatter(weight, root=0)
 
@@ -253,25 +266,24 @@ def run_client(
     ]
 
     do_continue = comm.bcast(None, root=0)
-
-    local_states = OrderedDict()
-
+    
     while do_continue:
         """Receive "global_state" """
         global_state = comm.bcast(None, root=0)
 
         """ Update "local_states" based on "global_state" """
+        reqlist = []
         for client in clients:
             cid = client.id
             ## initial point for a client model            
             client.model.load_state_dict(global_state)
 
-            ## client update
-            local_states[cid] = client.update()
+            ## client update     
+            ls = client.update()                            
+            req = comm.isend(ls, dest=0, tag=cid)
+            reqlist.append(req)
 
-        """ Send "local_states" to a server """
-        comm.gather(local_states, root=0)
-
+        MPI.Request.Waitall(reqlist)
         do_continue = comm.bcast(None, root=0)
 
     for client in clients:

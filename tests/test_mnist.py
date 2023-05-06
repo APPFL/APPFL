@@ -13,6 +13,7 @@ import appfl.run_mpi as rm
 import appfl.run_serial as rs
 import appfl.run_mpi_async as rma
 
+
 from mpi4py import MPI
 import os
 
@@ -235,6 +236,7 @@ def test_mnist_fedbuffer_mpi():
     cfg.fed.args.gradient_based = True
     cfg.fed.args.staleness_func = {'name': 'polynomial', 'args': {'a': 0.5}}
     cfg.fed.servername = 'ServerFedBuffer'
+
     model = CNN(1, 10, 28)
     loss_fn = torch.nn.CrossEntropyLoss()
     train_datasets, test_dataset = process_data(num_clients)
@@ -257,7 +259,6 @@ def test_mnist_fedavg_notest():
     train_datasets, test_dataset = process_data(num_clients)
 
     rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_mnist")
-
 
 @pytest.mark.mpi(min_size=2)
 def test_mnist_fedavg_mpi_notest():

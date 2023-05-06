@@ -14,7 +14,9 @@ import copy
 
 class ICEADMMServer(BaseServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
-        super(ICEADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
+        super(ICEADMMServer, self).__init__(
+            weights, model, loss_fn, num_clients, device
+        )
         self.__dict__.update(kwargs)
 
         self.is_first_iter = 1
@@ -79,15 +81,27 @@ class ICEADMMServer(BaseServer):
 
 
 class ICEADMMClient(BaseClient):
-    def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(ICEADMMClient, self).__init__(id, weight, model, dataloader, device)
+    def __init__(
+        self,
+        id,
+        weight,
+        model,
+        loss_fn,
+        dataloader,
+        cfg,
+        outfile,
+        test_dataloader,
+        **kwargs
+    ):
+        super(ICEADMMClient, self).__init__(
+            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
+        )
         self.__dict__.update(kwargs)
-        self.loss_fn = eval(self.loss_type)
 
         """ 
         At initial, (1) primal_state = global_state, (2) dual_state = 0
         """
-        self.model.to(device)
+        self.model.to(self.cfg.device)
         for name, param in model.named_parameters():
             self.primal_state[name] = param.data
             self.dual_state[name] = torch.zeros_like(param.data)
@@ -99,7 +113,7 @@ class ICEADMMClient(BaseClient):
     def update(self):
 
         self.model.train()
-        self.model.to(self.device)
+        self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
@@ -130,8 +144,8 @@ class ICEADMMClient(BaseClient):
                     dual_res = super(ICEADMMClient, self).dual_residual_at_client()
                     super(ICEADMMClient, self).residual_balancing(prim_res, dual_res)
 
-                data = data.to(self.device)
-                target = target.to(self.device)
+                data = data.to(self.cfg.device)
+                target = target.to(self.cfg.device)
 
                 if self.accum_grad == False:
                     optimizer.zero_grad()
