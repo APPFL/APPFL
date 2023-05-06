@@ -9,7 +9,6 @@ from mpi4py import MPI
 from .algorithm import *
 from torch.optim import *
 from omegaconf import DictConfig
-from collections import OrderedDict
 from torch.utils.data import DataLoader
 
 def run_server(
@@ -325,8 +324,15 @@ def run_client(
         client.model.load_state_dict(global_model)
         client.update()
 
+        # Compute gradient if the algorithm is gradient-based
+        if cfg.fed.args.gradient_based:
+            local_model = {}
+            for name in global_model:
+                local_model[name] = global_model[name] - client.primal_state[name]
+        else:
+            local_model = copy.deepcopy(client.primal_state)
+
         # Convert local model to bytes
-        local_model = copy.deepcopy(client.primal_state)
         local_model_buffer = io.BytesIO()
         torch.save(local_model, local_model_buffer)
         local_model_bytes = local_model_buffer.getvalue()

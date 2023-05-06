@@ -32,20 +32,20 @@ parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
-parser.add_argument("--server", type=str, default="ServerFedAsynchronous")
 parser.add_argument("--num_epochs", type=int, default=20)
-
+parser.add_argument("--server", type=str, default="ServerFedAsynchronous", choices=['ServerFedAsynchronous', 'ServerFedBuffer'])
 parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
 
 ## Fed Async
+parser.add_argument("--gradient_based", type=bool, default=False, help="Whether the algorithm requires gradient from the model")
 parser.add_argument("--alpha", type=float, default=0.9, help="Mixing parameter for FedAsync Algorithm")
 parser.add_argument("--staleness_func", type=str, choices=['constant', 'polynomial', 'hinge'], default='polynomial')
 parser.add_argument("--a", type=float, default=0.5, help="First parameter for the staleness function")
 parser.add_argument("--b", type=int, default=4, help="Second parameter for Hinge staleness function")
-
+parser.add_argument("--K", type=int, default=3, help="Buffer size for FedBuffer algorithm")
 
 args = parser.parse_args()
 
@@ -162,8 +162,10 @@ def main():
 
     cfg.output_filename = "result"
 
-    ## fed async
+    ## fed async/fed buffer
+    cfg.fed.args.K = args.K
     cfg.fed.args.alpha = args.alpha
+    cfg.fed.args.gradient_based = args.gradient_based
     cfg.fed.args.staleness_func = {
         'name': args.staleness_func,
         'args': {'a': args.a, 'b': args.b}
