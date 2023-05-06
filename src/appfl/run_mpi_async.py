@@ -237,9 +237,6 @@ def run_client(
         train_data (Dataset): training data
         test_data (Dataset): testing data
     """
-    logger = logging.getLogger(__name__)
-    logger = create_custom_logger(logger, cfg)
-
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
 
@@ -250,6 +247,9 @@ def run_client(
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         output_filename = cfg.output_filename + "_client_%s" % (cid)
         outfile[cid] = client_log(cfg.output_dirname, output_filename)
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
     """
     Send the number of data to a server
@@ -305,8 +305,12 @@ def run_client(
         # Receive model size from the server
         global_model_size, done = comm.recv(source=0, tag=comm_rank)
         logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model size")
+        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model size\n")
+        outfile[cid].flush()
         if done: 
             logger.info(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
+            outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training\n")
+            outfile[cid].flush()
             break
 
         # Allocate a buffer to receive the byte stream
@@ -315,6 +319,8 @@ def run_client(
         # Receive the byte stream
         comm.Recv(global_model_bytes, source=0, tag=comm_rank+comm_size)
         logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model")
+        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model\n")
+        outfile[cid].flush()
 
         # Load the byte to state dict
         global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
