@@ -115,7 +115,7 @@ def main():
     args.num_clients = comm_size - 1
 
     """ Configuration """
-    cfg = OmegaConf.structured(Config)
+    cfg = OmegaConf.structured(Config(fed=FedAsync()))
 
     cfg.device = args.device
     cfg.reproduce = True
@@ -166,10 +166,9 @@ def main():
     cfg.fed.args.K = args.K
     cfg.fed.args.alpha = args.alpha
     cfg.fed.args.gradient_based = args.gradient_based
-    cfg.fed.args.staleness_func = {
-        'name': args.staleness_func,
-        'args': {'a': args.a, 'b': args.b}
-    }
+    cfg.fed.args.staleness_func.name = args.staleness_func
+    cfg.fed.args.staleness_func.args.a = args.a
+    cfg.fed.args.staleness_func.args.b = args.b
 
     start_time = time.time()
 

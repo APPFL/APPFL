@@ -195,6 +195,7 @@ def test_mnist_iiadmm_mpi():
     else:
         assert 0
 
+
 @pytest.mark.mpi(min_size=2)
 def test_mnist_fedasync_mpi(): 
     comm = MPI.COMM_WORLD
@@ -202,12 +203,9 @@ def test_mnist_fedasync_mpi():
     comm_size = comm.Get_size()
 
     num_clients = comm_size - 1
-    cfg = OmegaConf.structured(Config)
+    cfg = OmegaConf.structured(Config(fed=FedAsync()))
     cfg.fed.args.num_local_epochs=2
-    cfg.fed.args.alpha = 0.9
-    cfg.fed.args.gradient_based = False
-    cfg.fed.args.staleness_func = {'name': 'polynomial', 'args': {'a': 0.5}}
-    cfg.fed.servername = 'ServerFedAsynchronous'
+    cfg.fed.args.staleness_func.name = 'polynomial'
     model = CNN(1, 10, 28)
     loss_fn = torch.nn.CrossEntropyLoss()
     train_datasets, test_dataset = process_data(num_clients)
@@ -228,13 +226,11 @@ def test_mnist_fedbuffer_mpi():
     comm_size = comm.Get_size()
 
     num_clients = comm_size - 1
-    cfg = OmegaConf.structured(Config)
+    cfg = OmegaConf.structured(Config(fed=FedAsync()))
     cfg.num_epochs = 3
     cfg.fed.args.num_local_epochs=2
-    cfg.fed.args.K = 3
-    cfg.fed.args.alpha = 0.9
     cfg.fed.args.gradient_based = True
-    cfg.fed.args.staleness_func = {'name': 'polynomial', 'args': {'a': 0.5}}
+    cfg.fed.args.staleness_func.name = 'polynomial'
     cfg.fed.servername = 'ServerFedBuffer'
 
     model = CNN(1, 10, 28)
