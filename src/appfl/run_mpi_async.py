@@ -169,7 +169,7 @@ def run_server(
                 # Send (buffer size, finish flag) - INFO - to the client in a blocking way
                 comm.send((len(global_model_bytes), False), dest=client_idx+1, tag=client_idx+1)
 
-                # Send the buffered model - MODEL - to the client in a NON-blocking way
+                # Send the buffered model - MODEL - to the client in a blocking way
                 comm.Send(np.frombuffer(global_model_bytes, dtype=np.byte), dest=client_idx+1, tag=client_idx+1+comm_size) 
 
                 # Add new receiving request to the list
@@ -250,6 +250,8 @@ def run_client(
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
+    c_handler = logging.StreamHandler()
+    logger.addHandler(c_handler)
 
     """
     Send the number of data to a server
