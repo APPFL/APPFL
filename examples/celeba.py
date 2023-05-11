@@ -57,7 +57,8 @@ dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
 
 def get_data(comm: MPI.Comm):
     # test data for a server    
-    
+    testcount = 0
+
     test_data_raw = {}
     test_data_input = []
     test_data_label = []
@@ -72,20 +73,23 @@ def get_data(comm: MPI.Comm):
             rgb = img.convert('RGB')            
             arr = np.asarray(rgb).copy()
             arr = np.moveaxis(arr, -1, 0)   
-            arr = arr / 255  # scale all pixel values to between 0 and 1
-            print(arr.shape)
-            exit(1)
+            arr = arr / 255  # scale all pixel values to between 0 and 1            
             test_data_input.append(arr)
         for data_label in test_data_raw["user_data"][client]["y"]:
-            test_data_label.append(data_label)        
+            test_data_label.append(data_label)  
+
+        # testcount = testcount + 1
+        # if testcount > 10:
+        #     break;
+
     test_dataset = Dataset(
-        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+        torch.FloatTensor(test_data_input), torch.LongTensor(test_data_label)
     )
 
     # training data for multiple clients
     train_data_raw = {}
     train_datasets = []
-    
+    testcount = 0
     with open("%s/train/all_data_niid_05_keep_0_train_9.json" % (dir)) as f:
         train_data_raw = json.load(f)
 
@@ -104,9 +108,13 @@ def get_data(comm: MPI.Comm):
         train_datasets.append(
             Dataset(
                 torch.FloatTensor(train_data_input_resize),
-                torch.tensor(train_data_raw["user_data"][client]["y"]),
+                torch.LongTensor(train_data_raw["user_data"][client]["y"]),
             )
         )
+
+        # testcount = testcount + 1
+        # if testcount > 10:
+        #     break;
     
     return train_datasets, test_dataset
 
@@ -132,7 +140,7 @@ def main():
         )
 
     args.num_clients = len(train_datasets)   
-    print(num_clients)    
+    
     model = get_model(args)
     loss_fn = torch.nn.CrossEntropyLoss()   
     print(
