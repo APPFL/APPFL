@@ -77,7 +77,7 @@ class BaseServer:
             for name, _ in self.model.named_parameters():
                 primal_res += torch.sum(
                     torch.square(
-                        self.global_state[name]
+                        self.global_state[name].to(self.device)
                         - self.primal_states[i][name].to(self.device)
                     )
                 )
