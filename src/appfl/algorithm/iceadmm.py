@@ -121,7 +121,7 @@ class ICEADMMClient(BaseClient):
         global_state = copy.deepcopy(self.model.state_dict())
 
         """ Adaptive Penalty (Residual Balancing) """
-        if self.residual_balancing.res_on == True:
+        if self.residual_balancing.res_on == True:        
             prim_res = super(ICEADMMClient, self).primal_residual_at_client(
                 global_state
             )
@@ -133,7 +133,7 @@ class ICEADMMClient(BaseClient):
             for data, target in self.dataloader:
 
                 for name, param in self.model.named_parameters():
-                    param.data = self.primal_state[name]
+                    param.data = self.primal_state[name].to(self.cfg.device)
 
 
                 if (
@@ -180,17 +180,31 @@ class ICEADMMClient(BaseClient):
             scale_value = sensitivity / self.epsilon
             super(ICEADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 
+
+        ## store data in cpu before sending it to server
+        if (self.cfg.device == "cuda"):  
+            for name, param in self.model.named_parameters():                
+                self.primal_state[name] = param.data.cpu()
+
         """ Update local_state """
         self.local_state = OrderedDict()
-        self.local_state["primal"] = copy.deepcopy(self.primal_state)
-        self.local_state["dual"] = copy.deepcopy(self.dual_state)
+        self.local_state["primal"] = self.primal_state
+        self.local_state["dual"] =  self.dual_state
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = self.penalty
+
+        ## Back to "cuda"
+        if (self.cfg.device == "cuda"):  
+            for name, param in self.model.named_parameters():                
+                self.primal_state[name] = param.data.cuda()
 
         return self.local_state
 
     def iceadmm_step(self, coefficient, global_state):
         for name, param in self.model.named_parameters():
+            self.primal_state[name] = self.primal_state[name].to(self.cfg.device)
+            self.dual_state[name] = self.dual_state[name].to(self.cfg.device)
+            global_state[name] = global_state[name].to(self.cfg.device)
 
             grad = param.grad * coefficient
             ## Update primal
@@ -201,5 +215,5 @@ class ICEADMMClient(BaseClient):
             ) / (self.weight * self.proximity + self.penalty)
             ## Update dual
             self.dual_state[name] = self.dual_state[name] + self.penalty * (
-                self.primal_state[name] - global_state[name]
+                self.primal_state[name] - global_state[name] 
             )

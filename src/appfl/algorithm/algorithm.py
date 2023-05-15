@@ -209,9 +209,9 @@ class BaseClient:
 
     def primal_residual_at_client(self, global_state) -> float:
         primal_res = 0
-        for name, _ in self.model.named_parameters():
+        for name, _ in self.model.named_parameters():            
             primal_res += torch.sum(
-                torch.square(global_state[name] - self.primal_state[name])
+                torch.square(global_state[name].to(self.cfg.device) - self.primal_state[name].to(self.cfg.device))
             )
         primal_res = torch.sqrt(primal_res).item()
         return primal_res
@@ -219,12 +219,12 @@ class BaseClient:
     def dual_residual_at_client(self) -> float:
         dual_res = 0
         if self.is_first_iter == 1:
-            self.primal_state_curr = copy.deepcopy(self.primal_state)
+            self.primal_state_curr = self.primal_state
             self.is_first_iter = 0
 
         else:
-            self.primal_state_prev = copy.deepcopy(self.primal_state_curr)
-            self.primal_state_curr = copy.deepcopy(self.primal_state)
+            self.primal_state_prev = self.primal_state_curr
+            self.primal_state_curr = self.primal_state
 
             ## compute dual residual
             for name, _ in self.model.named_parameters():
