@@ -14,6 +14,7 @@ class Config:
 
     # Compute device
     device: str = "cpu"
+    device_server: str = "cpu"
 
     # Number of training epochs
     num_clients: int = 1

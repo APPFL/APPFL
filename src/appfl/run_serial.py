@@ -79,10 +79,10 @@ def run_serial(
         cfg.validation = False
 
     server = eval(cfg.fed.servername)(
-        weights, copy.deepcopy(model), loss_fn, cfg.num_clients, cfg.device, **cfg.fed.args
+        weights, copy.deepcopy(model), loss_fn, cfg.num_clients, cfg.device_server, **cfg.fed.args
     )
 
-    server.model.to(cfg.device)
+    server.model.to(cfg.device_server)
 
     batchsize = {}
     for k in range(cfg.num_clients):

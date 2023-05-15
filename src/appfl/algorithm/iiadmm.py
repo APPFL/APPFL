@@ -38,9 +38,9 @@ class IIADMMServer(BaseServer):
         super(IIADMMServer, self).primal_recover_from_local_states(local_states)
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
 
-        """ residual calculation """
+        """ residual calculation """        
         super(IIADMMServer, self).primal_residual_at_server()
-        # super(IIADMMServer, self).dual_residual_at_server()
+        super(IIADMMServer, self).dual_residual_at_server()
 
         """ global_state calculation """
         for name, param in self.model.named_parameters():
