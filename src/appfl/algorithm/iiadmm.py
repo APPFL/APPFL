@@ -26,18 +26,21 @@ class IIADMMServer(BaseServer):
         """
         for i in range(num_clients):
             for name, param in model.named_parameters():
-                self.dual_states[i][name] = torch.zeros_like(param.data, device = self.device)                
+                self.dual_states[i][name] = torch.zeros_like(param.data) 
+                
 
     def update(self, local_states: OrderedDict):
 
         """Inputs for the global model update"""
-        self.global_state = copy.deepcopy(self.model.state_dict())
+        for name, param in self.model.named_parameters():
+            self.global_state[name] = param.data.cpu()
+        # self.global_state = copy.deepcopy(self.model.state_dict())
         super(IIADMMServer, self).primal_recover_from_local_states(local_states)
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
 
         """ residual calculation """
         super(IIADMMServer, self).primal_residual_at_server()
-        super(IIADMMServer, self).dual_residual_at_server()
+        # super(IIADMMServer, self).dual_residual_at_server()
 
         """ global_state calculation """
         for name, param in self.model.named_parameters():
@@ -45,13 +48,14 @@ class IIADMMServer(BaseServer):
             for i in range(self.num_clients):
 
                 ## change device
-                self.primal_states[i][name] = self.primal_states[i][name].to(
-                    self.device
-                ) 
+                self.primal_states[i][name] = self.primal_states[i][name] 
+
                 ## dual
                 self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[
                     i
                 ] * (self.global_state[name] - self.primal_states[i][name])
+                 
+
                 ## computation
                 tmp += (
                     self.primal_states[i][name]
@@ -61,7 +65,9 @@ class IIADMMServer(BaseServer):
             self.global_state[name] = tmp / self.num_clients
 
         """ model update """
-        self.model.load_state_dict(self.global_state)
+        # self.model.load_state_dict(self.global_state)
+        for name, param in self.model.named_parameters():
+            param.data = self.global_state[name]
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:
@@ -137,7 +143,7 @@ class IIADMMClient(BaseClient):
             for data, target in self.dataloader:
 
                 for name, param in self.model.named_parameters():
-                    param.data = self.primal_state[name]
+                    param.data = self.primal_state[name].to(self.cfg.device)
 
                 if (
                     self.residual_balancing.res_on == True
@@ -154,8 +160,10 @@ class IIADMMClient(BaseClient):
 
                 if self.accum_grad == False:
                     optimizer.zero_grad()
-
+                
                 output = self.model(data)
+ 
+                
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
@@ -190,9 +198,16 @@ class IIADMMClient(BaseClient):
             scale_value = sensitivity / self.epsilon
             super(IIADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 
+        
+        ## store data in cpu before sending it to server
+        if (self.cfg.device == "cuda"):  
+            for name, param in self.model.named_parameters():                
+                self.primal_state[name] = param.data.cpu()
+        
+
         """ Update local_state """
         self.local_state = OrderedDict()
-        self.local_state["primal"] = copy.deepcopy(self.primal_state)
+        self.local_state["primal"] = self.primal_state
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = self.penalty
