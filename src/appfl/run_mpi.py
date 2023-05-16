@@ -110,6 +110,7 @@ def run_server(
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
+    metric = [[], []]
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
         do_continue = comm.bcast(do_continue, root=0)
@@ -158,6 +159,8 @@ def run_server(
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
 
         server.logging_iteration(cfg, logger, t)
+        metric[0].append(cfg["logginginfo"]["Elapsed_time"])
+        metric[1].append(test_accuracy)
 
         """ Saving model """
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
@@ -168,6 +171,7 @@ def run_server(
             break
 
     """ Summary """
+    save_training_metric(metric, cfg)
     server.logging_summary(cfg, logger)
 
     do_continue = False

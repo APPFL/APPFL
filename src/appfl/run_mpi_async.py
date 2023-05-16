@@ -127,6 +127,7 @@ def run_server(
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
+    metric = [[], []]
     while True:
         # Wait for response from any one client
         client_idx, local_model_size = MPI.Request.waitany(recv_reqs)
@@ -203,6 +204,8 @@ def run_server(
             if global_step != 1:
                 logger.info(server.log_title())
             server.logging_iteration(cfg, logger, global_step-1)
+            metric[0].append(cfg["logginginfo"]["Elapsed_time"])
+            metric[1].append(test_accuracy)
 
             # Break after max updates
             if global_step == cfg.num_epochs: 
@@ -217,6 +220,7 @@ def run_server(
     MPI.Request.waitall(send_reqs)
 
     server.logging_summary(cfg, logger)
+    save_training_metric(metric, cfg)
 
 def run_client(
     cfg: DictConfig,
