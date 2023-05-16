@@ -8,7 +8,6 @@ from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from omegaconf import DictConfig
-from torchvision.transforms import ToTensor
 
 def iid(comm: MPI.Comm, cfg: DictConfig, dataset: str, visualization: bool = True):
     comm_rank = comm.Get_rank()
@@ -19,10 +18,10 @@ def iid(comm: MPI.Comm, cfg: DictConfig, dataset: str, visualization: bool = Tru
 
     # Root download the data if not already available.
     if comm_rank == 0:
-        test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=True, train=False, transform=ToTensor())
+        test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=True, train=False, transform=test_transform(dataset))
     comm.Barrier()
     if comm_rank > 0:
-        test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=False, transform=ToTensor())
+        test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=False, transform=test_transform(dataset))
 
     # Obtain the testdataset
     test_data_input = []
@@ -36,7 +35,7 @@ def iid(comm: MPI.Comm, cfg: DictConfig, dataset: str, visualization: bool = Tru
     client_dataset_info = {}
 
     # training data for multiple clients
-    train_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=True, transform=ToTensor())
+    train_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=True, transform=train_transform(dataset))
 
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
     train_datasets = []

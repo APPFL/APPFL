@@ -8,7 +8,6 @@ from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from omegaconf import DictConfig
-from torchvision.transforms import ToTensor
 
 def dirichlet_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, alpha1: float = 8, alpha2: float = 0.5, seed: int = 42, visualization: bool = True):
     comm_rank = comm.Get_rank()
@@ -22,10 +21,10 @@ def dirichlet_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, alpha1: float
     
     # Root download the data if not already available.
     if comm_rank == 0:
-        test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=True, train=False, transform=ToTensor())
+        test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=True, train=False, transform=test_transform(dataset))
     comm.Barrier()
     if comm_rank > 0:
-        test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=False, transform=ToTensor())
+        test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=False, transform=test_transform(dataset))
 
     # Obtain the testdataset
     test_data_input = []
@@ -35,7 +34,7 @@ def dirichlet_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, alpha1: float
         test_data_label.append(test_data_raw[idx][1])
     test_dataset = Dataset(torch.FloatTensor(test_data_input), torch.tensor(test_data_label))
 
-    train_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=True, transform=ToTensor())
+    train_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=True, transform=train_transform(dataset))
 
     # Split the dataset by label
     labels = []
