@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 import logging
 import random
 import numpy as np
-
+import pickle
 
 def validation(self, dataloader):
 
@@ -109,6 +109,18 @@ def save_model_iteration(t, model, cfg: DictConfig):
 
     torch.save(model, file)
  
+def save_training_metric(metric: dict, cfg: DictConfig):
+    dir = cfg.output_dirname
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)
+    file_ext = ".pkl"
+    file = dir + "/metric%s" % (file_ext, )
+    uniq = 1
+    while os.path.exists(file):
+        file = dir + "/metric_%d%s" % (uniq, file_ext)
+        uniq += 1
+    with open(file, 'wb') as f:
+        pickle.dump(metric, f)    
 
 def set_seed(seed=233):
     random.seed(seed)
