@@ -1,2 +1,2 @@
 from .partition_noiid import *
-from .dirichelet_noiid import *
+from .dirichlet_noiid import *
