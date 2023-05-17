@@ -98,8 +98,25 @@ def run_server(
     )
     server.model.to("cpu")
 
+    ### TEST
+    # Convert the model to bytes
+    global_model = server.model.state_dict()
+    gloabl_model_buffer = io.BytesIO()
+    torch.save(global_model, gloabl_model_buffer)
+    global_model_bytes = gloabl_model_buffer.getvalue()
+
+    # Send (buffer size, finish flag) - INFO - to all clients in a blocking way
+    for i in range(1, num_clients+1):
+        comm.send((len(global_model_bytes), False, 1, cfg.fed.args.optim_args.lr), dest=i, tag=i)      # dest is the rank of the receiver, tag = dest
+
+    # Send the buffered model - MODEL - to all clients in a NON-blocking way
+    # dest is the rank of the receiver and tag = dest + comm_size 
+    # we use different tags here to differentiate different types of messages (INFO v.s. MODEL)
+    send_reqs = [comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+comm_size) for i in range(1, num_clients+1)]
+    ### TEST END
+
     scheduler = Scheduler(comm, server, cfg.fed.args.num_local_epochs, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger)    
-    scheduler.warmup()
+    # scheduler.warmup()
     
     # Wait for response (buffer size) - INFO - from clients
     recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
@@ -245,7 +262,7 @@ def run_client(
         global_model_size, done, num_local_epochs, lr = comm.recv(source=0, tag=comm_rank)
         client.num_local_epochs = num_local_epochs
         client.optim_args.lr = lr
-        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_epochs} epochs")
+        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_epochs} epochs with model size {global_model_size}")
         outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_epochs} epochs\n")
         outfile[cid].flush()
         if done: 
@@ -256,6 +273,9 @@ def run_client(
 
         # Allocate a buffer to receive the byte stream
         global_model_bytes = np.empty(global_model_size, dtype=np.byte)
+        import sys
+        logger.info(f"The size of the buffer is {sys.getsizeof(global_model_bytes)}")
+        
         
         # Receive the byte stream
         comm.Recv(global_model_bytes, source=0, tag=comm_rank+comm_size)
