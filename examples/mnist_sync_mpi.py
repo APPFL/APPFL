@@ -23,6 +23,7 @@ parser.add_argument("--num_pixel", type=int, default=28)
 parser.add_argument("--model", type=str, default="CNN")
 parser.add_argument("--partition", type=str, default="IID", 
                     choices=["iid", "partition_noiid", "dirichlet_noiid"])
+parser.add_argument("--seed", type=int, default=42)
 
 ## clients
 parser.add_argument("--client_optimizer", type=str, default="Adam")
@@ -95,7 +96,7 @@ def main():
     loss_fn = torch.nn.CrossEntropyLoss()   
 
     """ User-defined data """
-    train_datasets, test_dataset = eval(args.partition)(comm, cfg, args.dataset)
+    train_datasets, test_dataset = eval(args.partition)(comm, cfg, args.dataset, seed=args.seed)
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:
