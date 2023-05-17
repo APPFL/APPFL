@@ -51,14 +51,13 @@ args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
+    args.num_gpu = torch.cuda.device_count()
 
 
 dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
 
 def get_data(comm: MPI.Comm):
-    # test data for a server    
-    testcount = 0
-
+    # test data for a server 
     test_data_raw = {}
     test_data_input = []
     test_data_label = []
@@ -76,12 +75,7 @@ def get_data(comm: MPI.Comm):
             arr = arr / 255  # scale all pixel values to between 0 and 1            
             test_data_input.append(arr)
         for data_label in test_data_raw["user_data"][client]["y"]:
-            test_data_label.append(data_label)  
-
-        # testcount = testcount + 1
-        # if testcount > 10:
-        #     break;
-
+            test_data_label.append(data_label)
     test_dataset = Dataset(
         torch.FloatTensor(test_data_input), torch.LongTensor(test_data_label)
     )
@@ -89,7 +83,6 @@ def get_data(comm: MPI.Comm):
     # training data for multiple clients
     train_data_raw = {}
     train_datasets = []
-    testcount = 0
     with open("%s/train/all_data_niid_05_keep_0_train_9.json" % (dir)) as f:
         train_data_raw = json.load(f)
 
@@ -111,15 +104,13 @@ def get_data(comm: MPI.Comm):
                 torch.LongTensor(train_data_raw["user_data"][client]["y"]),
             )
         )
-
-        # testcount = testcount + 1
-        # if testcount > 10:
-        #     break;
     
     return train_datasets, test_dataset
 
 
 def main():
+    print(args)
+
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -139,9 +130,14 @@ def main():
             train_datasets, test_dataset, args.num_channel, args.num_pixel
         )
 
-    args.num_clients = len(train_datasets)   
+    args.num_clients = len(train_datasets)       
     
-    model = get_model(args)
+    model = get_model(args)    
+
+    cfg.num_gpu = args.num_gpu
+    if cfg.num_gpu > 1:
+        model = torch.nn.DataParallel(model)    
+    
     loss_fn = torch.nn.CrossEntropyLoss()   
     print(
         "----------Loaded Datasets and Model----------Elapsed Time=",
@@ -178,10 +174,10 @@ if __name__ == "__main__":
 
 
 # To run CUDA-aware MPI:
-# mpiexec -np 5 --mca opal_cuda_support 1 python ./femnist.py
+# mpiexec -np 2 --mca opal_cuda_support 1 python ./celeba.py
 # To run MPI:
-# mpiexec -np 5 python ./femnist.py
+# mpiexec -np 2 python ./celeba.py
 # To run:
-# python ./femnist.py
+# python ./celeba.py
 # To run with resnet pretrained weight:
-# python ./femnist.py --model resnet18 --pretrained 1
+# python ./celeba.py --model resnet18 --pretrained 1

@@ -20,6 +20,7 @@ from mpi4py import MPI
 
 import copy
 
+import math
 
 def run_server(
     cfg: DictConfig,
@@ -198,12 +199,6 @@ def run_client(
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
 
-    ## We assume to have as many GPUs as the number of MPI processes.
-    if cfg.device == "cuda":
-        device = f"cuda:{comm_rank-1}"
-    else:
-        device = cfg.device
-
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
 
     """ log for clients"""
@@ -245,26 +240,36 @@ def run_client(
         cfg.validation = False
         test_dataloader = None
 
-    clients = [
-        eval(cfg.fed.clientname)(
-            cid,
-            weight[cid],
-            copy.deepcopy(model),
-            loss_fn,
-            DataLoader(
-                train_data[cid],
-                num_workers=cfg.num_workers,
-                batch_size=batchsize[cid],
-                shuffle=cfg.train_data_shuffle,
-                pin_memory=True,
-            ),
-            cfg,
-            outfile[cid],
-            test_dataloader,
-            **cfg.fed.args,
+    clientpergpu = math.ceil(num_clients/cfg.num_gpu)    
+    clients = []
+    for _, cid in enumerate(num_client_groups[comm_rank - 1]):
+        ## We assume to have as many GPUs as the number of MPI processes.
+        if "cuda" in cfg.device:
+            gpuindex = int(math.floor(cid/clientpergpu))            
+            device = f"cuda:{gpuindex}"
+        else:
+            device = cfg.device
+        cfg.device = device          
+        clients.append(
+            eval(cfg.fed.clientname)(
+                cid,
+                weight[cid],
+                copy.deepcopy(model),
+                loss_fn,
+                DataLoader(
+                    train_data[cid],
+                    num_workers=cfg.num_workers,
+                    batch_size=batchsize[cid],
+                    shuffle=cfg.train_data_shuffle,
+                    pin_memory=True,
+                ),
+                cfg,
+                outfile[cid],
+                test_dataloader,
+                **cfg.fed.args,
+            )
         )
-        for _, cid in enumerate(num_client_groups[comm_rank - 1])
-    ]
+        
 
     do_continue = comm.bcast(None, root=0)
     

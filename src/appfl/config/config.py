@@ -70,6 +70,8 @@ class Config:
     logginginfo: DictConfig = OmegaConf.create({})
     summary_file: str = ""
 
+    # GPU configuration
+    num_gpu: int = 1
 
     #
     # gRPC configutations
