@@ -263,7 +263,7 @@ def run_client(
                     shuffle=cfg.train_data_shuffle,
                     pin_memory=True,
                 ),
-                cfg,
+                copy.deepcopy(cfg),
                 outfile[cid],
                 test_dataloader,
                 **cfg.fed.args,
