@@ -28,17 +28,18 @@ class Scheduler:
         self.LR_DECAY = 0.975
         self.client_info = {}
         self.group_of_arrival = OrderedDict()
+        self.EMAX_BOUND = math.floor(1.2 * self.EMAX)
 
     def warmup(self):
         """Send each client few-epoch training task to sense the client computation speed."""
-        global_model = self.server.model.state_dict()
-        gloabl_model_buffer = io.BytesIO()
-        torch.save(global_model, gloabl_model_buffer)
-        global_model_bytes = gloabl_model_buffer.getvalue()
-        for i in range(1, self.num_clients+1):
-            self.comm.send((len(global_model_bytes), False, self.WARM_UP_EPOCH, self.lr), dest=i, tag=i) 
-        for i in range(1, self.num_clients+1):
-            self.comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+self.comm_size)
+        # global_model = self.server.model.state_dict()
+        # gloabl_model_buffer = io.BytesIO()
+        # torch.save(global_model, gloabl_model_buffer)
+        # global_model_bytes = gloabl_model_buffer.getvalue()
+        # for i in range(1, self.num_clients+1):
+        #     self.comm.send((len(global_model_bytes), False, self.WARM_UP_EPOCH, self.lr), dest=i, tag=i) 
+        # for i in range(1, self.num_clients+1):
+        #     self.comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+self.comm_size)
         self.start_time = time.time()
 
     def local_update(self, local_model_size: int, client_idx: int):
@@ -121,7 +122,7 @@ class Scheduler:
         for group in self.group_of_arrival:
             remaining_time = self.group_of_arrival[group]['expected_arrival_time'] - curr_time
             local_epoch = math.floor(remaining_time / self.client_info[client_idx]['speed'])
-            if local_epoch < self.EMIN or local_epoch < assigned_epoch:
+            if local_epoch < self.EMIN or local_epoch < assigned_epoch or local_epoch > self.EMAX_BOUND:
                 continue
             else:
                 assigned_epoch = local_epoch

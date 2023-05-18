@@ -116,7 +116,7 @@ def run_server(
     ### TEST END
 
     scheduler = Scheduler(comm, server, cfg.fed.args.num_local_epochs, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger)    
-    # scheduler.warmup()
+    scheduler.warmup()
     
     # Wait for response (buffer size) - INFO - from clients
     recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
