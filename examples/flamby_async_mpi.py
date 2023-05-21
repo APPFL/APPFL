@@ -64,6 +64,7 @@ def main():
     """Specific configuration for datasets in FLamby"""
     train_datasets, test_dataset = flamby_dataset(args.dataset, args.num_clients)
     model, loss_fn, cfg.fed.args.optim, cfg.fed.args.optim_args.lr, cfg.train_data_batch_size, metric = flamby_train(args.dataset)
+    cfg.test_data_batch_size = cfg.train_data_batch_size
 
     cfg.device = args.device
     cfg.reproduce = True
