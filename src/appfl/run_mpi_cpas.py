@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import torch.nn as nn
 from .misc import *
+from typing import Any
 from mpi4py import MPI
 from .algorithm import *
 from torch.optim import *
@@ -18,7 +19,8 @@ def run_server(
     loss_fn: nn.Module,
     num_clients: int,
     test_dataset: Dataset = Dataset(),
-    dataset_name: str = "appfl"
+    dataset_name: str = "appfl",
+    flamby_metric: Any = None
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model in an asynchronous way
 
@@ -137,7 +139,7 @@ def run_server(
             if scheduler.validation_flag or global_step >= cfg.num_epochs:
                 validation_start = time.time()
                 if cfg.validation == True:
-                    test_loss, test_accuracy = validation(server, test_dataloader)
+                    test_loss, test_accuracy = validation(server, test_dataloader, flamby_metric)
                     if test_accuracy > best_accuracy:
                         best_accuracy = test_accuracy
                     if cfg.use_tensorboard:
@@ -179,7 +181,8 @@ def run_client(
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
-    test_data: Dataset = Dataset()
+    test_data: Dataset = Dataset(),
+    flamby_metric: Any = None
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -253,6 +256,7 @@ def run_client(
         cfg,
         outfile[cid],
         test_dataloader,
+        metric = flamby_metric,
         **cfg.fed.args,
     )
 

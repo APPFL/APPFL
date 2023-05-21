@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 
 from omegaconf import DictConfig
-
+from typing import Any
 import copy
 import time
 import logging
@@ -29,6 +29,7 @@ def run_server(
     num_clients: int,
     test_dataset: Dataset = Dataset(),
     dataset_name: str = "appfl",
+    flamby_metric: Any = None
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model
 
@@ -142,8 +143,7 @@ def run_server(
 
         validation_start = time.time()
         if cfg.validation == True:
-            test_loss, test_accuracy = validation(server, test_dataloader)
-
+            test_loss, test_accuracy = validation(server, test_dataloader, flamby_metric)
             if cfg.use_tensorboard:
                 # Add them to tensorboard
                 writer.add_scalar("server_test_accuracy", test_accuracy, t)
@@ -186,6 +186,7 @@ def run_client(
     num_clients: int,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
+    flamby_metric: Any = None,
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -264,6 +265,7 @@ def run_client(
             cfg,
             outfile[cid],
             test_dataloader,
+            metric = flamby_metric,
             **cfg.fed.args,
         )
         for _, cid in enumerate(num_client_groups[comm_rank - 1])
