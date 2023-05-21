@@ -45,6 +45,7 @@ class ClientOptimFlamby(BaseClient):
 
         # local training 
         for t in range(self.num_local_epochs):
+            start_time=time.time()
             train_loss, tmptotal = 0, 0
             for data, target in self.dataloader:   
                 tmptotal += len(target)          
