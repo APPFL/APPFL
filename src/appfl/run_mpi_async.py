@@ -157,6 +157,7 @@ def run_server(
             
             # Perform global update
             logger.info(f"[Server Log] [Step #{global_step:3}] Server updates global model based on the model from client #{client_idx}")
+            server.model.to("cpu")
             server.update(local_model_dict, client_model_step[client_idx], client_idx)
             global_update_time = time.time() - global_update_start
 

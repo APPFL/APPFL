@@ -138,6 +138,7 @@ def run_server(
 
         #print("Start Server Update")
         global_update_start = time.time()
+        server.model.to("cpu")
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 

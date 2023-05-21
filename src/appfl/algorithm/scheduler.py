@@ -65,6 +65,7 @@ class Scheduler:
     def _single_update(self, local_model: dict, client_idx: int):
         """Update the global model using the local model itself."""
         # Update the global model
+        self.server.model.to("cpu")
         self.server.update(local_model, self.client_info[client_idx]['step'], client_idx)
         self.client_info[client_idx]['step'] = self.server.global_step
         # Assign the client to a group of arrival
@@ -87,6 +88,7 @@ class Scheduler:
         else:
             self.group_of_arrival[group_idx]['clients'].remove(client_idx)
             self.group_of_arrival[group_idx]['arrived_clients'].append(client_idx)
+            self.server.model.to("cpu")
             self.server.buffer(local_model, self.client_info[client_idx]['step'], client_idx, group_idx)
             if len(self.group_of_arrival[group_idx]['clients']) == 0:
                 self._group_aggregation(group_idx)
@@ -211,6 +213,7 @@ class Scheduler:
             """Aggregate all the local gradients from a certain group."""
             # TODO: Do we need to add some lock?
             self.validation_flag = True
+            self.server.model.to("cpu")
             self.server.update_group(group_idx) 
             client_speed = []
             for client in self.group_of_arrival[group_idx]['arrived_clients']:
@@ -230,4 +233,5 @@ class Scheduler:
                 for client, _ in sorted_client_speed:
                     self._send_model(client)
             else:
+                self.server.model.to("cpu")
                 self.server.update_all()
