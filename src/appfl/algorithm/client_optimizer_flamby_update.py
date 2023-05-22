@@ -57,7 +57,7 @@ class ClientOptimFlambyUpdate(BaseClient):
                 if self.cfg.validation == True and self.test_dataloader != None:
                     test_loss, metric_res = self.client_validation(self.test_dataloader)
                     per_iter_time = time.time() - start_time
-                    super(ClientOptimFlambyUpdate, self).client_log_content(t+1, per_iter_time, train_loss, 0, test_loss, metric_res)
+                    super(ClientOptimFlambyUpdate, self).client_log_content(epoch, per_iter_time, train_loss, 0, test_loss, metric_res)
                     self.model.train()
                 start_time = time.time()
                 train_loss, tmptotal = 0, 0
