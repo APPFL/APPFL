@@ -4,6 +4,8 @@ This module provides a base class to define the functions required to implement 
 
 from .client_optimizer import *
 from .client_optimizer_flamby import * 
+from .client_optimizer_update import *
+from .client_optimizer_flamby_update import *
 from .server_fed_avg import *
 from .server_fed_avgmom import *
 from .server_fed_adagrad import *
@@ -15,4 +17,6 @@ from .server_fed_asynchronous import *
 from .server_fed_buffer import *
 from .server_fed_cpas_avg import *
 from .server_fed_cpas_avgm import *
+from .server_fed_cpas_avg_new import *
 from .scheduler import *
+from .scheduler_new import *
