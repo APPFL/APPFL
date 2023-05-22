@@ -25,7 +25,7 @@ parser.add_argument('--pretrained', type=int, default=1)
 parser.add_argument('--model', type=str, default="CNN")   
 parser.add_argument('--train_data_batch_size', type=int, default=128)   
 parser.add_argument('--test_data_batch_size', type=int, default=128)   
-parser.add_argument("--partition", type=str, default="IID", 
+parser.add_argument("--partition", type=str, default="iid", 
                     choices=["iid", "partition_noiid", "dirichlet_noiid"])
 parser.add_argument("--seed", type=int, default=42)
 

@@ -21,7 +21,7 @@ parser.add_argument("--num_channel", type=int, default=1)
 parser.add_argument("--num_classes", type=int, default=10)
 parser.add_argument("--num_pixel", type=int, default=28)
 parser.add_argument("--model", type=str, default="CNN")
-parser.add_argument("--partition", type=str, default="IID", 
+parser.add_argument("--partition", type=str, default="iid", 
                     choices=["iid", "partition_noiid", "dirichlet_noiid"])
 parser.add_argument("--seed", type=int, default=42)
 
