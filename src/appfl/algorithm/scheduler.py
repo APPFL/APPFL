@@ -24,7 +24,7 @@ class Scheduler:
         self.EMIN = max(math.floor(0.2 * self.EMAX), 1)
         self.WARM_UP_EPOCH = 1
         self.SPEED_MOMENTUM = 0.9
-        self.LATEST_TIME_FACTOR = 1.01
+        self.LATEST_TIME_FACTOR = 1.2
         self.LR_DECAY = 0.975
         self.client_info = {}
         self.group_of_arrival = OrderedDict()

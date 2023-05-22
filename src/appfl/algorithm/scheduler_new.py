@@ -24,7 +24,7 @@ class SchedulerNew:
         self.min_local_steps = max(math.floor(0.2 * self.max_local_steps), 1)
         self.max_local_steps_bound =  math.floor(1.2 * self.max_local_steps)
         self.SPEED_MOMENTUM = 0.9
-        self.LATEST_TIME_FACTOR = 1.01
+        self.LATEST_TIME_FACTOR = 1.2
         self.LR_DECAY = 0.975
         self.client_info = {}
         self.group_of_arrival = OrderedDict()
