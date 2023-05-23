@@ -26,8 +26,7 @@ class IIADMMServer(BaseServer):
         """
         for i in range(num_clients):
             for name, param in model.named_parameters():
-                self.dual_states[i][name] = torch.zeros_like(param.data) 
-                
+                self.dual_states[i][name] = torch.zeros_like(param.data)
 
     def update(self, local_states: OrderedDict):
 
@@ -38,7 +37,7 @@ class IIADMMServer(BaseServer):
         super(IIADMMServer, self).primal_recover_from_local_states(local_states)
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
 
-        """ residual calculation """        
+        """ residual calculation """
         super(IIADMMServer, self).primal_residual_at_server()
         super(IIADMMServer, self).dual_residual_at_server()
 
@@ -48,13 +47,12 @@ class IIADMMServer(BaseServer):
             for i in range(self.num_clients):
 
                 ## change device
-                self.primal_states[i][name] = self.primal_states[i][name] 
+                self.primal_states[i][name] = self.primal_states[i][name]
 
                 ## dual
                 self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[
                     i
                 ] * (self.global_state[name] - self.primal_states[i][name])
-                 
 
                 ## computation
                 tmp += (
@@ -109,7 +107,7 @@ class IIADMMClient(BaseClient):
         super(IIADMMClient, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
         )
-        self.__dict__.update(kwargs) 
+        self.__dict__.update(kwargs)
 
         """
         At initial, (1) primal_state = global_state, (2) dual_state = 0
@@ -160,10 +158,9 @@ class IIADMMClient(BaseClient):
 
                 if self.accum_grad == False:
                     optimizer.zero_grad()
-                
+
                 output = self.model(data)
- 
-                
+
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
@@ -198,12 +195,10 @@ class IIADMMClient(BaseClient):
             scale_value = sensitivity / self.epsilon
             super(IIADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 
-        
         ## store data in cpu before sending it to server
-        if (self.cfg.device == "cuda"):  
-            for name, param in self.model.named_parameters():                
+        if self.cfg.device == "cuda":
+            for name, param in self.model.named_parameters():
                 self.primal_state[name] = param.data.cpu()
-        
 
         """ Update local_state """
         self.local_state = OrderedDict()

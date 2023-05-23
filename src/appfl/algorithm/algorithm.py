@@ -23,7 +23,12 @@ class BaseServer:
     """
 
     def __init__(
-        self, weights: OrderedDict, model: nn.Module, loss_fn: nn.Module, num_clients: int, device
+        self,
+        weights: OrderedDict,
+        model: nn.Module,
+        loss_fn: nn.Module,
+        num_clients: int,
+        device,
     ):
         self.model = model
         self.loss_fn = loss_fn
@@ -56,19 +61,19 @@ class BaseServer:
         for key, value in weights.items():
             self.weights[key] = value
 
-    def primal_recover_from_local_states(self, local_states):        
+    def primal_recover_from_local_states(self, local_states):
         for sid, states in enumerate(local_states):
-            if states is not None:                
+            if states is not None:
                 self.primal_states[sid] = states["primal"]
 
     def dual_recover_from_local_states(self, local_states):
         for sid, states in enumerate(local_states):
-            if states is not None:                
-                self.dual_states[sid] = states["dual"]        
+            if states is not None:
+                self.dual_states[sid] = states["dual"]
 
     def penalty_recover_from_local_states(self, local_states):
         for sid, states in enumerate(local_states):
-            if states is not None:     
+            if states is not None:
                 self.penalty[sid] = states["penalty"][sid]
 
     def primal_residual_at_server(self) -> float:
@@ -209,9 +214,12 @@ class BaseClient:
 
     def primal_residual_at_client(self, global_state) -> float:
         primal_res = 0
-        for name, _ in self.model.named_parameters():            
+        for name, _ in self.model.named_parameters():
             primal_res += torch.sum(
-                torch.square(global_state[name].to(self.cfg.device) - self.primal_state[name].to(self.cfg.device))
+                torch.square(
+                    global_state[name].to(self.cfg.device)
+                    - self.primal_state[name].to(self.cfg.device)
+                )
             )
         primal_res = torch.sqrt(primal_res).item()
         return primal_res
