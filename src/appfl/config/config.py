@@ -11,7 +11,7 @@ from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = Federated()
+    fed: Any = field(default_factory=Federated)
 
     # Compute device
     device: str = "cpu"
