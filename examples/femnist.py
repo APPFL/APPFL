@@ -29,9 +29,7 @@ parser.add_argument("--num_pixel", type=int, default=28)
 parser.add_argument("--model", type=str, default="CNN")
 
 ## algorithm
-parser.add_argument(
-    "--fed", type=str, default="Federated()"
-)  ## Federated(), ICEADMM(), IIADMM()
+parser.add_argument("--federation_type", type=str, default="Federated")  ## Federated, ICEADMM, IIADMM
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
@@ -145,8 +143,8 @@ def main():
     cfg.num_clients = args.num_clients
     cfg.num_epochs = args.num_epochs
 
-    cfg.fed = eval(args.fed)
-    if args.fed == "Federated()":
+    cfg.fed = eval(args.federation_type+"()")
+    if args.federation_type == "Federated":
         cfg.fed.args.optim = args.client_optimizer
         cfg.fed.args.optim_args.lr = args.client_lr
         cfg.fed.servername = args.server
