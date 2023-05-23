@@ -7,6 +7,7 @@ from .client_optimizer_flamby import *
 from .client_optimizer_update import *
 from .client_optimizer_flamby_update import *
 from .server_fed_avg import *
+from .server_fed_avg_new import *
 from .server_fed_avgmom import *
 from .server_fed_adagrad import *
 from .server_fed_adam import *
