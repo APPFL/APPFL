@@ -23,7 +23,12 @@ class BaseServer:
     """
 
     def __init__(
-        self, weights: OrderedDict, model: nn.Module, loss_fn: nn.Module, num_clients: int, device
+        self,
+        weights: OrderedDict,
+        model: nn.Module,
+        loss_fn: nn.Module,
+        num_clients: int,
+        device,
     ):
         self.model = model
         self.loss_fn = loss_fn
@@ -57,22 +62,19 @@ class BaseServer:
             self.weights[key] = value
 
     def primal_recover_from_local_states(self, local_states):
-        for _, states in enumerate(local_states):
+        for sid, states in enumerate(local_states):
             if states is not None:
-                for sid, state in states.items():
-                    self.primal_states[sid] = copy.deepcopy(state["primal"])
+                self.primal_states[sid] = states["primal"]
 
     def dual_recover_from_local_states(self, local_states):
-        for _, states in enumerate(local_states):
+        for sid, states in enumerate(local_states):
             if states is not None:
-                for sid, state in states.items():
-                    self.dual_states[sid] = copy.deepcopy(state["dual"])
+                self.dual_states[sid] = states["dual"]
 
     def penalty_recover_from_local_states(self, local_states):
-        for _, states in enumerate(local_states):
+        for sid, states in enumerate(local_states):
             if states is not None:
-                for sid, state in states.items():
-                    self.penalty[sid] = copy.deepcopy(state["penalty"][sid])
+                self.penalty[sid] = states["penalty"][sid]
 
     def primal_residual_at_server(self) -> float:
         primal_res = 0
@@ -80,7 +82,7 @@ class BaseServer:
             for name, _ in self.model.named_parameters():
                 primal_res += torch.sum(
                     torch.square(
-                        self.global_state[name]
+                        self.global_state[name].to(self.device)
                         - self.primal_states[i][name].to(self.device)
                     )
                 )
@@ -214,7 +216,10 @@ class BaseClient:
         primal_res = 0
         for name, _ in self.model.named_parameters():
             primal_res += torch.sum(
-                torch.square(global_state[name] - self.primal_state[name])
+                torch.square(
+                    global_state[name].to(self.cfg.device)
+                    - self.primal_state[name].to(self.cfg.device)
+                )
             )
         primal_res = torch.sqrt(primal_res).item()
         return primal_res
@@ -222,12 +227,12 @@ class BaseClient:
     def dual_residual_at_client(self) -> float:
         dual_res = 0
         if self.is_first_iter == 1:
-            self.primal_state_curr = copy.deepcopy(self.primal_state)
+            self.primal_state_curr = self.primal_state
             self.is_first_iter = 0
 
         else:
-            self.primal_state_prev = copy.deepcopy(self.primal_state_curr)
-            self.primal_state_curr = copy.deepcopy(self.primal_state)
+            self.primal_state_prev = self.primal_state_curr
+            self.primal_state_curr = self.primal_state
 
             ## compute dual residual
             for name, _ in self.model.named_parameters():

@@ -11,6 +11,11 @@ from appfl.config import *
 from appfl.misc.data import *
 import appfl.run_mpi as rm
 import appfl.run_serial as rs
+import appfl.run_mpi_async as rma
+
+
+from mpi4py import MPI
+import os
 
 
 class CNN(nn.Module):
@@ -86,8 +91,28 @@ def process_data(num_clients):
     return train_datasets, test_dataset
 
 
-# Let's download the data first.
-torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+# Let's download the data first if data does not exist.
+currentpath = os.getcwd()
+datafolderpath = os.path.join(currentpath, "_data")
+existsflag = False
+if(os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
+    mnistfolderpath = os.path.join(datafolderpath, "MNIST")
+    if(os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):
+        existsflag = True
+
+if(not existsflag):
+    comm = MPI.COMM_WORLD
+    comm_size = comm.Get_size()
+    if comm_size > 1:
+        comm_rank = comm.Get_rank()
+        if comm_rank == 0:
+            print("Download by rank0")            
+            torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+        comm.Barrier()
+    else:
+        print("Download by serial")
+        torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+    
 
 
 def test_mnist_fedavg():
@@ -119,13 +144,10 @@ def test_mnist_fedavg_lbfgs():
     train_datasets, test_dataset = process_data(num_clients)
 
     rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, "test_mnist")
+    
 
-
-@pytest.mark.mpi(min_size=3)
-def test_mnist_fedavg_mpi():
-    print
-
-    from mpi4py import MPI
+@pytest.mark.mpi(min_size=2)
+def test_mnist_fedavg_mpi(): 
 
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
@@ -147,11 +169,8 @@ def test_mnist_fedavg_mpi():
         assert 0
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_iceadmm_mpi():
-
-    from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -172,11 +191,8 @@ def test_mnist_iceadmm_mpi():
         assert 0
 
 
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_iiadmm_mpi():
-
-    from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -197,8 +213,58 @@ def test_mnist_iiadmm_mpi():
         assert 0
 
 
-def test_mnist_fedavg_notest():
+@pytest.mark.mpi(min_size=2)
+def test_mnist_fedasync_mpi(): 
+    comm = MPI.COMM_WORLD
+    comm_rank = comm.Get_rank()
+    comm_size = comm.Get_size()
 
+    num_clients = comm_size - 1
+    cfg = OmegaConf.structured(Config(fed=FedAsync()))
+    cfg.fed.args.num_local_epochs=2
+    cfg.fed.args.staleness_func.name = 'polynomial'
+    model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
+    train_datasets, test_dataset = process_data(num_clients)
+    
+    if comm_size > 1:
+        if comm_rank == 0:
+            rma.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
+        else:
+            rma.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+    else:
+        assert 0
+
+    rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_mnist")
+
+@pytest.mark.mpi(min_size=2)
+def test_mnist_fedbuffer_mpi(): 
+    comm = MPI.COMM_WORLD
+    comm_rank = comm.Get_rank()
+    comm_size = comm.Get_size()
+
+    num_clients = comm_size - 1
+    cfg = OmegaConf.structured(Config(fed=FedAsync()))
+    cfg.num_epochs = 3
+    cfg.fed.args.num_local_epochs=2
+    cfg.fed.args.gradient_based = True
+    cfg.fed.args.staleness_func.name = 'polynomial'
+    cfg.fed.servername = 'ServerFedBuffer'
+
+    model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
+    train_datasets, test_dataset = process_data(num_clients)
+    
+    if comm_size > 1:
+        if comm_rank == 0:
+            rma.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
+        else:
+            rma.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+    else:
+        assert 0
+
+
+def test_mnist_fedavg_notest():
     num_clients = 2
     cfg = OmegaConf.structured(Config)
     cfg.fed.args.num_local_epochs=2
@@ -208,13 +274,8 @@ def test_mnist_fedavg_notest():
 
     rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_mnist")
 
-
-@pytest.mark.mpi(min_size=3)
+@pytest.mark.mpi(min_size=2)
 def test_mnist_fedavg_mpi_notest():
-    print
-
-    from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()

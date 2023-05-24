@@ -5,6 +5,8 @@ src/appfl/algorithm/mryu.py
 note
 trials
 examples/archive
+examples/output
+examples/runs
 examples/CIFAR10_Trajectory
 examples/.DS_Store
 examples/save_models

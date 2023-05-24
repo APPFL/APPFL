@@ -4,6 +4,7 @@ from omegaconf import DictConfig, OmegaConf
 
 
 from .fed.federated import *
+from .fed.fedasync import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
 
@@ -14,6 +15,7 @@ class Config:
 
     # Compute device
     device: str = "cpu"
+    device_server: str = "cpu"
 
     # Number of training epochs
     num_clients: int = 1
@@ -42,10 +44,10 @@ class Config:
 
     # PCA on Trajectory
     pca_dir: str = ""
-    params_start: int=0
-    params_end: int=49
-    ncomponents: int=40
-    
+    params_start: int = 0
+    params_end: int = 49
+    ncomponents: int = 40
+
     # Tensorboard
     use_tensorboard: bool = False
 
@@ -66,10 +68,9 @@ class Config:
     # Logging and recording outputs
     output_dirname: str = "output"
     output_filename: str = "result"
-    
+
     logginginfo: DictConfig = OmegaConf.create({})
     summary_file: str = ""
-
 
     #
     # gRPC configutations

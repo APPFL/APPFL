@@ -31,7 +31,9 @@ class IIADMMServer(BaseServer):
     def update(self, local_states: OrderedDict):
 
         """Inputs for the global model update"""
-        self.global_state = copy.deepcopy(self.model.state_dict())
+        for name, param in self.model.named_parameters():
+            self.global_state[name] = param.data.cpu()
+        # self.global_state = copy.deepcopy(self.model.state_dict())
         super(IIADMMServer, self).primal_recover_from_local_states(local_states)
         super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
 
@@ -45,13 +47,13 @@ class IIADMMServer(BaseServer):
             for i in range(self.num_clients):
 
                 ## change device
-                self.primal_states[i][name] = self.primal_states[i][name].to(
-                    self.device
-                )
+                self.primal_states[i][name] = self.primal_states[i][name]
+
                 ## dual
                 self.dual_states[i][name] = self.dual_states[i][name] + self.penalty[
                     i
                 ] * (self.global_state[name] - self.primal_states[i][name])
+
                 ## computation
                 tmp += (
                     self.primal_states[i][name]
@@ -61,7 +63,9 @@ class IIADMMServer(BaseServer):
             self.global_state[name] = tmp / self.num_clients
 
         """ model update """
-        self.model.load_state_dict(self.global_state)
+        # self.model.load_state_dict(self.global_state)
+        for name, param in self.model.named_parameters():
+            param.data = self.global_state[name]
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:
@@ -88,15 +92,27 @@ class IIADMMServer(BaseServer):
 
 
 class IIADMMClient(BaseClient):
-    def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(IIADMMClient, self).__init__(id, weight, model, dataloader, device)
+    def __init__(
+        self,
+        id,
+        weight,
+        model,
+        loss_fn,
+        dataloader,
+        cfg,
+        outfile,
+        test_dataloader,
+        **kwargs
+    ):
+        super(IIADMMClient, self).__init__(
+            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
+        )
         self.__dict__.update(kwargs)
-        self.loss_fn = eval(self.loss_type)
 
         """
         At initial, (1) primal_state = global_state, (2) dual_state = 0
         """
-        self.model.to(device)
+        self.model.to(self.cfg.device)
         for name, param in model.named_parameters():
             self.primal_state[name] = param.data
             self.dual_state[name] = torch.zeros_like(param.data)
@@ -107,7 +123,7 @@ class IIADMMClient(BaseClient):
     def update(self):
 
         self.model.train()
-        self.model.to(self.device)
+        self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
@@ -124,7 +140,8 @@ class IIADMMClient(BaseClient):
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
 
-                self.model.load_state_dict(self.primal_state)
+                for name, param in self.model.named_parameters():
+                    param.data = self.primal_state[name].to(self.cfg.device)
 
                 if (
                     self.residual_balancing.res_on == True
@@ -136,13 +153,14 @@ class IIADMMClient(BaseClient):
                     dual_res = super(IIADMMClient, self).dual_residual_at_client()
                     super(IIADMMClient, self).residual_balancing(prim_res, dual_res)
 
-                data = data.to(self.device)
-                target = target.to(self.device)
+                data = data.to(self.cfg.device)
+                target = target.to(self.cfg.device)
 
                 if self.accum_grad == False:
                     optimizer.zero_grad()
 
                 output = self.model(data)
+
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
@@ -177,9 +195,14 @@ class IIADMMClient(BaseClient):
             scale_value = sensitivity / self.epsilon
             super(IIADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 
+        ## store data in cpu before sending it to server
+        if self.cfg.device == "cuda":
+            for name, param in self.model.named_parameters():
+                self.primal_state[name] = param.data.cpu()
+
         """ Update local_state """
         self.local_state = OrderedDict()
-        self.local_state["primal"] = copy.deepcopy(self.primal_state)
+        self.local_state["primal"] = self.primal_state
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = self.penalty

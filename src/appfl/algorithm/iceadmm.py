@@ -14,7 +14,9 @@ import copy
 
 class ICEADMMServer(BaseServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
-        super(ICEADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
+        super(ICEADMMServer, self).__init__(
+            weights, model, loss_fn, num_clients, device
+        )
         self.__dict__.update(kwargs)
 
         self.is_first_iter = 1
@@ -79,15 +81,27 @@ class ICEADMMServer(BaseServer):
 
 
 class ICEADMMClient(BaseClient):
-    def __init__(self, id, weight, model, dataloader, device, **kwargs):
-        super(ICEADMMClient, self).__init__(id, weight, model, dataloader, device)
+    def __init__(
+        self,
+        id,
+        weight,
+        model,
+        loss_fn,
+        dataloader,
+        cfg,
+        outfile,
+        test_dataloader,
+        **kwargs
+    ):
+        super(ICEADMMClient, self).__init__(
+            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
+        )
         self.__dict__.update(kwargs)
-        self.loss_fn = eval(self.loss_type)
 
         """ 
         At initial, (1) primal_state = global_state, (2) dual_state = 0
         """
-        self.model.to(device)
+        self.model.to(self.cfg.device)
         for name, param in model.named_parameters():
             self.primal_state[name] = param.data
             self.dual_state[name] = torch.zeros_like(param.data)
@@ -99,7 +113,7 @@ class ICEADMMClient(BaseClient):
     def update(self):
 
         self.model.train()
-        self.model.to(self.device)
+        self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
@@ -118,7 +132,8 @@ class ICEADMMClient(BaseClient):
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
 
-                self.model.load_state_dict(self.primal_state)
+                for name, param in self.model.named_parameters():
+                    param.data = self.primal_state[name].to(self.cfg.device)
 
                 if (
                     self.residual_balancing.res_on == True
@@ -130,8 +145,8 @@ class ICEADMMClient(BaseClient):
                     dual_res = super(ICEADMMClient, self).dual_residual_at_client()
                     super(ICEADMMClient, self).residual_balancing(prim_res, dual_res)
 
-                data = data.to(self.device)
-                target = target.to(self.device)
+                data = data.to(self.cfg.device)
+                target = target.to(self.cfg.device)
 
                 if self.accum_grad == False:
                     optimizer.zero_grad()
@@ -164,17 +179,30 @@ class ICEADMMClient(BaseClient):
             scale_value = sensitivity / self.epsilon
             super(ICEADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 
+        ## store data in cpu before sending it to server
+        if self.cfg.device == "cuda":
+            for name, param in self.model.named_parameters():
+                self.primal_state[name] = param.data.cpu()
+
         """ Update local_state """
         self.local_state = OrderedDict()
-        self.local_state["primal"] = copy.deepcopy(self.primal_state)
-        self.local_state["dual"] = copy.deepcopy(self.dual_state)
+        self.local_state["primal"] = self.primal_state
+        self.local_state["dual"] = self.dual_state
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = self.penalty
+
+        ## Back to "cuda"
+        if self.cfg.device == "cuda":
+            for name, param in self.model.named_parameters():
+                self.primal_state[name] = param.data.cuda()
 
         return self.local_state
 
     def iceadmm_step(self, coefficient, global_state):
         for name, param in self.model.named_parameters():
+            self.primal_state[name] = self.primal_state[name].to(self.cfg.device)
+            self.dual_state[name] = self.dual_state[name].to(self.cfg.device)
+            global_state[name] = global_state[name].to(self.cfg.device)
 
             grad = param.grad * coefficient
             ## Update primal

@@ -30,12 +30,12 @@ def run_serial(
     Args:
         cfg (DictConfig): the configuration for this run
         model (nn.Module): neural network model to train
-        loss_fn (nn.Module): loss function 
+        loss_fn (nn.Module): loss function
         train_data (Dataset): training data
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         dataset_name (str): optional dataset name
     """
-    
+
     """ log for a server """
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
@@ -79,10 +79,15 @@ def run_serial(
         cfg.validation = False
 
     server = eval(cfg.fed.servername)(
-        weights, copy.deepcopy(model), loss_fn, cfg.num_clients, cfg.device, **cfg.fed.args
+        weights,
+        copy.deepcopy(model),
+        loss_fn,
+        cfg.num_clients,
+        cfg.device_server,
+        **cfg.fed.args,
     )
 
-    server.model.to(cfg.device)
+    server.model.to(cfg.device_server)
 
     batchsize = {}
     for k in range(cfg.num_clients):
@@ -109,8 +114,8 @@ def run_serial(
             **cfg.fed.args,
         )
         for k in range(cfg.num_clients)
-    ] 
-    
+    ]
+
     start_time = time.time()
     test_loss = 0.0
     test_accuracy = 0.0
@@ -118,18 +123,18 @@ def run_serial(
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
 
-        local_states = [OrderedDict()]
+        local_states = []
 
         global_state = server.model.state_dict()
 
         local_update_start = time.time()
         for k, client in enumerate(clients):
-            
-            ## initial point for a client model            
+
+            ## initial point for a client model
             client.model.load_state_dict(global_state)
 
             ## client update
-            local_states[0][k] = client.update()
+            local_states.append(client.update())
 
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
