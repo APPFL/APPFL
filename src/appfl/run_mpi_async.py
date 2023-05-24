@@ -5,7 +5,6 @@ import logging
 import numpy as np
 import torch.nn as nn
 from .misc import *
-from typing import Any
 from mpi4py import MPI
 from .algorithm import *
 from torch.optim import *
@@ -19,8 +18,7 @@ def run_server(
     loss_fn: nn.Module,
     num_clients: int,
     test_dataset: Dataset = Dataset(),
-    dataset_name: str = "appfl",
-    flamby_metric: Any = None
+    dataset_name: str = "appfl"
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model in an asynchronous way
 
@@ -129,7 +127,6 @@ def run_server(
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
-    metric = [[], []]
     while True:
         # Wait for response from any one client
         client_idx, local_model_size = MPI.Request.waitany(recv_reqs)
@@ -188,7 +185,7 @@ def run_server(
             # Do server validation
             validation_start = time.time()
             if cfg.validation == True:
-                test_loss, test_accuracy = validation(server, test_dataloader, flamby_metric)
+                test_loss, test_accuracy = validation(server, test_dataloader)
                 if test_accuracy > best_accuracy:
                     best_accuracy = test_accuracy
                 if cfg.use_tensorboard:
@@ -207,8 +204,6 @@ def run_server(
             if global_step != 1:
                 logger.info(server.log_title())
             server.logging_iteration(cfg, logger, global_step-1)
-            metric[0].append(cfg["logginginfo"]["Elapsed_time"])
-            metric[1].append(test_accuracy)
 
             # Break after max updates
             if global_step == cfg.num_epochs: 
@@ -223,7 +218,6 @@ def run_server(
     MPI.Request.waitall(send_reqs)
 
     server.logging_summary(cfg, logger)
-    save_training_metric(metric, cfg)
 
 def run_client(
     cfg: DictConfig,
@@ -232,8 +226,7 @@ def run_client(
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
-    test_data: Dataset = Dataset(),
-    flamby_metric: Any = None,
+    test_data: Dataset = Dataset()
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -307,7 +300,6 @@ def run_client(
         cfg,
         outfile[cid],
         test_dataloader,
-        metric = flamby_metric,
         **cfg.fed.args,
     )
 
