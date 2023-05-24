@@ -25,6 +25,9 @@ class ServerFedAsynchronous(FedServer):
             stalness_func_name= self.staleness_func['name'],
             **self.staleness_func['args']
         )
+        self.list_named_parameters = []
+        for name in self.model.named_parameters():
+            self.list_named_parameters.append(name)
 
     def compute_pseudo_gradient(self, local_state: dict, client_idx: int):
         for name, _ in self.model.named_parameters():
@@ -43,8 +46,11 @@ class ServerFedAsynchronous(FedServer):
     def update(self, local_state: dict, init_step: int, client_idx: int):  
         self.global_state = copy.deepcopy(self.model.state_dict())
         self.compute_step(local_state, init_step, client_idx)
-        for name, _ in self.model.named_parameters():
-            self.global_state[name] += self.step[name]
+        for name in self.model.state_dict():
+            if name is self.list_named_parameters:
+                self.global_state[name] += self.step[name]
+            else:
+                self.global_state[name] = local_state[name]
         self.model.load_state_dict(self.global_state)
         self.global_step += 1
 

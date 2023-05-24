@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import torch.nn as nn
 from .misc import *
+from typing import Any
 from mpi4py import MPI
 from .algorithm import *
 from torch.optim import *
@@ -18,7 +19,8 @@ def run_server(
     loss_fn: nn.Module,
     num_clients: int,
     test_dataset: Dataset = Dataset(),
-    dataset_name: str = "appfl"
+    dataset_name: str = "appfl",
+    flamby_metric: Any = None
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model in an asynchronous way
 
@@ -127,6 +129,7 @@ def run_server(
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
+    metric = [[], []]
     while True:
         # Wait for response from any one client
         client_idx, local_model_size = MPI.Request.waitany(recv_reqs)
@@ -154,6 +157,7 @@ def run_server(
             
             # Perform global update
             logger.info(f"[Server Log] [Step #{global_step:3}] Server updates global model based on the model from client #{client_idx}")
+            server.model.to("cpu")
             server.update(local_model_dict, client_model_step[client_idx], client_idx)
             global_update_time = time.time() - global_update_start
 
@@ -184,7 +188,7 @@ def run_server(
             # Do server validation
             validation_start = time.time()
             if cfg.validation == True:
-                test_loss, test_accuracy = validation(server, test_dataloader)
+                test_loss, test_accuracy = validation(server, test_dataloader, flamby_metric)
                 if test_accuracy > best_accuracy:
                     best_accuracy = test_accuracy
                 if cfg.use_tensorboard:
@@ -203,6 +207,8 @@ def run_server(
             if global_step != 1:
                 logger.info(server.log_title())
             server.logging_iteration(cfg, logger, global_step-1)
+            metric[0].append(cfg["logginginfo"]["Elapsed_time"])
+            metric[1].append(test_accuracy)
 
             # Break after max updates
             if global_step == cfg.num_epochs: 
@@ -217,6 +223,7 @@ def run_server(
     MPI.Request.waitall(send_reqs)
 
     server.logging_summary(cfg, logger)
+    save_training_metric(metric, cfg)
 
 def run_client(
     cfg: DictConfig,
@@ -225,7 +232,8 @@ def run_client(
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
-    test_data: Dataset = Dataset()
+    test_data: Dataset = Dataset(),
+    flamby_metric: Any = None,
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -299,6 +307,7 @@ def run_client(
         cfg,
         outfile[cid],
         test_dataloader,
+        metric = flamby_metric,
         **cfg.fed.args,
     )
 
@@ -334,9 +343,15 @@ def run_client(
 
         # Compute gradient if the algorithm is gradient-based
         if cfg.fed.args.gradient_based:
+            list_named_parameters = []
+            for name, _ in client.model.named_parameters():
+                list_named_parameters.append(name)
             local_model = {}
             for name in global_model:
-                local_model[name] = global_model[name] - client.primal_state[name]
+                if name in list_named_parameters:
+                    local_model[name] = global_model[name] - client.primal_state[name]
+                else:
+                    local_model[name] = client.primal_state[name]
         else:
             local_model = copy.deepcopy(client.primal_state)
 
