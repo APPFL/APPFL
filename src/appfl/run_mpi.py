@@ -141,7 +141,6 @@ def run_server(
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
         validation_start = time.time()
-        best_accuracy = 0
         if cfg.validation == True:
             test_loss, test_accuracy = validation(server, test_dataloader)
 

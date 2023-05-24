@@ -7,6 +7,7 @@ import torch
 
 from appfl.config import *
 from appfl.misc.data import *
+from appfl.misc.utils import *
 from models.cnn import *
 import appfl.run_serial as rs
 import appfl.run_mpi as rm
@@ -27,6 +28,8 @@ parser.add_argument("--num_classes", type=int, default=62)
 parser.add_argument("--num_pixel", type=int, default=28)
 parser.add_argument("--model", type=str, default="CNN")
 
+## algorithm
+parser.add_argument("--federation_type", type=str, default="Federated")  ## Federated, ICEADMM, IIADMM
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
@@ -52,9 +55,10 @@ if torch.cuda.is_available():
 
 dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
 
+
 def get_data(comm: MPI.Comm):
-    # test data for a server    
-    
+    # test data for a server
+
     test_data_raw = {}
     test_data_input = []
     test_data_label = []
@@ -62,18 +66,17 @@ def get_data(comm: MPI.Comm):
         with open("%s/test/all_data_%s_niid_05_keep_0_test_9.json" % (dir, idx)) as f:
             test_data_raw[idx] = json.load(f)
         for client in test_data_raw[idx]["users"]:
-
             for data_input in test_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
                 data_input.resize(args.num_pixel, args.num_pixel)
                 # Repeating 1 channel data to use pretrained weight that based on 3 channels data
-                if(args.num_channel == 1 and args.pretrained > 0):
-                    test_data_input.append([data_input,data_input,data_input])
+                if args.num_channel == 1 and args.pretrained > 0:
+                    test_data_input.append([data_input, data_input, data_input])
                 else:
                     test_data_input.append([data_input])
 
             for data_label in test_data_raw[idx]["user_data"][client]["y"]:
-                test_data_label.append(data_label)        
+                test_data_label.append(data_label)
     test_dataset = Dataset(
         torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
     )
@@ -86,14 +89,13 @@ def get_data(comm: MPI.Comm):
             train_data_raw[idx] = json.load(f)
 
         for client in train_data_raw[idx]["users"]:
-
             train_data_input_resize = []
             for data_input in train_data_raw[idx]["user_data"][client]["x"]:
                 data_input = np.asarray(data_input)
-                data_input.resize(args.num_pixel, args.num_pixel) 
+                data_input.resize(args.num_pixel, args.num_pixel)
                 # Repeating 1 channel data to use pretrained weight that based on 3 channels data
-                if(args.num_channel == 1 and args.pretrained > 0):
-                    train_data_input_resize.append([data_input,data_input,data_input])           
+                if args.num_channel == 1 and args.pretrained > 0:
+                    train_data_input_resize.append([data_input, data_input, data_input])
                 else:
                     train_data_input_resize.append([data_input])
 
@@ -103,7 +105,7 @@ def get_data(comm: MPI.Comm):
                     torch.tensor(train_data_raw[idx]["user_data"][client]["y"]),
                 )
             )
-    
+
     return train_datasets, test_dataset
 
 
@@ -116,8 +118,9 @@ def main():
     cfg = OmegaConf.structured(Config)
 
     ## Reproducibility
-    torch.manual_seed(1)
-    torch.backends.cudnn.deterministic = True
+    cfg.reproduce = True
+    if cfg.reproduce == True:
+        set_seed(1)
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
@@ -127,32 +130,34 @@ def main():
             train_datasets, test_dataset, args.num_channel, args.num_pixel
         )
 
-    args.num_clients = len(train_datasets)       
+    args.num_clients = len(train_datasets)
     model = get_model(args)
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = torch.nn.CrossEntropyLoss()
     print(
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
-    
-    cfg.device = args.device  
 
-    ## clients
+    ## settings
+    cfg.device = args.device
     cfg.num_clients = args.num_clients
-    cfg.fed.args.optim = args.client_optimizer
-    cfg.fed.args.optim_args.lr = args.client_lr
-    cfg.fed.args.num_local_epochs = args.num_local_epochs
-
-    ## server
-    cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
+
+    cfg.fed = eval(args.federation_type+"()")
+    if args.federation_type == "Federated":
+        cfg.fed.args.optim = args.client_optimizer
+        cfg.fed.args.optim_args.lr = args.client_lr
+        cfg.fed.servername = args.server
+        cfg.fed.args.num_local_epochs = args.num_local_epochs
 
     ## outputs
     cfg.use_tensorboard = True
 
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset)
+            rm.run_server(
+                cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
+            )
         else:
             rm.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets)
         print("------DONE------", comm_rank)
@@ -160,7 +165,7 @@ def main():
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()
 
 

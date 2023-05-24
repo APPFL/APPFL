@@ -11,6 +11,8 @@ from appfl.config import *
 from appfl.misc.data import *
 import appfl.run_mpi as rm
 import appfl.run_serial as rs
+import appfl.run_mpi_async as rma
+
 
 from mpi4py import MPI
 import os
@@ -194,6 +196,56 @@ def test_mnist_iiadmm_mpi():
         assert 0
 
 
+@pytest.mark.mpi(min_size=2)
+def test_mnist_fedasync_mpi(): 
+    comm = MPI.COMM_WORLD
+    comm_rank = comm.Get_rank()
+    comm_size = comm.Get_size()
+
+    num_clients = comm_size - 1
+    cfg = OmegaConf.structured(Config(fed=FedAsync()))
+    cfg.fed.args.num_local_epochs=2
+    cfg.fed.args.staleness_func.name = 'polynomial'
+    model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
+    train_datasets, test_dataset = process_data(num_clients)
+    
+    if comm_size > 1:
+        if comm_rank == 0:
+            rma.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
+        else:
+            rma.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+    else:
+        assert 0
+
+
+@pytest.mark.mpi(min_size=2)
+def test_mnist_fedbuffer_mpi(): 
+    comm = MPI.COMM_WORLD
+    comm_rank = comm.Get_rank()
+    comm_size = comm.Get_size()
+
+    num_clients = comm_size - 1
+    cfg = OmegaConf.structured(Config(fed=FedAsync()))
+    cfg.num_epochs = 3
+    cfg.fed.args.num_local_epochs=2
+    cfg.fed.args.gradient_based = True
+    cfg.fed.args.staleness_func.name = 'polynomial'
+    cfg.fed.servername = 'ServerFedBuffer'
+
+    model = CNN(1, 10, 28)
+    loss_fn = torch.nn.CrossEntropyLoss()
+    train_datasets, test_dataset = process_data(num_clients)
+    
+    if comm_size > 1:
+        if comm_rank == 0:
+            rma.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
+        else:
+            rma.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+    else:
+        assert 0
+
+
 def test_mnist_fedavg_notest():
     num_clients = 2
     cfg = OmegaConf.structured(Config)
@@ -203,7 +255,6 @@ def test_mnist_fedavg_notest():
     train_datasets, test_dataset = process_data(num_clients)
 
     rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_mnist")
-
 
 @pytest.mark.mpi(min_size=2)
 def test_mnist_fedavg_mpi_notest():
