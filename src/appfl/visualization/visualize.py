@@ -1,16 +1,14 @@
 import os
 import re
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import pandas as pd
-import numpy as np
 
 # Define event markers
 markers = {'expected_arrival': 'bo', 'latest_arrival': 'ro', 'client_arrived': 'mo', 'client_joined': 'co'}
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-log_file = os.path.join(current_dir, "test.log")
+log_file = os.path.join(current_dir, "result_server_1.txt")
 with open(log_file, 'r') as f:
     lines = f.readlines()
 
@@ -43,8 +41,17 @@ fig, ax = plt.subplots()
 for group_idx in df['group_idx'].unique():
     group_df = df[df['group_idx'] == group_idx]
     creation_time = group_df[group_df['event'] == 'created']['time'].values[0]
-    deletion_time = group_df[group_df['event'] == 'deleted']['time'].values[0]
+    if len(group_df[group_df['event'] == 'deleted']['time'].values) > 0:
+        deletion_time = group_df[group_df['event'] == 'deleted']['time'].values[0]
+    else:
+        deletion_time = group_df[group_df['event'] == 'latest_arrival']['time'].values[0]
     ax.plot([creation_time, deletion_time], [group_idx, group_idx], color='black', linestyle='-', marker='o', markersize=3)
+
+# Determine the maximum active time
+max_active_time = df['time'].max()
+
+# Plot the vertical line
+ax.axvline(x=max_active_time, color='grey', linestyle='--')
 
 # Plot expected arrival and latest arrival times
 expected_arrival_df = df[df['event'] == 'expected_arrival']
@@ -60,11 +67,21 @@ ax.scatter(client_join_df['time'], client_join_df['group_idx'], color='green')
 client_arrival_df = df[df['event'] == 'client_arrived']
 ax.scatter(client_arrival_df['time'], client_arrival_df['group_idx'], color='purple')
 
-# Annotate client indices for joining and arrival events
+from adjustText import adjust_text
+texts = []
 for _, row in client_arrival_df.iterrows():
-    ax.annotate(f"C{int(row['client_idx'])}", (row['time'], row['group_idx']), textcoords="offset points", xytext=(0,-15), ha='center')
+    texts.append(ax.text(row['time'], row['group_idx'], f"C{int(row['client_idx'])}", size=8))
 for _, row in client_join_df.iterrows():
-    ax.annotate(f"C{int(row['client_idx'])}", (row['time'], row['group_idx']), textcoords="offset points", xytext=(0,-15), ha='center')
+    texts.append(ax.text(row['time'], row['group_idx'], f"C{int(row['client_idx'])}", size=8))
+
+adjust_text(texts, 
+            arrowprops=dict(arrowstyle='-', color='gray', lw=0.5),
+            expand_points=(1.2, 1.2),
+            expand_text=(1.5, 1.5),
+            force_points=(0.1, 0.2),
+            force_text=(0, 0.2),
+            force_objects=0.1)
+
 
 # Labeling and formatting
 ax.set_xlabel('Time')
@@ -75,8 +92,9 @@ ax.yaxis.set_ticks(df['group_idx'].unique())  # show only integer group indices
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 legend_elements = [Line2D([0], [0], color='black', lw=2, label='Group Lifetime'),
-                   Patch(facecolor='blue', label='Expected Arrival'),
-                   Patch(facecolor='red', label='Latest Arrival'),
+                   Line2D([0], [0], color='grey', linestyle='--', lw=2, label='Max Active Time'),
+                   Patch(facecolor='blue', label='Expected Arrival Time'),
+                   Patch(facecolor='red', label='Latest Arrival Time'),
                    Patch(facecolor='green', label='Client Joined'),
                    Patch(facecolor='purple', label='Client Arrived')]
 ax.legend(handles=legend_elements, loc='upper left')
