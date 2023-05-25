@@ -102,11 +102,12 @@ def run_server(
     start_time = time.time()
 
     global_step = 0
-    client_model_step = {i : 0 for i in range(0, num_clients)}
-    client_local_time = {i : start_time for i in range(0, num_clients)}
+    client_model_step = {i : 0 for i in range(0, num_clients)}                  # What is the usage??????????????
+    client_local_time = {i : start_time for i in range(0, num_clients)}         # What is the usage??????????????
 
     server.model.to("cpu")
     global_model = server.model.state_dict()
+    # Where does the first model come from??????????????
 
     # Convert the model to bytes
     gloabl_model_buffer = io.BytesIO()
@@ -114,6 +115,7 @@ def run_server(
     global_model_bytes = gloabl_model_buffer.getvalue()
 
     # Send (buffer size, finish flag) - INFO - to all clients in a blocking way
+    # Blocking: program execution stops until all data has been sent, ensures all clients are set up before the next steps
     for i in range(1, num_clients+1):
         comm.send((len(global_model_bytes), False), dest=i, tag=i)      # dest is the rank of the receiver, tag = dest
 
@@ -161,7 +163,7 @@ def run_server(
             server.update(local_model_dict, client_model_step[client_idx], client_idx)
             global_update_time = time.time() - global_update_start
 
-            # Remove the completed request from list
+            # Remove the completed request from list   ?????????????? What is this
             recv_reqs.pop(client_idx)
             if global_step < cfg.num_epochs:
                 # Convert the updated model to bytes
@@ -245,8 +247,8 @@ def run_client(
         train_data (Dataset): training data
         test_data (Dataset): testing data
     """
-    comm_size = comm.Get_size()
-    comm_rank = comm.Get_rank()
+    comm_size = comm.Get_size() # the total number of processes within the MPI communicator
+    comm_rank = comm.Get_rank() # the rank of the current client process, ranging from 0 to comm_size - 1
 
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
 
@@ -263,7 +265,7 @@ def run_client(
 
     """
     Send the number of data to a server
-    Receive "weight_info" from a server      
+    Receive "weight_info" from a server
     """
     num_data = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
