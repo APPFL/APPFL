@@ -109,6 +109,9 @@ def main():
     if cfg.reproduce == True:
         set_seed(1)
     
+    ## Turn off save models for all client
+    cfg.save_model_state_dict = False
+    
     ## outputs  
     cfg.output_dirname = "./outputs_%s" % (args.dataset) 
     cfg.output_filename = "result"
