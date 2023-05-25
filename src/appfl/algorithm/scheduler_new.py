@@ -72,6 +72,7 @@ class SchedulerNew:
         # Update directly if the client arrives late
         if curr_time >= self.group_of_arrival[group_idx]['latest_arrival_time']:
             self.group_of_arrival[group_idx]['clients'].remove(client_idx)
+            self.logger.info(f"Client {client_idx} arrived at group {group_idx} at time {curr_time}")
             if len(self.group_of_arrival[group_idx]['clients']) == 0:
                 del self.group_of_arrival[group_idx]
             self._single_update(local_model, client_idx)
@@ -79,6 +80,7 @@ class SchedulerNew:
         else:
             self.group_of_arrival[group_idx]['clients'].remove(client_idx)
             self.group_of_arrival[group_idx]['arrived_clients'].append(client_idx)
+            self.logger.info(f"Client {client_idx} arrived at group {group_idx} at time {curr_time}")
             self.server.model.to("cpu")
             self.server.buffer(local_model, self.client_info[client_idx]['step'], client_idx, group_idx)
             if len(self.group_of_arrival[group_idx]['clients']) == 0:
@@ -95,6 +97,8 @@ class SchedulerNew:
                 'expected_arrival_time': curr_time + self.max_local_steps * self.client_info[client_idx]['speed'],
                 'latest_arrival_time': curr_time + self.max_local_steps * self.client_info[client_idx]['speed'] * self.LATEST_TIME_FACTOR
             }
+            self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter].expected_arrival_time}, latest_arrival_time: {self.group_of_arrival[self.group_counter].latest_arrival_time}")
+            self.logger.info(f"Client {client_idx} joinded group {self.group_counter} at time {curr_time}")
             # Add a timer event
             timer = threading.Timer(self.group_of_arrival[self.group_counter]['latest_arrival_time']-curr_time, self._group_aggregation, args=(self.group_counter, ))
             timer.start()
@@ -125,6 +129,7 @@ class SchedulerNew:
             self.client_info[client_idx]['local_steps'] = assigned_steps
             self.client_info[client_idx]['start_time'] = curr_time
             self.group_of_arrival[assigned_group]['clients'].append(client_idx)
+            self.logger.info(f"Client {client_idx} joinded group {assigned_group} at time {curr_time}")
             self.logger.info(f"Client {client_idx} - Join GOA {assigned_group} - Local steps {assigned_steps}")
             return True
         else:
@@ -154,6 +159,8 @@ class SchedulerNew:
             'expected_arrival_time': curr_time + assigned_steps * self.client_info[client_idx]['speed'],
             'latest_arrival_time': curr_time + assigned_steps * self.client_info[client_idx]['speed'] * self.LATEST_TIME_FACTOR
         }
+        self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter].expected_arrival_time}, latest_arrival_time: {self.group_of_arrival[self.group_counter].latest_arrival_time}")
+        self.logger.info(f"Client {client_idx} joinded group {self.group_counter} at time {curr_time}")
         # Add a timer event
         timer = threading.Timer(self.group_of_arrival[self.group_counter]['latest_arrival_time']-curr_time, self._group_aggregation, args=(self.group_counter, ))
         timer.start()
@@ -219,6 +226,7 @@ class SchedulerNew:
             # delete the group is not waiting any client
             if len(self.group_of_arrival[group_idx]['clients']) == 0:
                 del self.group_of_arrival[group_idx]
+                self.logger.info(f"Group {group_idx} is deleted at {time.time() - self.start_time}")
             # Send the model if required
             if self.iter < self.num_global_epochs:
                 for client, _ in sorted_client_speed:
