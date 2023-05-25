@@ -33,19 +33,17 @@ parser.add_argument("--device", type=str, default="cpu")
 parser.add_argument("--dataset", type=str, default="xrf_xrt_noisy_scenario_2")
 
 ## algorithm
-parser.add_argument("--federation_type", type=str, default="Federated")  
-parser.add_argument("--servername", type=str, default="ServerFedAvg")
-parser.add_argument("--clientname", type=str, default="ClientOptim")
+parser.add_argument("--federation_type", type=str, default="Fedres")   
 
 ## server  
 parser.add_argument("--num_epochs", type=int, default=2)
   
 ## clients
 parser.add_argument("--num_clients", type=int, default=4) ## FIX: {0: XRF0, 1: XRF1, 2: XRF2, 3:XRT} 
-parser.add_argument("--client_optimizer", type=str, default="Adam")
-parser.add_argument("--client_lr", type=float, default=1e-3)
+parser.add_argument("--client_optimizer", type=str, default="SGD")
+parser.add_argument("--client_lr", type=float, default=1e3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
-parser.add_argument("--batch_training", type=bool, default=True)
+parser.add_argument("--batch_training", type=bool, default=False)
 parser.add_argument("--train_data_batch_size", type=int, default=354)
 
 
@@ -55,7 +53,7 @@ if torch.cuda.is_available():
     args.device = "cuda"
  
 
-def get_data():        
+def get_data(cfg):        
     """ Regarding the training dataset: "xrf_xrt_noisy_scenario_2" as an example
     client_0 (XRF): matrix "A" and vector "b1"
     client_1 (XRF): matrix "A" and vector "b2"
@@ -74,29 +72,19 @@ def get_data():
     b1 = torch.from_numpy(data['b1']).to(torch.float32)     
     b2 = torch.from_numpy(data['b2']).to(torch.float32)     
     b3 = torch.from_numpy(data['b3']).to(torch.float32)     
-    b = torch.from_numpy(data['b']).to(torch.float32)     
- 
+    b = torch.from_numpy(data['b']).to(torch.float32)    
     
+    ## coefficient assigned for each client
+    c = torch.from_numpy(data['c'][0]).to(torch.float32)     
+    for idx in range(len(c)):
+        cfg.fed.args.coeff[idx]=c[idx].item()
+        
     train_datasets = []
     train_datasets.append(Dataset(A, b1))
     train_datasets.append(Dataset(A, b2))
     train_datasets.append(Dataset(A, b3))
     train_datasets.append(Dataset(A, b))
-             
-    # for i in range(args.num_clients):
-
-    #     train_data_input = []
-    #     train_data_label = []
-    #     for idx in split_train_data_raw[i]:
-    #         train_data_input.append(train_data_raw[idx][0].tolist())
-    #         train_data_label.append(train_data_raw[idx][1])
-
-    #     train_datasets.append(
-    #         Dataset(
-    #             torch.FloatTensor(train_data_input),
-    #             torch.tensor(train_data_label),
-    #         )
-    #     )
+              
     return train_datasets
 
 ## Run
@@ -116,9 +104,7 @@ def main():
          
     ## algorithm
     cfg.fed = eval(args.federation_type+"()")    
-    cfg.fed.servername = args.servername
-    cfg.fed.clientname = args.clientname
- 
+    
     ## server  
     cfg.num_epochs = args.num_epochs
      
@@ -131,8 +117,8 @@ def main():
     cfg.train_data_batch_size = args.train_data_batch_size
     
     """ User-defined data """
-    train_datasets = get_data()
-
+    train_datasets = get_data(cfg)
+    
     """ User-defined model """
     num_feature = train_datasets[0][0][0].size(dim=0)
     model = LinearRegression(num_feature, 1)
