@@ -97,7 +97,7 @@ class SchedulerNew:
                 'expected_arrival_time': curr_time + self.max_local_steps * self.client_info[client_idx]['speed'],
                 'latest_arrival_time': curr_time + self.max_local_steps * self.client_info[client_idx]['speed'] * self.LATEST_TIME_FACTOR
             }
-            self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter].expected_arrival_time}, latest_arrival_time: {self.group_of_arrival[self.group_counter].latest_arrival_time}")
+            self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter]['expected_arrival_time']}, latest_arrival_time: {self.group_of_arrival[self.group_counter]['latest_arrival_time']}")
             self.logger.info(f"Client {client_idx} joinded group {self.group_counter} at time {curr_time}")
             # Add a timer event
             timer = threading.Timer(self.group_of_arrival[self.group_counter]['latest_arrival_time']-curr_time, self._group_aggregation, args=(self.group_counter, ))
@@ -159,7 +159,7 @@ class SchedulerNew:
             'expected_arrival_time': curr_time + assigned_steps * self.client_info[client_idx]['speed'],
             'latest_arrival_time': curr_time + assigned_steps * self.client_info[client_idx]['speed'] * self.LATEST_TIME_FACTOR
         }
-        self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter].expected_arrival_time}, latest_arrival_time: {self.group_of_arrival[self.group_counter].latest_arrival_time}")
+        self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter]['expected_arrival_time']}, latest_arrival_time: {self.group_of_arrival[self.group_counter]['latest_arrival_time']}")
         self.logger.info(f"Client {client_idx} joinded group {self.group_counter} at time {curr_time}")
         # Add a timer event
         timer = threading.Timer(self.group_of_arrival[self.group_counter]['latest_arrival_time']-curr_time, self._group_aggregation, args=(self.group_counter, ))
