@@ -17,6 +17,9 @@ class Fedres:
         { 
             ## coefficient assigned for each client 
             "coeff": {}, 
+
+            ## ground truth (to compute the mean squared error for every iterations) 
+            "w_truth": {0:[], 1:[], 2:[], 3:[]},
             
             ## Clients optimizer
             "optim": "SGD",

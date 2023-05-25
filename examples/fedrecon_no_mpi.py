@@ -78,7 +78,18 @@ def get_data(cfg):
     c = torch.from_numpy(data['c'][0]).to(torch.float32)     
     for idx in range(len(c)):
         cfg.fed.args.coeff[idx]=c[idx].item()
-        
+    ## ground truth (to compute the mean squared error for every iterations)    
+    w1_truth = data['w1'].tolist()
+    w2_truth = data['w2'].tolist()
+    w3_truth = data['w3'].tolist()
+    w_truth = data['w'].tolist()
+ 
+    for idx in range(len(w1_truth)):        
+        cfg.fed.args.w_truth[0].append(w1_truth[idx])         
+        cfg.fed.args.w_truth[1].append(w2_truth[idx])         
+        cfg.fed.args.w_truth[2].append(w3_truth[idx])         
+        cfg.fed.args.w_truth[3].append(w_truth[idx])         
+            
     train_datasets = []
     train_datasets.append(Dataset(A, b1))
     train_datasets.append(Dataset(A, b2))
