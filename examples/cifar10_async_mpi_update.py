@@ -48,7 +48,7 @@ parser.add_argument("--server", type=str, default="ServerFedAsynchronous",
                     ])
 
 ## Fed Async
-parser.add_argument("--gradient_based", type=bool, default=False, help="Whether the algorithm requires gradient from the model")
+parser.add_argument("--gradient_based", action='store_true', help="Whether the algorithm requires gradient from the model")
 parser.add_argument("--alpha", type=float, default=0.9, help="Mixing parameter for FedAsync Algorithm")
 parser.add_argument("--staleness_func", type=str, choices=['constant', 'polynomial', 'hinge'], default='polynomial')
 parser.add_argument("--a", type=float, default=0.5, help="First parameter for the staleness function")
