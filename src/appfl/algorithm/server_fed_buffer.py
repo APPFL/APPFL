@@ -46,7 +46,7 @@ class ServerFedBuffer(FedServer):
         if self.counter == self.K:
             self.global_state = copy.deepcopy(self.model.state_dict())
             for name in self.model.state_dict():
-                if name is self.list_named_parameters:
+                if name in self.list_named_parameters:
                     self.global_state[name] -= self.pseudo_grad[name]
                 else:
                     self.global_state[name] = torch.div(self.pseudo_grad[name], self.counter)

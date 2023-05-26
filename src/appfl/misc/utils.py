@@ -78,7 +78,10 @@ def create_custom_logger(logger, cfg: DictConfig):
 
     dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+        try:
+            os.mkdir(dir)
+        except:
+            pass
     output_filename = cfg.output_filename + "_server"
 
     file_ext = ".txt"

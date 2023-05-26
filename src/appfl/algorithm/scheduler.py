@@ -9,6 +9,20 @@ from .algorithm import *
 from torch.optim import *
 from logging import Logger
 
+
+""" Dynamically assign clients to groups:
+1. Assess client's computation speed 
+2. When a client sends its local model to server, server decides whether to update immediately or wait for more clients in the same group until this group's "latest arrival time"
+3. If later than "latest arrival time", the server immediately apply client's update. If not, store client's update in a buffer
+4. The assignment of a client to a group is done in "_assign_group". If no groups exist, a new group is created with the client. 
+   If there are existing groups, the client is either joined to an existing group with "_join_group", or a new group is created for the client with "_create_group".
+5. Joining an existing group involves checking if the client can finish its local training within the remaining time of the group's "expected arrival time"
+6. "_create_group" tries to assign as many as epochs as possible while remaining in the range [EMIN, EMAX], and considering possible group aggregation
+7. "_group_aggregation" is called either when all clients in the group have finished their updates, or when the group's latest arrival time is reached. 
+   This function aggregates all the local updates in the group, applies them to the global model, assigns new groups for the clients based on their speed,
+   and deletes empty groups after assignment.
+"""
+
 class Scheduler:
     def __init__(self, comm: MPI.Comm, server: Any, emax: int, num_clients: int, num_global_epochs: int, lr: int, logger: Logger):
         self.iter = 0
@@ -49,6 +63,7 @@ class Scheduler:
         self._update(local_model, client_idx)
 
     def _update(self, local_model: dict, client_idx: int):
+        """Decides whether to perform a single update or group update"""
         self.iter += 1
         self.validation_flag = False
         # Get the client group
@@ -77,6 +92,7 @@ class Scheduler:
             self.server.update_all()
 
     def _group_update(self, local_model: dict, client_idx: int, group_idx: int):
+        """Decides whether to perform a single update or waits until group timer event gets triggered based on the client's arrival time"""
         curr_time = time.time() - self.start_time
         # Update directly if the client arrives late
         if curr_time >= self.group_of_arrival[group_idx]['latest_arrival_time']:
@@ -94,7 +110,7 @@ class Scheduler:
                 self._group_aggregation(group_idx)
 
     def _assign_group(self, client_idx: int):
-        """Assign a group to the client or create a new group for it when no suitable one exists."""
+        """Assign a group to the client or create a new group for it when no suitable one exists"""
         curr_time = time.time() - self.start_time
         # Create a new group if no group exists at all
         if len(self.group_of_arrival) == 0:
@@ -118,6 +134,10 @@ class Scheduler:
                 self._create_group(client_idx)
 
     def _join_group(self, client_idx: int):
+        """Attempt to assign a client to a group
+           by using the remaining time of a group's expected arrival time to compute the number of epochs it can handle if joined this group,
+           and trying to assign it to the group which allows handling most number of epochs while the number remaining in the range [EMIN, EMAX_BOUND]
+        """
         curr_time = time.time() - self.start_time
         assigned_group = -1     # assigned group for the client 
         assigned_epoch = -1     # assigned local training epochs for the client
@@ -186,12 +206,14 @@ class Scheduler:
                 (1-self.SPEED_MOMENTUM)*self.client_info[client_idx]['speed'] + self.SPEED_MOMENTUM*local_speed
 
     def _recv_model(self, local_model_size: int, client_idx: int):
+        """Receives the local model from a client"""
         local_model_bytes = np.empty(local_model_size, dtype=np.byte)
         self.comm.Recv(local_model_bytes, source=client_idx+1, tag=client_idx+1+self.comm_size)
         local_model_buffer = io.BytesIO(local_model_bytes.tobytes())
         return torch.load(local_model_buffer)
 
     def _send_model(self, client_idx: int):
+        """Sends the updated global model to a client"""
         # Record total epochs and decay the learning rate
         self.client_info[client_idx]['total_epochs'] += self.client_info[client_idx]['epoch']
         client_lr = self.lr * (self.LR_DECAY) ** (math.floor(self.client_info[client_idx]['total_epochs']/self.EMAX))
