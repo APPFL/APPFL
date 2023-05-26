@@ -8,25 +8,26 @@ import torch
 - The main idea of the proposed algorithm is to utilize "residual" for updating and customize the initial points for each client.
 """
 
+
 @dataclass
 class Fedres:
     type: str = "fedres"
     servername: str = "FedresServer"
-    clientname: str = "FedresClient"    
+    clientname: str = "FedresClient"
     args: DictConfig = OmegaConf.create(
-        { 
-            ## coefficient assigned for each client 
-            "coeff": {}, 
-
-            ## ground truth (to compute the mean squared error for every iterations) 
-            "w_truth": {0:[], 1:[], 2:[], 3:[]},
-            
+        {
+            ##
+            "logginginfo": {},
+            ## coefficient assigned for each client
+            "coeff": {},
+            ## ground truth (to compute the mean squared error for every iterations)
+            "w_truth": {0: [], 1: [], 2: [], 3: []},
             ## Clients optimizer
             "optim": "SGD",
             "num_local_epochs": 1,
             "optim_args": {
                 "lr": 1e3,
-                "momentum":0.9,
-            }
+                "momentum": 0.9,
+            },
         }
     )

@@ -19,17 +19,33 @@ class FedresServer(BaseServer):
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
 
+        ## ground_truth
+        self.w = OrderedDict()
+        for i in range(self.num_clients):
+            self.w[i] = torch.tensor(self.w_truth[i]).to(torch.float32)
+            self.w[i] = self.w[i].reshape((self.w[i].shape[0], 1))
+        ## violation of the convex combination constraint
+        self.cc = 0.0
+
     def update(self, local_states: OrderedDict):
         """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())
         super(FedresServer, self).primal_recover_from_local_states(local_states)
 
         """ change device """
+
         for i in range(self.num_clients):
             for name in self.model.state_dict():
                 self.primal_states[i][name] = self.primal_states[i][name].to(
                     self.device
                 )
+
+                ## compute mean square error || current_solution - ground_truth ||^2
+                self.logginginfo["mse[%s]" % (i)] = torch.mean(
+                    torch.square(
+                        self.primal_states[i][name] - self.w[i].transpose(1, 0)
+                    )
+                ).item()
 
         """ global_state calculation """
         xrt_idx = self.num_clients - 1
@@ -45,16 +61,54 @@ class FedresServer(BaseServer):
             self.global_state[name] = 0.5 * (
                 self.primal_states[xrt_idx][name] - y[name]
             )
+            self.cc = torch.mean(
+                torch.square(self.primal_states[xrt_idx][name] - y[name])
+            ).item()
 
         """ model update """
         self.model.load_state_dict(self.global_state)
 
     def logging_iteration(self, cfg, logger, t):
+        ## log title
         if t == 0:
-            title = super(FedresServer, self).log_title()
+            title = "%10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s" % (
+                "Iter",
+                "TrainLoss",
+                "MSE0",
+                "MSE1",
+                "MSE2",
+                "MSE3",
+                "cc",
+                "Local(s)",
+                "Global(s)",
+                "Valid(s)",
+                "PerIter(s)",
+                "Elapsed(s)",
+            )
             logger.info(title)
+        ## log contents
+        train_loss = 0.0
+        for i in range(cfg.num_clients):
+            train_loss += self.logginginfo["train_loss[%s]" % (i)]
+            # print("client=", i,"  ", self.logginginfo["train_loss[%s]"%(i)], "  ", self.logginginfo["mse[%s]"%(i)])
 
-        contents = super(FedresServer, self).log_contents(cfg, t)
+        contents = (
+            "%10d %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.2f %10.2f %10.2f %10.2f %10.2f"
+            % (
+                t + 1,
+                train_loss,
+                self.logginginfo["mse[0]"],
+                self.logginginfo["mse[1]"],
+                self.logginginfo["mse[2]"],
+                self.logginginfo["mse[3]"],
+                self.cc,
+                cfg["logginginfo"]["LocalUpdate_time"],
+                cfg["logginginfo"]["GlobalUpdate_time"],
+                cfg["logginginfo"]["Validation_time"],
+                cfg["logginginfo"]["PerIter_time"],
+                cfg["logginginfo"]["Elapsed_time"],
+            )
+        )
         logger.info(contents)
 
     def logging_summary(self, cfg, logger):
@@ -156,5 +210,8 @@ class FedresClient(BaseClient):
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = 0.0
+
+        ## store train_loss
+        self.logginginfo["train_loss[%s]" % (self.id)] = train_loss
 
         return self.local_state
