@@ -1,5 +1,6 @@
 import torch
 import os
+import copy
 from omegaconf import DictConfig
 import logging
 import random
@@ -7,12 +8,13 @@ import numpy as np
 import pickle
 
 def validation(self, dataloader, metric = None):
-
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
-    self.model.to(self.device)
-    self.model.eval()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    validation_model = copy.deepcopy(self.model)
+    validation_model.to(device)
+    validation_model.eval()
 
     if metric is None:
         loss = 0
@@ -23,9 +25,9 @@ def validation(self, dataloader, metric = None):
             for img, target in dataloader:
                 tmpcnt += 1
                 tmptotal += len(target)
-                img = img.to(self.device)
-                target = target.to(self.device)
-                output = self.model(img)
+                img = img.to(device)
+                target = target.to(device)
+                output = validation_model(img)
                 loss += self.loss_fn(output, target).item()
 
                 if output.shape[1] == 1:
@@ -39,23 +41,20 @@ def validation(self, dataloader, metric = None):
         # self.model.to("cpu")
         loss = loss / tmpcnt
         accuracy = 100.0 * correct / tmptotal
-        return loss, accuracy
     else:
         loss, tmpcnt = 0, 0
         with torch.no_grad():
             for img, target in dataloader:
                 tmpcnt += 1
-                img = img.to(self.device)
-                target = target.to(self.device)
-                output = self.model(img)
+                img = img.to(device)
+                target = target.to(device)
+                output = validation_model(img)
                 loss += self.loss_fn(output, target).item()
         loss = loss / tmpcnt
-        accuracy = _evaluate_model_on_tests(self.model, dataloader, metric)
-        return loss, accuracy
+        accuracy = _evaluate_model_on_tests(validation_model, dataloader, metric)
+    return loss, accuracy
 
 def _evaluate_model_on_tests(model, test_dataloader, metric):
-    if torch.cuda.is_available():
-        model = model.cuda()
     model.eval()
     with torch.no_grad():
         test_dataloader_iterator = iter(test_dataloader)
