@@ -11,6 +11,7 @@ import copy
 
 import numpy as np
 import time
+from torch.utils.tensorboard import SummaryWriter
 
 
 class FedresServer(BaseServer):
@@ -26,6 +27,8 @@ class FedresServer(BaseServer):
             self.w[i] = self.w[i].reshape((self.w[i].shape[0], 1))
         ## violation of the convex combination constraint
         self.cc = 0.0
+        ## tensorboard
+        self.writer = SummaryWriter("./tensorboard/%s"%(self.t_filename))
 
     def update(self, local_states: OrderedDict):
         """Inputs for the global model update"""
@@ -67,6 +70,7 @@ class FedresServer(BaseServer):
 
         """ model update """
         self.model.load_state_dict(self.global_state)
+    
 
     def logging_iteration(self, cfg, logger, t):
         ## log title
@@ -110,6 +114,18 @@ class FedresServer(BaseServer):
             )
         )
         logger.info(contents)
+
+        """ tensorboard """
+        epoch = t+1
+        self.writer.add_scalar('Loss', train_loss, epoch)
+        self.writer.add_scalar('MSE: XRF1', self.logginginfo["mse[0]"], epoch)
+        self.writer.add_scalar('MSE: XRF2', self.logginginfo["mse[1]"], epoch)
+        self.writer.add_scalar('MSE: XRF3', self.logginginfo["mse[2]"], epoch)
+        self.writer.add_scalar('MSE: XRT', self.logginginfo["mse[3]"], epoch)
+        self.writer.add_scalar('Violation of CC', self.cc, epoch)
+        self.writer.add_scalar('Elapsed[s]', cfg["logginginfo"]["Elapsed_time"], epoch)
+        self.writer.add_scalar('PerIter[s]', cfg["logginginfo"]["PerIter_time"], epoch)
+        
 
     def logging_summary(self, cfg, logger):
         print("-----DONE-----")

@@ -16,7 +16,9 @@ class Fedres:
     clientname: str = "FedresClient"
     args: DictConfig = OmegaConf.create(
         {
-            ##
+            ## tensorboard file name
+            "t_filename": "",
+            ## logging information
             "logginginfo": {},
             ## coefficient assigned for each client
             "coeff": {},

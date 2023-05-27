@@ -118,8 +118,8 @@ def main():
 
     ## outputs
     cfg.output_dirname = "./outputs_%s" % (args.dataset)
-    cfg.output_filename = "result"
-
+    cfg.output_filename = "result" 
+    
     ## algorithm
     cfg.fed = eval(args.federation_type + "()")
 
@@ -133,6 +133,9 @@ def main():
     cfg.fed.args.num_local_epochs = args.num_local_epochs
     cfg.batch_training = args.batch_training
     cfg.train_data_batch_size = args.train_data_batch_size
+
+    ## tensorboard
+    cfg.fed.args.t_filename="%s_%s" % (args.dataset, args.federation_type)    
 
     """ User-defined data """
     train_datasets = get_data(cfg)
