@@ -47,7 +47,7 @@ class ServerFedAsynchronous(FedServer):
         self.global_state = copy.deepcopy(self.model.state_dict())
         self.compute_step(local_state, init_step, client_idx)
         for name in self.model.state_dict():
-            if name is self.list_named_parameters:
+            if name in self.list_named_parameters:
                 self.global_state[name] += self.step[name]
             else:
                 self.global_state[name] = local_state[name]
