@@ -50,6 +50,7 @@ parser.add_argument("--staleness_func", type=str, choices=['constant', 'polynomi
 parser.add_argument("--a", type=float, default=0.5, help="First parameter for the staleness function")
 parser.add_argument("--b", type=int, default=4, help="Second parameter for Hinge staleness function")
 parser.add_argument("--K", type=int, default=3, help="Buffer size for FedBuffer algorithm")
+parser.add_argument("--val_range", type=int, default=10, help="Perform server validation every serveral epochs")
 
 ## Simulation
 parser.add_argument("--do_simulation", action="store_true", help="Whether to do client local training-time simulation")
@@ -96,9 +97,11 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_%s_%s_%s_%s" % (
+    cfg.output_dirname = "./outputs_%s_%s_%sClients_%s_%s_%sEpochs" % (
         args.dataset,
         args.partition,
+        args.num_clients,
+        args.simulation_distrib if args.do_simulation else "noSim",
         args.server,
         args.num_epochs,
     )
@@ -126,6 +129,7 @@ def main():
     cfg.fed.args.staleness_func.name = args.staleness_func
     cfg.fed.args.staleness_func.args.a = args.a
     cfg.fed.args.staleness_func.args.b = args.b
+    cfg.fed.args.val_range = args.val_range
 
     start_time = time.time()
 

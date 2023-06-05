@@ -202,29 +202,30 @@ def run_server(
                 client_local_time[client_idx] = time.time()
 
             # Do server validation
-            validation_start = time.time()
-            if cfg.validation == True:
-                test_loss, test_accuracy = validation(server, test_dataloader, flamby_metric)
-                if test_accuracy > best_accuracy:
-                    best_accuracy = test_accuracy
-                if cfg.use_tensorboard:
-                    # Add them to tensorboard
-                    writer.add_scalar("server_test_accuracy", test_accuracy, global_step)
-                    writer.add_scalar("server_test_loss", test_loss, global_step)
-            cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
-            cfg["logginginfo"]["PerIter_time"] = time.time() - local_start_time
-            cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
-            cfg["logginginfo"]["test_loss"] = test_loss
-            cfg["logginginfo"]["test_accuracy"] = test_accuracy
-            cfg["logginginfo"]["BestAccuracy"] = best_accuracy
-            cfg["logginginfo"]["LocalUpdate_time"] = local_update_time
-            cfg["logginginfo"]["GlobalUpdate_time"] = global_update_time
-            logger.info(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
-            if global_step != 1:
-                logger.info(server.log_title())
-            server.logging_iteration(cfg, logger, global_step-1)
-            metric[0].append(cfg["logginginfo"]["Elapsed_time"])
-            metric[1].append(test_accuracy)
+            if global_step >= cfg.num_epochs or global_step % cfg.fed.args.val_range == 0:
+                validation_start = time.time()
+                if cfg.validation == True:
+                    test_loss, test_accuracy = validation(server, test_dataloader, flamby_metric)
+                    if test_accuracy > best_accuracy:
+                        best_accuracy = test_accuracy
+                    if cfg.use_tensorboard:
+                        # Add them to tensorboard
+                        writer.add_scalar("server_test_accuracy", test_accuracy, global_step)
+                        writer.add_scalar("server_test_loss", test_loss, global_step)
+                cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
+                cfg["logginginfo"]["PerIter_time"] = time.time() - local_start_time
+                cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
+                cfg["logginginfo"]["test_loss"] = test_loss
+                cfg["logginginfo"]["test_accuracy"] = test_accuracy
+                cfg["logginginfo"]["BestAccuracy"] = best_accuracy
+                cfg["logginginfo"]["LocalUpdate_time"] = local_update_time
+                cfg["logginginfo"]["GlobalUpdate_time"] = global_update_time
+                logger.info(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
+                if global_step != 1:
+                    logger.info(server.log_title())
+                server.logging_iteration(cfg, logger, global_step-1)
+                metric[0].append(cfg["logginginfo"]["Elapsed_time"])
+                metric[1].append(test_accuracy)
 
             # Break after max updates
             if global_step == cfg.num_epochs: 
