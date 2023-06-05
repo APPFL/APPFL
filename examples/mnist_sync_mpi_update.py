@@ -39,6 +39,15 @@ parser.add_argument("--mparam_1", type=float, default=0.9)
 parser.add_argument("--mparam_2", type=float, default=0.99)
 parser.add_argument("--adapt_param", type=float, default=0.001)
 
+
+## Simulation
+parser.add_argument("--do_simulation", action="store_true", help="Whether to do client local training-time simulation")
+parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp"], help="Local trianing-time distribution for different clients")
+parser.add_argument("--avg_tpb", type=float, default=0.15, help="Average time-per-batch for clint local trianing-time simulation")
+parser.add_argument("--global_std_scale", type=float, default=0.5, help="Std scale for time-per-batch for different clients")
+parser.add_argument("--exp_scale", type=float, default=10, help="Scale for exponential distribution")
+parser.add_argument("--local_std_scale", type=float, default=0.05, help="Std scale for time-per-batch for different experiments of one client")
+
 args = parser.parse_args()
 
 if torch.cuda.is_available():
@@ -90,6 +99,15 @@ def main():
     cfg.fed.args.server_momentum_param_1 = args.mparam_1
     cfg.fed.args.server_momentum_param_2 = args.mparam_2
 
+    ## simulation
+    cfg.fed.args.do_simulation = args.do_simulation
+    cfg.fed.args.simulation_distrib = args.simulation_distrib
+    cfg.fed.args.avg_tpb = args.avg_tpb
+    cfg.fed.args.global_std_scale = args.global_std_scale
+    cfg.fed.args.local_std_scale = args.local_std_scale
+    cfg.fed.args.exp_scale = args.exp_scale
+    cfg.fed.args.seed = args.seed
+
     start_time = time.time()
 
     """ User-defined model """
@@ -117,4 +135,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-# mpiexec -np 7 python mnist_sync_mpi_update.py --num_epochs 12
+# mpiexec -np 7 python mnist_sync_mpi_update.py --num_epochs 12 --do_simulation

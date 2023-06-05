@@ -90,6 +90,20 @@ def run_server(
 
     weight = comm.scatter(weight, root=0)
 
+    if cfg.fed.args.do_simulation:
+        np.random.seed(cfg.fed.args.seed)
+        if cfg.fed.args.simulation_distrib == 'normal':
+            while True:
+                tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=cfg.fed.args.avg_tpb*cfg.fed.args.global_std_scale, size=comm_size)
+                if np.all(tpb > 0): 
+                    tpb = list(tpb)
+                    break
+        elif cfg.fed.args.simulation_distrib == 'exp':
+            tpb = list(np.random.exponential(scale=cfg.fed.args.exp_scale, size=comm_size) * (cfg.fed.args.avg_tpb/cfg.fed.args.exp_scale))
+        else:
+            raise NotImplementedError
+        _ = comm.scatter(tpb, root=0)
+
     # Asynchronous federated learning server (aggregator)
     server = eval(cfg.fed.servername)(
         weights, 
@@ -144,21 +158,21 @@ def run_server(
 
             # Increment the global step
             global_step += 1
-            logger.info(f"[Server Log] [Step #{global_step:3}] Server gets model size from client #{client_idx}")
+            # logger.info(f"[Server Log] [Step #{global_step:3}] Server gets model size from client #{client_idx}")
             
             # Allocate a buffer to receive the model byte stream
             local_model_bytes = np.empty(local_model_size, dtype=np.byte)
 
             # Receive the model byte stream
             comm.Recv(local_model_bytes, source=client_idx+1, tag=client_idx+1+comm_size)
-            logger.info(f"[Server Log] [Step #{global_step:3}] Server gets model from client #{client_idx}")
+            # logger.info(f"[Server Log] [Step #{global_step:3}] Server gets model from client #{client_idx}")
 
             # Load the model byte to state dict
             local_model_buffer = io.BytesIO(local_model_bytes.tobytes())
             local_model_dict = torch.load(local_model_buffer)
             
             # Perform global update
-            logger.info(f"[Server Log] [Step #{global_step:3}] Server updates global model based on the model from client #{client_idx}")
+            # logger.info(f"[Server Log] [Step #{global_step:3}] Server updates global model based on the model from client #{client_idx}")
             server.model.to("cpu")
             server.update(local_model_dict, client_model_step[client_idx], client_idx)
             global_update_time = time.time() - global_update_start
@@ -274,6 +288,11 @@ def run_client(
     weight = None
     weight = comm.scatter(weight, root=0)
 
+    if cfg.fed.args.do_simulation:
+        time_per_batch = None
+        time_per_batch = comm.scatter(time_per_batch, root=0)
+        print(f"Time per batch for client {comm_rank-1} is {time_per_batch}")
+
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         batchsize[cid] = cfg.train_data_batch_size
@@ -317,13 +336,13 @@ def run_client(
     while True:
         # Receive model size from the server
         global_model_size, done = comm.recv(source=0, tag=comm_rank)
-        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model size")
-        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model size\n")
-        outfile[cid].flush()
+        # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model size")
+        # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model size\n")
+        # outfile[cid].flush()
         if done: 
-            logger.info(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
-            outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training\n")
-            outfile[cid].flush()
+            # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
+            # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training\n")
+            # outfile[cid].flush()
             break
 
         # Allocate a buffer to receive the byte stream
@@ -331,9 +350,14 @@ def run_client(
         
         # Receive the byte stream
         comm.Recv(global_model_bytes, source=0, tag=comm_rank+comm_size)
-        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model")
-        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model\n")
-        outfile[cid].flush()
+        # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model")
+        # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model\n")
+        # outfile[cid].flush()
+
+        if cfg.fed.args.do_simulation:
+            local_training_time = np.random.normal(loc=time_per_batch, scale=cfg.fed.args.local_std_scale*time_per_batch)
+            local_training_time *= cfg.fed.args.local_steps
+        start_time = time.time()
 
         # Load the byte to state dict
         global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
@@ -361,6 +385,11 @@ def run_client(
         local_model_buffer = io.BytesIO()
         torch.save(local_model, local_model_buffer)
         local_model_bytes = local_model_buffer.getvalue()
+
+        if cfg.fed.args.do_simulation:
+            while time.time()-start_time < local_training_time:
+                time.sleep(1)
+            print(f"Local training time for client {comm_rank-1} is {time.time()-start_time} sec")
 
         # Send the size of local model first
         comm.send(len(local_model_bytes), dest=0, tag=comm_rank)

@@ -90,6 +90,20 @@ def run_server(
 
     weight = comm.scatter(weight, root=0)
 
+    if cfg.fed.args.do_simulation:
+        np.random.seed(cfg.fed.args.seed)
+        if cfg.fed.args.simulation_distrib == 'normal':
+            while True:
+                tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=cfg.fed.args.avg_tpb*cfg.fed.args.global_std_scale, size=comm_size)
+                if np.all(tpb > 0): 
+                    tpb = list(tpb)
+                    break
+        elif cfg.fed.args.simulation_distrib == 'exp':
+            tpb = list(np.random.exponential(scale=cfg.fed.args.exp_scale, size=comm_size) * (cfg.fed.args.avg_tpb/cfg.fed.args.exp_scale))
+        else:
+            raise NotImplementedError
+        _ = comm.scatter(tpb, root=0)
+
     # Asynchronous federated learning server (aggregator)
     server = eval(cfg.fed.servername)(
         weights, 
@@ -108,7 +122,8 @@ def run_server(
     global_model_bytes = gloabl_model_buffer.getvalue()
 
     # Send (buffer size, finish flag) - INFO - to all clients in a blocking way
-    warmup_steps = max(math.floor(0.2 * cfg.fed.args.local_steps), 1)
+    # warmup_steps = max(math.floor(0.2 * cfg.fed.args.local_steps), 1)
+    warmup_steps = cfg.fed.args.local_steps
     for i in range(1, num_clients+1):
         comm.send((len(global_model_bytes), False, warmup_steps, cfg.fed.args.optim_args.lr), dest=i, tag=i)      # dest is the rank of the receiver, tag = dest
 
@@ -132,7 +147,7 @@ def run_server(
         client_idx, local_model_size = MPI.Request.waitany(recv_reqs)
         if client_idx != MPI.UNDEFINED:
             global_step += 1
-            logger.info(f"[Server Log] [Step #{global_step:3}] Server gets model size from client #{client_idx}")
+            # logger.info(f"[Server Log] [Step #{global_step:3}] Server gets model size from client #{client_idx}")
             scheduler.local_update(local_model_size, client_idx)
             recv_reqs.pop(client_idx)
             if global_step < cfg.num_epochs:
@@ -155,7 +170,7 @@ def run_server(
                 cfg["logginginfo"]["BestAccuracy"] = best_accuracy
                 cfg["logginginfo"]["LocalUpdate_time"] = 0 # TODO
                 cfg["logginginfo"]["GlobalUpdate_time"] = 0 # TODO
-                logger.info(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
+                # logger.info(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
                 if global_step != 1:
                     logger.info(server.log_title())
                 server.logging_iteration(cfg, logger, global_step-1)
@@ -222,6 +237,11 @@ def run_client(
     weight = None
     weight = comm.scatter(weight, root=0)
 
+    if cfg.fed.args.do_simulation:
+        time_per_batch = None
+        time_per_batch = comm.scatter(time_per_batch, root=0)
+        print(f"Time per batch for client {comm_rank-1} is {time_per_batch}")
+
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         batchsize[cid] = cfg.train_data_batch_size
@@ -267,26 +287,31 @@ def run_client(
         global_model_size, done, num_local_steps, lr = comm.recv(source=0, tag=comm_rank)
         client.local_steps = num_local_steps
         client.optim_args.lr = lr
-        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps with model size {global_model_size}")
-        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps\n")
-        outfile[cid].flush()
+        # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps with model size {global_model_size}")
+        # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps\n")
+        # outfile[cid].flush()
         if done: 
-            logger.info(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
-            outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training\n")
-            outfile[cid].flush()
+            # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
+            # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training\n")
+            # outfile[cid].flush()
             break
 
         # Allocate a buffer to receive the byte stream
         global_model_bytes = np.empty(global_model_size, dtype=np.byte)
         import sys
-        logger.info(f"The size of the buffer is {sys.getsizeof(global_model_bytes)}")
+        # logger.info(f"The size of the buffer is {sys.getsizeof(global_model_bytes)}")
         
         
         # Receive the byte stream
         comm.Recv(global_model_bytes, source=0, tag=comm_rank+comm_size)
-        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model")
-        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model\n")
-        outfile[cid].flush()
+        # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model")
+        # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model\n")
+        # outfile[cid].flush()
+
+        if cfg.fed.args.do_simulation:
+            local_training_time = np.random.normal(loc=time_per_batch, scale=cfg.fed.args.local_std_scale*time_per_batch)
+            local_training_time *= num_local_steps
+        start_time = time.time()
 
         # Load the byte to state dict
         global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
@@ -308,6 +333,11 @@ def run_client(
         local_model_buffer = io.BytesIO()
         torch.save(local_model, local_model_buffer)
         local_model_bytes = local_model_buffer.getvalue()
+
+        if cfg.fed.args.do_simulation:
+            while time.time()-start_time < local_training_time:
+                time.sleep(1)
+            print(f"Local training time for client {comm_rank-1} is {time.time()-start_time} sec")
 
         # Send the size of local model first
         comm.send(len(local_model_bytes), dest=0, tag=comm_rank)

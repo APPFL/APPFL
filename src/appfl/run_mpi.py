@@ -101,6 +101,21 @@ def run_server(
 
     weight = comm.scatter(weight, root=0)
 
+    if cfg.fed.args.do_simulation:
+        np.random.seed(cfg.fed.args.seed)
+        if cfg.fed.args.simulation_distrib == 'normal':
+            while True:
+                tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=cfg.fed.args.avg_tpb*cfg.fed.args.global_std_scale, size=comm_size)
+                if np.all(tpb > 0): 
+                    tpb = list(tpb)
+                    break
+        elif cfg.fed.args.simulation_distrib == 'exp':
+            tpb = list(np.random.exponential(scale=cfg.fed.args.exp_scale, size=comm_size) * (cfg.fed.args.avg_tpb/cfg.fed.args.exp_scale))
+        else:
+            raise NotImplementedError
+        _ = comm.scatter(tpb, root=0)
+
+
     # TODO: do we want to use root as a client?
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args
@@ -232,6 +247,11 @@ def run_client(
     weight = None
     weight = comm.scatter(weight, root=0)
 
+    if cfg.fed.args.do_simulation:
+        time_per_batch = None
+        time_per_batch = comm.scatter(time_per_batch, root=0)
+        print(f"Time per batch for client {comm_rank-1} is {time_per_batch}")
+
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         batchsize[cid] = cfg.train_data_batch_size
@@ -279,6 +299,11 @@ def run_client(
         global_state = comm.bcast(None, root=0)
 
         """ Update "local_states" based on "global_state" """
+        if cfg.fed.args.do_simulation:
+            local_training_time = np.random.normal(loc=time_per_batch, scale=cfg.fed.args.local_std_scale*time_per_batch)
+            local_training_time *= cfg.fed.args.local_steps
+        start_time = time.time()
+
         reqlist = []
         for client in clients:
             cid = client.id
@@ -286,7 +311,13 @@ def run_client(
             client.model.load_state_dict(global_state)
 
             ## client update     
-            ls = client.update()                            
+            ls = client.update()           
+
+            if cfg.fed.args.do_simulation:
+                while time.time()-start_time < local_training_time:
+                    time.sleep(1)
+                print(f"Local training time for client {comm_rank-1} is {time.time()-start_time} sec")
+
             req = comm.isend(ls, dest=0, tag=cid)
             reqlist.append(req)
 

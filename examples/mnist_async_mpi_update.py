@@ -51,6 +51,14 @@ parser.add_argument("--a", type=float, default=0.5, help="First parameter for th
 parser.add_argument("--b", type=int, default=4, help="Second parameter for Hinge staleness function")
 parser.add_argument("--K", type=int, default=3, help="Buffer size for FedBuffer algorithm")
 
+## Simulation
+parser.add_argument("--do_simulation", action="store_true", help="Whether to do client local training-time simulation")
+parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp"], help="Local trianing-time distribution for different clients")
+parser.add_argument("--avg_tpb", type=float, default=0.15, help="Average time-per-batch for clint local trianing-time simulation")
+parser.add_argument("--global_std_scale", type=float, default=0.5, help="Std scale for time-per-batch for different clients")
+parser.add_argument("--exp_scale", type=float, default=10, help="Scale for exponential distribution")
+parser.add_argument("--local_std_scale", type=float, default=0.05, help="Std scale for time-per-batch for different experiments of one client")
+
 args = parser.parse_args()
 
 if torch.cuda.is_available():
@@ -101,6 +109,15 @@ def main():
     cfg.fed.args.server_adapt_param = args.adapt_param
     cfg.fed.args.server_momentum_param_1 = args.mparam_1
     cfg.fed.args.server_momentum_param_2 = args.mparam_2
+
+    ## simulation
+    cfg.fed.args.do_simulation = args.do_simulation
+    cfg.fed.args.simulation_distrib = args.simulation_distrib
+    cfg.fed.args.avg_tpb = args.avg_tpb
+    cfg.fed.args.global_std_scale = args.global_std_scale
+    cfg.fed.args.local_std_scale = args.local_std_scale
+    cfg.fed.args.exp_scale = args.exp_scale
+    cfg.fed.args.seed = args.seed
 
     ## fed async/fed buffer
     cfg.fed.args.K = args.K
