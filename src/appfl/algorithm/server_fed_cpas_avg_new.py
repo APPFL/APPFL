@@ -18,15 +18,22 @@ class ServerFedCPASAvgNew(FedServer):
         )
         self.group_pseudo_grad = OrderedDict()
         self.general_buffer = OrderedDict()
-        for name, _ in self.model.named_parameters():
+        for name in self.model.state_dict():
             self.general_buffer[name] = torch.zeros_like(self.model.state_dict()[name])
+        self.general_buffer_size = 0
+        self.list_named_parameters = []
+        for name, _ in self.model.named_parameters():
+            self.list_named_parameters.append(name)
 
     def update(self, local_gradient: dict, init_step: int, client_idx: int):
         """Update the model directly using the client local gradient with staleness factor applied."""
         self.global_state = copy.deepcopy(self.model.state_dict())
         alpha_t = self.alpha * self.staleness(self.global_step - init_step)
-        for name, _ in self.model.named_parameters():
-            self.global_state[name] -= local_gradient[name] * self.weights[client_idx] * alpha_t
+        for name in self.model.state_dict():
+            if name in self.list_named_parameters:
+                self.global_state[name] -= local_gradient[name] * self.weights[client_idx] * alpha_t
+            else:
+                self.global_state[name] = local_gradient[name]
         self.model.load_state_dict(self.global_state)
         self.global_step += 1
 
@@ -34,34 +41,58 @@ class ServerFedCPASAvgNew(FedServer):
         """Buffer the local gradient from the client of a certain group."""
         if group_idx not in self.group_pseudo_grad:
             self.group_pseudo_grad[group_idx] = OrderedDict()
-            for name, _ in self.model.named_parameters():
+            for name in self.model.state_dict():
                 self.group_pseudo_grad[group_idx][name] = torch.zeros_like(self.model.state_dict()[name])
+            self.group_pseudo_grad[group_idx]['_counter'] = 0
         alpha_t = self.alpha * self.staleness(self.global_step - init_step)
-        for name, _ in self.model.named_parameters():
-            self.group_pseudo_grad[group_idx][name] += local_gradient[name] * self.weights[client_idx] * alpha_t
+        for name in self.model.state_dict():
+            if name in self.list_named_parameters:
+                self.group_pseudo_grad[group_idx][name] += local_gradient[name] * self.weights[client_idx] * alpha_t
+            else:
+                self.group_pseudo_grad[group_idx][name] += local_gradient[name]
+        self.group_pseudo_grad[group_idx]['_counter'] += 1
         
     def single_buffer(self, local_gradient: dict, init_step: int, client_idx: int):
         alpha_t = self.alpha * self.staleness(self.global_step - init_step)
-        for name, _ in self.model.named_parameters():
-            self.general_buffer[name] += local_gradient[name] * self.weights[client_idx] * alpha_t
+        for name in self.model.state_dict():
+            if name in self.list_named_parameters:
+                self.general_buffer[name] += local_gradient[name] * self.weights[client_idx] * alpha_t
+            else:
+                self.general_buffer[name] += local_gradient[name]
+        self.general_buffer_size += 1
 
     def update_group(self, group_idx: int):
         """Update the model using all the buffered gradients for a certain group."""
         if group_idx in self.group_pseudo_grad:
             self.global_state = copy.deepcopy(self.model.state_dict())
-            for name, _ in self.model.named_parameters():
-                self.global_state[name] -= (self.group_pseudo_grad[group_idx][name] + self.general_buffer[name])
-                self.general_buffer[name] = torch.zeros_like(self.model.state_dict()[name])
+            for name in self.model.state_dict():
+                if name in self.list_named_parameters:
+                    self.global_state[name] -= (self.group_pseudo_grad[group_idx][name] + self.general_buffer[name])
+                    self.general_buffer[name] = torch.zeros_like(self.model.state_dict()[name])
+                else:
+                    self.global_state[name] = torch.div(self.group_pseudo_grad[group_idx][name]+self.general_buffer[name], self.group_pseudo_grad[group_idx]['_counter']+self.general_buffer_size)
+                    self.general_buffer[name] = torch.zeros_like(self.model.state_dict()[name])
             self.model.load_state_dict(self.global_state)
             self.global_step += 1
+            self.general_buffer_size = 0
             del self.group_pseudo_grad[group_idx]
 
     def update_all(self):
         """Update the model using all the buffered gradients for a group."""
         self.global_state = copy.deepcopy(self.model.state_dict())
-        for group_idx in self.group_pseudo_grad:
-            for name, _ in self.model.named_parameters():
-                self.global_state[name] -= self.group_pseudo_grad[group_idx][name]
+        for name in self.model.state_dict():
+            if name in self.list_named_parameters:
+                for group_idx in self.group_pseudo_grad:
+                    self.global_state[name] -= self.group_pseudo_grad[group_idx][name]
+            # We may just skip this
+            else:
+                tmpsum = torch.zeros_like(self.model.state_dict()[name])
+                counter = 0
+                for group_idx in self.group_pseudo_grad:
+                    tmpsum += self.group_pseudo_grad[group_idx][name]
+                    counter += self.group_pseudo_grad[group_idx]['_counter']
+                if counter > 0:
+                    self.global_state[name] = torch.div(tmpsum, counter)
         self.group_pseudo_grad = OrderedDict()
         self.model.load_state_dict(self.global_state)
         self.global_step += 1
