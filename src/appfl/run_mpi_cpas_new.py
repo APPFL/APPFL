@@ -267,9 +267,9 @@ def run_client(
         global_model_size, done, num_local_steps, lr = comm.recv(source=0, tag=comm_rank)
         client.local_steps = num_local_steps
         client.optim_args.lr = lr
-        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps with model size {global_model_size}")
-        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps\n")
-        outfile[cid].flush()
+        # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps with model size {global_model_size}")
+        # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps\n")
+        # outfile[cid].flush()
         if done: 
             logger.info(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
             outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training\n")
@@ -279,7 +279,7 @@ def run_client(
         # Allocate a buffer to receive the byte stream
         global_model_bytes = np.empty(global_model_size, dtype=np.byte)
         import sys
-        logger.info(f"The size of the buffer is {sys.getsizeof(global_model_bytes)}")
+        # logger.info(f"The size of the buffer is {sys.getsizeof(global_model_bytes)}")
         
         
         # Receive the byte stream
@@ -291,6 +291,7 @@ def run_client(
         # Load the byte to state dict
         global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
         global_model = torch.load(global_model_buffer)
+        logger.info(f"f[Client Log] [Client #{comm_rank-1}] Global model device {next(iter(global_model.values())).device}")
 
         # Train the model
         client.model.load_state_dict(global_model)
@@ -298,9 +299,15 @@ def run_client(
 
         # Compute gradient if the algorithm is gradient-based
         if cfg.fed.args.gradient_based:
+            list_named_parameters = []
+            for name, _ in client.model.named_parameters():
+                list_named_parameters.append(name)
             local_model = {}
             for name in global_model:
-                local_model[name] = global_model[name] - client.primal_state[name]
+                if name in list_named_parameters:
+                    local_model[name] = global_model[name] - client.primal_state[name]
+                else:
+                    local_model[name] = client.primal_state[name]
         else:
             local_model = copy.deepcopy(client.primal_state)
 
