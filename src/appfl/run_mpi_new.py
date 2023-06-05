@@ -289,9 +289,15 @@ def run_client(
             client.update()                 
             # Compute gradient if the algorithm is gradient-based
             if cfg.fed.args.gradient_based:
+                list_named_parameters = []
+                for name, _ in client.model.named_parameters():
+                    list_named_parameters.append(name)
                 local_model = {}
                 for name in global_state:
-                    local_model[name] = global_state[name] - client.primal_state[name]
+                    if name in list_named_parameters:
+                        local_model[name] = global_state[name] - client.primal_state[name]
+                    else:
+                        local_model[name] = client.primal_state[name]
             else:
                 local_model = copy.deepcopy(client.primal_state)           
             req = comm.isend(local_model, dest=0, tag=cid)

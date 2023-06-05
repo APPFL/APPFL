@@ -316,6 +316,7 @@ def run_client(
         # Load the byte to state dict
         global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
         global_model = torch.load(global_model_buffer)
+        logger.info(f"f[Client Log] [Client #{comm_rank-1}] Global model device {next(iter(global_model.values())).device}")
 
         # Train the model
         client.model.load_state_dict(global_model)
@@ -323,9 +324,15 @@ def run_client(
 
         # Compute gradient if the algorithm is gradient-based
         if cfg.fed.args.gradient_based:
+            list_named_parameters = []
+            for name, _ in client.model.named_parameters():
+                list_named_parameters.append(name)
             local_model = {}
             for name in global_model:
-                local_model[name] = global_model[name] - client.primal_state[name]
+                if name in list_named_parameters:
+                    local_model[name] = global_model[name] - client.primal_state[name]
+                else:
+                    local_model[name] = client.primal_state[name]
         else:
             local_model = copy.deepcopy(client.primal_state)
 
