@@ -24,8 +24,8 @@ class SchedulerNew:
         self.min_local_steps = max(math.floor(0.2 * self.max_local_steps), 1)
         self.max_local_steps_bound =  math.floor(1.2 * self.max_local_steps)
         self.SPEED_MOMENTUM = 0.9
-        self.LATEST_TIME_FACTOR = 1.2
-        self.LR_DECAY = 0.975
+        self.LATEST_TIME_FACTOR = 1.5
+        self.LR_DECAY = 1
         self.client_info = {}
         self.group_of_arrival = OrderedDict()
 
@@ -53,7 +53,8 @@ class SchedulerNew:
         """Update the global model using the local model itself."""
         # Update the global model
         self.server.model.to("cpu")
-        if buffer:
+        if buffer and False:
+        # if buffer:
             self.server.single_buffer(local_model, self.client_info[client_idx]['step'], client_idx)
             self.validation_flag = True
         else:
@@ -175,7 +176,7 @@ class SchedulerNew:
         curr_time         = time.time() - self.start_time
         local_start_time  = self.client_info[client_idx]['start_time'] if client_idx in self.client_info else 0
         local_update_time = curr_time - local_start_time
-        local_steps       = self.client_info[client_idx]['local_steps'] if client_idx in self.client_info else self.min_local_steps
+        local_steps       = self.client_info[client_idx]['local_steps'] if client_idx in self.client_info else self.max_local_steps
         local_speed       = local_update_time / local_steps 
         if client_idx not in self.client_info:
             self.client_info[client_idx] = {'speed': local_speed, 'step': 0, 'total_steps': self.min_local_steps}
