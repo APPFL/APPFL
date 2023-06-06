@@ -128,6 +128,17 @@ def run_server(
     torch.save(global_model, gloabl_model_buffer)
     global_model_bytes = gloabl_model_buffer.getvalue()
 
+    ######## Warmup on Delta: For fair and reproducible experiment results #########
+    if cfg.fed.args.delta_warmup:
+        warmup_steps = cfg.fed.args.local_steps
+        for i in range(1, num_clients+1):
+            comm.send((len(global_model_bytes), False, warmup_steps, cfg.fed.args.optim_args.lr), dest=i, tag=i)
+        send_reqs = [comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+comm_size) for i in range(1, num_clients+1)]
+        recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
+        MPI.Request.waitall(recv_reqs)
+        logger.info('Finish warming up')
+    ################################################################################
+
     # Send (buffer size, finish flag) - INFO - to all clients in a blocking way
     # Blocking: program execution stops until all data has been sent, ensures all clients are set up before the next steps
     for i in range(1, num_clients+1):
@@ -332,6 +343,22 @@ def run_client(
         metric = flamby_metric,
         **cfg.fed.args,
     )
+
+    ######## Warmup on Delta: For fair and reproducible experiment results #########
+    if cfg.fed.args.delta_warmup:
+        warmup_start = time.time()
+        global_model_size, done, num_local_steps, lr = comm.recv(source=0, tag=comm_rank)
+        client.local_steps = num_local_steps
+        client.optim_args.lr = lr
+        global_model_bytes = np.empty(global_model_size, dtype=np.byte)
+        comm.Recv(global_model_bytes, source=0, tag=comm_rank+comm_size)
+        global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
+        global_model = torch.load(global_model_buffer)
+        client.model.load_state_dict(global_model)
+        client.update()
+        comm.send(0, dest=0, tag=comm_rank)
+        logger.info(f"Clinet {comm_rank-1} finishes the warmup in {time.time()-warmup_start} sec")
+    ################################################################################
 
     # FedAsync: main local training loop
     while True:

@@ -47,6 +47,7 @@ parser.add_argument("--avg_tpb", type=float, default=0.15, help="Average time-pe
 parser.add_argument("--global_std_scale", type=float, default=0.5, help="Std scale for time-per-batch for different clients")
 parser.add_argument("--exp_scale", type=float, default=10, help="Scale for exponential distribution")
 parser.add_argument("--local_std_scale", type=float, default=0.05, help="Std scale for time-per-batch for different experiments of one client")
+parser.add_argument("--delta_warmup", action="store_true", help="When running the code on delta, we need to first warm up the computing resource")
 
 args = parser.parse_args()
 
@@ -109,6 +110,7 @@ def main():
     cfg.fed.args.local_std_scale = args.local_std_scale
     cfg.fed.args.exp_scale = args.exp_scale
     cfg.fed.args.seed = args.seed
+    cfg.fed.args.delta_warmup = args.delta_warmup
 
     start_time = time.time()
 

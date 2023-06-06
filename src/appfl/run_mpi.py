@@ -121,6 +121,22 @@ def run_server(
         weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args
     )
 
+    ######## Warmup on Delta: For fair and reproducible experiment results #########
+    if cfg.fed.args.delta_warmup:
+        server.model.to("cpu")
+        global_state = server.model.state_dict()
+        local_update_start = time.time()
+        global_state = comm.bcast(global_state, root=0)
+        local_states= [None for _ in range(num_clients)]        
+        for rank in range(comm_size):
+            if rank == 0:
+                continue
+            else:
+                for _, cid in enumerate(num_client_groups[rank - 1]):
+                    local_states[cid] = comm.recv(source=rank, tag=cid)
+        logger.info("Finish warming up")
+    ################################################################################
+
     do_continue = True
     start_time = time.time()
     test_loss = 0.0
@@ -291,6 +307,21 @@ def run_client(
         )
         for _, cid in enumerate(num_client_groups[comm_rank - 1])
     ]
+
+    ######## Warmup on Delta: For fair and reproducible experiment results #########
+    if cfg.fed.args.delta_warmup:
+        warmup_start = time.time()
+        global_state = comm.bcast(None, root=0)
+        reqlist = []
+        for client in clients:
+            cid = client.id
+            client.model.load_state_dict(global_state)
+            ls = client.update()           
+            req = comm.isend(0, dest=0, tag=cid)
+            reqlist.append(req)
+        MPI.Request.Waitall(reqlist)
+        logger.info(f"Clinet {comm_rank-1} finishes the warmup in {time.time()-warmup_start} sec")
+    ################################################################################
 
     do_continue = comm.bcast(None, root=0)
     
