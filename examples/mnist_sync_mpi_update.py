@@ -85,9 +85,11 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_%s_%s_%s_%s" % (
+    cfg.output_dirname = "./outputs_%s_%s_%sClients_%s_%s_%sEpochs" % (
         args.dataset,
         args.partition,
+        args.num_clients,
+        args.simulation_distrib if args.do_simulation else "noSim",
         args.server,
         args.num_epochs,
     )
