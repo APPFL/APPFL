@@ -9,7 +9,7 @@ from appfl.misc.data import *
 from appfl.misc.utils import *
 from omegaconf import DictConfig
 
-def partition_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, seed: int = 42, visualization: bool = True):
+def partition_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, seed: int = 42, visualization: bool = True, **kwargs):
     comm_rank = comm.Get_rank()
     num_clients = cfg.num_clients
 

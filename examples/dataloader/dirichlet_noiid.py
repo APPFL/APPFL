@@ -9,7 +9,7 @@ from appfl.misc.data import *
 from appfl.misc.utils import *
 from omegaconf import DictConfig
 
-def dirichlet_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, alpha1: float = 8, alpha2: float = 0.5, seed: int = 42, visualization: bool = True):
+def dirichlet_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, alpha1: float = 8, alpha2: float = 0.5, seed: int = 42, visualization: bool = True, **kwargs):
     comm_rank = comm.Get_rank()
     num_clients = cfg.num_clients
 

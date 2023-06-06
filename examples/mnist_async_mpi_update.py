@@ -140,7 +140,7 @@ def main():
     loss_fn = torch.nn.CrossEntropyLoss()   
 
     """ User-defined data """
-    train_datasets, test_dataset = eval(args.partition)(comm, cfg, args.dataset, seed=args.seed)
+    train_datasets, test_dataset = eval(args.partition)(comm, cfg, args.dataset, seed=args.seed, alpha1=args.num_clients)
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:
