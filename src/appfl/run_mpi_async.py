@@ -303,7 +303,6 @@ def run_client(
     if cfg.fed.args.do_simulation:
         time_per_batch = None
         time_per_batch = comm.scatter(time_per_batch, root=0)
-        print(f"Time per batch for client {comm_rank-1} is {time_per_batch}")
 
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
@@ -417,7 +416,6 @@ def run_client(
         if cfg.fed.args.do_simulation:
             while time.time()-start_time < local_training_time:
                 time.sleep(1)
-            print(f"Local training time for client {comm_rank-1} is {time.time()-start_time} sec")
 
         # Send the size of local model first
         comm.send(len(local_model_bytes), dest=0, tag=comm_rank)
