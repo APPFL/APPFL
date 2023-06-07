@@ -154,7 +154,7 @@ def run_server(
     # FedAsync: main global training loop
     start_time = time.time()
     global_step, test_loss, test_accuracy, best_accuracy = 0, 0.0, 0.0, 0.0
-    metric = [[], []]
+    metric = [[0], [0]]
     while True:
         client_idx, local_model_size = MPI.Request.waitany(recv_reqs)
         if client_idx != MPI.UNDEFINED:

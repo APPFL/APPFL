@@ -113,11 +113,7 @@ def run_server(
         **cfg.fed.args
     )
 
-    start_time = time.time()
-
-    global_step = 0
-    client_model_step = {i : 0 for i in range(0, num_clients)}                  # What is the usage??????????????
-    client_local_time = {i : start_time for i in range(0, num_clients)}         # What is the usage??????????????
+    
 
     server.model.to("cpu")
     global_model = server.model.state_dict()
@@ -152,11 +148,17 @@ def run_server(
     # Wait for response (buffer size) - INFO - from clients
     recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
 
+    start_time = time.time()
+
+    global_step = 0
+    client_model_step = {i : 0 for i in range(0, num_clients)}                  # What is the usage??????????????
+    client_local_time = {i : start_time for i in range(0, num_clients)}         # What is the usage??????????????
+
     # FedAsync: main global training loop
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
-    metric = [[], []]
+    metric = [[0], [0]]
     while True:
         # Wait for response from any one client
         client_idx, local_model_size = MPI.Request.waitany(recv_reqs)

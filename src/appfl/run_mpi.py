@@ -142,7 +142,7 @@ def run_server(
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
-    metric = [[], []]
+    metric = [[0], [0]]
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
         do_continue = comm.bcast(do_continue, root=0)
