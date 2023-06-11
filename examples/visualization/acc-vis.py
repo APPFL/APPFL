@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 def plot_mean_var(datasets, color, label):
     """Plot mean and var for one set of data"""
     # Define the time points at which we want to interpolate, we are taking the maximum end time here
-    time_points = np.arange(0, np.max([np.max(data[0]) for data in datasets]))
+    time_points = np.arange(0, np.min([np.max(data[0]) for data in datasets]))
 
     # Initialize list to hold interpolated accuracy values for all datasets
     interpolated_accuracies = []
