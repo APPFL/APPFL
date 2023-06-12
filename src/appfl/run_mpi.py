@@ -110,7 +110,9 @@ def run_server(
                     tpb = list(tpb)
                     break
         elif cfg.fed.args.simulation_distrib == 'exp':
-            tpb = list(np.random.exponential(scale=cfg.fed.args.exp_scale, size=comm_size) * (cfg.fed.args.avg_tpb/cfg.fed.args.exp_scale))
+            random_numbers = np.random.exponential(scale=cfg.fed.args.exp_scale, size=comm_size)
+            rounded_numbers = np.round((random_numbers+cfg.fed.args.exp_bin_size)/cfg.fed.args.exp_bin_size) * cfg.fed.args.exp_bin_size
+            tpb = list(rounded_numbers * (cfg.fed.args.avg_tpb/cfg.fed.args.exp_scale))
         else:
             raise NotImplementedError
         _ = comm.scatter(tpb, root=0)
