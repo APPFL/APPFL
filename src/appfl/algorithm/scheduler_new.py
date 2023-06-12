@@ -10,7 +10,7 @@ from torch.optim import *
 from logging import Logger
 
 class SchedulerNew:
-    def __init__(self, comm: MPI.Comm, server: Any, max_local_steps: int, num_clients: int, num_global_epochs: int, lr: int, logger: Logger):
+    def __init__(self, comm: MPI.Comm, server: Any, max_local_steps: int, num_clients: int, num_global_epochs: int, lr: int, logger: Logger, use_nova: bool):
         self.iter = 0
         self.lr = lr
         self.comm = comm 
@@ -25,9 +25,10 @@ class SchedulerNew:
         self.max_local_steps_bound =  math.floor(1.2 * self.max_local_steps)
         self.SPEED_MOMENTUM = 0.9
         self.LATEST_TIME_FACTOR = 1.5
-        self.LR_DECAY = 1
+        self.LR_DECAY = 0.985
         self.client_info = {}
         self.group_of_arrival = OrderedDict()
+        self.use_nova = use_nova # whether to use normalized averaging
 
     def warmup(self):
         """Simply record the start time."""
@@ -53,9 +54,12 @@ class SchedulerNew:
         """Update the global model using the local model itself."""
         # Update the global model
         self.server.model.to("cpu")
-        if buffer and False:
-        # if buffer:
-            self.server.single_buffer(local_model, self.client_info[client_idx]['step'], client_idx)
+        # if buffer and False:
+        if buffer:
+            if self.use_nova:
+                self.server.single_buffer(local_model, self.client_info[client_idx]['step'], client_idx, self.client_info[client_idx]['local_steps'])
+            else:
+                self.server.single_buffer(local_model, self.client_info[client_idx]['step'], client_idx)
             self.validation_flag = True
         else:
             self.server.update(local_model, self.client_info[client_idx]['step'], client_idx)
@@ -83,7 +87,10 @@ class SchedulerNew:
             self.group_of_arrival[group_idx]['arrived_clients'].append(client_idx)
             self.logger.info(f"Client {client_idx} arrived at group {group_idx} at time {curr_time}")
             self.server.model.to("cpu")
-            self.server.buffer(local_model, self.client_info[client_idx]['step'], client_idx, group_idx)
+            if self.use_nova:
+                self.server.buffer(local_model, self.client_info[client_idx]['step'], client_idx, group_idx, self.client_info[client_idx]['local_steps'])
+            else:
+                self.server.buffer(local_model, self.client_info[client_idx]['step'], client_idx, group_idx)
             if len(self.group_of_arrival[group_idx]['clients']) == 0:
                 self._group_aggregation(group_idx)
 

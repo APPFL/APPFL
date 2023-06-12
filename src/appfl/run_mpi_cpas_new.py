@@ -145,7 +145,7 @@ def run_server(
     send_reqs = [comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+comm_size) for i in range(1, num_clients+1)]
     ### TEST END
 
-    scheduler = SchedulerNew(comm, server, cfg.fed.args.local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger)    
+    scheduler = SchedulerNew(comm, server, cfg.fed.args.local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger, cfg.fed.servername == 'ServerFedCPASNova')    
     scheduler.warmup()
     
     # Wait for response (buffer size) - INFO - from clients

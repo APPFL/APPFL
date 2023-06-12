@@ -44,7 +44,8 @@ parser.add_argument("--adapt_param", type=float, default=0.001)
 parser.add_argument("--server", type=str, default="ServerFedAsynchronous", 
                     choices=['ServerFedAsynchronous', 
                              'ServerFedBuffer',
-                             'ServerFedCPASAvgNew'
+                             'ServerFedCPASAvgNew',
+                             'ServerFedCPASNova'
                     ])
 
 ## Fed Async
