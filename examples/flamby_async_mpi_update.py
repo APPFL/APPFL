@@ -97,7 +97,7 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_%s_%sClients_%s_%s_%sEpochs" % (
+    cfg.output_dirname = "./outputs_Flamby_%s_%sClients_%s_%s_%sEpochs" % (
         args.dataset,
         args.num_clients,
         args.simulation_distrib if args.do_simulation else "noSim",
