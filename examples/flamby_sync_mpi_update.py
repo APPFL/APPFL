@@ -34,7 +34,7 @@ parser.add_argument("--adapt_param", type=float, default=0.001)
 
 ## Simulation
 parser.add_argument("--do_simulation", action="store_true", help="Whether to do client local training-time simulation")
-parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp"], help="Local trianing-time distribution for different clients")
+parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp", "homo"], help="Local trianing-time distribution for different clients")
 parser.add_argument("--avg_tpb", type=float, default=0.15, help="Average time-per-batch for clint local trianing-time simulation")
 parser.add_argument("--global_std_scale", type=float, default=0.5, help="Std scale for time-per-batch for different clients")
 parser.add_argument("--exp_scale", type=float, default=0.5, help="Scale for exponential distribution")
