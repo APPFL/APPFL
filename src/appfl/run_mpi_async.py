@@ -91,7 +91,13 @@ def run_server(
     weight = comm.scatter(weight, root=0)
 
     if cfg.fed.args.do_simulation:
-        np.random.seed(42)
+        if hasattr(cfg.fed.args, 'use_hetero_seed'):
+            if cfg.fed.args.use_hetero_seed:
+                np.random.seed(cfg.fed.args.seed)
+            else:
+                np.random.seed(42)
+        else:
+            np.random.seed(42)
         if cfg.fed.args.simulation_distrib == 'normal':
             while True:
                 tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=cfg.fed.args.avg_tpb*cfg.fed.args.global_std_scale, size=comm_size)

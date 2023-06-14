@@ -1,25 +1,15 @@
-from cmath import nan
-
-from collections import OrderedDict
-import torch.nn as nn
-from torch.optim import *
-from torch.utils.data import DataLoader
-
-import numpy as np
-
-from omegaconf import DictConfig
-from typing import Any
 import copy
 import time
 import logging
-
+import numpy as np
+import torch.nn as nn
 from .misc import *
-from .algorithm import *
-
 from mpi4py import MPI
-
-import copy
-
+from typing import Any
+from .algorithm import *
+from torch.optim import *
+from omegaconf import DictConfig
+from torch.utils.data import DataLoader
 
 def run_server(
     cfg: DictConfig,
@@ -102,7 +92,13 @@ def run_server(
     weight = comm.scatter(weight, root=0)
 
     if cfg.fed.args.do_simulation:
-        np.random.seed(42)
+        if hasattr(cfg.fed.args, 'use_hetero_seed'):
+            if cfg.fed.args.use_hetero_seed:
+                np.random.seed(cfg.fed.args.seed)
+            else:
+                np.random.seed(42)
+        else:
+            np.random.seed(42)
         if cfg.fed.args.simulation_distrib == 'normal':
             while True:
                 tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=cfg.fed.args.avg_tpb*cfg.fed.args.global_std_scale, size=comm_size)

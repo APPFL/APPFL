@@ -16,7 +16,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default="cpu")
 
 ## dataset
-parser.add_argument("--dataset", type=str, default="TcgaBrca")
+parser.add_argument("--dataset", type=str, default="TcgaBrca", 
+                    choices=['TcgaBrca', 'HeartDisease', 'IXI', 'ISIC2019', 'Kits19'])
 
 ## clients
 parser.add_argument("--local_steps", type=int, default=50)
@@ -40,6 +41,8 @@ parser.add_argument("--exp_scale", type=float, default=0.5, help="Scale for expo
 parser.add_argument("--exp_bin_size", type=float, default=0.1, help="Width of the bin when discretizing the client tbp in exponential distribution")
 parser.add_argument("--local_std_scale", type=float, default=0.05, help="Std scale for time-per-batch for different experiments of one client")
 parser.add_argument("--delta_warmup", action="store_true", help="When running the code on delta, we need to first warm up the computing resource")
+parser.add_argument("--use_hetero_seed", action="store_true", help="Whether to use seed to generated different client heterogeneity")
+parser.add_argument("--seed", type=int, default=1)
 
 args = parser.parse_args()
 
@@ -105,6 +108,8 @@ def main():
     cfg.fed.args.exp_scale = args.exp_scale
     cfg.fed.args.exp_bin_size = args.exp_bin_size
     cfg.fed.args.delta_warmup = args.delta_warmup
+    cfg.fed.args.use_hetero_seed = args.use_hetero_seed
+    cfg.fed.args.seed = args.seed
 
     start_time = time.time()
 
