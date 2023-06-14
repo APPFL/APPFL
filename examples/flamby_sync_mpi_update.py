@@ -30,6 +30,17 @@ parser.add_argument("--mparam_1", type=float, default=0.9)
 parser.add_argument("--mparam_2", type=float, default=0.99)
 parser.add_argument("--adapt_param", type=float, default=0.001)
 
+
+## Simulation
+parser.add_argument("--do_simulation", action="store_true", help="Whether to do client local training-time simulation")
+parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp"], help="Local trianing-time distribution for different clients")
+parser.add_argument("--avg_tpb", type=float, default=0.15, help="Average time-per-batch for clint local trianing-time simulation")
+parser.add_argument("--global_std_scale", type=float, default=0.5, help="Std scale for time-per-batch for different clients")
+parser.add_argument("--exp_scale", type=float, default=0.5, help="Scale for exponential distribution")
+parser.add_argument("--exp_bin_size", type=float, default=0.1, help="Width of the bin when discretizing the client tbp in exponential distribution")
+parser.add_argument("--local_std_scale", type=float, default=0.05, help="Std scale for time-per-batch for different experiments of one client")
+parser.add_argument("--delta_warmup", action="store_true", help="When running the code on delta, we need to first warm up the computing resource")
+
 args = parser.parse_args()
 
 if torch.cuda.is_available():
@@ -70,8 +81,10 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_%s_%s_%s" % (
+    cfg.output_dirname = "./outputs_%s_%sClients_%s_%s_%sEpochs" % (
         args.dataset,
+        args.num_clients,
+        args.simulation_distrib if args.do_simulation else "noSim",
         args.server,
         args.num_epochs,
     )
@@ -82,6 +95,16 @@ def main():
     cfg.fed.args.server_adapt_param = args.adapt_param
     cfg.fed.args.server_momentum_param_1 = args.mparam_1
     cfg.fed.args.server_momentum_param_2 = args.mparam_2
+
+    ## simulation
+    cfg.fed.args.do_simulation = args.do_simulation
+    cfg.fed.args.simulation_distrib = args.simulation_distrib
+    cfg.fed.args.avg_tpb = args.avg_tpb
+    cfg.fed.args.global_std_scale = args.global_std_scale
+    cfg.fed.args.local_std_scale = args.local_std_scale
+    cfg.fed.args.exp_scale = args.exp_scale
+    cfg.fed.args.exp_bin_size = args.exp_bin_size
+    cfg.fed.args.delta_warmup = args.delta_warmup
 
     start_time = time.time()
 
@@ -99,4 +122,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-# mpiexec -np 7 python flamby_sync_mpi.py --num_epochs 12
