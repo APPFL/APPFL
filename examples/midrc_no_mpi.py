@@ -42,7 +42,7 @@ parser.add_argument('--resnet', type=str, default='resnet18')
 ## clients
 parser.add_argument("--num_clients", type=int, default=5)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
-parser.add_argument("--client_lr", type=float, default=1e-3)
+parser.add_argument("--client_lr", type=float, default=1e-4)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
@@ -140,6 +140,7 @@ def main():
     """ User-defined model """
     model = get_model()
     loss_fn = torch.nn.CrossEntropyLoss()   
+    # loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean')
 
     ## loading models
     cfg.load_model = False

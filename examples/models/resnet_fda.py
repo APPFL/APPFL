@@ -41,7 +41,7 @@ class ResNetClassifier(nn.Module):
         x = self.leaky_relu(self.resnet(x))
         x = self.leaky_relu(self.linear(x))
 
-        return x
+        return F.log_softmax(x, dim = 1)
 
 class ResnetMultiTaskNet(nn.Module):
     """
@@ -50,7 +50,7 @@ class ResnetMultiTaskNet(nn.Module):
 
     num_classes: a list of ints to define how many outputs we need for each task.
     """
-    def __init__(self, pretrained=True, frozen_feature_layers=False, resnet='resnet152', hidden_size=512, num_classes=[2,3,2,10]):
+    def __init__(self, pretrained=True, frozen_feature_layers=False, resnet='resnet152', hidden_size=512, num_classes=[1,3,2,10]):
         super().__init__()
         if resnet == 'resnet18':
             self.resnet = models.resnet18(pretrained=True)
@@ -122,8 +122,8 @@ class ResnetMultiTaskNet(nn.Module):
         preds = []
         for i in range(len(self.fc_out)):
             pred = self.leaky_relu(self.fc_out[i](x))
-            # if i > 0:
-            #     pred =  F.log_softmax(pred, dim = 1)
+            if i > 0:
+                pred =  F.log_softmax(pred, dim = 1)
             preds.append(pred)
 
 
