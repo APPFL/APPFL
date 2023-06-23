@@ -47,7 +47,7 @@ parser.add_argument("--val_range", type=int, default=10, help="Perform server va
 
 ## Simulation
 parser.add_argument("--do_simulation", action="store_true", help="Whether to do client local training-time simulation")
-parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp"], help="Local trianing-time distribution for different clients")
+parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp", "homo"], help="Local trianing-time distribution for different clients")
 parser.add_argument("--avg_tpb", type=float, default=0.15, help="Average time-per-batch for clint local trianing-time simulation")
 parser.add_argument("--global_std_scale", type=float, default=0.5, help="Std scale for time-per-batch for different clients")
 parser.add_argument("--exp_scale", type=float, default=0.5, help="Scale for exponential distribution")
@@ -97,7 +97,7 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_%s_%sClients_%s_%s_%sEpochs" % (
+    cfg.output_dirname = "./outputs_Flamby_%s_%sClients_%s_%s_%sEpochs" % (
         args.dataset,
         args.num_clients,
         args.simulation_distrib if args.do_simulation else "noSim",

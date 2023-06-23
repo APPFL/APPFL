@@ -104,6 +104,8 @@ def run_server(
                 if np.all(tpb > 0): 
                     tpb = list(tpb)
                     break
+        elif cfg.fed.args.simulation_distrib == 'homo':
+            tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=0, size=comm_size)
         elif cfg.fed.args.simulation_distrib == 'exp':
             random_numbers = np.random.exponential(scale=cfg.fed.args.exp_scale, size=comm_size)
             rounded_numbers = np.round((random_numbers+cfg.fed.args.exp_bin_size)/cfg.fed.args.exp_bin_size) * cfg.fed.args.exp_bin_size
