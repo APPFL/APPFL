@@ -151,10 +151,10 @@ def save_training_metric(metric: dict, cfg: DictConfig):
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
     file_ext = ".pkl"
-    file = dir + "/metric%s" % (file_ext, )
+    file = dir + "/metric_%d%s" % (cfg.fed.args.seed, file_ext, )
     uniq = 1
     while os.path.exists(file):
-        file = dir + "/metric_%d%s" % (uniq, file_ext)
+        file = dir + "/metric_%d_%d%s" % (cfg.fed.args.seed, uniq, file_ext)
         uniq += 1
     with open(file, 'wb') as f:
         pickle.dump(metric, f)    
