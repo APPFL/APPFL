@@ -19,6 +19,7 @@ from .server_fed_buffer import *
 from .server_fed_cpas_avg import *
 from .server_fed_cpas_avgm import *
 from .server_fed_cpas_avg_new import *
+from .server_fed_cpas_avgm_new import *
 from .server_fed_cpas_nova import *
 from .scheduler import *
 from .scheduler_new import *
