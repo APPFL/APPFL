@@ -33,6 +33,7 @@ parser.add_argument("--server", type=str, default="ServerFedAsynchronous",
                     choices=['ServerFedAsynchronous', 
                              'ServerFedBuffer',
                              'ServerFedCPASAvgNew',
+                             'ServerFedCPASAvgMNew',
                              'ServerFedCPASNova'
                     ])
 
