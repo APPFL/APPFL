@@ -20,6 +20,7 @@ class FedServer(BaseServer):
         self.step = OrderedDict()
         """ Group 1 """
         self.list_named_parameters = []
+        self.weights = weights
         self.pseudo_grad = OrderedDict()
         self.m_vector = OrderedDict()
         self.v_vector = OrderedDict()
@@ -30,6 +31,7 @@ class FedServer(BaseServer):
                 torch.zeros_like(self.model.state_dict()[name], device=device)
                 + self.server_adapt_param
             )
+            
         """ Group 2 """
         self.pseudo_grad_vec = OrderedDict()
         self.model_size = OrderedDict()
@@ -50,8 +52,9 @@ class FedServer(BaseServer):
             )
 
     def compute_pseudo_gradient(self):
-        for name, _ in self.model.named_parameters():
-            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
+        # for name, _ in self.model.named_parameters():
+        for name in self.model.state_dict():
+            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name], dtype=float)
             for i in range(self.num_clients):
                 self.pseudo_grad[name] += self.weights[i] * (
                     self.global_state[name] - self.primal_states[i][name]
@@ -77,13 +80,13 @@ class FedServer(BaseServer):
         """ global_state calculation """
         self.compute_step() 
         for name in self.model.state_dict():        
-            if name in self.list_named_parameters: 
-                self.global_state[name] += self.step[name]            
-            else:
-                tmpsum = torch.zeros_like(self.global_state[name], device=self.device)                
-                for i in range(self.num_clients):
-                    tmpsum += self.primal_states[i][name]                
-                self.global_state[name] = torch.div(tmpsum, self.num_clients)
+            # if name in self.list_named_parameters: 
+            self.global_state[name] += self.step[name]            
+            # else:
+            #     tmpsum = torch.zeros_like(self.global_state[name], device=self.device)                
+            #     for i in range(self.num_clients):
+            #         tmpsum += self.primal_states[i][name]                
+            #     self.global_state[name] = torch.div(tmpsum, self.num_clients)
                 
 
         """ model update """

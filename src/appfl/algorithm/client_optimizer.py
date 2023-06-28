@@ -61,6 +61,8 @@ class ClientOptim(BaseClient):
                 target = target.to(self.cfg.device)
                 optimizer.zero_grad()
                 output = self.model(data)
+                if target.shape != output.shape:
+                    target = target.unsqueeze(1).type_as(output)
                 loss = self.loss_fn(output, target)
                 loss.backward()
                 optimizer.step()

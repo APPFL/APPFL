@@ -14,6 +14,7 @@ from models.resnet_fda import *
 from datasets.MIDRC import *
 
 import appfl.run_serial as rs
+import appfl.run_serial_fda as rsf
 
 import argparse
 
@@ -34,6 +35,7 @@ parser.add_argument('--target', type=int, default=0, help='target domain idx')
 parser.add_argument('--n_target_samples', type=int, default=2000)
 parser.add_argument('--source_batch_size', type=int, default=8)
 parser.add_argument('--target_batch_size', type=int, default=16)
+parser.add_argument('--target_lr_ratio', type=float, default=0.2)
 
 ## model
 parser.add_argument("--hidden_size", type=int, default=128)
@@ -47,7 +49,8 @@ parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg")
-parser.add_argument("--num_epochs", type=int, default=20)
+parser.add_argument("--client", type=str, default="ClientOptim")
+parser.add_argument("--num_epochs", type=int, default=10)
 
 parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
@@ -74,6 +77,21 @@ def get_data(target, states, transform):
             dls[mode].append(dataset)
     return dls['train'], dls['test'][0]
 
+def get_data_MTL(target, states, transform):
+    dls = {'train':[], 'test':[]}
+    for mode in ['train', 'test']:
+        for i in range(args.num_clients):
+            if i != target and mode == 'test':
+                continue
+            elif i == target and mode == 'train':
+                dataset = MidrcMLTDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode], n_samples=args.n_target_samples)
+            elif i == target and mode == 'test':
+                dataset = MidrcDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode])
+            else:
+                dataset = MidrcMLTDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode])
+            dls[mode].append(dataset)
+    return dls['train'], dls['test'][0]
+
 # rewrite it for FDA
 def get_model():
     ## User-defined model
@@ -88,12 +106,15 @@ def main():
     cfg = OmegaConf.structured(Config)
 
     cfg.device = args.device
+    cfg.device_server = args.device
     cfg.reproduce = True
     if cfg.reproduce == True:
         set_seed(1)
 
     ## clients
     cfg.num_clients = args.num_clients
+    cfg.fed.clientname = args.client
+    cfg.fed.args.target_lr_ratio = args.target_lr_ratio
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
@@ -105,6 +126,7 @@ def main():
     ## datasets
     cfg.train_data_batch_size = args.source_batch_size
     cfg.test_data_batch_size = args.target_batch_size
+    cfg.fed.target = args.target
 
     ## outputs
 
@@ -139,8 +161,15 @@ def main():
 
     """ User-defined model """
     model = get_model()
-    loss_fn = torch.nn.CrossEntropyLoss()   
-    # loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean')
+    # loss_fn = torch.nn.BCELoss()   
+    if args.client == 'FedMTLClient':
+        criterion_covid = torch.nn.BCEWithLogitsLoss(reduction='mean')
+        criterion_race = torch.nn.CrossEntropyLoss()
+        criterion_sex = torch.nn.CrossEntropyLoss()
+        criterion_age = torch.nn.CrossEntropyLoss()     
+        loss_fn = [criterion_covid, criterion_race, criterion_sex, criterion_age]
+    else:
+        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean')
 
     ## loading models
     cfg.load_model = False
@@ -167,7 +196,11 @@ def main():
     }
     
     states = ['IL', 'NC', 'CA', 'IN', 'TX']
-    train_datasets, test_dataset = get_data(args.target, states, transform)
+    
+    if args.client == 'FedMTLClient':
+        train_datasets, test_dataset = get_data_MTL(args.target, states, transform)
+    else:
+        train_datasets, test_dataset = get_data(args.target, states, transform)
 
     ## Sanity check for the user-defined data
     # if cfg.data_sanity == True:
@@ -191,6 +224,9 @@ def main():
         train_datasets.remove(train_datasets[args.target])
         cfg.num_clients -= 1
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+    else:
+        rsf.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+        
         
 
 

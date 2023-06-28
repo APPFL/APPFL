@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
-
+from .fed.federatedda import *
 from .fed.federated import *
 from .fed.fedasync import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
@@ -11,7 +11,8 @@ from .fed.iiadmm import *
 
 @dataclass
 class Config:
-    fed: Any = field(default_factory=Federated)
+    # fed: Any = field(default_factory=Federated)
+    fed: Any = FDA()
 
     # Compute device
     device: str = "cpu"

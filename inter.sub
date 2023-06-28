@@ -1,0 +1,10 @@
+#!/bin/bash -x
+ 
+MYACCOUNT=bbke-delta-gpu
+GPUS=--gpus-per-node=1
+PARTITION=gpuMI100x8-interactive
+srun --tasks-per-node=1 --nodes=1 --cpus-per-task=4 \
+  --mem=16g \
+  --partition=$PARTITION \
+  --account=$MYACCOUNT \
+  $GPUS --x11

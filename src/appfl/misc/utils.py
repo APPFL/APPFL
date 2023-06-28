@@ -25,6 +25,8 @@ def validation(self, dataloader):
             img = img.to(self.device)
             target = target.to(self.device)
             output = self.model(img)
+            if target.shape != output.shape:
+                target = target.unsqueeze(1).type_as(output)
             loss += self.loss_fn(output, target).item()
 
             if output.shape[1] == 1:
@@ -41,7 +43,6 @@ def validation(self, dataloader):
     accuracy = 100.0 * correct / tmptotal
 
     return loss, accuracy
-
 
 def create_custom_logger(logger, cfg: DictConfig):
 

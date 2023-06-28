@@ -1,12 +1,22 @@
 from .server_federated import FedServer
 
+from collections import OrderedDict
+from .algorithm import BaseServer, BaseClient
+
+import torch
+from torch.optim import *
+from torch.nn import CrossEntropyLoss
+from torch.utils.data import DataLoader
+import copy
+
 
 class ServerFedAvg(FedServer):
     def compute_step(self):
         super(ServerFedAvg, self).compute_pseudo_gradient()
-        for name, _ in self.model.named_parameters():
+        # for name, _ in self.model.named_parameters():
+        for name in self.model.state_dict():
             self.step[name] = -self.pseudo_grad[name]
-
+    
     def logging_summary(self, cfg, logger):
         super(FedServer, self).log_summary(cfg, logger)
 
