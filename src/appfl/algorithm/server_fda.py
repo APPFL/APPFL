@@ -15,10 +15,13 @@ import time
 import os
 
 class ServerFDA(FedServer):
+    def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
+        super(ServerFDA).__init__(weights, model, loss_fn, num_clients, device, **kwargs)
+        # initialization
+
     def compute_step(self):
         super(ServerFDA, self).compute_pseudo_gradient()
-        # for name, _ in self.model.named_parameters():
-        for name in self.model.state_dict():
+        for name, _ in self.model.named_parameters():
             self.step[name] = -self.pseudo_grad[name]
     
     def compute_pseudo_gradient(self):
@@ -85,7 +88,44 @@ class FedMTLClient(BaseClient):
 
         self.round = 0
 
-        super(ClientOptim, self).client_log_title()
+        super(FedMTLClient, self).client_log_title()
+    
+    def client_validation(self, dataloader):
+
+        if self.loss_fn is None or dataloader is None:
+            return 0.0, 0.0
+
+        self.model.to(self.cfg.device)
+        self.model.eval()
+        loss = 0
+        correct = 0
+        tmpcnt = 0
+        tmptotal = 0
+        with torch.no_grad():
+            for sample in self.dataloader:          
+                tmpcnt += 1      
+                data = sample['img'].to(self.cfg.device)
+                targets = sample['targets']
+                target = targets[0].to(self.cfg.device)
+                tmptotal += len(target)               
+                preds_all = self.model(data)
+                output = preds_all[0]
+                loss += self.loss_fn[0](output, target).item()
+
+                if output.shape[1] == 1:
+                    pred = torch.round(output)
+                else:
+                    pred = output.argmax(dim=1, keepdim=True)
+
+                correct += pred.eq(target.view_as(pred)).sum().item()
+
+        # FIXME: do we need to sent the model to cpu again?
+        # self.model.to("cpu")
+
+        loss = loss / tmpcnt
+        accuracy = 100.0 * correct / tmptotal
+
+        return loss, accuracy
         
     # update with multiple losses
     def update(self):
@@ -100,11 +140,11 @@ class FedMTLClient(BaseClient):
         start_time=time.time()
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            test_loss, test_accuracy = super(ClientOptim, self).client_validation(
+            test_loss, test_accuracy = self.client_validation(
                 self.test_dataloader
             )
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(
+            super(FedMTLClient, self).client_log_content(
                 0, per_iter_time, 0, 0, test_loss, test_accuracy
             )
             ## return to train mode
@@ -122,23 +162,21 @@ class FedMTLClient(BaseClient):
                 
                 for i in range(len(targets)):
                     targets[i] = targets[i].to(self.cfg.device)
-                labels = targets[0].unsqueeze(1)
+                labels = targets[0]
                 tmptotal += len(labels)
                 
                 optimizer.zero_grad()
                 
                 preds_all = self.model(data)
                 output = preds_all[0]
-                if labels.shape != output.shape:
-                    labels = labels.unsqueeze(1).type_as(output)
                     
                 # TODO: setup multiple loss_fn and also test whether it is target client                
-                if self.id != self.cfg.fed.target:
-                    loss = self.loss_fn[0](output, labels)
-                    for idx, c in enumerate(self.loss_fn[1:]):
-                        loss += c(preds_all[idx+1], targets[idx+1])
-                else:
-                    loss = self.loss_fn[0](output, labels)
+                # if self.id != self.cfg.fed.target:
+                loss = self.loss_fn[0](output, labels)
+                for idx, c in enumerate(self.loss_fn[1:]):
+                    loss += c(preds_all[idx+1], targets[idx+1])
+                # else:
+                    # loss = self.loss_fn[0](output, labels)
 
                 loss.backward()
                 optimizer.step()
@@ -160,11 +198,11 @@ class FedMTLClient(BaseClient):
             train_loss = train_loss / len(self.dataloader)
             train_accuracy = 100.0 * train_correct / tmptotal
             if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, test_accuracy = super(ClientOptim, self).client_validation(
+                test_loss, test_accuracy = self.client_validation(
                     self.test_dataloader
                 )
                 per_iter_time = time.time() - start_time
-                super(ClientOptim, self).client_log_content(
+                super(FedMTLClient, self).client_log_content(
                     t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
@@ -193,7 +231,7 @@ class FedMTLClient(BaseClient):
             if self.clip_value != False:
                 sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            super(FedMTLClient, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """
         self.local_state = OrderedDict()

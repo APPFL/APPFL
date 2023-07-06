@@ -69,7 +69,6 @@ def run_serial(
             weights[k] = len(train_data[k]) / total_num_data / 2
         else:
             weights[k] = 0.5
-    print(weights)
 
     "Run validation if test data is given or the configuration is enabled."
     test_dataloader = None
@@ -83,7 +82,7 @@ def run_serial(
     else:
         cfg.validation = False
 
-    server = eval(cfg.fed.servername)(
+    server = eval("ServerFedAvg")(
         weights,
         copy.deepcopy(model),
         loss_fn,
@@ -170,7 +169,10 @@ def run_serial(
 
         validation_start = time.time()
         if cfg.validation == True:
-            test_loss, test_accuracy = validation(server, test_dataloader)
+            if cfg.fed.clientname == 'FedMTLClient':
+                test_loss, test_accuracy = validation_MTL(server, test_dataloader)
+            else:
+                test_loss, test_accuracy = validation(server, test_dataloader)
 
             if cfg.use_tensorboard:
                 # Add them to tensorboard

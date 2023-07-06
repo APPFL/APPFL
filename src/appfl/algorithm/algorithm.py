@@ -298,8 +298,6 @@ class BaseClient:
                 img = img.to(self.cfg.device)
                 target = target.to(self.cfg.device)
                 output = self.model(img)
-                if target.shape != output.shape:
-                    target = target.unsqueeze(1).type_as(output)
                 loss += self.loss_fn(output, target).item()
 
                 if output.shape[1] == 1:

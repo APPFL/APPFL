@@ -43,8 +43,8 @@ parser.add_argument('--resnet', type=str, default='resnet18')
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=5)
-parser.add_argument("--client_optimizer", type=str, default="Adam")
-parser.add_argument("--client_lr", type=float, default=1e-4)
+parser.add_argument("--client_optimizer", type=str, default="SGD")
+parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
@@ -85,8 +85,6 @@ def get_data_MTL(target, states, transform):
                 continue
             elif i == target and mode == 'train':
                 dataset = MidrcMLTDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode], n_samples=args.n_target_samples)
-            elif i == target and mode == 'test':
-                dataset = MidrcDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode])
             else:
                 dataset = MidrcMLTDataset(os.path.join(args.base_data_path, 'meta_info', f'MIDRC_table_{states[i]}_{mode}.csv'), base_path=args.base_data_path, augment_times=args.data_aug_times, transform=transform[mode])
             dls[mode].append(dataset)
@@ -95,7 +93,10 @@ def get_data_MTL(target, states, transform):
 # rewrite it for FDA
 def get_model():
     ## User-defined model
-    model = ResNetClassifier(resnet=args.resnet, hidden_size=args.hidden_size)
+    if args.client == 'FedMTLClient':
+        model = ResnetMultiTaskNet(resnet=args.resnet, hidden_size=args.hidden_size)
+    else:
+        model = ResNetClassifier(resnet=args.resnet, hidden_size=args.hidden_size)
     return model
 
 
@@ -126,7 +127,8 @@ def main():
     ## datasets
     cfg.train_data_batch_size = args.source_batch_size
     cfg.test_data_batch_size = args.target_batch_size
-    cfg.fed.target = args.target
+    if args.server != 'ServerFedAvg':
+        cfg.fed.target = args.target
 
     ## outputs
 
@@ -134,9 +136,10 @@ def main():
 
     cfg.save_model_state_dict = False
 
-    cfg.output_dirname = "./outputs_%s_%s_%s" % (
+    cfg.output_dirname = "./outputs_%s_%s_%s_%s" % (
         args.dataset,
         args.server,
+        args.client,
         args.client_optimizer,
     )
     if args.server_lr != None:
@@ -163,13 +166,13 @@ def main():
     model = get_model()
     # loss_fn = torch.nn.BCELoss()   
     if args.client == 'FedMTLClient':
-        criterion_covid = torch.nn.BCEWithLogitsLoss(reduction='mean')
+        criterion_covid = torch.nn.CrossEntropyLoss()
         criterion_race = torch.nn.CrossEntropyLoss()
         criterion_sex = torch.nn.CrossEntropyLoss()
         criterion_age = torch.nn.CrossEntropyLoss()     
         loss_fn = [criterion_covid, criterion_race, criterion_sex, criterion_age]
     else:
-        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean')
+        loss_fn = torch.nn.CrossEntropyLoss()
 
     ## loading models
     cfg.load_model = False
@@ -234,4 +237,12 @@ if __name__ == "__main__":
     main()
 
 # To run:
-# python ./mnist_no_mpi.py
+
+# fedavg
+# python midrc_no_mpi.py --num_epochs 50
+
+# fda
+# python midrc_no_mpi.py --server ServerFDA --num_epochs 50
+
+# fda + mlt
+# python midrc_no_mpi.py --server ServerFDA --client FedMTLClient  --num_epochs 50

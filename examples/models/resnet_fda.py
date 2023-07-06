@@ -33,7 +33,7 @@ class ResNetClassifier(nn.Module):
             self.resnet.fc = nn.Linear(num_feats, hidden_size)
 
         
-        self.linear = nn.Linear(hidden_size, 1)
+        self.linear = nn.Linear(hidden_size, 2)
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2)
 
     def forward(self, x):
@@ -41,7 +41,8 @@ class ResNetClassifier(nn.Module):
         x = self.leaky_relu(self.resnet(x))
         x = self.leaky_relu(self.linear(x))
 
-        return torch.sigmoid(x)
+        # return torch.sigmoid(x)
+        return x
 
 class ResnetMultiTaskNet(nn.Module):
     """
