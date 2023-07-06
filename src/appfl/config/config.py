@@ -84,3 +84,10 @@ class Config:
         {"id": 1, "host": "localhost", "port": 50051, "use_tls": False, "api_key": None}
     )
     client: DictConfig = OmegaConf.create({"id": 1})
+
+    # Compression Information
+    compressed_weights: bool = False
+    compressor: str = ""
+    compressor_lib_path: str = ""
+    compressor_error_mode: str = ""
+    compressor_error_bound: float = 0.0
