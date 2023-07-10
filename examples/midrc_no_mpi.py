@@ -15,6 +15,7 @@ from datasets.MIDRC import *
 
 import appfl.run_serial as rs
 import appfl.run_serial_fda as rsf
+import appfl.run_serial_fedgp as rsfgp
 
 import argparse
 
@@ -56,6 +57,9 @@ parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
+
+## other
+parser.add_argument('--beta', type=float, default=0.5)
 
 
 args = parser.parse_args()
@@ -124,11 +128,16 @@ def main():
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
     
+    ## related to FDA
+    cfg.fed.args.n_target_samples = args.n_target_samples
+    cfg.fed.args.source_batch_size = args.source_batch_size
+    cfg.fed.args.target_batch_size = args.target_batch_size
+    
     ## datasets
     cfg.train_data_batch_size = args.source_batch_size
     cfg.test_data_batch_size = args.target_batch_size
     if args.server != 'ServerFedAvg':
-        cfg.fed.target = args.target
+        cfg.fed.args.target = args.target
 
     ## outputs
 
@@ -227,6 +236,8 @@ def main():
         train_datasets.remove(train_datasets[args.target])
         cfg.num_clients -= 1
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+    elif args.server == 'ServerFedGP':
+        rsfgp.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, args.beta)
     else:
         rsf.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
         
@@ -244,5 +255,11 @@ if __name__ == "__main__":
 # fda
 # python midrc_no_mpi.py --server ServerFDA --num_epochs 50
 
-# fda + mlt
+# fda + auxinfo
 # python midrc_no_mpi.py --server ServerFDA --client FedMTLClient  --num_epochs 50
+
+# fedgp 
+# python midrc_no_mpi.py --server ServerFedGP  --num_epochs 50
+
+# fedgp + auxinfo
+# python midrc_no_mpi.py --server ServerFedGP --client FedMTLClient  --num_epochs 50

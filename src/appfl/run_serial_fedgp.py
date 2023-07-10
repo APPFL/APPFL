@@ -24,6 +24,7 @@ def run_serial(
     train_data: Dataset,
     test_data: Dataset = Dataset(),
     dataset_name: str = "appfl",
+    beta: float = 0.5,
 ):
     """Run serial simulation of PPFL.
 
@@ -64,11 +65,13 @@ def run_serial(
             total_num_data += len(train_data[k])
 
     weights = {}
+    clients_size = {}
     for k in range(cfg.num_clients):
         if k != cfg.fed.args.target:
-            weights[k] = len(train_data[k]) / total_num_data / 2
+            weights[k] = len(train_data[k]) / total_num_data
+            clients_size[k] = len(train_data[k])
         else:
-            weights[k] = 0.5
+            weights[k] = 0
 
     "Run validation if test data is given or the configuration is enabled."
     test_dataloader = None
@@ -82,11 +85,13 @@ def run_serial(
     else:
         cfg.validation = False
 
-    server = eval("ServerFedAvg")(
+    server = eval(cfg.fed.servername)(
         weights,
         copy.deepcopy(model),
         loss_fn,
         cfg.num_clients,
+        beta,
+        clients_size,
         cfg.device_server,
         **cfg.fed.args,
     )
@@ -164,7 +169,7 @@ def run_serial(
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
 
         global_update_start = time.time()
-        server.update(local_states)
+        server.update(local_states, t)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
         validation_start = time.time()

@@ -7,7 +7,10 @@ class FDA:
     type: str = "federatedda"
     servername: str = "ServerFDA"
     clientname: str = "ClientOptim"
-    target: int = 0
+    # target: int = 0
+    # n_target_samples: int = 2000
+    # source_batch_size: int = 16
+    # target_batch_size: int = 16
     args: DictConfig = OmegaConf.create(
         {
             ## Server update
@@ -16,12 +19,17 @@ class FDA:
             "server_momentum_param_1": 0.9,
             "server_momentum_param_2": 0.99,
             ## Clients optimizer
-            "optim": "SGD",
+            "optim": "Adam",
             "num_local_epochs": 10,
             "optim_args": {
                 "lr": 0.001,
             },
+            ## FDA
             "target_lr_ratio": 0.2,
+            "n_target_samples": 2000,
+            "source_batch_size": 16,
+            "target_batch_size": 8,
+            "target": 0,
             ## Differential Privacy
             ##  epsilon: False  (non-private)
             ##  epsilon: 1      (stronger privacy as the value decreases)
