@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Tuple
 from omegaconf import DictConfig, OmegaConf
 
 
@@ -7,6 +7,7 @@ from .fed.federated import *
 from .fed.fedasync import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
+import numpy as np
 
 
 @dataclass
@@ -16,6 +17,12 @@ class Config:
     # Compute device
     device: str = "cpu"
     device_server: str = "cpu"
+
+    # Model
+    model: str = "cnn"
+
+    # Dataset
+    dataset: str = "mnist"
 
     # Number of training epochs
     num_clients: int = 1
@@ -86,8 +93,11 @@ class Config:
     client: DictConfig = OmegaConf.create({"id": 1})
 
     # Compression Information
-    compressed_weights: bool = False
+    compressed_weights_client: bool = False
+    compressed_weights_server: bool = False
     compressor: str = ""
     compressor_lib_path: str = ""
     compressor_error_mode: str = ""
     compressor_error_bound: float = 0.0
+    flat_model_size: Tuple[int, ...] = (0,)
+    flat_model_dtype: str = "np.float32"

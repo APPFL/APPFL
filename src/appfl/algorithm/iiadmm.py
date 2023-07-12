@@ -1,4 +1,5 @@
 import logging
+import time
 
 log = logging.getLogger(__name__)
 
@@ -11,6 +12,8 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 import copy
 import math
+from appfl.misc.utils import *
+from appfl.compressor import *
 
 
 class IIADMMServer(BaseServer):
@@ -29,7 +32,6 @@ class IIADMMServer(BaseServer):
                 self.dual_states[i][name] = torch.zeros_like(param.data)
 
     def update(self, local_states: OrderedDict):
-
         """Inputs for the global model update"""
         for name, param in self.model.named_parameters():
             self.global_state[name] = param.data.cpu()
@@ -45,7 +47,6 @@ class IIADMMServer(BaseServer):
         for name, param in self.model.named_parameters():
             tmp = 0.0
             for i in range(self.num_clients):
-
                 ## change device
                 self.primal_states[i][name] = self.primal_states[i][name]
 
@@ -119,9 +120,9 @@ class IIADMMClient(BaseClient):
 
         self.penalty = kwargs["init_penalty"]
         self.is_first_iter = 1
+        self.compressor = Compressor(cfg)
 
     def update(self):
-
         self.model.train()
         self.model.to(self.cfg.device)
 
@@ -139,7 +140,6 @@ class IIADMMClient(BaseClient):
         """ Multiple local update """
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
-
                 for name, param in self.model.named_parameters():
                     param.data = self.primal_state[name].to(self.cfg.device)
 
@@ -174,7 +174,6 @@ class IIADMMClient(BaseClient):
                 ## STEP: Update primal
                 coefficient = 1
                 if self.coeff_grad == True:
-
                     coefficient = (
                         self.weight * len(target) / len(self.dataloader.dataset)
                     )
@@ -200,9 +199,47 @@ class IIADMMClient(BaseClient):
             for name, param in self.model.named_parameters():
                 self.primal_state[name] = param.data.cpu()
 
+        # POSSIBLY COMPRESS AND LOG THE STATS
+        start_time = time.time()
+        compression_ratio = 0
+        flat_params = flatten_model_params(self.model)
+        if self.cfg.compressed_weights_client == True:
+            compressed_weights_client = self.compressor.compress(ori_data=flat_params)
+            self.cfg.flat_model_size = flat_params.shape
+            compression_ratio = (len(flat_params)) / (
+                len(compressed_weights_client) * 4
+            )
+        compress_time = time.time() - start_time
+
+        with open("stats.csv", "a") as f:
+            f.write(
+                str(self.cfg.dataset)
+                + ","
+                + str(self.cfg.model)
+                + ","
+                + str(self.id)
+                + ","
+                + str(self.cfg.compressed_weights_client)
+                + ","
+                + str(compression_ratio)
+                + ","
+                + self.cfg.compressor
+                + ","
+                + self.cfg.compressor_error_mode
+                + ","
+                + str(self.cfg.compressor_error_bound)
+                + ","
+                + str(flat_params.shape[0])
+                + ","
+                + str(compress_time)
+                + ","
+            )
+
         """ Update local_state """
         self.local_state = OrderedDict()
         self.local_state["primal"] = self.primal_state
+        if self.cfg.compressed_weights_client == True:
+            self.local_state["primal"] = compressed_weights_client
         self.local_state["dual"] = OrderedDict()
         self.local_state["penalty"] = OrderedDict()
         self.local_state["penalty"][self.id] = self.penalty
@@ -210,7 +247,6 @@ class IIADMMClient(BaseClient):
         return self.local_state
 
     def iiadmm_step(self, coefficient, global_state, optimizer):
-
         momentum = 0
         if "momentum" in self.optim_args.keys():
             momentum = self.optim_args.momentum
@@ -223,7 +259,6 @@ class IIADMMClient(BaseClient):
         nesterov = False
 
         for name, param in self.model.named_parameters():
-
             grad = copy.deepcopy(param.grad * coefficient)
 
             if weight_decay != 0:

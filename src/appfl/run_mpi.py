@@ -36,7 +36,7 @@ def run_server(
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
         model (nn.Module): neural network model to train
-        loss_fn (nn.Module): loss function 
+        loss_fn (nn.Module): loss function
         num_clients (int): the number of clients used in PPFL simulation
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
@@ -45,6 +45,9 @@ def run_server(
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
+    compressor = None
+    if cfg.compressed_weights_client == True:
+        compressor = Compressor(cfg=cfg)
 
     # FIXME: I think it's ok for server to use cpu only.
     device = "cpu"
@@ -104,7 +107,7 @@ def run_server(
     server = eval(cfg.fed.servername)(
         weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args
     )
-
+    comp_ratio = 0.0
     do_continue = True
     start_time = time.time()
     test_loss = 0.0
@@ -119,26 +122,49 @@ def run_server(
         server.model.to("cpu")
 
         global_state = server.model.state_dict()
+        server_comp_ratio = 0.0
+        if cfg.compressed_weights_server == True:
+            global_state = utils.flatten_model_params(model=server.model)
+            original_size = global_state.shape[0]
+            global_state = compressor.compress(ori_data=global_state)
+            server_comp_ratio = original_size / (len(global_state) * 4)
 
         local_update_start = time.time()
         global_state = comm.bcast(global_state, root=0)
-                
-        local_states= [None for i in range(num_clients)]        
+
+        local_states = [None for i in range(num_clients)]
         for rank in range(comm_size):
             ls = ""
             if rank == 0:
-                continue;
+                continue
             else:
                 for _, cid in enumerate(num_client_groups[rank - 1]):
                     local_states[cid] = comm.recv(source=rank, tag=cid)
 
-        cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
-
-        #print("Start Server Update")
+        local_update_time = time.time() - local_update_start
+        cfg["logginginfo"]["LocalUpdate_time"] = local_update_time
+        ori_shape = utils.flatten_model_params(model=server.model).shape
+        decompress_times = []
+        if cfg.compressed_weights_client == True:
+            for local_state in local_states:
+                ori_dtype = eval(cfg.flat_model_dtype)
+                decompress_time_start = time.time()
+                copy_arr = compressor.decompress(
+                    cmp_data=local_state["primal"],
+                    ori_shape=ori_shape,
+                    ori_dtype=np.float32,
+                )
+                decompress_times.append(time.time() - decompress_time_start)
+                local_state["primal"] = copy_arr
+                new_state_dic = utils.unflatten_model_params(
+                    model=model, flat_params=local_state["primal"]
+                )
+                local_state["primal"] = new_state_dic
+        # print("Start Server Update")
         global_update_start = time.time()
         server.update(local_states)
-        cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
-
+        global_update_time = time.time() - global_update_start
+        cfg["logginginfo"]["GlobalUpdate_time"] = global_update_time
         validation_start = time.time()
         if cfg.validation == True:
             test_loss, test_accuracy = validation(server, test_dataloader)
@@ -150,15 +176,48 @@ def run_server(
 
             if test_accuracy > best_accuracy:
                 best_accuracy = test_accuracy
-        cfg["logginginfo"]["Validation_time"] = time.time() - validation_start
-        cfg["logginginfo"]["PerIter_time"] = time.time() - per_iter_start
-        cfg["logginginfo"]["Elapsed_time"] = time.time() - start_time
+        validation_time = time.time() - validation_start
+        periter_time = time.time() - per_iter_start
+        elapsed_time = time.time() - start_time
+        cfg["logginginfo"]["Validation_time"] = validation_time
+        cfg["logginginfo"]["PerIter_time"] = periter_time
+        cfg["logginginfo"]["Elapsed_time"] = elapsed_time
         cfg["logginginfo"]["test_loss"] = test_loss
         cfg["logginginfo"]["test_accuracy"] = test_accuracy
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
 
         server.logging_iteration(cfg, logger, t)
-
+        for cid in range(num_clients):
+            stats_file = "stats_" + str(cid) + ".csv"
+            with open(stats_file, "a") as f:
+                f.write(
+                    str(decompress_times[cid])
+                    + ","
+                    + str(server_comp_ratio)
+                    + ","
+                    + str(t)
+                    + ","
+                    + str(cfg.num_epochs)
+                    + ","
+                    + str(cfg.num_clients)
+                    + ","
+                    + str(validation_time)
+                    + ","
+                    + str(periter_time)
+                    + ","
+                    + str(elapsed_time)
+                    + ","
+                    + str(test_loss)
+                    + ","
+                    + str(test_accuracy)
+                    + ","
+                    + str(best_accuracy)
+                    + ","
+                    + cfg.fed.servername
+                    + ","
+                    + cfg.fed.args.optim
+                    + "\n"
+                )
         """ Saving model """
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
@@ -193,7 +252,9 @@ def run_client(
         train_data (Dataset): training data
         test_data (Dataset): testing data
     """
-
+    compressor = None
+    if cfg.compressed_weights_client == True:
+        compressor = Compressor(cfg=cfg)
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
 
@@ -220,7 +281,7 @@ def run_client(
     num_data = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         num_data[cid] = len(train_data[cid])
-    
+
     comm.gather(num_data, root=0)
 
     weight = None
@@ -266,20 +327,26 @@ def run_client(
     ]
 
     do_continue = comm.bcast(None, root=0)
-    
+    ori_shape = flatten_model_params(model=model).shape
     while do_continue:
         """Receive "global_state" """
         global_state = comm.bcast(None, root=0)
-
+        if cfg.compressed_weights_server == True:
+            global_state = compressor.decompress(
+                cmp_data=global_state, ori_shape=ori_shape, ori_dtype=np.float32
+            )
+            global_state = utils.unflatten_model_params(
+                model=model, flat_params=global_state
+            )
         """ Update "local_states" based on "global_state" """
         reqlist = []
         for client in clients:
             cid = client.id
-            ## initial point for a client model            
+            ## initial point for a client model
             client.model.load_state_dict(global_state)
 
-            ## client update     
-            ls = client.update()                            
+            ## client update
+            ls = client.update()
             req = comm.isend(ls, dest=0, tag=cid)
             reqlist.append(req)
 

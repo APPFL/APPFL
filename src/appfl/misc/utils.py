@@ -4,10 +4,10 @@ from omegaconf import DictConfig
 import logging
 import random
 import numpy as np
+import copy
 
 
 def validation(self, dataloader):
-
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
@@ -44,7 +44,6 @@ def validation(self, dataloader):
 
 
 def create_custom_logger(logger, cfg: DictConfig):
-
     dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
@@ -72,7 +71,6 @@ def create_custom_logger(logger, cfg: DictConfig):
 
 
 def client_log(dir, output_filename):
-
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
 
@@ -108,7 +106,7 @@ def save_model_iteration(t, model, cfg: DictConfig):
         uniq += 1
 
     torch.save(model, file)
- 
+
 
 def set_seed(seed=233):
     random.seed(seed)
@@ -117,3 +115,52 @@ def set_seed(seed=233):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+
+def unflatten_model_params(model, flat_params):
+    # Convert flat_params to a PyTorch tensor
+    flat_params_tensor = torch.from_numpy(flat_params)
+
+    # Get a dictionary of parameter names and shapes from the model's state_dict
+    state_dict = model.state_dict()
+    param_shapes = {name: param.shape for name, param in state_dict.items()}
+
+    # Initialize a pointer variable to 0
+    pointer = 0
+
+    # Create a dictionary to hold the unflattened parameters
+    unflattened_params = {}
+
+    # Iterate over the parameters of the model
+    for name, param in model.named_parameters():
+        # Determine the number of elements in the parameter
+        num_elements = param.numel()
+
+        # Slice that number of elements from the flat_params array using the pointer variable
+        param_slice = flat_params_tensor[pointer : pointer + num_elements]
+
+        # Reshape the resulting slice to match the shape of the parameter
+        param_shape = param_shapes[name]
+        param_value = param_slice.view(*param_shape)
+
+        # Update the value of the parameter in the model's state_dict
+        state_dict[name] = param_value
+
+        # Add the unflattened parameter to the dictionary
+        unflattened_params[name] = param_value
+
+        # Increment the pointer variable by the number of elements used
+        pointer += num_elements
+
+    # Load the updated state_dict into the model
+    model.load_state_dict(state_dict)
+
+    # Return the dictionary of unflattened parameters
+    return unflattened_params
+
+
+def flatten_model_params(model: torch.nn.Module) -> np.ndarray:
+    # Concatenate all of the model's parameters into a 1D tensor
+    flat_params = torch.cat([param.view(-1) for param in model.parameters()])
+    # Convert the tensor to a numpy array and return it
+    return flat_params.detach().cpu().numpy()

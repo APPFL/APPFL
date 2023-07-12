@@ -82,7 +82,7 @@ class SZ:
         data_range = np.max(src_data) - np.min(src_data)
         diff = src_data - dec_data
         max_diff = np.max(abs(diff))
-        #print("abs err={:.8G}".format(max_diff))
+        # print("abs err={:.8G}".format(max_diff))
         mse = np.mean(diff**2)
         nrmse = np.sqrt(mse) / data_range
         psnr = 20 * np.log10(data_range) - 10 * np.log10(mse)
