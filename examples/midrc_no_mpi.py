@@ -44,14 +44,14 @@ parser.add_argument('--resnet', type=str, default='resnet18')
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=5)
-parser.add_argument("--client_optimizer", type=str, default="SGD")
-parser.add_argument("--client_lr", type=float, default=1e-3)
+parser.add_argument("--client_optimizer", type=str, default="Adam")
+parser.add_argument("--client_lr", type=float, default=1e-4)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg")
 parser.add_argument("--client", type=str, default="ClientOptim")
-parser.add_argument("--num_epochs", type=int, default=10)
+parser.add_argument("--num_epochs", type=int, default=20)
 
 parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)

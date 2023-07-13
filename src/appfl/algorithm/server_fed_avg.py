@@ -13,7 +13,8 @@ import copy
 class ServerFedAvg(FedServer):
     def compute_step(self):
         super(ServerFedAvg, self).compute_pseudo_gradient()
-        for name, _ in self.model.named_parameters():
+        # for name, _ in self.model.named_parameters():
+        for name in self.model.state_dict():
             self.step[name] = -self.pseudo_grad[name]
     
     def logging_summary(self, cfg, logger):

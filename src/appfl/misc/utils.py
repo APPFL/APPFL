@@ -25,7 +25,8 @@ def validation(self, dataloader):
             img = img.to(self.device)
             target = target.to(self.device)
             output = self.model(img)
-            loss += self.loss_fn(output, target).item()
+            cur_loss = self.loss_fn(output, target)
+            loss += cur_loss.item()
 
             if output.shape[1] == 1:
                 pred = torch.round(output)
@@ -63,7 +64,8 @@ def validation_MTL(self, dataloader):
             tmptotal += len(target)               
             preds_all = self.model(data)
             output = preds_all[0]
-            loss += self.loss_fn[0](output, target).item()
+            cur_loss = self.loss_fn[0](output, target)
+            loss += cur_loss.item()
             
             if output.shape[1] == 1:
                 pred = torch.round(output)

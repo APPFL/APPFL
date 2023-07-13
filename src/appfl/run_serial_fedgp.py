@@ -71,7 +71,7 @@ def run_serial(
             weights[k] = len(train_data[k]) / total_num_data
             clients_size[k] = len(train_data[k])
         else:
-            weights[k] = 0
+            weights[k] = 0.
 
     "Run validation if test data is given or the configuration is enabled."
     test_dataloader = None

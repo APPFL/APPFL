@@ -24,7 +24,8 @@ class FedServer(BaseServer):
         self.pseudo_grad = OrderedDict()
         self.m_vector = OrderedDict()
         self.v_vector = OrderedDict()
-        for name, _ in self.model.named_parameters():
+        # for name, _ in self.model.named_parameters():
+        for name in self.model.state_dict():
             self.list_named_parameters.append(name)
             self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device)
             self.v_vector[name] = (
@@ -52,8 +53,9 @@ class FedServer(BaseServer):
             )
 
     def compute_pseudo_gradient(self):
-        for name, _ in self.model.named_parameters():
-            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
+        # for name, _ in self.model.named_parameters():
+        for name in self.model.state_dict():
+            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name]).float()
             for i in range(self.num_clients):
                 self.pseudo_grad[name] += self.weights[i] * (
                     self.global_state[name] - self.primal_states[i][name]
@@ -78,10 +80,12 @@ class FedServer(BaseServer):
 
         """ global_state calculation """
         self.compute_step() 
-        for name in self.model.state_dict():        
+        for name in self.model.state_dict():
+            self.global_state[name] = (self.global_state[name]).float()       
             if name in self.list_named_parameters: 
                 self.global_state[name] += self.step[name]            
             else:
+                print('xiaxia')
                 tmpsum = torch.zeros_like(self.global_state[name], device=self.device)                
                 for i in range(self.num_clients):
                     tmpsum += self.primal_states[i][name]                

@@ -33,7 +33,6 @@ class ClientOptim(BaseClient):
         self.model.to(self.cfg.device)
 
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
- 
 
         """ Multiple local update """
         start_time=time.time()

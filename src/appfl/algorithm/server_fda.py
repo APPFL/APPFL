@@ -26,7 +26,8 @@ class ServerFedGP(FedServer):
 
     def compute_step(self):
         super(ServerFedGP, self).compute_pseudo_gradient()
-        for name, _ in self.model.named_parameters():
+        for name in self.model.state_dict():
+        # for name, _ in self.model.named_parameters():
             self.step[name] = -self.pseudo_grad[name]
     
     def compute_source_target_gradients(self):
@@ -57,7 +58,7 @@ class ServerFedGP(FedServer):
                     self.device
                 )
         
-        if round_id < 5:
+        if round_id < 2:
             # go fedavg
             self.update_fedavg()
         
@@ -68,7 +69,8 @@ class ServerFedGP(FedServer):
     def update_fedavg(self):
         """ global_state calculation """
         self.compute_step() 
-        for name in self.model.state_dict():        
+        for name in self.model.state_dict():   
+            self.global_state[name] = (self.global_state[name]).float()     
             if name in self.list_named_parameters: 
                 self.global_state[name] += self.step[name]            
             else:
@@ -89,18 +91,22 @@ class ServerFedGP(FedServer):
         cos = torch.nn.CosineSimilarity()
         for name in self.global_state:        
             # if name in self.list_named_parameters: 
-            if self.global_state[name].shape != torch.Size([]):
+            # if self.global_state[name].shape != torch.Size([]):
                 # self.global_state[name] += self.step[name]
         # for key in ret_dict.keys():
-        #     if ret_dict[key].shape != torch.Size([]):
+            if self.global_state[name].shape != torch.Size([]):
                 target_grad = self.target_grad[name] # target persudo gradient
                 for idx in self.source_grads:
                     local_grad = self.source_grads[idx][name] # the rest of the persudo gradients
-                    cur_sim = cos(target_grad.reshape(1,-1), local_grad.reshape(1,-1))
+                    cur_sim = cos(target_grad.reshape(1,-1).float(), local_grad.reshape(1,-1).float())
                     if cur_sim > 0:
                         self.global_state[name] += b * self.target_lr_ratio * ((self.n_target_samples/self.target_batch_size)/(self.clients_size[idx]/self.source_batch_size)) * self.weights[idx] * cur_sim * local_grad
                 self.global_state[name] += (1-b) * target_grad
-        #     else:
+            # else:
+            #     tmpsum = torch.zeros_like(self.global_state[name], device=self.device)                
+            #     for i in range(self.num_clients):
+            #         tmpsum += self.primal_states[i][name]                
+            #     self.global_state[name] = torch.div(tmpsum, self.num_clients)
         #         ret_dict[key] = old_global_model_dict[key]
         # return ret_dict
         
@@ -140,7 +146,9 @@ class FedMTLClient(BaseClient):
 
         super(FedMTLClient, self).client_log_title()
     
-    def client_validation(self, dataloader):
+    def client_validation_MTL(self, dataloader):
+        
+        print('ewotuwt')
 
         if self.loss_fn is None or dataloader is None:
             return 0.0, 0.0
@@ -190,7 +198,7 @@ class FedMTLClient(BaseClient):
         start_time=time.time()
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            test_loss, test_accuracy = self.client_validation(
+            test_loss, test_accuracy = self.client_validation_MTL(
                 self.test_dataloader
             )
             per_iter_time = time.time() - start_time
@@ -248,7 +256,7 @@ class FedMTLClient(BaseClient):
             train_loss = train_loss / len(self.dataloader)
             train_accuracy = 100.0 * train_correct / tmptotal
             if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, test_accuracy = self.client_validation(
+                test_loss, test_accuracy = self.client_validation_MTL(
                     self.test_dataloader
                 )
                 per_iter_time = time.time() - start_time
