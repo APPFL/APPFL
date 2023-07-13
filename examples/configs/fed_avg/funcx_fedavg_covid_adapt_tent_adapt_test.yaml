@@ -3,33 +3,42 @@ algorithm:
   clientname: 'ClientOptim'
   args:
     ## Server update
-    # server_learning_rate: 0.01
     server_adapt_param: 0.000 #TODO: what is this param?
-    # server_momentum_param_1: 0.9
-    # server_momentum_param_2: 0.99
     ## Clients optimizer
     optim: "SGD"
-    num_local_epochs: 2
+    num_local_epochs: 1
     optim_args: 
         lr: 0.001
     server_lr_decay_exp_gamma : 0.1
-    ## Differential Privacy
     epsilon: False
-    ##  epsilon: 1      (stronger privacy as the value decreases)
-    ##  epsilon: 0.05
-    ## Gradient Clipping
-    ## clip_value: False (no-clipping)
-    ## clip_value: 10    (clipping)
-    ## clip_value: 1
     clip_value: False
     clip_norm: 1
     client_weights: "sample_size"
 
 model:
   num_output: 2
+  # uchicago
+  # steps: 1
+  # lr: 0.0005
+  # update_bn: True
+  # update_fc: True
+
+  # cohen+actmed
+  num_output: 2
+  steps: 2
+  lr: 0.1
+  update_bn: True
+  update_fc: False
+
+  # midrc
+  # num_output: 2
+  # steps: 3
+  # lr: 0.0004
+  # update_bn: True
+  # update_fc: True
 
 training:
-  num_epochs: 40
+  num_epochs: 4
   save_model_filename: "Covid_Resnet"
 
 dataset:
@@ -37,9 +46,9 @@ dataset:
 
 func:
   get_model:
-    script_file: "./models/resnet_freeze_bn.py"
+    script_file: "./models/resnet_tent_adapt_test.py"
     call: "get_model"
 
 train_data_batch_size: 256
 test_data_batch_size: 256
-decay_epochs: [15,20,25,35]
+decay_epochs: [2,3]

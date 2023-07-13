@@ -16,7 +16,7 @@ from appfl.misc import (
 )
 
 from appfl.algorithm import *
-from appfl.funcx.funcx_client import client_testing, client_validate_data, client_attack
+from appfl.funcx.funcx_client import client_testing, client_validate_data, client_attack, client_check_cuda, client_adapt_testing
 from appfl.funcx.funcx_clients_manager import APPFLFuncXTrainingClients
 
 
@@ -79,6 +79,12 @@ class APPFLFuncXServer(abc.ABC):
 
         self.data_info_at_client = data_info_at_client
 
+    def _check_cuda_at_clients(self):
+        resp, _ = self._run_sync_task(
+            client_check_cuda, 
+            )
+        mLogging.log_client_cuda_info(self.cfg, resp)
+        
     def _set_client_weights(self, mode="samples_size"):
         assert (
             self.data_info_at_client is not None
@@ -274,10 +280,37 @@ class APPFLFuncXServer(abc.ABC):
                 obj_name, 
                 osp.join(self.cfg.server.output_dir, "%s_%s" % (self.cfg.clients[cli].name, file_name)))
 
+    def _do_client_adapt(self, model, mode="val"):
+        # Get global state (for adaptation)
+        global_state = self.server.model.state_dict()
+        adapt_info, _ = self._run_sync_task(
+            client_adapt_testing,
+            self.weights,
+            LargeObjectWrapper(global_state, "server_state"),
+            self.loss_fn,
+            mode,
+            "adapt"
+        )
+        return adapt_info
+    
+    def _do_client_testing_after_adaptation(self, adapted_state_dict, mode = "test"):
+        eval_results, _ = self._run_sync_task(
+            client_adapt_testing,
+            self.weights,
+            LargeObjectWrapper(adapted_state_dict, "server_state"),
+            self.loss_fn,
+            mode,
+            "test"
+        )
+        return eval_results
+
+
     def run(self, model: nn.Module, loss_fn: nn.Module, mode="train"):
-        assert mode in ["train", "clients_testing", "attack"]
+        assert mode in ["train", "clients_testing", "attack", "clients_adapt_test"]
         # Set model, and loss function
         self._initialize_training(model, loss_fn)
+        # Check cuda
+        self._check_cuda_at_clients()
         # Validate data at clients
         self._validate_clients_data()
         # Calculate weight
@@ -288,10 +321,33 @@ class APPFLFuncXServer(abc.ABC):
         if mode == "attack":
             self._do_client_attack()
             return
+        
+        elif mode == "clients_adapt_test":
+            # Run model adaptation on the first subset (using validation set for simplification)
+            adapt_results = self._do_client_adapt(model,
+                                                  mode="test"
+                                                  )
+            self.eval_logger.log_client_testing({0:adapt_results[0][1]})
+            # Run client testing
+            # eval_results = self._do_client_testing_after_adaptation(adapt_results[0][0],
+            #                                          mode="test")
             
+            # self.eval_logger.log_client_testing(eval_results)
+            
+            self.cfg["logginginfo"]["GlobalUpdate_time"] = 0.0
+            self.cfg["logginginfo"]["PerIter_time"] = 0.0
+            self.cfg["logginginfo"]["Elapsed_time"] = 0.0
+            self.cfg["logginginfo"]["Validation_time"] = 0.0
+            self.cfg["logginginfo"]["test_loss"] = 0.0
+            self.cfg["logginginfo"]["test_accuracy"] = 0.0
+            self.cfg["logginginfo"]["BestAccuracy"] = 0.0
+            self._finalize_experiment()
+            return
+
         elif mode == "train":
             # Do training
             self._do_training()
+
         elif mode == "clients_testing":
             assert self.cfg.load_model == True
             self.cfg["logginginfo"]["GlobalUpdate_time"] = 0.0
@@ -301,7 +357,7 @@ class APPFLFuncXServer(abc.ABC):
             self.cfg["logginginfo"]["test_loss"] = 0.0
             self.cfg["logginginfo"]["test_accuracy"] = 0.0
             self.cfg["logginginfo"]["BestAccuracy"] = 0.0
-        
+
         # Do client testing
         self._do_client_testing()
         # Do server testing

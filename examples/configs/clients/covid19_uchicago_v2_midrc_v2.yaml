@@ -1,0 +1,47 @@
+server:
+  device: cuda:0
+  data_dir  : "/mnt/data0-nfs/hthieu/anl/APPFL-funcX/datasets/server"
+  output_dir: "./log_funcx_appfl/server"
+  s3_bucket: anl-appfl
+  
+clients:
+  - name: uchicago-gpu-midrc
+    # endpoint_id: 04da69ad-c14d-497a-94ea-4e61f09f65ca
+    endpoint_id : 83d214ed-c5d5-45a0-aa42-9a6e1766a315
+    device: cuda:0
+    data_split: 0
+    data_dir: "/nfs/kitbag/COVID19/MIDRC_Data_04-27-23_Processed_Images_Corrected/"
+    output_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
+    get_data:
+      script_file: "./datasets/covid19_midrc.py"
+      call:   "get_data"
+    data_pipeline:
+      train_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/MIDRC_Files/MIDRC_04-27-23_train_filtered_matchedprevalence.csv"
+      val_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/MIDRC_Files/MIDRC_04-27-23_val_filtered_matchedprevalence.csv"
+      test_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/MIDRC_Files/MIDRC_04-27-23_test_filtered_matchedprevalence.csv"
+      num_pixels: 224
+      train_mean: [0.485, 0.456, 0.406]
+      train_std: [0.229, 0.224, 0.225]
+      test_mean: [0.485, 0.456, 0.406]
+      test_std: [0.229, 0.224, 0.225]
+
+  - name: uchicago-gpu
+    endpoint_id: 83d214ed-c5d5-45a0-aa42-9a6e1766a315
+    device: cuda:1
+    data_split: 0
+    data_dir  : "/nfs/kitbag/COVID19/UC_adult_processedpng_03-15-23/"
+    output_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
+    get_data:
+      script_file: "./datasets/covid19_uchicago.py"
+      call:   "get_data"
+    data_pipeline: 
+      train_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/MIDRC_Files/UC_03-15-23_train_matchedprevalence.csv"
+      val_annotation_dir:  "/nfs/kitbag/data1/jdfuhrman/MIDRC/MIDRC_Files/UC_03-15-23_val_matchedprevalence.csv"
+      test_annotation_dir:   "/nfs/kitbag/data1/jdfuhrman/MIDRC/MIDRC_Files/UC_03-15-23_test_matchedprevalence.csv"
+      num_pixels: 224
+      train_mean: [0.485, 0.456, 0.406]
+      train_std: [0.229, 0.224, 0.225]
+      test_mean: [0.485, 0.456, 0.406]
+      test_std: [0.229, 0.224, 0.225]
+
+

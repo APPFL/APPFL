@@ -22,6 +22,9 @@ def client_validate_data(cfg, client_idx, mode="train", export_data_stats = Fals
     cli_logger.mark_event("stop_endpoint_execution")
     return (data_info, data_stats), cli_logger.to_dict()
 
+def client_check_cuda(cfg, client_idx,):
+    import torch
+    return torch.cuda.device_count()
 
 def client_training(
     cfg,
@@ -155,6 +158,79 @@ def client_testing(cfg, client_idx, weights, global_state, loss_fn):
     cli_logger.start_timer("do_testing")
     res = client.client_validation(test_dataloader)
     cli_logger.start_timer("do_testing")
+    return res, cli_logger.to_dict()
+
+def client_adapt_testing(cfg, client_idx, weights, global_state, loss_fn, mode, step = "adapt"):
+    assert step in ["adapt", "test"]
+
+    from appfl.misc.logging import ClientLogger
+    from appfl.algorithm.funcx_client_optimizer import FuncxClientOptim
+    from appfl.funcx.client_utils import send_client_state
+    ## Prepare logger
+    cli_logger = ClientLogger()
+    cli_logger.mark_event("start_endpoint_execution")
+    ## Import libaries
+    import os.path as osp
+    from appfl.misc import client_log, get_dataloader
+    from appfl.algorithm.client_optimizer import ClientOptim
+    from appfl.funcx.client_utils import get_dataset, load_global_state, get_model
+
+    ## Load client configs
+    cfg.device = cfg.clients[client_idx].device
+    cfg.output_dirname = cfg.clients[client_idx].output_dir
+
+    ## Prepare testing data
+    test_dataset = get_dataset(cfg, client_idx, mode=mode)
+    
+    # Get training model
+    model = get_model(cfg)
+    if step == "test":
+        model.prepare_model_before_testing()
+        test_dataloader = get_dataloader(cfg, test_dataset, mode=mode)
+    else:
+        test_dataloader = DataLoader(
+            test_dataset,
+            batch_size=cfg.test_data_batch_size,
+            num_workers=cfg.num_workers,
+            shuffle=True,
+            pin_memory=True,
+        )       
+    ## Prepare output directory
+    output_filename = cfg.output_filename + "_client_test_%s" % (client_idx)
+    outfile = client_log(cfg.output_dirname, output_filename)
+    ## Instantiate training agent at client
+    client = eval(cfg.fed.clientname)(
+        client_idx, weights, model, loss_fn, None, cfg, outfile, None, **cfg.fed.args
+    )
+    ## Download global state
+    temp_dir = osp.join(cfg.output_dirname, "tmp")
+    cli_logger.start_timer("download_global_state")
+    global_state = load_global_state(cfg, global_state, temp_dir)
+    cli_logger.start_timer("download_global_state")
+
+    ## Initial state for a client
+    cli_logger.start_timer("load_global_state_to_device")
+    client.model.to(cfg.clients[client_idx].device)
+    client.model.load_state_dict(global_state)
+    cli_logger.stop_timer("load_global_state_to_device")
+    ## Do adaptation
+    if step == "adapt":
+        ## Do testing
+        cli_logger.start_timer("do_adaptation")
+        client_state, loss, res = client.client_adapt(test_dataloader, adapt=True)
+        print("adaptation set: ", res["auc"])
+        cli_logger.start_timer("do_adaptation")
+        # client_state, loss, res = client.client_adapt(test_dataloader, adapt=False)
+        # print("testing set: ", res["auc"])
+        ## Send client state to server
+        cli_logger.start_timer("upload_client_state")
+        res_cli_stages = send_client_state(cfg, client_state, client_idx, temp_dir)
+        cli_logger.stop_timer("upload_client_state")
+        return (res_cli_stages, res), cli_logger.to_dict()    
+    else:
+        cli_logger.start_timer("do_testing")
+        client_state, loss, res = client.client_adapt(test_dataloader, adapt=False)
+        cli_logger.start_timer("do_testing")
     return res, cli_logger.to_dict()
 
 from torch.utils.data import DataLoader

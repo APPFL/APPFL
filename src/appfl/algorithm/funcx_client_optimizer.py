@@ -95,6 +95,103 @@ class FuncxClientOptim(BaseClient):
             "tpr": tpr.tolist(), "fpr" : fpr.tolist(), "arr_precs": arr_precs.tolist(), "arr_recalls": arr_recalls.tolist(), 
             "preds": preds[:,1].tolist(), 'targets': targets.tolist(), "outputs" : outputs}
 
+    def client_adapt(self, dataloader, adapt=True):
+        self.model.to(self.cfg.device)
+        adapt_log = {}
+        if adapt: #Adaptation mode
+            # pass #Temporally disable adaptation mode for debugging
+            ## prepare model for adaptation
+            self.model.setup_adaptation()
+            
+            # ## get loss function
+            loss_fn = self.model.get_loss()
+
+            ## local training
+            for t in range(self.model.steps + 1):
+                train_loss = 0
+                train_correct = 0
+                tmptotal = 0
+                targets = []
+                preds = []
+
+                for data, target in dataloader:
+                    data = data.to(self.cfg.device)
+                    target = target.to(self.cfg.device)
+                    self.model.optimizer.zero_grad()
+                    output = self.model(data)
+                    if output.shape[1] == 1:
+                        pred = torch.round(output)
+                    else:
+                        pred =  F.softmax(output, dim=1)
+                    
+                    targets.append(target.cpu().detach().numpy())
+                    preds.append(pred.cpu().detach().numpy())
+                    loss = loss_fn(output)
+                    # loss = self.loss_fn(output, target)
+                    loss.backward()
+                    self.model.optimizer.step()
+                    train_loss += loss.item()
+
+                    # train_correct += pred.eq(target.view_as(pred)).sum().item()
+                targets = np.concatenate(targets)
+                preds   = np.concatenate(preds)
+
+                # log eval results
+                train_loss = train_loss / len(dataloader)
+                auc = metrics.roc_auc_score(targets, preds[:, 1])
+
+                adapt_log["Adpt%d_AUC" % t] = auc
+                adapt_log["Adapt%d_LSS" % t] = train_loss
+                print("Adapt epoch %d - loss : %.02f - AUC: %.02f" % (t, train_loss, auc))
+
+        self.model.eval()
+        loss = 0
+        correct = 0
+        tmpcnt = 0
+        tmptotal = 0
+
+        preds   = []
+        targets = []
+        outputs = []
+        with torch.no_grad():
+            for img, target in dataloader:
+                tmpcnt += 1
+                tmptotal += len(target)
+                img     = img.to(self.cfg.device)
+                target  = target.to(self.cfg.device)
+                output  = self.model(img, adapt)
+                if output.shape[1] == 1:
+                    pred = torch.round(output)
+                else:
+                    pred = F.softmax(output, dim=1)
+                    
+                preds.append(pred.cpu().detach().numpy())
+                targets.append(target.cpu().detach().numpy())
+                outputs.append(output.cpu().detach().numpy())
+
+        targets = np.concatenate(targets)
+        preds   = np.concatenate(preds)
+        outputs = np.concatenate(outputs)
+        outputs = [outputs[i].tolist() for i in range(len(outputs))]
+        preds_binary = preds.argmax(axis=1) 
+        acc = (preds_binary == targets).mean()
+        # Compute precision, recall, AUC, AP for binary classification
+        # Plot the ROC
+        fpr, tpr, _ = metrics.roc_curve(targets,   preds[:,1])
+        # Plot the Recall-Precision Curve
+        arr_precs, arr_recalls, threshold = metrics.precision_recall_curve(targets, preds[:,1])
+        prec, rec, f1, sprt  = metrics.precision_recall_fscore_support(targets, preds_binary, average="binary")
+        try:
+            auc = metrics.roc_auc_score(targets, preds[:, 1])
+        except:
+            auc = None
+        ap  = metrics.average_precision_score(targets, preds[:,1])
+
+        return copy.deepcopy(self.model.state_dict()), loss, {"acc": acc, "prec": prec, "rec": rec, "f1": f1, "auc": auc, "ap": ap, 
+            **adapt_log,
+            "tpr": tpr.tolist(), "fpr" : fpr.tolist(), "arr_precs": arr_precs.tolist(), "arr_recalls": arr_recalls.tolist(), 
+            "preds": preds[:,1].tolist(), 'targets': targets.tolist(), "outputs" : outputs}
+    
     def client_attack(self, dataloader):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
         # Training model for several epochs

@@ -1,0 +1,39 @@
+algorithm:
+  servername: 'ServerFedAvg'
+  clientname: 'ClientOptim'
+  args:
+    ## Server update
+    server_adapt_param: 0.000 #TODO: what is this param?
+    ## Clients optimizer
+    optim: "SGD"
+    num_local_epochs: 2
+    optim_args: 
+        lr: 0.005
+    server_lr_decay_exp_gamma : 0.1
+    epsilon: False
+
+    clip_value: False
+    clip_norm: 1
+    client_weights: "sample_size"
+
+model:
+  num_output: 2
+
+training:
+  num_epochs: 40
+  save_model_filename: "Covid_Isabelle"
+
+dataset:
+  name: CovidDataset
+
+func:
+  get_model:
+    script_file: "./models/isabelle.py"
+    call: "get_model"
+  get_loss:
+    script_file: "./losses/bce_loss.py"
+    call: "get_loss"
+
+train_data_batch_size: 16
+test_data_batch_size: 16
+decay_epochs: [5, 15,25,30,35]

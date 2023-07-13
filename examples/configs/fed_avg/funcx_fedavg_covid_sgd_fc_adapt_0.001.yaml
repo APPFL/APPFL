@@ -3,24 +3,14 @@ algorithm:
   clientname: 'ClientOptim'
   args:
     ## Server update
-    # server_learning_rate: 0.01
     server_adapt_param: 0.000 #TODO: what is this param?
-    # server_momentum_param_1: 0.9
-    # server_momentum_param_2: 0.99
     ## Clients optimizer
     optim: "SGD"
     num_local_epochs: 2
     optim_args: 
         lr: 0.001
     server_lr_decay_exp_gamma : 0.1
-    ## Differential Privacy
     epsilon: False
-    ##  epsilon: 1      (stronger privacy as the value decreases)
-    ##  epsilon: 0.05
-    ## Gradient Clipping
-    ## clip_value: False (no-clipping)
-    ## clip_value: 10    (clipping)
-    ## clip_value: 1
     clip_value: False
     clip_norm: 1
     client_weights: "sample_size"
@@ -29,7 +19,7 @@ model:
   num_output: 2
 
 training:
-  num_epochs: 40
+  num_epochs: 10
   save_model_filename: "Covid_Resnet"
 
 dataset:
@@ -37,9 +27,9 @@ dataset:
 
 func:
   get_model:
-    script_file: "./models/resnet_freeze_bn.py"
+    script_file: "./models/resnet_feat.py"
     call: "get_model"
 
 train_data_batch_size: 256
 test_data_batch_size: 256
-decay_epochs: [15,20,25,35]
+decay_epochs: []

@@ -37,9 +37,9 @@ dataset:
 
 func:
   get_model:
-    script_file: "./models/resnet_freeze_bn.py"
+    script_file: "./models/resnet_gn.py"
     call: "get_model"
 
 train_data_batch_size: 256
 test_data_batch_size: 256
-decay_epochs: [15,20,25,35]
+decay_epochs: [15, 25, 30, 35]

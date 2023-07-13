@@ -81,7 +81,6 @@ class EvalLogger:
         with open(output_file, "w") as fo:
             json.dump(out_dict, fo, indent=2)
 
-
 class mLogging:
     __logger = None
 
@@ -102,7 +101,11 @@ class mLogging:
             )
         
         mode_prefix = {
-            "train": "outputs", "clients_testing" : "eval", "attack": "attack"
+            "train": "outputs", 
+            "clients_testing" : "eval", 
+            "attack": "attack",
+            "clients_adapt_test": "adapt_test"
+
         }
         
         dir = os.path.join(
@@ -208,18 +211,19 @@ class mLogging:
                 l_tsk["endpoint"] = cfg.clients[tlog.client_idx].name
                 l_tsk["start_at"] = str(datetime.fromtimestamp(tlog.start_time))
                 l_tsk["end_at"] = str(datetime.fromtimestamp(tlog.end_time))
-                l_tsk["events"] = dict(tlog.log.events)
-                l_tsk["timing"] = dict(tlog.log.timing)
+                l_tsk["events"] = dict(tlog.log.events) if tlog.log is not None else None
+                l_tsk["timing"] = dict(tlog.log.timing) if tlog.log is not None else None
                 log_tasks.append(l_tsk)
             fo.write(OmegaConf.to_yaml(log_tasks))
-
-        # Save eval log
-        lgg.eval_logger.save_log(
-            os.path.join(lgg.dir, "log_eval_%s_%s.json" % (
+        out_json_file = os.path.join(lgg.dir, "log_eval_%s_%s.json" % (
                         osp.basename(cfg.load_model_dirname),
                         cfg.load_model_filename,
                         # lgg.timestamp
                         ))
+        cls.get_logger().info("Saving evaluation results to %s" % out_json_file)
+        # Save eval log
+        lgg.eval_logger.save_log(
+            out_json_file
         )
 
     @classmethod
@@ -239,6 +243,13 @@ class mLogging:
             logger.info(c)
         logger.info(b)
 
+    @classmethod
+    def log_client_cuda_info(cls, cfg, cuda_info_at_client):
+        logger = cls.get_logger()
+        for client_idx in range(cfg.num_clients):
+            logger.info("Found %d device(s) at client %s" % (cuda_info_at_client[client_idx], 
+                cfg.clients[client_idx].name))
+            
     @classmethod
     def log_server_data_info(cls, data_info_at_server):
         mode = list(data_info_at_server.keys())

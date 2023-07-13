@@ -12,7 +12,7 @@ clients:
     data_dir  : "/mnt/data0-nfs/shared-datasets/anl-covid-xray/archive/"
     output_dir: "/mnt/data0-nfs/hthieu/anl/APPFL/examples/log_funcx_appfl/uiuc-cig-02-gpu-00"
     get_data:
-      script_file: "./datasets/covid19_argonne.py"
+      script_file: "./datasets/covid19_argonne_train_debug.py"
       call:   "get_data"
     data_pipeline: 
       resize: 256

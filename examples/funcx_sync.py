@@ -80,13 +80,18 @@ def main():
     """ User-defined model """
     ModelClass = get_executable_func(cfg.get_model)()
     model = ModelClass(*cfg.model_args, **cfg.model_kwargs)
-    loss_fn = get_loss_func(cfg.loss)
+    """ User-defined loss"""
+    if cfg.get_loss.script_file != "":
+        LossClass = get_executable_func(cfg.get_loss)()
+        loss_fn = LossClass()
+    else:
+        loss_fn = get_loss_func(cfg.loss)
 
     if cfg.load_model == True:
         path = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
         print("Loading model from ", path)
         model.load_state_dict(torch.load(path))
-        model.eval()
+        # model.eval()
 
     """ User-defined data """
     ## save a copy of config to logfile

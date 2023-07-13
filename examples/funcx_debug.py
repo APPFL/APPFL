@@ -30,8 +30,12 @@ parser.add_argument("--config", type=str, default= "configs/fed_async/funcx_fed_
 parser.add_argument("--reproduce", action='store_true', default=True) 
 parser.add_argument("--use_tensorboard", action='store_true', default=True)
 
+# Mode: remote testing at all clients
 parser.add_argument("--clients-test", action='store_true', default=False)
+# Mode: exporting info for privacy attack model
 parser.add_argument("--clients-privacy-attack", action='store_true', default=False)
+# Mode: performing adaptation on one dataset & testing on another subset (e.g., Tent)
+parser.add_argument("--clients-adapt-test", action='store_true', default=False)
 
 parser.add_argument("--load-model", action='store_true', default=False) 
 parser.add_argument("--load-model-dirname", type=str, default= "")
@@ -61,6 +65,8 @@ def main():
         mode = "clients_testing" 
     elif args.clients_privacy_attack:
         mode = "attack"
+    elif args.clients_adapt_test:
+        mode = "clients_adapt_test"
     else:
         mode = "train"
 
@@ -86,6 +92,13 @@ def main():
     ModelClass     = get_executable_func(cfg.get_model)()
     model          = ModelClass(*cfg.model_args, **cfg.model_kwargs) 
     loss_fn        = get_loss_func(cfg.loss)
+
+    """ User-defined loss"""
+    if cfg.get_loss.script_file != "":
+        LossClass = get_executable_func(cfg.get_loss)()
+        loss_fn = LossClass(*cfg.loss_args, **cfg.loss_kwargs)
+    else:
+        loss_fn = get_loss_func(cfg.loss)
 
     if cfg.load_model == True:
         path = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")

@@ -16,5 +16,14 @@ class APPFLFuncXTestServer(APPFLFuncXSyncServer):
         client_results = OrderedDict()
         client_logs = OrderedDict()
         self.cfg.use_cloud_transfer = False
-        client_results[0], client_logs[0] = func(self.cfg, 0, *_args, **_kwargs)
+
+        res = func(self.cfg, 0, *_args, **_kwargs)
+        try: 
+            len(res)
+        except:
+            client_results[0] = res
+            client_logs = None
+        else:
+            client_results[0] = res[0]
+            client_logs[0] = res[1]
         return client_results, client_logs

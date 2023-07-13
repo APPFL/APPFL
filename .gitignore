@@ -12,3 +12,4 @@ src/appfl.egg-info/
 **/.ipynb_checkpoints/
 examples/**/*.png
 examples/experiments/
+examples/pretrained/

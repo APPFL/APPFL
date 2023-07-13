@@ -11,19 +11,13 @@ algorithm:
     optim: "SGD"
     num_local_epochs: 2
     optim_args: 
-        lr: 0.001
+        lr: 0.005
     server_lr_decay_exp_gamma : 0.1
     ## Differential Privacy
     epsilon: False
-    ##  epsilon: 1      (stronger privacy as the value decreases)
-    ##  epsilon: 0.05
-    ## Gradient Clipping
-    ## clip_value: False (no-clipping)
-    ## clip_value: 10    (clipping)
-    ## clip_value: 1
     clip_value: False
     clip_norm: 1
-    client_weights: "sample_size"
+    client_weights: "equal"
 
 model:
   num_output: 2
@@ -37,9 +31,9 @@ dataset:
 
 func:
   get_model:
-    script_file: "./models/resnet_freeze_bn.py"
+    script_file: "./models/resnet.py"
     call: "get_model"
 
 train_data_batch_size: 256
 test_data_batch_size: 256
-decay_epochs: [15,20,25,35]
+decay_epochs: [5, 15,25,30,35]

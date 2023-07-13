@@ -13,12 +13,12 @@ clients:
     data_dir  : "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/ImageData/"
     output_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/Logs"
     get_data:
-      script_file: "./datasets/covid19_uchicago_train_debug.py"
+      script_file: "./datasets/covid19_uchicago.py"
       call:   "get_data"
     data_pipeline: 
-      train_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/train_annotations"
-      test_annotation_dir:  "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/test_annotations"
-      val_annotation_dir:   "/nfs/kitbag/data1/jdfuhrman/MIDRC/APPFLCollab/val_annotations"
+      train_annotation_dir: "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/train_annotations_equalprevalence.csv"
+      test_annotation_dir:  "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/train_annotations_equalprevalence.csv"
+      val_annotation_dir:   "/nfs/kitbag/data1/jdfuhrman/MIDRC/FederatedLearningCode/train_annotations_equalprevalence.csv"
       num_pixels: 224
       train_mean: [0.631185, 0.631185, 0.631185]
       train_std: [0.211981, 0.211981, 0.211981]

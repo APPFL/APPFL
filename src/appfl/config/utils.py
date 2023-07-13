@@ -52,6 +52,10 @@ def load_funcx_config(cfg: FuncXConfig, config_file: str):
     if "test_data_batch_size" in data:
         cfg.test_data_batch_size = data["test_data_batch_size"]
     cfg.get_model = load_exct_func_cfg(data["func"]["get_model"])
+    if "get_loss" in data["func"]:
+        cfg.get_loss = load_exct_func_cfg(data["func"]["get_loss"])
+    if "loss_params" in data:
+        cfg.loss_kwargs = data["loss_params"]
 
     ## Load FL algorithm configs
     cfg.fed = Federated()

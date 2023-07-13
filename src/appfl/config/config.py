@@ -130,12 +130,15 @@ class FuncXClientConfig:
 class FuncXConfig(Config):
     server: FuncXServerConfig
     get_data: ExecutableFunc = field(default_factory=ExecutableFunc)
+    get_loss: ExecutableFunc = field(default_factory=ExecutableFunc)
     get_model: ExecutableFunc = field(default_factory=ExecutableFunc)
     clients: List[FuncXClientConfig] = field(default_factory=list)
     dataset: str = ""
     loss: str = "CrossEntropy"
     model_args: List = field(default_factory=list)
     model_kwargs: Dict = field(default_factory=dict)
+    loss_args: List = field(default_factory=list)
+    loss_kwargs:  Dict = field(default_factory=dict)
     logging_tasks: List = field(default_factory=list)
 
     # Testing and validation params
