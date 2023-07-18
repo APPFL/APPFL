@@ -293,7 +293,7 @@ class APPFLFuncXServer(abc.ABC):
         )
         return adapt_info
     
-    def _do_client_testing_after_adaptation(self, adapted_state_dict, mode = "test"):
+    def _do_client_testing_after_adaptation(self, adapted_state_dict, mode="test"):
         eval_results, _ = self._run_sync_task(
             client_adapt_testing,
             self.weights,
@@ -323,16 +323,25 @@ class APPFLFuncXServer(abc.ABC):
             return
         
         elif mode == "clients_adapt_test":
+            # Set up adapt & test pipeline
+            # if unsupervised:
+            #     self.logger.info("[Adapt+Test] Running adapt+test in the unsuperivised setting")
+            # else:
+            #     self.logger.info("[Adapt+Test] Running adapt+test in the superivised setting")
+
             # Run model adaptation on the first subset (using validation set for simplification)
             adapt_results = self._do_client_adapt(model,
-                                                  mode="test"
+                                                  mode="val"
                                                   )
+            self.logger.info("[Adapt+Test] Performance result on the adaptation set: ")
             self.eval_logger.log_client_testing({0:adapt_results[0][1]})
-            # Run client testing
-            # eval_results = self._do_client_testing_after_adaptation(adapt_results[0][0],
-            #                                          mode="test")
             
-            # self.eval_logger.log_client_testing(eval_results)
+            # Run client testing
+            self.logger.info("[Adapt+Test] Performance result on the testing set: ")
+            eval_results = self._do_client_testing_after_adaptation(adapt_results[0][0],
+                                                     mode="test"
+                                                    )
+            self.eval_logger.log_client_testing(eval_results)
             
             self.cfg["logginginfo"]["GlobalUpdate_time"] = 0.0
             self.cfg["logginginfo"]["PerIter_time"] = 0.0

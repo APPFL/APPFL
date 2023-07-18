@@ -11,8 +11,6 @@ def get_model():
     import torchvision
     import torch.optim as optim
 
-    
-
     def copy_model_and_optimizer(model, optimizer):
         """Copy the model and optimizer states for resetting after adaptation."""
         model_state = deepcopy(model.state_dict())
@@ -24,6 +22,32 @@ def get_model():
         """Restore the model and optimizer states from copies."""
         model.load_state_dict(model_state, strict=True)
         optimizer.load_state_dict(optimizer_state)
+    
+    def prepare_bn_layer(bn_layer, is_training, bn_mode):
+        if bn_mode == "fixed":
+            if is_training:
+                bn_layer.requires_grad_(True)
+                bn_layer.track_running_stats = False
+            else:
+                bn_layer.eval()
+        elif bn_mode == "adaptation":
+            if is_training:
+                bn_layer.requires_grad_(True)
+                bn_layer.train()
+            else:
+                bn_layer.eval()
+        elif bn_mode == "none":
+            if is_training:
+                bn_layer.requires_grad_(True)
+
+            bn_layer.track_running_stats = False
+            bn_layer.running_mean = None
+            bn_layer.running_var = None
+        else:
+            assert NotImplementedError
+        # bn_layer.eval()
+        
+        # return bn_layer
     
     class ResNet(nn.Module):
         """ResNet18 model with additional Sigmoid layer for classification
@@ -43,7 +67,8 @@ def get_model():
 
         Once tented, a model adapts itself by updating on every forward.
         """
-        def __init__(self, num_output, lr, update_bn=True, update_fc=True, momentum=0.9, dampening=0.0, wd=0.0, nesterov = True, steps=1):
+        def __init__(self, num_output, lr, update_bn=True, update_fc=True, momentum=0.9, dampening=0.0, wd=0.0, nesterov = True, 
+                     steps=1, bn_mode="fixed", unsupervised=True):
             super().__init__()
             self.ResNet18 = torchvision.models.resnet18(pretrained=True)
             self.ResNet18.fc = nn.Sequential(nn.Linear(512, num_output))
@@ -59,6 +84,9 @@ def get_model():
             self.need_setup = True
             self.update_bn = update_bn
             self.update_fc = update_fc
+            assert bn_mode in ["fixed", "adaptation", "none"]
+            self.bn_mode = bn_mode
+            self.unsupervisied = unsupervised
         
         def forward_and_adapt(x, model, optimizer):
             """Forward and adapt model on batch of data.
@@ -117,7 +145,8 @@ def get_model():
             has_bn = any([isinstance(m, nn.BatchNorm2d) for m in model.modules()])
             assert has_bn, "tent needs normalization for its optimization"
         
-        def configure_model(self, model):
+
+        def prepare_model_before_training(self, model):
             """Configure model for use with tent."""
             # train mode, because tent optimizes the model to minimize entropy
             model.train()
@@ -128,56 +157,32 @@ def get_model():
                 if (self.update_fc and isinstance(m, nn.Linear)):
                     m.requires_grad_(True)
                 if (self.update_bn and isinstance(m, nn.BatchNorm2d)):
-                    m.requires_grad_(True)
-                    # force use of batch stats in train and eval modes
-                    m.track_running_stats = False
-                    m.running_mean = None
-                    m.running_var = None
+                    # Use the statistics from pre-trained model
+                    m = prepare_bn_layer(m, is_training=True, bn_mode=self.bn_mode)
             return model
 
         def prepare_model_before_testing(self):
             for m in self.ResNet18.modules():
                 if (self.update_bn and isinstance(m, nn.BatchNorm2d)):
-                    m.requires_grad_(True)
-                    # force use of batch stats in train and eval modes
-                    m.track_running_stats = False
-                    m.running_mean = None
-                    m.running_var = None
+                    m = prepare_bn_layer(m, is_training=False, bn_mode=self.bn_mode)
 
         def setup_adaptation(self):
-            if self.need_setup == True:
-                # Configure model
-                self.ResNet18 = self.configure_model(self.ResNet18)
-                # Check model
-                Tent.check_model(self.ResNet18)
-                # Select params to optimize
-                params, params_name = self.collect_params(self.ResNet18)
-                # print(params_name)
-                self.optimizer = optim.SGD(params,
-                   lr=self.lr,
-                   momentum=self.momentum,
-                   dampening=self.dampening,
-                   weight_decay=self.wd,
-                   nesterov=self.nesterov)
-                self.need_setup = False
+            # Configure model
+            self.ResNet18 = self.prepare_model_before_training(self.ResNet18)
+            # Check model
+            Tent.check_model(self.ResNet18)
+            # Select params to optimize
+            params, params_name = self.collect_params(self.ResNet18)
+            # print(params_name)
+            self.optimizer = optim.SGD(params,
+                lr=self.lr,
+                momentum=self.momentum,
+                dampening=self.dampening,
+                weight_decay=self.wd,
+                nesterov=self.nesterov)
+            self.need_setup = False
                 
         def forward(self, x, perform_adapt=True):
             outputs = self.ResNet18(x)
-            # import ipdb; ipdb.set_trace()
-            # if perform_adapt: 
-            #     self.setup_adaptation()
-            #     for _ in range(self.steps):
-            #         outputs = Tent.forward_and_adapt(x, self.ResNet18, self.optimizer)
-            # else:
-            #     self.setup_adaptation()
-                # for _ in range(1):
-                #     outputs = Tent.forward_and_adapt(x, self.ResNet18, self.optimizer)
-                # outputs = Tent.forward_only(x, self.ResNet18)
-                # outputs = Tent.forward_and_adapt(x, self.ResNet18, self.optimizer)
-                # self.prepare_model_before_testing()
-                # outputs = self.ResNet18(x)
-                # self.lr = 0.0
-                # self.setup_tent()
-                # outputs = Tent.forward_and_adapt(x, self.ResNet18, self.optimizer)
             return outputs
     return Tent

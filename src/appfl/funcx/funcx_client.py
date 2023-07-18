@@ -160,7 +160,7 @@ def client_testing(cfg, client_idx, weights, global_state, loss_fn):
     cli_logger.start_timer("do_testing")
     return res, cli_logger.to_dict()
 
-def client_adapt_testing(cfg, client_idx, weights, global_state, loss_fn, mode, step = "adapt"):
+def client_adapt_testing(cfg, client_idx, weights, global_state, loss_fn, mode, step = "adapt", unsupervised = True):
     assert step in ["adapt", "test"]
 
     from appfl.misc.logging import ClientLogger
@@ -174,7 +174,7 @@ def client_adapt_testing(cfg, client_idx, weights, global_state, loss_fn, mode, 
     from appfl.misc import client_log, get_dataloader
     from appfl.algorithm.client_optimizer import ClientOptim
     from appfl.funcx.client_utils import get_dataset, load_global_state, get_model
-
+    from torch.utils.data import DataLoader
     ## Load client configs
     cfg.device = cfg.clients[client_idx].device
     cfg.output_dirname = cfg.clients[client_idx].output_dir

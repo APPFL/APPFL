@@ -97,19 +97,22 @@ class FuncxClientOptim(BaseClient):
 
     def client_adapt(self, dataloader, adapt=True):
         self.model.to(self.cfg.device)
+        self.model.eval()
         adapt_log = {}
         if adapt: #Adaptation mode
-            # pass #Temporally disable adaptation mode for debugging
             ## prepare model for adaptation
             self.model.setup_adaptation()
-            
-            # ## get loss function
-            loss_fn = self.model.get_loss()
+            unsupervised = self.model.unsupervisied
+
+            ## get loss function
+            if unsupervised == True:
+                loss_fn = self.model.get_loss()
+            else:
+                loss_fn = self.loss_fn
 
             ## local training
-            for t in range(self.model.steps + 1):
+            for t in range(self.model.steps):
                 train_loss = 0
-                train_correct = 0
                 tmptotal = 0
                 targets = []
                 preds = []
@@ -117,7 +120,7 @@ class FuncxClientOptim(BaseClient):
                 for data, target in dataloader:
                     data = data.to(self.cfg.device)
                     target = target.to(self.cfg.device)
-                    self.model.optimizer.zero_grad()
+                    # self.model.optimizer.zero_grad()
                     output = self.model(data)
                     if output.shape[1] == 1:
                         pred = torch.round(output)
@@ -126,13 +129,14 @@ class FuncxClientOptim(BaseClient):
                     
                     targets.append(target.cpu().detach().numpy())
                     preds.append(pred.cpu().detach().numpy())
-                    loss = loss_fn(output)
-                    # loss = self.loss_fn(output, target)
+                    if unsupervised == True:
+                        loss = loss_fn(output)
+                    else:
+                        loss = loss_fn(output, target)
                     loss.backward()
                     self.model.optimizer.step()
                     train_loss += loss.item()
 
-                    # train_correct += pred.eq(target.view_as(pred)).sum().item()
                 targets = np.concatenate(targets)
                 preds   = np.concatenate(preds)
 
@@ -143,8 +147,8 @@ class FuncxClientOptim(BaseClient):
                 adapt_log["Adpt%d_AUC" % t] = auc
                 adapt_log["Adapt%d_LSS" % t] = train_loss
                 print("Adapt epoch %d - loss : %.02f - AUC: %.02f" % (t, train_loss, auc))
-
-        self.model.eval()
+        
+        # self.model.prepare_model_before_testing()
         loss = 0
         correct = 0
         tmpcnt = 0
@@ -159,7 +163,7 @@ class FuncxClientOptim(BaseClient):
                 tmptotal += len(target)
                 img     = img.to(self.cfg.device)
                 target  = target.to(self.cfg.device)
-                output  = self.model(img, adapt)
+                output  = self.model(img)
                 if output.shape[1] == 1:
                     pred = torch.round(output)
                 else:

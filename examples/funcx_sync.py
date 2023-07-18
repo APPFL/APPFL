@@ -31,6 +31,9 @@ parser.add_argument(
 
 ## other agruments
 parser.add_argument("--clients-test", action="store_true", default=False)
+# Mode: performing adaptation on one dataset & testing on another subset (e.g., Tent)
+parser.add_argument("--clients-adapt-test", action='store_true', default=False)
+
 parser.add_argument("--reproduce", action="store_true", default=True)
 parser.add_argument("--load-model", action="store_true", default=False)
 parser.add_argument("--load-model-dirname", type=str, default="")
@@ -57,7 +60,13 @@ def main():
         set_seed(1)
 
     ## execution mode
-    mode = "clients_testing" if args.clients_test else "train"
+    if args.clients_test:
+        mode = "clients_testing" 
+    elif args.clients_adapt_test:
+        mode = "clients_adapt_test"
+    else:
+        mode = "train"
+
 
     ## loading funcX configs from file
     load_funcx_device_config(cfg, args.client_config)
