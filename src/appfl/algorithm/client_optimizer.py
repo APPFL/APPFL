@@ -57,18 +57,23 @@ class ClientOptim(BaseClient):
             for data, target in self.dataloader:                
                 tmptotal += len(target)
                 data = data.to(self.cfg.device)
-                target = target.to(self.cfg.device)
+                target = target.unsqueeze(1).to(self.cfg.device)
                 optimizer.zero_grad()
                 output = self.model(data)
-                loss = self.loss_fn(output, target)
+                
+                target = target.type_as(output)
+                probs = torch.sigmoid(output)
+                pred = probs > 0.5
+                
+                loss = self.loss_fn(probs, target)
                 loss.backward()
                 optimizer.step()
                 
                 train_loss += loss.item()
-                if output.shape[1] == 1:
-                    pred = torch.round(output)
-                else:
-                    pred = output.argmax(dim=1, keepdim=True)
+                # if output.shape[1] == 1:
+                #     pred = torch.round(output)
+                # else:
+                #     pred = output.argmax(dim=1, keepdim=True)
                 train_correct += pred.eq(target.view_as(pred)).sum().item()
 
                 if self.clip_value != False:

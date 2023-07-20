@@ -175,13 +175,15 @@ def main():
     model = get_model()
     # loss_fn = torch.nn.BCELoss()   
     if args.client == 'FedMTLClient':
-        criterion_covid = torch.nn.CrossEntropyLoss()
+        # criterion_covid = torch.nn.CrossEntropyLoss()
+        criterion_covid = torch.nn.BCEWithLogitsLoss(reduction='mean')
         criterion_race = torch.nn.CrossEntropyLoss()
         criterion_sex = torch.nn.CrossEntropyLoss()
         criterion_age = torch.nn.CrossEntropyLoss()     
         loss_fn = [criterion_covid, criterion_race, criterion_sex, criterion_age]
     else:
-        loss_fn = torch.nn.CrossEntropyLoss()
+        # loss_fn = torch.nn.CrossEntropyLoss()
+        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean')
 
     ## loading models
     cfg.load_model = False

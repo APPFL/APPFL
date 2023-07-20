@@ -296,14 +296,20 @@ class BaseClient:
                 tmpcnt += 1
                 tmptotal += len(target)
                 img = img.to(self.cfg.device)
-                target = target.to(self.cfg.device)
+                target = target.unsqueeze(1).to(self.cfg.device)
                 output = self.model(img)
-                loss += self.loss_fn(output, target).item()
+                
+                target = target.type_as(output)
+                probs = torch.sigmoid(output)
+                pred = probs > 0.5
+                
+                loss += self.loss_fn(probs, target).item()
+                
 
-                if output.shape[1] == 1:
-                    pred = torch.round(output)
-                else:
-                    pred = output.argmax(dim=1, keepdim=True)
+                # if output.shape[1] == 1:
+                #     pred = torch.round(output)
+                # else:
+                #     pred = output.argmax(dim=1, keepdim=True)
 
                 correct += pred.eq(target.view_as(pred)).sum().item()
 

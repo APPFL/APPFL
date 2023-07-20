@@ -23,15 +23,20 @@ def validation(self, dataloader):
             tmpcnt += 1
             tmptotal += len(target)
             img = img.to(self.device)
-            target = target.to(self.device)
+            target = target.unsqueeze(1).to(self.device)
             output = self.model(img)
-            cur_loss = self.loss_fn(output, target)
+            
+            target = target.type_as(output)
+            probs = torch.sigmoid(output)
+            pred = probs > 0.5
+                
+            cur_loss = self.loss_fn(probs, target)
             loss += cur_loss.item()
 
-            if output.shape[1] == 1:
-                pred = torch.round(output)
-            else:
-                pred = output.argmax(dim=1, keepdim=True)
+            # if output.shape[1] == 1:
+            #     pred = torch.round(output)
+            # else:
+            #     pred = output.argmax(dim=1, keepdim=True)
 
             correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -60,17 +65,22 @@ def validation_MTL(self, dataloader):
             tmpcnt += 1      
             data = sample['img'].to(self.device)
             targets = sample['targets']
-            target = targets[0].to(self.device)
+            target = targets[0].unsqueeze(1).to(self.device)
             tmptotal += len(target)               
             preds_all = self.model(data)
             output = preds_all[0]
-            cur_loss = self.loss_fn[0](output, target)
+            
+            target = target.type_as(output)
+            probs = torch.sigmoid(output)
+            pred = probs > 0.5
+            
+            cur_loss = self.loss_fn[0](probs, target)
             loss += cur_loss.item()
             
-            if output.shape[1] == 1:
-                pred = torch.round(output)
-            else:
-                pred = output.argmax(dim=1, keepdim=True)
+            # if output.shape[1] == 1:
+            #     pred = torch.round(output)
+            # else:
+            #     pred = output.argmax(dim=1, keepdim=True)
 
             correct += pred.eq(target.view_as(pred)).sum().item()
 

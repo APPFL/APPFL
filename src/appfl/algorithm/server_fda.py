@@ -148,7 +148,7 @@ class FedMTLClient(BaseClient):
     
     def client_validation_MTL(self, dataloader):
         
-        print('ewotuwt')
+        # print('ewotuwt')
 
         if self.loss_fn is None or dataloader is None:
             return 0.0, 0.0
@@ -164,16 +164,21 @@ class FedMTLClient(BaseClient):
                 tmpcnt += 1      
                 data = sample['img'].to(self.cfg.device)
                 targets = sample['targets']
-                target = targets[0].to(self.cfg.device)
+                target = targets[0].unsqueeze(1).to(self.cfg.device)
                 tmptotal += len(target)               
                 preds_all = self.model(data)
                 output = preds_all[0]
-                loss += self.loss_fn[0](output, target).item()
+                
+                target = target.type_as(output)
+                probs = torch.sigmoid(output)
+                pred = probs > 0.5
+                
+                loss += self.loss_fn[0](probs, target).item()
 
-                if output.shape[1] == 1:
-                    pred = torch.round(output)
-                else:
-                    pred = output.argmax(dim=1, keepdim=True)
+                # if output.shape[1] == 1:
+                #     pred = torch.round(output)
+                # else:
+                #     pred = output.argmax(dim=1, keepdim=True)
 
                 correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -220,17 +225,21 @@ class FedMTLClient(BaseClient):
                 
                 for i in range(len(targets)):
                     targets[i] = targets[i].to(self.cfg.device)
-                labels = targets[0]
+                labels = targets[0].unsqueeze(1)
                 tmptotal += len(labels)
                 
                 optimizer.zero_grad()
                 
                 preds_all = self.model(data)
                 output = preds_all[0]
+                
+                labels = labels.type_as(output)
+                probs = torch.sigmoid(output)
+                pred = probs > 0.5
                     
                 # TODO: setup multiple loss_fn and also test whether it is target client                
                 # if self.id != self.cfg.fed.target:
-                loss = self.loss_fn[0](output, labels)
+                loss = self.loss_fn[0](probs, labels)
                 for idx, c in enumerate(self.loss_fn[1:]):
                     loss += c(preds_all[idx+1], targets[idx+1])
                 # else:
@@ -240,10 +249,10 @@ class FedMTLClient(BaseClient):
                 optimizer.step()
                 
                 train_loss += loss.item()
-                if output.shape[1] == 1:
-                    pred = torch.round(output)
-                else:
-                    pred = output.argmax(dim=1, keepdim=True)
+                # if output.shape[1] == 1:
+                #     pred = torch.round(output)
+                # else:
+                #     pred = output.argmax(dim=1, keepdim=True)
                 train_correct += pred.eq(labels.view_as(pred)).sum().item()
 
                 if self.clip_value != False:
