@@ -231,12 +231,12 @@ class FedMTLClient(BaseClient):
                 labels = labels.type_as(output)
                 probs = torch.sigmoid(output)
                 pred = probs > 0.5
-                    
-                # TODO: setup multiple loss_fn and also test whether it is target client                
-                # if self.id != self.cfg.fed.target:
+                                   
+                
                 loss = self.loss_fn[0](probs, labels)
-                for idx, c in enumerate(self.loss_fn[1:]):
-                    loss += c(preds_all[idx+1], targets[idx+1])
+                if self.id != self.cfg.fed.args.target:
+                    for idx, c in enumerate(self.loss_fn[1:]):
+                        loss += c(preds_all[idx+1], targets[idx+1])
                 # else:
                     # loss = self.loss_fn[0](output, labels)
 
