@@ -6,6 +6,7 @@ import numpy as np
 import torch.nn as nn
 from .misc import *
 from mpi4py import MPI
+from typing import Any
 from .algorithm import *
 from torch.optim import *
 from omegaconf import DictConfig
@@ -18,7 +19,8 @@ def run_server(
     loss_fn: nn.Module,
     num_clients: int,
     test_dataset: Dataset = Dataset(),
-    dataset_name: str = "appfl"
+    dataset_name: str = "appfl",
+    metric: Any = None
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model in an asynchronous way
 
@@ -184,7 +186,7 @@ def run_server(
             # Do server validation
             validation_start = time.time()
             if cfg.validation == True:
-                test_loss, test_accuracy = validation(server, test_dataloader)
+                test_loss, test_accuracy = validation(server, test_dataloader, metric)
                 if test_accuracy > best_accuracy:
                     best_accuracy = test_accuracy
                 if cfg.use_tensorboard:
@@ -225,7 +227,8 @@ def run_client(
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
-    test_data: Dataset = Dataset()
+    test_data: Dataset = Dataset(),
+    metric: Any = None
 ):
     """Run PPFL simulation clients, each of which updates its own local parameters of model
 
@@ -299,6 +302,7 @@ def run_client(
         cfg,
         outfile[cid],
         test_dataloader,
+        metric,
         **cfg.fed.args,
     )
 
