@@ -4,39 +4,31 @@ from omegaconf import DictConfig
 import logging
 import random
 import numpy as np
+import copy
 
-
-def validation(self, dataloader):
-
+def validation(self, dataloader, metric):
     if self.loss_fn is None or dataloader is None:
         return 0.0, 0.0
 
-    self.model.to(self.device)
-    self.model.eval()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    validation_model = copy.deepcopy(self.model)
+    validation_model.to(device)
+    validation_model.eval()
 
-    loss = 0
-    correct = 0
-    tmpcnt = 0
-    tmptotal = 0
+    loss, tmpcnt = 0, 0
     with torch.no_grad():
         for img, target in dataloader:
             tmpcnt += 1
             tmptotal += len(target)
             img = img.to(self.device)
-            target = target.unsqueeze(1).to(self.device)
+            target = target.to(self.device)
             output = self.model(img)
-            
-            target = target.type_as(output)
-            probs = torch.sigmoid(output)
-            pred = probs > 0.5
-                
-            cur_loss = self.loss_fn(probs, target)
-            loss += cur_loss.item()
+            loss += self.loss_fn(output, target).item()
 
-            # if output.shape[1] == 1:
-            #     pred = torch.round(output)
-            # else:
-            #     pred = output.argmax(dim=1, keepdim=True)
+            if output.shape[1] == 1:
+                pred = torch.round(output)
+            else:
+                pred = output.argmax(dim=1, keepdim=True)
 
             correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -44,10 +36,37 @@ def validation(self, dataloader):
     # self.model.to("cpu")
 
     loss = loss / tmpcnt
-    accuracy = 100.0 * correct / tmptotal
-
+    accuracy = _evaluate_model_on_tests(validation_model, dataloader, metric)
     return loss, accuracy
 
+def _evaluate_model_on_tests(model, test_dataloader, metric):
+    if metric is None:
+        metric = _default_metric
+    model.eval()
+    with torch.no_grad():
+        test_dataloader_iterator = iter(test_dataloader)
+        y_pred_final = []
+        y_true_final = []
+        for (X, y) in test_dataloader_iterator:
+            if torch.cuda.is_available():
+                X = X.cuda()
+                y = y.cuda()
+            y_pred = model(X).detach().cpu()
+            y = y.detach().cpu()
+            y_pred_final.append(y_pred.numpy())
+            y_true_final.append(y.numpy())
+
+        y_true_final = np.concatenate(y_true_final)
+        y_pred_final = np.concatenate(y_pred_final)
+        accuracy = float(metric(y_true_final, y_pred_final))
+    return accuracy
+
+def _default_metric(y_true, y_pred):
+    if len(y_pred.shape) == 1:
+        y_pred = np.round(y_pred)
+    else:
+        y_pred = y_pred.argmax(axis=1, keepdims=False)
+    return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
 def validation_MTL(self, dataloader):
 
     if self.loss_fn is None or dataloader is None:

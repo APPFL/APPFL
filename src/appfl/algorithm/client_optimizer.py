@@ -15,7 +15,7 @@ import time
 
 class ClientOptim(BaseClient):
     def __init__(
-        self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, **kwargs
+        self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs
     ):
         super(ClientOptim, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
@@ -23,6 +23,7 @@ class ClientOptim(BaseClient):
         self.__dict__.update(kwargs)
 
         self.round = 0
+        self.metric = metric
 
         super(ClientOptim, self).client_log_title()
 
@@ -39,7 +40,7 @@ class ClientOptim(BaseClient):
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
             test_loss, test_accuracy = super(ClientOptim, self).client_validation(
-                self.test_dataloader
+                self.test_dataloader, self.metric
             )
             per_iter_time = time.time() - start_time
             super(ClientOptim, self).client_log_content(
@@ -87,7 +88,7 @@ class ClientOptim(BaseClient):
             train_accuracy = 100.0 * train_correct / tmptotal
             if self.cfg.validation == True and self.test_dataloader != None:
                 test_loss, test_accuracy = super(ClientOptim, self).client_validation(
-                    self.test_dataloader
+                    self.test_dataloader, self.metric
                 )
                 per_iter_time = time.time() - start_time
                 super(ClientOptim, self).client_log_content(
