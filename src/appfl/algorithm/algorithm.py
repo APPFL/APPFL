@@ -300,8 +300,17 @@ class BaseClient:
         loss = loss / tmpcnt
         accuracy = self._evaluate_model_on_tests(validation_model, dataloader, metric)
         return loss, accuracy
+    
+    def _default_metric(self, y_true, y_pred):
+        if len(y_pred.shape) == 1:
+            y_pred = np.round(y_pred)
+        else:
+            y_pred = y_pred.argmax(axis=1, keepdims=False)
+        return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
 
     def _evaluate_model_on_tests(self, model, test_dataloader, metric):
+        if metric is None:
+            metric = self._default_metric
         model.eval()
         with torch.no_grad():
             test_dataloader_iterator = iter(test_dataloader)

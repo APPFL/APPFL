@@ -28,6 +28,8 @@ def validation(self, dataloader, metric):
     return loss, accuracy
 
 def _evaluate_model_on_tests(model, test_dataloader, metric):
+    if metric is None:
+        metric = _default_metric
     model.eval()
     with torch.no_grad():
         test_dataloader_iterator = iter(test_dataloader)
@@ -46,6 +48,13 @@ def _evaluate_model_on_tests(model, test_dataloader, metric):
         y_pred_final = np.concatenate(y_pred_final)
         accuracy = float(metric(y_true_final, y_pred_final))
     return accuracy
+
+def _default_metric(y_true, y_pred):
+    if len(y_pred.shape) == 1:
+        y_pred = np.round(y_pred)
+    else:
+        y_pred = y_pred.argmax(axis=1, keepdims=False)
+    return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
 
 def create_custom_logger(logger, cfg: DictConfig):
 
