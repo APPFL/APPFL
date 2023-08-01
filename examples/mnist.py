@@ -17,6 +17,8 @@ import appfl.run_mpi as rm
 from mpi4py import MPI
 
 import argparse
+from losses.utils import get_loss
+from metric.utils import get_metric
 
 """ read arguments """
 
@@ -46,6 +48,13 @@ parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
 
+## loss function
+parser.add_argument("--loss_fn", type=str, required=False, help="path to the custom loss function definition file, use cross-entropy loss by default if no path is specified")
+parser.add_argument("--loss_fn_name", type=str, required=False, help="class name for the custom loss in the loss function definition file, choose the first class by default if no name is specified")
+
+## evaluation metric
+parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
+parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
 args = parser.parse_args()
 
@@ -105,8 +114,6 @@ def get_data(comm: MPI.Comm):
         )
     return train_datasets, test_dataset
 
-
-
 ## Run
 def main():
 
@@ -165,7 +172,8 @@ def main():
 
     """ User-defined model """
     model = get_model(args)
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = get_loss(args.loss_fn, args.loss_fn_name)
+    metric = get_metric(args.metric, args.metric_name)
 
     ## loading models
     cfg.load_model = False
@@ -198,15 +206,15 @@ def main():
     if comm_size > 1:
         if comm_rank == 0:
             rm.run_server(
-                cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
+                cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric
             )
         else:
             rm.run_client(
-                cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset
+                cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset, metric
             )
         print("------DONE------", comm_rank)
     else:
-        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, metric)
         
 
 
@@ -215,8 +223,8 @@ if __name__ == "__main__":
 
 
 # To run CUDA-aware MPI:
-# mpiexec -np 2 --mca opal_cuda_support 1 python ./mnist.py
+# mpiexec -np 2 --mca opal_cuda_support 1 python ./mnist.py --loss_fn losses/celoss.py --loss_fn_name CELoss
 # To run MPI:
-# mpiexec -np 2 python ./mnist.py
+# mpiexec -np 2 python ./mnist.py --loss_fn losses/celoss.py --loss_fn_name CELoss
 # To run:
-# python ./mnist.py
+# python ./mnist.py --loss_fn losses/celoss.py --loss_fn_name CELoss

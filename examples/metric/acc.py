@@ -10,4 +10,4 @@ def accuracy(y_true, y_pred):
         y_pred = np.round(y_pred)
     else:
         y_pred = y_pred.argmax(axis=1, keepdims=False)
-    return 200*np.sum(y_pred==y_true)/y_pred.shape[0]
+    return 100*np.sum(y_pred==y_true)/y_pred.shape[0]

@@ -9,7 +9,9 @@ from mpi4py import MPI
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
+from losses.utils import get_loss
 from models.utils import get_model
+from metric.utils import get_metric
 from torchvision.transforms import ToTensor
 
 """ read arguments """
@@ -38,6 +40,14 @@ parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
+
+## loss function
+parser.add_argument("--loss_fn", type=str, required=False, help="path to the custom loss function definition file, use cross-entropy loss by default if no path is specified")
+parser.add_argument("--loss_fn_name", type=str, required=False, help="class name for the custom loss in the loss function definition file, choose the first class by default if no name is specified")
+
+## evaluation metric
+parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
+parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
 ## Fed Async
 parser.add_argument("--gradient_based", type=bool, default=False, help="Whether the algorithm requires gradient from the model")
@@ -174,7 +184,8 @@ def main():
 
     """ User-defined model """
     model = get_model(args)
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = get_loss(args.loss_fn, args.loss_fn_name)
+    metric = get_metric(args.metric, args.metric_name)
 
     ## loading models
     cfg.load_model = False
@@ -206,12 +217,12 @@ def main():
     """ Running """
     if comm_rank == 0:
         rma.run_server(
-            cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
+            cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric
         )
     else:
         assert comm_size == args.num_clients + 1
         rma.run_client(
-            cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset
+            cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset, metric
         )
     print("------DONE------", comm_rank)
 
@@ -221,6 +232,6 @@ if __name__ == "__main__":
 
 
 # To run CUDA-aware MPI with n clients:
-# mpiexec -np n+1 --mca opal_cuda_support 1 python ./mnist_async_mpi.py
+# mpiexec -np 2 --mca opal_cuda_support 1 python ./mnist_async_mpi.py --loss_fn losses/celoss.py --loss_fn_name CELoss
 # To run MPI with n clients:
-# mpiexec -np n+1 python ./mnist_async_mpi.py
+# mpiexec -np 2 python ./mnist_async_mpi.py --loss_fn losses/celoss.py --loss_fn_name CELoss
