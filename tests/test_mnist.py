@@ -48,11 +48,10 @@ class CNN(nn.Module):
         x = self.fc2(x)
         return x
 
-
 def process_data(num_clients):
     # test data for a server
     test_data_raw = torchvision.datasets.MNIST(
-        "./_data", download=True, train=False, transform=ToTensor()
+        "./_data", download=False, train=False, transform=ToTensor()
     )
 
     test_data_input = []
@@ -67,13 +66,12 @@ def process_data(num_clients):
 
     # training data for multiple clients
     train_data_raw = torchvision.datasets.MNIST(
-        "./_data", download=True, train=True, transform=ToTensor()
+        "./_data", download=False, train=True, transform=ToTensor()
     )
 
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
     train_datasets = []
     for i in range(num_clients):
-
         train_data_input = []
         train_data_label = []
         for idx in split_train_data_raw[i]:
@@ -89,6 +87,32 @@ def process_data(num_clients):
 
     return train_datasets, test_dataset
 
+
+# Let's download the data first if data does not exist.
+def readyMNISTdata():    
+    currentpath = os.getcwd()    
+    datafolderpath = os.path.join(currentpath, "_data")
+    
+    if not (os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
+        os.mkdir(datafolderpath)
+
+    mnistfolderpath = os.path.join(datafolderpath, "MNIST")
+    if not (os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):        
+        print("Download MNIST data")
+        torchvision.datasets.MNIST(
+            "./_data", download=True, train=False, transform=ToTensor()
+        )
+
+comm = MPI.COMM_WORLD
+comm_size = comm.Get_size()
+if comm_size > 1:
+    comm_rank = comm.Get_rank()
+    if comm_rank == 0:
+        readyMNISTdata()
+    comm.Barrier()
+else:
+    # Serial
+    readyMNISTdata() 
 
 def test_mnist_fedavg():
 
