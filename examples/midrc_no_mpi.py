@@ -12,6 +12,8 @@ from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.resnet_fda import *
 from datasets.MIDRC import *
+from losses.utils import get_loss
+from metric.utils import get_metric
 
 import appfl.run_serial as rs
 import appfl.run_serial_fda as rsf
@@ -57,6 +59,14 @@ parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
+
+## loss function
+parser.add_argument("--loss_fn", type=str, default='losses/fdaloss.py', required=False, help="path to the custom loss function definition file, use cross-entropy loss by default if no path is specified")
+parser.add_argument("--loss_fn_name", type=str, required=False, help="class name for the custom loss in the loss function definition file, choose the first class by default if no name is specified")
+
+## evaluation metric
+parser.add_argument("--metric", type=str, default='metric/acc_fda.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
+parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
 ## other
 parser.add_argument('--beta', type=float, default=0.5)
@@ -173,17 +183,10 @@ def main():
 
     """ User-defined model """
     model = get_model()
-    # loss_fn = torch.nn.BCELoss()   
-    if args.client == 'FedMTLClient':
-        # criterion_covid = torch.nn.CrossEntropyLoss()
-        criterion_covid = torch.nn.BCEWithLogitsLoss(reduction='mean')
-        criterion_race = torch.nn.CrossEntropyLoss()
-        criterion_sex = torch.nn.CrossEntropyLoss()
-        criterion_age = torch.nn.CrossEntropyLoss()     
-        loss_fn = [criterion_covid, criterion_race, criterion_sex, criterion_age]
-    else:
-        # loss_fn = torch.nn.CrossEntropyLoss()
-        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean')
+    loss_fn = get_loss(args.loss_fn, args.loss_fn_name)
+    print(loss_fn)
+    metric = get_metric(args.metric, args.metric_name)
+    print(metric)
 
     ## loading models
     cfg.load_model = False
@@ -237,11 +240,11 @@ def main():
     if args.server == 'ServerFedAvg':
         train_datasets.remove(train_datasets[args.target])
         cfg.num_clients -= 1
-        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, metric)
     elif args.server == 'ServerFedGP':
-        rsfgp.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, args.beta)
+        rsfgp.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, args.beta, metric)
     else:
-        rsf.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+        rsf.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, metric)
         
         
 
@@ -252,16 +255,16 @@ if __name__ == "__main__":
 # To run:
 
 # fedavg
-# python midrc_no_mpi.py --num_epochs 50
+# python midrc_no_mpi.py --num_epochs 50 --loss_fn losses/fdaloss.py --loss_fn_name BCELoss --metric_name accuracy_FDA
 
 # fda
-# python midrc_no_mpi.py --server ServerFDA --num_epochs 50
+# python midrc_no_mpi.py --server ServerFDA --num_epochs 50 --loss_fn losses/fdaloss.py --loss_fn_name BCELoss --metric_name accuracy_FDA
 
 # fda + auxinfo
-# python midrc_no_mpi.py --server ServerFDA --client FedMTLClient  --num_epochs 50
+# python midrc_no_mpi.py --server ServerFDA --client FedMTLClient --num_epochs 50 --loss_fn losses/fdaloss.py --loss_fn_name MTLLoss --metric_name accuracy_FDA_MTL
 
 # fedgp 
-# python midrc_no_mpi.py --server ServerFedGP  --num_epochs 50
+# python midrc_no_mpi.py --server ServerFedGP  --num_epochs 50 --loss_fn losses/fdaloss.py --loss_fn_name BCELoss --metric_name accuracy_FDA
 
 # fedgp + auxinfo
-# python midrc_no_mpi.py --server ServerFedGP --client FedMTLClient  --num_epochs 50
+# python midrc_no_mpi.py --server ServerFedGP --client FedMTLClient  --num_epochs 50 --loss_fn losses/fdaloss.py --loss_fn_name MTLLoss --metric_name accuracy_FDA_MTL

@@ -19,29 +19,15 @@ def validation(self, dataloader, metric):
     with torch.no_grad():
         for img, target in dataloader:
             tmpcnt += 1
-            tmptotal += len(target)
-            img = img.to(self.device)
-            target = target.to(self.device)
-            output = self.model(img)
+            img = img.to(device)
+            target = target.to(device)
+            output = validation_model(img)
             loss += self.loss_fn(output, target).item()
-
-            if output.shape[1] == 1:
-                pred = torch.round(output)
-            else:
-                pred = output.argmax(dim=1, keepdim=True)
-
-            correct += pred.eq(target.view_as(pred)).sum().item()
-
-    # FIXME: do we need to sent the model to cpu again?
-    # self.model.to("cpu")
-
     loss = loss / tmpcnt
     accuracy = _evaluate_model_on_tests(validation_model, dataloader, metric)
     return loss, accuracy
 
 def _evaluate_model_on_tests(model, test_dataloader, metric):
-    if metric is None:
-        metric = _default_metric
     model.eval()
     with torch.no_grad():
         test_dataloader_iterator = iter(test_dataloader)
@@ -61,55 +47,61 @@ def _evaluate_model_on_tests(model, test_dataloader, metric):
         accuracy = float(metric(y_true_final, y_pred_final))
     return accuracy
 
+def validation_MTL(self, dataloader, metric):
+    if self.loss_fn is None or dataloader is None:
+        return 0.0, 0.0
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    validation_model = copy.deepcopy(self.model)
+    validation_model.to(device)
+    validation_model.eval()
+
+    loss, tmpcnt = 0, 0
+    with torch.no_grad():
+        for sample in dataloader:           
+            img = sample['img'].to(device)
+            target = sample['targets']
+            tmpcnt += 1
+            img = img.to(device)
+            for i in range(len(target)):
+                target[i] = target[i].to(device)
+                
+            output = validation_model(img)
+            loss += self.loss_fn(output, target).item()
+    loss = loss / tmpcnt
+    accuracy = _evaluate_model_on_tests_MTL(validation_model, dataloader, metric)
+    return loss, accuracy
+
+def _evaluate_model_on_tests_MTL(model, test_dataloader, metric):
+    if metric is None:
+        metric = _default_metric
+    model.eval()
+    with torch.no_grad():
+        test_dataloader_iterator = iter(test_dataloader)
+        y_pred_final = []
+        y_true_final = []
+        for sample in test_dataloader_iterator:           
+            X = sample['img']
+            y = sample['targets'][0]
+            if torch.cuda.is_available():
+                X = X.cuda()
+                y = y.cuda()
+            y_pred = model(X)[0].detach().cpu()
+            y = y.detach().cpu()
+            y_pred_final.append(y_pred.numpy())
+            y_true_final.append(y.numpy())
+
+        y_true_final = np.concatenate(y_true_final)
+        y_pred_final = np.concatenate(y_pred_final)
+        accuracy = float(metric(y_true_final, y_pred_final))
+    return accuracy
+
 def _default_metric(y_true, y_pred):
     if len(y_pred.shape) == 1:
         y_pred = np.round(y_pred)
     else:
         y_pred = y_pred.argmax(axis=1, keepdims=False)
     return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
-def validation_MTL(self, dataloader):
-
-    if self.loss_fn is None or dataloader is None:
-        return 0.0, 0.0
-
-    self.model.to(self.device)
-    self.model.eval()
-
-    loss = 0
-    correct = 0
-    tmpcnt = 0
-    tmptotal = 0
-    with torch.no_grad():
-        for sample in dataloader:          
-            tmpcnt += 1      
-            data = sample['img'].to(self.device)
-            targets = sample['targets']
-            target = targets[0].unsqueeze(1).to(self.device)
-            tmptotal += len(target)               
-            preds_all = self.model(data)
-            output = preds_all[0]
-            
-            target = target.type_as(output)
-            probs = torch.sigmoid(output)
-            pred = probs > 0.5
-            
-            cur_loss = self.loss_fn[0](probs, target)
-            loss += cur_loss.item()
-            
-            # if output.shape[1] == 1:
-            #     pred = torch.round(output)
-            # else:
-            #     pred = output.argmax(dim=1, keepdim=True)
-
-            correct += pred.eq(target.view_as(pred)).sum().item()
-
-    # FIXME: do we need to sent the model to cpu again?
-    # self.model.to("cpu")
-
-    loss = loss / tmpcnt
-    accuracy = 100.0 * correct / tmptotal
-
-    return loss, accuracy
 
 def create_custom_logger(logger, cfg: DictConfig):
 

@@ -15,6 +15,7 @@ import logging
 
 from .misc import *
 from .algorithm import *
+from typing import Any
 
 
 def run_serial(
@@ -24,6 +25,7 @@ def run_serial(
     train_data: Dataset,
     test_data: Dataset = Dataset(),
     dataset_name: str = "appfl",
+    metric: Any = None
 ):
     """Run serial simulation of PPFL.
 
@@ -119,6 +121,7 @@ def run_serial(
             cfg,
             outfile[k],
             test_dataloader,
+            metric,
             **cfg.fed.args,
             ))
             cfg.fed.args.optim_args.lr /= cfg.fed.args.target_lr_ratio
@@ -138,6 +141,7 @@ def run_serial(
             cfg,
             outfile[k],
             test_dataloader,
+            metric,
             **cfg.fed.args,
             ))
     
@@ -170,9 +174,9 @@ def run_serial(
         validation_start = time.time()
         if cfg.validation == True:
             if cfg.fed.clientname == 'FedMTLClient':
-                test_loss, test_accuracy = validation_MTL(server, test_dataloader)
+                test_loss, test_accuracy = validation_MTL(server, test_dataloader, metric)
             else:
-                test_loss, test_accuracy = validation(server, test_dataloader)
+                test_loss, test_accuracy = validation(server, test_dataloader, metric)
 
             if cfg.use_tensorboard:
                 # Add them to tensorboard
