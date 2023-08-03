@@ -207,6 +207,7 @@ def test_mnist_fedbuffer_mpi():
     cfg.fed.args.gradient_based = True
     cfg.fed.args.staleness_func.name = 'polynomial'
     cfg.fed.servername = 'ServerFedBuffer'
+    cfg.fed.args.K = 2
 
     model = CNN(1, 10, 28)
     loss_fn = torch.nn.CrossEntropyLoss()

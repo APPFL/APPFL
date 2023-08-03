@@ -91,12 +91,14 @@ class ICEADMMClient(BaseClient):
         cfg,
         outfile,
         test_dataloader,
+        metric,
         **kwargs
     ):
         super(ICEADMMClient, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
+        self.metric = metric
 
         """ 
         At initial, (1) primal_state = global_state, (2) dual_state = 0
