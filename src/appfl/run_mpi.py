@@ -21,6 +21,9 @@ from mpi4py import MPI
 import copy
 
 import math
+import pickle
+
+import concurrent.futures
 
 def run_server(
     cfg: DictConfig,
@@ -76,6 +79,11 @@ def run_server(
     else:
         cfg.validation = False
 
+    # Broadcast limitation according to the procs numbers
+    intmax = 2100000000 # INT_MAX,2147483647, does not fit on the MPI send buffer size
+    recvimit = math.floor(intmax/(comm_size-1)) # The total recv size should be less than intmax due to the MPI recv buffer size
+    recvimit = comm.bcast(recvimit, root=0)
+
     """
     Receive the number of data from clients
     Compute "weight[client] = data[client]/total_num_data" from a server    
@@ -111,9 +119,10 @@ def run_server(
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
+    
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
-        do_continue = comm.bcast(do_continue, root=0)
+        do_continue = comm.bcast([do_continue, recvimit], root=0)
 
         # We need to load the model on cpu, before communicating.
         # Otherwise, out-of-memeory error from GPU
@@ -123,19 +132,38 @@ def run_server(
 
         local_update_start = time.time()
         global_state = comm.bcast(global_state, root=0)
-                
-        local_states= [None for i in range(num_clients)]        
-        for rank in range(comm_size):
-            ls = ""
-            if rank == 0:
-                continue;
-            else:
-                for _, cid in enumerate(num_client_groups[rank - 1]):
-                    local_states[cid] = comm.recv(source=rank, tag=cid)
+        cfg["logginginfo"]["BCAST_time"] = time.time() - local_update_start
+        
+        # Gather
+        # local_states_recv = comm.gather(None, root=0)
+        # local_states = [None for i in range(num_clients)]
+        # for rank in range(comm_size):
+        #     ls = ""
+        #     if rank == 0:
+        #         continue;
+        #     else:
+        #         local_states_rank = local_states_recv[rank]
+        #         for cid, state in local_states_rank.items():
+        #             print("server", type(cid), type(state))
+        #             local_states[cid] = state
+        
+        # ISend-Recv
+        # local_states= [None for i in range(num_clients)]        
+        # for rank in range(comm_size):
+        #     ls = ""
+        #     if rank == 0:
+        #         continue;
+        #     else:
+        #         for _, cid in enumerate(num_client_groups[rank - 1]):
+        #             local_states[cid] = comm.recv(source=rank, tag=cid)
+        
+        # Slicing Gather
+        local_states= [None for i in range(num_clients)]
+        local_states = slicing_gather_server(comm, comm_size, local_states)
+        
 
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
-
-        #print("Start Server Update")
+        
         global_update_start = time.time()
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
@@ -157,9 +185,8 @@ def run_server(
         cfg["logginginfo"]["test_loss"] = test_loss
         cfg["logginginfo"]["test_accuracy"] = test_accuracy
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
-
         server.logging_iteration(cfg, logger, t)
-
+        print(cfg)
         """ Saving model """
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
@@ -205,6 +232,9 @@ def run_client(
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         output_filename = cfg.output_filename + "_client_%s" % (cid)
         outfile[cid] = client_log(cfg.output_dirname, output_filename)
+
+    # Broadcast limitation according to the procs numbers    
+    recvimit = comm.bcast(None, root=0)
 
     """
     Send the number of data to a server
@@ -269,7 +299,6 @@ def run_client(
             )
         )
         
-
     do_continue = comm.bcast(None, root=0)
     
     while do_continue:
@@ -278,18 +307,110 @@ def run_client(
 
         """ Update "local_states" based on "global_state" """
         reqlist = []
+        
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=64) as executor:
+        #     for client in clients:
+        #         req = executor.submit(run_client_update, client, global_state, comm)
+        #         reqlist.append(req.result())
+        
+        local_states = OrderedDict()
         for client in clients:
             cid = client.id
+
             ## initial point for a client model            
             client.model.load_state_dict(global_state)
 
-            ## client update     
-            ls = client.update()                            
-            req = comm.isend(ls, dest=0, tag=cid)
-            reqlist.append(req)
+            ## client update
+            update = client.update()
+            
+            local_states[cid] = update
+            
+            # ISend-Recv
+            # req = run_client_update(client, global_state, comm)            
+            # reqlist.append(req)
+        
+        """ Send "local_states" to a server """
+        # Gather
+        # comm.gather(local_states, root=0)
 
-        MPI.Request.Waitall(reqlist)
+        # ISend-Recv
+        # MPI.Request.Waitall(reqlist)
+        
+        # Slicing Gather
+        slicing_gather_client(comm, comm_size, recvimit, local_states)
+
         do_continue = comm.bcast(None, root=0)
 
+    # for i in range(cfg.num_gpu):
+    #     print("GPU Number:", i)
+    #     print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
+    #     print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3,1), 'GB')
+
     for client in clients:
+        # print("MPI Rank:", comm_rank, "CID:", client.id)
         client.outfile.close()
+
+def run_client_update(client, global_state, comm):  
+    start_time = time.time()  
+    cid = client.id
+    ## initial point for a client model            
+    client.model.load_state_dict(global_state)
+
+    ## client update     
+    ls = client.update()  
+    # print("CID:", cid, "Total_Client_Update_Time:", time.time() - start_time)                          
+    req = comm.isend(ls, dest=0, tag=cid)
+    return req
+
+def slicing_gather_client(comm, comm_size, recvimit, local_states):
+    # start_time = time.time()
+    serializedData = pickle.dumps(local_states)
+    # print("Serializing: ", time.time() - start_time)
+    length = len(serializedData)        
+    count = math.ceil(length/recvimit)    
+
+    comm.gather(count, root=0)
+    maxcount = comm.bcast(None, root=0)
+    
+    for n in range(maxcount):
+        if n < count:
+            end = 0
+            begin = n*recvimit
+            if (n+1)*recvimit < length:
+                end = (n+1)*recvimit
+            else:
+                end = length
+            comm.gather(serializedData[begin:end], root=0)
+        else:
+            comm.gather(None, root=0)
+
+
+def slicing_gather_server(comm, comm_size, local_states_out):    
+    # gather_time = time.time()    
+    counts = comm.gather(0, root=0)
+    maxcount = max(counts)
+    maxcount = comm.bcast(maxcount, root=0)
+    # print("Max Count Exchange: ", time.time() - gather_time)
+
+    recvs = {}
+    for r in range(0, comm_size):
+        recvs[r] = []
+
+    gatherindex = 0
+    for n in range(maxcount):
+        recv = comm.gather(None, root=0)
+        for r in range(0, comm_size):
+            if gatherindex < counts[r]:
+                recvs[r].append(recv[r])
+    
+    # start_time = time.time()
+    for rank in range(1, comm_size):
+        local_states_recv = b''.join(recvs[rank])
+        local_states = pickle.loads(local_states_recv)
+        for cid, state in local_states.items():            
+            local_states_out[cid] = state
+    # print("Deserializing: ", time.time() - start_time)
+    # print("Total Gather Time in Server: ", time.time() - gather_time)
+
+    return local_states_out
+    
