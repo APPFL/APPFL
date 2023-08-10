@@ -119,7 +119,8 @@ def run_server(
     test_loss = 0.0
     test_accuracy = 0.0
     best_accuracy = 0.0
-    
+    maxcount = -1
+    counts = []
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
         do_continue = comm.bcast([do_continue, recvimit], root=0)
@@ -158,8 +159,12 @@ def run_server(
         #             local_states[cid] = comm.recv(source=rank, tag=cid)
         
         # Slicing Gather
+        if maxcount < 0:
+            counts = comm.gather(0, root=0)
+            maxcount = max(counts)
+            maxcount = comm.bcast(maxcount, root=0)
         local_states= [None for i in range(num_clients)]
-        local_states = slicing_gather_server(comm, comm_size, local_states)
+        local_states = slicing_gather_server(comm, comm_size, local_states, counts, maxcount)
         
 
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
@@ -301,6 +306,8 @@ def run_client(
         
     do_continue = comm.bcast(None, root=0)
     
+    count = -1
+    maxcount = -1
     while do_continue:
         """Receive "global_state" """
         global_state = comm.bcast(None, root=0)
@@ -337,7 +344,17 @@ def run_client(
         # MPI.Request.Waitall(reqlist)
         
         # Slicing Gather
-        slicing_gather_client(comm, comm_size, recvimit, local_states)
+        # start_time = time.time()
+        serializedData = pickle.dumps(local_states)
+        length = len(serializedData)   
+        # print("Serializing: ", time.time() - start_time)
+        if count < 0:                 
+            count = math.ceil(length/recvimit)    
+            # gather_time = time.time()    
+            comm.gather(count, root=0)
+            maxcount = comm.bcast(None, root=0)
+            # print("Max Count Exchange: ", time.time() - gather_time, "Length: ", length)
+        slicing_gather_client(comm, comm_size, recvimit, serializedData, count, maxcount, length)
 
         do_continue = comm.bcast(None, root=0)
 
@@ -362,16 +379,7 @@ def run_client_update(client, global_state, comm):
     req = comm.isend(ls, dest=0, tag=cid)
     return req
 
-def slicing_gather_client(comm, comm_size, recvimit, local_states):
-    # start_time = time.time()
-    serializedData = pickle.dumps(local_states)
-    # print("Serializing: ", time.time() - start_time)
-    length = len(serializedData)        
-    count = math.ceil(length/recvimit)    
-
-    comm.gather(count, root=0)
-    maxcount = comm.bcast(None, root=0)
-    
+def slicing_gather_client(comm, comm_size, recvimit, serializedData, count, maxcount, length):
     for n in range(maxcount):
         if n < count:
             end = 0
@@ -384,14 +392,7 @@ def slicing_gather_client(comm, comm_size, recvimit, local_states):
         else:
             comm.gather(None, root=0)
 
-
-def slicing_gather_server(comm, comm_size, local_states_out):    
-    # gather_time = time.time()    
-    counts = comm.gather(0, root=0)
-    maxcount = max(counts)
-    maxcount = comm.bcast(maxcount, root=0)
-    # print("Max Count Exchange: ", time.time() - gather_time)
-
+def slicing_gather_server(comm, comm_size, local_states_out, counts, maxcount):
     recvs = {}
     for r in range(0, comm_size):
         recvs[r] = []
