@@ -25,10 +25,10 @@ model:
 
   # cohen+actmed
   num_output: 2
-  steps: 6
-  lr: 0.001
+  steps: 60
+  lr: 0.05
   update_bn: True
-  update_fc: True
+  update_fc: False
 
   # midrc
   # num_output: 2

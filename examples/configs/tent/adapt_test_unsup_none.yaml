@@ -29,7 +29,7 @@ model:
   lr: 0.001
   update_bn: True
   update_fc: False
-  bn_mode: "adaptation" # none, adaptation or fixed
+  bn_mode: "none" # none, adaptation or fixed
   unsupervised: False
 
   # midrc

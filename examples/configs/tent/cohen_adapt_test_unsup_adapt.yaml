@@ -17,27 +17,15 @@ algorithm:
 
 model:
   num_output: 2
-  # uchicago
-  # steps: 1
-  # lr: 0.0005
-  # update_bn: True
-  # update_fc: True
 
   # cohen+actmed
   num_output: 2
-  steps: 3
+  steps: 40
   lr: 0.001
   update_bn: True
   update_fc: False
   bn_mode: "adaptation" # none, adaptation or fixed
-  unsupervised: False
-
-  # midrc
-  # num_output: 2
-  # steps: 3
-  # lr: 0.0004
-  # update_bn: True
-  # update_fc: False
+  unsupervised: True
 
 training:
   num_epochs: 4

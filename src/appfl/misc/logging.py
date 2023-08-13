@@ -16,6 +16,7 @@ class EvalLogger:
         self.cfg = cfg
         self.test_results = {"clients": None, "server": None}
         self.val_results = {"clients": [], "server": []}
+        self.adapt_results = {"clients": None, "server": None}
         self.main_logger = mLogging.get_logger()
 
     def __format(self, key, val):
@@ -49,6 +50,14 @@ class EvalLogger:
         self.test_results["clients"] = rs
         self.log_info_client_results(rs, "CLI-TEST")
 
+    def log_client_adaptation(self, results):
+        rs = {
+            self.cfg.clients[client_idx].name: results[client_idx]
+            for client_idx in results
+        }
+        self.adapt_results["clients"] = rs
+        self.log_info_client_results(rs, "CLI-ADAPT")
+
     def log_server_testing(self, results):
         self.test_results["server"] = results
         self.log_info_server_results(results, "SER-TEST")
@@ -77,6 +86,7 @@ class EvalLogger:
 
         out_dict["val"] = self.val_results
         out_dict["test"] = self.test_results
+        out_dict["adapt"] = self.adapt_results
         
         with open(output_file, "w") as fo:
             json.dump(out_dict, fo, indent=2)

@@ -25,7 +25,7 @@ model:
 
   # cohen+actmed
   num_output: 2
-  steps: 3
+  steps: 20
   lr: 0.001
   update_bn: True
   update_fc: False

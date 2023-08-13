@@ -3,8 +3,7 @@ from appfl.funcx.cloud_storage import CloudStorage, LargeObjectWrapper
 
 
 def get_dataset(cfg, client_idx, mode="train"):
-    print(mode)
-    assert mode in ["train", "val", "test"]
+    assert mode in ["train", "val", "test"], "Mode %s does not support" % mode
     if "get_data" in cfg.clients[client_idx]:
         func_call = get_executable_func(cfg.clients[client_idx].get_data)
     else:

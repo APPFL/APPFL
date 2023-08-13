@@ -17,27 +17,22 @@ algorithm:
 
 model:
   num_output: 2
-  # uchicago
-  # steps: 1
-  # lr: 0.0005
-  # update_bn: True
-  # update_fc: True
 
   # cohen+actmed
   num_output: 2
-  steps: 3
+  adapt_steps: 30
+  test_steps: 5
+
+  adapt_at_test: False
+
+  adapt_batchsize: 200
+  test_batchsize: 200
+
   lr: 0.001
   update_bn: True
   update_fc: False
   bn_mode: "adaptation" # none, adaptation or fixed
   unsupervised: False
-
-  # midrc
-  # num_output: 2
-  # steps: 3
-  # lr: 0.0004
-  # update_bn: True
-  # update_fc: False
 
 training:
   num_epochs: 4
@@ -48,8 +43,11 @@ dataset:
 
 func:
   get_model:
-    script_file: "./models/resnet_tent_adapt_test.py"
+    script_file: "./models/resnet_tent_joint.py"
     call: "get_model"
+  get_loss:
+    script_file: "./losses/tent_bce_loss.py"
+    call: "get_loss"
 
 train_data_batch_size: 256
 test_data_batch_size: 128

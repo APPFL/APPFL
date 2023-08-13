@@ -233,6 +233,89 @@ def client_adapt_testing(cfg, client_idx, weights, global_state, loss_fn, mode, 
         cli_logger.start_timer("do_testing")
     return res, cli_logger.to_dict()
 
+def client_adapt_testing_joint(cfg, client_idx, weights, global_state, 
+                            loss_fn, adapt_set, test_set, step = "adapt", unsupervised = True):
+    
+    assert step in ["adapt", "test"]
+    from appfl.misc.logging import ClientLogger
+    from appfl.algorithm.funcx_client_optimizer import FuncxClientOptim
+    from appfl.funcx.client_utils import send_client_state
+    ## Prepare logger
+    cli_logger = ClientLogger()
+    cli_logger.mark_event("start_endpoint_execution")
+    ## Import libaries
+    import os.path as osp
+    from appfl.misc import client_log, get_dataloader
+    from appfl.algorithm.client_optimizer import ClientOptim
+    from appfl.funcx.client_utils import get_dataset, load_global_state, get_model
+    from torch.utils.data import DataLoader
+    
+    ## Load client configs
+    cfg.device = cfg.clients[client_idx].device
+    cfg.output_dirname = cfg.clients[client_idx].output_dir
+    
+    ## Prepare testing & adaptation datasets
+    adapt_dataset = get_dataset(cfg, client_idx, mode=adapt_set)
+    test_dataset = get_dataset(cfg, client_idx, mode=test_set)
+    
+    ## Get training model
+    model = get_model(cfg)
+
+    ## Prepare testing & adaptation dataloaders
+    adapt_dataloader = DataLoader(
+            adapt_dataset,
+            batch_size = model.adapt_batchsize,
+            num_workers = cfg.num_workers,
+            shuffle=True,
+            pin_memory=True,
+        )
+
+    test_dataloader = DataLoader(test_dataset,
+            batch_size = model.test_batchsize,
+            num_workers = cfg.num_workers,
+            shuffle=True,
+            pin_memory=True,
+        )
+
+    ## Prepare output directory
+    output_filename = cfg.output_filename + "_client_test_%s" % (client_idx)
+    outfile = client_log(cfg.output_dirname, output_filename)
+    
+    ## Instantiate training agent at client
+    client = eval(cfg.fed.clientname)(
+        client_idx, weights, model, loss_fn, None, cfg, outfile, None, **cfg.fed.args
+    )
+    ## Download global state
+    temp_dir = osp.join(cfg.output_dirname, "tmp")
+    cli_logger.start_timer("download_global_state")
+    global_state = load_global_state(cfg, global_state, temp_dir)
+    cli_logger.start_timer("download_global_state")
+
+    ## Initial state for a client
+    cli_logger.start_timer("load_global_state_to_device")
+    client.model.to(cfg.clients[client_idx].device)
+    client.model.load_state_dict(global_state)
+    cli_logger.stop_timer("load_global_state_to_device")
+    
+    ## Do adaptation
+    if step == "adapt":
+        ## Perform adaptation step
+        cli_logger.start_timer("do_adaptation")
+        client_state, loss, res = client.client_adapt_test_joint(adapt_dataloader, test_dataloader, adapt=True)
+        cli_logger.stop_timer("do_adaptation")
+        
+        ## Send client state to server
+        cli_logger.start_timer("upload_client_state")
+        res_cli_stages = send_client_state(cfg, client_state, client_idx, temp_dir)
+        cli_logger.stop_timer("upload_client_state")
+        return (res_cli_stages, res), cli_logger.to_dict()    
+    else:
+        ## Perform testing step
+        cli_logger.start_timer("do_testing")
+        client_state, loss, res = client.client_adapt_test_joint(adapt_dataloader, test_dataloader, adapt=False)
+        cli_logger.stop_timer("do_testing")
+        return res, cli_logger.to_dict()
+
 from torch.utils.data import DataLoader
 
 def client_attack(cfg, client_idx, weights, global_state, loss_fn):
@@ -289,14 +372,3 @@ def client_attack(cfg, client_idx, weights, global_state, loss_fn):
     attack_info = client.client_attack(attack_dataloader)
     CloudStorage.init(cfg, temp_dir)
     return CloudStorage.upload_object(LargeObjectWrapper(attack_info, "attack_info"), ext="pkl"), cli_logger.to_dict()
-    
-
-if __name__ == "__main__":
-    from omegaconf import OmegaConf
-    from appfl.config import load_funcx_device_config, load_funcx_config, FuncXConfig
-
-    cfg = OmegaConf.structured(FuncXConfig)
-    load_funcx_device_config(cfg, "configs/clients/covid19_anl_uchicago.yaml")
-    load_funcx_config(cfg, "configs/fed_avg/funcx_fedavg_covid.yaml")
-
-    print(client_validate_data(cfg, 0))

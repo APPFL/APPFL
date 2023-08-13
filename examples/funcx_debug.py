@@ -94,6 +94,7 @@ def main():
     loss_fn        = get_loss_func(cfg.loss)
 
     """ User-defined loss"""
+    
     if cfg.get_loss.script_file != "":
         LossClass = get_executable_func(cfg.get_loss)()
         loss_fn = LossClass(*cfg.loss_args, **cfg.loss_kwargs)

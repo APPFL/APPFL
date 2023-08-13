@@ -196,6 +196,17 @@ class FuncxClientOptim(BaseClient):
             "tpr": tpr.tolist(), "fpr" : fpr.tolist(), "arr_precs": arr_precs.tolist(), "arr_recalls": arr_recalls.tolist(), 
             "preds": preds[:,1].tolist(), 'targets': targets.tolist(), "outputs" : outputs}
     
+    def client_adapt_test_joint(self, adaptset_dataloader, testset_dataloader, adapt=True):
+        """
+            Perform adaptation and testing step in TTA pipeline
+        """
+        if adapt:
+            # Run adaptation step
+            return self.model.adaptation_step(adaptset_dataloader, device = self.cfg.device, loss_fn = self.loss_fn)
+        else:
+            # Run testing step
+            return self.model.testing_step(adaptset_dataloader, testset_dataloader, device = self.cfg.device)
+
     def client_attack(self, dataloader):
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
         # Training model for several epochs
@@ -334,17 +345,6 @@ class FuncxClientOptim(BaseClient):
             train_loss = train_loss / len(self.dataloader)
             train_accuracy = 100.0 * train_correct/ tmptotal
 
-            # if self.cfg.validation == True and self.test_dataloader != None:
-            #     test_loss, test_accuracy = super(FuncxClientOptim, self).client_validation(
-            #         self.test_dataloader
-            #     )
-            #     per_iter_time = time.time() - start_time
-            #     super(FuncxClientOptim, self).client_log_content(
-            #         t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
-            #     )
-            #     ## return to train mode
-            #     self.model.train()
-            ## save model.state_dict()
             if self.cfg.save_model_state_dict == True:
                 path = self.cfg.output_dirname + "/client_%s" % (self.id)
                 if not os.path.exists(path):
@@ -354,12 +354,6 @@ class FuncxClientOptim(BaseClient):
                     os.path.join(path, "%s_%s.pt" % (self.round, t)),
                 )
             if (t == self.num_local_epochs-1)  and self.test_dataloader != None:
-                # cli_logger.start_timer("val_after_update_val_set", t)
-                # test_loss, test_accuracy = super(
-                #     FuncxClientOptim, self
-                # ).client_validation(self.test_dataloader)
-                # print(test_loss, test_accuracy)
-                # cli_logger.stop_timer("val_after_update_val_set", t)
                 cli_logger.add_info(
                         "train_info",{
                             "train_loss": train_loss, "train_accuracy": train_accuracy

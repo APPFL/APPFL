@@ -25,12 +25,12 @@ model:
 
   # cohen+actmed
   num_output: 2
-  steps: 3
+  steps: 20
   lr: 0.001
   update_bn: True
   update_fc: False
   bn_mode: "adaptation" # none, adaptation or fixed
-  unsupervised: False
+  unsupervised: True
 
   # midrc
   # num_output: 2

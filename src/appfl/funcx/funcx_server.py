@@ -16,7 +16,7 @@ from appfl.misc import (
 )
 
 from appfl.algorithm import *
-from appfl.funcx.funcx_client import client_testing, client_validate_data, client_attack, client_check_cuda, client_adapt_testing
+from appfl.funcx.funcx_client import client_testing, client_validate_data, client_attack, client_check_cuda, client_adapt_testing, client_adapt_testing_joint
 from appfl.funcx.funcx_clients_manager import APPFLFuncXTrainingClients
 
 
@@ -280,27 +280,46 @@ class APPFLFuncXServer(abc.ABC):
                 obj_name, 
                 osp.join(self.cfg.server.output_dir, "%s_%s" % (self.cfg.clients[cli].name, file_name)))
 
-    def _do_client_adapt(self, model, mode="val"):
+    def _do_client_adapt(self):
         # Get global state (for adaptation)
         global_state = self.server.model.state_dict()
+        # adapt_info, _ = self._run_sync_task(
+        #     client_adapt_testing,
+        #     self.weights,
+        #     LargeObjectWrapper(global_state, "server_state"),
+        #     self.loss_fn,
+        #     mode,
+        #     "adapt"
+        # )
+        
         adapt_info, _ = self._run_sync_task(
-            client_adapt_testing,
+            client_adapt_testing_joint,
             self.weights,
             LargeObjectWrapper(global_state, "server_state"),
             self.loss_fn,
-            mode,
-            "adapt"
+            adapt_set = "val",
+            test_set = "test",
+            step = "adapt"
         )
         return adapt_info
     
     def _do_client_testing_after_adaptation(self, adapted_state_dict, mode="test"):
+        # eval_results, _ = self._run_sync_task(
+        #     client_adapt_testing,
+        #     self.weights,
+        #     adapted_state_dict,
+        #     self.loss_fn,
+        #     mode,
+        #     "test"
+        # )
         eval_results, _ = self._run_sync_task(
-            client_adapt_testing,
+            client_adapt_testing_joint,
             self.weights,
-            LargeObjectWrapper(adapted_state_dict, "server_state"),
+            adapted_state_dict,
             self.loss_fn,
-            mode,
-            "test"
+            adapt_set = "val",
+            test_set = "test",
+            step = "test"
         )
         return eval_results
 
@@ -324,25 +343,16 @@ class APPFLFuncXServer(abc.ABC):
         
         elif mode == "clients_adapt_test":
             # Set up adapt & test pipeline
-            # if unsupervised:
-            #     self.logger.info("[Adapt+Test] Running adapt+test in the unsuperivised setting")
-            # else:
-            #     self.logger.info("[Adapt+Test] Running adapt+test in the superivised setting")
-
             # Run model adaptation on the first subset (using validation set for simplification)
-            adapt_results = self._do_client_adapt(model,
-                                                  mode="val"
-                                                  )
+            adapt_results = self._do_client_adapt()
             self.logger.info("[Adapt+Test] Performance result on the adaptation set: ")
-            self.eval_logger.log_client_testing({0:adapt_results[0][1]})
+            self.eval_logger.log_client_adaptation({0:adapt_results[0][1]})
             
             # Run client testing
             self.logger.info("[Adapt+Test] Performance result on the testing set: ")
-            eval_results = self._do_client_testing_after_adaptation(adapt_results[0][0],
-                                                     mode="test"
-                                                    )
-            self.eval_logger.log_client_testing(eval_results)
+            eval_results = self._do_client_testing_after_adaptation(adapt_results[0][0])
             
+            self.eval_logger.log_client_testing(eval_results)
             self.cfg["logginginfo"]["GlobalUpdate_time"] = 0.0
             self.cfg["logginginfo"]["PerIter_time"] = 0.0
             self.cfg["logginginfo"]["Elapsed_time"] = 0.0

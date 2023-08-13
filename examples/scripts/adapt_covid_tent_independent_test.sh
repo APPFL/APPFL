@@ -2,7 +2,7 @@
 FL_FOLD="outputs_funcx_fedavg_covid_sgd_lr0.003_covid19_uchicago_v2_midrc_v2"
 FL_CKPT="best"
 
-python funcx_debug.py \
+python funcx_sync.py \
     --client_config configs/clients/covid19newsplit3_anl.yaml \
     --config configs/fed_avg/funcx_fedavg_covid_adapt_tent_adapt_test.yaml \
     --clients-adapt-test \

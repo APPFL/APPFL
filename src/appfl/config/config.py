@@ -34,7 +34,7 @@ class Config:
     # Indication of whether to validate or not using testing data
     validation: bool = True
     test_data_batch_size: int = 64
-    test_data_shuffle: bool = False
+    test_data_shuffle: bool = True
 
     # Checking data sanity
     data_sanity: bool = False
