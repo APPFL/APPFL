@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from email.policy import default
 from omegaconf import DictConfig, OmegaConf
 from typing import Any, List, Dict, Optional
-
+from concurrent.futures import Future
 from appfl.config.fed.federated import Federated
 
 # from appfl.config.fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
@@ -103,7 +103,7 @@ class ExecutableFunc:
 
 
 @dataclass
-class ClientTask:
+class ClientTaskForLogging:
     task_id: str = ""
     task_name: str = ""
     client_idx: int = ""
