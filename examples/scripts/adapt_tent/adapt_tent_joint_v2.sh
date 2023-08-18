@@ -21,7 +21,7 @@ case $1 in
     ;;
 esac
 
-ADAPT_CFG="${1}_adapt_joint.yaml"
+ADAPT_CFG="${1}_adapt_joint_v2.yaml"
 
 python funcx_sync.py \
     --client_config configs/clients/$CLIENT_CFG \

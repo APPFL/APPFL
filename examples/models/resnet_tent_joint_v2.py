@@ -159,59 +159,59 @@ def get_model():
             self.ResNet18.eval()
             adapt_log = {}
             
-            unsupervised = self.unsupervisied
-            ## get loss function
-            if unsupervised == True:
-                loss_fn = self.get_loss()
+            # unsupervised = self.unsupervisied
+            # ## get loss function
+            # if unsupervised == True:
+            #     loss_fn = self.get_loss()
 
-            ## prepare model, optimizer for adaptation
-            params = self.setup_adaptation()
-            optimizer = optim.SGD(params,
-                lr=self.lr,
-                momentum=self.momentum,
-                dampening=self.dampening,
-                weight_decay=self.wd,
-                nesterov=self.nesterov)
+            # ## prepare model, optimizer for adaptation
+            # params = self.setup_adaptation()
+            # optimizer = optim.SGD(params,
+            #     lr=self.lr,
+            #     momentum=self.momentum,
+            #     dampening=self.dampening,
+            #     weight_decay=self.wd,
+            #     nesterov=self.nesterov)
             
-            ## local training
-            for t in range(self.adapt_steps):
-                train_loss = 0
-                tmptotal = 0
-                targets = []
-                preds = []
+            # ## local training
+            # for t in range(self.adapt_steps):
+            #     train_loss = 0
+            #     tmptotal = 0
+            #     targets = []
+            #     preds = []
 
-                for data, target in adaptset_dataloader:
-                    data = data.to(device)
-                    target = target.to(device)
-                    optimizer.zero_grad()
+            #     for data, target in adaptset_dataloader:
+            #         data = data.to(device)
+            #         target = target.to(device)
+            #         optimizer.zero_grad()
                     
-                    output = self.ResNet18(data)
-                    if output.shape[1] == 1:
-                        pred = torch.round(output)
-                    else:
-                        pred =  F.softmax(output, dim=1)
+            #         output = self.ResNet18(data)
+            #         if output.shape[1] == 1:
+            #             pred = torch.round(output)
+            #         else:
+            #             pred =  F.softmax(output, dim=1)
                     
-                    targets.append(target.cpu().detach().numpy())
-                    preds.append(pred.cpu().detach().numpy())
+            #         targets.append(target.cpu().detach().numpy())
+            #         preds.append(pred.cpu().detach().numpy())
                     
-                    if unsupervised == True:
-                        loss = loss_fn(output)
-                    else:
-                        loss = loss_fn(output, target)
+            #         if unsupervised == True:
+            #             loss = loss_fn(output)
+            #         else:
+            #             loss = loss_fn(output, target)
                     
-                    loss.backward()
-                    optimizer.step()
-                    train_loss += loss.item()
+            #         loss.backward()
+            #         optimizer.step()
+            #         train_loss += loss.item()
 
-                targets = np.concatenate(targets)
-                preds   = np.concatenate(preds)
+            #     targets = np.concatenate(targets)
+            #     preds   = np.concatenate(preds)
 
-                # log eval results
-                train_loss = train_loss / len(adaptset_dataloader)
-                auc = metrics.roc_auc_score(targets, preds[:, 1])
-                adapt_log["Adpt%d_AUC" % t] = auc
-                adapt_log["Adapt%d_LSS" % t] = train_loss
-                print("Adapt epoch %d - loss : %.02f - AUC: %.02f" % (t, train_loss, auc))
+            #     # log eval results
+            #     train_loss = train_loss / len(adaptset_dataloader)
+            #     auc = metrics.roc_auc_score(targets, preds[:, 1])
+            #     adapt_log["Adpt%d_AUC" % t] = auc
+            #     adapt_log["Adapt%d_LSS" % t] = train_loss
+            #     print("Adapt epoch %d - loss : %.02f - AUC: %.02f" % (t, train_loss, auc))
 
             state_dict, loss, eval_dict = self.run_evaluation(adaptset_dataloader, device=device)
             return state_dict, loss, {**adapt_log, **eval_dict}
@@ -290,7 +290,6 @@ def get_model():
             preds   = []
             targets = []
             outputs = []
-            
             ## prepare model, optimizer for adaptation
             params = self.setup_adaptation()
             optimizer = optim.SGD(params,
@@ -299,23 +298,33 @@ def get_model():
                 dampening=self.dampening,
                 weight_decay=self.wd,
                 nesterov=self.nesterov)
-            
-            for img, target in testset_dataloader:
-                tmpcnt += 1
-                tmptotal += len(target)
-                img     = img.to(device)
-                target  = target.to(device)
-                for _ in range(self.test_steps):
-                    output  = TentAdaptTest.forward_and_adapt(img, self.ResNet18, optimizer)
+            ce_loss = nn.CrossEntropyLoss()
 
-                if output.shape[1] == 1:
-                    pred = torch.round(output)
-                else:
-                    pred = F.softmax(output, dim=1)
+            for (img_lbl, target_lbl), (img_unlbl, target_unlbl) in zip(adaptset_dataloader, testset_dataloader):
+                tmpcnt += 1
+                tmptotal += len(target_unlbl)
+
+                img_unlbl = img_unlbl.to(device)
+                img_lbl = img_lbl.to(device)
+                target_unlbl = target_unlbl.to(device)
+                target_lbl = target_lbl.to(device)
+                
+                for _ in range(self.test_steps):
+                    with torch.enable_grad():
+                        # forward
+                        outputs_unlbl = self.ResNet18(img_unlbl)
+                        outputs_lbl = self.ResNet18(img_lbl)
+                        loss = softmax_entropy(outputs_unlbl).mean(0) + ce_loss(outputs_lbl, target_lbl) + softmax_entropy(outputs_lbl).mean(0)
+                        loss.backward()
+                        optimizer.step()
+                        optimizer.zero_grad()
+                    
+                
+                pred = F.softmax(outputs_unlbl, dim=1)
                     
                 preds.append(pred.cpu().detach().numpy())
-                targets.append(target.cpu().detach().numpy())
-                outputs.append(output.cpu().detach().numpy())
+                targets.append(target_unlbl.cpu().detach().numpy())
+                outputs.append(outputs_unlbl.cpu().detach().numpy())
 
             targets = np.concatenate(targets)
             preds   = np.concatenate(preds)
@@ -325,7 +334,7 @@ def get_model():
             acc = (preds_binary == targets).mean()
             # Compute precision, recall, AUC, AP for binary classification
             # Plot the ROC
-            fpr, tpr, _ = metrics.roc_curve(targets,   preds[:,1])
+            fpr, tpr, _ = metrics.roc_curve (targets,   preds[:,1])
             # Plot the Recall-Precision Curve
             arr_precs, arr_recalls, threshold = metrics.precision_recall_curve(targets, preds[:,1])
             prec, rec, f1, sprt  = metrics.precision_recall_fscore_support(targets, preds_binary, average="binary")
@@ -338,19 +347,19 @@ def get_model():
                 "tpr": tpr.tolist(), "fpr" : fpr.tolist(), "arr_precs": arr_precs.tolist(), "arr_recalls": arr_recalls.tolist(), 
                 "preds": preds[:,1].tolist(), 'targets': targets.tolist(), "outputs" : outputs}
         
-        def forward_and_adapt(x, model, optimizer):
-            """Forward and adapt model on batch of data.
-            Measure entropy of the model prediction, take gradients, and update params.
-            """
-            with torch.enable_grad():
-                # forward
-                outputs = model(x)
-                # adapt
-                loss = softmax_entropy(outputs).mean(0)
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
-            return outputs
+        # def forward_and_adapt(x, model, optimizer):
+        #     """Forward and adapt model on batch of data.
+        #     Measure entropy of the model prediction, take gradients, and update params.
+        #     """
+        #     with torch.enable_grad():
+        #         # forward
+        #         outputs = model(x)
+        #         # adapt
+        #         loss = softmax_entropy(outputs).mean(0)
+        #         loss.backward()
+        #         optimizer.step()
+        #         optimizer.zero_grad()
+        #     return outputs
 
         def forward_only(x, model):
             with torch.enable_grad():

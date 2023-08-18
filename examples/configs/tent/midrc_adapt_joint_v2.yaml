@@ -1,3 +1,4 @@
+
 algorithm:
   servername: 'ServerFedAvg'
   clientname: 'ClientOptim'
@@ -17,18 +18,14 @@ algorithm:
 
 model:
   num_output: 2
-
-  # cohen+actmed
-  num_output: 2
-  adapt_steps: 30
+  adapt_steps: 8
   test_steps: 5
-
-  adapt_at_test: True
-
+  
+  adapt_at_test: False
   adapt_batchsize: 200
   test_batchsize: 200
-
   lr: 0.001
+
   update_bn: True
   update_fc: False
   bn_mode: "adaptation" # none, adaptation or fixed
@@ -42,13 +39,13 @@ dataset:
   name: CovidDataset
 
 func:
-  get_model:
-    script_file: "./models/resnet_tent_joint.py"
+  get_model:  
+    script_file: "./models/resnet_tent_joint_v2.py"
     call: "get_model"
   get_loss:
     script_file: "./losses/tent_bce_loss.py"
     call: "get_loss"
 
 train_data_batch_size: 256
-test_data_batch_size: 128
+test_data_batch_size: 256
 decay_epochs: [2,3]

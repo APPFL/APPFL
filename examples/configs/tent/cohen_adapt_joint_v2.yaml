@@ -20,13 +20,13 @@ model:
 
   # cohen+actmed
   num_output: 2
-  adapt_steps: 30
+  adapt_steps: 3 #30
   test_steps: 5
 
-  adapt_at_test: True
+  adapt_at_test: False
 
-  adapt_batchsize: 200
-  test_batchsize: 200
+  adapt_batchsize: 8
+  test_batchsize: 8
 
   lr: 0.001
   update_bn: True
@@ -43,7 +43,7 @@ dataset:
 
 func:
   get_model:
-    script_file: "./models/resnet_tent_joint.py"
+    script_file: "./models/resnet_tent_joint_v2.py"
     call: "get_model"
   get_loss:
     script_file: "./losses/tent_bce_loss.py"
