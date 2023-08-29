@@ -35,19 +35,30 @@ class MpiCommunicator:
             self.comm.Isend(np.frombuffer(model_bytes, dtype=np.byte), dest=i, tag=i+self.comm_size)
         self.recv_queue = [self.comm.irecv(source=i, tag=i) for i in self.dests]
 
-    def send_single_global_model(self, model, args=None, client_idx=-1):
+    def send_single_global_model(self, model=None, args=None, client_idx=-1):
         '''Send the global model to a certain client.'''
         assert client_idx >= 0 and client_idx < self.comm_size, "Please provide a correct client idx!"
         self.dests = [i for i in range(self.comm_size) if i != self.comm_rank] if len(self.dests) == 0 else self.dests
+        if model is None:
+            assert args is not None, "Nothing to send to the client!"
+            self.comm.send((0, args), dest=self.dests[client_idx], tag=self.dests[client_idx])
+        else:
+            model_buffer = io.BytesIO()
+            torch.save(model, model_buffer)
+            model_bytes = model_buffer.getvalue()
+            if args is None:
+                self.comm.send(len(model_bytes), dest=self.dests[client_idx], tag=self.dests[client_idx])
+            else:
+                self.comm.send((len(model_bytes), args), dest=self.dests[client_idx], tag=self.dests[client_idx])
+            self.comm.Send(np.frombuffer(model_bytes, dtype=np.byte), dest=self.dests[client_idx], tag=self.dests[client_idx]+self.comm_size)
+            self.recv_queue.insert(client_idx, self.comm.irecv(source=self.dests[client_idx], tag=self.dests[client_idx]))
+
+    def send_local_model(self, model, dest):
         model_buffer = io.BytesIO()
         torch.save(model, model_buffer)
         model_bytes = model_buffer.getvalue()
-        if args is None:
-            self.comm.send(len(model_bytes), dest=self.dests[client_idx], tag=self.dests[client_idx])
-        else:
-            self.comm.send((len(model_bytes), args), dest=self.dests[client_idx], tag=self.dests[client_idx])
-        self.comm.Send(np.frombuffer(model_bytes, dtype=np.byte), dest=self.dests[client_idx], tag=self.dests[client_idx]+self.comm_size)
-        self.recv_queue.insert(client_idx, self.comm.irecv(source=self.dests[client_idx], tag=self.dests[client_idx]))
+        self.comm.send(len(model_bytes), dest=dest, tag=self.comm_rank)
+        self.comm.Isend(np.frombuffer(model_bytes, dtype=np.byte), dest=dest, tag=self.comm_rank+self.comm_size)
 
     def recv_global_model(self, source):
         '''Client receives the global model state dict from the server (source).'''
@@ -77,10 +88,3 @@ class MpiCommunicator:
     def cleanup(self):
         for req in self.recv_queue:
             req.cancel()
-
-
-
-        
-        
-
-
