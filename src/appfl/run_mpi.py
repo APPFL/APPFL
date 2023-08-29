@@ -22,8 +22,10 @@ import copy
 
 import math
 import pickle
+import torch
 
 import concurrent.futures
+import io
 
 def run_server(
     cfg: DictConfig,
@@ -81,8 +83,8 @@ def run_server(
 
     # Broadcast limitation according to the procs numbers
     intmax = 2100000000 # INT_MAX,2147483647, does not fit on the MPI send buffer size
-    recvimit = math.floor(intmax/(comm_size-1)) # The total recv size should be less than intmax due to the MPI recv buffer size
-    recvimit = comm.bcast(recvimit, root=0)
+    recvlimit = math.floor(intmax/(comm_size-1)) # The total recv size should be less than intmax due to the MPI recv buffer size
+    recvlimit = comm.bcast(recvlimit, root=0)
 
     """
     Receive the number of data from clients
@@ -123,7 +125,7 @@ def run_server(
     counts = []
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
-        do_continue = comm.bcast([do_continue, recvimit], root=0)
+        do_continue = comm.bcast([do_continue, recvlimit], root=0)
 
         # We need to load the model on cpu, before communicating.
         # Otherwise, out-of-memeory error from GPU
@@ -239,7 +241,7 @@ def run_client(
         outfile[cid] = client_log(cfg.output_dirname, output_filename)
 
     # Broadcast limitation according to the procs numbers    
-    recvimit = comm.bcast(None, root=0)
+    recvlimit = comm.bcast(None, root=0)
 
     """
     Send the number of data to a server
@@ -308,7 +310,11 @@ def run_client(
     
     count = -1
     maxcount = -1
+
+    ### Testing Flag
+    epochs_loop_i = 0
     while do_continue:
+        epochs_loop_i = epochs_loop_i + 1
         """Receive "global_state" """
         global_state = comm.bcast(None, root=0)
 
@@ -345,16 +351,24 @@ def run_client(
         
         # Slicing Gather
         # start_time = time.time()
-        serializedData = pickle.dumps(local_states)
-        length = len(serializedData)   
+        serializedData = io.BytesIO()
+        torch.save(local_states, serializedData)
+        length = serializedData.getbuffer().nbytes
+        #serializedData = pickle.dumps(local_states)
+        #length = len(serializedData)
+
+        ### Testing Print
+        # print("Length: ", length)
+        # pklfilename = str(epochs_loop_i) + 'Pickle.pkl'
+        # with open(pklfilename, 'wb') as f:  # open a text file
+        #     pickle.dump(local_states, f) # serialize the data            
+        
         # print("Serializing: ", time.time() - start_time)
         if count < 0:                 
-            count = math.ceil(length/recvimit)    
-            # gather_time = time.time()    
+            count = math.ceil(length/recvlimit)
             comm.gather(count, root=0)
-            maxcount = comm.bcast(None, root=0)
-            # print("Max Count Exchange: ", time.time() - gather_time, "Length: ", length)
-        slicing_gather_client(comm, comm_size, recvimit, serializedData, count, maxcount, length)
+            maxcount = comm.bcast(None, root=0)            
+        slicing_gather_client(comm, comm_size, recvlimit, serializedData, count, maxcount, length)
 
         do_continue = comm.bcast(None, root=0)
 
@@ -379,35 +393,40 @@ def run_client_update(client, global_state, comm):
     req = comm.isend(ls, dest=0, tag=cid)
     return req
 
-def slicing_gather_client(comm, comm_size, recvimit, serializedData, count, maxcount, length):
+def slicing_gather_client(comm, comm_size, recvlimit, serializedData, count, maxcount, length):
+    
+    view = serializedData.getvalue()
     for n in range(maxcount):
         if n < count:
             end = 0
-            begin = n*recvimit
-            if (n+1)*recvimit < length:
-                end = (n+1)*recvimit
+            begin = n*recvlimit
+            if (n+1)*recvlimit < length:
+                end = (n+1)*recvlimit
             else:
                 end = length
-            comm.gather(serializedData[begin:end], root=0)
+            comm.gather(view[begin:end], root=0)
         else:
             comm.gather(None, root=0)
 
 def slicing_gather_server(comm, comm_size, local_states_out, counts, maxcount):
     recvs = {}
     for r in range(0, comm_size):
-        recvs[r] = []
+        recvs[r] = b''
 
     gatherindex = 0
     for n in range(maxcount):
         recv = comm.gather(None, root=0)
         for r in range(0, comm_size):
             if gatherindex < counts[r]:
-                recvs[r].append(recv[r])
+                recvs[r] = b''.join([recvs[r],recv[r]])
     
     # start_time = time.time()
     for rank in range(1, comm_size):
-        local_states_recv = b''.join(recvs[rank])
-        local_states = pickle.loads(local_states_recv)
+        # local_states_recv = b''.join(recvs[rank])
+        # local_states = pickle.loads(local_states_recv)
+        
+        buffer = io.BytesIO(recvs[rank])
+        local_states = torch.load(buffer)
         for cid, state in local_states.items():            
             local_states_out[cid] = state
     # print("Deserializing: ", time.time() - start_time)
