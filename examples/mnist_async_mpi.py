@@ -50,7 +50,7 @@ parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to
 parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
 ## Fed Async
-parser.add_argument("--gradient_based", type=bool, default=False, help="Whether the algorithm requires gradient from the model")
+parser.add_argument("--gradient_based", action='store_true', help="Whether the algorithm requires gradient from the model")
 parser.add_argument("--alpha", type=float, default=0.9, help="Mixing parameter for FedAsync Algorithm")
 parser.add_argument("--staleness_func", type=str, choices=['constant', 'polynomial', 'hinge'], default='polynomial')
 parser.add_argument("--a", type=float, default=0.5, help="First parameter for the staleness function")

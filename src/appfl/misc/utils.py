@@ -60,7 +60,7 @@ def create_custom_logger(logger, cfg: DictConfig):
 
     dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+        os.makedirs(dir, exist_ok=True)
     output_filename = cfg.output_filename + "_server"
 
     file_ext = ".txt"

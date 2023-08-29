@@ -67,6 +67,8 @@ class MpiCommunicator:
             model_size, args = info[0], info[1]
         else:
             model_size, args = info, None
+        if model_size == 0:
+            return None, args
         model_bytes = np.empty(model_size, dtype=np.byte)
         self.comm.Recv(model_bytes, source=source, tag=self.comm_rank+self.comm_size)
         model_buffer = io.BytesIO(model_bytes.tobytes())
