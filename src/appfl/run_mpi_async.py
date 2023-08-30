@@ -8,8 +8,8 @@ from typing import Any
 from .algorithm import *
 from torch.optim import *
 from omegaconf import DictConfig
+from .comm.mpi import MpiCommunicator
 from torch.utils.data import DataLoader
-from .comm.mpi.mpi_communicator import MpiCommunicator
 
 def run_server(
     cfg: DictConfig,
@@ -25,14 +25,14 @@ def run_server(
     run_server:
         Run PPFL server that updates the global model parameters in an asynchronous way
     args:
-        cfg - the configuration for the FL experiment
-        comm - MPI communicator
-        model - neural network model to train
-        loss_fn - loss function 
-        num_clients - the number of clients used in PPFL simulation
-        test_dataset - optional testing data. If given, validation will run based on this data
-        dataset_name - optional dataset name
-        metric - evaluation metric function
+        cfg: the configuration for the FL experiment
+        comm: MPI communicator
+        model: neural network model to train
+        loss_fn: loss function 
+        num_clients: the number of clients used in PPFL simulation
+        test_dataset: optional testing data. If given, validation will run based on this data
+        dataset_name: optional dataset name
+        metric: evaluation metric function
     """
     device = "cpu"
     communicator = MpiCommunicator(comm)
@@ -83,8 +83,8 @@ def run_server(
     test_loss, test_accuracy, best_accuracy = 0.0, 0.0, 0.0
     while True:
         iter += 1
-        client_idx, local_model = communicator.recv_single_local_model()
-        
+        client_idx, local_model = communicator.recv_local_model_from_client()
+        logger.info(f"[Server Log] [Step #{iter:3}] Receive model from client {client_idx}")
         local_update_start = client_start_time[client_idx]
         local_update_time = time.time() - client_start_time[client_idx]
         global_update_start = time.time()
@@ -94,7 +94,7 @@ def run_server(
         if iter < cfg.num_epochs:
             client_model_step[client_idx] = server.global_step
             client_start_time[client_idx] = time.time()
-            communicator.send_single_global_model(server.model.state_dict(), {'done': False}, client_idx) 
+            communicator.send_global_model_to_client(server.model.state_dict(), {'done': False}, client_idx) 
         # Do server validation
         validation_start = time.time()
         if cfg.validation == True:
@@ -125,7 +125,7 @@ def run_server(
     "Notify the clients about the end of the learning"
     communicator.cleanup()
     for i in range(num_clients):
-        communicator.send_single_global_model(None, {'done': True}, i)
+        communicator.send_global_model_to_client(None, {'done': True}, i)
 
     "Log the summary of the FL experiments"
     server.logging_summary(cfg, logger)
@@ -140,15 +140,22 @@ def run_client(
     test_data: Dataset = Dataset(),
     metric: Any = None
 ):
-    """Run PPFL simulation clients, each of which updates its own local parameters of model
+    """
+    run_client:
+        Run PPFL simulation clients, each of which updates its own local parameters of model.
+        [Note: For asynchronous cases, each MPI process only corresponds to one federated learning client, 
+        as it does not make sense if multiple clients running serially on one MPI process in asynchronous 
+        federated learning settings.]
 
-    Args:
-        cfg (DictConfig): the configuration for this run
+    args:
+        cfg: the configuration for the FL experiment
         comm: MPI communicator
-        model (nn.Module): neural network model to train
-        num_clients (int): the number of clients used in PPFL simulation
-        train_data (Dataset): training data
-        test_data (Dataset): testing data
+        model: neural network model to train
+        loss_fn: loss function 
+        num_clients: the number of clients used in PPFL simulation
+        train_data: training data
+        test_data: validation data
+        metric: evaluation metric function
     """
     client_idx = comm.Get_rank()-1
     communicator = MpiCommunicator(comm)
@@ -201,7 +208,7 @@ def run_client(
     )
 
     while True:
-        model = communicator.recv_global_model(source=0)
+        model = communicator.recv_global_model_from_server(source=0)
         if isinstance(model, tuple):
             model, done = model[0], model[1]['done']
         else:
@@ -223,5 +230,5 @@ def run_client(
                     local_model[name] = client.primal_state[name]
         else:
             local_model = copy.deepcopy(client.primal_state)
-        communicator.send_local_model(local_model, dest=0)
+        communicator.send_local_model_to_server(local_model, dest=0)
     outfile.close()
