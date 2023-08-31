@@ -1,6 +1,7 @@
 import copy
 import time
 import logging
+import numpy as np
 import torch.nn as nn
 from .misc import *
 from mpi4py import MPI
@@ -23,8 +24,9 @@ def run_server(
 ):
     """
     run_server:
-        Run PPFL server that updates the global model parameters in an asynchronous way
-    args:
+        Run PPFL server that updates the global model parameter in a synchronous way.
+
+    Args:
         cfg: the configuration for the FL experiment
         comm: MPI communicator
         model: neural network model to train
@@ -35,14 +37,15 @@ def run_server(
         metric: evaluation metric function
     """
     device = "cpu"
+    comm_size = comm.Get_size()
     communicator = MpiCommunicator(comm)
 
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
-    cfg.logginginfo.comm_size = comm.Get_size()
+    cfg.logginginfo.comm_size = comm_size
     cfg.logginginfo.DataSet_name = dataset_name
 
-    "Using tensorboard to visualize the test loss."
+    ## Using tensorboard to visualize the test loss
     if cfg.use_tensorboard:
         from tensorboardX import SummaryWriter
         writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))
@@ -65,69 +68,61 @@ def run_server(
         total_num_data += num
     weights = [num / total_num_data for num in num_data]
 
-    "Asynchronous federated learning server"
-    server = eval(cfg.fed.servername)(weights, copy.deepcopy(model), loss_fn, num_clients, device,**cfg.fed.args)
+    "Synchronous federated learning server"
+    server = eval(cfg.fed.servername)(weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
 
-    start_time = time.time()
-    iter = 0
-    client_model_step = {i : 0 for i in range(0, num_clients)}
-    client_start_time = {i : start_time for i in range(0, num_clients)}
-
-    server.model.to("cpu")
-    global_model = server.model.state_dict()
-
-    "First broadcast the global model "
-    communicator.broadcast_global_model(global_model)
-
-    "Main server training loop"
+    start_time = time.time()    
     test_loss, test_accuracy, best_accuracy = 0.0, 0.0, 0.0
-    while True:
-        iter += 1
-        client_idx, local_model = communicator.recv_local_model_from_client()
-        logger.info(f"[Server Log] [Step #{iter:3}] Receive model from client {client_idx}")
-        local_update_start = client_start_time[client_idx]
-        local_update_time = time.time() - client_start_time[client_idx]
-        global_update_start = time.time()
+    for iter in range(cfg.num_epochs):
+        per_iter_start = time.time()
+        server.model.to("cpu")
+        global_state = server.model.state_dict()
+
+        communicator.broadcast_global_model(global_state, {'done': False})
+  
+        local_states = []
+        for _ in range(num_clients):
+            _, model = communicator.recv_local_model_from_client()
+            local_states.append(model)    
         
-        server.update(local_model, client_model_step[client_idx], client_idx)
-        global_update_time = time.time() - global_update_start
-        if iter < cfg.num_epochs:
-            client_model_step[client_idx] = server.global_step
-            client_start_time[client_idx] = time.time()
-            communicator.send_global_model_to_client(server.model.state_dict(), {'done': False}, client_idx) 
-        # Do server validation
+        cfg.logginginfo.LocalUpdate_time = time.time() - per_iter_start
+
+        #print("Start Server Update")
+        global_update_start = time.time()
+        server.update(local_states)
+        cfg.logginginfo.GlobalUpdate_time = time.time() - global_update_start
+
         validation_start = time.time()
         if cfg.validation == True:
             test_loss, test_accuracy = validation(server, test_dataloader, metric)
-            if test_accuracy > best_accuracy:
-                best_accuracy = test_accuracy
             if cfg.use_tensorboard:
                 # Add them to tensorboard
                 writer.add_scalar("server_test_accuracy", test_accuracy, iter)
                 writer.add_scalar("server_test_loss", test_loss, iter)
+            if test_accuracy > best_accuracy:
+                best_accuracy = test_accuracy
         cfg.logginginfo.Validation_time = time.time() - validation_start
-        cfg.logginginfo.PerIter_time = time.time() - local_update_start
+        cfg.logginginfo.PerIter_time = time.time() - per_iter_start
         cfg.logginginfo.Elapsed_time = time.time() - start_time
         cfg.logginginfo.test_loss = test_loss
         cfg.logginginfo.test_accuracy = test_accuracy
         cfg.logginginfo.BestAccuracy = best_accuracy
-        cfg.logginginfo.LocalUpdate_time = local_update_time
-        cfg.logginginfo.GlobalUpdate_time = global_update_time
-        logger.info(f"[Server Log] [Step #{iter:3}] Iteration Logs:")
-        if iter != 1:
-            logger.info(server.log_title())
-        server.logging_iteration(cfg, logger, iter-1)
 
-        "Break after max updates"
-        if iter == cfg.num_epochs: 
+        server.logging_iteration(cfg, logger, iter)
+
+        """ Saving model """
+        if (iter + 1) % cfg.checkpoints_interval == 0 or iter + 1 == cfg.num_epochs:
+            if cfg.save_model == True:
+                save_model_iteration(iter + 1, server.model, cfg)
+
+        if np.isnan(test_loss) == True:
             break
-    
+
     "Notify the clients about the end of the learning"
-    for i in range(num_clients):
-        communicator.send_global_model_to_client(None, {'done': True}, i)
+    communicator.broadcast_global_model(args={'done': True})
     communicator.cleanup()
 
-    "Log the summary of the FL experiments"
+    """ Summary """
     server.logging_summary(cfg, logger)
 
 def run_client(
@@ -154,7 +149,7 @@ def run_client(
         test_data: validation data
         metric: evaluation metric function
     """
-    client_idx = comm.Get_rank()-1
+    client_idx = comm.Get_rank() - 1
     communicator = MpiCommunicator(comm)
 
     """ log for clients"""
@@ -187,7 +182,7 @@ def run_client(
 
     client = eval(cfg.fed.clientname)(
         client_idx,
-        None,                       # TODO: Now I set weights to None, I don't know why we need weights?
+        None,
         copy.deepcopy(model),
         loss_fn,
         DataLoader(
@@ -213,19 +208,6 @@ def run_client(
         if done: 
             break
         client.model.load_state_dict(model)
-        client.update()
-        # Compute gradient if the algorithm is gradient-based
-        if cfg.fed.args.gradient_based:
-            list_named_parameters = []
-            for name, _ in client.model.named_parameters():
-                list_named_parameters.append(name)
-            local_model = {}
-            for name in model:
-                if name in list_named_parameters:
-                    local_model[name] = model[name] - client.primal_state[name]
-                else:
-                    local_model[name] = client.primal_state[name]
-        else:
-            local_model = copy.deepcopy(client.primal_state)
+        local_model = client.update()
         communicator.send_local_model_to_server(local_model, dest=0)
     outfile.close()

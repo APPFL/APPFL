@@ -21,21 +21,26 @@ class MpiCommunicator:
         '''Gathering contents from all clients to the destination.'''
         return self.comm.gather(content, root=dest)
     
-    def broadcast_global_model(self, model, args=None):
+    def broadcast_global_model(self, model=None, args=None):
         '''Broadcast the global model state dict and additional arguments from FL server to FL clients.'''
         self.dests = [i for i in range(self.comm_size) if i != self.comm_rank] if len(self.dests) == 0 else self.dests
-        model_buffer = io.BytesIO()
-        torch.save(model, model_buffer)
-        model_bytes = model_buffer.getvalue()
-        for i in self.dests:
-            if args is None:
-                self.comm.send(len(model_bytes), dest=i, tag=i)
-            else:
-                self.comm.send((len(model_bytes, args)), dest=i, tag=i)
-        for i in self.dests:
-            self.comm.Isend(np.frombuffer(model_bytes, dtype=np.byte), dest=i, tag=i+self.comm_size)
-        self.recv_queue = [self.comm.irecv(source=i, tag=i) for i in self.dests]
-        self.queue_status = [True for _ in range(self.comm_size-1)]
+        if model is None:
+            assert args is not None, "Nothing to send to the client!"
+            for i in self.dests:
+                self.comm.send((0, args), dest=i, tag=i)
+        else:
+            model_buffer = io.BytesIO()
+            torch.save(model, model_buffer)
+            model_bytes = model_buffer.getvalue()
+            for i in self.dests:
+                if args is None:
+                    self.comm.send(len(model_bytes), dest=i, tag=i)
+                else:
+                    self.comm.send((len(model_bytes), args), dest=i, tag=i)
+            for i in self.dests:
+                self.comm.Isend(np.frombuffer(model_bytes, dtype=np.byte), dest=i, tag=i+self.comm_size)
+            self.recv_queue = [self.comm.irecv(source=i, tag=i) for i in self.dests]
+            self.queue_status = [True for _ in range(self.comm_size-1)]
 
     def send_global_model_to_client(self, model=None, args=None, client_idx=-1):
         '''Send the global model to a certain client.'''

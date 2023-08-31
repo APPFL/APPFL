@@ -14,6 +14,7 @@ from models.utils import get_model
 
 import appfl.run_serial as rs
 import appfl.run_mpi as rm
+import appfl.run_mpi_sync as rms
 from mpi4py import MPI
 
 import argparse
@@ -120,6 +121,8 @@ def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
+    assert comm_size > 1, "This script requires the toal number of processes to be greater than one!"
+    args.num_clients = comm_size - 1
 
     """ Configuration """
     cfg = OmegaConf.structured(Config)
@@ -205,11 +208,11 @@ def main():
     """ Running """
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(
+            rms.run_server(
                 cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric
             )
         else:
-            rm.run_client(
+            rms.run_client(
                 cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset, metric
             )
         print("------DONE------", comm_rank)
