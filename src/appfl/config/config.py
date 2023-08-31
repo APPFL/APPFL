@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, List, Dict, Optional
 from omegaconf import DictConfig, OmegaConf
 
 
@@ -84,3 +84,66 @@ class Config:
         {"id": 1, "host": "localhost", "port": 50051, "use_tls": False, "api_key": None}
     )
     client: DictConfig = OmegaConf.create({"id": 1})
+
+@dataclass 
+class FuncXServerConfig:
+    device      : str = "cpu"
+    output_dir  : str = "./"
+    data_dir    : str = "./"
+    s3_bucket   : Any = None
+
+@dataclass
+class ExecutableFunc:
+    module       : str = ""
+    call         : str = ""
+    script_file  : str = ""
+    source       : str = ""
+
+@dataclass
+class ClientTask:
+    task_id      : str  = ""
+    task_name    : str  = ""
+    client_idx   : int  = ""
+    pending      : bool = True
+    success      : bool = False
+    start_time   : float= -1
+    end_time     : float= -1
+    log          : Optional[Dict] = field(default_factory=dict)
+
+@dataclass
+class FuncXClientConfig:
+    data_split  : Any = 0
+    name        : str = ""
+    endpoint_id : str = ""
+    device      : str = "cpu"
+    output_dir  : str = "./"
+    data_dir    : str = "./"
+    get_data    :  DictConfig = OmegaConf.create({})
+    data_pipeline: DictConfig = OmegaConf.create({})
+
+@dataclass
+class FuncXConfig(Config):
+    get_data     : ExecutableFunc = field(default_factory=ExecutableFunc)
+    get_model    : ExecutableFunc = field(default_factory=ExecutableFunc)
+    clients      : List[FuncXClientConfig] = field(default_factory=list)
+    dataset      : str  = ""
+    loss         : str  = "CrossEntropy"
+    model_args   : List = field(default_factory=list)
+    model_kwargs : Dict = field(default_factory=dict)
+    server       : FuncXServerConfig
+    logging_tasks: List = field(default_factory=list) 
+    hf_model_arc : str  = ""
+    hf_model_weights: str  = ""
+    
+    # Testing and validation params
+    client_do_validation: bool = True
+    client_do_testing   : bool = True
+    server_do_validation: bool = True
+    server_do_testing   : bool = True
+    
+    # Testing and validation frequency
+    client_validation_step: int = 1
+    server_validation_step: int = 1
+
+    # Cloud storage
+    use_cloud_transfer: bool = True

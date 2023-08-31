@@ -68,5 +68,10 @@ setuptools.setup(
             "opencv-python",
             "torchvision",
         ],
+        "globuscompute": [
+            "boto3",
+            "botocore",
+            "globus-compute-sdk",
+        ],
     },
 )
