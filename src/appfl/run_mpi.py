@@ -21,10 +21,7 @@ from mpi4py import MPI
 import copy
 
 import math
-import pickle
 import torch
-
-import concurrent.futures
 import io
 
 def run_server(
@@ -88,8 +85,8 @@ def run_server(
 
     """
     Receive the number of data from clients
-    Compute "weight[client] = data[client]/total_num_data" from a server    
-    Scatter "weight information" to clients        
+    Compute "weight[client] = data[client]/total_num_data" from a server
+    Scatter "weight information" to clients
     """
     num_data = comm.gather(0, root=0)
     total_num_data = 0
@@ -133,41 +130,19 @@ def run_server(
 
         global_state = server.model.state_dict()
 
+
         local_update_start = time.time()
+
+        # Sharing the maximum communication count
         global_state = comm.bcast(global_state, root=0)
-        cfg["logginginfo"]["BCAST_time"] = time.time() - local_update_start
-        
-        # Gather
-        # local_states_recv = comm.gather(None, root=0)
-        # local_states = [None for i in range(num_clients)]
-        # for rank in range(comm_size):
-        #     ls = ""
-        #     if rank == 0:
-        #         continue;
-        #     else:
-        #         local_states_rank = local_states_recv[rank]
-        #         for cid, state in local_states_rank.items():
-        #             print("server", type(cid), type(state))
-        #             local_states[cid] = state
-        
-        # ISend-Recv
-        # local_states= [None for i in range(num_clients)]        
-        # for rank in range(comm_size):
-        #     ls = ""
-        #     if rank == 0:
-        #         continue;
-        #     else:
-        #         for _, cid in enumerate(num_client_groups[rank - 1]):
-        #             local_states[cid] = comm.recv(source=rank, tag=cid)
-        
-        # Slicing Gather
         if maxcount < 0:
             counts = comm.gather(0, root=0)
             maxcount = max(counts)
             maxcount = comm.bcast(maxcount, root=0)
+
+        # Gather 'local_states'
         local_states= [None for i in range(num_clients)]
-        local_states = slicing_gather_server(comm, comm_size, local_states, counts, maxcount)
-        
+        local_states = slicing_gather_server(comm, comm_size, local_states, counts, maxcount)        
 
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
         
@@ -193,7 +168,7 @@ def run_server(
         cfg["logginginfo"]["test_accuracy"] = test_accuracy
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
         server.logging_iteration(cfg, logger, t)
-        print(cfg)
+        
         """ Saving model """
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
@@ -247,7 +222,7 @@ def run_client(
     Send the number of data to a server
     Receive "weight_info" from a server    
         (fedavg)            "weight_info" is not needed as of now.
-        (iceadmm+iiadmm)    "weight_info" is needed for constructing coefficients of the loss_function         
+        (iceadmm+iiadmm)    "weight_info" is needed for constructing coefficients of the loss_function
     """
     num_data = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
@@ -281,11 +256,11 @@ def run_client(
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         ## We assume to have as many GPUs as the number of MPI processes.
         if "cuda" in cfg.device:
-            gpuindex = int(math.floor(cid/clientpergpu))            
+            gpuindex = int(math.floor(cid/clientpergpu))
             device = f"cuda:{gpuindex}"
         else:
             device = cfg.device
-        cfg.device = device          
+        cfg.device = device
         clients.append(
             eval(cfg.fed.clientname)(
                 cid,
@@ -311,90 +286,40 @@ def run_client(
     count = -1
     maxcount = -1
 
-    ### Testing Flag
-    epochs_loop_i = 0
-    while do_continue:
-        epochs_loop_i = epochs_loop_i + 1
+    while do_continue:        
         """Receive "global_state" """
         global_state = comm.bcast(None, root=0)
 
         """ Update "local_states" based on "global_state" """
-        reqlist = []
-        
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=64) as executor:
-        #     for client in clients:
-        #         req = executor.submit(run_client_update, client, global_state, comm)
-        #         reqlist.append(req.result())
-        
         local_states = OrderedDict()
         for client in clients:
             cid = client.id
 
-            ## initial point for a client model            
+            ## initial point for a client model
             client.model.load_state_dict(global_state)
 
             ## client update
             update = client.update()
             
             local_states[cid] = update
-            
-            # ISend-Recv
-            # req = run_client_update(client, global_state, comm)            
-            # reqlist.append(req)
         
         """ Send "local_states" to a server """
-        # Gather
-        # comm.gather(local_states, root=0)
-
-        # ISend-Recv
-        # MPI.Request.Waitall(reqlist)
-        
-        # Slicing Gather
-        # start_time = time.time()
         serializedData = io.BytesIO()
         torch.save(local_states, serializedData)
         length = serializedData.getbuffer().nbytes
-        #serializedData = pickle.dumps(local_states)
-        #length = len(serializedData)
 
-        ### Testing Print
-        # print("Length: ", length)
-        # pklfilename = str(epochs_loop_i) + 'Pickle.pkl'
-        # with open(pklfilename, 'wb') as f:  # open a text file
-        #     pickle.dump(local_states, f) # serialize the data            
-        
-        # print("Serializing: ", time.time() - start_time)
         if count < 0:                 
             count = math.ceil(length/recvlimit)
             comm.gather(count, root=0)
-            maxcount = comm.bcast(None, root=0)            
+            maxcount = comm.bcast(None, root=0)
         slicing_gather_client(comm, comm_size, recvlimit, serializedData, count, maxcount, length)
 
         do_continue = comm.bcast(None, root=0)
 
-    # for i in range(cfg.num_gpu):
-    #     print("GPU Number:", i)
-    #     print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
-    #     print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3,1), 'GB')
-
     for client in clients:
-        # print("MPI Rank:", comm_rank, "CID:", client.id)
         client.outfile.close()
 
-def run_client_update(client, global_state, comm):  
-    start_time = time.time()  
-    cid = client.id
-    ## initial point for a client model            
-    client.model.load_state_dict(global_state)
-
-    ## client update     
-    ls = client.update()  
-    # print("CID:", cid, "Total_Client_Update_Time:", time.time() - start_time)                          
-    req = comm.isend(ls, dest=0, tag=cid)
-    return req
-
 def slicing_gather_client(comm, comm_size, recvlimit, serializedData, count, maxcount, length):
-    
     view = serializedData.getvalue()
     for n in range(maxcount):
         if n < count:
@@ -419,18 +344,11 @@ def slicing_gather_server(comm, comm_size, local_states_out, counts, maxcount):
         for r in range(0, comm_size):
             if gatherindex < counts[r]:
                 recvs[r] = b''.join([recvs[r],recv[r]])
-    
-    # start_time = time.time()
+
     for rank in range(1, comm_size):
-        # local_states_recv = b''.join(recvs[rank])
-        # local_states = pickle.loads(local_states_recv)
-        
         buffer = io.BytesIO(recvs[rank])
         local_states = torch.load(buffer)
-        for cid, state in local_states.items():            
+        for cid, state in local_states.items():
             local_states_out[cid] = state
-    # print("Deserializing: ", time.time() - start_time)
-    # print("Total Gather Time in Server: ", time.time() - gather_time)
-
     return local_states_out
     
