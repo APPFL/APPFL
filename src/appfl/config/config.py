@@ -86,7 +86,7 @@ class Config:
     client: DictConfig = OmegaConf.create({"id": 1})
 
 @dataclass 
-class FuncXServerConfig:
+class GlobusComputeServerConfig:
     device      : str = "cpu"
     output_dir  : str = "./"
     data_dir    : str = "./"
@@ -111,7 +111,7 @@ class ClientTask:
     log          : Optional[Dict] = field(default_factory=dict)
 
 @dataclass
-class FuncXClientConfig:
+class GlobusComputeClientConfig:
     data_split  : Any = 0
     name        : str = ""
     endpoint_id : str = ""
@@ -122,15 +122,15 @@ class FuncXClientConfig:
     data_pipeline: DictConfig = OmegaConf.create({})
 
 @dataclass
-class FuncXConfig(Config):
+class GlobusComputeConfig(Config):
     get_data     : ExecutableFunc = field(default_factory=ExecutableFunc)
     get_model    : ExecutableFunc = field(default_factory=ExecutableFunc)
-    clients      : List[FuncXClientConfig] = field(default_factory=list)
+    clients      : List[GlobusComputeClientConfig] = field(default_factory=list)
     dataset      : str  = ""
     loss         : str  = "CrossEntropy"
     model_args   : List = field(default_factory=list)
     model_kwargs : Dict = field(default_factory=dict)
-    server       : FuncXServerConfig
+    server       : GlobusComputeServerConfig
     logging_tasks: List = field(default_factory=list) 
     hf_model_arc : str  = ""
     hf_model_weights: str  = ""

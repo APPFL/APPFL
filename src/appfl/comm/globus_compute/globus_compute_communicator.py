@@ -10,16 +10,16 @@ from .utils.s3_storage import CloudStorage, LargeObjectWrapper
 from .utils.globus_compute_endpoint import GlobusComputeClientEndpoint, ClientEndpointStatus
 
 class GlobusComputeCommunicator:
-    def __init__(self, cfg: DictConfig, fxc : Client, logger):
+    def __init__(self, cfg: DictConfig, gcc : Client, logger):
         self.cfg = cfg
-        self.fxc = fxc
+        self.gcc = gcc
         self.logger = logger
         self.executing_tasks = {}
         self.clients = {
             client_idx: GlobusComputeClientEndpoint(client_idx, client_cfg)
             for client_idx, client_cfg in enumerate(self.cfg.clients)
         }
-        self.fx = Executor(funcx_client=fxc, batch_enabled=True)
+        self.gcx = Executor(funcx_client=gcc, batch_enabled=True)
         self.use_s3bucket = cfg.server.s3_bucket is not None
         if self.use_s3bucket:
             self.logger.info('Using S3 bucket for model transfer.')
@@ -28,10 +28,11 @@ class GlobusComputeCommunicator:
     def __register_task(self, task_id, client_id, task_name):
         """Register new client task to the list of executing tasks - call after task submission """
         self.executing_tasks[task_id] =  OmegaConf.structured(ClientTask(
-                    task_id    = task_id,
-                    task_name  = task_name,
-                    client_idx = client_id,
-                    start_time = time.time()))
+            task_id    = task_id,
+            task_name  = task_name,
+            client_idx = client_id,
+            start_time = time.time())
+        )
         
     def __set_task_success_status(self, task_id, completion_time, client_log = None):
         """Change the status status of the given task to finished."""
@@ -113,8 +114,8 @@ class GlobusComputeCommunicator:
         # Prepare args, kwargs before sending to clients
         args, kwargs = self.__handle_params(args, kwargs)
         # Register funcX function and create an execution batch
-        func_uuid = self.fxc.register_function(exct_func)
-        batch     = self.fxc.create_batch()
+        func_uuid = self.gcc.register_function(exct_func)
+        batch     = self.gcc.create_batch()
         # Execute training tasks at clients
         for client_idx, client_cfg in enumerate(self.cfg.clients):
             if self.use_s3bucket and exct_func.__name__ == 'client_training':
@@ -127,7 +128,7 @@ class GlobusComputeCommunicator:
                 client_cfg.endpoint_id,
                 args=(self.cfg, client_idx, *args),
                 kwargs=kwargs)
-        task_ids  = self.fxc.batch_run(batch)
+        task_ids  = self.gcc.batch_run(batch)
         # Saving task ids 
         for i, task_id in enumerate(task_ids):
             self.__register_task(task_id, i, exct_func.__name__)
@@ -144,7 +145,7 @@ class GlobusComputeCommunicator:
         client_results = OrderedDict()
         client_logs    = OrderedDict()
         while True:
-            results = self.fxc.get_batch_result(list(self.executing_tasks))
+            results = self.gcc.get_batch_result(list(self.executing_tasks))
             if len(results) != len(list(self.executing_tasks)):
                 raise Exception("Exception occurs on client side, stop the training!")
             for task_id in results:
@@ -229,7 +230,7 @@ class GlobusComputeCommunicator:
             self.async_func_kwargs['local_model_url'] = local_model_url
         # Send task to client
         task_id = client.submit_task(
-            self.fx,
+            self.gcx,
             self.async_func,
             self.cfg,
             client_idx,
@@ -242,7 +243,6 @@ class GlobusComputeCommunicator:
     
     def run_async_task_on_available_clients(self):
         """Run asynchronous task on all available clients."""
-        # self.fx = FuncXExecutor(funcx_client = self.fxc, batch_enabled = True)
         for client_idx in self.clients:
             if self.clients[client_idx].status == ClientEndpointStatus.AVAILABLE:
                 self.run_async_task_on_client(client_idx)
@@ -259,7 +259,7 @@ class GlobusComputeCommunicator:
                 #     print(f"Finish cancelling the furture: {self.clients[client_idx].future}")
                 # except:
                 #     print(f"{self.clients[client_idx].future} is already canceled!")
-        self.fx.shutdown()
+        self.gcx.shutdown()
         self.logger.info("All clients have been shutted down successfully.")
         # Clean-up cloud storage
         CloudStorage.clean_up()
