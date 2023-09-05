@@ -145,6 +145,16 @@ def get_executable_func(func_cfg):
         exec(func_cfg.source, globals())
         return eval(func_cfg.call)
     
+def mse_loss(pred, y):
+    return torch.nn.MSELoss()(pred.float(), y.float().unsqueeze(-1))
+
+def get_loss_func(cfg):
+    if cfg.loss == "":
+        return get_executable_func(cfg.get_loss)()
+    elif cfg.loss == "CrossEntropy":
+        return torch.nn.CrossEntropyLoss()
+    elif cfg.loss == "MSE":
+        return mse_loss
 
 TORCH_EXT = ['.pt', '.pth']
 PICKLE_EXT= ['.pkl']

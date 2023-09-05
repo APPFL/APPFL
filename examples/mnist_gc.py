@@ -1,6 +1,5 @@
 import torch
 import argparse
-import torchvision
 from models.cnn  import *
 from appfl.config import *
 from appfl.misc.data import *
@@ -10,13 +9,13 @@ from globus_compute_sdk import Client
 from appfl.run_gc_server import run_server
 
 """
-python mnist_gc.py 
+python mnist_gc.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
 """
 
 """ read arguments """ 
 parser = argparse.ArgumentParser()  
-parser.add_argument("--client_config", type=str, default="configs/clients/mnist_broad.yaml")
-parser.add_argument("--config", type=str, default= "configs/fed_avg/funcx_fedavg_mnist.yaml") 
+parser.add_argument("--client_config", type=str, default="globus_compute/client_configs/mnist.yaml")
+parser.add_argument("--server_config", type=str, default= "globus_compute/server_configs/mnist_fedavg.yaml") 
 
 ## other agruments
 parser.add_argument('--clients-test', action='store_true', default=False)
@@ -48,22 +47,20 @@ def main():
     mode = 'clients_testing' if args.clients_test else 'train'
 
     # loading globus compute configs from file
-    load_globus_compute_device_config(cfg, args.client_config)
-    load_globus_compute_config(cfg, args.config)
-
-    cfg.fed.clientname = "GlobusComputeClientOptim"
+    load_globus_compute_client_config(cfg, args.client_config)
+    load_globus_compute_server_config(cfg, args.server_config)
 
     # config logger
     mLogging.config_logger(cfg)    
     
     """ Server-defined model """
     ModelClass = get_executable_func(cfg.get_model)()
-    model = ModelClass(*cfg.model_args, **cfg.model_kwargs) 
-    loss_fn = get_loss_func(cfg.loss)
+    model = ModelClass(**cfg.model_kwargs) 
+    loss_fn = get_loss_func(cfg)
+    val_metric = get_executable_func(cfg.val_metric)
 
     if cfg.load_model == True:
         path = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
-        print("Loading model from ", path)
         model.load_state_dict(torch.load(path)) 
         model.eval()
     

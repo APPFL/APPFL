@@ -11,73 +11,75 @@ def show():
     conf = OmegaConf.structured(Config)
     print(OmegaConf.to_yaml(conf))
 
-def load_exct_func_cfg(cfg_dict):
-    src = OmegaConf.create(ExecutableFunc(**cfg_dict))
-    assert src.module != "" or  src.script_file  != "",  "Need to specify the executable function by (module, call) or script file"
-    assert not (src.module != "" and src.script_file != ""), "Can only specify the executable function by (module, call) or script file but not both"
-    assert src.call != "", "Need to specify the function's name by setting 'call: <func name>' in the config file"
-    if src.script_file != "":
-        with open(src.script_file) as fi:
-            src.source = fi.read()
-        assert len(src.source) > 0, "Source file is empty."
-    return src
+def load_executable_func(cfg_dict):
+    """Load the executable function from the configuration dictionary."""
+    exct_func = OmegaConf.create(ExecutableFunc(**cfg_dict))
+    assert exct_func.module != "" or  exct_func.script_file  != "",  "Need to specify the executable function by (module, call) or script file"
+    assert not (exct_func.module != "" and exct_func.script_file != ""), "Can only specify the executable function by (module, call) or script file but not both"
+    assert exct_func.call != "", "Need to specify the function's name by setting 'call: <func name>' in the config file"
+    if exct_func.script_file != "":
+        with open(exct_func.script_file) as fi:
+            exct_func.source = fi.read()
+        assert len(exct_func.source) > 0, "Source file is empty."
+    return exct_func
 
-def load_globus_compute_config(cfg: GlobusComputeConfig, config_file: str):
+def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str):
+    """Load the server configurations from the yaml configuration file to the GlobusComputeConfig object."""
     assert osp.exists(config_file), "Config file {config_file} not found!"
     with open(config_file) as fi:
         data = yaml.load(fi, Loader = yaml.SafeLoader)
-
-    ## Load module configs for get_model and get_dataset method
+    cfg.server   = OmegaConf.structured(GlobusComputeServerConfig(**data['server']))
+    assert 'func' in data and 'get_model' in data['func'], "Please specify the function to obtain the model."
+    assert 'get_model' in data['func'], "Please specify the function to obtain the model."
+    assert 'val_metric' in data['func'], "Please specify the validation metric function."
+    cfg.get_model= load_executable_func(data['func']['get_model'])
+    cfg.val_metric = load_executable_func(data['func']['val_metric'])
+    # TODO: Zilinghan what is this data
     if 'get_data' in data['func']:
-        cfg.get_data = load_exct_func_cfg(data['func']['get_data'])
-    
-    if 'loss' in data:
+        cfg.get_data = load_executable_func(data['func']['get_data'])
+    if 'get_loss' in data['func']:
+        cfg.get_loss = load_executable_func(data['func']['get_loss'])
+        cfg.loss = ""
+    elif 'loss' in data:
         cfg.loss = data['loss']
     if 'train_data_batch_size' in data:
         cfg.train_data_batch_size = data['train_data_batch_size']
     if 'test_data_batch_size' in data:
         cfg.test_data_batch_size = data['test_data_batch_size']
-    cfg.get_model= load_exct_func_cfg(data['func']['get_model'])
     
-    ## Load FL algorithm configs
-    cfg.fed =Federated()
+    # Load FL algorithm configs
+    cfg.fed =Federated()        # TODO: Zilinghan What if Asynchronous???
+                                # TODO: Allow user to choose between num_local_epochs and num_local_steps
     cfg.fed.servername = data['algorithm']['servername']
-    cfg.fed.clientname = data['algorithm']['clientname']
+    cfg.fed.clientname = data['algorithm']['clientname'] if 'clientname' in data['algorithm'] else 'GlobusComputeClientOptim'
     cfg.fed.args = OmegaConf.create(data['algorithm']['args'])
-    ## Load training configs
-    cfg.num_epochs         = data['training']['num_epochs']
+    # Load training configs
+    cfg.num_epochs = data['training']['num_epochs']
     if 'save_model_dirname' in data['training']:
         cfg.save_model_dirname = data['training']['save_model_dirname']
     cfg.save_model_filename= data['training']['save_model_filename']
-    ## Load model configs
-    cfg.model_kwargs       = data['model']
-    ## Load dataset configs
-    cfg.dataset  = data['dataset']['name']
+    # Load model configs
+    cfg.model_kwargs = data['model']
+    # Load dataset configs
+    cfg.dataset  = data['dataset']['name']      # TODO: Zilinghan I think this is not very useful
     
-def load_globus_compute_device_config(cfg: GlobusComputeConfig, config_file: str):
+def load_globus_compute_client_config(cfg: GlobusComputeConfig, config_file: str):
+    """Load the client configurations from the yaml configuration file to the GlobusComputeConfig object."""
     assert osp.exists(config_file), "Config file {config_file} not found!"
     with open(config_file) as fi:
         data = yaml.load(fi, Loader = yaml.SafeLoader)
-    
-    ## Load configs for server
-    cfg.server   = OmegaConf.structured(GlobusComputeServerConfig(**data['server']))
-    
-    ## Load configs for clients
     for client in data["clients"]:
         if 'get_data' in client:
-            client['get_data'] = load_exct_func_cfg(client['get_data'])
+            client['get_data'] = load_executable_func(client['get_data'])
         if 'data_pipeline' in client:
             client['data_pipeline']= OmegaConf.create(client['data_pipeline'])
-        # else:
-        #     client['data_pipeline']= OmegaConf.create({})
         client_cfg = OmegaConf.structured(GlobusComputeClientConfig(**client))
         cfg.clients.append(client_cfg)
-    
     cfg.num_clients = len(cfg.clients)
     return cfg    
 
 #====================================================================================
-
+# The following functions are foe APPFLx web application
 
 def load_appfl_server_config_funcx(cfg: GlobusComputeConfig, config_file: str):
     # Modified (ZL): load the configuration file for the appfl server
@@ -90,7 +92,7 @@ def load_appfl_server_config_funcx(cfg: GlobusComputeConfig, config_file: str):
 
     ## Load module configs for get_model and get_dataset method
     if 'get_data' in data['func']:
-        cfg.get_data = load_exct_func_cfg(data['func']['get_data'])
+        cfg.get_data = load_executable_func(data['func']['get_data'])
     
     if 'loss' in data:
         cfg.loss = data['loss']
@@ -98,7 +100,7 @@ def load_appfl_server_config_funcx(cfg: GlobusComputeConfig, config_file: str):
         cfg.train_data_batch_size = data['train_data_batch_size']
     if 'test_data_batch_size' in data:
         cfg.test_data_batch_size = data['test_data_batch_size']
-    cfg.get_model= load_exct_func_cfg(data['func']['get_model'])
+    cfg.get_model= load_executable_func(data['func']['get_model'])
     
     ## Load FL algorithm configs
     cfg.fed =Federated()
@@ -124,7 +126,7 @@ def load_appfl_client_config_funcx(cfg: GlobusComputeConfig, config_file: str):
     ## Load configs for clients
     for client in data["clients"]:
         if 'get_data' in client:
-            client['get_data'] = load_exct_func_cfg(client['get_data'])
+            client['get_data'] = load_executable_func(client['get_data'])
         if 'data_pipeline' in client:
             client['data_pipeline']= OmegaConf.create(client['data_pipeline'])
         # else:
@@ -187,7 +189,7 @@ def load_appfl_server_config_funcx_web(cfg: GlobusComputeConfig, server_config: 
     cfg.server   = OmegaConf.structured(GlobusComputeServerConfig(**data['server']))
     ## Load module configs for get_dataset method
     if 'get_data' in data:
-        cfg.get_data = load_exct_func_cfg(data['func']['get_data'])
+        cfg.get_data = load_executable_func(data['func']['get_data'])
     if 'loss' in data:
         cfg.loss = data['loss']
     if 'train_data_batch_size' in data:
@@ -233,7 +235,7 @@ def load_appfl_server_config_funcx_web_v2(cfg: GlobusComputeConfig, server_confi
     cfg.server   = OmegaConf.structured(GlobusComputeServerConfig(**data['server']))
     ## Load module configs for get_dataset method
     if 'get_data' in data:
-        cfg.get_data = load_exct_func_cfg(data['func']['get_data'])
+        cfg.get_data = load_executable_func(data['func']['get_data'])
     if 'loss' in data:
         cfg.loss = data['loss']
     if 'train_data_batch_size' in data:

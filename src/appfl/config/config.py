@@ -93,6 +93,17 @@ class GlobusComputeServerConfig:
     s3_bucket   : Any = None
 
 @dataclass
+class GlobusComputeClientConfig:
+    data_split  : Any = 0
+    name        : str = ""
+    endpoint_id : str = ""
+    device      : str = "cpu"
+    output_dir  : str = "./"
+    data_dir    : str = "./"
+    get_data    :  DictConfig = OmegaConf.create({})
+    data_pipeline: DictConfig = OmegaConf.create({})
+
+@dataclass
 class ExecutableFunc:
     module       : str = ""
     call         : str = ""
@@ -111,24 +122,14 @@ class ClientTask:
     log          : Optional[Dict] = field(default_factory=dict)
 
 @dataclass
-class GlobusComputeClientConfig:
-    data_split  : Any = 0
-    name        : str = ""
-    endpoint_id : str = ""
-    device      : str = "cpu"
-    output_dir  : str = "./"
-    data_dir    : str = "./"
-    get_data    :  DictConfig = OmegaConf.create({})
-    data_pipeline: DictConfig = OmegaConf.create({})
-
-@dataclass
 class GlobusComputeConfig(Config):
     get_data     : ExecutableFunc = field(default_factory=ExecutableFunc)
     get_model    : ExecutableFunc = field(default_factory=ExecutableFunc)
+    get_loss     : ExecutableFunc = field(default_factory=ExecutableFunc)
+    val_metric   : ExecutableFunc = field(default_factory=ExecutableFunc)
     clients      : List[GlobusComputeClientConfig] = field(default_factory=list)
     dataset      : str  = ""
     loss         : str  = "CrossEntropy"
-    model_args   : List = field(default_factory=list)
     model_kwargs : Dict = field(default_factory=dict)
     server       : GlobusComputeServerConfig
     logging_tasks: List = field(default_factory=list) 

@@ -18,7 +18,7 @@ def get_model(cfg):
     else:
         get_model = get_executable_func(cfg.get_model)
         ModelClass = get_model()
-        model      = ModelClass(*cfg.model_args, **cfg.model_kwargs)
+        model      = ModelClass(**cfg.model_kwargs)
     return model
 
 def load_global_state(cfg, global_state, temp_dir):
