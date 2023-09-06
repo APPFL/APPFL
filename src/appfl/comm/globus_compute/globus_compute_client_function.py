@@ -1,24 +1,18 @@
 """
 This file contains all the functions/tasks to be run on the funcx endpoint.
 """
-def client_validate_data(
-    cfg, 
-    client_idx,
-    mode = 'train'
-    ):
-    modes = [mode] if type(mode) == str else mode 
-    
-    ## Prepare logger
+def client_validate_data(cfg, client_idx, mode = 'train'):
     from appfl.misc.logging import ClientLogger
+    from appfl.comm.globus_compute.utils.client_utils import get_dataset
+    modes = [mode] if type(mode) == str else mode 
     cli_logger = ClientLogger()
     cli_logger.mark_event("start_endpoint_execution")
-    from appfl.comm.globus_compute.utils.client_utils import get_dataset
     data_info = {}
     for m in modes: 
-        cli_logger.start_timer("load_%s_dataset"%m)
+        cli_logger.start_timer(f"load_{m}_dataset")
         dataset = get_dataset(cfg, client_idx, mode=m)
         data_info[m] = len(dataset)
-        cli_logger.stop_timer("load_%s_dataset"%m)
+        cli_logger.stop_timer(f"load_{m}_dataset")
     cli_logger.mark_event("stop_endpoint_execution")
     return data_info, cli_logger.to_dict()
 
@@ -27,23 +21,20 @@ def client_training(
     client_idx,
     weights,
     global_state,
-    loss_fn,
     local_model_key="",
     local_model_url="",
     do_validation=False,
     ):
-    from appfl.misc.logging import ClientLogger
+    import importlib
+    import os.path as osp
     from collections import OrderedDict
-    ## Prepare logger
+    from appfl.misc.logging import ClientLogger
+    from appfl.misc import client_log, get_dataloader
+    from appfl.comm.globus_compute.utils.client_utils import get_dataset, load_global_state, send_client_state, get_model, get_loss, get_val_metric
+
+    ## Create logger
     cli_logger = ClientLogger()
     cli_logger.mark_event("start_endpoint_execution")
-    
-    ## Import libaries
-    import os.path as osp
-    from appfl.algorithm.client_optimizer import ClientOptim
-    from appfl.algorithm.gc_client_optimizer import FuncxClientOptim
-    from appfl.misc import client_log, get_dataloader
-    from appfl.comm.globus_compute.utils.client_utils import get_dataset, load_global_state, send_client_state, get_model
    
     ## Load client configs
     cfg.device         = cfg.clients[client_idx].device
@@ -62,21 +53,27 @@ def client_training(
 
     # Get training model
     model = get_model(cfg)
+    loss_fn = get_loss(cfg)
+    val_metric = get_val_metric(cfg)
     ## Prepare output directory
     output_filename = cfg.output_filename + "_client_%s" % (client_idx)
     outfile = client_log(cfg.output_dirname, output_filename)
     
     ## Instantiate training agent at client 
-    client= eval(cfg.fed.clientname)(
-            client_idx,
-            weights,
-            model,
-            loss_fn,
-            train_dataloader,
-            cfg,
-            outfile,
-            val_dataloader, 
-            **cfg.fed.args)
+    appfl_alg = importlib.import_module('appfl.algorithm')
+    ClientOptim = getattr(appfl_alg, cfg.fed.clientname)
+    client= ClientOptim(
+        client_idx,
+        weights,
+        model,
+        loss_fn,
+        train_dataloader,
+        cfg,
+        outfile,
+        val_dataloader, 
+        val_metric,
+        **cfg.fed.args
+    )
    
     ## Download global state
     cli_logger.start_timer("download_global_state")
@@ -101,7 +98,7 @@ def client_training(
 
     ## Send client state to server
     cli_logger.start_timer("upload_client_state")
-    res = send_client_state(cfg, client_state, client_idx, temp_dir, local_model_key, local_model_url)
+    res = send_client_state(cfg, client_state, temp_dir, local_model_key, local_model_url)
     cli_logger.stop_timer("upload_client_state")
     
     cli_logger.mark_event("stop_endpoint_execution")
@@ -112,18 +109,17 @@ def client_testing(
     client_idx,
     weights,
     global_state,
-    loss_fn
     ):
+    import importlib
+    import os.path as osp
     from appfl.misc.logging import ClientLogger
-    from appfl.algorithm.gc_client_optimizer import FuncxClientOptim
-    ## Prepare logger
+    from appfl.misc import client_log, get_dataloader
+    from appfl.comm.globus_compute.utils.client_utils import get_dataset, load_global_state, get_model, get_loss, get_val_metric
+    
+    ## Create logger
     cli_logger = ClientLogger()
     cli_logger.mark_event("start_endpoint_execution")
-    ## Import libaries
-    import os.path as osp
-    from appfl.misc import client_log, get_dataloader
-    from appfl.algorithm.client_optimizer import ClientOptim
-    from appfl.comm.globus_compute.utils.client_utils import get_dataset, load_global_state, get_model
+    
     ## Load client configs
     cfg.device         = cfg.clients[client_idx].device
     cfg.output_dirname = cfg.clients[client_idx].output_dir
@@ -135,20 +131,26 @@ def client_testing(
     cli_logger.stop_timer('load_dataset')
     # Get training model
     model = get_model(cfg)
+    loss_fn = get_loss(cfg)
+    val_metric = get_val_metric(cfg)
     ## Prepare output directory
     output_filename = cfg.output_filename + "_client_test_%s" % (client_idx)
     outfile = client_log(cfg.output_dirname, output_filename)
     ## Instantiate training agent at client 
-    client= eval(cfg.fed.clientname)(
-            client_idx,
-            weights,
-            model,
-            loss_fn,
-            None,
-            cfg,
-            outfile,
-            None,
-            **cfg.fed.args)
+    appfl_alg = importlib.import_module('appfl.algorithm')
+    ClientOptim = getattr(appfl_alg, cfg.fed.clientname)
+    client= ClientOptim(
+        client_idx,
+        weights,
+        model,
+        loss_fn,
+        None,
+        cfg,
+        outfile,
+        None,
+        val_metric
+        **cfg.fed.args
+    )
     ## Download global state
     temp_dir = osp.join(cfg.output_dirname, "tmp")
     cli_logger.start_timer("download_global_state")

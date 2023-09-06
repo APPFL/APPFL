@@ -67,7 +67,7 @@ def main():
     server_test_dataset = None
     server_val_dataset  = None
     gcc = Client()
-    run_server(cfg, model, loss_fn, gcc, server_test_dataset, server_val_dataset, mode=mode)
+    run_server(cfg, model, loss_fn, val_metric, gcc, server_test_dataset, server_val_dataset, mode=mode)
 
 if __name__ == "__main__":
     main()

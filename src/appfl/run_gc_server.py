@@ -5,6 +5,7 @@ import uuid
 import traceback
 import torch.nn as nn
 from .misc import *
+from typing import Any
 from .algorithm import *
 from globus_compute_sdk import Client
 from omegaconf import DictConfig
@@ -33,9 +34,10 @@ class APPFLGlobusComputeServer(abc.ABC):
         self.best_accuracy = 0.0
         self.data_info_at_client = None
     
-    def _initialize_training(self, model: nn.Module, loss_fn: nn.Module):
+    def _initialize_training(self, model: nn.Module, loss_fn: nn.Module, val_metric, Any):
         self.model =  model
         self.loss_fn =loss_fn
+        self.val_metric = val_metric
     
     def _validate_clients_data(self):
         mode = ['train', 'val', 'test']
@@ -87,7 +89,7 @@ class APPFLGlobusComputeServer(abc.ABC):
     def _do_server_testing(self):
         """Peform testing at server """
         if self.cfg.server_do_testing:
-            test_loss, test_accuracy = validation(self.server, self.server_testing_dataloader)
+            test_loss, test_accuracy = validation(self.server, self.server_testing_dataloader, self.val_metric)
             self.eval_logger.log_server_testing({'acc': test_accuracy, 'loss': test_loss})
 
     def _finalize_experiment(self):
@@ -121,7 +123,6 @@ class APPFLGlobusComputeServer(abc.ABC):
             client_testing,
             self.weights,
             LargeObjectWrapper(global_state, "server_state"),
-            self.loss_fn
         )
         eval_results, _ = self.communicator.receive_sync_endpoints_updates()        
         for client_idx in eval_results:
@@ -137,7 +138,7 @@ class APPFLGlobusComputeServer(abc.ABC):
         if self.cfg.server_do_validation== True:
             # Move server model to GPU (if available) for validation inference 
             # TODO: change to val_dataloader
-            val_loss, val_accuracy = validation(self.server, self.server_validation_dataloader)
+            val_loss, val_accuracy = validation(self.server, self.server_validation_dataloader, self.val_metric)
             if self.cfg.use_tensorboard:
                 # Add them to tensorboard
                 self.writer.add_scalar("server_test_accuracy", val_accuracy, step)
@@ -177,10 +178,10 @@ class APPFLGlobusComputeServer(abc.ABC):
         self.communicator.cfg.fed.args.optim_args.lr *=  self.cfg.fed.args.server_lr_decay_exp_gamma
         self.logger.info("Learing rate at step %d is set to %.06f" % (step + 1, self.communicator.cfg.fed.args.optim_args.lr))
 
-    def run(self, model: nn.Module, loss_fn: nn.Module, mode='train'):
+    def run(self, model: nn.Module, loss_fn: nn.Module, val_metric: Any, mode='train'):
         assert mode in ['train', 'clients_testing']
         # TODO: Also need to set the validation metric
-        self._initialize_training(model, loss_fn)
+        self._initialize_training(model, loss_fn, val_metric)
         self._validate_clients_data()
         self._set_client_weights(mode=self.cfg.fed.args.client_weights)
         self._initialize_server_model()
@@ -220,7 +221,6 @@ class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
                 client_training,
                 self.weights,
                 LargeObjectWrapper(global_state, f"{server_model_basename}_{t}"),
-                self.loss_fn,
                 do_validation = self.cfg.client_do_validation
             )
             local_states, client_logs = self.communicator.receive_sync_endpoints_updates()
@@ -245,6 +245,7 @@ def run_server(
     cfg: DictConfig, 
     model: nn.Module,
     loss_fn: nn.Module,
+    val_metric: Any,
     gcc: Client,
     test_data: Dataset = Dataset(),
     val_data : Dataset = Dataset(),
@@ -253,7 +254,7 @@ def run_server(
     serv = APPFLGlobusComputeSyncServer(cfg, gcc)
     try:
         serv.set_server_dataset(validation_dataset=val_data, testing_dataset= test_data) 
-        serv.run(model, loss_fn, mode)
+        serv.run(model, loss_fn, val_metric, mode)
     except Exception as e:
         traceback.print_exc()
         print("Training fails, cleaning things up... ...")

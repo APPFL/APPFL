@@ -34,7 +34,7 @@ def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str
     assert 'val_metric' in data['func'], "Please specify the validation metric function."
     cfg.get_model= load_executable_func(data['func']['get_model'])
     cfg.val_metric = load_executable_func(data['func']['val_metric'])
-    # TODO: Zilinghan what is this data
+    # TODO: Zilinghan what is this data - this is a general dataset if each client does not specify a local dataloader
     if 'get_data' in data['func']:
         cfg.get_data = load_executable_func(data['func']['get_data'])
     if 'get_loss' in data['func']:

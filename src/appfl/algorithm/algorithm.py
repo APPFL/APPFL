@@ -284,7 +284,7 @@ class BaseClient:
         if self.loss_fn is None or dataloader is None:
             return 0.0, 0.0
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = self.cfg.device
         validation_model = copy.deepcopy(self.model)
         validation_model.to(device)
         validation_model.eval()
