@@ -7,6 +7,7 @@ Currently, we have the following examples:
 - CIFAR10
 - FEMNIST
 - Coronahack
+- CELEBA
 
 # How to run
 
@@ -17,7 +18,7 @@ We simulate federated learning by launching MPI processes (# processes = 1 + # c
 MPI protocol will be used for communication between server and clients.
 For files starting with `grpc_`, we use gRPC protocol for communication instead.
 
-## MNIST, CIFAR10, Coronahack
+## MNIST, CIFAR10, Coronahack, CELEBA
 
 All the examples require the same number of MPI processes.
 Below shows how to execute the MNIST example.

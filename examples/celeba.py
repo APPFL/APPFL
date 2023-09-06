@@ -51,7 +51,6 @@ args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
-    args.num_gpu = torch.cuda.device_count()
 
 
 dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
@@ -134,10 +133,6 @@ def main():
     
     model = get_model(args)    
 
-    cfg.num_gpu = args.num_gpu
-    if cfg.num_gpu > 1:
-        model = torch.nn.DataParallel(model)    
-    
     loss_fn = torch.nn.CrossEntropyLoss()   
     print(
         "----------Loaded Datasets and Model----------Elapsed Time=",
@@ -171,7 +166,6 @@ def main():
 
 if __name__ == "__main__": 
     main()
-
 
 # To run CUDA-aware MPI:
 # mpiexec -np 2 --mca opal_cuda_support 1 python ./celeba.py

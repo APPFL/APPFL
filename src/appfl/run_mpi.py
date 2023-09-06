@@ -251,7 +251,11 @@ def run_client(
         cfg.validation = False
         test_dataloader = None
 
-    clientpergpu = math.ceil(num_clients/cfg.num_gpu)    
+    if "cuda" in cfg.device:
+        ## Check available GPUs if CUDA is used
+        num_gpu = torch.cuda.device_count()
+        clientpergpu = math.ceil(num_clients/cfg.num_gpu)
+
     clients = []
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         ## We assume to have as many GPUs as the number of MPI processes.
