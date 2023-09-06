@@ -52,6 +52,7 @@ args = parser.parse_args()
 if torch.cuda.is_available():
     args.device = "cuda"
 
+
 dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
 
 
@@ -131,7 +132,6 @@ def main():
 
     args.num_clients = len(train_datasets)
     model = get_model(args)
-        
     loss_fn = torch.nn.CrossEntropyLoss()
     print(
         "----------Loaded Datasets and Model----------Elapsed Time=",
@@ -139,7 +139,7 @@ def main():
     )
 
     ## settings
-    cfg.device = args.device    
+    cfg.device = args.device
     cfg.num_clients = args.num_clients
     cfg.num_epochs = args.num_epochs
 

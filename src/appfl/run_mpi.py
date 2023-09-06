@@ -131,9 +131,7 @@ def run_server(
 
         global_state = server.model.state_dict()
 
-
         local_update_start = time.time()
-
         # Sharing the maximum communication count
         global_state = comm.bcast(global_state, root=0)
         if maxcount < 0:
@@ -143,10 +141,9 @@ def run_server(
 
         # Gather 'local_states'
         local_states= [None for i in range(num_clients)]
-        local_states = slicing_gather_server(comm, comm_size, local_states, counts, maxcount)        
+        local_states = slicing_gather_server(comm, comm_size, local_states, counts, maxcount)
 
         cfg["logginginfo"]["LocalUpdate_time"] = time.time() - local_update_start
-        
         global_update_start = time.time()
         server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
@@ -169,7 +166,7 @@ def run_server(
         cfg["logginginfo"]["test_accuracy"] = test_accuracy
         cfg["logginginfo"]["BestAccuracy"] = best_accuracy
         server.logging_iteration(cfg, logger, t)
-        
+
         """ Saving model """
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
