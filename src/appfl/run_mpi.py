@@ -80,7 +80,7 @@ def run_server(
         cfg.validation = False
 
     # Broadcast limitation according to the procs numbers
-    intmax = 2100000000 # INT_MAX,2147483647, does not fit on the MPI send buffer size
+    intmax = pow(2,31) - (8 * comm_size) - 9 # INT_MAX,2147483647, does not fit on the MPI send buffer size
     recvlimit = math.floor(intmax/(comm_size-1)) # The total recv size should be less than intmax due to the MPI recv buffer size
     recvlimit = comm.bcast(recvlimit, root=0)
 
