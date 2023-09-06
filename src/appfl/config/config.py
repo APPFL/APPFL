@@ -91,6 +91,7 @@ class GlobusComputeServerConfig:
     output_dir  : str = "./"
     data_dir    : str = "./"
     s3_bucket   : Any = None
+    s3_creds    : str = ""
 
 @dataclass
 class GlobusComputeClientConfig:

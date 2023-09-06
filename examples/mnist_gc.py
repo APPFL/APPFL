@@ -14,8 +14,8 @@ python mnist_gc.py --client_config path_to_client_config.yaml --server_config pa
 
 """ read arguments """ 
 parser = argparse.ArgumentParser()  
-parser.add_argument("--client_config", type=str, default="globus_compute/client_configs/mnist.yaml")
-parser.add_argument("--server_config", type=str, default= "globus_compute/server_configs/mnist_fedavg.yaml") 
+parser.add_argument("--client_config", type=str, default="globus_compute/configs_client/mnist.yaml")
+parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg.yaml") 
 
 ## other agruments
 parser.add_argument('--clients-test', action='store_true', default=False)
@@ -26,7 +26,7 @@ parser.add_argument('--load-model-filename', type=str, default= "")
 parser.add_argument('--use-tensorboard', action='store_true', default=False)
 parser.add_argument('--save-model', action='store_true', default=False)
 parser.add_argument('--save-model-state-dict', action='store_true', default=False)
-parser.add_argument('--checkpoints-interval', type='float', default=2)
+parser.add_argument('--checkpoints-interval', type=float, default=2)
 
 args = parser.parse_args()
 

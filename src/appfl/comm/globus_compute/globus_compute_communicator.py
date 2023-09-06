@@ -113,9 +113,7 @@ class GlobusComputeCommunicator:
         """Broadcast an excutable task with all agruments to all federated learning clients"""
         # Prepare args, kwargs before sending to clients
         args, kwargs = self.__handle_params(args, kwargs)
-        # Register funcX function and create an execution batch
-        func_uuid = self.gcc.register_function(exct_func)
-        batch     = self.gcc.create_batch()
+
         # Execute training tasks at clients
         for client_idx, client_cfg in enumerate(self.cfg.clients):
             if self.use_s3bucket and exct_func.__name__ == 'client_training':
@@ -123,15 +121,13 @@ class GlobusComputeCommunicator:
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 kwargs['local_model_key'] = local_model_key
                 kwargs['local_model_url'] = local_model_url
-            batch.add(
-                func_uuid,
-                client_cfg.endpoint_id,
-                args=(self.cfg, client_idx, *args),
-                kwargs=kwargs)
-        task_ids  = self.gcc.batch_run(batch)
-        # Saving task ids 
-        for i, task_id in enumerate(task_ids):
-            self.__register_task(task_id, i, exct_func.__name__)
+            task_id = self.clients[client_idx].submit_task(
+                self.gcx,
+                exct_func,
+                *(self.cfg, client_idx, *args),
+                **kwargs
+            )
+            self.__register_task(task_id, client_idx, exct_func.__name__)
         # Logging
         if not silent:
             for task_id in  self.executing_tasks:
@@ -142,7 +138,7 @@ class GlobusComputeCommunicator:
     
     def receive_sync_endpoints_updates(self):
         """Receive synchronous updates from all client endpoints."""
-        client_results = OrderedDict()
+        client_results = []
         client_logs    = OrderedDict()
         while True:
             results = self.gcc.get_batch_result(list(self.executing_tasks))
@@ -155,7 +151,8 @@ class GlobusComputeCommunicator:
                         # Training at client is succeeded
                         if 'result' in results[task_id]:
                             client_idx = self.executing_tasks[task_id].client_idx
-                            client_results[client_idx], client_logs[client_idx] = self.__handle_dict_result(results[task_id], task_id)
+                            client_local_result, client_logs[client_idx] = self.__handle_dict_result(results[task_id], task_id)
+                            client_results.append(client_local_result)
                         else:
                             # TODO: handling situations when training has errors
                             client_results[self.executing_tasks[task_id]] = None

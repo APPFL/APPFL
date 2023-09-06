@@ -34,7 +34,7 @@ class APPFLGlobusComputeServer(abc.ABC):
         self.best_accuracy = 0.0
         self.data_info_at_client = None
     
-    def _initialize_training(self, model: nn.Module, loss_fn: nn.Module, val_metric, Any):
+    def _initialize_training(self, model: nn.Module, loss_fn: nn.Module, val_metric: Any):
         self.model =  model
         self.loss_fn =loss_fn
         self.val_metric = val_metric
@@ -224,7 +224,6 @@ class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
                 do_validation = self.cfg.client_do_validation
             )
             local_states, client_logs = self.communicator.receive_sync_endpoints_updates()
-            local_states = [local_states]
             self._parse_client_logs(t, client_logs)
             self.cfg.logginginfo.LocalUpdate_time = time.time() - per_iter_start
 
@@ -232,7 +231,7 @@ class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
             global_update_start = time.time()
             self.server.update(local_states)
             self.cfg.logginginfo.GlobalUpdate_time = time.time() - global_update_start
-            self.cfg.logginginfo.PerIter_tim = time.time() - per_iter_start
+            self.cfg.logginginfo.PerIter_time = time.time() - per_iter_start
             self.cfg.logginginfo.Elapsed_time = time.time() - start_time
             
             if (t+1) % self.cfg.server_validation_step == 0:

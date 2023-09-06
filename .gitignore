@@ -8,6 +8,8 @@ examples/archive
 examples/output
 examples/runs
 examples/CIFAR10_Trajectory
+examples/globus_compute/creds
+*/log_globus_compute_appfl
 examples/.DS_Store
 examples/save_models
 examples/outputs/*

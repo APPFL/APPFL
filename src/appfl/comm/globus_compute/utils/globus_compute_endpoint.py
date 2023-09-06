@@ -16,8 +16,9 @@ class GlobusComputeClientEndpoint:
     @property
     def status(self):
         """Get the status of the globus compute client enpdoint, and update the status if the client task is finished."""
-        if self._status == ClientEndpointStatus.RUNNING and self.future.done():
-            self._set_no_runing_task()
+        if self._status == ClientEndpointStatus.RUNNING:
+            if self.future.done():
+                self._set_no_runing_task()
         return self._status
 
     def _set_no_runing_task(self):

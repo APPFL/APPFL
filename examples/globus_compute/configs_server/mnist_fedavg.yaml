@@ -1,7 +1,9 @@
 server:
   device: cpu
-  data_dir  : "./log_funcx_appfl/server"
-  output_dir: "./log_funcx_appfl/server"
+  data_dir  : "./log_globus_compute_appfl/server"
+  output_dir: "./log_globus_compute_appfl/server"
+  s3_bucket: "appflx-models"
+  s3_creds: "globus_compute/creds/credential.csv"
 
 algorithm:
   servername: 'ServerFedAvg'
@@ -16,7 +18,7 @@ algorithm:
     optim: "SGD"
     num_local_epochs: 1
     optim_args: 
-        lr: 0.001
+        lr: 0.01
     ## Differential Privacy
     epsilon: False
     ##  epsilon: 1      (stronger privacy as the value decreases)

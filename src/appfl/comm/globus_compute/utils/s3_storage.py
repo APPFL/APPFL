@@ -42,15 +42,19 @@ class CloudStorage(object):
         if cls.instc is None:
             new_inst = cls.__new__(cls)
             new_inst.bucket = cfg.server.s3_bucket
-            with open('creds/credential.csv') as file:
-                reader = csv.reader(file)
-                keys = next(reader)
-                aws_access_key_id, aws_secret_access_key = keys[0], keys[1]            
+            kwargs = {}
+            if cfg.server.s3_creds == "":
+                with open(cfg.server.s3_creds) as file:
+                    reader = csv.reader(file)
+                    keys = next(reader)
+                    kwargs = {
+                        'region_name': keys[0],
+                        'aws_access_key_id': keys[1],
+                        'aws_secret_access_key': keys[2]
+                    }     
             new_inst.client = boto3.client(
                 service_name='s3',
-                region_name='us-east-1',
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key
+                **kwargs
             )
             new_inst.temp_dir= temp_dir
             new_inst.logger = logger
@@ -276,7 +280,10 @@ class CloudStorage(object):
         data = load_data_from_file(file_path, to_device)
         
         if delete_local:
-            os.remove(file_path)
+            try:
+                os.remove(file_path)
+            except:
+                pass
         
         return data
     
