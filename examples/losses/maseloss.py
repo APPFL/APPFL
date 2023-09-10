@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class MASELoss(nn.Module):
-    '''Mean Absolute Error (L1) Loss'''
+    '''Mean Absolute Scaled Error Loss'''
     def __init__(self):
         super(MASELoss, self).__init__()
 
@@ -12,11 +12,11 @@ class MASELoss(nn.Module):
         
         if len(prediction.shape) != len(target.shape):
             raise TypeError('Input and target to MASE loss have different number of dimensions.')
-        if idx,_ in enumerate(prediction.shape):
+        for idx,_ in enumerate(prediction.shape):
             if prediction.shape[idx] != target.shape[idx]:
                 raise TypeError('Input and target to MASE loss have same num. of dimensions but different shapes.')
             
-        if len(prediction) > 2:
+        if len(prediction.shape) > 2:
             raise ValueError('MASE error only supports 1D time series.')
         
         # calculate MASE error according to batched or unbatched
