@@ -67,4 +67,3 @@ class LSTMForecast(nn.Module):
         x = self.FCLayer3(x)
 
         return x.abs()
-    

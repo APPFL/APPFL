@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, List
 from omegaconf import DictConfig, OmegaConf
 
 
@@ -71,6 +71,11 @@ class Config:
 
     logginginfo: DictConfig = OmegaConf.create({})
     summary_file: str = ""
+    
+    # Personalization options
+    personalized: bool = False
+    p_layers: List[str] = field(default_factory=lambda: [])
+    config_name: str = ""
 
     #
     # gRPC configutations
