@@ -220,17 +220,25 @@ def main():
         cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
         cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server)
     if args.load_model:
-        if cfg.personalization:
+        if cfg.personalization and comm_size > 0: # personalization + parallel
             model_clients = [copy.deepcopy(model) for _ in range(args.num_clients)]
             cfg.load_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
             cfg.load_model_filename = "model_%s_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server,args.load_model_suffix)
             load_model_state(cfg,model)
             for c_idx in range(args.num_clients):
                 load_model_state(cfg,model_clients[c_idx],client_id=c_idx)
-        else:
+        elif cfg.personalization and comm_size == 0: # personalization + serial
+            model_clients = [copy.deepcopy(model) for _ in range(args.num_clients+1)]
+            cfg.load_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
+            cfg.load_model_filename = "model_%s_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server,args.load_model_suffix)
+            load_model_state(cfg,model[0])
+            for c_idx in range(args.num_clients):
+                load_model_state(cfg,model_clients[c_idx+1],client_id=c_idx)
+        else: # no personalization
             cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
             cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server) 
             model = load_model(cfg)
+            
 
     if comm_size > 1:
         if comm_rank == 0:
