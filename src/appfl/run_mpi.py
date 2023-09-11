@@ -257,11 +257,6 @@ def run_client(
         ## Check available GPUs if CUDA is used
         num_gpu = torch.cuda.device_count()
         clientpergpu = math.ceil(num_clients/cfg.num_gpu)
-        
-    if isinstance(model,List):
-        multiple_models = True
-    else:
-        multiple_models = False
 
     clients = []
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
@@ -276,7 +271,7 @@ def run_client(
             eval(cfg.fed.clientname)(
                 cid,
                 weight[cid],
-                model[cid] if multiple_models else copy.deepcopy(model),
+                copy.deepcopy(model) if not (cfg.personalization and cfg.load_model) else model[cid],
                 loss_fn,
                 DataLoader(
                     train_data[cid],

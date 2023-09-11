@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from mpi4py import MPI
 import copy
+import io
 
 from appfl.config import *
 from appfl.misc.data import *
@@ -23,6 +24,8 @@ from datasets.PreprocessedData.NREL_Preprocess import NRELDataDownloader
 
 import warnings
 warnings.filterwarnings("ignore",category=UserWarning)
+
+import cProfile,pstats
 
 """ define functions for custom data type in argparses"""
 
@@ -70,7 +73,7 @@ parser.add_argument("--num_local_epochs", type=int, default=4)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg")
-parser.add_argument("--num_epochs", type=int, default=10)
+parser.add_argument("--num_epochs", type=int, default=4)
 parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
@@ -90,8 +93,15 @@ parser.add_argument("--metric", type=str, default='metric/mae.py')
 parser.add_argument("--personalization_layers", type=list_of_strings, default=[])
 parser.add_argument("--personalization_config_name", type=str, default = "")
 
+## profile performance?
+parser.add_argument("--profile_code", type=int, default=0)
+
 # parse args
 args = parser.parse_args()
+
+# import profilers if needed
+if args.profile_code:
+    import cProfile, pstats
 
 # directory where to save dataset
 dir = os.getcwd() + "/datasets/PreprocessedData"
@@ -220,6 +230,7 @@ def main():
         cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
         cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server)
     if args.load_model:
+        cfg.load_model = True
         if cfg.personalization and comm_size > 0: # personalization + parallel
             model_clients = [copy.deepcopy(model) for _ in range(args.num_clients)]
             cfg.load_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
@@ -244,18 +255,37 @@ def main():
         if comm_rank == 0:
             rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
         else:
-            if cfg.personalization and args.load_model:
+            if cfg.personalization and cfg.load_model:
                 model_to_send = model_clients
             else:
                 model_to_send = model
             rm.run_client(cfg, comm, model_to_send, loss_fn, args.num_clients, train_datasets, test_dataset, metric)
         print("------DONE------", comm_rank)
     else:
-        rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
+        if cfg.personalization and cfg.load_model:
+            model_to_send = [model] + model_clients
+        else:
+            model_to_send = model
+        rs.run_serial(cfg, model_to_send, loss_fn, train_datasets, test_dataset, args.dataset)
 
 
 if __name__ == "__main__": 
-    main()
+    if args.profile_code:
+        main()
+    else:
+        rank = MPI.COMM_WORLD.Get_rank()
+        if not os.path.isdir(os.getcwd()+'/code_profile'):
+            try:
+                os.mkdir(os.getcwd()+'/code_profile')
+            except:
+                pass
+        with cProfile.Profile() as pr:
+            main()
+        s = io.StringIO()
+        ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
+        ps.print_stats()
+        with open (os.getcwd()+'/code_profile/rank_%d.txt'%rank,'w') as f:
+            f.write(s.getvalue())
 
 # To run CUDA-aware MPI:
 # mpiexec -np 2 --mca opal_cuda_support 1 python ./celeba.py
