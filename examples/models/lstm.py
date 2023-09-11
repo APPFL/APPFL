@@ -6,6 +6,7 @@ class LSTMForecast(nn.Module):
     
     def __init__(self,n_features,n_lookback,n_lstm_layers,n_hidden_size):
         super(LSTMForecast,self).__init__()
+        self.n_features = n_features
         self.lookback = n_lookback
         self.n_lstm_layers = n_lstm_layers
         self.n_hidden_size = n_hidden_size

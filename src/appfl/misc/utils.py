@@ -109,6 +109,7 @@ def load_model(cfg: DictConfig):
 
 
 def save_model_iteration(t, model, cfg: DictConfig):
+    
     dir = cfg.save_model_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
@@ -123,10 +124,25 @@ def save_model_iteration(t, model, cfg: DictConfig):
     torch.save(model, file)
     
 
+def load_model_state(cfg: DictConfig, model, client_id = None):
+    
+    # load state dict: partial state for server and full state for client
+    if client_id == None:
+        file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
+    else:
+        file = cfg.load_model_dirname + "/client_%d"%client_id + "/%s%s" % (cfg.load_model_filename, ".pt")
+
+    if client_id == None:
+        model.load_state_dict(torch.load(file),strict=False)
+    else:
+        model.load_state_dict(torch.load(file),strict=True)
+        
+    return model
+    
+
 def save_model_state_iteration(t, model, cfg: DictConfig, client_id = None):
     
     # save server model dict without the personalization layers, but client models dict in full
-    
     dir = cfg.save_model_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
@@ -138,7 +154,7 @@ def save_model_state_iteration(t, model, cfg: DictConfig, client_id = None):
                 pass
 
     file_ext = ".pt"
-    if client_id != None:
+    if client_id == None:
         file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
     else:
         file = dir + "/client_%d"%client_id + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
@@ -165,26 +181,3 @@ def set_seed(seed=233):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    
-
-def validate_parameter_names(model,list_of_params):
-    
-    # inputs model and list with name of parameters
-    # returns IS_VALID, IS_EMPTY
-    
-    if list_of_params == []:
-        IS_VALID = True
-        IS_EMPTY = True
-        return IS_VALID, IS_EMPTY
-    
-    model_keys = [key for key,_ in model.named_parameters()]
-    
-    for p in list_of_params:
-        if not(p in model_keys):
-            IS_VALID = False
-            IS_EMPTY = False
-            return IS_VALID,IS_EMPTY
-    
-    IS_VALID = True
-    IS_EMPTY = False
-    return IS_VALID,IS_EMPTY

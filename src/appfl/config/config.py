@@ -73,7 +73,7 @@ class Config:
     summary_file: str = ""
     
     # Personalization options
-    personalized: bool = False
+    personalization: bool = False
     p_layers: List[str] = field(default_factory=lambda: [])
     config_name: str = ""
 

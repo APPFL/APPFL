@@ -17,7 +17,7 @@ from .misc import *
 from .algorithm import *
 
 from mpi4py import MPI
-from typing import Any
+from typing import Any, Union, List
 import copy
 
 import math
@@ -170,7 +170,10 @@ def run_server(
         """ Saving model """
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
-                save_model_iteration(t + 1, server.model, cfg)
+                if cfg.personalization == True:
+                    save_model_state_iteration(t + 1, server.model, cfg)
+                else:
+                    save_model_iteration(t + 1, server.model, cfg)
 
         if np.isnan(test_loss) == True:
             break
@@ -185,7 +188,7 @@ def run_server(
 def run_client(
     cfg: DictConfig,
     comm: MPI.Comm,
-    model: nn.Module,
+    model: Union[nn.Module,List],
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
@@ -254,6 +257,11 @@ def run_client(
         ## Check available GPUs if CUDA is used
         num_gpu = torch.cuda.device_count()
         clientpergpu = math.ceil(num_clients/cfg.num_gpu)
+        
+    if isinstance(model,List):
+        multiple_models = True
+    else:
+        multiple_models = False
 
     clients = []
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
@@ -268,7 +276,7 @@ def run_client(
             eval(cfg.fed.clientname)(
                 cid,
                 weight[cid],
-                copy.deepcopy(model),
+                model[cid] if multiple_models else copy.deepcopy(model),
                 loss_fn,
                 DataLoader(
                     train_data[cid],
@@ -291,8 +299,15 @@ def run_client(
     maxcount = -1
 
     while do_continue:        
-        """Receive "global_state" """
+        
+        """Receive "global_state" and prune personalized parts if necessary"""
         global_state = comm.bcast(None, root=0)
+        if cfg.personalization:
+            keys = [key for key,_ in model[0].named_parameters()]
+            for key in keys:
+                if key in cfg.p_layers:
+                    _ = global_state.pop(key)
+                
 
         """ Update "local_states" based on "global_state" """
         local_states = OrderedDict()
@@ -300,7 +315,10 @@ def run_client(
             cid = client.id
 
             ## initial point for a client model
-            client.model.load_state_dict(global_state)
+            if cfg.personalization:
+                client.model.load_state_dict(global_state,strict=False)
+            else:
+                client.model.load_state_dict(global_state)
 
             ## client update
             update = client.update()
@@ -355,4 +373,3 @@ def slicing_gather_server(comm, comm_size, local_states_out, counts, maxcount):
         for cid, state in local_states.items():
             local_states_out[cid] = state
     return local_states_out
-    

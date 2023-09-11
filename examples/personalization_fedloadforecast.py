@@ -4,9 +4,11 @@ import argparse
 import numpy as np
 import torch
 from mpi4py import MPI
+import copy
 
 from appfl.config import *
 from appfl.misc.data import *
+from appfl.misc.utils import load_model_state
 import appfl.run_serial as rs
 import appfl.run_mpi as rm
 
@@ -19,6 +21,8 @@ from metric.utils import get_metric
 
 from datasets.PreprocessedData.NREL_Preprocess import NRELDataDownloader
 
+import warnings
+warnings.filterwarnings("ignore",category=UserWarning)
 
 """ define functions for custom data type in argparses"""
 
@@ -76,10 +80,11 @@ parser.add_argument("--adapt_param", type=float, required=False)
 parser.add_argument("--save_model", type=int, default=1)
 parser.add_argument("--save_every", type=int, default=4)
 parser.add_argument("--load_model", type=int, default=0)
+parser.add_argument("--load_model_suffix", type=str, default="Round_10")
 
 ## loss function and evaluation metric
-parser.add_argument("--loss_fn", type=str, default='metric/mseloss.py')
-parser.add_argument("--metric", type=str, default='metric/mase.py')
+parser.add_argument("--loss_fn", type=str, default='losses/mseloss.py')
+parser.add_argument("--metric", type=str, default='metric/mae.py')
 
 ## personalization
 parser.add_argument("--personalization_layers", type=list_of_strings, default=[])
@@ -89,16 +94,16 @@ parser.add_argument("--personalization_config_name", type=str, default = "")
 args = parser.parse_args()
 
 # directory where to save dataset
-dir = os.getcwd() + "/datasets/PreprocessedData/%s" % (args.dataset)
+dir = os.getcwd() + "/datasets/PreprocessedData"
 
 def get_data(comm: MPI.Comm):
-    
+
     ## sanity checks
     if args.dataset not in ['NRELCA','NRELIL','NRELNY']:
         raise ValueError('Currently only NREL data for CA, IL, NY are supported. Please modify download script if you want a different state.')         
     
+    state_idx = args.dataset[4:]
     if not os.path.isfile(dir+'/%sdataset.npz'%args.dataset):
-        state_idx = args.dataset[4:]
         # building ID's whose data to download
         if state_idx == 'CA':
             b_id = [15227, 15233, 15241, 15222, 15225, 15228, 15404, 15429, 15460, 15445, 15895, 16281, 16013, 16126, 16145, 47395, 15329, 15504, 15256, 15292, 15294, 15240, 15302, 15352, 15224, 15231, 15243, 17175, 17215, 18596, 15322, 15403, 15457, 15284, 15301, 15319, 15221, 15226, 15229, 15234, 15237, 15239]
@@ -113,7 +118,7 @@ def get_data(comm: MPI.Comm):
     dset_raw = np.load(dir+'/NREL%sdataset.npz'%state_idx)['data']
     if args.num_clients > dset_raw.shape[0]:
         raise ValueError('More clients requested than present in dataset.')
-    if args.num_clients != dset_raw.shape[-1]:
+    if args.n_features != dset_raw.shape[-1]:
         raise ValueError('Incorrect number of features passed as argument, the number of features present in dataset is %d.'%dset_raw.shape[-1])
     
     ## process dataset
@@ -135,21 +140,21 @@ def get_data(comm: MPI.Comm):
         # train dataset entries
         train_inputs = []
         train_labels = []
-        for idx_time in range(dset_train.shape[1]-args.lookback):
-            train_inputs.append(dset_train[idx_cust,idx_time:idx_time+args.lookback,:])
-            train_labels.append(dset_train[idx_cust,idx_time+args.lookback,0])
+        for idx_time in range(dset_train.shape[1]-args.n_lookback):
+            train_inputs.append(dset_train[idx_cust,idx_time:idx_time+args.n_lookback,:])
+            train_labels.append(dset_train[idx_cust,idx_time+args.n_lookback,0])
         dset = Dataset(torch.FloatTensor(np.array(train_inputs)),torch.FloatTensor(np.array(train_labels)))
         train_datasets.append(dset)
         # test dataset entries
-        for idx_time in range(dset_test.shape[1]-args.lookback):
-            test_inputs.append(dset_test[idx_cust,idx_time:idx_time+args.lookback,:])
-            test_labels.append(dset_train[idx_cust,idx_time+args.lookback,0])
+        for idx_time in range(dset_test.shape[1]-args.n_lookback):
+            test_inputs.append(dset_test[idx_cust,idx_time:idx_time+args.n_lookback,:])
+            test_labels.append(dset_train[idx_cust,idx_time+args.n_lookback,0])
     test_dataset = Dataset(torch.FloatTensor(np.array(test_inputs)),torch.FloatTensor(np.array(test_labels)))
+
     return train_datasets, test_dataset
     
 
 def main():
-    print(args)
 
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
@@ -177,12 +182,11 @@ def main():
         raise TypeError('The arguments containing names of personalization layers are invalid for the current model.')
     else:
         if not is_empty:
-            cfg.personalized = True
-            cfg.save_model_state_dict = True
+            cfg.personalization = True
             cfg.p_layers = args.personalization_layers
             cfg.config_name = args.personalization_config_name
         else:
-            cfg.personalized = False
+            cfg.personalization = False
             cfg.p_layers = []
 
     # print(
@@ -202,12 +206,41 @@ def main():
 
     ## outputs
     cfg.use_tensorboard = False
+    
+    ## save/load
+    cfg.output_dirname = "./outputs_%s_%s_%s_%s" % (
+        args.dataset,
+        args.server,
+        args.client_optimizer,
+        args.personalization_config_name
+    )
+    if args.save_model:
+        cfg.save_model_state_dict = True
+        cfg.save_model = True
+        cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
+        cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server)
+    if args.load_model:
+        if cfg.personalization:
+            model_clients = [copy.deepcopy(model) for _ in range(args.num_clients)]
+            cfg.load_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
+            cfg.load_model_filename = "model_%s_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server,args.load_model_suffix)
+            load_model_state(cfg,model)
+            for c_idx in range(args.num_clients):
+                load_model_state(cfg,model_clients[c_idx],client_id=c_idx)
+        else:
+            cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
+            cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server) 
+            model = load_model(cfg)
 
     if comm_size > 1:
         if comm_rank == 0:
             rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
         else:
-            rm.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, metric)
+            if cfg.personalization and args.load_model:
+                model_to_send = model_clients
+            else:
+                model_to_send = model
+            rm.run_client(cfg, comm, model_to_send, loss_fn, args.num_clients, train_datasets, test_dataset, metric)
         print("------DONE------", comm_rank)
     else:
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
