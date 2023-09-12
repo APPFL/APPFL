@@ -107,8 +107,7 @@ def get_data(comm: MPI.Comm):
     return train_datasets, test_dataset
 
 
-def main():
-    print(args)
+def main():    
 
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
@@ -130,8 +129,7 @@ def main():
         )
 
     args.num_clients = len(train_datasets)       
-    
-    model = get_model(args)    
+    print(args)    
 
     loss_fn = torch.nn.CrossEntropyLoss()   
     print(
