@@ -101,7 +101,7 @@ def run_serial(
         eval(cfg.fed.clientname)(
             k,
             weights[k],
-            copy.deepcopy(model) if not (cfg.personalization and cfg.load_model) else model[k+1],
+            copy.deepcopy(model) if not cfg.personalization else model[k+1],
             loss_fn,
             DataLoader(
                 train_data[k],

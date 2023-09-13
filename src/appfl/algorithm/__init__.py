@@ -3,6 +3,7 @@ This module provides a base class to define the functions required to implement 
 """
 
 from .client_optimizer import *
+from .personalized_client_optimizer import *
 from .server_fed_avg import *
 from .server_fed_avgmom import *
 from .server_fed_adagrad import *

@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 class MAELoss(nn.Module):
-    '''Mean Squared Error Loss'''
+    '''Mean Absolute Error Loss'''
     def __init__(self):
         super(MAELoss, self).__init__()
         self.criterion = nn.L1Loss(reduction='mean')

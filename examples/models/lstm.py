@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 
 class LSTMForecast(nn.Module):
     
@@ -66,5 +65,6 @@ class LSTMForecast(nn.Module):
         x = self.FCLayer2(x)
         x = self.prelu2(x)
         x = self.FCLayer3(x)
-
+        
+        # rake absolute value of output to ensure non-negativity
         return x.abs()

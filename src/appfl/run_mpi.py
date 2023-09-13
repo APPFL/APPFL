@@ -271,7 +271,7 @@ def run_client(
             eval(cfg.fed.clientname)(
                 cid,
                 weight[cid],
-                copy.deepcopy(model) if not (cfg.personalization and cfg.load_model) else model[cid],
+                copy.deepcopy(model) if not cfg.personalization else model[cid],
                 loss_fn,
                 DataLoader(
                     train_data[cid],

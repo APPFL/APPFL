@@ -14,8 +14,7 @@ import appfl.run_serial as rs
 import appfl.run_mpi as rm
 
 from models.cnn import *
-from models.utils import get_model
-from models.utils import validate_parameter_names
+from models.utils import get_model, validate_parameter_names
 
 from losses.utils import get_loss
 from metric.utils import get_metric
@@ -64,6 +63,8 @@ parser.add_argument("--n_lstm_layers", type=int, default=2)
 parser.add_argument("--n_hidden_size", type=int, default=20)
 parser.add_argument("--model", type=str, default="LSTM")
 parser.add_argument("--train_test_boundary", type=restricted_float, default=0.8)
+parser.add_argument("--batch_size", type=int, default=64)
+parser.add_argument("--enable_test", type=int, default=1)
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
@@ -73,7 +74,7 @@ parser.add_argument("--num_local_epochs", type=int, default=4)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg")
-parser.add_argument("--num_epochs", type=int, default=4)
+parser.add_argument("--num_epochs", type=int, default=1000)
 parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
 parser.add_argument("--mparam_2", type=float, required=False)
@@ -81,9 +82,9 @@ parser.add_argument("--adapt_param", type=float, required=False)
 
 ## model load and save
 parser.add_argument("--save_model", type=int, default=1)
-parser.add_argument("--save_every", type=int, default=4)
+parser.add_argument("--save_every", type=int, default=250)
 parser.add_argument("--load_model", type=int, default=0)
-parser.add_argument("--load_model_suffix", type=str, default="Round_10")
+parser.add_argument("--load_model_suffix", type=str, default="")
 
 ## loss function and evaluation metric
 parser.add_argument("--loss_fn", type=str, default='losses/mseloss.py')
@@ -152,13 +153,13 @@ def get_data(comm: MPI.Comm):
         train_labels = []
         for idx_time in range(dset_train.shape[1]-args.n_lookback):
             train_inputs.append(dset_train[idx_cust,idx_time:idx_time+args.n_lookback,:])
-            train_labels.append(dset_train[idx_cust,idx_time+args.n_lookback,0])
+            train_labels.append([dset_train[idx_cust,idx_time+args.n_lookback,0]])
         dset = Dataset(torch.FloatTensor(np.array(train_inputs)),torch.FloatTensor(np.array(train_labels)))
         train_datasets.append(dset)
         # test dataset entries
         for idx_time in range(dset_test.shape[1]-args.n_lookback):
             test_inputs.append(dset_test[idx_cust,idx_time:idx_time+args.n_lookback,:])
-            test_labels.append(dset_train[idx_cust,idx_time+args.n_lookback,0])
+            test_labels.append([dset_train[idx_cust,idx_time+args.n_lookback,0]])
     test_dataset = Dataset(torch.FloatTensor(np.array(test_inputs)),torch.FloatTensor(np.array(test_labels)))
 
     return train_datasets, test_dataset
@@ -176,9 +177,17 @@ def main():
     ## Reproducibility
     torch.manual_seed(1)
     torch.backends.cudnn.deterministic = True
+    
+    ## Batch sizes
+    cfg.train_data_batch_size = args.batch_size
+    cfg.test_data_batch_size = args.batch_size
 
     start_time = time.time()
     train_datasets, test_dataset = get_data(comm)
+    
+    # disable test according to argument
+    if args.enable_test != 0:
+        test_dtaaset = None
     
     ## Model
     model = get_model(args)    
@@ -199,12 +208,9 @@ def main():
             cfg.personalization = False
             cfg.p_layers = []
 
-    # print(
-    #     "----------Loaded Datasets and Model----------Elapsed Time=",
-    #     time.time() - start_time,
-    # ) 
-
     ## clients
+    if cfg.personalization:
+        cfg.fed.clientname = "PersonalizedClientOptim"
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
@@ -229,6 +235,7 @@ def main():
         cfg.save_model = True
         cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
         cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server)
+        cfg.checkpoints_interval = args.save_every
     if args.load_model:
         cfg.load_model = True
         if cfg.personalization and comm_size > 0: # personalization + parallel
@@ -249,13 +256,18 @@ def main():
             cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
             cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server) 
             model = load_model(cfg)
+    else:
+        if cfg.personalization:
+            model_clients = [copy.deepcopy(model) for _ in range(args.num_clients)]
+        else:
+            pass # model with empty weights is already loaded
             
 
     if comm_size > 1:
         if comm_rank == 0:
             rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
         else:
-            if cfg.personalization and cfg.load_model:
+            if cfg.personalization:
                 model_to_send = model_clients
             else:
                 model_to_send = model
