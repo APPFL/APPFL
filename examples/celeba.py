@@ -128,8 +128,9 @@ def main():
             train_datasets, test_dataset, args.num_channel, args.num_pixel
         )
 
-    args.num_clients = len(train_datasets)       
-    print(args)    
+    args.num_clients = len(train_datasets)        
+
+    model = get_model(args)
 
     loss_fn = torch.nn.CrossEntropyLoss()   
     print(
