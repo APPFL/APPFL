@@ -1,11 +1,9 @@
-
-
 import grpc
 import logging
-from . import grpc_utils as utils
 from concurrent import futures
 from .grpc_communicator_pb2 import *
 from . import grpc_communicator_pb2_grpc
+from .grpc_utils import construct_tensor_record
 
 class GRPCCommunicator(grpc_communicator_pb2_grpc.GRPCCommunicatorServicer):
     def __init__(self, servicer_id, port, operator):
@@ -33,7 +31,7 @@ class GRPCCommunicator(grpc_communicator_pb2_grpc.GRPCCommunicatorServicer):
             request.round_number,
         )
         nparray = self.operator.get_tensor(request.name)
-        return utils.construct_tensor_record(request.name, nparray)
+        return construct_tensor_record(request.name, nparray)
 
     def GetWeight(self, request, context):
         self.logger.debug(

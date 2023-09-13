@@ -2,7 +2,7 @@ import grpc
 import time
 import logging
 import numpy as np
-from . import utils
+from .grpc_utils import *
 from .grpc_communicator_pb2 import *
 from .grpc_communicator_pb2_grpc import GRPCCommunicatorStub
 
@@ -88,11 +88,11 @@ class APPFLgRPCClient:
 
     def send_learning_results(self, penalty, primal, dual, round_number):
         primal_tensors = [
-            utils.construct_tensor_record(k, np.array(v.cpu()))
+            construct_tensor_record(k, np.array(v.cpu()))
             for k, v in primal.items()
         ]
         dual_tensors = [
-            utils.construct_tensor_record(k, np.array(v.cpu())) for k, v in dual.items()
+            construct_tensor_record(k, np.array(v.cpu())) for k, v in dual.items()
         ]
         proto = LearningResults(
             header=self.header,
@@ -103,7 +103,7 @@ class APPFLgRPCClient:
         )
 
         databuffer = []
-        databuffer += utils.proto_to_databuffer(
+        databuffer += proto_to_databuffer(
             proto, max_message_size=self.max_message_size
         )
         start = time.time()

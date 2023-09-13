@@ -57,7 +57,7 @@ class FedServer(BaseServer):
                     self.global_state[name] - self.primal_states[i][name]
                 )
 
-    def update(self, local_states: OrderedDict):
+    def update(self, local_states: list):
 
         """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())

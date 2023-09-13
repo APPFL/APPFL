@@ -1,14 +1,9 @@
-import logging
-
-import torch.nn as nn
-from omegaconf import DictConfig
-
 import grpc
-
-from .protos import server
-from .protos import operator
+import logging
+import torch.nn as nn
 from .misc.data import Dataset
-
+from omegaconf import DictConfig
+from .comm.grpc import serve, GRPCCommunicator, APPFLgRPCServer
 
 def grpc_server_on(channel) -> bool:
     try:
@@ -43,9 +38,8 @@ def run_server(
     #     print("Server is already running . . .")
     #     return
 
-    op = operator.FLOperator(cfg, model, loss_fn, test_data, num_clients)
-    op.servicer = server.FLServicer(cfg.server.id, str(cfg.server.port), op)
+    communicator = GRPCCommunicator(cfg.server.id, str(cfg.server.port), APPFLgRPCServer(cfg, model, loss_fn, test_data, num_clients))
 
     logger = logging.getLogger(__name__)
     logger.info("Starting the server to listen to requests from clients . . .")
-    server.serve(op.servicer, max_message_size=cfg.max_message_size)
+    serve(communicator, max_message_size=cfg.max_message_size)

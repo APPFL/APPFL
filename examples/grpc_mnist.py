@@ -33,7 +33,6 @@ parser.add_argument('--num_classes', type=int, default=10)
 parser.add_argument('--num_pixel', type=int, default=28)   
 
 ## clients
-parser.add_argument('--num_clients', type=int, default=1)    
 parser.add_argument('--client_optimizer', type=str, default="Adam")    
 parser.add_argument('--client_lr', type=float, default=1e-3)    
 parser.add_argument('--num_local_epochs', type=int, default=3)    
@@ -55,6 +54,7 @@ if torch.cuda.is_available():
  
 def get_data(comm: MPI.Comm):
     comm_rank = comm.Get_rank()
+    num_clients = comm.Get_size() - 1
 
     if comm_rank == 0:
         # test data for a server
@@ -84,9 +84,9 @@ def get_data(comm: MPI.Comm):
         f"./datasets/RawData", download=False, train=True, transform=ToTensor()
     )
 
-    split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)
+    split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
     train_datasets = []
-    for i in range(args.num_clients):
+    for i in range(num_clients):
 
         train_data_input = []
         train_data_label = []
@@ -118,7 +118,6 @@ def main():
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
-
     """ Configuration """     
     cfg = OmegaConf.structured(Config)
     
@@ -128,7 +127,7 @@ def main():
         set_seed(1)
 
     ## clients
-    cfg.num_clients = args.num_clients
+    cfg.num_clients = comm_size - 1
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
@@ -181,14 +180,14 @@ def main():
     if comm_size > 1:
         # Try to launch both a server and clients.
         if comm_rank == 0:            
-            grpc_server.run_server(cfg, model, args.num_clients)
+            grpc_server.run_server(cfg, model, loss_fn, cfg.num_clients)
         else:            
             grpc_client.run_client(cfg, comm_rank-1, model, loss_fn, train_datasets[comm_rank - 1], comm_rank, test_dataset)
             
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.
-        grpc_server.run_server(cfg, model, args.num_clients, test_dataset)
+        grpc_server.run_server(cfg, model, cfg.num_clients, test_dataset)
 
 
 if __name__ == "__main__":

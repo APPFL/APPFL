@@ -1,20 +1,16 @@
-from omegaconf import DictConfig
-
-import torch
-import torch.nn as nn
-from torch.optim import *
-from torch.utils.data import DataLoader
-
 import copy
-import numpy as np
-import logging
 import time
-
+import torch
+import logging
+import torch.nn as nn
 from .misc import *
 from .algorithm import *
+from torch.optim import *
+from omegaconf import DictConfig
+from torch.utils.data import DataLoader
+from .comm.grpc.grpc_communicator_pb2 import Job
+from .comm.grpc.grpc_client import APPFLgRPCClient
 
-from .protos.federated_learning_pb2 import Job
-from .protos.client import FLClient
 
 
 def update_model_state(comm, model, round_number):
@@ -68,7 +64,7 @@ def run_client(
     logger.debug(
         f"[Client ID: {cid: 03}] connecting to (uri,tls)=({uri},{cfg.server.use_tls})."
     )
-    comm = FLClient(
+    comm = APPFLgRPCClient(
         cid,
         uri,
         cfg.server.use_tls,
@@ -124,6 +120,7 @@ def run_client(
         cfg,
         outfile,
         test_dataloader,
+        None,
         **cfg.fed.args,
     )
 
