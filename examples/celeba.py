@@ -131,7 +131,6 @@ def main():
     args.num_clients = len(train_datasets)
 
     model = get_model(args)
-    print(args)
     loss_fn = torch.nn.CrossEntropyLoss()   
     print(
         "----------Loaded Datasets and Model----------Elapsed Time=",
