@@ -187,7 +187,7 @@ def main():
     
     # disable test according to argument
     if args.enable_test != 0:
-        test_dtaaset = None
+        test_dataset = None
     
     ## Model
     model = get_model(args)    
