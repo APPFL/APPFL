@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import copy
 
-from appfl.misc.utils import *
+# from appfl.misc.utils import *
 from appfl.algorithm import *
 
 from .federated_learning_pb2 import Job
@@ -137,7 +137,11 @@ class FLOperator:
         self.logger.debug(
             f"[Round: {self.round_number: 04}] self.fed_server.weights: {self.fed_server.weights}"
         )
-        self.fed_server.update([self.client_states])
+        client_states_list = []
+        for i in self.client_states:
+            client_states_list.append(self.client_states[i])
+        self.fed_server.update(client_states_list)
+        
 
         if self.cfg.validation == True:
             test_loss, accuracy = validation(self.fed_server, self.dataloader)
