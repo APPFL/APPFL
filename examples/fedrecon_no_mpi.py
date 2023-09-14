@@ -68,8 +68,9 @@ def get_data(cfg):
     - each row of A represents a data sample at a specific (angle, beamlet). In this dataset, we consider 100 different angles and 354 beamlets. The first 354 rows have the same angle in common, and so on.
     - each column of A is associated with pixel. In this example, there are 250*250 pixels.
     """
-
-    mat_path = os.getcwd() + "/datasets/RawData/fedrecon/%s.mat" % (args.dataset)
+    currentpath = os.getcwd()    
+    parentpath = os.path.abspath(os.path.join(currentpath, os.pardir))
+    mat_path = parentpath + "/tests/_data/fedrecon/%s.mat" % (args.dataset)
 
     data = scipy.io.loadmat(mat_path)
     A = torch.from_numpy(data["A"].toarray()).to(torch.float32)
