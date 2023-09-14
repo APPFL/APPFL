@@ -9,7 +9,7 @@ import io
 
 from appfl.config import *
 from appfl.misc.data import *
-from appfl.misc.utils import load_model_state
+from appfl.misc.utils import load_model_state, set_seed
 import appfl.run_serial as rs
 import appfl.run_mpi as rm
 
@@ -86,7 +86,7 @@ parser.add_argument("--save_every", type=int, default=250)
 parser.add_argument("--load_model", type=int, default=0)
 parser.add_argument("--load_model_suffix", type=str, default="")
 parser.add_argument("--dataset_dir", type=str, default=os.getcwd()+'/datasets/PreprocessedData')
-parser.add_argument("--model_dir", type=str, default='.')
+parser.add_argument("--model_dir", type=str, default=os.getcwd())
 
 ## loss function and evaluation metric
 parser.add_argument("--loss_fn", type=str, default='losses/mseloss.py')
@@ -143,8 +143,12 @@ def get_data(comm: MPI.Comm):
     for idx_f in range(dset_train.shape[-1]):
         feature_minval = dset_train[:,:,idx_f].min()
         feature_maxval = dset_train[:,:,idx_f].max()
-        dset_train[:,:,idx_f] = (dset_train[:,:,idx_f] - feature_minval) / (feature_maxval - feature_minval)
-        dset_test[:,:,idx_f] = (dset_test[:,:,idx_f] - feature_minval) / (feature_maxval - feature_minval)
+        if feature_maxval == feature_minval: # if min-max scaling isn't possible because min=max, just replace with 1
+            dset_train[:,:,idx_f] = np.ones_like(dset_train[:,:,idx_f])
+            dset_test[:,:,idx_f] = np.ones_like(dset_test[:,:,idx_f])
+        else: # min-max scaling
+            dset_train[:,:,idx_f] = (dset_train[:,:,idx_f] - feature_minval) / (feature_maxval - feature_minval)
+            dset_test[:,:,idx_f] = (dset_test[:,:,idx_f] - feature_minval) / (feature_maxval - feature_minval)
     # record as train and test datasets
     # TODO: ensure that there is enough temporal data which is greater than lookback
     train_datasets = []
@@ -178,8 +182,7 @@ def main():
     cfg = OmegaConf.structured(Config)
 
     ## Reproducibility
-    torch.manual_seed(1)
-    torch.backends.cudnn.deterministic = True
+    set_seed(1)
     
     ## Batch sizes
     cfg.train_data_batch_size = args.batch_size
@@ -189,8 +192,8 @@ def main():
     train_datasets, test_dataset = get_data(comm)
     
     # disable test according to argument
-    if args.enable_test == 0:
-        test_dataset = []
+    # if args.enable_test == 0 and comm_size!=0: # serial does support NOT having a test dset
+    #     test_dataset = []
     
     ## Model
     model = get_model(args)    
@@ -241,14 +244,14 @@ def main():
         cfg.checkpoints_interval = args.save_every
     if args.load_model:
         cfg.load_model = True
-        if cfg.personalization and comm_size > 0: # personalization + parallel
+        if cfg.personalization and comm_size > 1: # personalization + parallel
             model_clients = [copy.deepcopy(model) for _ in range(args.num_clients)]
             cfg.load_model_dirname = dir_model + "/save_models_NREL_%s"%args.personalization_config_name
             cfg.load_model_filename = "model_%s_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server,args.load_model_suffix)
             load_model_state(cfg,model)
             for c_idx in range(args.num_clients):
                 load_model_state(cfg,model_clients[c_idx],client_id=c_idx)
-        elif cfg.personalization and comm_size == 0: # personalization + serial
+        elif cfg.personalization and comm_size == 1: # personalization + serial
             model_clients = [copy.deepcopy(model) for _ in range(args.num_clients+1)]
             cfg.load_model_dirname = dir_model + "/save_models_NREL_%s"%args.personalization_config_name
             cfg.load_model_filename = "model_%s_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server,args.load_model_suffix)
@@ -277,11 +280,11 @@ def main():
             rm.run_client(cfg, comm, model_to_send, loss_fn, args.num_clients, train_datasets, test_dataset, metric)
         print("------DONE------", comm_rank)
     else:
-        if cfg.personalization and cfg.load_model:
+        if cfg.personalization:
             model_to_send = [model] + model_clients
         else:
             model_to_send = model
-        rs.run_serial(cfg, model_to_send, loss_fn, train_datasets, test_dataset, args.dataset)
+        rs.run_serial(cfg, model_to_send, loss_fn, train_datasets, test_dataset, args.dataset, metric)
 
 
 if __name__ == "__main__": 

@@ -102,6 +102,7 @@ def client_log(dir, output_filename):
 
 
 def load_model(cfg: DictConfig):
+    
     file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
     model = torch.load(file)
     model.eval()
@@ -126,23 +127,22 @@ def save_model_iteration(t, model, cfg: DictConfig):
 
 def load_model_state(cfg: DictConfig, model, client_id = None):
     
-    # load state dict: partial state for server and full state for client
+    # This function allows to use partial model weights into a model.
+    # Useful since server model will only have shared layer weights when personalization is enabled.
     if client_id == None:
         file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
     else:
         file = cfg.load_model_dirname + "/client_%d"%client_id + "/%s%s" % (cfg.load_model_filename, ".pt")
 
-    if client_id == None:
-        model.load_state_dict(torch.load(file),strict=False)
-    else:
-        model.load_state_dict(torch.load(file),strict=True)
+    model.load_state_dict(torch.load(file),strict=False)
         
     return model
     
 
 def save_model_state_iteration(t, model, cfg: DictConfig, client_id = None):
     
-    # save server model dict without the personalization layers, but client models dict in full
+    # This function saves the model weights (instead of the entire model).
+    # If personalization is enabled, only the shared layer weights will be saved for the server.
     dir = cfg.save_model_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
