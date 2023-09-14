@@ -32,7 +32,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default="cpu")
 
 ## dataset
-parser.add_argument("--dataset", type=str, default="xrf_xrt_noisy_scenario_2")
+parser.add_argument("--dataset", type=str, default="xrf_xrt_toy")
 
 ## algorithm
 parser.add_argument("--federation_type", type=str, default="Fedres")
