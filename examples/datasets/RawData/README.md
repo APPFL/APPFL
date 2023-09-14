@@ -15,3 +15,8 @@ The users can store their raw datasets in this directory.
 - In a newly generated directory ``leaf/data/femnist/data``, copy the two directories ``train`` and ``test`` and paste them in ``examples/datasets/RawData/FEMNIST``   
  
 
+## Example 3. CELEBA
+- Make a subdirectory named ``CELEBA``.
+- Download the dataset from https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html 
+- Generate preprocessed data according to the LEAF instruction: https://github.com/TalwalkarLab/leaf/tree/master/data/celeba
+- Copy the two directories ``train`` , ``test`` and ``raw`` folders and paste in under ``examples/datasets/RawData/CELEBA``

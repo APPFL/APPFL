@@ -48,9 +48,7 @@ class CNN(nn.Module):
         x = self.fc2(x)
         return x
 
-
 def process_data(num_clients):
-
     # test data for a server
     test_data_raw = torchvision.datasets.MNIST(
         "./_data", download=False, train=False, transform=ToTensor()
@@ -74,7 +72,6 @@ def process_data(num_clients):
     split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)
     train_datasets = []
     for i in range(num_clients):
-
         train_data_input = []
         train_data_label = []
         for idx in split_train_data_raw[i]:
@@ -92,28 +89,30 @@ def process_data(num_clients):
 
 
 # Let's download the data first if data does not exist.
-currentpath = os.getcwd()
-datafolderpath = os.path.join(currentpath, "_data")
-existsflag = False
-if(os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
-    mnistfolderpath = os.path.join(datafolderpath, "MNIST")
-    if(os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):
-        existsflag = True
-
-if(not existsflag):
-    comm = MPI.COMM_WORLD
-    comm_size = comm.Get_size()
-    if comm_size > 1:
-        comm_rank = comm.Get_rank()
-        if comm_rank == 0:
-            print("Download by rank0")            
-            torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
-        comm.Barrier()
-    else:
-        print("Download by serial")
-        torchvision.datasets.MNIST("./_data", download=True, train=False, transform=ToTensor())
+def readyMNISTdata():    
+    currentpath = os.getcwd()    
+    datafolderpath = os.path.join(currentpath, "_data")
     
+    if not (os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
+        os.mkdir(datafolderpath)
 
+    mnistfolderpath = os.path.join(datafolderpath, "MNIST")
+    if not (os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):        
+        print("Download MNIST data")
+        torchvision.datasets.MNIST(
+            "./_data", download=True, train=False, transform=ToTensor()
+        )
+
+comm = MPI.COMM_WORLD
+comm_size = comm.Get_size()
+if comm_size > 1:
+    comm_rank = comm.Get_rank()
+    if comm_rank == 0:
+        readyMNISTdata()
+    comm.Barrier()
+else:
+    # Serial
+    readyMNISTdata() 
 
 def test_mnist_fedavg():
 
@@ -232,6 +231,7 @@ def test_mnist_fedbuffer_mpi():
     cfg.fed.args.gradient_based = True
     cfg.fed.args.staleness_func.name = 'polynomial'
     cfg.fed.servername = 'ServerFedBuffer'
+    cfg.fed.args.K = 2
 
     model = CNN(1, 10, 28)
     loss_fn = torch.nn.CrossEntropyLoss()
