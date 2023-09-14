@@ -142,6 +142,7 @@ class FedresClient(BaseClient):
         cfg,
         outfile,
         test_dataloader,
+        metric,
         **kwargs
     ):
         super(FedresClient, self).__init__(

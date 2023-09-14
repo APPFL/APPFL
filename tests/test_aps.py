@@ -82,5 +82,5 @@ def test_aps_fedres():
     model = LinearRegression(num_feature, 1)
     loss_fn = torch.nn.MSELoss(reduction="sum")
 
-    rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_aps")
+    rs.run_serial(cfg, model, loss_fn, train_datasets, Dataset(), "test_aps", None)
  
