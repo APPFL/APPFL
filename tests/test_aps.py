@@ -24,9 +24,8 @@ class LinearRegression(torch.nn.Module):
         return out
 
 def get_data(cfg): 
-    currentpath = os.getcwd()
-    parentpath = os.path.abspath(os.path.join(currentpath, os.pardir))    
-    mat_path = parentpath + "/examples/datasets/RawData/fedrecon/xrf_xrt_noisy_scenario_2.mat"  
+    currentpath = os.getcwd()    
+    mat_path = currentpath + "/_data/fedrecon/xrf_xrt_noisy_scenario_2.mat"  
 
     data = scipy.io.loadmat(mat_path)
     A = torch.from_numpy(data["A"].toarray()).to(torch.float32)
