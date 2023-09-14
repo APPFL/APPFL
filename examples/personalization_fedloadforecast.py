@@ -85,6 +85,8 @@ parser.add_argument("--save_model", type=int, default=1)
 parser.add_argument("--save_every", type=int, default=250)
 parser.add_argument("--load_model", type=int, default=0)
 parser.add_argument("--load_model_suffix", type=str, default="")
+parser.add_argument("--dataset_dir", type=str, default=os.getcwd()+'/datasets/PreprocessedData')
+parser.add_argument("--model_dir", type=str, default='.')
 
 ## loss function and evaluation metric
 parser.add_argument("--loss_fn", type=str, default='losses/mseloss.py')
@@ -105,7 +107,8 @@ if args.profile_code:
     import cProfile, pstats
 
 # directory where to save dataset
-dir = os.getcwd() + "/datasets/PreprocessedData"
+dir_dset = args.dataset_dir
+dir_model = args.model_dir
 
 def get_data(comm: MPI.Comm):
 
@@ -114,7 +117,7 @@ def get_data(comm: MPI.Comm):
         raise ValueError('Currently only NREL data for CA, IL, NY are supported. Please modify download script if you want a different state.')         
     
     state_idx = args.dataset[4:]
-    if not os.path.isfile(dir+'/%sdataset.npz'%args.dataset):
+    if not os.path.isfile(dir_dset+'/%sdataset.npz'%args.dataset):
         # building ID's whose data to download
         if state_idx == 'CA':
             b_id = [15227, 15233, 15241, 15222, 15225, 15228, 15404, 15429, 15460, 15445, 15895, 16281, 16013, 16126, 16145, 47395, 15329, 15504, 15256, 15292, 15294, 15240, 15302, 15352, 15224, 15231, 15243, 17175, 17215, 18596, 15322, 15403, 15457, 15284, 15301, 15319, 15221, 15226, 15229, 15234, 15237, 15239]
@@ -124,9 +127,9 @@ def get_data(comm: MPI.Comm):
             b_id = [205362, 205863, 205982, 204847, 204853, 204854, 204865, 204870, 204878, 205068, 205104, 205124, 205436, 213733, 213978, 210920, 204915, 205045, 204944, 205129, 205177, 204910, 205024, 205091, 204849, 204860, 204861, 208090, 210116, 211569, 204928, 204945, 205271, 204863, 204873, 204884, 204842, 204843, 204844, 204867, 204875, 204880]
         downloader = NRELDataDownloader(dset_tags = [state_idx], b_id = [b_id])
         downloader.download_data()
-        downloader.save_data(fname=dir+'/NREL%sdataset.npz'%state_idx)
+        downloader.save_data(fname=dir_dset+'/NREL%sdataset.npz'%state_idx)
         
-    dset_raw = np.load(dir+'/NREL%sdataset.npz'%state_idx)['data']
+    dset_raw = np.load(dir_dset+'/NREL%sdataset.npz'%state_idx)['data']
     if args.num_clients > dset_raw.shape[0]:
         raise ValueError('More clients requested than present in dataset.')
     if args.n_features != dset_raw.shape[-1]:
@@ -186,8 +189,8 @@ def main():
     train_datasets, test_dataset = get_data(comm)
     
     # disable test according to argument
-    if args.enable_test != 0:
-        test_dataset = None
+    if args.enable_test == 0:
+        test_dataset = []
     
     ## Model
     model = get_model(args)    
@@ -224,7 +227,7 @@ def main():
     cfg.use_tensorboard = False
     
     ## save/load
-    cfg.output_dirname = "./outputs_%s_%s_%s_%s" % (
+    cfg.output_dirname = dir_model + "/outputs_%s_%s_%s_%s" % (
         args.dataset,
         args.server,
         args.client_optimizer,
@@ -233,27 +236,27 @@ def main():
     if args.save_model:
         cfg.save_model_state_dict = True
         cfg.save_model = True
-        cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
+        cfg.save_model_dirname = dir_model + "/save_models_NREL_%s"%args.personalization_config_name
         cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server)
         cfg.checkpoints_interval = args.save_every
     if args.load_model:
         cfg.load_model = True
         if cfg.personalization and comm_size > 0: # personalization + parallel
             model_clients = [copy.deepcopy(model) for _ in range(args.num_clients)]
-            cfg.load_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
+            cfg.load_model_dirname = dir_model + "/save_models_NREL_%s"%args.personalization_config_name
             cfg.load_model_filename = "model_%s_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server,args.load_model_suffix)
             load_model_state(cfg,model)
             for c_idx in range(args.num_clients):
                 load_model_state(cfg,model_clients[c_idx],client_id=c_idx)
         elif cfg.personalization and comm_size == 0: # personalization + serial
             model_clients = [copy.deepcopy(model) for _ in range(args.num_clients+1)]
-            cfg.load_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
+            cfg.load_model_dirname = dir_model + "/save_models_NREL_%s"%args.personalization_config_name
             cfg.load_model_filename = "model_%s_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server,args.load_model_suffix)
             load_model_state(cfg,model[0])
             for c_idx in range(args.num_clients):
                 load_model_state(cfg,model_clients[c_idx+1],client_id=c_idx)
         else: # no personalization
-            cfg.save_model_dirname = "./save_models_NREL_%s"%args.personalization_config_name
+            cfg.save_model_dirname = dir_model + "/save_models_NREL_%s"%args.personalization_config_name
             cfg.save_model_filename = "model_%s_%s_%s"%(args.dataset,args.client_optimizer,args.server) 
             model = load_model(cfg)
     else:
