@@ -6,4 +6,4 @@ def mae(y_true, y_pred):
     y_true (N, d) where N is the size of the validation set, and d is the dimension of the label
     y_pred (N, D) where N is the size of the validation set, and D is the output dimension of the ML model
     '''
-    return np.abs(y_true-y_pred).mean()
+    return np.mean(np.abs(y_true-y_pred))
