@@ -39,7 +39,7 @@ def run_server(
     Args:
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
-        model (nn.Module or List): neural network model to train. 
+        model (nn.Module): neural network model to train. 
         loss_fn (nn.Module): loss function 
         num_clients (int): the number of clients used in PPFL simulation
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
