@@ -57,7 +57,6 @@ setuptools.setup(
             "pytest-mpi",
             "torchvision",
             "mpi4py",
-            "scipy",
         ],
         "analytics": [
             "jupyter",
@@ -68,6 +67,7 @@ setuptools.setup(
         "examples": [
             "opencv-python",
             "torchvision",
+            "scipy",            
         ],
     },
 )
