@@ -67,6 +67,7 @@ setuptools.setup(
         "examples": [
             "opencv-python",
             "torchvision",
+            "scipy",            
         ],
     },
 )

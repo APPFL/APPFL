@@ -5,6 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from .fed.federated import *
 from .fed.fedasync import *
+from .fed.fedres import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
 
