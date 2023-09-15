@@ -67,6 +67,10 @@ setuptools.setup(
         "examples": [
             "opencv-python",
             "torchvision",
+            "pandas",
+            "pyarrow",
+            "fastparquet",
+            "tqdm"
         ],
     },
 )
