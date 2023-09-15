@@ -31,7 +31,7 @@ def run_serial(
 
     Args:
         cfg (DictConfig): the configuration for this run
-        model (nn.Module): if personalization is disabled, neural network model to train. if personalization is enabled, it will be a LIST 
+        model (nn.Module or list): if personalization is disabled, neural network model to train. if personalization is enabled, it will be a LIST 
             containing the server and client models (i.e. num_clients+1 models), which can be uninitialized or preloaded with saved weights depending on user's choice to load saved model
         loss_fn (nn.Module): loss function
         train_data (Dataset): training data

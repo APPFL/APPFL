@@ -73,7 +73,7 @@ parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=4)
 
 ## server
-parser.add_argument("--server", type=str, default="ServerFedAvg")
+parser.add_argument("--server", type=str, default="ServerFedAdam")
 parser.add_argument("--num_epochs", type=int, default=1000)
 parser.add_argument("--server_lr", type=float, required=False)
 parser.add_argument("--mparam_1", type=float, required=False)
@@ -192,8 +192,8 @@ def main():
     train_datasets, test_dataset = get_data(comm)
     
     # disable test according to argument
-    # if args.enable_test == 0 and comm_size!=0: # serial does support NOT having a test dset
-    #     test_dataset = []
+    if args.enable_test == 0: # serial does support NOT having a test dset
+        test_dataset = []
     
     ## Model
     model = get_model(args)    

@@ -39,7 +39,7 @@ def run_server(
     Args:
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
-        model (nn.Module): neural network model to train. 
+        model (nn.Module): neural network model to train
         loss_fn (nn.Module): loss function 
         num_clients (int): the number of clients used in PPFL simulation
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
@@ -203,7 +203,7 @@ def run_client(
     Args:
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
-        model (nn.Module): if personalization is disabled, neural network model to train. if personalization is enabled, it will be a LIST 
+        model (nn.Module or list): if personalization is disabled, neural network model to train. if personalization is enabled, it will be a LIST 
             containing the client models (i.e. num_clients models), which can be uninitialized or preloaded with saved weights depending on user's choice to load saved model
         num_clients (int): the number of clients used in PPFL simulation
         train_data (Dataset): training data
@@ -307,10 +307,8 @@ def run_client(
         """If personalization is enabled, then delete the personalized layer weights so they
         arent overwritten in the client model when an update happens"""
         if cfg.personalization:
-            keys = [key for key,_ in model[0].named_parameters()]
-            for key in keys:
-                if key in cfg.p_layers:
-                    _ = global_state.pop(key)
+            for key in cfg.p_layers:
+                del global_state[key]
                 
 
         """ Update "local_states" based on "global_state" """
