@@ -32,7 +32,7 @@ parser.add_argument("--local_steps", type=int, default=200)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg", 
-                    choices=["ServerFedAvg", "ServerFedAvgMomentum"])
+                    choices=["ServerFedAvg", "ServerFedAvgMomentum", "ServerFedAdam"])
 parser.add_argument("--num_epochs", type=int, default=20)
 parser.add_argument("--server_lr", type=float, default=0.01)
 parser.add_argument("--mparam_1", type=float, default=0.9)
@@ -98,10 +98,10 @@ def main():
     cfg.output_filename = "result"
 
     ## adaptive server
-    cfg.fed.args.server_learning_rate = args.server_lr
-    cfg.fed.args.server_adapt_param = args.adapt_param
-    cfg.fed.args.server_momentum_param_1 = args.mparam_1
-    cfg.fed.args.server_momentum_param_2 = args.mparam_2
+    cfg.fed.args.server_learning_rate = args.server_lr          # FedAdam
+    cfg.fed.args.server_adapt_param = args.adapt_param          # FedAdam
+    cfg.fed.args.server_momentum_param_1 = args.mparam_1        # FedAdam, FedAvgm
+    cfg.fed.args.server_momentum_param_2 = args.mparam_2        # FedAdam
 
     ## simulation
     cfg.fed.args.do_simulation = args.do_simulation

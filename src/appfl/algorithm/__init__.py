@@ -23,3 +23,4 @@ from .server_fed_cpas_avgm_new import *
 from .server_fed_cpas_nova import *
 from .scheduler import *
 from .scheduler_new import *
+from .scheduler_dummy import *

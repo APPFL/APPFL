@@ -30,6 +30,7 @@ parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
 parser.add_argument("--client_lr", type=float, default=3e-3)
 parser.add_argument("--local_steps", type=int, default=200)
+parser.add_argument("--lr_decay", type=float, default=1, help="learning rate decay factor for each communication round")
 
 ## server
 parser.add_argument("--num_epochs", type=int, default=20)
@@ -52,17 +53,23 @@ parser.add_argument("--staleness_func", type=str, choices=['constant', 'polynomi
 parser.add_argument("--a", type=float, default=0.5, help="First parameter for the staleness function")
 parser.add_argument("--b", type=int, default=4, help="Second parameter for Hinge staleness function")
 parser.add_argument("--K", type=int, default=3, help="Buffer size for FedBuffer algorithm")
-parser.add_argument("--val_range", type=int, default=10, help="Perform server validation every serveral epochs")
+parser.add_argument("--val_range", type=int, default=1, help="Perform server validation every serveral epochs")
 
 ## Simulation
 parser.add_argument("--do_simulation", action="store_true", help="Whether to do client local training-time simulation")
 parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp", "homo"], help="Local trianing-time distribution for different clients")
 parser.add_argument("--avg_tpb", type=float, default=0.15, help="Average time-per-batch for clint local trianing-time simulation")
-parser.add_argument("--global_std_scale", type=float, default=0.5, help="Std scale for time-per-batch for different clients")
+parser.add_argument("--global_std_scale", type=float, default=0.3, help="Std scale for time-per-batch for different clients")
 parser.add_argument("--exp_scale", type=float, default=0.5, help="Scale for exponential distribution")
 parser.add_argument("--exp_bin_size", type=float, default=0.1, help="Width of the bin when discretizing the client tbp in exponential distribution")
 parser.add_argument("--local_std_scale", type=float, default=0.05, help="Std scale for time-per-batch for different experiments of one client")
 parser.add_argument("--delta_warmup", action="store_true", help="When running the code on delta, we need to first warm up the computing resource")
+parser.add_argument("--speed_change_simulation", action="store_true", help="Whether simulate the changes in client speed")
+parser.add_argument("--speed_change_prob", type=float, default=0.1, help="Probability for a client speed change")
+
+## Ablation study
+parser.add_argument("--q_ratio", type=float, default=0.2)
+parser.add_argument("--lambda_val", type=float, default=1.5)
 
 args = parser.parse_args()
 
@@ -90,6 +97,7 @@ def main():
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.lr_decay = args.lr_decay
     cfg.fed.args.local_steps = args.local_steps
     cfg.train_data_shuffle = True
     cfg.fed.clientname = "ClientOptimUpdate"
@@ -101,13 +109,15 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_%s_%s_%sClients_%s_%s_%sEpochs" % (
+    cfg.output_dirname = "./outputs_%s_%s_%sClients_%s_%s_%sEpochs_Q=%s_Lambdaval=%s" % (
         args.dataset,
         args.partition,
         args.num_clients,
         args.simulation_distrib if args.do_simulation else "noSim",
         args.server,
         args.num_epochs,
+        args.q_ratio,
+        args.lambda_val
     )
     cfg.output_filename = "result"
 
@@ -127,6 +137,8 @@ def main():
     cfg.fed.args.exp_bin_size = args.exp_bin_size
     cfg.fed.args.seed = args.seed
     cfg.fed.args.delta_warmup = args.delta_warmup
+    cfg.fed.args.speed_change_simulation = args.speed_change_simulation
+    cfg.fed.args.speed_change_prob = args.speed_change_prob
 
     ## fed async/fed buffer
     cfg.fed.args.K = args.K
@@ -136,6 +148,10 @@ def main():
     cfg.fed.args.staleness_func.args.a = args.a
     cfg.fed.args.staleness_func.args.b = args.b
     cfg.fed.args.val_range = args.val_range
+
+    ## ablation study
+    cfg.fed.args.q_ratio = args.q_ratio
+    cfg.fed.args.lambda_val = args.lambda_val
 
     start_time = time.time()
 
@@ -154,16 +170,10 @@ def main():
 
     """ Running """
     if comm_rank == 0:
-        if args.server.startswith("ServerFedCPAS"):
-            rmcn.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset)
-        else:
-            rma.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset)
+        rmcn.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, None, args.server.startswith("ServerFedCPAS"))
     else:
         assert comm_size == args.num_clients + 1
-        if args.server.startswith("ServerFedCPAS"):
-            rmcn.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
-        else:
-            rma.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
+        rmcn.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
 
     print("------DONE------", comm_rank)
 

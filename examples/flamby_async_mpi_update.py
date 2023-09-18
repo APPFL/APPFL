@@ -22,6 +22,7 @@ parser.add_argument("--dataset", type=str, default="TcgaBrca",
 
 ## clients
 parser.add_argument("--local_steps", type=int, default=50)
+parser.add_argument("--lr_decay", type=float, default=1, help="learning rate decay factor for each communication round")
 
 ## server
 parser.add_argument("--num_epochs", type=int, default=10)
@@ -79,6 +80,7 @@ def main():
     """Specific configuration for datasets in FLamby"""
     train_datasets, test_dataset = flamby_dataset(args.dataset, args.num_clients)
     model, loss_fn, cfg.fed.args.optim, cfg.fed.args.optim_args.lr, cfg.train_data_batch_size, metric = flamby_train(args.dataset)
+    cfg.fed.args.lr_decay = args.lr_decay
     cfg.test_data_batch_size = cfg.train_data_batch_size
 
     cfg.device = args.device

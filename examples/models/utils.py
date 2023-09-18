@@ -1,5 +1,6 @@
 from .cnn import CNN
 from .resnet import resnet18
+from .resnet_new import ResNet18
 import flamby.datasets.fed_tcga_brca as TcgaBrca
 import flamby.datasets.fed_heart_disease as HeartDisease
 import flamby.datasets.fed_ixi as IXI
@@ -11,7 +12,9 @@ def get_model(args):
     if args.model == "CNN":
         model = CNN(args.num_channel, args.num_classes, args.num_pixel)
     if args.model == "resnet18":
-        model = resnet18(num_channel=args.num_channel, num_classes=args.num_classes, pretrained=args.pretrained)        
+        model = resnet18(num_channel=args.num_channel, num_classes=args.num_classes, pretrained=args.pretrained)  
+    if args.model == "resnet18_new":
+        model = ResNet18()
     return model
 
 def flamby_train(dataset: str):

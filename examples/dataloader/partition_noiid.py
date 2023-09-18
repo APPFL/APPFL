@@ -107,7 +107,7 @@ def partition_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, seed: int = 4
         dir = cfg.output_dirname
         if os.path.isdir(dir) == False:
             os.mkdir(dir)
-        output_filename = f"{dataset}_{num_clients}clients_partition_distribution"
+        output_filename = f"{dataset}_{num_clients}clients_partition_distribution_{seed}"
         file_ext = ".pdf"
         filename = dir + "/%s%s" % (output_filename, file_ext)
         uniq = 1

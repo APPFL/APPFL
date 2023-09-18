@@ -10,7 +10,7 @@ from torch.optim import *
 from logging import Logger
 
 class SchedulerNew:
-    def __init__(self, comm: MPI.Comm, server: Any, max_local_steps: int, num_clients: int, num_global_epochs: int, lr: int, logger: Logger, use_nova: bool):
+    def __init__(self, comm: MPI.Comm, server: Any, max_local_steps: int, num_clients: int, num_global_epochs: int, lr: float, logger: Logger, use_nova: bool, q_ratio: float = 0.2, lambda_val: float = 1.5):
         self.iter = 0
         self.lr = lr
         self.comm = comm 
@@ -21,10 +21,10 @@ class SchedulerNew:
         self.comm_size = comm.Get_size()
         self.group_counter = 0
         self.max_local_steps = max_local_steps
-        self.min_local_steps = max(math.floor(0.2 * self.max_local_steps), 1)
+        self.min_local_steps = max(math.floor(q_ratio * self.max_local_steps), 1)
         self.max_local_steps_bound =  math.floor(1.2 * self.max_local_steps)
         self.SPEED_MOMENTUM = 0.9
-        self.LATEST_TIME_FACTOR = 1.5
+        self.LATEST_TIME_FACTOR = lambda_val
         self.LR_DECAY = 0.985
         self.client_info = {}
         self.group_of_arrival = OrderedDict()

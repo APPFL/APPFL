@@ -20,7 +20,8 @@ def run_server(
     num_clients: int,
     test_dataset: Dataset = Dataset(),
     dataset_name: str = "appfl",
-    flamby_metric: Any = None
+    flamby_metric: Any = None,
+    use_compass: bool = True
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model in an asynchronous way
 
@@ -155,8 +156,21 @@ def run_server(
     send_reqs = [comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+comm_size) for i in range(1, num_clients+1)]
     ### TEST END
 
-    scheduler = SchedulerNew(comm, server, cfg.fed.args.local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger, cfg.fed.servername == 'ServerFedCPASNova')    
-    scheduler.warmup()
+    ## Ablation study
+    if hasattr(cfg.fed.args, 'q_ratio'):
+        q_ratio = cfg.fed.args.q_ratio
+    else:
+        q_ratio = 0.2
+    if hasattr(cfg.fed.args, 'lambda_val'):
+        lambda_val = cfg.fed.args.lambda_val
+    else:
+        lambda_val = 1.5
+    
+    if use_compass:
+        scheduler = SchedulerNew(comm, server, cfg.fed.args.local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger, cfg.fed.servername == 'ServerFedCPASNova', q_ratio, lambda_val)    
+        scheduler.warmup()
+    else:
+        scheduler = SchedulerDummy(comm, server, cfg.fed.args.local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger)
     
     # Wait for response (buffer size) - INFO - from clients
     recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
@@ -174,7 +188,7 @@ def run_server(
             recv_reqs.pop(client_idx)
             if global_step < cfg.num_epochs:
                 recv_reqs.insert(client_idx, comm.irecv(source=client_idx+1, tag=client_idx+1))
-            if scheduler.validation_flag or global_step >= cfg.num_epochs:
+            if (scheduler.validation_flag and global_step % cfg.fed.args.val_range == 0) or global_step >= cfg.num_epochs:
                 validation_start = time.time()
                 if cfg.validation == True:
                     test_loss, test_accuracy = validation(server, test_dataloader, flamby_metric)
@@ -262,6 +276,7 @@ def run_client(
     if cfg.fed.args.do_simulation:
         time_per_batch = None
         time_per_batch = comm.scatter(time_per_batch, root=0)
+        np.random.seed(cfg.fed.args.seed * comm_rank)
 
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
@@ -346,6 +361,23 @@ def run_client(
         # outfile[cid].flush()
 
         if cfg.fed.args.do_simulation:
+            if cfg.fed.args.speed_change_simulation:
+                if np.random.uniform(0,1) <= cfg.fed.args.speed_change_prob:
+                    if cfg.fed.args.simulation_distrib == 'normal':
+                        while True:
+                            tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=cfg.fed.args.avg_tpb*cfg.fed.args.global_std_scale, size=1)
+                            if np.all(tpb > 0): 
+                                tpb = list(tpb)
+                                break
+                    elif cfg.fed.args.simulation_distrib == 'homo':
+                        tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=0, size=1)
+                    elif cfg.fed.args.simulation_distrib == 'exp':
+                        random_numbers = np.random.exponential(scale=cfg.fed.args.exp_scale, size=1)
+                        rounded_numbers = np.round((random_numbers+cfg.fed.args.exp_bin_size)/cfg.fed.args.exp_bin_size) * cfg.fed.args.exp_bin_size
+                        tpb = list(rounded_numbers * (cfg.fed.args.avg_tpb/cfg.fed.args.exp_scale))
+                    else:
+                        raise NotImplementedError
+                    time_per_batch = tpb[0]
             local_training_time = np.random.normal(loc=time_per_batch, scale=cfg.fed.args.local_std_scale*time_per_batch)
             local_training_time *= num_local_steps
         start_time = time.time()

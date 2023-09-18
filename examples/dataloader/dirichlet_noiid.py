@@ -79,8 +79,8 @@ def dirichlet_noiid(comm: MPI.Comm, cfg: DictConfig, dataset: str, alpha1: float
     if comm_rank == 0 and visualization:
         dir = cfg.output_dirname
         if os.path.isdir(dir) == False:
-            os.mkdir(dir)
-        output_filename = f"{dataset}_{num_clients}clients_dirichlet_distribution"
+            os.makedirs(dir, exist_ok=True)
+        output_filename = f"{dataset}_{num_clients}clients_dirichlet_distribution_{seed}"
         file_ext = ".pdf"
         filename = dir + "/%s%s" % (output_filename, file_ext)
         uniq = 1
