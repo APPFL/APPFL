@@ -23,7 +23,7 @@ parser.add_argument('--num_channel', type=int, default=3)
 parser.add_argument('--num_classes', type=int, default=10)   
 parser.add_argument('--num_pixel', type=int, default=32)   
 parser.add_argument('--pretrained', type=int, default=-1)   
-parser.add_argument('--model', type=str, default="resnet18")   
+parser.add_argument('--model', type=str, default="resnet18_new")   
 parser.add_argument('--train_data_batch_size', type=int, default=128)   
 parser.add_argument('--test_data_batch_size', type=int, default=128)   
 parser.add_argument("--partition", type=str, default="iid", 
@@ -31,9 +31,11 @@ parser.add_argument("--partition", type=str, default="iid",
 parser.add_argument("--seed", type=int, default=42)
 
 ## clients
-parser.add_argument('--client_optimizer', type=str, default="Adam")    
-parser.add_argument('--client_lr', type=float, default=3e-3)    
-parser.add_argument('--local_steps', type=int, default=200)    
+parser.add_argument('--client_optimizer', type=str, default="SGD")    
+parser.add_argument('--client_lr', type=float, default=0.1)    
+parser.add_argument('--client_lr_mom', type=float, default=0.9)
+parser.add_argument('--local_steps', type=int, default=200) 
+parser.add_argument("--lr_decay", type=float, default=1, help="learning rate decay factor for each communication round")  
 
 ## server
 parser.add_argument('--num_epochs', type=int, default=20)    
@@ -100,6 +102,7 @@ def main():
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.lr_decay = args.lr_decay
     cfg.fed.args.local_steps = args.local_steps
     cfg.train_data_shuffle = True
     cfg.fed.clientname = "ClientOptimUpdate"
@@ -137,6 +140,7 @@ def main():
     cfg.fed.args.exp_bin_size = args.exp_bin_size
     cfg.fed.args.seed = args.seed
     cfg.fed.args.delta_warmup = args.delta_warmup
+    cfg.fed.args.speed_change_simulation = False
 
     ## fed async/fed buffer
     cfg.fed.args.K = args.K
@@ -164,16 +168,10 @@ def main():
 
     """ Running """
     if comm_rank == 0:
-        if args.server.startswith("ServerFedCPAS"):
-            rmcn.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset)
-        else:
-            rma.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset)
+        rmcn.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, None, args.server.startswith("ServerFedCPAS"))
     else:
         assert comm_size == args.num_clients + 1
-        if args.server.startswith("ServerFedCPAS"):
-            rmcn.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
-        else:
-            rma.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
+        rmcn.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
 
     print("------DONE------", comm_rank)
 

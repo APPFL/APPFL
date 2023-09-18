@@ -22,7 +22,7 @@ parser.add_argument('--num_channel', type=int, default=3)
 parser.add_argument('--num_classes', type=int, default=10)   
 parser.add_argument('--num_pixel', type=int, default=32)   
 parser.add_argument('--pretrained', type=int, default=-1)   
-parser.add_argument('--model', type=str, default="resnet18")   
+parser.add_argument('--model', type=str, default="resnet18_new")   
 parser.add_argument('--train_data_batch_size', type=int, default=128)   
 parser.add_argument('--test_data_batch_size', type=int, default=128)   
 parser.add_argument("--partition", type=str, default="iid", 
@@ -30,8 +30,9 @@ parser.add_argument("--partition", type=str, default="iid",
 parser.add_argument("--seed", type=int, default=42)
 
 ## clients
-parser.add_argument('--client_optimizer', type=str, default="Adam")    
-parser.add_argument('--client_lr', type=float, default=3e-3)    
+parser.add_argument('--client_optimizer', type=str, default="SGD")    
+parser.add_argument('--client_lr', type=float, default=0.1)    
+parser.add_argument('--client_lr_mom', type=float, default=0.9)
 parser.add_argument('--local_steps', type=int, default=200)    
 
 ## server
@@ -86,6 +87,7 @@ def main():
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.optim_args.momentum = args.client_lr_mom
     cfg.fed.args.local_steps = args.local_steps
     cfg.train_data_shuffle = True
     cfg.fed.clientname = "ClientOptimUpdate"
