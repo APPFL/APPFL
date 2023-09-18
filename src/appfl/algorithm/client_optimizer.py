@@ -21,8 +21,6 @@ class ClientOptim(BaseClient):
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
-
-        self.round = 0
         self.metric = metric
 
         super(ClientOptim, self).client_log_title()
