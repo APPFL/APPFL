@@ -4,6 +4,9 @@ src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 note
 trials
+examples/output*
+examples/globus_compute/creds
+examples/log_globus_compute_appfl
 examples/archive
 examples/CIFAR10_Trajectory
 examples/.DS_Store

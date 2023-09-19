@@ -1,10 +1,13 @@
 from .cnn import CNN
 from .resnet import ResNet18
-import flamby.datasets.fed_ixi as IXI
-import flamby.datasets.fed_kits19 as Kits19
-import flamby.datasets.fed_tcga_brca as TcgaBrca
-import flamby.datasets.fed_isic2019 as ISIC2019
-import flamby.datasets.fed_heart_disease as HeartDisease
+try:
+    import flamby.datasets.fed_ixi as IXI
+    import flamby.datasets.fed_kits19 as Kits19
+    import flamby.datasets.fed_tcga_brca as TcgaBrca
+    import flamby.datasets.fed_isic2019 as ISIC2019
+    import flamby.datasets.fed_heart_disease as HeartDisease
+except:
+    print("FLamby is not installed.")
 
 def get_model(args):
     if args.model == "CNN":
