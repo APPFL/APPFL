@@ -6,10 +6,10 @@ from torch.optim import *
 from collections import OrderedDict
 from .algorithm import BaseClient
 
-class ClientOptimFlamby(BaseClient):
+class ClientOptimFedCompassFlamby(BaseClient):
     def __init__(self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs):
-        super(ClientOptimFlamby, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader)
-        super(ClientOptimFlamby, self).client_log_title()
+        super(ClientOptimFedCompassFlamby, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader)
+        super(ClientOptimFedCompassFlamby, self).client_log_title()
         self.__dict__.update(kwargs)
         self.round = 0
         self.metric = metric
@@ -40,38 +40,45 @@ class ClientOptimFlamby(BaseClient):
         if self.cfg.validation == True and self.test_dataloader != None:
             test_loss, metric_res = self.client_validation(self.test_dataloader)
             per_iter_time = time.time() - start_time
-            super(ClientOptimFlamby, self).client_log_content(0, per_iter_time, 0, 0, test_loss, metric_res)
+            super(ClientOptimFedCompassFlamby, self).client_log_content(0, per_iter_time, 0, 0, test_loss, metric_res)
             self.model.train()
 
-        # local training 
-        for t in range(self.num_local_epochs):
-            start_time=time.time()
-            train_loss, tmptotal = 0, 0
-            for data, target in self.dataloader:   
-                tmptotal += len(target)          
-                data = data.to(self.cfg.device)
-                target = target.to(self.cfg.device)
-                optimizer.zero_grad()
-                output = self.model(data)
-                loss = self.loss_fn(output, target)
-                loss.backward()
-                optimizer.step()
-                train_loss += loss.item()
+        # local training
+        data_iter = iter(self.dataloader)
+        start_time = time.time()
+        train_loss, tmptotal = 0, 0
+        epoch = 1
+        for _ in range(self.local_steps):
+            try: 
+                data, target = next(data_iter)
+            except: # End of one local epoch
+                ## Validation
+                train_loss = train_loss / len(self.dataloader)
+                if self.cfg.validation == True and self.test_dataloader != None:
+                    test_loss, metric_res = self.client_validation(self.test_dataloader)
+                    per_iter_time = time.time() - start_time
+                    super(ClientOptimFedCompassFlamby, self).client_log_content(epoch, per_iter_time, train_loss, 0, test_loss, metric_res)
+                    self.model.train()
+                start_time = time.time()
+                train_loss, tmptotal = 0, 0
+                epoch += 1
+                ## Reset the data iterator
+                data_iter = iter(self.dataloader)
+                data, target = next(data_iter)
 
-                if self.clip_value != False:
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.clip_value,
-                        norm_type=self.clip_norm,
-                    )
-            ## Validation
-            train_loss = train_loss / len(self.dataloader)
-            if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, metric_res = self.client_validation(self.test_dataloader)
-                per_iter_time = time.time() - start_time
-                super(ClientOptimFlamby, self).client_log_content(t+1, per_iter_time, train_loss, 0, test_loss, metric_res)
-                self.model.train()
-            
+            tmptotal += len(target)          
+            data = data.to(self.cfg.device)
+            target = target.to(self.cfg.device)
+            optimizer.zero_grad()
+            output = self.model(data)
+            loss = self.loss_fn(output, target)
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
+
+            if self.clip_value != False:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)
+
         self.round += 1
         self.primal_state = copy.deepcopy(self.model.to('cpu').state_dict())
         if (self.cfg.device == "cuda"):            
@@ -84,7 +91,7 @@ class ClientOptimFlamby(BaseClient):
             if self.clip_value != False:
                 sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(ClientOptimFlamby, self).laplace_mechanism_output_perturb(scale_value)
+            super(ClientOptimFedCompassFlamby, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """
         self.local_state = OrderedDict()

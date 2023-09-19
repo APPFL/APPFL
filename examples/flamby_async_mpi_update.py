@@ -73,7 +73,7 @@ def main():
 
     """ Configuration """
     cfg = OmegaConf.structured(Config(fed=FedAsync()))
-    cfg.fed.clientname = "ClientOptimFlambyUpdate"
+    cfg.fed.clientname = "ClientOptimFedCompassFlamby"
 
     """Specific configuration for datasets in FLamby"""
     train_datasets, test_dataset = flamby_dataset(args.dataset, args.num_clients)
