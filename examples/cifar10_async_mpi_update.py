@@ -1,7 +1,7 @@
 import time
 import torch
 import argparse
-import appfl.run_mpi_cpas_new as rmcn
+import appfl.run_mpi_compass as rmc
 from mpi4py import MPI
 from dataloader import *
 from appfl.config import *
@@ -164,10 +164,10 @@ def main():
 
     """ Running """
     if comm_rank == 0:
-        rmcn.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, None, args.server.startswith("ServerFedCPAS"))
+        rmc.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, None, args.server.startswith("ServerFedCompass"))
     else:
         assert comm_size == args.num_clients + 1
-        rmcn.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
+        rmc.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
 
     print("------DONE------", comm_rank)
 

@@ -17,6 +17,5 @@ from .server_fed_buffer import *
 from .server_fed_compass import *
 from .server_fed_compass_mom import *
 from .server_fed_compass_nova import *
-from .scheduler import *
-from .scheduler_new import *
+from .scheduler_compass import *
 from .scheduler_dummy import *

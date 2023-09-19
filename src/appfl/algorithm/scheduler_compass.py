@@ -9,7 +9,7 @@ from .algorithm import *
 from torch.optim import *
 from logging import Logger
 
-class SchedulerNew:
+class SchedulerCompass:
     def __init__(self, comm: MPI.Comm, server: Any, max_local_steps: int, num_clients: int, num_global_epochs: int, lr: float, logger: Logger, use_nova: bool, q_ratio: float = 0.2, lambda_val: float = 1.5):
         self.iter = 0
         self.lr = lr

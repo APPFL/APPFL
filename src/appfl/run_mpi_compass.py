@@ -20,7 +20,8 @@ def run_server(
     num_clients: int,
     test_dataset: Dataset = Dataset(),
     dataset_name: str = "appfl",
-    flamby_metric: Any = None
+    flamby_metric: Any = None,
+    use_compass: bool = True
 ):
     """Run PPFL simulation server that aggregates and updates the global parameters of model in an asynchronous way
 
@@ -90,6 +91,30 @@ def run_server(
 
     weight = comm.scatter(weight, root=0)
 
+    if cfg.fed.args.do_simulation:
+        if hasattr(cfg.fed.args, 'use_hetero_seed'):
+            if cfg.fed.args.use_hetero_seed:
+                np.random.seed(cfg.fed.args.seed)
+            else:
+                np.random.seed(42)
+        else:
+            np.random.seed(42)
+        if cfg.fed.args.simulation_distrib == 'normal':
+            while True:
+                tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=cfg.fed.args.avg_tpb*cfg.fed.args.global_std_scale, size=comm_size)
+                if np.all(tpb > 0): 
+                    tpb = list(tpb)
+                    break
+        elif cfg.fed.args.simulation_distrib == 'homo':
+            tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=0, size=comm_size)
+        elif cfg.fed.args.simulation_distrib == 'exp':
+            random_numbers = np.random.exponential(scale=cfg.fed.args.exp_scale, size=comm_size)
+            rounded_numbers = np.round((random_numbers+cfg.fed.args.exp_bin_size)/cfg.fed.args.exp_bin_size) * cfg.fed.args.exp_bin_size
+            tpb = list(rounded_numbers * (cfg.fed.args.avg_tpb/cfg.fed.args.exp_scale))
+        else:
+            raise NotImplementedError
+        _ = comm.scatter(tpb, root=0)
+
     # Asynchronous federated learning server (aggregator)
     server = eval(cfg.fed.servername)(
         weights, 
@@ -107,9 +132,23 @@ def run_server(
     torch.save(global_model, gloabl_model_buffer)
     global_model_bytes = gloabl_model_buffer.getvalue()
 
+
+    ######## Warmup on Delta: For fair and reproducible experiment results #########
+    if cfg.fed.args.delta_warmup:
+        warmup_steps = cfg.fed.args.local_steps
+        for i in range(1, num_clients+1):
+            comm.send((len(global_model_bytes), False, warmup_steps, cfg.fed.args.optim_args.lr), dest=i, tag=i)
+        send_reqs = [comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+comm_size) for i in range(1, num_clients+1)]
+        recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
+        MPI.Request.waitall(recv_reqs)
+        logger.info('Finish warming up')
+    ################################################################################
+
     # Send (buffer size, finish flag) - INFO - to all clients in a blocking way
+    # warmup_steps = max(math.floor(0.2 * cfg.fed.args.local_steps), 1)
+    warmup_steps = cfg.fed.args.local_steps
     for i in range(1, num_clients+1):
-        comm.send((len(global_model_bytes), False, 1, cfg.fed.args.optim_args.lr), dest=i, tag=i)      # dest is the rank of the receiver, tag = dest
+        comm.send((len(global_model_bytes), False, warmup_steps, cfg.fed.args.optim_args.lr), dest=i, tag=i)      # dest is the rank of the receiver, tag = dest
 
     # Send the buffered model - MODEL - to all clients in a NON-blocking way
     # dest is the rank of the receiver and tag = dest + comm_size 
@@ -117,8 +156,21 @@ def run_server(
     send_reqs = [comm.Isend(np.frombuffer(global_model_bytes, dtype=np.byte), dest=i, tag=i+comm_size) for i in range(1, num_clients+1)]
     ### TEST END
 
-    scheduler = Scheduler(comm, server, cfg.fed.args.num_local_epochs, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger)    
-    scheduler.warmup()
+    ## Ablation study
+    if hasattr(cfg.fed.args, 'q_ratio'):
+        q_ratio = cfg.fed.args.q_ratio
+    else:
+        q_ratio = 0.2
+    if hasattr(cfg.fed.args, 'lambda_val'):
+        lambda_val = cfg.fed.args.lambda_val
+    else:
+        lambda_val = 1.5
+    
+    if use_compass:
+        scheduler = SchedulerCompass(comm, server, cfg.fed.args.local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger, cfg.fed.servername == 'ServerFedCompassNova', q_ratio, lambda_val)    
+        scheduler.warmup()
+    else:
+        scheduler = SchedulerDummy(comm, server, cfg.fed.args.local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger)
     
     # Wait for response (buffer size) - INFO - from clients
     recv_reqs = [comm.irecv(source=i, tag=i) for i in range(1, num_clients+1)]
@@ -131,12 +183,12 @@ def run_server(
         client_idx, local_model_size = MPI.Request.waitany(recv_reqs)
         if client_idx != MPI.UNDEFINED:
             global_step += 1
-            logger.info(f"[Server Log] [Step #{global_step:3}] Server gets model size from client #{client_idx}")
+            # logger.info(f"[Server Log] [Step #{global_step:3}] Server gets model size from client #{client_idx}")
             scheduler.local_update(local_model_size, client_idx)
             recv_reqs.pop(client_idx)
             if global_step < cfg.num_epochs:
                 recv_reqs.insert(client_idx, comm.irecv(source=client_idx+1, tag=client_idx+1))
-            if scheduler.validation_flag or global_step >= cfg.num_epochs:
+            if (scheduler.validation_flag and global_step % cfg.fed.args.val_range == 0) or global_step >= cfg.num_epochs:
                 validation_start = time.time()
                 if cfg.validation == True:
                     test_loss, test_accuracy = validation(server, test_dataloader, flamby_metric)
@@ -154,7 +206,7 @@ def run_server(
                 cfg["logginginfo"]["BestAccuracy"] = best_accuracy
                 cfg["logginginfo"]["LocalUpdate_time"] = 0 # TODO
                 cfg["logginginfo"]["GlobalUpdate_time"] = 0 # TODO
-                logger.info(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
+                # logger.info(f"[Server Log] [Step #{global_step:3}] Iteration Logs:")
                 if global_step != 1:
                     logger.info(server.log_title())
                 server.logging_iteration(cfg, logger, global_step-1)
@@ -221,6 +273,11 @@ def run_client(
     weight = None
     weight = comm.scatter(weight, root=0)
 
+    if cfg.fed.args.do_simulation:
+        time_per_batch = None
+        time_per_batch = comm.scatter(time_per_batch, root=0)
+        np.random.seed(cfg.fed.args.seed * comm_rank)
+
     batchsize = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         batchsize[cid] = cfg.train_data_batch_size
@@ -260,36 +317,75 @@ def run_client(
         **cfg.fed.args,
     )
 
+    ######## Warmup on Delta: For fair and reproducible experiment results #########
+    if cfg.fed.args.delta_warmup:
+        warmup_start = time.time()
+        global_model_size, done, num_local_steps, lr = comm.recv(source=0, tag=comm_rank)
+        client.local_steps = num_local_steps
+        client.optim_args.lr = lr
+        global_model_bytes = np.empty(global_model_size, dtype=np.byte)
+        comm.Recv(global_model_bytes, source=0, tag=comm_rank+comm_size)
+        global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
+        global_model = torch.load(global_model_buffer)
+        client.model.load_state_dict(global_model)
+        client.update()
+        comm.send(0, dest=0, tag=comm_rank)
+        logger.info(f"Clinet {comm_rank-1} finishes the warmup in {time.time()-warmup_start} sec")
+    ################################################################################
+
     # FedAsync: main local training loop
     while True:
         # Receive model size from the server
-        global_model_size, done, num_local_epochs, lr = comm.recv(source=0, tag=comm_rank)
-        client.num_local_epochs = num_local_epochs
+        global_model_size, done, num_local_steps, lr = comm.recv(source=0, tag=comm_rank)
+        client.local_steps = num_local_steps
         client.optim_args.lr = lr
-        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_epochs} epochs with model size {global_model_size}")
-        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_epochs} epochs\n")
-        outfile[cid].flush()
+        # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps with model size {global_model_size}")
+        # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains info to train {num_local_steps} steps\n")
+        # outfile[cid].flush()
         if done: 
-            logger.info(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
-            outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training\n")
-            outfile[cid].flush()
+            # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training")
+            # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client receives the indicator to stop training\n")
+            # outfile[cid].flush()
             break
 
         # Allocate a buffer to receive the byte stream
         global_model_bytes = np.empty(global_model_size, dtype=np.byte)
         import sys
-        logger.info(f"The size of the buffer is {sys.getsizeof(global_model_bytes)}")
+        # logger.info(f"The size of the buffer is {sys.getsizeof(global_model_bytes)}")
         
         
         # Receive the byte stream
         comm.Recv(global_model_bytes, source=0, tag=comm_rank+comm_size)
-        logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model")
-        outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model\n")
-        outfile[cid].flush()
+        # logger.info(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model")
+        # outfile[cid].write(f"[Client Log] [Client #{comm_rank-1}] Client obtains the global model\n")
+        # outfile[cid].flush()
+
+        if cfg.fed.args.do_simulation:
+            if cfg.fed.args.speed_change_simulation:
+                if np.random.uniform(0,1) <= cfg.fed.args.speed_change_prob:
+                    if cfg.fed.args.simulation_distrib == 'normal':
+                        while True:
+                            tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=cfg.fed.args.avg_tpb*cfg.fed.args.global_std_scale, size=1)
+                            if np.all(tpb > 0): 
+                                tpb = list(tpb)
+                                break
+                    elif cfg.fed.args.simulation_distrib == 'homo':
+                        tpb = np.random.normal(loc=cfg.fed.args.avg_tpb, scale=0, size=1)
+                    elif cfg.fed.args.simulation_distrib == 'exp':
+                        random_numbers = np.random.exponential(scale=cfg.fed.args.exp_scale, size=1)
+                        rounded_numbers = np.round((random_numbers+cfg.fed.args.exp_bin_size)/cfg.fed.args.exp_bin_size) * cfg.fed.args.exp_bin_size
+                        tpb = list(rounded_numbers * (cfg.fed.args.avg_tpb/cfg.fed.args.exp_scale))
+                    else:
+                        raise NotImplementedError
+                    time_per_batch = tpb[0]
+            local_training_time = np.random.normal(loc=time_per_batch, scale=cfg.fed.args.local_std_scale*time_per_batch)
+            local_training_time *= num_local_steps
+        start_time = time.time()
 
         # Load the byte to state dict
         global_model_buffer = io.BytesIO(global_model_bytes.tobytes())
         global_model = torch.load(global_model_buffer)
+        logger.info(f"f[Client Log] [Client #{comm_rank-1}] Global model device {next(iter(global_model.values())).device}")
 
         # Train the model
         client.model.load_state_dict(global_model)
@@ -313,6 +409,10 @@ def run_client(
         local_model_buffer = io.BytesIO()
         torch.save(local_model, local_model_buffer)
         local_model_bytes = local_model_buffer.getvalue()
+
+        if cfg.fed.args.do_simulation:
+            while time.time()-start_time < local_training_time:
+                time.sleep(1)
 
         # Send the size of local model first
         comm.send(len(local_model_bytes), dest=0, tag=comm_rank)
