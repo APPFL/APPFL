@@ -30,7 +30,6 @@ class BaseServer:
         num_clients: int,
         device,
     ):
-        self.round = 0
         self.model = model
         self.loss_fn = loss_fn
         self.num_clients = num_clients
@@ -186,7 +185,7 @@ class BaseClient:
         outfile,
         test_dataloader,
     ):
-
+        self.round = 0
         self.id = id
         self.weight = weight
         self.model = model
