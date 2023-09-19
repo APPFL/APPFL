@@ -1,30 +1,21 @@
-import logging
 import os
-from collections import OrderedDict
-from .algorithm import BaseClient
-
+import copy
+import time
 import torch
 from torch.optim import *
+from .algorithm import BaseClient
+from collections import OrderedDict
 
-from torch.utils.data import DataLoader
-import copy
-
-import numpy as np
-import time
-
-
-class ClientOptimUpdate(BaseClient):
+class FedCompassClientOptim(BaseClient):
     def __init__(
         self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, **kwargs
     ):
-        super(ClientOptimUpdate, self).__init__(
+        super(FedCompassClientOptim, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
-
         self.round = 0
-
-        super(ClientOptimUpdate, self).client_log_title()
+        super(FedCompassClientOptim, self).client_log_title()
 
     def update(self):
         """Inputs for the local model update"""
@@ -35,11 +26,11 @@ class ClientOptimUpdate(BaseClient):
         start_time=time.time()
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            test_loss, test_accuracy = super(ClientOptimUpdate, self).client_validation(
+            test_loss, test_accuracy = super(FedCompassClientOptim, self).client_validation(
                 self.test_dataloader
             )
             per_iter_time = time.time() - start_time
-            super(ClientOptimUpdate, self).client_log_content(
+            super(FedCompassClientOptim, self).client_log_content(
                 0, per_iter_time, 0, 0, test_loss, test_accuracy
             )
             ## return to train mode
@@ -58,9 +49,9 @@ class ClientOptimUpdate(BaseClient):
                 train_loss = train_loss / len(self.dataloader)
                 train_accuracy = 100.0 * train_correct / tmptotal
                 if self.cfg.validation == True and self.test_dataloader != None:
-                    test_loss, test_accuracy = super(ClientOptimUpdate, self).client_validation(self.test_dataloader)
+                    test_loss, test_accuracy = super(FedCompassClientOptim, self).client_validation(self.test_dataloader)
                     per_iter_time = time.time() - start_time
-                    super(ClientOptimUpdate, self).client_log_content(epoch, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy)
+                    super(FedCompassClientOptim, self).client_log_content(epoch, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy)
                     self.model.train()
                 start_time = time.time()
                 train_loss, train_correct, tmptotal = 0, 0, 0
@@ -110,7 +101,7 @@ class ClientOptimUpdate(BaseClient):
             if self.clip_value != False:
                 sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(ClientOptimUpdate, self).laplace_mechanism_output_perturb(scale_value)
+            super(FedCompassClientOptim, self).laplace_mechanism_output_perturb(scale_value)
 
         """ Update local_state """
         self.local_state = OrderedDict()

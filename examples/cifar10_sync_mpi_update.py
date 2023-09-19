@@ -88,7 +88,7 @@ def main():
     cfg.fed.args.optim_args.momentum = args.client_lr_mom
     cfg.fed.args.local_steps = args.local_steps
     cfg.train_data_shuffle = True
-    cfg.fed.clientname = "ClientOptimUpdate"
+    cfg.fed.clientname = "FedCompassClientOptim"
     
     ## server
     cfg.fed.servername = args.server

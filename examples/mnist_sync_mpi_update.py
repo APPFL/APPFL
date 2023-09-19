@@ -77,7 +77,7 @@ def main():
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.local_steps = args.local_steps
     cfg.train_data_shuffle = True
-    cfg.fed.clientname = "ClientOptimUpdate"
+    cfg.fed.clientname = "FedCompassClientOptim"
 
     ## server
     cfg.fed.servername = args.server

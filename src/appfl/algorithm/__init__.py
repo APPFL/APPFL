@@ -4,7 +4,7 @@ This module provides a base class to define the functions required to implement 
 
 from .client_optimizer import *
 from .client_optimizer_flamby import * 
-from .client_optimizer_update import *
+from .client_optimizer_fedcompass import *
 from .client_optimizer_flamby_update import *
 from .server_fed_avg import *
 from .server_fed_avg_new import *

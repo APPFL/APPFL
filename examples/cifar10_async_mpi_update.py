@@ -101,7 +101,7 @@ def main():
     cfg.fed.args.lr_decay = args.lr_decay
     cfg.fed.args.local_steps = args.local_steps
     cfg.train_data_shuffle = True
-    cfg.fed.clientname = "ClientOptimUpdate"
+    cfg.fed.clientname = "FedCompassClientOptim"
     
     ## server
     cfg.fed.servername = args.server
