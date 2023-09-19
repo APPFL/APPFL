@@ -178,4 +178,4 @@ if __name__ == "__main__":
     main()
 
 # To run MPI with n clients:
-# mpiexec -np n+1 python ./mnist_async_mpi_update.py --partition dirichlet_noiid --server ServerFedBuffer --num_epochs 5 --do_simulation --simulation_distrib exp
+# mpiexec -np n+1 python ./mnist_async_mpi_update.py --partition dirichlet_noiid --server ServerFedBuffer --num_epochs 5 --do_simulation --simulation_distrib exp --gradient_based
