@@ -6,12 +6,13 @@ from ..misc import *
 
 logger = logging.getLogger(__name__)
 
-class ServerFedCPASAvgMNew(FedServer):
+class ServerFedCompassNova(FedServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         self.counter = 0 
         self.global_step = 0
+        # weights = [1.0 / num_clients for _ in range(num_clients)]
         weights = [1.0 / num_clients for _ in range(num_clients)] if weights is None else weights
-        super(ServerFedCPASAvgMNew, self).__init__(weights, model, loss_fn, num_clients, device, **kwargs)
+        super(ServerFedCompassNova, self).__init__(weights, model, loss_fn, num_clients, device, **kwargs)
         self.staleness = self.__staleness_func_factory(
             stalness_func_name= self.staleness_func['name'],
             **self.staleness_func['args']
@@ -21,6 +22,8 @@ class ServerFedCPASAvgMNew(FedServer):
         for name in self.model.state_dict():
             self.general_buffer[name] = torch.zeros_like(self.model.state_dict()[name])
         self.general_buffer_size = 0
+        self.general_buffer_effective_local_steps = 0
+        self.general_buffer_weight_sum = 0
         self.list_named_parameters = []
         for name, _ in self.model.named_parameters():
             self.list_named_parameters.append(name)
@@ -37,29 +40,35 @@ class ServerFedCPASAvgMNew(FedServer):
         self.model.load_state_dict(self.global_state)
         self.global_step += 1
 
-    def buffer(self, local_gradient: dict, init_step: int, client_idx: int, group_idx: int):
+    def buffer(self, local_gradient: dict, init_step: int, client_idx: int, group_idx: int, local_steps: int):
         """Buffer the local gradient from the client of a certain group."""
         if group_idx not in self.group_pseudo_grad:
             self.group_pseudo_grad[group_idx] = OrderedDict()
             for name in self.model.state_dict():
                 self.group_pseudo_grad[group_idx][name] = torch.zeros_like(self.model.state_dict()[name])
             self.group_pseudo_grad[group_idx]['_counter'] = 0
+            self.group_pseudo_grad[group_idx]['_effective_local_steps'] = 0
+            self.group_pseudo_grad[group_idx]['_group_weight_sum'] = 0
         alpha_t = self.alpha * self.staleness(self.global_step - init_step)
         for name in self.model.state_dict():
             if name in self.list_named_parameters:
-                self.group_pseudo_grad[group_idx][name] += local_gradient[name] * self.weights[client_idx] * alpha_t
+                self.group_pseudo_grad[group_idx][name] += local_gradient[name] * self.weights[client_idx] * alpha_t / local_steps
             else:
                 self.group_pseudo_grad[group_idx][name] += local_gradient[name]
         self.group_pseudo_grad[group_idx]['_counter'] += 1
+        self.group_pseudo_grad[group_idx]['_effective_local_steps'] += local_steps * self.weights[client_idx]
+        self.group_pseudo_grad[group_idx]['_group_weight_sum'] += self.weights[client_idx]
         
-    def single_buffer(self, local_gradient: dict, init_step: int, client_idx: int):
+    def single_buffer(self, local_gradient: dict, init_step: int, client_idx: int, local_steps: int):
         alpha_t = self.alpha * self.staleness(self.global_step - init_step)
         for name in self.model.state_dict():
             if name in self.list_named_parameters:
-                self.general_buffer[name] += local_gradient[name] * self.weights[client_idx] * alpha_t
+                self.general_buffer[name] += local_gradient[name] * self.weights[client_idx] * alpha_t / local_steps
             else:
                 self.general_buffer[name] += local_gradient[name]
         self.general_buffer_size += 1
+        self.general_buffer_effective_local_steps += local_steps * self.weights[client_idx]
+        self.general_buffer_weight_sum += self.weights[client_idx]
 
     def update_group(self, group_idx: int):
         """Update the model using all the buffered gradients for a certain group."""
@@ -67,8 +76,8 @@ class ServerFedCPASAvgMNew(FedServer):
             self.global_state = copy.deepcopy(self.model.state_dict())
             for name in self.model.state_dict():
                 if name in self.list_named_parameters:
-                    self.m_vector[name] = self.server_momentum_param_1 * self.m_vector[name] + (self.group_pseudo_grad[group_idx][name] + self.general_buffer[name])
-                    self.global_state[name] -= self.m_vector[name]
+                    effective_local_steps = (self.group_pseudo_grad[group_idx]['_effective_local_steps']+self.general_buffer_effective_local_steps) / (self.group_pseudo_grad[group_idx]['_group_weight_sum']+self.general_buffer_weight_sum)
+                    self.global_state[name] -= (self.group_pseudo_grad[group_idx][name] + self.general_buffer[name]) * effective_local_steps
                     self.general_buffer[name] = torch.zeros_like(self.model.state_dict()[name])
                 else:
                     self.global_state[name] = torch.div(self.group_pseudo_grad[group_idx][name]+self.general_buffer[name], self.group_pseudo_grad[group_idx]['_counter']+self.general_buffer_size)
@@ -76,27 +85,12 @@ class ServerFedCPASAvgMNew(FedServer):
             self.model.load_state_dict(self.global_state)
             self.global_step += 1
             self.general_buffer_size = 0
+            self.general_buffer_effective_local_steps = 0
+            self.general_buffer_weight_sum = 0
             del self.group_pseudo_grad[group_idx]
 
     def update_all(self):
-        """Update the model using all the buffered gradients for a group."""
-        self.global_state = copy.deepcopy(self.model.state_dict())
-        for name in self.model.state_dict():
-            if name in self.list_named_parameters:
-                for group_idx in self.group_pseudo_grad:
-                    self.global_state[name] -= self.group_pseudo_grad[group_idx][name]
-            # We may just skip this
-            else:
-                tmpsum = torch.zeros_like(self.model.state_dict()[name])
-                counter = 0
-                for group_idx in self.group_pseudo_grad:
-                    tmpsum += self.group_pseudo_grad[group_idx][name]
-                    counter += self.group_pseudo_grad[group_idx]['_counter']
-                if counter > 0:
-                    self.global_state[name] = torch.div(tmpsum, counter)
-        self.group_pseudo_grad = OrderedDict()
-        self.model.load_state_dict(self.global_state)
-        self.global_step += 1
+        pass
 
     def __staleness_func_factory(self, stalness_func_name, **kwargs):
         if stalness_func_name   == "constant":
@@ -122,11 +116,11 @@ class ServerFedCPASAvgMNew(FedServer):
 
                 f.write(
                     cfg.logginginfo.DataSet_name
-                    + " ServerFedCPASAvgM ClientLR "
+                    + " ServerFedCompassNova ClientLR "
                     + str(cfg.fed.args.optim_args.lr)
-                    + " ServerFedCPASAvgM Alpha "
+                    + " ServerFedCompassNova Alpha "
                     + str(cfg.fed.args.alpha)
-                    + " ServerFedCPASAvgM Staleness Function"
+                    + " ServerFedCompassNova Staleness Function"
                     + str(cfg.fed.args.staleness_func.name)
                     + " TestAccuracy "
                     + str(cfg.logginginfo.accuracy)

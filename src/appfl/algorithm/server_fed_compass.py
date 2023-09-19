@@ -6,13 +6,13 @@ from ..misc import *
 
 logger = logging.getLogger(__name__)
 
-class ServerFedCPASAvgNew(FedServer):
+class ServerFedCompass(FedServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         self.counter = 0 
         self.global_step = 0
         # weights = [1.0 / num_clients for _ in range(num_clients)]
         weights = [1.0 / num_clients for _ in range(num_clients)] if weights is None else weights
-        super(ServerFedCPASAvgNew, self).__init__(weights, model, loss_fn, num_clients, device, **kwargs)
+        super(ServerFedCompass, self).__init__(weights, model, loss_fn, num_clients, device, **kwargs)
         self.staleness = self.__staleness_func_factory(
             stalness_func_name= self.staleness_func['name'],
             **self.staleness_func['args']
@@ -122,11 +122,11 @@ class ServerFedCPASAvgNew(FedServer):
 
                 f.write(
                     cfg.logginginfo.DataSet_name
-                    + " ServerFedCPASAvg ClientLR "
+                    + " ServerFedCompass ClientLR "
                     + str(cfg.fed.args.optim_args.lr)
-                    + " ServerFedCPASAvg Alpha "
+                    + " ServerFedCompass Alpha "
                     + str(cfg.fed.args.alpha)
-                    + " ServerFedCPASAvg Staleness Function"
+                    + " ServerFedCompass Staleness Function"
                     + str(cfg.fed.args.staleness_func.name)
                     + " TestAccuracy "
                     + str(cfg.logginginfo.accuracy)
