@@ -2,7 +2,6 @@ import time
 import torch
 import argparse
 import appfl.run_mpi_cpas_new as rmcn
-import appfl.run_mpi_async as rma
 from mpi4py import MPI
 from dataloader import *
 from appfl.config import *
@@ -18,17 +17,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--device', type=str, default="cpu")    
 
 ## dataset and model
+parser.add_argument("--seed", type=int, default=42)
 parser.add_argument('--dataset', type=str, default="CIFAR10")   
 parser.add_argument('--num_channel', type=int, default=3)   
 parser.add_argument('--num_classes', type=int, default=10)   
 parser.add_argument('--num_pixel', type=int, default=32)   
-parser.add_argument('--pretrained', type=int, default=-1)   
-parser.add_argument('--model', type=str, default="resnet18_new")   
+parser.add_argument('--model', type=str, default="resnet18")   
 parser.add_argument('--train_data_batch_size', type=int, default=128)   
 parser.add_argument('--test_data_batch_size', type=int, default=128)   
-parser.add_argument("--partition", type=str, default="iid", 
-                    choices=["iid", "partition_noiid", "dirichlet_noiid"])
-parser.add_argument("--seed", type=int, default=42)
+parser.add_argument("--partition", type=str, default="iid", choices=["iid", "partition_noiid", "dirichlet_noiid"])
 
 ## clients
 parser.add_argument('--client_optimizer', type=str, default="SGD")    
@@ -47,8 +44,7 @@ parser.add_argument("--server", type=str, default="ServerFedAsynchronous",
                     choices=['ServerFedAsynchronous', 
                              'ServerFedBuffer',
                              'ServerFedCPASAvgNew',
-                             'ServerFedCPASAvgMNew',
-                             'ServerFedCPASNova'
+                             'ServerFedCPASAvgMNew'
                     ])
 
 ## Fed Async
@@ -63,10 +59,10 @@ parser.add_argument("--val_range", type=int, default=10, help="Perform server va
 ## Simulation
 parser.add_argument("--do_simulation", action="store_true", help="Whether to do client local training-time simulation")
 parser.add_argument("--simulation_distrib", type=str, default="normal", choices=["normal", "exp", "homo"], help="Local trianing-time distribution for different clients")
-parser.add_argument("--avg_tpb", type=float, default=0.5, help="Average time-per-batch for clint local trianing-time simulation")
-parser.add_argument("--global_std_scale", type=float, default=0.3, help="Std scale for time-per-batch for different clients")
+parser.add_argument("--avg_tpb", type=float, default=0.5, help="Average time-per-batch in second for client local trianing-time simulation")
+parser.add_argument("--global_std_scale", type=float, default=0.3, help="Normal distribution std scale for time-per-batch for different clients")
 parser.add_argument("--exp_scale", type=float, default=0.5, help="Scale for exponential distribution")
-parser.add_argument("--exp_bin_size", type=float, default=0.2, help="Width of the bin when discretizing the client tbp in exponential distribution")
+parser.add_argument("--exp_bin_size", type=float, default=0.2, help="Width of the bin when discretizing the client time-per-batch in exponential distribution")
 parser.add_argument("--local_std_scale", type=float, default=0.05, help="Std scale for time-per-batch for different experiments of one client")
 parser.add_argument("--delta_warmup", action="store_true", help="When running the code on delta, we need to first warm up the computing resource")
 
@@ -179,4 +175,4 @@ if __name__ == "__main__":
     main()
 
 # To run MPI with n clients:
-# mpiexec -np n+1 python ./cifar10_async_mpi_update.py
+# mpiexec -np n+1 python ./cifar10_async_mpi_update.py --model resnet18 --partition dirichlet_noiid --server ServerFedBuffer --num_epochs 5 --do_simulation --simulation_distrib exp

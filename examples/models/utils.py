@@ -1,20 +1,18 @@
 from .cnn import CNN
-from .resnet import resnet18
-from .resnet_new import ResNet18
-import flamby.datasets.fed_tcga_brca as TcgaBrca
-import flamby.datasets.fed_heart_disease as HeartDisease
+from .resnet import ResNet18
 import flamby.datasets.fed_ixi as IXI
-import flamby.datasets.fed_isic2019 as ISIC2019
 import flamby.datasets.fed_kits19 as Kits19
+import flamby.datasets.fed_tcga_brca as TcgaBrca
+import flamby.datasets.fed_isic2019 as ISIC2019
+import flamby.datasets.fed_heart_disease as HeartDisease
 
 def get_model(args):
-    ## User-defined model
     if args.model == "CNN":
         model = CNN(args.num_channel, args.num_classes, args.num_pixel)
-    if args.model == "resnet18":
-        model = resnet18(num_channel=args.num_channel, num_classes=args.num_classes, pretrained=args.pretrained)  
-    if args.model == "resnet18_new":
+    elif args.model == "resnet18":
         model = ResNet18()
+    else:
+        raise NotImplementedError
     return model
 
 def flamby_train(dataset: str):
