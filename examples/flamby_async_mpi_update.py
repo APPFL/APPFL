@@ -124,6 +124,7 @@ def main():
     cfg.fed.args.delta_warmup = args.delta_warmup
     cfg.fed.args.use_hetero_seed = args.use_hetero_seed
     cfg.fed.args.seed = args.seed
+    cfg.fed.args.speed_change_simulation = False
 
     ## fed async/fed buffer
     cfg.fed.args.K = args.K
@@ -143,7 +144,7 @@ def main():
         rmc.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric, args.server.startswith("ServerFedCompass"))
     else:
         assert comm_size == args.num_clients + 1
-        rmc.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset)
+        rmc.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset, metric)
 
     print("------DONE------", comm_rank)
 
