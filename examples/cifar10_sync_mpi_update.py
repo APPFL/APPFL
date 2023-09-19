@@ -25,7 +25,7 @@ parser.add_argument('--num_pixel', type=int, default=32)
 parser.add_argument('--model', type=str, default="resnet18")   
 parser.add_argument('--train_data_batch_size', type=int, default=128)   
 parser.add_argument('--test_data_batch_size', type=int, default=128)   
-parser.add_argument("--partition", type=str, default="iid", choices=["iid", "partition_noiid", "dirichlet_noiid"])
+parser.add_argument("--partition", type=str, default="iid", choices=["iid", "class_noiid", "dirichlet_noiid"])
 
 ## clients
 parser.add_argument('--client_optimizer', type=str, default="SGD")    
