@@ -8,6 +8,7 @@ Currently, we have the following examples:
 - FEMNIST
 - Coronahack
 - CELEBA
+- Federated load forecasting with Personalization layers
 
 # How to run
 
@@ -65,3 +66,20 @@ mpiexec -n 204 python femnist.py --server ServerFedAvg --num_epochs 6 --client_l
 mpiexec -n 204 python grpc_femnist.py
 ```
 
+## Federated load forecasting with Personalization Layers
+
+Personalization layers allow certain layers of the model to remain local to each client. For example, the load forecasting model is based on a LSTM+fully connected architecture, with the following layer names: 
+
+```lstm_model.weight_ih_l0,lstm_model.weight_hh_l0,lstm_model.bias_ih_l0,lstm_model.bias_hh_l0,lstm_model.weight_ih_l1,lstm_model.weight_hh_l1,lstm_model.bias_ih_l1,lstm_model.bias_hh_l1,FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight```
+
+Suppose we want to personalize the fully connected layer's weights in a MPI setting, then this can be achieved as follows.
+
+### MPI communication
+
+```mpiexec -n 43 python personalization_fedloadforecasting.py --personalization_layers FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight --personalization_config_name MyPersonalization```
+
+### Running Serial
+
+```python personalization_fedloadforecasting.py --personalization_layers FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight --personalization_config_name MyPersonalization```
+
+Currently, gRPC has not been implemented for personalization layers.

@@ -1,4 +1,5 @@
 from cmath import nan
+from typing import Union, List
 
 from collections import OrderedDict
 import torch.nn as nn
@@ -19,7 +20,7 @@ from typing import Any
 
 def run_serial(
     cfg: DictConfig,
-    model: nn.Module,
+    model: Union[nn.Module,List],
     loss_fn: nn.Module,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
@@ -30,11 +31,13 @@ def run_serial(
 
     Args:
         cfg (DictConfig): the configuration for this run
-        model (nn.Module): neural network model to train
+        model (nn.Module or list): if personalization is disabled, neural network model to train. if personalization is enabled, it will be a LIST 
+            containing the server and client models (i.e. num_clients+1 models), which can be uninitialized or preloaded with saved weights depending on user's choice to load saved model
         loss_fn (nn.Module): loss function
         train_data (Dataset): training data
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         dataset_name (str): optional dataset name
+        metric: (function with 2 inputs) the metric for measuring model goodness on the test set
     """
 
     """ log for a server """
@@ -81,7 +84,7 @@ def run_serial(
 
     server = eval(cfg.fed.servername)(
         weights,
-        copy.deepcopy(model),
+        copy.deepcopy(model) if not (cfg.personalization) else model[0],
         loss_fn,
         cfg.num_clients,
         cfg.device_server,
@@ -100,7 +103,9 @@ def run_serial(
         eval(cfg.fed.clientname)(
             k,
             weights[k],
-            copy.deepcopy(model),
+            # deepcopy the common model if there is no personalization, else use the the clients' own model
+            # the index is k+1, because the first model belongs to the server
+            copy.deepcopy(model) if not cfg.personalization else model[k+1],
             loss_fn,
             DataLoader(
                 train_data[k],
@@ -128,12 +133,20 @@ def run_serial(
         local_states = []
 
         global_state = server.model.state_dict()
+        if cfg.personalization:
+            keys = [key for key,_ in model[0].named_parameters()]
+            for key in keys:
+                if key in cfg.p_layers:
+                    _ = global_state.pop(key)
 
         local_update_start = time.time()
         for k, client in enumerate(clients):
 
             ## initial point for a client model
-            client.model.load_state_dict(global_state)
+            if cfg.personalization:
+                client.model.load_state_dict(global_state,strict=False)
+            else:
+                client.model.load_state_dict(global_state)
 
             ## client update
             local_states.append(client.update())
@@ -168,7 +181,10 @@ def run_serial(
         """ Saving model """
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
-                save_model_iteration(t + 1, server.model, cfg)
+                if cfg.personalization == True:
+                    save_model_state_iteration(t + 1, server.model, cfg)
+                else:
+                    save_model_iteration(t + 1, server.model, cfg)
 
     server.logging_summary(cfg, logger)
 

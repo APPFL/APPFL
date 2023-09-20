@@ -6,6 +6,8 @@ from .algorithm import BaseClient
 import torch
 from torch.optim import *
 
+from ..misc.utils import save_model_state_iteration
+
 from torch.utils.data import DataLoader
 import copy
 
@@ -13,17 +15,20 @@ import numpy as np
 import time
 
 
-class ClientOptim(BaseClient):
+class PersonalizedClientOptim(BaseClient):
+    
     def __init__(
         self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs
     ):
-        super(ClientOptim, self).__init__(
+        super(PersonalizedClientOptim, self).__init__(
             id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
         )
         self.__dict__.update(kwargs)
+
+        self.round = 0
         self.metric = metric
 
-        super(ClientOptim, self).client_log_title()
+        super(PersonalizedClientOptim, self).client_log_title()
 
     def update(self):
         
@@ -38,11 +43,11 @@ class ClientOptim(BaseClient):
         start_time=time.time()
         ## initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            test_loss, test_accuracy = super(ClientOptim, self).client_validation(
+            test_loss, test_accuracy = super(PersonalizedClientOptim, self).client_validation(
                 self.test_dataloader, self.metric
             )
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(
+            super(PersonalizedClientOptim, self).client_log_content(
                 0, per_iter_time, 0, 0, test_loss, test_accuracy
             )
             ## return to train mode
@@ -52,10 +57,11 @@ class ClientOptim(BaseClient):
         for t in range(self.num_local_epochs):
             start_time=time.time()
             train_loss = 0
-            train_correct = 0            
-            tmptotal = 0
-            for data, target in self.dataloader:                
-                tmptotal += len(target)
+            train_accuracy = 0          
+            y_true = []
+            y_pred = []
+            for data, target in self.dataloader:   
+                
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
                 optimizer.zero_grad()
@@ -65,11 +71,9 @@ class ClientOptim(BaseClient):
                 optimizer.step()
                 
                 train_loss += loss.item()
-                if output.shape[1] == 1:
-                    pred = torch.round(output)
-                else:
-                    pred = output.argmax(dim=1, keepdim=True)
-                train_correct += pred.eq(target.view_as(pred)).sum().item()
+                
+                y_true.append(target.detach().cpu().numpy())
+                y_pred.append(output.detach().cpu().numpy())
 
                 if self.clip_value != False:
                     torch.nn.utils.clip_grad_norm_(
@@ -79,27 +83,19 @@ class ClientOptim(BaseClient):
                     )
             ## Validation
             train_loss = train_loss / len(self.dataloader)
-            train_accuracy = 100.0 * train_correct / tmptotal
+            y_true, y_pred = np.concatenate(y_true), np.concatenate(y_pred)
+            train_accuracy = float(self.metric(y_true,y_pred))
+            
             if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, test_accuracy = super(ClientOptim, self).client_validation(
+                test_loss, test_accuracy = super(PersonalizedClientOptim, self).client_validation(
                     self.test_dataloader, self.metric
                 )
                 per_iter_time = time.time() - start_time
-                super(ClientOptim, self).client_log_content(
+                super(PersonalizedClientOptim, self).client_log_content(
                     t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
                 )
                 ## return to train mode
                 self.model.train()
-
-            ## save model.state_dict()
-            if self.cfg.save_model_state_dict == True:
-                path = self.cfg.output_dirname + "/client_%s" % (self.id)
-                if not os.path.exists(path):
-                    os.makedirs(path)
-                torch.save(
-                    self.model.state_dict(),
-                    os.path.join(path, "%s_%s.pt" % (self.round, t)),
-                )
  
         self.round += 1
 
@@ -114,7 +110,11 @@ class ClientOptim(BaseClient):
             if self.clip_value != False:
                 sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            super(PersonalizedClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            
+        """ Save each client model periodically """ 
+        if self.cfg.personalization == True and self.cfg.save_model_state_dict == True and ((self.round) % self.cfg.checkpoints_interval == 0 or self.round== self.cfg.num_epochs):
+            save_model_state_iteration(self.round, self.model, self.cfg, client_id=self.id)
 
         """ Update local_state """
         self.local_state = OrderedDict()

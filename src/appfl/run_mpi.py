@@ -17,7 +17,7 @@ from .misc import *
 from .algorithm import *
 
 from mpi4py import MPI
-from typing import Any
+from typing import Any, Union, List
 import copy
 
 import math
@@ -44,6 +44,7 @@ def run_server(
         num_clients (int): the number of clients used in PPFL simulation
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
         DataSet_name (str): optional dataset name
+        metric (function with 2 inputs): the metric for measuring model goodness on the test set
     """
     ## Start
     comm_size = comm.Get_size()
@@ -123,7 +124,7 @@ def run_server(
     counts = []
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
-        do_continue = comm.bcast([do_continue, recvlimit], root=0)
+        do_continue = comm.bcast(do_continue, root=0)
 
         # We need to load the model on cpu, before communicating.
         # Otherwise, out-of-memeory error from GPU
@@ -168,9 +169,14 @@ def run_server(
         server.logging_iteration(cfg, logger, t)
 
         """ Saving model """
+        """ If personalization is enabled, we only save the shared layers for server, so call save_model_state_iteration.
+        Otherwise, we can save the whole server model so call save_model_iteration. """
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
-                save_model_iteration(t + 1, server.model, cfg)
+                if cfg.personalization == True:
+                    save_model_state_iteration(t + 1, server.model, cfg)
+                else:
+                    save_model_iteration(t + 1, server.model, cfg)
 
         if np.isnan(test_loss) == True:
             break
@@ -185,7 +191,7 @@ def run_server(
 def run_client(
     cfg: DictConfig,
     comm: MPI.Comm,
-    model: nn.Module,
+    model: Union[nn.Module,List],
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
@@ -197,10 +203,12 @@ def run_client(
     Args:
         cfg (DictConfig): the configuration for this run
         comm: MPI communicator
-        model (nn.Module): neural network model to train
+        model (nn.Module or list): if personalization is disabled, neural network model to train. if personalization is enabled, it will be a LIST 
+            containing the client models (i.e. num_clients models), which can be uninitialized or preloaded with saved weights depending on user's choice to load saved model
         num_clients (int): the number of clients used in PPFL simulation
         train_data (Dataset): training data
         test_data (Dataset): testing data
+        metric (function with 2 inputs): the metric for measuring model goodness on the test set
     """
 
     comm_size = comm.Get_size()
@@ -268,7 +276,8 @@ def run_client(
             eval(cfg.fed.clientname)(
                 cid,
                 weight[cid],
-                copy.deepcopy(model),
+                # deepcopy the common model if there is no personalization, else use the the clients' own model
+                copy.deepcopy(model) if not cfg.personalization else model[cid],
                 loss_fn,
                 DataLoader(
                     train_data[cid],
@@ -291,8 +300,16 @@ def run_client(
     maxcount = -1
 
     while do_continue:        
+        
         """Receive "global_state" """
         global_state = comm.bcast(None, root=0)
+        
+        """If personalization is enabled, then delete the personalized layer weights so they
+        arent overwritten in the client model when an update happens"""
+        if cfg.personalization:
+            for key in cfg.p_layers:
+                del global_state[key]
+                
 
         """ Update "local_states" based on "global_state" """
         local_states = OrderedDict()
@@ -300,7 +317,13 @@ def run_client(
             cid = client.id
 
             ## initial point for a client model
-            client.model.load_state_dict(global_state)
+            
+            """If personalization is enabled, then global_state only has partial weights (i.e. shared layers),
+            so strict=False is needed to update the weights into client model"""
+            if cfg.personalization:
+                client.model.load_state_dict(global_state,strict=False)
+            else:
+                client.model.load_state_dict(global_state)
 
             ## client update
             update = client.update()
@@ -355,4 +378,3 @@ def slicing_gather_server(comm, comm_size, local_states_out, counts, maxcount):
         for cid, state in local_states.items():
             local_states_out[cid] = state
     return local_states_out
-    
