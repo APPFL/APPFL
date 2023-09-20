@@ -261,7 +261,7 @@ def run_client(
     if "cuda" in cfg.device:
         ## Check available GPUs if CUDA is used
         num_gpu = torch.cuda.device_count()
-        clientpergpu = math.ceil(num_clients/cfg.num_gpu)
+        clientpergpu = math.ceil(num_clients/num_gpu)
 
     clients = []
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):

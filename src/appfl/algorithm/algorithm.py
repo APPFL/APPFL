@@ -185,7 +185,7 @@ class BaseClient:
         outfile,
         test_dataloader,
     ):
-
+        self.round = 0
         self.id = id
         self.weight = weight
         self.model = model
