@@ -106,6 +106,7 @@ def client_log(dir, output_filename):
 
 
 def load_model(cfg: DictConfig):
+    
     file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
     model = torch.load(file)
     model.eval()
@@ -113,6 +114,7 @@ def load_model(cfg: DictConfig):
 
 
 def save_model_iteration(t, model, cfg: DictConfig):
+    
     dir = cfg.save_model_dirname
     if os.path.isdir(dir) == False:
         os.mkdir(dir)
@@ -125,6 +127,55 @@ def save_model_iteration(t, model, cfg: DictConfig):
         uniq += 1
 
     torch.save(model, file)
+    
+
+def load_model_state(cfg: DictConfig, model, client_id = None):
+    
+    # This function allows to use partial model weights into a model.
+    # Useful since server model will only have shared layer weights when personalization is enabled.
+    if client_id == None:
+        file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
+    else:
+        file = cfg.load_model_dirname + "/client_%d"%client_id + "/%s%s" % (cfg.load_model_filename, ".pt")
+
+    model.load_state_dict(torch.load(file),strict=False)
+        
+    return model
+    
+
+def save_model_state_iteration(t, model, cfg: DictConfig, client_id = None):
+    
+    # This function saves the model weights (instead of the entire model).
+    # If personalization is enabled, only the shared layer weights will be saved for the server.
+    dir = cfg.save_model_dirname
+    if os.path.isdir(dir) == False:
+        os.mkdir(dir)
+    if client_id != None:
+        if os.path.isdir(dir+'/client_%d'%client_id) == False:
+            try:
+                os.mkdir(dir+'/client_%d'%client_id)
+            except:
+                pass
+
+    file_ext = ".pt"
+    if client_id == None:
+        file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
+    else:
+        file = dir + "/client_%d"%client_id + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
+    uniq = 1
+    while os.path.exists(file):
+        file = dir + "/%s_Round_%s_%d%s" % (cfg.save_model_filename, t, uniq, file_ext)
+        uniq += 1
+        
+    state_dict = copy.deepcopy(model.state_dict())
+    if client_id == None:
+        if cfg.personalization == True:
+            keys = [key for key,_ in enumerate(model.named_parameters())]
+            for key in keys:
+                if key in cfg.p_layers:
+                    _ = state_dict.pop(key)
+
+    torch.save(state_dict, file)
  
 
 def set_seed(seed=233):

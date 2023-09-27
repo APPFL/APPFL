@@ -95,20 +95,7 @@ def readyMNISTdata():
     
     if not (os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
         os.mkdir(datafolderpath)
-
-def readyMNISTdata():    
-    currentpath = os.getcwd()    
-    datafolderpath = os.path.join(currentpath, "_data")
-    
-    if not (os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
-        os.mkdir(datafolderpath)
-
     mnistfolderpath = os.path.join(datafolderpath, "MNIST")
-    if not (os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):        
-        print("Download MNIST data")
-        torchvision.datasets.MNIST(
-            "./_data", download=True, train=False, transform=ToTensor()
-        )
     if not (os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):        
         print("Download MNIST data")
         torchvision.datasets.MNIST(
@@ -125,7 +112,6 @@ if comm_size > 1:
 else:
     # Serial
     readyMNISTdata()    
-
 
 def test_mnist_fedavg():
 
