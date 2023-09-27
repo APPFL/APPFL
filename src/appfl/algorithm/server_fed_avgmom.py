@@ -2,9 +2,13 @@ from .server_federated import FedServer
 
 
 class ServerFedAvgMomentum(FedServer):
+    def update_m_vector(self):
+        for name, _ in self.model.named_parameters():
+            self.m_vector[name] = self.server_momentum_param_1 * self.m_vector[name]+ self.pseudo_grad[name]
+
     def compute_step(self):
         super(ServerFedAvgMomentum, self).compute_pseudo_gradient()
-        super(ServerFedAvgMomentum, self).update_m_vector()
+        self.update_m_vector()
         for name, _ in self.model.named_parameters():
             self.step[name] = -self.m_vector[name]
 
