@@ -91,7 +91,7 @@ def create_custom_logger(logger, cfg: DictConfig):
 def client_log(dir, output_filename):
 
     if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+        os.makedirs(dir, exist_ok=True)
 
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)

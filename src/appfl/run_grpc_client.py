@@ -4,14 +4,13 @@ import torch
 import logging
 import torch.nn as nn
 from .misc import *
+from typing import Any
 from .algorithm import *
 from torch.optim import *
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 from .comm.grpc.grpc_communicator_pb2 import Job
 from .comm.grpc.grpc_client import APPFLgRPCClient
-
-
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -29,6 +28,7 @@ def run_client(
     train_data: Dataset,
     gpu_id: int = 0,
     test_data: Dataset = Dataset(),
+    metric: Any = None
 ) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
@@ -120,7 +120,7 @@ def run_client(
         cfg,
         outfile,
         test_dataloader,
-        None,
+        metric,
         **cfg.fed.args,
     )
 

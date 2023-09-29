@@ -14,48 +14,32 @@ import time
 
 
 class ClientOptim(BaseClient):
+    """This client optimizer which perform updates for certain number of epochs in each training round."""
     def __init__(
         self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs
     ):
-        super(ClientOptim, self).__init__(
-            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
-        )
+        super(ClientOptim, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader)
         self.__dict__.update(kwargs)
         self.metric = metric
-
         super(ClientOptim, self).client_log_title()
 
     def update(self):
-        
-        """Inputs for the local model update"""
-
         self.model.to(self.cfg.device)
-
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
- 
-
         """ Multiple local update """
-        start_time=time.time()
-        ## initial evaluation
+        ## Initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            test_loss, test_accuracy = super(ClientOptim, self).client_validation(
-                self.test_dataloader, self.metric
-            )
+            start_time=time.time()
+            test_loss, test_accuracy = super(ClientOptim, self).client_validation(self.test_dataloader, self.metric)
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(
-                0, per_iter_time, 0, 0, test_loss, test_accuracy
-            )
-            ## return to train mode
+            super(ClientOptim, self).client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)
+            ## Return to train mode
             self.model.train()        
 
-        ## local training 
+        ## Local training 
         for t in range(self.num_local_epochs):
             start_time=time.time()
-            train_loss = 0
-            train_correct = 0            
-            tmptotal = 0
             for data, target in self.dataloader:                
-                tmptotal += len(target)
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
                 optimizer.zero_grad()
@@ -63,14 +47,6 @@ class ClientOptim(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
                 optimizer.step()
-                
-                train_loss += loss.item()
-                if output.shape[1] == 1:
-                    pred = torch.round(output)
-                else:
-                    pred = output.argmax(dim=1, keepdim=True)
-                train_correct += pred.eq(target.view_as(pred)).sum().item()
-
                 if self.clip_value != False:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
@@ -78,16 +54,11 @@ class ClientOptim(BaseClient):
                         norm_type=self.clip_norm,
                     )
             ## Validation
-            train_loss = train_loss / len(self.dataloader)
-            train_accuracy = 100.0 * train_correct / tmptotal
             if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, test_accuracy = super(ClientOptim, self).client_validation(
-                    self.test_dataloader, self.metric
-                )
+                train_loss, train_accuracy = super(ClientOptim, self).client_validation(self.dataloader, self.metric)
+                test_loss, test_accuracy = super(ClientOptim, self).client_validation(self.test_dataloader, self.metric)
                 per_iter_time = time.time() - start_time
-                super(ClientOptim, self).client_log_content(
-                    t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy
-                )
+                super(ClientOptim, self).client_log_content(t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy)
                 ## return to train mode
                 self.model.train()
 
@@ -108,7 +79,7 @@ class ClientOptim(BaseClient):
             for k in self.primal_state:
                 self.primal_state[k] = self.primal_state[k].cpu()
 
-        """ Differential Privacy  """
+        ## Differential Privacy
         if self.epsilon != False:
             sensitivity = 0
             if self.clip_value != False:
@@ -116,7 +87,7 @@ class ClientOptim(BaseClient):
             scale_value = sensitivity / self.epsilon
             super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
 
-        """ Update local_state """
+        ## Update local_state
         self.local_state = OrderedDict()
         self.local_state["primal"] = self.primal_state
         self.local_state["dual"] = OrderedDict()

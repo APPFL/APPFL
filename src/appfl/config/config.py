@@ -29,7 +29,7 @@ class Config:
     # Train data batch info
     batch_training: bool = True  ## TODO: revisit
     train_data_batch_size: int = 64
-    train_data_shuffle: bool = False
+    train_data_shuffle: bool = True
 
     # Indication of whether to validate or not using testing data
     validation: bool = True

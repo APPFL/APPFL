@@ -1,6 +1,7 @@
 import grpc
 import logging
 import torch.nn as nn
+from typing import Any
 from .misc.data import Dataset
 from omegaconf import DictConfig
 from .comm.grpc import serve, GRPCCommunicator, APPFLgRPCServer
@@ -12,13 +13,13 @@ def grpc_server_on(channel) -> bool:
     except grpc.FutureTimeoutError:
         return False
 
-
 def run_server(
     cfg: DictConfig,
     model: nn.Module,    
     loss_fn: nn.Module, 
     num_clients: int,
     test_data: Dataset = Dataset(),
+    metric: Any = None
 ) -> None:
     """Launch gRPC server to listen to the port to serve requests from clients.
     The service URI is set in the configuration.
@@ -38,7 +39,7 @@ def run_server(
     #     print("Server is already running . . .")
     #     return
 
-    communicator = GRPCCommunicator(cfg.server.id, str(cfg.server.port), APPFLgRPCServer(cfg, model, loss_fn, test_data, num_clients))
+    communicator = GRPCCommunicator(cfg.server.id, str(cfg.server.port), APPFLgRPCServer(cfg, model, loss_fn, test_data, num_clients, metric))
 
     logger = logging.getLogger(__name__)
     logger.info("Starting the server to listen to requests from clients . . .")

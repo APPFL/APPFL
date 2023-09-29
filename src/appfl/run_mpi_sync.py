@@ -7,7 +7,6 @@ from .misc import *
 from mpi4py import MPI
 from typing import Any
 from .algorithm import *
-from torch.optim import *
 from omegaconf import DictConfig
 from .comm.mpi import MpiCommunicator
 from torch.utils.data import DataLoader
@@ -36,13 +35,12 @@ def run_server(
         dataset_name: optional dataset name
         metric: evaluation metric function
     """
-    device = "cpu"
-    comm_size = comm.Get_size()
+    device = "cpu"  # server aggregation happens on CPU
     communicator = MpiCommunicator(comm)
 
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
-    cfg.logginginfo.comm_size = comm_size
+    cfg.logginginfo.comm_size = comm.Get_size()
     cfg.logginginfo.DataSet_name = dataset_name
 
     ## Using tensorboard to visualize the test loss
@@ -50,7 +48,7 @@ def run_server(
         from tensorboardX import SummaryWriter
         writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))
 
-    "Run validation if test data is given or the configuration is enabled."
+    ## Run validation if test data is given and the configuration is enabled.
     if cfg.validation == True and len(test_dataset) > 0:
         test_dataloader = DataLoader(
             test_dataset,
@@ -61,14 +59,14 @@ def run_server(
     else:
         cfg.validation = False
 
-    "Collect the number of data from each client and compute the weights for each client"
+    ## Collect the number of data from each client and compute the weights for each client
     num_data = communicator.gather(0, dest=0)
     total_num_data = 0
     for num in num_data:
         total_num_data += num
     weights = [num / total_num_data for num in num_data]
 
-    "Synchronous federated learning server"
+    ## Synchronous federated learning server
     server = eval(cfg.fed.servername)(weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
 
     start_time = time.time()    
@@ -87,7 +85,6 @@ def run_server(
         
         cfg.logginginfo.LocalUpdate_time = time.time() - per_iter_start
 
-        #print("Start Server Update")
         global_update_start = time.time()
         server.update(local_states)
         cfg.logginginfo.GlobalUpdate_time = time.time() - global_update_start
@@ -96,7 +93,6 @@ def run_server(
         if cfg.validation == True:
             test_loss, test_accuracy = validation(server, test_dataloader, metric)
             if cfg.use_tensorboard:
-                # Add them to tensorboard
                 writer.add_scalar("server_test_accuracy", test_accuracy, iter)
                 writer.add_scalar("server_test_loss", test_loss, iter)
             if test_accuracy > best_accuracy:
@@ -110,7 +106,7 @@ def run_server(
 
         server.logging_iteration(cfg, logger, iter)
 
-        """ Saving model """
+        ## Saving model 
         if (iter + 1) % cfg.checkpoints_interval == 0 or iter + 1 == cfg.num_epochs:
             if cfg.save_model == True:
                 save_model_iteration(iter + 1, server.model, cfg)
@@ -118,11 +114,11 @@ def run_server(
         if np.isnan(test_loss) == True:
             break
 
-    "Notify the clients about the end of the learning"
+    ## Notify the clients about the end of the learning
     communicator.broadcast_global_model(args={'done': True})
     communicator.cleanup()
 
-    """ Summary """
+    ## Summary 
     server.logging_summary(cfg, logger)
 
 def run_client(
@@ -130,7 +126,6 @@ def run_client(
     comm: MPI.Comm,
     model: nn.Module,
     loss_fn: nn.Module,
-    num_clients: int,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
     metric: Any = None
@@ -144,7 +139,6 @@ def run_client(
         comm: MPI communicator
         model: neural network model to train
         loss_fn: loss function 
-        num_clients: the number of clients used in PPFL simulation
         train_data: training data
         test_data: validation data
         metric: evaluation metric function
@@ -152,7 +146,7 @@ def run_client(
     client_idx = comm.Get_rank() - 1
     communicator = MpiCommunicator(comm)
 
-    """ log for clients"""
+    ## log for clients
     output_filename = cfg.output_filename + "_client_%s" % (client_idx-1)
     outfile = client_log(cfg.output_dirname, output_filename)
 
@@ -168,7 +162,7 @@ def run_client(
     if cfg.batch_training == False:
         batchsize = len(train_data[client_idx-1])
 
-    "Run validation if test data is given or the configuration is enabled."
+    ## Run validation if test data is given or the configuration is enabled
     if cfg.validation == True and len(test_data) > 0:
         test_dataloader = DataLoader(
             test_data,

@@ -1,25 +1,22 @@
-import os
 import time
-
-import numpy as np
 import torch
-
-import torchvision
-from torchvision.transforms import ToTensor
-
+import argparse
+import appfl.run_serial as rs
+from dataloader import *
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
-from models.cnn import *
+from losses.utils import get_loss
+from models.utils import get_model
+from metric.utils import get_metric
 
-import appfl.run_serial as rs
+"""
+To run serially with 5 clients:
+python ./mnist_serial.py --num_clients 5 --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
+"""
 
-import argparse
-
-""" read arguments """
-
+## read arguments 
 parser = argparse.ArgumentParser()
-
 parser.add_argument("--device", type=str, default="cpu")
 
 ## dataset
@@ -27,84 +24,43 @@ parser.add_argument("--dataset", type=str, default="MNIST")
 parser.add_argument("--num_channel", type=int, default=1)
 parser.add_argument("--num_classes", type=int, default=10)
 parser.add_argument("--num_pixel", type=int, default=28)
+parser.add_argument("--model", type=str, default="CNN")
+parser.add_argument("--partition", type=str, default="iid", choices=["iid", "class_noiid", "dirichlet_noiid"])
+parser.add_argument("--seed", type=int, default=42)
 
 ## clients
-parser.add_argument("--num_clients", type=int, default=1)
+parser.add_argument("--num_clients", type=int, default=2)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
 parser.add_argument("--client_lr", type=float, default=1e-3)
+parser.add_argument("--local_train_pattern", type=str, default="steps", choices=["steps", "epochs"], help="For local optimizer, what counter to use, number of steps or number of epochs")
+parser.add_argument("--num_local_steps", type=int, default=100)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg")
 parser.add_argument("--num_epochs", type=int, default=2)
+parser.add_argument("--server_lr", type=float, default=0.01)
+parser.add_argument("--mparam_1", type=float, default=0.9)
+parser.add_argument("--mparam_2", type=float, default=0.99)
+parser.add_argument("--adapt_param", type=float, default=0.001)
 
-parser.add_argument("--server_lr", type=float, required=False)
-parser.add_argument("--mparam_1", type=float, required=False)
-parser.add_argument("--mparam_2", type=float, required=False)
-parser.add_argument("--adapt_param", type=float, required=False)
+## loss function
+parser.add_argument("--loss_fn", type=str, required=False, help="path to the custom loss function definition file, use cross-entropy loss by default if no path is specified")
+parser.add_argument("--loss_fn_name", type=str, required=False, help="class name for the custom loss in the loss function definition file, choose the first class by default if no name is specified")
 
+## evaluation metric
+parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
+parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
 args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
- 
-
-def get_data():
-    dir = os.getcwd() + "/datasets/RawData"
-
-    # Root download the data if not already available.
-    # test data for a server
-    test_data_raw = eval("torchvision.datasets." + args.dataset)(
-        dir, download=True, train=False, transform=ToTensor()
-    )
-
-    test_data_input = []
-    test_data_label = []
-    for idx in range(len(test_data_raw)):
-        test_data_input.append(test_data_raw[idx][0].tolist())
-        test_data_label.append(test_data_raw[idx][1])
-
-    test_dataset = Dataset(
-        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
-    )
-
-    # training data for multiple clients
-    train_data_raw = eval("torchvision.datasets." + args.dataset)(
-        dir, download=False, train=True, transform=ToTensor()
-    )
-
-    split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)
-    train_datasets = []
-    for i in range(args.num_clients):
-
-        train_data_input = []
-        train_data_label = []
-        for idx in split_train_data_raw[i]:
-            train_data_input.append(train_data_raw[idx][0].tolist())
-            train_data_label.append(train_data_raw[idx][1])
-
-        train_datasets.append(
-            Dataset(
-                torch.FloatTensor(train_data_input),
-                torch.tensor(train_data_label),
-            )
-        )
-    return train_datasets, test_dataset
-
-
-def get_model():
-    ## User-defined model
-    model = CNN(args.num_channel, args.num_classes, args.num_pixel)
-    return model
-
 
 ## Run
 def main():
-
-    """ Configuration """
+    ## Configuration
     cfg = OmegaConf.structured(Config)
-
     cfg.device = args.device
     cfg.reproduce = True
     if cfg.reproduce == True:
@@ -112,8 +68,10 @@ def main():
 
     ## clients
     cfg.num_clients = args.num_clients
+    cfg.fed.clientname = "ClientOptim" if args.local_train_pattern == "epochs" else "ClientStepOptim"
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.num_local_steps = args.num_local_steps
     cfg.fed.args.num_local_epochs = args.num_local_epochs
 
     ## server
@@ -121,74 +79,36 @@ def main():
     cfg.num_epochs = args.num_epochs
 
     ## outputs
-
     cfg.use_tensorboard = False
-
     cfg.save_model_state_dict = False
+    cfg.output_dirname = f"./outputs_{args.dataset}_{args.partition}_{args.num_clients}clients_{args.server}_{args.num_epochs}epochs_serial"
 
-    cfg.output_dirname = "./outputs_%s_%s_%s" % (
-        args.dataset,
-        args.server,
-        args.client_optimizer,
-    )
-    if args.server_lr != None:
-        cfg.fed.args.server_learning_rate = args.server_lr
-        cfg.output_dirname += "_ServerLR_%s" % (args.server_lr)
-
-    if args.adapt_param != None:
-        cfg.fed.args.server_adapt_param = args.adapt_param
-        cfg.output_dirname += "_AdaptParam_%s" % (args.adapt_param)
-
-    if args.mparam_1 != None:
-        cfg.fed.args.server_momentum_param_1 = args.mparam_1
-        cfg.output_dirname += "_MParam1_%s" % (args.mparam_1)
-
-    if args.mparam_2 != None:
-        cfg.fed.args.server_momentum_param_2 = args.mparam_2
-        cfg.output_dirname += "_MParam2_%s" % (args.mparam_2)
-
-    cfg.output_filename = "result"
+    ## adaptive server
+    cfg.fed.args.server_learning_rate = args.server_lr          # FedAdam
+    cfg.fed.args.server_adapt_param = args.adapt_param          # FedAdam
+    cfg.fed.args.server_momentum_param_1 = args.mparam_1        # FedAdam, FedAvgm
+    cfg.fed.args.server_momentum_param_2 = args.mparam_2        # FedAdam
 
     start_time = time.time()
 
-    """ User-defined model """
-    model = get_model()
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    ## User-defined model
+    model = get_model(args)
+    loss_fn = get_loss(args.loss_fn, args.loss_fn_name)
+    metric = get_metric(args.metric, args.metric_name)
 
-    ## loading models
-    cfg.load_model = False
-    if cfg.load_model == True:
-        cfg.load_model_dirname = "./save_models"
-        cfg.load_model_filename = "Model"
-        model = load_model(cfg)
-
-    """ User-defined data """
-    train_datasets, test_dataset = get_data()
+    ## User-defined data
+    train_datasets, test_dataset = eval(args.partition)(None, cfg, args.dataset, seed=args.seed, alpha1=args.num_clients)
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:
-        data_sanity_check(
-            train_datasets, test_dataset, args.num_channel, args.num_pixel
-        )
+        data_sanity_check(train_datasets, test_dataset, args.num_channel, args.num_pixel)
 
-    print(
-        "-------Loading_Time=",
-        time.time() - start_time,
-    )
+    print("-------Loading_Time=",time.time() - start_time,)
 
-    """ saving models """
-    cfg.save_model = False
-    if cfg.save_model == True:
-        cfg.save_model_dirname = "./save_models"
-        cfg.save_model_filename = "Model"
+    ## Running
+    rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset, metric)
 
-    """ Running """
-    rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
-        
-
+    print("------DONE------")
 
 if __name__ == "__main__":
     main()
-
-# To run:
-# python ./mnist_no_mpi.py

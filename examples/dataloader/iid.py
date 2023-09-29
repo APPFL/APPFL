@@ -4,13 +4,14 @@ import torchvision
 import numpy as np
 from .utils import *
 from mpi4py import MPI
+from typing import Optional
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from omegaconf import DictConfig
 
-def iid(comm: MPI.Comm, cfg: DictConfig, dataset: str, visualization: bool = True, **kwargs):
-    comm_rank = comm.Get_rank()
+def iid(comm: Optional[MPI.Comm], cfg: DictConfig, dataset: str, visualization: bool = True, **kwargs):
+    comm_rank = comm.Get_rank() if comm is not None else 0
     num_clients = cfg.num_clients
     
     # Get the download directory for dataset
@@ -19,7 +20,8 @@ def iid(comm: MPI.Comm, cfg: DictConfig, dataset: str, visualization: bool = Tru
     # Root download the data if not already available.
     if comm_rank == 0:
         test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=True, train=False, transform=test_transform(dataset))
-    comm.Barrier()
+    if comm is not None:
+        comm.Barrier()
     if comm_rank > 0:
         test_data_raw = eval("torchvision.datasets." + dataset)(dir, download=False, train=False, transform=test_transform(dataset))
 

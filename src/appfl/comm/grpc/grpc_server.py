@@ -9,7 +9,7 @@ from .grpc_communicator_pb2 import Job
 from torch.utils.data import DataLoader
 
 class APPFLgRPCServer:
-    def __init__(self, cfg, model, loss_fn, test_dataset, num_clients):
+    def __init__(self, cfg, model, loss_fn, test_dataset, num_clients, metric):
 
         self.logger1 = create_custom_logger(logging.getLogger(__name__), cfg)
         cfg["logginginfo"]["comm_size"] = 1
@@ -24,6 +24,7 @@ class APPFLgRPCServer:
         self.device = "cpu"
         self.model = copy.deepcopy(model)
         self.loss_fn = loss_fn
+        self.metric = metric
         """ Loading Model """
         if cfg.load_model == True:
             self.model = load_model(cfg)
@@ -137,7 +138,7 @@ class APPFLgRPCServer:
         self.fed_server.update(client_states_list)
 
         if self.cfg.validation == True:
-            test_loss, accuracy = validation(self.fed_server, self.dataloader)
+            test_loss, accuracy = validation(self.fed_server, self.dataloader, self.metric)
 
             if accuracy > self.best_accuracy:
                 self.best_accuracy = accuracy
