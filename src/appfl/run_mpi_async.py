@@ -2,12 +2,12 @@ import copy
 import time
 import logging
 import torch.nn as nn
-from .misc import *
 from mpi4py import MPI
 from typing import Any
-from .algorithm import *
+from appfl.algorithm import *
+from appfl.misc import validation
+from appfl.comm.mpi import MpiCommunicator
 from omegaconf import DictConfig
-from .comm.mpi import MpiCommunicator
 from torch.utils.data import DataLoader
 
 def run_server(
@@ -147,7 +147,6 @@ def run_client(
         comm: MPI communicator
         model: neural network model to train
         loss_fn: loss function 
-        num_clients: the number of clients used in PPFL simulation
         train_data: training data
         test_data: validation data
         metric: evaluation metric function
