@@ -75,9 +75,9 @@ def run_server(
 
     ## Obtain the scheduler
     if cfg.fed.servername.startswith("ServerFedCompass"):
-        scheduler = SchedulerCompass(communicator, server, cfg.fed.args.num_local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger, cfg.fed.servername == "ServerFedCompassNova", cfg.q_ratio, cfg.lambda_val)
+        scheduler = SchedulerCompass(communicator, server, cfg.fed.args.num_local_steps, num_clients, cfg.num_epochs, cfg.fed.args.optim_args.lr, logger, cfg.fed.servername == "ServerFedCompassNova", cfg.fed.args.q_ratio, cfg.fed.args.lambda_val)
     else:
-        scheduler = SchedulerDummy(communicator, server, cfg.fed.args.num_local_steps, num_clients, cfg.num_epochs)
+        scheduler = SchedulerDummy(communicator, server, num_clients, cfg.num_epochs)
 
     # FedAsync: main global training loop
     start_time = time.time()
@@ -195,6 +195,7 @@ def run_client(
             done = train_configs['done']
         else:
             done = False
+            train_configs = {}
         if done:
             break
         client.num_local_steps = client.num_local_steps if 'step' not in train_configs else train_configs['steps']

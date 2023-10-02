@@ -10,10 +10,12 @@ from losses.utils import get_loss
 from models.utils import get_model
 from metric.utils import get_metric
 import appfl.run_mpi_async as rma
+import appfl.run_mpi_compass as rmc
 
 """
 To run MPI with 5 clients:
 mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20
+mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20 --server ServerFedCompass
 """
 
 ## read arguments
@@ -37,7 +39,13 @@ parser.add_argument("--num_local_steps", type=int, default=100)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
-parser.add_argument("--server", type=str, default="ServerFedAsynchronous", choices=['ServerFedAsynchronous', 'ServerFedBuffer'])
+parser.add_argument("--server", type=str, default="ServerFedAsynchronous", 
+                    choices=[
+                        'ServerFedAsynchronous', 
+                        'ServerFedBuffer',
+                        'ServerFedCompass',
+                        'ServerFedCompassMom'
+                    ])
 parser.add_argument("--num_epochs", type=int, default=20)
 parser.add_argument("--server_lr", type=float, default=0.01)
 parser.add_argument("--mparam_1", type=float, default=0.9)
@@ -52,13 +60,19 @@ parser.add_argument("--loss_fn_name", type=str, required=False, help="class name
 parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
 parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
-## Fed Async
+## asynchronous algorithm setups
 parser.add_argument("--gradient_based", type=str, choices=["True", "true", "False", "false"], default="True", help="Whether the algorithm requires gradient from the model")
 parser.add_argument("--alpha", type=float, default=0.9, help="Mixing parameter for FedAsync Algorithm")
 parser.add_argument("--staleness_func", type=str, choices=['constant', 'polynomial', 'hinge'], default='polynomial')
 parser.add_argument("--a", type=float, default=0.5, help="First parameter for the staleness function")
 parser.add_argument("--b", type=int, default=4, help="Second parameter for Hinge staleness function")
 parser.add_argument("--K", type=int, default=3, help="Buffer size for FedBuffer algorithm")
+parser.add_argument("--val_range", type=int, default=1, help="Perform server validation every serveral epochs")
+
+## Compass scheduler setups
+parser.add_argument("--use_scheduler", action="store_true")
+parser.add_argument("--q_ratio", type=float, default=0.2)
+parser.add_argument("--lambda_val", type=float, default=1.5)
 
 args = parser.parse_args()
 
@@ -104,13 +118,16 @@ def main():
     cfg.fed.args.server_momentum_param_1 = args.mparam_1        # FedAdam, FedAvgm
     cfg.fed.args.server_momentum_param_2 = args.mparam_2        # FedAdam
 
-    ## fed async/fed buffer
+    ## fed async/fed buffer/fed compass
     cfg.fed.args.K = args.K
     cfg.fed.args.alpha = args.alpha
     cfg.fed.args.gradient_based = args.gradient_based.lower() == "true"
     cfg.fed.args.staleness_func.name = args.staleness_func
     cfg.fed.args.staleness_func.args.a = args.a
     cfg.fed.args.staleness_func.args.b = args.b
+    cfg.fed.args.q_ratio = args.q_ratio
+    cfg.fed.args.lambda_val = args.lambda_val
+    cfg.fed.args.val_range = args.val_range
 
     start_time = time.time()
 
@@ -129,11 +146,18 @@ def main():
     print("-------Loading_Time=", time.time() - start_time)
 
     ## Running
+    use_scheduler = args.use_scheduler or args.server.startswith("ServerFedCompass")
     if comm_rank == 0:
-        rma.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        if use_scheduler:
+            rmc.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        else:
+            rma.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
     else:
         assert comm_size == args.num_clients + 1
-        rma.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
+        if use_scheduler:
+            rmc.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
+        else:
+            rma.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
     print("------DONE------", comm_rank)
 
 if __name__ == "__main__":

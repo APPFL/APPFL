@@ -2,6 +2,7 @@ import time
 import torch
 import argparse
 import appfl.run_mpi_async as rma
+import appfl.run_mpi_compass as rmc
 from mpi4py import MPI
 from dataloader import *
 from appfl.config import *
@@ -14,6 +15,7 @@ from metric.utils import get_metric
 """
 To run MPI with 2 clients:
 mpiexec -np 3 python ./cifar10_mpi_async.py --partition iid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --train_data_batch_size 8
+mpiexec -np 3 python ./cifar10_mpi_async.py --partition iid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --train_data_batch_size 8 --server ServerFedCompass
 """
 
 ## read arguments  
@@ -40,7 +42,13 @@ parser.add_argument("--num_local_epochs", type=int, default=1)
 parser.add_argument("--do_validation", action="store_true")
 
 ## server
-parser.add_argument('--server', type=str, default="ServerFedAsynchronous")    
+parser.add_argument("--server", type=str, default="ServerFedAsynchronous", 
+                    choices=[
+                        'ServerFedAsynchronous', 
+                        'ServerFedBuffer',
+                        'ServerFedCompass',
+                        'ServerFedCompassMom'
+                    ])
 parser.add_argument('--num_epochs', type=int, default=20)    
 parser.add_argument("--server_lr", type=float, default=0.01)
 parser.add_argument("--mparam_1", type=float, default=0.9)
@@ -62,7 +70,13 @@ parser.add_argument("--staleness_func", type=str, choices=['constant', 'polynomi
 parser.add_argument("--a", type=float, default=0.5, help="First parameter for the staleness function")
 parser.add_argument("--b", type=int, default=4, help="Second parameter for Hinge staleness function")
 parser.add_argument("--K", type=int, default=3, help="Buffer size for FedBuffer algorithm")
- 
+parser.add_argument("--val_range", type=int, default=1, help="Perform server validation every serveral epochs")
+
+## Compass scheduler setups
+parser.add_argument("--use_scheduler", action="store_true")
+parser.add_argument("--q_ratio", type=float, default=0.2)
+parser.add_argument("--lambda_val", type=float, default=1.5)
+
 args = parser.parse_args()    
 
 if torch.cuda.is_available():
@@ -119,6 +133,9 @@ def main():
     cfg.fed.args.staleness_func.name = args.staleness_func
     cfg.fed.args.staleness_func.args.a = args.a
     cfg.fed.args.staleness_func.args.b = args.b
+    cfg.fed.args.q_ratio = args.q_ratio
+    cfg.fed.args.lambda_val = args.lambda_val
+    cfg.fed.args.val_range = args.val_range
 
     start_time = time.time()
 
@@ -137,11 +154,18 @@ def main():
     print("-------Loading_Time=", time.time() - start_time)    
 
     ## Running
+    use_scheduler = args.use_scheduler or args.server.startswith("ServerFedCompass")
     if comm_rank == 0:
-        rma.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        if use_scheduler:
+            rmc.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        else:
+            rma.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
     else:
         assert comm_size == args.num_clients + 1
-        rma.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
+        if use_scheduler:
+            rmc.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
+        else:
+            rma.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
     print("------DONE------", comm_rank)
 
 if __name__ == "__main__":

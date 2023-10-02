@@ -2,6 +2,7 @@ import time
 import torch
 import argparse
 import appfl.run_mpi_async as rma
+import appfl.run_mpi_compass as rmc
 from mpi4py import MPI
 from dataloader import *
 from appfl.config import *
@@ -11,7 +12,9 @@ from models.utils import flamby_train
 
 """
 mpiexec -np 7 python flamby_mpi_async.py --num_epochs 30 --dataset TcgaBrca --num_local_steps 100 --server ServerFedAsynchronous --val_range 1
+mpiexec -np 7 python flamby_mpi_async.py --num_epochs 30 --dataset TcgaBrca --num_local_steps 100 --server ServerFedCompass --val_range 1
 mpiexec -np 5 python flamby_mpi_async.py --num_epochs 30 --dataset HeartDisease --num_local_steps 100 --server ServerFedAsynchronous --val_range 1
+mpiexec -np 5 python flamby_mpi_async.py --num_epochs 30 --dataset HeartDisease --num_local_steps 100 --server ServerFedCompass --val_range 1
 mpiexec -np 4 python flamby_mpi_async.py --num_epochs 10 --dataset IXI --num_local_steps 100 --server ServerFedAsynchronous --val_range 2
 mpiexec -np 7 python flamby_mpi_async.py --num_epochs 10 --dataset ISIC2019 --num_local_steps 100 --server ServerFedAsynchronous --val_range 3
 """
@@ -38,7 +41,9 @@ parser.add_argument("--mparam_2", type=float, default=0.99)
 parser.add_argument("--adapt_param", type=float, default=0.001)
 parser.add_argument("--server", type=str, default="ServerFedAsynchronous", 
                     choices=['ServerFedAsynchronous', 
-                             'ServerFedBuffer'
+                             'ServerFedBuffer',
+                             'ServerFedCompass',
+                             'ServerFedCompassMom'
                     ])
 
 ## Fed Async
@@ -49,6 +54,11 @@ parser.add_argument("--a", type=float, default=0.5, help="First parameter for th
 parser.add_argument("--b", type=int, default=4, help="Second parameter for Hinge staleness function")
 parser.add_argument("--K", type=int, default=3, help="Buffer size for FedBuffer algorithm")
 parser.add_argument("--val_range", type=int, default=10, help="Perform server validation every serveral epochs")
+
+## Compass scheduler setups
+parser.add_argument("--use_scheduler", action="store_true")
+parser.add_argument("--q_ratio", type=float, default=0.2)
+parser.add_argument("--lambda_val", type=float, default=1.5)
 
 args = parser.parse_args()
 
@@ -111,18 +121,27 @@ def main():
     cfg.fed.args.staleness_func.args.a = args.a
     cfg.fed.args.staleness_func.args.b = args.b
     cfg.fed.args.val_range = args.val_range
+    cfg.fed.args.q_ratio = args.q_ratio
+    cfg.fed.args.lambda_val = args.lambda_val
+    cfg.fed.args.val_range = args.val_range
 
     start_time = time.time()
 
     print("-------Loading_Time=", time.time() - start_time)
 
-    ## Running 
+    ## Running
+    use_scheduler = args.use_scheduler or args.server.startswith("ServerFedCompass")
     if comm_rank == 0:
-        rma.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        if use_scheduler:
+            rmc.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        else:
+            rma.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
     else:
         assert comm_size == args.num_clients + 1
-        rma.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
-
+        if use_scheduler:
+            rmc.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
+        else:
+            rma.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
     print("------DONE------", comm_rank)
 
 if __name__ == "__main__":
