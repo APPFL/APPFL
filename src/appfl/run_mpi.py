@@ -69,7 +69,10 @@ def run_server(
     for rank in range(1, comm.Get_size()):
         for num in num_data[rank].values():
             total_num_data += num
-    weights = [num / total_num_data for num in num_data]
+    weights = []
+    for rank in range(1, comm.Get_size()):
+        for num in num_data[rank].values():
+            weights.append(num / total_num_data)
 
     ## Synchronous federated learning server
     server = eval(cfg.fed.servername)(weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
@@ -82,7 +85,7 @@ def run_server(
         server.model.to("cpu")
         global_model = server.model.state_dict()
         communicator.broadcast_global_model(global_model)
-        local_models = communicator.recv_all_local_models_from_clients()
+        local_models = communicator.recv_all_local_models_from_clients(num_clients)
         cfg.logginginfo.LocalUpdate_time = time.time() - per_iter_start
         ## Global update
         global_update_start = time.time()
@@ -158,7 +161,7 @@ def run_client(
     num_data = {}
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         num_data[cid] = len(train_data[cid])
-    communicator.gather(num_data, root=0)
+    communicator.gather(num_data, dest=0)
 
     batchsize = {}
     for cid in num_client_groups[comm_rank - 1]:
@@ -225,11 +228,11 @@ def run_client(
         local_models = OrderedDict()
         for client in clients:
             cid = client.id
-            client.model.local_state_dict(model, strict=not cfg.personalization)
+            client.model.load_state_dict(model, strict=not cfg.personalization)
             local_model = client.update()
             local_models[cid] = local_model
         ## Send local models
-        communicator.send_local_models_to_server(local_models)
+        communicator.send_local_models_to_server(local_models, 0)
 
     for client in clients:
         client.outfile.close()

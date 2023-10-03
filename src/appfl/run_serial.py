@@ -159,7 +159,7 @@ def run_serial(
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
             if cfg.save_model == True:
                 if cfg.personalization == True:
-                    save_model_state_iteration(t + 1, server.model, cfg)
+                    save_partial_model_iteration(t + 1, server.model, cfg)
                 else:
                     save_model_iteration(t + 1, server.model, cfg)
 

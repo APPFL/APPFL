@@ -35,7 +35,7 @@ class MpiSyncCommunicator:
     def recv_global_model_from_server(self, source):
         args, has_model = self.comm.bcast(None, root=source)
         if has_model:
-            model = self.bcast(None, root=source)
+            model = self.comm.bcast(None, root=source)
         else:
             model = None
         return model if args is None else (model, args)
@@ -79,7 +79,7 @@ class MpiSyncCommunicator:
                     end_idx = (n+1) * self.recv_limit
                 else:
                     end_idx = length
-                self.comm.gather(serialized_local_models_val[start_idx, end_idx], root=dest)
+                self.comm.gather(serialized_local_models_val[start_idx:end_idx], root=dest)
             else:
                 self.comm.gather(None, root=dest)
 

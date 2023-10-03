@@ -6,7 +6,7 @@ from .algorithm import BaseClient
 import torch
 from torch.optim import *
 
-from ..misc.utils import save_model_state_iteration
+from ..misc.utils import save_partial_model_iteration
 
 from torch.utils.data import DataLoader
 import copy
@@ -114,7 +114,7 @@ class PersonalizedClientOptim(BaseClient):
             
         """ Save each client model periodically """ 
         if self.cfg.personalization == True and self.cfg.save_model_state_dict == True and ((self.round) % self.cfg.checkpoints_interval == 0 or self.round== self.cfg.num_epochs):
-            save_model_state_iteration(self.round, self.model, self.cfg, client_id=self.id)
+            save_partial_model_iteration(self.round, self.model, self.cfg, client_id=self.id)
 
         """ Update local_state """
         self.local_state = OrderedDict()
