@@ -6,7 +6,7 @@ import torch.nn as nn
 from mpi4py import MPI
 from typing import Any
 from appfl.algorithm import *
-from appfl.misc import validation
+from appfl.misc import validation, save_model_iteration
 from appfl.comm.mpi import MpiCommunicator
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
@@ -149,11 +149,6 @@ def run_client(
     ## log for clients
     output_filename = cfg.output_filename + "_client_%s" % (client_idx-1)
     outfile = client_log(cfg.output_dirname, output_filename)
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    c_handler = logging.StreamHandler()
-    logger.addHandler(c_handler)
 
     num_data = len(train_data[client_idx-1])
     communicator.gather(num_data, dest=0)
