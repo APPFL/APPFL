@@ -143,7 +143,7 @@ def load_model_state(cfg: DictConfig, model, client_id = None):
     return model
     
 
-def save_model_state_iteration(t, model, cfg: DictConfig, client_id = None):
+def save_partial_model_iteration(t, model, cfg: DictConfig, client_id = None):
     
     # This function saves the model weights (instead of the entire model).
     # If personalization is enabled, only the shared layer weights will be saved for the server.

@@ -4,6 +4,8 @@ import numpy as np
 from mpi4py import MPI
 
 class MpiCommunicator:
+    """A general MPI communicator for synchronous or asynchronous federated learning experiments
+    on multiple MPI processes, where each process can represent ONLY ONE federated learning client."""
     def __init__(self, comm):
         self.comm = comm
         self.comm_rank = comm.Get_rank()
