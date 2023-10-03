@@ -1,6 +1,7 @@
 import time
 import torch
 import argparse
+import appfl.run_mpi as rm
 import appfl.run_mpi_sync as rms
 from mpi4py import MPI
 from dataloader import *
@@ -26,6 +27,7 @@ parser.add_argument("--device", type=str, default="cpu")
 parser.add_argument("--dataset", type=str, default="TcgaBrca", choices=['TcgaBrca', 'HeartDisease', 'IXI', 'ISIC2019', 'Kits19'])
 
 ## clients
+parser.add_argument("--num_clients", type=int, default=-1)
 parser.add_argument("--local_train_pattern", type=str, default="steps", choices=["steps", "epochs"], help="For local optimizer, what counter to use, number of steps or number of epochs")
 parser.add_argument("--num_local_steps", type=int, default=100)
 parser.add_argument("--num_local_epochs", type=int, default=1)
@@ -56,7 +58,6 @@ def main():
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
     assert comm_size > 1, "This script requires the toal number of processes to be greater than one!"
-    args.num_clients = comm_size - 1
 
     ## Configuration 
     cfg = OmegaConf.structured(Config)
@@ -66,7 +67,7 @@ def main():
         set_seed(1)
 
     ## clients
-    cfg.num_clients = args.num_clients
+    args.num_clients = comm_size - 1 if args.num_clients <= 0 else args.num_clients
     cfg.fed.clientname = "ClientOptim" if args.local_train_pattern == "epochs" else "ClientStepOptim"
     cfg.fed.args.num_local_steps = args.num_local_steps
     cfg.fed.args.num_local_epochs = args.num_local_epochs   
@@ -102,12 +103,17 @@ def main():
 
     print("-------Loading_Time=", time.time() - start_time)
 
-    ## Running 
-    if comm_rank == 0:
-        rms.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+    ## Running
+    if args.num_clients == comm_size -1:
+        if comm_rank == 0:
+            rms.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        else:
+            rms.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
     else:
-        assert comm_size == args.num_clients + 1
-        rms.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
+        if comm_rank == 0:
+            rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        else:
+            rm.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset, metric)
     
     print("------DONE------", comm_rank)
 

@@ -1,6 +1,7 @@
 import time
 import torch
 import argparse
+import appfl.run_mpi as rm
 import appfl.run_mpi_sync as rms
 from mpi4py import MPI
 from dataloader import *
@@ -121,10 +122,16 @@ def main():
     print("-------Loading_Time=", time.time() - start_time)  
 
     ## Running
-    if comm_rank == 0:
-        rms.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+    if args.num_clients == comm_size -1:
+        if comm_rank == 0:
+            rms.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        else:
+            rms.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
     else:
-        rms.run_client(cfg, comm, model, loss_fn, train_datasets, test_dataset, metric)
+        if comm_rank == 0:
+            rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset, metric)
+        else:
+            rm.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets, test_dataset, metric)
 
     print("------DONE------", comm_rank)
 
