@@ -1,4 +1,5 @@
 import io
+import time
 import torch
 import numpy as np
 from mpi4py import MPI
@@ -40,7 +41,7 @@ class MpiCommunicator:
                 else:
                     self.comm.send((len(model_bytes), args), dest=i, tag=i)
             for i in self.dests:
-                self.comm.Isend(np.frombuffer(model_bytes, dtype=np.byte), dest=i, tag=i+self.comm_size)
+                self.comm.Send(np.frombuffer(model_bytes, dtype=np.byte), dest=i, tag=i+self.comm_size)
             self.recv_queue = [self.comm.irecv(source=i, tag=i) for i in self.dests]
             self.queue_status = [True for _ in range(self.comm_size-1)]
 
@@ -68,8 +69,9 @@ class MpiCommunicator:
         model_buffer = io.BytesIO()
         torch.save(model, model_buffer)
         model_bytes = model_buffer.getvalue()
-        self.comm.send(len(model_bytes), dest=dest, tag=self.comm_rank)
-        self.comm.Isend(np.frombuffer(model_bytes, dtype=np.byte), dest=dest, tag=self.comm_rank+self.comm_size)
+        req = self.comm.isend(len(model_bytes), dest=dest, tag=self.comm_rank)
+        req.wait()
+        self.comm.Send(np.frombuffer(model_bytes, dtype=np.byte), dest=dest, tag=self.comm_rank+self.comm_size)
 
     def recv_global_model_from_server(self, source):
         '''Client receives the global model state dict from the server (source).'''
@@ -89,6 +91,7 @@ class MpiCommunicator:
     def recv_local_model_from_client(self):
         '''Receive a single local model from the front of the receiving queue.'''
         while True:
+            time.sleep(0.2)     #TODO: Sometimes error occurs without a short sleep due to race condition
             queue_idx, model_size = MPI.Request.waitany(self.recv_queue)
             if queue_idx != MPI.UNDEFINED:
                 model_bytes = np.empty(model_size, dtype=np.byte)
