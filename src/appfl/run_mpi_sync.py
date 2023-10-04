@@ -147,15 +147,15 @@ def run_client(
     communicator = MpiCommunicator(comm)
 
     ## log for clients
-    output_filename = cfg.output_filename + "_client_%s" % (client_idx-1)
+    output_filename = cfg.output_filename + "_client_%s" % (client_idx)
     outfile = client_log(cfg.output_dirname, output_filename)
 
-    num_data = len(train_data[client_idx-1])
+    num_data = len(train_data[client_idx])
     communicator.gather(num_data, dest=0)
 
     batchsize = cfg.train_data_batch_size
     if cfg.batch_training == False:
-        batchsize = len(train_data[client_idx-1])
+        batchsize = len(train_data[client_idx])
 
     ## Run validation if test data is given or the configuration is enabled
     if cfg.validation == True and len(test_data) > 0:

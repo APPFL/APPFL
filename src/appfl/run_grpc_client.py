@@ -59,7 +59,7 @@ def run_client(
 
     batch_size = cfg.train_data_batch_size
     if cfg.batch_training == False:
-        batchsize = len(train_data)
+        batch_size = len(train_data)
 
     logger.debug(
         f"[Client ID: {cid: 03}] connecting to (uri,tls)=({uri},{cfg.server.use_tls})."
