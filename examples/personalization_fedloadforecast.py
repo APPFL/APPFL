@@ -1,7 +1,6 @@
 import io
 import os
 import copy
-import time
 import torch
 import argparse
 import warnings
