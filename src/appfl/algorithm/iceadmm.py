@@ -1,16 +1,11 @@
+import copy
+import torch
 import logging
-
-log = logging.getLogger(__name__)
-
+from torch.optim import *
 from collections import OrderedDict
 from .algorithm import BaseServer, BaseClient
 
-import torch
-from torch.optim import *
-from torch.nn import CrossEntropyLoss
-from torch.utils.data import DataLoader
-import copy
-
+log = logging.getLogger(__name__)
 
 class ICEADMMServer(BaseServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
