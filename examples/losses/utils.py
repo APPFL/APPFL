@@ -1,6 +1,6 @@
 import torch
 import importlib
-def get_loss(loss_fn_path, loss_class_name):
+def get_loss(loss_fn_path, loss_class_name=None):
     if loss_fn_path is None:
         return torch.nn.CrossEntropyLoss()
     # Extract the module name from the file path (removing the ".py" extension)
