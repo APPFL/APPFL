@@ -1,72 +1,84 @@
 # Examples
 
-This directory contains examples showing how to run our APPFL using either MPI or gRPC.
+This directory contains examples showing how to run our APPFL using various communication protocols, such as MPI, gRPC, and GlobusCompute.
 Currently, we have the following examples:
 
 - MNIST
 - CIFAR10
-- FEMNIST
 - Coronahack
+- FEMNIST
 - CELEBA
-- Federated load forecasting with Personalization layers
+- Federated load forecasting with personalization layers
+- FLamby Datasets
 
-# How to run
+## Prepare the Datasets
+- MNIST and CIFAR10: As these two datasets are part of `torchvision`, so you only need to install the package `pip install torchvision`, and then those datasets will be automatically downloaded for you when you first run the experiments scripts on those datasets.
+- Coronahack is a dataset from Kaggle, you can follow the download instructions [here](datasets/RawData/README.md) to manually download it before running the corresponding experiment scripts.
+- FEMNIST and CELEBA are two datasets from FL benchmark datasets [LEAF](https://github.com/TalwalkarLab/leaf/tree/master), you can follow the download instructions [here](datasets/RawData/README.md) to manually download them before running the corresponding experiment scripts.
+- Federated load forecasting with personalization layers uses power consumption data from NREL datasets, which will be automatically downloaded for you when you first run the experiments script. 
+- FLamby is a benchmarking dataset from cross-silo federated learning, and you need to download the datasets manually by following the [FLamby instructions](https://github.com/owkin/FLamby).
 
-Each example is implemented in a separate python file, e.g., `mnist.py` and `grpc_mnist.py` for the MNIST example.
-By default, the number of clients are set to `4` for all examples, except for the FEMNIST example which is set to `203`.
 
-We simulate federated learning by launching MPI processes (# processes = 1 + # clients, where 1 for server).
-MPI protocol will be used for communication between server and clients.
-For files starting with `grpc_`, we use gRPC protocol for communication instead.
+## How to run
 
-## MNIST, CIFAR10, Coronahack, CELEBA
+We use separate python files for examples on various datasets with different communication protocols. For example, 
+
+- `mnist_serial.py` contains example on the partitioned MNIST dataset using serial simulation for synchronous federated learning.
+- `mnist_mpi_sync.py` contains example on the partitioned MNIST dataset using MPI for synchronous federated learning.
+- `mnist_mpi_async.py` contains example on the partitioned MNIST dataset using MPUI for asynchronous federated learning.
+- `mnist_mpi_privacy.py` contains example on the partitioned MNIST dataset using MPI for synchrnous privacy-preserving federated learning.
+- `mnist_grpc.py` contains example on the partitioned MNIST dataset using gRPC for synchronous federated learning.
+- `mnist_globus_compute` contains example on the partitioned MNIST dataset using [Globus Compute](https://funcx.readthedocs.io/en/latest/) for synchronous federated learing.
+
+
+### MNIST, CIFAR10, Coronahack, CELEBA
 
 All the examples require the same number of MPI processes.
 Below shows how to execute the MNIST example.
 For Coronahack and FEMNIST check the dataset directory for preprocessing the data and replace the file name with an appropriate example name.
 
 
-### MPI communication
+#### MPI Communication
 
 ```bash
-mpiexec -n 5 python mnist.py --server ServerFedAvg --num_epochs 6 --client_lr 0.01
-```
-`--server : ServerFedAvg  or  ICEADMMServer  or IIADMMServer`
-start tensorborad and then go to the web page
-```shell
-tensorboard --logdir=runs
+mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
 ```
 
-### gRPC communication
+#### gRPC Communication
 
 For gRPC communication, we launch multiple MPI processes as well for simulation purposes only.
 Note that our gPRC implementation itself does not require any MPI communication.
 
 ```bash
-mpiexec -n 5 python grpc_mnist.py
+mpiexec -np 6 python ./mnist_grpc.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
 ```
 
-### Running Serial
+#### Globus Compute Communication
+Globus Compute is used to support federated learning among real-world distributed and heterogeneous computing facilities. Please see the detialed instructions about how to setup experiments using Globus Compute [here](globus_compute/READMD.md).
+```bash
+python mnist_gc.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
+```
+
+#### Running Serial
 
 ```bash
-python mnist_no_mpi.py
+python ./mnist_serial.py --num_clients 5 --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
 ```
 
-## FEMNIST
+### FEMNIST
 
-### MPI communication
+#### MPI communication
 
 ```bash
-mpiexec -n 204 python femnist.py --server ServerFedAvg --num_epochs 6 --client_lr 0.01
+mpiexec -n 204 python femnist_mpi.py --server ServerFedAvg --num_epochs 6 --client_lr 0.01
 ```
-`--server : ServerFedAvg  or  ICEADMMServer  or IIADMMServer`
-### gRPC communication
+#### gRPC communication
 
 ```bash
-mpiexec -n 204 python grpc_femnist.py
+mpiexec -n 204 python femnist_grpc.py
 ```
 
-## Federated load forecasting with Personalization Layers
+### Federated load forecasting with Personalization Layers
 
 Personalization layers allow certain layers of the model to remain local to each client. For example, the load forecasting model is based on a LSTM+fully connected architecture, with the following layer names: 
 
@@ -74,12 +86,16 @@ Personalization layers allow certain layers of the model to remain local to each
 
 Suppose we want to personalize the fully connected layer's weights in a MPI setting, then this can be achieved as follows.
 
-### MPI communication
+#### MPI communication
 
-```mpiexec -n 43 python personalization_fedloadforecasting.py --personalization_layers FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight --personalization_config_name MyPersonalization```
+```
+mpiexec -n 43 python personalization_fedloadforecast.py --personalization_layers FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight --personalization_config_name MyPersonalization
+```
 
-### Running Serial
+#### Running Serial
 
-```python personalization_fedloadforecasting.py --personalization_layers FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight --personalization_config_name MyPersonalization```
+```
+python personalization_fedloadforecast.py --personalization_layers FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight --personalization_config_name MyPersonalization
+```
 
 Currently, gRPC has not been implemented for personalization layers.
