@@ -64,9 +64,11 @@ def run_server(
     for num in num_data:
         total_num_data += num
     weights = [num / total_num_data for num in num_data]
+    weights = [num / total_num_data for num in num_data]
+    communicator.scatter(weights, 0)
 
     ## Asynchronous federated learning server (aggregator)
-    server = eval(cfg.fed.servername)(weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
+    server = eval(cfg.fed.servername)(weights[1:], copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
     server.model.to("cpu")
     global_model = server.model.state_dict()
 
@@ -142,7 +144,7 @@ def run_client(
     communicator = MpiCommunicator(comm)
 
     ## log for clients
-    output_filename = cfg.output_filename + "_client_%s" % (client_idx-1)
+    output_filename = cfg.output_filename + "_client_%s" % (client_idx)
     outfile = client_log(cfg.output_dirname, output_filename)
 
     logger = logging.getLogger(__name__)
@@ -150,12 +152,14 @@ def run_client(
     c_handler = logging.StreamHandler()
     logger.addHandler(c_handler)
 
-    num_data = len(train_data[client_idx-1])
+    num_data = len(train_data[client_idx])
     communicator.gather(num_data, dest=0)
+    weight = None
+    weight = communicator.scatter(weight, source=0)
 
     batchsize = cfg.train_data_batch_size
     if cfg.batch_training == False:
-        batchsize = len(train_data[client_idx-1])
+        batchsize = len(train_data[client_idx])
 
     ## Run validation if test data is given or the configuration is enabled
     if cfg.validation == True and len(test_data) > 0:

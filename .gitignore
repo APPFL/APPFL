@@ -3,6 +3,7 @@
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 note
+*output*
 trials
 examples/output*
 examples/globus_compute/creds

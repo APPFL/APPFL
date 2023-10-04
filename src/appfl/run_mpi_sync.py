@@ -65,9 +65,10 @@ def run_server(
     for num in num_data:
         total_num_data += num
     weights = [num / total_num_data for num in num_data]
+    communicator.scatter(weights, 0)
 
     ## Synchronous federated learning server
-    server = eval(cfg.fed.servername)(weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
+    server = eval(cfg.fed.servername)(weights[1:], copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
 
     start_time = time.time()    
     test_loss, test_accuracy, best_accuracy = 0.0, 0.0, 0.0
@@ -152,6 +153,8 @@ def run_client(
 
     num_data = len(train_data[client_idx])
     communicator.gather(num_data, dest=0)
+    weight = None
+    weight = communicator.scatter(weight, source=0)
 
     batchsize = cfg.train_data_batch_size
     if cfg.batch_training == False:
@@ -171,7 +174,7 @@ def run_client(
 
     client = eval(cfg.fed.clientname)(
         client_idx,
-        None,
+        weight,
         copy.deepcopy(model),
         loss_fn,
         DataLoader(

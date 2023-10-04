@@ -16,7 +16,8 @@ class MpiSyncCommunicator:
 
     def scatter(self, contents, source):
         '''Scattering the contents to all clients from the source.'''
-        assert len(contents) == self.comm_size, "The size of the contents is not equal to the number of clients in scatter!"
+        if source == self.comm_rank:
+            assert len(contents) == self.comm_size, "The size of the contents is not equal to the number of clients in scatter!"
         return self.comm.scatter(contents, root=source)
     
     def gather(self, content, dest):

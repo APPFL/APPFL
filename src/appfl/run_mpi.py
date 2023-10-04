@@ -69,10 +69,15 @@ def run_server(
     for rank in range(1, comm.Get_size()):
         for num in num_data[rank].values():
             total_num_data += num
+    client_weight = [{}]
     weights = []
     for rank in range(1, comm.Get_size()):
-        for num in num_data[rank].values():
+        temp = {}
+        for cid, num in num_data[rank].items():
             weights.append(num / total_num_data)
+            temp[cid] = num/total_num_data
+        client_weight.append(temp)
+    communicator.scatter(client_weight, 0)
 
     ## Synchronous federated learning server
     server = eval(cfg.fed.servername)(weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
@@ -162,6 +167,8 @@ def run_client(
     for _, cid in enumerate(num_client_groups[comm_rank - 1]):
         num_data[cid] = len(train_data[cid])
     communicator.gather(num_data, dest=0)
+    weights = None
+    weights = communicator.scatter(weights, source=0)
 
     batchsize = {}
     for cid in num_client_groups[comm_rank - 1]:
@@ -193,7 +200,7 @@ def run_client(
             cfg.device = f"cuda:{gpuindex}"
         clients.append(eval(cfg.fed.clientname)(
             cid,
-            None,
+            weights[cid],
             # deepcopy the common model if there is no personalization, else use the the clients' own model
             copy.deepcopy(model) if not cfg.personalization else model[cid],
             loss_fn,
