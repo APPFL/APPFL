@@ -79,10 +79,10 @@ def run_server(
 
         communicator.broadcast_global_model(global_state, {'done': False})
   
-        local_states = []
+        local_states = [None for _ in range(num_clients)]
         for _ in range(num_clients):
-            _, model = communicator.recv_local_model_from_client()
-            local_states.append(model)    
+            client_idx, model = communicator.recv_local_model_from_client()
+            local_states[client_idx] = model
         
         cfg.logginginfo.LocalUpdate_time = time.time() - per_iter_start
 
