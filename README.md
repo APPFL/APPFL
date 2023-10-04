@@ -7,7 +7,7 @@
 
 [![build](https://github.com/APPFL/APPFL/actions/workflows/build.yml/badge.svg?branch=main&event=push)](https://github.com/APPFL/APPFL/actions/workflows/build.yml)
 
-APPFL is an open-source software framework that allows research communities to implement, test, and validate various ideas for privacy-preserving federated learning (PPFL).
+Argonne Privacy-Preserving Federated Learning (APPFL) is an open-source software framework that allows research communities to implement, test, and validate various ideas for privacy-preserving federated learning (PPFL).
 With this framework, developers and/or users can
 
 - train a user-defined neural network model on **decentralized data with differential privacy**,
