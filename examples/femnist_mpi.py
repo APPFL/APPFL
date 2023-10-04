@@ -26,7 +26,7 @@ parser.add_argument("--dataset", type=str, default="FEMNIST")
 parser.add_argument("--num_channel", type=int, default=1)
 parser.add_argument("--num_classes", type=int, default=62)
 parser.add_argument("--num_pixel", type=int, default=28)
-parser.add_argument("--model", type=str, default="CNN")
+parser.add_argument("--model", type=str, default="resnet18-legacy")
 
 ## algorithm
 parser.add_argument("--federation_type", type=str, default="Federated")  ## Federated, ICEADMM, IIADMM

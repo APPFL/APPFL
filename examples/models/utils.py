@@ -1,5 +1,6 @@
 from .cnn import CNN
 from .resnet import ResNet18
+from .resnet_legacy import resnet18
 from .lstm import LSTMForecast
 try:
     import flamby.datasets.fed_ixi as IXI
@@ -17,6 +18,8 @@ def get_model(args):
         model = CNN(args.num_channel, args.num_classes, args.num_pixel)
     elif args.model == "resnet18":
         model = ResNet18()
+    elif args.model == "resnet18-legacy":
+        model = resnet18(args.num_channel, args.num_classes, args.pretrained)
     elif args.model == "LSTM":
         model = LSTMForecast(n_features=args.n_features,n_lookback=args.n_lookback,n_lstm_layers=args.n_lstm_layers,n_hidden_size=args.n_hidden_size)
     else:

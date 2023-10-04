@@ -28,7 +28,7 @@ parser.add_argument("--dataset", type=str, default="CELEBA")
 parser.add_argument("--num_channel", type=int, default=3)
 parser.add_argument("--num_classes", type=int, default=2)
 parser.add_argument("--num_pixel", type=int, default=218)
-parser.add_argument("--model", type=str, default="CNN")
+parser.add_argument("--model", type=str, default="resnet18-legacy")
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
