@@ -212,7 +212,7 @@ def test_mnist_fedasync_mpi():
         if comm_rank == 0:
             rma.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
         else:
-            rma.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+            rma.run_client(cfg, comm, model, loss_fn, train_datasets)
     else:
         assert 0
 
@@ -240,7 +240,7 @@ def test_mnist_fedbuffer_mpi():
         if comm_rank == 0:
             rma.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
         else:
-            rma.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+            rma.run_client(cfg, comm, model, loss_fn, train_datasets)
     else:
         assert 0
 
