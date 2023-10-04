@@ -18,34 +18,32 @@ DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x17grpc_communica
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'grpc_communicator_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
-  try:
-    DESCRIPTOR._options = None
-    _JOB._serialized_start=774
-    _JOB._serialized_end=822
-    _MESSAGESTATUS._serialized_start=824
-    _MESSAGESTATUS._serialized_end=858
-    _HEADER._serialized_start=27
-    _HEADER._serialized_end=73
-    _DATABUFFER._serialized_start=75
-    _DATABUFFER._serialized_end=121
-    _ACKNOWLEDGMENT._serialized_start=123
-    _ACKNOWLEDGMENT._serialized_end=196
-    _JOBREQUEST._serialized_start=198
-    _JOBREQUEST._serialized_end=259
-    _JOBRESPONSE._serialized_start=261
-    _JOBRESPONSE._serialized_end=345
-    _LEARNINGRESULTS._serialized_start=348
-    _LEARNINGRESULTS._serialized_end=489
-    _TENSORREQUEST._serialized_start=491
-    _TENSORREQUEST._serialized_end=567
-    _TENSORRECORD._serialized_start=569
-    _TENSORRECORD._serialized_end=657
-    _WEIGHTREQUEST._serialized_start=659
-    _WEIGHTREQUEST._serialized_end=713
-    _WEIGHTRESPONSE._serialized_start=715
-    _WEIGHTRESPONSE._serialized_end=772
-    _GRPCCOMMUNICATOR._serialized_start=861
-    _GRPCCOMMUNICATOR._serialized_end=1075
-  except:
-    pass
+  DESCRIPTOR._options = None
+  _JOB._serialized_start=774
+  _JOB._serialized_end=822
+  _MESSAGESTATUS._serialized_start=824
+  _MESSAGESTATUS._serialized_end=858
+  _HEADER._serialized_start=27
+  _HEADER._serialized_end=73
+  _DATABUFFER._serialized_start=75
+  _DATABUFFER._serialized_end=121
+  _ACKNOWLEDGMENT._serialized_start=123
+  _ACKNOWLEDGMENT._serialized_end=196
+  _JOBREQUEST._serialized_start=198
+  _JOBREQUEST._serialized_end=259
+  _JOBRESPONSE._serialized_start=261
+  _JOBRESPONSE._serialized_end=345
+  _LEARNINGRESULTS._serialized_start=348
+  _LEARNINGRESULTS._serialized_end=489
+  _TENSORREQUEST._serialized_start=491
+  _TENSORREQUEST._serialized_end=567
+  _TENSORRECORD._serialized_start=569
+  _TENSORRECORD._serialized_end=657
+  _WEIGHTREQUEST._serialized_start=659
+  _WEIGHTREQUEST._serialized_end=713
+  _WEIGHTRESPONSE._serialized_start=715
+  _WEIGHTRESPONSE._serialized_end=772
+  _GRPCCOMMUNICATOR._serialized_start=861
+  _GRPCCOMMUNICATOR._serialized_end=1075
+
 # @@protoc_insertion_point(module_scope)
