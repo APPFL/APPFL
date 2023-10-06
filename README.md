@@ -59,7 +59,7 @@ sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
 ```
 
 ## APPFL Framework Design
-![image](docs/_static/design.png)
+![image](docs/_static/design.jpg)
 
 ## Acknowledgements
 
