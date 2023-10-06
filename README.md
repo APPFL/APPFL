@@ -57,6 +57,10 @@ If the install process failed, you can try:
 ```shell
 sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
 ```
+
+## APPFL Framework Design
+![image](docs/_static/design.png)
+
 ## Acknowledgements
 
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357.
