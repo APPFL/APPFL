@@ -6,7 +6,7 @@ from appfl.misc.data import *
 from appfl.misc.utils import *
 from appfl.misc.logging import *
 from globus_compute_sdk import Client
-from appfl.run_gc_server import run_server
+from appfl.run_globus_compute_server import run_server
 
 """
 python mnist_gc.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
