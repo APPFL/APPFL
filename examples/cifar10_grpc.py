@@ -10,6 +10,7 @@ from models.utils import get_model
 from metric.utils import get_metric
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
+from dataloader.cifar10_dataloader import get_cifar10
 
 ## read arguments  
 parser = argparse.ArgumentParser() 
@@ -100,7 +101,7 @@ def main():
     metric = get_metric(args.metric, args.metric_name)
 
     ## User-defined data
-    train_datasets, test_dataset = eval(args.partition)(comm, cfg, args.dataset, seed=args.seed, alpha1=args.num_clients)
+    train_datasets, test_dataset = get_cifar10(comm, cfg, partition=args.partition, visualization=True, seed=args.seed, alpha1=args.num_clients)
 
 
     print("----------Loaded Datasets and Model----------Elapsed Time=", time.time() - start_time)

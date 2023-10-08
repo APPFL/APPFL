@@ -4,7 +4,7 @@ import numpy as np
 from appfl.misc.data import Dataset
 from datasets.PreprocessedData.NREL_Preprocess import NRELDataDownloader
 
-def get_data(args):
+def get_nrel(args):
 
     ## sanity checks
     if args.dataset not in ['NRELCA','NRELIL','NRELNY']:

@@ -2,17 +2,17 @@ import time
 import torch
 import argparse
 import appfl.run_serial as rs
-from dataloader import *
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.utils import get_model
 from losses.utils import get_loss
 from metric.utils import get_metric
+from dataloader.cifar10_dataloader import get_cifar10
 
 """
 To run MPI with 2 clients:
-python ./cifar10_mpi_sync.py --num_clients 2 --partition iid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --train_data_batch_size 8
+python ./cifar10_serial.py --num_clients 2 --partition iid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --train_data_batch_size 8
 """
  
 ## read arguments  
@@ -108,7 +108,7 @@ def main():
     metric = get_metric(args.metric, args.metric_name)
 
     ## User-defined data
-    train_datasets, test_dataset = eval(args.partition)(None, cfg, args.dataset, seed=args.seed, alpha1=args.num_clients)
+    train_datasets, test_dataset = get_cifar10(None, cfg, partition=args.partition, visualization=True, seed=args.seed, alpha1=args.num_clients)
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:

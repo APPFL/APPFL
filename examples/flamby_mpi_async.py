@@ -4,11 +4,11 @@ import argparse
 import appfl.run_mpi_async as rma
 import appfl.run_mpi_compass as rmc
 from mpi4py import MPI
-from dataloader import *
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.utils import flamby_train
+from dataloader.flamby_dataloader import get_flamby
 
 """
 mpiexec -np 7 python flamby_mpi_async.py --num_epochs 30 --dataset TcgaBrca --num_local_steps 100 --server ServerFedAsynchronous --val_range 1
@@ -91,7 +91,7 @@ def main():
     cfg.num_epochs = args.num_epochs
 
     ## Specific configuration for datasets in FLamby
-    train_datasets, test_dataset = flamby_dataset(args.dataset, args.num_clients)
+    train_datasets, test_dataset = get_flamby(args.dataset, args.num_clients)
     model, loss_fn, cfg.fed.args.optim, cfg.fed.args.optim_args.lr, cfg.train_data_batch_size, metric = flamby_train(args.dataset)
     cfg.test_data_batch_size = cfg.train_data_batch_size
     cfg.train_data_shuffle = True

@@ -4,13 +4,13 @@ import argparse
 import appfl.run_mpi as rm
 import appfl.run_mpi_sync as rms
 from mpi4py import MPI
-from dataloader import *
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.utils import get_model
 from losses.utils import get_loss
 from metric.utils import get_metric
+from dataloader.cifar10_dataloader import get_cifar10
 
 """
 To run MPI with 2 clients:
@@ -113,7 +113,7 @@ def main():
     metric = get_metric(args.metric, args.metric_name)
 
     ## User-defined data
-    train_datasets, test_dataset = eval(args.partition)(comm, cfg, args.dataset, seed=args.seed, alpha1=args.num_clients)
+    train_datasets, test_dataset = get_cifar10(comm, cfg, partition=args.partition, visualization=True, seed=args.seed, alpha1=args.num_clients)
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:

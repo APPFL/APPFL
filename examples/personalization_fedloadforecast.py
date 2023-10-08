@@ -11,7 +11,7 @@ from mpi4py import MPI
 from appfl.config import *
 from appfl.misc.data import Dataset
 from appfl.misc.utils import load_model_state, set_seed
-from dataloader.nrel_dataloader import get_data
+from dataloader.nrel_dataloader import get_nrel
 from losses.utils import get_loss
 from metric.utils import get_metric
 from models.utils import get_model, validate_parameter_names
@@ -107,7 +107,7 @@ def main():
     cfg.train_data_batch_size = args.batch_size
     cfg.test_data_batch_size = args.batch_size
 
-    train_datasets, test_dataset = get_data(args)
+    train_datasets, test_dataset = get_nrel(args)
     
     # disable test according to argument
     if args.enable_test == 0: # serial does support NOT having a test dset

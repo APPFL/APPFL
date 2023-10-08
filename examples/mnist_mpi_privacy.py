@@ -2,7 +2,6 @@ import time
 import torch
 import argparse
 from mpi4py import MPI
-from dataloader import *
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
@@ -11,10 +10,11 @@ import appfl.run_mpi_sync as rms
 from losses.utils import get_loss
 from models.utils import get_model
 from metric.utils import get_metric
+from dataloader.mnist_dataloader import get_mnist
 
 """
 To run MPI with 5 clients:
-mpiexec -np 6 python ./mnist_mpi_privacy.py --partition class_noiid --num_epochs 10 --server ICEADMM
+mpiexec -np 6 python ./mnist_mpi_privacy.py --partition class_noiid --num_epochs 10 --server IIADMM
 """
 
 ## read arguments
@@ -90,7 +90,7 @@ def main():
     metric = get_metric(args.metric, args.metric_name)
 
     ## User-defined data
-    train_datasets, test_dataset = eval(args.partition)(comm, cfg, args.dataset, seed=args.seed, alpha1=args.num_clients)
+    train_datasets, test_dataset = get_mnist(comm, cfg, partition=args.partition, visualization=True, seed=args.seed, alpha1=args.num_clients)
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:

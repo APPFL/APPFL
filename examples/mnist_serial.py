@@ -2,13 +2,13 @@ import time
 import torch
 import argparse
 import appfl.run_serial as rs
-from dataloader import *
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from losses.utils import get_loss
 from models.utils import get_model
 from metric.utils import get_metric
+from dataloader.mnist_dataloader import get_mnist
 
 """
 To run serially with 5 clients:
@@ -97,7 +97,7 @@ def main():
     metric = get_metric(args.metric, args.metric_name)
 
     ## User-defined data
-    train_datasets, test_dataset = eval(args.partition)(None, cfg, args.dataset, seed=args.seed, alpha1=args.num_clients)
+    train_datasets, test_dataset = get_mnist(None, cfg, partition=args.partition, visualization=True, seed=args.seed, alpha1=args.num_clients)
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:

@@ -7,7 +7,7 @@ try:
 except:
     pass
 
-def flamby_dataset(dataset: str, num_clients: int):
+def get_flamby(dataset: str, num_clients: int):
     if dataset == 'TcgaBrca':
         assert num_clients <= 6, "TcgaBrca dataset can support at most six clients"
         test_dataset =  FedTcgaBrca(train=False, pooled=True)
