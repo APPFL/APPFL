@@ -40,19 +40,19 @@ def main():
 
     # read default configuration
     cfg = OmegaConf.structured(Config)
-
+    loss_fn = torch.nn.CrossEntropyLoss()
     if comm_size > 1:
         # Try to launch both a server and clients.
         if comm_rank == 0:
-            grpc_server.run_server(cfg, model, num_clients, test_dataset)
+            grpc_server.run_server(cfg, model, loss_fn, num_clients, test_dataset)
         else:
             # Give server some time to launch.
             time.sleep(5)
-            grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1], comm_rank)
+            grpc_client.run_client(cfg, comm_rank-1, model, loss_fn, train_datasets[comm_rank - 1], comm_rank)
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.
-        grpc_server.run_server(cfg, model, num_clients, test_dataset)
+        grpc_server.run_server(cfg, model, loss_fn, num_clients, test_dataset)
 
 
 if __name__ == "__main__":
