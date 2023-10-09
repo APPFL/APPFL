@@ -5,8 +5,8 @@ import torch.nn as nn
 from mpi4py import MPI
 from typing import Any
 from appfl.algorithm import *
-from appfl.misc import validation
 from appfl.comm.mpi import MpiCommunicator
+from appfl.misc import validation, compute_gradient
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
@@ -211,15 +211,7 @@ def run_client(
         client.update()
         ## Compute gradient if the algorithm is gradient-based
         if cfg.fed.args.gradient_based:
-            list_named_parameters = []
-            for name, _ in client.model.named_parameters():
-                list_named_parameters.append(name)
-            local_model = {}
-            for name in model:
-                if name in list_named_parameters:
-                    local_model[name] = model[name] - client.primal_state[name]
-                else:
-                    local_model[name] = client.primal_state[name]
+            local_model = compute_gradient(model, client.model)
         else:
             local_model = copy.deepcopy(client.primal_state)
         communicator.send_local_model_to_server(local_model, dest=0)

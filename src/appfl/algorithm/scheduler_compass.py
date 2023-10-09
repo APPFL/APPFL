@@ -70,7 +70,7 @@ class SchedulerCompass:
         # Update directly if the client arrives late
         if curr_time >= self.group_of_arrival[group_idx]['latest_arrival_time']:
             self.group_of_arrival[group_idx]['clients'].remove(client_idx)
-            self.logger.info(f"Client {client_idx} arrived at group {group_idx} at time {curr_time}")
+            # self.logger.info(f"Client {client_idx} arrived at group {group_idx} at time {curr_time}")
             if len(self.group_of_arrival[group_idx]['clients']) == 0:
                 del self.group_of_arrival[group_idx]
             self._single_update(local_model, client_idx)
@@ -78,7 +78,7 @@ class SchedulerCompass:
         else:
             self.group_of_arrival[group_idx]['clients'].remove(client_idx)
             self.group_of_arrival[group_idx]['arrived_clients'].append(client_idx)
-            self.logger.info(f"Client {client_idx} arrived at group {group_idx} at time {curr_time}")
+            # self.logger.info(f"Client {client_idx} arrived at group {group_idx} at time {curr_time}")
             self.server.model.to("cpu")
             if self.use_nova:
                 self.server.buffer(local_model, self.client_info[client_idx]['step'], client_idx, group_idx, self.client_info[client_idx]['local_steps'])
@@ -98,15 +98,15 @@ class SchedulerCompass:
                 'expected_arrival_time': curr_time + self.max_local_steps * self.client_info[client_idx]['speed'],
                 'latest_arrival_time': curr_time + self.max_local_steps * self.client_info[client_idx]['speed'] * self.LATEST_TIME_FACTOR
             }
-            self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter]['expected_arrival_time']}, latest_arrival_time: {self.group_of_arrival[self.group_counter]['latest_arrival_time']}")
-            self.logger.info(f"Client {client_idx} joinded group {self.group_counter} at time {curr_time}")
+            # self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter]['expected_arrival_time']}, latest_arrival_time: {self.group_of_arrival[self.group_counter]['latest_arrival_time']}")
+            # self.logger.info(f"Client {client_idx} joinded group {self.group_counter} at time {curr_time}")
             # Add a timer event
             timer = threading.Timer(self.group_of_arrival[self.group_counter]['latest_arrival_time']-curr_time, self._group_aggregation, args=(self.group_counter, ))
             timer.start()
             self.client_info[client_idx]['goa'] = self.group_counter
             self.client_info[client_idx]['local_steps'] = self.max_local_steps
             self.client_info[client_idx]['start_time'] = curr_time
-            self.logger.info(f"Client {client_idx} - Create GOA {self.group_counter} - Local steps {self.max_local_steps}")
+            # self.logger.info(f"Client {client_idx} - Create GOA {self.group_counter} - Local steps {self.max_local_steps}")
             self.group_counter += 1
         # Assign the client to a group or create one for it
         else:
@@ -130,8 +130,8 @@ class SchedulerCompass:
             self.client_info[client_idx]['local_steps'] = assigned_steps
             self.client_info[client_idx]['start_time'] = curr_time
             self.group_of_arrival[assigned_group]['clients'].append(client_idx)
-            self.logger.info(f"Client {client_idx} joinded group {assigned_group} at time {curr_time}")
-            self.logger.info(f"Client {client_idx} - Join GOA {assigned_group} - Local steps {assigned_steps}")
+            # self.logger.info(f"Client {client_idx} joinded group {assigned_group} at time {curr_time}")
+            # self.logger.info(f"Client {client_idx} - Join GOA {assigned_group} - Local steps {assigned_steps}")
             return True
         else:
             return False
@@ -160,15 +160,15 @@ class SchedulerCompass:
             'expected_arrival_time': curr_time + assigned_steps * self.client_info[client_idx]['speed'],
             'latest_arrival_time': curr_time + assigned_steps * self.client_info[client_idx]['speed'] * self.LATEST_TIME_FACTOR
         }
-        self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter]['expected_arrival_time']}, latest_arrival_time: {self.group_of_arrival[self.group_counter]['latest_arrival_time']}")
-        self.logger.info(f"Client {client_idx} joinded group {self.group_counter} at time {curr_time}")
+        # self.logger.info(f"Group {self.group_counter} created at {curr_time} with expected_arrival_time: {self.group_of_arrival[self.group_counter]['expected_arrival_time']}, latest_arrival_time: {self.group_of_arrival[self.group_counter]['latest_arrival_time']}")
+        # self.logger.info(f"Client {client_idx} joinded group {self.group_counter} at time {curr_time}")
         # Add a timer event
         timer = threading.Timer(self.group_of_arrival[self.group_counter]['latest_arrival_time']-curr_time, self._group_aggregation, args=(self.group_counter, ))
         timer.start()
         self.client_info[client_idx]['goa'] = self.group_counter
         self.client_info[client_idx]['local_steps'] = assigned_steps
         self.client_info[client_idx]['start_time'] = curr_time
-        self.logger.info(f"Client {client_idx} - Create GOA {self.group_counter} - Local steps {assigned_steps}")
+        # self.logger.info(f"Client {client_idx} - Create GOA {self.group_counter} - Local steps {assigned_steps}")
         self.group_counter += 1
     
     def _record_info(self, client_idx:int):
@@ -188,8 +188,8 @@ class SchedulerCompass:
         # Record total steps and decay the learning rate
         self.client_info[client_idx]['total_steps'] += self.client_info[client_idx]['local_steps']
         client_lr = self.lr * (self.LR_DECAY) ** (math.floor(self.client_info[client_idx]['total_steps']/self.max_local_steps))
-        self.logger.info(f"Total number of steps for client{client_idx} is {self.client_info[client_idx]['total_steps']}")
-        self.logger.info(f"Learning rate for client{client_idx} is {client_lr}")
+        # self.logger.info(f"Total number of steps for client{client_idx} is {self.client_info[client_idx]['total_steps']}")
+        # self.logger.info(f"Learning rate for client{client_idx} is {client_lr}")
         self.communicator.send_global_model_to_client(self.server.model.state_dict(), {'done': False, 'steps': self.client_info[client_idx]['local_steps'], 'lr': client_lr}, client_idx)
 
     def _group_aggregation(self, group_idx: int):        
@@ -212,7 +212,7 @@ class SchedulerCompass:
             # delete the group is not waiting any client
             if len(self.group_of_arrival[group_idx]['clients']) == 0:
                 del self.group_of_arrival[group_idx]
-                self.logger.info(f"Group {group_idx} is deleted at {time.time() - self.start_time}")
+                # self.logger.info(f"Group {group_idx} is deleted at {time.time() - self.start_time}")
             # Send the model if required
             if self.iter < self.num_global_epochs:
                 for client, _ in sorted_client_speed:

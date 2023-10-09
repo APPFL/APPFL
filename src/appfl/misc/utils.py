@@ -87,7 +87,6 @@ def create_custom_logger(logger, cfg: DictConfig):
 
     return logger
 
-
 def client_log(dir, output_filename):
 
     if os.path.isdir(dir) == False:
@@ -104,14 +103,12 @@ def client_log(dir, output_filename):
 
     return outfile
 
-
 def load_model(cfg: DictConfig):
     
     file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
     model = torch.load(file)
     model.eval()
     return model
-
 
 def save_model_iteration(t, model, cfg: DictConfig):
     
@@ -127,7 +124,6 @@ def save_model_iteration(t, model, cfg: DictConfig):
         uniq += 1
 
     torch.save(model, file)
-    
 
 def load_model_state(cfg: DictConfig, model, client_id = None):
     
@@ -141,7 +137,20 @@ def load_model_state(cfg: DictConfig, model, client_id = None):
     model.load_state_dict(torch.load(file),strict=False)
         
     return model
-    
+
+def compute_gradient(original_model, trained_model):
+    """Compute the difference (i.e. gradient) between the original model and the trained model"""
+    list_named_parameters = []
+    for name, _ in trained_model.named_parameters():
+        list_named_parameters.append(name)
+    local_gradient = {}
+    trained_model_state_dict = trained_model.state_dict()
+    for name in trained_model_state_dict:
+        if name in list_named_parameters:
+            local_gradient[name] = original_model[name] - trained_model_state_dict[name]
+        else:
+            local_gradient[name] = trained_model_state_dict[name]
+    return local_gradient    
 
 def save_partial_model_iteration(t, model, cfg: DictConfig, client_id = None):
     
@@ -176,7 +185,6 @@ def save_partial_model_iteration(t, model, cfg: DictConfig, client_id = None):
                     _ = state_dict.pop(key)
 
     torch.save(state_dict, file)
- 
 
 def set_seed(seed=233):
     random.seed(seed)
@@ -185,7 +193,6 @@ def set_seed(seed=233):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
 
 def get_executable_func(func_cfg):
     if func_cfg.module != "":

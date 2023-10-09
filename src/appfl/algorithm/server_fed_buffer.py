@@ -7,15 +7,15 @@ from ..misc import *
 logger = logging.getLogger(__name__)
 
 class ServerFedBuffer(FedServer):
-    """ Implement FedBuffer algorithm
-        Federated Learning with Buffered Asynchronous Aggregation: https://arxiv.org/abs/2106.06639
-    
-    Agruments:
+    """ 
+    ServerFedBuffer
+        FedBuffer - Federated Learning with Buffered Asynchronous Aggregation: https://arxiv.org/abs/2106.06639
+    Args:
         weights: weight for each client
-        model (nn.Module): PyTorch model
-        loss_fn (nn.Module): loss function
-        num_clients (int): number of clients
-        device (str): server's device for running evaluation  
+        model: PyTorch model
+        loss_fn: loss function
+        num_clients: number of clients
+        device: server device (TODO: do we really need this, server aggregation is on CPU by default) 
     """
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         self.counter = 0 
