@@ -8,6 +8,7 @@ from typing import Any
 from .algorithm import *
 from torch.optim import *
 from omegaconf import DictConfig
+from collections import OrderedDict
 from torch.utils.data import DataLoader
 from .comm.grpc.grpc_communicator_pb2 import Job
 from .comm.grpc.grpc_client import APPFLgRPCClient
@@ -159,12 +160,22 @@ def run_client(
                         save_model_iteration(cur_round_number, fed_client.model, cfg)
 
                 time_start = time.time()
-                comm.send_learning_results(
-                    local_state["penalty"],
-                    local_state["primal"],
-                    local_state["dual"],
-                    cur_round_number,
-                )
+                if 'penalty' in local_state:
+                    comm.send_learning_results(
+                        local_state["penalty"],
+                        local_state["primal"],
+                        local_state["dual"],
+                        cur_round_number,
+                    )
+                else:
+                    dummy_penalty = OrderedDict()
+                    dummy_penalty[cid] = 0.0
+                    comm.send_learning_results(
+                        dummy_penalty,
+                        local_state,
+                        OrderedDict(),
+                        cur_round_number,
+                    )
                 time_end = time.time()
                 send_time = time_end - time_start
                 logger.info(

@@ -41,7 +41,7 @@ parser.add_argument("--num_local_epochs", type=int, default=1)
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAvg")
 parser.add_argument("--num_epochs", type=int, default=2)
-parser.add_argument("--server_lr", type=float, default=0.01)
+parser.add_argument("--server_lr", type=float, default=0.1)
 parser.add_argument("--mparam_1", type=float, default=0.9)
 parser.add_argument("--mparam_2", type=float, default=0.99)
 parser.add_argument("--adapt_param", type=float, default=0.001)
