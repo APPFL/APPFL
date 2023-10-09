@@ -70,9 +70,8 @@ class MpiCommunicator:
         model_buffer = io.BytesIO()
         torch.save(model, model_buffer)
         model_bytes = model_buffer.getvalue()
-        req = self.comm.isend(len(model_bytes), dest=dest, tag=self.comm_rank)
-        req.wait()
-        self.comm.Send(np.frombuffer(model_bytes, dtype=np.byte), dest=dest, tag=self.comm_rank+self.comm_size)
+        self.comm.isend(len(model_bytes), dest=dest, tag=self.comm_rank)
+        self.comm.Isend(np.frombuffer(model_bytes, dtype=np.byte), dest=dest, tag=self.comm_rank+self.comm_size)
 
     def recv_global_model_from_server(self, source):
         '''Client receives the global model state dict from the server (source).'''
