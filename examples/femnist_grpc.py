@@ -1,9 +1,5 @@
 import time
-
-import json
-import numpy as np
 import torch
-
 from appfl.config import *
 from appfl.misc.data import *
 from models.cnn import *

@@ -1,10 +1,6 @@
-import os
 import time
-
-import json
-import numpy as np
 import torch
-
+import argparse
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
@@ -14,7 +10,6 @@ import appfl.run_mpi as rm
 from mpi4py import MPI
 from models.utils import get_model
 from dataloader.femnist_dataloader import get_femnist
-import argparse
 
 """ read arguments """
 
