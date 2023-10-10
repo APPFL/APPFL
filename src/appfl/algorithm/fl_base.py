@@ -119,7 +119,7 @@ class BaseClient:
         self.cfg = cfg
         self.outfile = outfile
         self.test_dataloader = test_dataloader
-        self.metric = metric
+        self.metric = metric if metric is not None else self._default_metric
         self.primal_state = OrderedDict()
 
     @abc.abstractmethod

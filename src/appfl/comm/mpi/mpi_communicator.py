@@ -91,7 +91,7 @@ class MpiCommunicator:
     def recv_local_model_from_client(self):
         '''Receive a single local model from the front of the receiving queue.'''
         while True:
-            time.sleep(0.2)     #TODO: Sometimes error occurs without a short sleep due to race condition
+            time.sleep(1.0)     #TODO: Sometimes error occurs without a short sleep due to race condition
             queue_idx, model_size = MPI.Request.waitany(self.recv_queue)
             if queue_idx != MPI.UNDEFINED:
                 model_bytes = np.empty(model_size, dtype=np.byte)
