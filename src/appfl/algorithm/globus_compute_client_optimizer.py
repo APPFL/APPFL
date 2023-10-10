@@ -3,7 +3,7 @@ import copy
 import time
 import torch
 from torch.optim import *
-from .algorithm import BaseClient
+from .fl_base import BaseClient
 
 class GlobusComputeClientOptim(BaseClient):
     """GlobusComputeClientOptim is the ClientOptim accompanied with a ClientLogger for recording the training process."""

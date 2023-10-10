@@ -4,7 +4,7 @@ import time
 import torch
 import numpy as np
 from torch.optim import *
-from .algorithm import BaseClient
+from .fl_base import BaseClient
 
 class ClientOptim(BaseClient):
     """This client optimizer which perform updates for certain number of epochs in each training round."""

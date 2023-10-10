@@ -3,7 +3,7 @@ import time
 import torch
 import numpy as np
 from torch.optim import *
-from .algorithm import BaseClient
+from .fl_base import BaseClient
 from ..misc.utils import save_partial_model_iteration
 
 class PersonalizedClientOptim(BaseClient):

@@ -3,7 +3,7 @@ import copy
 import torch
 import logging
 from torch.optim import *
-from .algorithm import BaseServer
+from .fl_base import BaseServer
 from collections import OrderedDict
 
 class FedServer(BaseServer):

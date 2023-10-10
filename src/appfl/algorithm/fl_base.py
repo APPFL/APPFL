@@ -19,7 +19,6 @@ class BaseServer:
         num_clients (int): the number of clients
         device (str): device for computation
     """
-
     def __init__(
         self,
         weights: OrderedDict,
@@ -97,6 +96,7 @@ class BaseClient:
         cfg: configurations
         outfile: logging file
         test_dataloader: test dataloader
+        metric: performance evaluation metric
     """
     def __init__(
         self,

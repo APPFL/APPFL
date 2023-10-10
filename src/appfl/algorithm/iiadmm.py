@@ -3,16 +3,14 @@ import torch
 import logging
 from torch.optim import *
 from collections import OrderedDict
-from .algorithm import BaseServer, BaseClient
+from .ppfl_base import PPFLServer, PPFLClient
 
 log = logging.getLogger(__name__)
 
-class IIADMMServer(BaseServer):
+class IIADMMServer(PPFLServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         super(IIADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
-
         self.__dict__.update(kwargs)
-
         self.is_first_iter = 1
 
         """
@@ -84,8 +82,7 @@ class IIADMMServer(BaseServer):
     def logging_summary(self, cfg, logger):
         super(IIADMMServer, self).log_summary(cfg, logger)
 
-
-class IIADMMClient(BaseClient):
+class IIADMMClient(PPFLClient):
     def __init__(
         self,
         id,
@@ -99,11 +96,8 @@ class IIADMMClient(BaseClient):
         metric,
         **kwargs
     ):
-        super(IIADMMClient, self).__init__(
-            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
-        )
+        super(IIADMMClient, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
         self.__dict__.update(kwargs)
-        self.metric = metric
 
         """
         At initial, (1) primal_state = global_state, (2) dual_state = 0
