@@ -38,6 +38,13 @@ parser.add_argument("--local_train_pattern", type=str, default="steps", choices=
 parser.add_argument("--num_local_steps", type=int, default=100)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
+## privacy preserving
+parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
+parser.add_argument("--epsilon", type=float, default=1, help="Privacy budget - stronger privacy as epsilon decreases")
+parser.add_argument("--clip_grad", action="store_true", default=False, help="Whether to clip the gradients")
+parser.add_argument("--clip_value", type=float, default=1.0, help="Max norm of the gradients")
+parser.add_argument("--clip_norm", type=float, default=1, help="Type of the used p-norm for gradient clipping")
+
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAsynchronous", 
                     choices=[
@@ -117,6 +124,13 @@ def main():
     cfg.fed.args.server_adapt_param = args.adapt_param          # FedAdam
     cfg.fed.args.server_momentum_param_1 = args.mparam_1        # FedAdam, FedAvgm
     cfg.fed.args.server_momentum_param_2 = args.mparam_2        # FedAdam
+
+    ## privacy preserving
+    cfg.fed.args.use_dp = args.use_dp
+    cfg.fed.args.epsilon = args.epsilon
+    cfg.fed.args.clip_grad = args.clip_grad
+    cfg.fed.args.clip_value = args.clip_value
+    cfg.fed.args.clip_norm = args.clip_norm
 
     ## fed async/fed buffer/fed compass
     cfg.fed.args.K = args.K

@@ -40,6 +40,13 @@ parser.add_argument("--num_local_epochs", type=int, default=1)
 parser.add_argument("--server", type=str, default="ICEADMM", choices=["ICEADMM", "IIADMM"])
 parser.add_argument("--num_epochs", type=int, default=2)
 
+## privacy preserving
+parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
+parser.add_argument("--epsilon", type=float, default=1, help="Privacy budget - stronger privacy as epsilon decreases")
+parser.add_argument("--clip_grad", action="store_true", default=False, help="Whether to clip the gradients")
+parser.add_argument("--clip_value", type=float, default=1.0, help="Max norm of the gradients")
+parser.add_argument("--clip_norm", type=float, default=1, help="Type of the used p-norm for gradient clipping")
+
 ## loss function
 parser.add_argument("--loss_fn", type=str, required=False, help="path to the custom loss function definition file, use cross-entropy loss by default if no path is specified")
 parser.add_argument("--loss_fn_name", type=str, required=False, help="class name for the custom loss in the loss function definition file, choose the first class by default if no name is specified")
@@ -76,6 +83,13 @@ def main():
 
     ## server
     cfg.num_epochs = args.num_epochs
+
+    ## privacy preserving
+    cfg.fed.args.use_dp = args.use_dp
+    cfg.fed.args.epsilon = args.epsilon
+    cfg.fed.args.clip_grad = args.clip_grad
+    cfg.fed.args.clip_value = args.clip_value
+    cfg.fed.args.clip_norm = args.clip_norm
 
     ## outputs
     cfg.use_tensorboard = False

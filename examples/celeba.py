@@ -40,6 +40,13 @@ parser.add_argument("--adapt_param", type=float, required=False)
 
 parser.add_argument("--pretrained", type=int, default=0)
 
+## privacy preserving
+parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
+parser.add_argument("--epsilon", type=float, default=1, help="Privacy budget - stronger privacy as epsilon decreases")
+parser.add_argument("--clip_grad", action="store_true", default=False, help="Whether to clip the gradients")
+parser.add_argument("--clip_value", type=float, default=1.0, help="Max norm of the gradients")
+parser.add_argument("--clip_norm", type=float, default=1, help="Type of the used p-norm for gradient clipping")
+
 args = parser.parse_args()
 
 if torch.cuda.is_available():
@@ -86,6 +93,13 @@ def main():
     ## server
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
+
+    ## privacy preserving
+    cfg.fed.args.use_dp = args.use_dp
+    cfg.fed.args.epsilon = args.epsilon
+    cfg.fed.args.clip_grad = args.clip_grad
+    cfg.fed.args.clip_value = args.clip_value
+    cfg.fed.args.clip_norm = args.clip_norm
 
     ## outputs
     cfg.use_tensorboard = True
