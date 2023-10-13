@@ -5,7 +5,7 @@ import appfl.run_serial as rs
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
-from models.utils import flamby_train
+from models.flamby import flamby_train
 from dataloader.flamby_dataloader import get_flamby
 
 """
