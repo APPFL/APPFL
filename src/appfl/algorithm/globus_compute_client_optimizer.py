@@ -42,7 +42,7 @@ class GlobusComputeClientOptim(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
                 optimizer.step()
-                if self.clip_value != False:
+                if self.clip_grad or self.use_dp:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
                         self.clip_value,
@@ -64,10 +64,8 @@ class GlobusComputeClientOptim(BaseClient):
         self.primal_state = copy.deepcopy(self.model.to('cpu').state_dict())
 
         ## Differential Privacy 
-        if self.epsilon != False:
-            sensitivity = 0
-            if self.clip_value != False:
-                sensitivity = 2.0 * self.clip_value * self.optim_args.lr
+        if self.use_dp:
+            sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
             super(GlobusComputeClientOptim, self).laplace_mechanism_output_perturb(scale_value)
         

@@ -75,7 +75,7 @@ class ClientStepOptim(BaseClient):
             target_true.append(target.detach().cpu().numpy())
             target_pred.append(output.detach().cpu().numpy())
             train_loss += loss.item()
-            if self.clip_value != False:
+            if self.clip_grad or self.use_dp:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)
         
         self.round += 1
@@ -87,10 +87,8 @@ class ClientStepOptim(BaseClient):
                 self.primal_state[k] = self.primal_state[k].cpu()
 
         ## Differential Privacy
-        if self.epsilon != False:
-            sensitivity = 0
-            if self.clip_value != False:
-                sensitivity = 2.0 * self.clip_value * self.optim_args.lr
+        if self.use_dp:
+            sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
             super(ClientStepOptim, self).laplace_mechanism_output_perturb(scale_value)
 

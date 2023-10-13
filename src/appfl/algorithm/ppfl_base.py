@@ -144,8 +144,8 @@ class PPFLServer:
         logger.info("Clients=%s" % (cfg.fed.clientname))
         logger.info("Comm_Rounds=%s" % (cfg.num_epochs))
         logger.info("Local_Rounds=%s" % (cfg.fed.args.num_local_epochs))
-        logger.info("DP_Eps=%s" % (cfg.fed.args.epsilon))
-        logger.info("Clipping=%s" % (cfg.fed.args.clip_value))
+        logger.info("DP_Eps=%s" % (cfg.fed.args.epsilon if cfg.fed.args.use_dp else False))
+        logger.info("Clipping=%s" % (cfg.fed.args.clip_value if (cfg.fed.args.clip_grad or cfg.fed.args.use_dp) else False))
         logger.info("Elapsed_time=%s" % (round(cfg["logginginfo"]["Elapsed_time"], 2)))
         logger.info("BestAccuracy=%s" % (round(cfg["logginginfo"]["BestAccuracy"], 2)))
 

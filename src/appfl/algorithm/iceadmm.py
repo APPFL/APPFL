@@ -147,7 +147,7 @@ class ICEADMMClient(PPFLClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
-                if self.clip_value != False:
+                if self.clip_grad or self.use_dp:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
                         self.clip_value,
@@ -164,10 +164,8 @@ class ICEADMMClient(PPFLClient):
                 self.iceadmm_step(coefficient, global_state)
 
         """ Differential Privacy  """
-        if self.epsilon != False:
-            sensitivity = 0
-            if self.clip_value != False:
-                sensitivity = 2.0 * self.clip_value / self.penalty
+        if self.use_dp:
+            sensitivity = 2.0 * self.clip_value / self.penalty
             scale_value = sensitivity / self.epsilon
             super(ICEADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 

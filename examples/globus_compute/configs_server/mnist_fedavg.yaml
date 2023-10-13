@@ -20,7 +20,8 @@ algorithm:
     optim_args: 
         lr: 0.01
     ## Differential Privacy
-    epsilon: False
+    use_dp: False
+    epsilon: 1
     ##  epsilon: 1      (stronger privacy as the value decreases)
     ##  epsilon: 0.05
     ## Gradient Clipping
@@ -29,7 +30,8 @@ algorithm:
     ## clip_value: 1
     server_lr_decay_exp_gamma : 0.975 
     client_weights: "equal"
-    clip_value: False
+    clip_grad: False
+    clip_value: 1
     clip_norm: 1
 
 model:
