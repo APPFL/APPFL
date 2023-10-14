@@ -1,16 +1,15 @@
-import numpy as np
 import os
-import json
-
-num_clients = 4  ## Any Integer
-num_pixel   = 32   # image size = (num_pixel, num_pixel)
-
-import glob
-import cv2
-import numpy as np
-import torch
-
 import csv
+import cv2
+import json
+import torch
+import argparse
+import numpy as np
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--num_pixel", type=int, default=32, help="size of the image for resizing")
+parser.add_argument("--num_clients", type=int, default=4, help="how many client chunks should be split into from the original dataset")
+args = parser.parse_args()
 
 class CoronahackTrain():
     def __init__(self, pixel): 
@@ -94,13 +93,11 @@ class CoronahackTest():
         
         return img_tensor, class_id
  	
-train_data_raw=CoronahackTrain(num_pixel)				
-test_data_raw=CoronahackTest(num_pixel)		
+train_data_raw=CoronahackTrain(args.num_pixel)				
+test_data_raw=CoronahackTest(args.num_pixel)		
 
- 
 ## Output Directories
-
-dir = "./Coronahack_Clients_{}".format(num_clients) 
+dir = "./Coronahack_Clients_{}".format(args.num_clients) 
 if os.path.isdir(dir) == False:
     os.mkdir(dir)    
 
@@ -117,8 +114,8 @@ with open(out_test_file, 'w') as outfile:
     json.dump(all_test_data, outfile)
 
 ## Training Data (Clients)
-split_train_data_raw = np.array_split(range(len(train_data_raw)), num_clients)     
-for i in range(num_clients):
+split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)     
+for i in range(args.num_clients):
     print("--client ", i)
 
     user_data = {}; x=[]; y=[]    

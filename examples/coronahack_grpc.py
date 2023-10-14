@@ -1,87 +1,133 @@
-import os
 import time
-import json
-import torch
-
+import argparse
+from mpi4py import MPI
 from appfl.config import *
 from appfl.misc.data import *
-from models.cnn import *
+from appfl.misc.utils import *
+from losses.utils import get_loss
+from models.utils import get_model
+from metric.utils import get_metric
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
-from mpi4py import MPI
+from dataloader.coronahack_dataloader import get_corona
 
-DataSet_name = "Coronahack"
-num_clients = 4
-num_channel = 3  # 1 if gray, 3 if color
-num_classes = 7  # number of the image classes
-num_pixel = 32  # image size = (num_pixel, num_pixel)
+"""
+mpiexec -np 5 python ./coronahack_grpc.py --num_epochs 10
+"""
 
-dir = os.getcwd() + "/datasets/PreprocessedData/%s_Clients_%s" % (
-    DataSet_name,
-    num_clients,
-)
+parser = argparse.ArgumentParser()
+parser.add_argument("--device", type=str, default="cpu")
 
+## dataset
+parser.add_argument("--dataset", type=str, default="Coronahack")
+parser.add_argument("--num_channel", type=int, default=3)
+parser.add_argument("--num_classes", type=int, default=7)
+parser.add_argument("--num_pixel", type=int, default=32)
+parser.add_argument("--model", type=str, default="CNN")
 
-def get_data(comm: MPI.Comm):
-    # test data for a server
-    with open("%s/all_test_data.json" % (dir)) as f:
-        test_data_raw = json.load(f)
+## clients
+parser.add_argument("--num_clients", type=int, default=4)
+parser.add_argument("--client_optimizer", type=str, default="Adam")
+parser.add_argument("--client_lr", type=float, default=3e-3)
+parser.add_argument("--local_train_pattern", type=str, default="steps", choices=["steps", "epochs"], help="For local optimizer, what counter to use, number of steps or number of epochs")
+parser.add_argument("--num_local_steps", type=int, default=100)
+parser.add_argument("--num_local_epochs", type=int, default=1)
 
-    test_dataset = Dataset(
-        torch.FloatTensor(test_data_raw["x"]), torch.tensor(test_data_raw["y"])
-    )
+## server
+parser.add_argument("--server", type=str, default="ServerFedAvg")
+parser.add_argument("--num_epochs", type=int, default=2)
+parser.add_argument("--server_lr", type=float, default=0.1)
+parser.add_argument("--mparam_1", type=float, default=0.9)
+parser.add_argument("--mparam_2", type=float, default=0.99)
+parser.add_argument("--adapt_param", type=float, default=0.001)
 
-    # training data for multiple clients
-    train_datasets = []
+## privacy preserving
+parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
+parser.add_argument("--epsilon", type=float, default=1, help="Privacy budget - stronger privacy as epsilon decreases")
+parser.add_argument("--clip_grad", action="store_true", default=False, help="Whether to clip the gradients")
+parser.add_argument("--clip_value", type=float, default=1.0, help="Max norm of the gradients")
+parser.add_argument("--clip_norm", type=float, default=1, help="Type of the used p-norm for gradient clipping")
 
-    for client in range(num_clients):
-        with open("%s/all_train_data_client_%s.json" % (dir, client)) as f:
-            train_data_raw = json.load(f)
-        train_datasets.append(
-            Dataset(
-                torch.FloatTensor(train_data_raw["x"]),
-                torch.tensor(train_data_raw["y"]),
-            )
-        )
+## loss function
+parser.add_argument("--loss_fn", type=str, required=False, help="path to the custom loss function definition file, use cross-entropy loss by default if no path is specified")
+parser.add_argument("--loss_fn_name", type=str, required=False, help="class name for the custom loss in the loss function definition file, choose the first class by default if no name is specified")
 
-    data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel)
-    return train_datasets, test_dataset
+## evaluation metric
+parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
+parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
+args = parser.parse_args()
 
-def get_model(comm: MPI.Comm):
-    ## User-defined model
-    model = CNN(num_channel, num_classes, num_pixel)
-    return model
-
+if torch.cuda.is_available():
+    args.device = "cuda"
 
 def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
 
+    ## Reproducibility
     torch.manual_seed(1)
+    torch.backends.cudnn.deterministic = True
+
+    ## configuration
+    cfg = OmegaConf.structured(Config)
+    cfg.device = args.device
+    cfg.reproduce = True
+    if cfg.reproduce == True:
+        set_seed(1)
+
+    ## clients
+    cfg.num_clients = args.num_clients
+    cfg.fed.clientname = "ClientOptim" if args.local_train_pattern == "epochs" else "ClientStepOptim"
+    cfg.fed.args.optim = args.client_optimizer
+    cfg.fed.args.optim_args.lr = args.client_lr
+    cfg.fed.args.num_local_steps = args.num_local_steps
+    cfg.fed.args.num_local_epochs = args.num_local_epochs    
+
+    ## server
+    cfg.fed.servername = args.server
+    cfg.num_epochs = args.num_epochs
+
+    ## outputs
+    cfg.use_tensorboard = False
+    cfg.save_model_state_dict = False
+    cfg.output_dirname = f"./outputs_{args.dataset}_{args.num_clients}clients_{args.server}_{args.num_epochs}epochs_mpi"
+    
+    ## adaptive server
+    cfg.fed.args.server_learning_rate = args.server_lr          # FedAdam
+    cfg.fed.args.server_adapt_param = args.adapt_param          # FedAdam
+    cfg.fed.args.server_momentum_param_1 = args.mparam_1        # FedAdam, FedAvgm
+    cfg.fed.args.server_momentum_param_2 = args.mparam_2        # FedAdam
+
+    ## privacy preserving
+    cfg.fed.args.use_dp = args.use_dp
+    cfg.fed.args.epsilon = args.epsilon
+    cfg.fed.args.clip_grad = args.clip_grad
+    cfg.fed.args.clip_value = args.clip_value
+    cfg.fed.args.clip_norm = args.clip_norm
 
     start_time = time.time()
-    train_datasets, test_dataset = get_data(comm)
-    model = get_model(comm)
-    print(
-        "----------Loaded Datasets and Model----------Elapsed Time=",
-        time.time() - start_time,
-    )
+    train_datasets, test_dataset = get_corona(args)
 
-    # read default configuration
-    cfg = OmegaConf.structured(Config)
+    ## User-defined model
+    model = get_model(args)
+    loss_fn = get_loss(args.loss_fn, args.loss_fn_name)
+    metric = get_metric(args.metric, args.metric_name)
+
+    print( "----------Loaded Datasets and Model----------Elapsed Time=", time.time() - start_time)
 
     if comm_size > 1:
         # Try to launch both a server and clients.
-        if comm_rank == 0:
-            grpc_server.run_server(cfg, model, num_clients, test_dataset)
-        else:
-            grpc_client.run_client(cfg, comm_rank-1, model, train_datasets[comm_rank - 1], comm_rank)
+        if comm_rank == 0:            
+            grpc_server.run_server(cfg, model, loss_fn, cfg.num_clients, test_dataset, metric)
+        else:            
+            grpc_client.run_client(cfg, comm_rank-1, model, loss_fn, train_datasets[comm_rank - 1], comm_rank, test_dataset, metric)
+            
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.
-        grpc_server.run_server(cfg, model, num_clients, test_dataset)
+        grpc_server.run_server(cfg, model, cfg.num_clients, test_dataset)
 
 
 if __name__ == "__main__":
