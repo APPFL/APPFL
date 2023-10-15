@@ -91,7 +91,7 @@ def client_training(
     client_state, cli_logger = client.update(cli_logger= cli_logger)
     
     client_state_primal_cpu = OrderedDict()
-    for k, v in client_state["primal"].items():
+    for k, v in client_state.items():
         client_state_primal_cpu[k] = v.cpu()
 
     cli_logger.stop_timer("training_client_update")

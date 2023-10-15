@@ -9,7 +9,7 @@ from globus_compute_sdk import Client
 from appfl.run_globus_compute_server import run_server
 
 """
-python mnist_gc.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
+python mnist_globus_compute.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
 """
 
 """ read arguments """ 

@@ -67,7 +67,7 @@ mpiexec -np 6 python ./mnist_grpc.py --partition class_noiid --loss_fn losses/ce
 #### Globus Compute Communication
 [Globus Compute](https://funcx.readthedocs.io/en/latest/index.html) is a distributed function as a service platform. It is used to support federated learning among **real-world** distributed and **heterogeneous** computing facilities. The following command starts an FL server which interacts with Globus Compute Endpoints (FL clients) to perform FL experiments. Please see the detialed instructions about how to setup experiments using Globus Compute [here](globus_compute/README.md).
 ```bash
-python mnist_gc.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
+python mnist_globus_compute.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
 ```
 
 ### FEMNIST
