@@ -14,7 +14,7 @@ def run_serial(
     loss_fn: nn.Module,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
-    dataset_name: str = "appfl",
+    dataset_name: str = "MNIST",
     metric: Any = None
 ):
     """

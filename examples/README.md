@@ -33,6 +33,12 @@ We use separate python files for examples on various datasets with different com
 ### MNIST, CIFAR10, Coronahack, CelebA
 Below shows how to run the MNIST examples. CIFAR-10 is pretty similar. For Coronahack and FEMNIST, check the dataset directory for preprocessing the data and replace the file name with an appropriate example name. For the input parameters and the corresponding meanings, please refer to the code itself.
 
+#### Serial Run
+The following command shows how to *simulate* federated learning by running FL server and five FL clients serially.
+```bash
+python ./mnist_serial.py --num_clients 5 --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
+```
+
 #### MPI Synchronous Communication
 `-np 6` in the following command means that we are launching 6 MPI processes. If you do not explicitly specify `--num_clients`, then the number of clients is the number of processes minus one (one MPI process is used as an FL server), which is 5 in this case. You can also explicitly specify the number of clients, e.g., `--num_clients 10` will launch ten FL clients with two clients running serially on one MPI process (also, one MPI process is used as an FL server).
 ```bash
@@ -62,12 +68,6 @@ mpiexec -np 6 python ./mnist_grpc.py --partition class_noiid --loss_fn losses/ce
 [Globus Compute](https://funcx.readthedocs.io/en/latest/index.html) is a distributed function as a service platform. It is used to support federated learning among **real-world** distributed and **heterogeneous** computing facilities. The following command starts an FL server which interacts with Globus Compute Endpoints (FL clients) to perform FL experiments. Please see the detialed instructions about how to setup experiments using Globus Compute [here](globus_compute/README.md).
 ```bash
 python mnist_gc.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
-```
-
-#### Serial Run
-The following command shows how to *simulate* federated learning by running FL server and five FL clients serially.
-```bash
-python ./mnist_serial.py --num_clients 5 --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
 ```
 
 ### FEMNIST

@@ -22,7 +22,7 @@ For most users, including data scientists, this simple installation must be suff
 .. code-block:: console
 
     $ pip install pip --upgrade
-    $ pip install "appfl[analytics]"
+    $ pip install "appfl[analytics,examples]"
 
 If you want to even minimize the installation of package dependencies, you can use:
 
@@ -45,3 +45,9 @@ To set up the development environment,
     $ git clone https://github.com/APPFL/APPFL.git
     $ cd APPFL
     $ pip install -e ".[dev,examples,analytics]"
+
+On Ubuntu, if the installation process failed, you can try:
+
+.. code-block:: console
+
+    $ sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
