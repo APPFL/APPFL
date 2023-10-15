@@ -20,6 +20,7 @@ parser.add_argument("--device", type=str, default="cpu")
 
 ## dataset
 parser.add_argument("--dataset", type=str, default="Coronahack")
+parser.add_argument("--non_processed", action="store_true", default=False, help="Specify if NOT preprocessed the downloaded datasets")
 parser.add_argument("--num_channel", type=int, default=3)
 parser.add_argument("--num_classes", type=int, default=7)
 parser.add_argument("--num_pixel", type=int, default=32)
