@@ -95,7 +95,6 @@ def readyMNISTdata():
     
     if not (os.path.exists(datafolderpath) and os.path.isdir(datafolderpath)):
         os.mkdir(datafolderpath)
-
     mnistfolderpath = os.path.join(datafolderpath, "MNIST")
     if not (os.path.exists(mnistfolderpath) and os.path.isdir(mnistfolderpath)):        
         print("Download MNIST data")
@@ -112,7 +111,7 @@ if comm_size > 1:
     comm.Barrier()
 else:
     # Serial
-    readyMNISTdata() 
+    readyMNISTdata()    
 
 def test_mnist_fedavg():
 
@@ -213,7 +212,7 @@ def test_mnist_fedasync_mpi():
         if comm_rank == 0:
             rma.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
         else:
-            rma.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+            rma.run_client(cfg, comm, model, loss_fn, train_datasets)
     else:
         assert 0
 
@@ -241,7 +240,7 @@ def test_mnist_fedbuffer_mpi():
         if comm_rank == 0:
             rma.run_server(cfg, comm, model, loss_fn, num_clients, test_dataset, "test_mnist")
         else:
-            rma.run_client(cfg, comm, model, loss_fn, num_clients, train_datasets)
+            rma.run_client(cfg, comm, model, loss_fn, train_datasets)
     else:
         assert 0
 

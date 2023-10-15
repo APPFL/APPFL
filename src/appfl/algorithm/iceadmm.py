@@ -1,24 +1,18 @@
+import copy
+import torch
 import logging
+from torch.optim import *
+from collections import OrderedDict
+from .ppfl_base import PPFLServer, PPFLClient
 
 log = logging.getLogger(__name__)
 
-from collections import OrderedDict
-from .algorithm import BaseServer, BaseClient
-
-import torch
-from torch.optim import *
-from torch.nn import CrossEntropyLoss
-from torch.utils.data import DataLoader
-import copy
-
-
-class ICEADMMServer(BaseServer):
+class ICEADMMServer(PPFLServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         super(ICEADMMServer, self).__init__(
             weights, model, loss_fn, num_clients, device
         )
         self.__dict__.update(kwargs)
-
         self.is_first_iter = 1
 
     def update(self, local_states: OrderedDict):
@@ -79,8 +73,7 @@ class ICEADMMServer(BaseServer):
     def logging_summary(self, cfg, logger):
         super(ICEADMMServer, self).log_summary(cfg, logger)
 
-
-class ICEADMMClient(BaseClient):
+class ICEADMMClient(PPFLClient):
     def __init__(
         self,
         id,
@@ -94,11 +87,8 @@ class ICEADMMClient(BaseClient):
         metric,
         **kwargs
     ):
-        super(ICEADMMClient, self).__init__(
-            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
-        )
+        super(ICEADMMClient, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
         self.__dict__.update(kwargs)
-        self.metric = metric
 
         """ 
         At initial, (1) primal_state = global_state, (2) dual_state = 0
@@ -157,7 +147,7 @@ class ICEADMMClient(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
-                if self.clip_value != False:
+                if self.clip_grad or self.use_dp:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
                         self.clip_value,
@@ -174,10 +164,8 @@ class ICEADMMClient(BaseClient):
                 self.iceadmm_step(coefficient, global_state)
 
         """ Differential Privacy  """
-        if self.epsilon != False:
-            sensitivity = 0
-            if self.clip_value != False:
-                sensitivity = 2.0 * self.clip_value / self.penalty
+        if self.use_dp:
+            sensitivity = 2.0 * self.clip_value / self.penalty
             scale_value = sensitivity / self.epsilon
             super(ICEADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 

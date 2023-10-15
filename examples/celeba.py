@@ -1,10 +1,6 @@
-import os
 import time
-
-import json
-import numpy as np
 import torch
-
+import argparse
 from appfl.config import *
 from appfl.misc.data import *
 from models.cnn import *
@@ -12,10 +8,7 @@ import appfl.run_serial as rs
 import appfl.run_mpi as rm
 from mpi4py import MPI
 from models.utils import get_model
-import argparse
-
-from PIL import Image
-from PIL import ImageOps
+from dataloader.celeba_dataloader import get_celeba
 
 """ read arguments """
 
@@ -28,7 +21,7 @@ parser.add_argument("--dataset", type=str, default="CELEBA")
 parser.add_argument("--num_channel", type=int, default=3)
 parser.add_argument("--num_classes", type=int, default=2)
 parser.add_argument("--num_pixel", type=int, default=218)
-parser.add_argument("--model", type=str, default="CNN")
+parser.add_argument("--model", type=str, default="resnet18-legacy")
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=1)
@@ -47,65 +40,17 @@ parser.add_argument("--adapt_param", type=float, required=False)
 
 parser.add_argument("--pretrained", type=int, default=0)
 
+## privacy preserving
+parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
+parser.add_argument("--epsilon", type=float, default=1, help="Privacy budget - stronger privacy as epsilon decreases")
+parser.add_argument("--clip_grad", action="store_true", default=False, help="Whether to clip the gradients")
+parser.add_argument("--clip_value", type=float, default=1.0, help="Max norm of the gradients")
+parser.add_argument("--clip_norm", type=float, default=1, help="Type of the used p-norm for gradient clipping")
+
 args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
-
-
-dir = os.getcwd() + "/datasets/RawData/%s" % (args.dataset)
-
-def get_data(comm: MPI.Comm):
-    # test data for a server 
-    test_data_raw = {}
-    test_data_input = []
-    test_data_label = []
-    imagedir = dir + "/raw/img_align_celeba/"
-    with open("%s/test/all_data_niid_05_keep_0_test_9.json" % (dir)) as f:
-        test_data_raw = json.load(f)
-    for client in test_data_raw["users"]:
-        for imagename in test_data_raw["user_data"][client]["x"]:            
-            imagepath = imagedir+imagename        
-            img = Image.open(imagepath)
-            img = ImageOps.pad(img, [args.num_pixel,args.num_pixel])
-            rgb = img.convert('RGB')            
-            arr = np.asarray(rgb).copy()
-            arr = np.moveaxis(arr, -1, 0)   
-            arr = arr / 255  # scale all pixel values to between 0 and 1            
-            test_data_input.append(arr)
-        for data_label in test_data_raw["user_data"][client]["y"]:
-            test_data_label.append(data_label)
-    test_dataset = Dataset(
-        torch.FloatTensor(test_data_input), torch.LongTensor(test_data_label)
-    )
-
-    # training data for multiple clients
-    train_data_raw = {}
-    train_datasets = []
-    with open("%s/train/all_data_niid_05_keep_0_train_9.json" % (dir)) as f:
-        train_data_raw = json.load(f)
-
-    for client in train_data_raw["users"]:
-
-        train_data_input_resize = []
-        for data_input in train_data_raw["user_data"][client]["x"]:
-            imagepath = imagedir+imagename        
-            img = Image.open(imagepath)
-            img = ImageOps.pad(img, [args.num_pixel,args.num_pixel])
-            rgb = img.convert('RGB')        
-            arr = np.asarray(rgb).copy()
-            arr = np.moveaxis(arr, -1, 0)        
-            arr = arr / 255  # scale all pixel values to between 0 and 1
-            train_data_input_resize.append(arr)
-        train_datasets.append(
-            Dataset(
-                torch.FloatTensor(train_data_input_resize),
-                torch.LongTensor(train_data_raw["user_data"][client]["y"]),
-            )
-        )
-    
-    return train_datasets, test_dataset
-
 
 def main():    
 
@@ -121,7 +66,7 @@ def main():
     torch.backends.cudnn.deterministic = True
 
     start_time = time.time()
-    train_datasets, test_dataset = get_data(comm)
+    train_datasets, test_dataset = get_celeba(args.num_pixel)
 
     if cfg.data_sanity == True:
         data_sanity_check(
@@ -148,6 +93,13 @@ def main():
     ## server
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
+
+    ## privacy preserving
+    cfg.fed.args.use_dp = args.use_dp
+    cfg.fed.args.epsilon = args.epsilon
+    cfg.fed.args.clip_grad = args.clip_grad
+    cfg.fed.args.clip_value = args.clip_value
+    cfg.fed.args.clip_norm = args.clip_norm
 
     ## outputs
     cfg.use_tensorboard = True

@@ -5,6 +5,10 @@ import logging
 import random
 import numpy as np
 import copy
+import os.path as osp
+import pickle as pkl
+import string
+
 
 def validation(self, dataloader, metric):
     if self.loss_fn is None or dataloader is None:
@@ -60,7 +64,7 @@ def create_custom_logger(logger, cfg: DictConfig):
 
     dir = cfg.output_dirname
     if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+        os.makedirs(dir, exist_ok=True)
     output_filename = cfg.output_filename + "_server"
 
     file_ext = ".txt"
@@ -83,11 +87,10 @@ def create_custom_logger(logger, cfg: DictConfig):
 
     return logger
 
-
 def client_log(dir, output_filename):
 
     if os.path.isdir(dir) == False:
-        os.mkdir(dir)
+        os.makedirs(dir, exist_ok=True)
 
     file_ext = ".txt"
     filename = dir + "/%s%s" % (output_filename, file_ext)
@@ -100,14 +103,12 @@ def client_log(dir, output_filename):
 
     return outfile
 
-
 def load_model(cfg: DictConfig):
     
     file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
     model = torch.load(file)
     model.eval()
     return model
-
 
 def save_model_iteration(t, model, cfg: DictConfig):
     
@@ -123,7 +124,6 @@ def save_model_iteration(t, model, cfg: DictConfig):
         uniq += 1
 
     torch.save(model, file)
-    
 
 def load_model_state(cfg: DictConfig, model, client_id = None):
     
@@ -137,9 +137,22 @@ def load_model_state(cfg: DictConfig, model, client_id = None):
     model.load_state_dict(torch.load(file),strict=False)
         
     return model
-    
 
-def save_model_state_iteration(t, model, cfg: DictConfig, client_id = None):
+def compute_gradient(original_model, trained_model):
+    """Compute the difference (i.e. gradient) between the original model and the trained model"""
+    list_named_parameters = []
+    for name, _ in trained_model.named_parameters():
+        list_named_parameters.append(name)
+    local_gradient = {}
+    trained_model_state_dict = trained_model.state_dict()
+    for name in trained_model_state_dict:
+        if name in list_named_parameters:
+            local_gradient[name] = original_model[name] - trained_model_state_dict[name]
+        else:
+            local_gradient[name] = trained_model_state_dict[name]
+    return local_gradient    
+
+def save_partial_model_iteration(t, model, cfg: DictConfig, client_id = None):
     
     # This function saves the model weights (instead of the entire model).
     # If personalization is enabled, only the shared layer weights will be saved for the server.
@@ -172,7 +185,6 @@ def save_model_state_iteration(t, model, cfg: DictConfig, client_id = None):
                     _ = state_dict.pop(key)
 
     torch.save(state_dict, file)
- 
 
 def set_seed(seed=233):
     random.seed(seed)
@@ -181,3 +193,83 @@ def set_seed(seed=233):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+def get_executable_func(func_cfg):
+    if func_cfg.module != "":
+        import importlib
+        mdl = importlib.import_module(func_cfg.module)
+        return getattr(mdl, func_cfg.call)
+    elif func_cfg.source != "":
+        exec(func_cfg.source, globals())
+        return eval(func_cfg.call)
+    
+def mse_loss(pred, y):
+    return torch.nn.MSELoss()(pred.float(), y.float().unsqueeze(-1))
+
+def get_loss_func(cfg):
+    if cfg.loss == "":
+        return get_executable_func(cfg.get_loss)()
+    elif cfg.loss == "CrossEntropy":
+        return torch.nn.CrossEntropyLoss()
+    elif cfg.loss == "MSE":
+        return mse_loss
+
+TORCH_EXT = ['.pt', '.pth']
+PICKLE_EXT= ['.pkl']
+
+def load_data_from_file(file_path: str, to_device=None):
+    """Read data from file using the corresponding readers"""
+    # Load files to memory
+    file_ext = osp.splitext(osp.basename(file_path))[-1]
+    if  file_ext in TORCH_EXT:
+        results = torch.load(file_path, map_location=to_device)
+    elif file_ext in PICKLE_EXT:
+        with open(file_path, "rb") as fi:
+            results = pkl.load(fi)
+    else:
+        raise RuntimeError("File extension %s is not supported" % file_ext)
+    return results
+
+def dump_data_to_file(obj, file_path: str):
+    """Write data to file using the corresponding readers"""
+    file_ext = osp.splitext(osp.basename(file_path))[-1]
+    if file_ext in TORCH_EXT:
+        torch.save(obj, file_path)
+    elif file_ext in PICKLE_EXT:
+        with open(file_path, "wb") as fo:
+            pkl.dump(obj, fo)
+    else:
+        raise RuntimeError("File extension %s is not supported" % file_ext)
+    return True
+
+from torch.utils.data import DataLoader
+def get_dataloader(cfg, dataset, mode):
+    """ Create a data loader object from the dataset and config file"""
+    if dataset is None:
+        return None
+    if len(dataset) == 0:
+        return None
+    assert mode in ['train', 'val', 'test']
+    if mode == 'train':
+        ## Configure training at client
+        batch_size = cfg.train_data_batch_size
+        shuffle    = cfg.train_data_shuffle
+    else:
+        batch_size = cfg.test_data_batch_size
+        shuffle    = cfg.test_data_shuffle
+
+    return DataLoader(
+            dataset,
+            batch_size  = batch_size,
+            num_workers = cfg.num_workers,
+            shuffle     = shuffle,
+            pin_memory  = True
+        )
+
+def load_source_file(file_path):
+    with open(file_path) as fi:
+        source = fi.read()
+    return source
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))

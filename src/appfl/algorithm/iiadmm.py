@@ -1,24 +1,16 @@
+import copy
+import torch
 import logging
+from torch.optim import *
+from collections import OrderedDict
+from .ppfl_base import PPFLServer, PPFLClient
 
 log = logging.getLogger(__name__)
 
-from collections import OrderedDict
-from .algorithm import BaseServer, BaseClient
-
-import torch
-from torch.optim import *
-from torch.nn import CrossEntropyLoss
-from torch.utils.data import DataLoader
-import copy
-import math
-
-
-class IIADMMServer(BaseServer):
+class IIADMMServer(PPFLServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         super(IIADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
-
         self.__dict__.update(kwargs)
-
         self.is_first_iter = 1
 
         """
@@ -90,8 +82,7 @@ class IIADMMServer(BaseServer):
     def logging_summary(self, cfg, logger):
         super(IIADMMServer, self).log_summary(cfg, logger)
 
-
-class IIADMMClient(BaseClient):
+class IIADMMClient(PPFLClient):
     def __init__(
         self,
         id,
@@ -105,11 +96,8 @@ class IIADMMClient(BaseClient):
         metric,
         **kwargs
     ):
-        super(IIADMMClient, self).__init__(
-            id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader
-        )
+        super(IIADMMClient, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
         self.__dict__.update(kwargs)
-        self.metric = metric
 
         """
         At initial, (1) primal_state = global_state, (2) dual_state = 0
@@ -166,7 +154,7 @@ class IIADMMClient(BaseClient):
                 loss = self.loss_fn(output, target)
                 loss.backward()
 
-                if self.clip_value != False:
+                if self.clip_grad or self.use_dp:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
                         self.clip_value,
@@ -190,10 +178,8 @@ class IIADMMClient(BaseClient):
             )
 
         """ Differential Privacy  """
-        if self.epsilon != False:
-            sensitivity = 0
-            if self.clip_value != False:
-                sensitivity = 2.0 * self.clip_value / self.penalty
+        if self.use_dp:
+            sensitivity = 2.0 * self.clip_value / self.penalty
             scale_value = sensitivity / self.epsilon
             super(IIADMMClient, self).laplace_mechanism_output_perturb(scale_value)
 

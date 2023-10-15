@@ -1,21 +1,17 @@
-from omegaconf import DictConfig
-
-import torch
-import torch.nn as nn
-from torch.optim import *
-from torch.utils.data import DataLoader
-
 import copy
-import numpy as np
-import logging
 import time
-
+import torch
+import logging
+import torch.nn as nn
 from .misc import *
+from typing import Any
 from .algorithm import *
-
-from .protos.federated_learning_pb2 import Job
-from .protos.client import FLClient
-
+from torch.optim import *
+from omegaconf import DictConfig
+from collections import OrderedDict
+from torch.utils.data import DataLoader
+from .comm.grpc.grpc_communicator_pb2 import Job
+from .comm.grpc.grpc_client import APPFLgRPCClient
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -33,6 +29,7 @@ def run_client(
     train_data: Dataset,
     gpu_id: int = 0,
     test_data: Dataset = Dataset(),
+    metric: Any = None
 ) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
@@ -63,12 +60,12 @@ def run_client(
 
     batch_size = cfg.train_data_batch_size
     if cfg.batch_training == False:
-        batchsize = len(train_data)
+        batch_size = len(train_data)
 
     logger.debug(
         f"[Client ID: {cid: 03}] connecting to (uri,tls)=({uri},{cfg.server.use_tls})."
     )
-    comm = FLClient(
+    comm = APPFLgRPCClient(
         cid,
         uri,
         cfg.server.use_tls,
@@ -124,6 +121,7 @@ def run_client(
         cfg,
         outfile,
         test_dataloader,
+        metric,
         **cfg.fed.args,
     )
 
@@ -162,12 +160,22 @@ def run_client(
                         save_model_iteration(cur_round_number, fed_client.model, cfg)
 
                 time_start = time.time()
-                comm.send_learning_results(
-                    local_state["penalty"],
-                    local_state["primal"],
-                    local_state["dual"],
-                    cur_round_number,
-                )
+                if 'penalty' in local_state:
+                    comm.send_learning_results(
+                        local_state["penalty"],
+                        local_state["primal"],
+                        local_state["dual"],
+                        cur_round_number,
+                    )
+                else:
+                    dummy_penalty = OrderedDict()
+                    dummy_penalty[cid] = 0.0
+                    comm.send_learning_results(
+                        dummy_penalty,
+                        local_state,
+                        OrderedDict(),
+                        cur_round_number,
+                    )
                 time_end = time.time()
                 send_time = time_end - time_start
                 logger.info(

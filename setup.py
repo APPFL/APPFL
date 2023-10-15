@@ -43,6 +43,10 @@ setuptools.setup(
         "grpcio",
         "grpcio-tools",
         "omegaconf",
+        "mpi4py",
+        "boto3",
+        "botocore",
+        "globus-compute-sdk"
     ],
     extras_require={
         "dev": [
@@ -56,21 +60,19 @@ setuptools.setup(
             "pytest",
             "pytest-mpi",
             "torchvision",
-            "mpi4py",
         ],
         "analytics": [
             "jupyter",
             "tensorboard",
             "matplotlib",
         ],
-        "mpi": ["mpi4py"],
         "examples": [
             "opencv-python",
             "torchvision",
             "pandas",
             "pyarrow",
             "fastparquet",
-            "tqdm"
+            "tqdm",
         ],
     },
 )

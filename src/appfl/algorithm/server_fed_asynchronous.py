@@ -1,21 +1,20 @@
-import logging
 import copy
-from collections import OrderedDict
+import logging
 from .server_federated import FedServer
 from ..misc import *
 
 logger = logging.getLogger(__name__)
 
 class ServerFedAsynchronous(FedServer):
-    """ Implement FedAsync algorithm
-        Asynchronous Federated Optimization: http://arxiv.org/abs/1903.03934
-    
-    Agruments:
+    """ 
+    ServerFedAsynchronous:
+        FedAsync - Asynchronous Federated Optimization: http://arxiv.org/abs/1903.03934
+    Args:
         weights: weight for each client
-        model (nn.Module): PyTorch model
-        loss_fn (nn.Module): loss function
-        num_clients (int): number of clients
-        device (str): server's device for running evaluation  
+        model: PyTorch model
+        loss_fn: loss function
+        num_clients: number of clients
+        device: server device (TODO: do we really need this, server aggregation is on CPU by default)
     """
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         weights = [1.0 / num_clients for _ in range(num_clients)] if weights is None else weights
@@ -25,26 +24,18 @@ class ServerFedAsynchronous(FedServer):
             stalness_func_name= self.staleness_func['name'],
             **self.staleness_func['args']
         )
-
-    def compute_pseudo_gradient(self, local_state: dict, client_idx: int):
+        self.list_named_parameters = []
         for name, _ in self.model.named_parameters():
-            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
-            if self.gradient_based:
-                self.pseudo_grad[name] += self.weights[client_idx] * local_state[name]
-            else:
-                self.pseudo_grad[name] += self.weights[client_idx] * (self.global_state[name] - local_state[name])
+            self.list_named_parameters.append(name)
 
-    def compute_step(self, local_state: dict, init_step: int, client_idx: int):
-        self.compute_pseudo_gradient(local_state, client_idx)
-        for name, _ in self.model.named_parameters():
-            alpha_t = self.alpha * self.staleness(self.global_step - init_step)
-            self.step[name] = - alpha_t * self.pseudo_grad[name]
-
-    def update(self, local_state: dict, init_step: int, client_idx: int):  
+    def update(self, local_gradient: dict, init_step: int, client_idx: int):  
         self.global_state = copy.deepcopy(self.model.state_dict())
-        self.compute_step(local_state, init_step, client_idx)
-        for name, _ in self.model.named_parameters():
-            self.global_state[name] += self.step[name]
+        alpha_t = self.alpha * self.staleness(self.global_step - init_step)
+        for name in self.model.state_dict():
+            if name in self.list_named_parameters:
+                self.global_state[name] -= local_gradient[name] * self.weights[client_idx] * alpha_t
+            else:
+                self.global_state[name] = local_gradient[name]
         self.model.load_state_dict(self.global_state)
         self.global_step += 1
 
@@ -70,7 +61,6 @@ class ServerFedAsynchronous(FedServer):
 
         if cfg.summary_file != "":
             with open(cfg.summary_file, "a") as f:
-
                 f.write(
                     cfg.logginginfo.DataSet_name
                     + " FedAsync ClientLR "

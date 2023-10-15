@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from omegaconf import DictConfig, OmegaConf
 
-
 @dataclass
 class IIADMM:
     type: str = "iiadmm"
@@ -33,15 +32,17 @@ class IIADMM:
                 "mu": 10,
             },
             ## Differential Privacy
-            ##  epsilon: False  (non-private)
+            ##  use_dp: False  (non-private)
             ##  epsilon: 1      (stronger privacy as the value decreases)
             ##  epsilon: 0.05
-            "epsilon": False,
+            "use_dp": False,
+            "epsilon": 1,
             ## Gradient Clipping
             ## clip_value: False (no-clipping)
             ## clip_value: 10    (clipping)
             ## clip_value: 1
-            "clip_value": False,
+            "clip_grad": False,
+            "clip_value": 1,
             "clip_norm": 1,
         }
     )
