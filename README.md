@@ -80,6 +80,28 @@ In the design of APPFL framework, we decompose an execution of federated learnin
     - Dataloader [[examples/dataloader]](examples/dataloader/) - Dataloader is used to load the datasets from the storage for the trainer to use. The dataloaders in `examples/dataloader` provide a test dataset and several training datasets (one for each client) for the federated learning experiments in the MPI setting.
     - Trainer Zoo [[src/appfl/algorithm]](src/appfl/algorithm/) - This folder contains serveral commonly used local training algorithms, such as algorithm for training a model for a certain number of epochs or batches and algorithm for training a personalized FL model.
 
+## Citation
+If you find APPFL useful for your research or development, please consider citing the following papers:
+```
+@inproceedings{ryu2022appfl,
+  title={APPFL: open-source software framework for privacy-preserving federated learning},
+  author={Ryu, Minseok and Kim, Youngdae and Kim, Kibaek and Madduri, Ravi K},
+  booktitle={2022 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)},
+  pages={1074--1083},
+  year={2022},
+  organization={IEEE}
+}
+
+@inproceedings{li2023appflx,
+  title={APPFLx: Providing Privacy-Preserving Cross-Silo Federated Learning as a Service},
+  author={Li, Zilinghan and He, Shilan and Chaturvedi, Pranshu and Hoang, Trung-Hieu and Ryu, Minseok and Huerta, EA and Kindratenko, Volodymyr and Fuhrman, Jordan and Giger, Maryellen and Chard, Ryan and others},
+  booktitle={2023 IEEE 19th International Conference on e-Science (e-Science)},
+  pages={1--4},
+  year={2023},
+  organization={IEEE}
+}
+```
+
 ## Acknowledgements
 
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357.
