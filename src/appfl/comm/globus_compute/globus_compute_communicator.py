@@ -1,6 +1,7 @@
 import time
 import uuid
 import os.path as osp
+import concurrent.futures
 from collections import OrderedDict
 from appfl.config import ClientTask
 from omegaconf import DictConfig, OmegaConf
@@ -11,20 +12,20 @@ from .utils.endpoint import GlobusComputeClientEndpoint, ClientEndpointStatus
 class GlobusComputeCommunicator:
     def __init__(self, cfg: DictConfig, gcc : Client, logger):
         self.cfg = cfg
-        self.gcc = gcc
         self.logger = logger
         self.executing_tasks = {}
+        self.executing_task_futs = {}
         self.clients = {
             client_idx: GlobusComputeClientEndpoint(client_idx, client_cfg)
             for client_idx, client_cfg in enumerate(self.cfg.clients)
         }
-        self.gcx = Executor(funcx_client=gcc, batch_enabled=True)
+        self.gcx = Executor(funcx_client=gcc)
         self.use_s3bucket = cfg.server.s3_bucket is not None
         if self.use_s3bucket:
             self.logger.info(f'Using S3 bucket {cfg.server.s3_bucket} for model transfer.')
             CloudStorage.init(cfg, temp_dir= osp.join(cfg.server.output_dir, 'tmp'),logger= self.logger)
 
-    def __register_task(self, task_id, client_id, task_name):
+    def __register_task(self, task_id, task_fut, client_id, task_name):
         """Register new client task to the list of executing tasks - call after task submission """
         self.executing_tasks[task_id] =  OmegaConf.structured(ClientTask(
             task_id    = task_id,
@@ -32,6 +33,7 @@ class GlobusComputeCommunicator:
             client_idx = client_id,
             start_time = time.time())
         )
+        self.executing_task_futs[task_fut] = task_id
         
     def __set_task_success_status(self, task_id, completion_time, client_log = None):
         """Change the status status of the given task to finished."""
@@ -120,13 +122,13 @@ class GlobusComputeCommunicator:
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 kwargs['local_model_key'] = local_model_key
                 kwargs['local_model_url'] = local_model_url
-            task_id = self.clients[client_idx].submit_task(
+            task_id, task_fut = self.clients[client_idx].submit_task(
                 self.gcx,
                 exct_func,
                 *(self.cfg, client_idx, *args),
                 **kwargs
             )
-            self.__register_task(task_id, client_idx, exct_func.__name__)
+            self.__register_task(task_id, task_fut, client_idx, exct_func.__name__)
         
         # Logging
         if not silent:
@@ -141,33 +143,19 @@ class GlobusComputeCommunicator:
         """Receive synchronous updates from all client endpoints."""
         client_results = []
         client_logs    = OrderedDict()
-        while True:
-            time.sleep(5)
-            results = self.gcc.get_batch_result(list(self.executing_tasks))
-            if len(results) != len(list(self.executing_tasks)):
-                raise Exception("Exception occurs on client side, stop the training!")
-            for task_id in results:
-                if results[task_id]['pending'] == False:
-                    if task_id in self.executing_tasks:
-                        self.executing_tasks[task_id].pending = False
-                        # Training at client is succeeded
-                        if 'result' in results[task_id]:
-                            client_idx = self.executing_tasks[task_id].client_idx
-                            client_local_result, client_logs[client_idx] = self.__handle_globus_compute_result(results[task_id]['result'], task_id)
-                            client_results.append(client_local_result)
-                        else:
-                            # TODO: handling situations when training has errors
-                            client_results[self.executing_tasks[task_id]] = None
-                            self.logger.warning(
-                            "Task %s on %s is failed with an error." % ( 
-                                task_id, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
-                            # Raise/Reraise the exception at client
-                            excpt = results[task_id]['exception']
-                            if type(excpt) == Exception:
-                                raise excpt
-                            else:
-                                results[task_id]['exception'].reraise()
-            if len(self.executing_tasks) == 0: break
+        while len(self.executing_task_futs):
+            try:
+                fut = next(concurrent.futures.as_completed(list(self.executing_task_futs)))
+                result = fut.result()
+                task_id = self.executing_task_futs[fut]
+                client_idx = self.executing_tasks[task_id].client_idx
+                client_local_result, client_logs[client_idx] = self.__handle_globus_compute_result(result, task_id)
+                client_results.append(client_local_result)
+                del self.executing_task_futs[fut]
+            except Exception as exc:
+                client_results[self.executing_tasks[task_id]] = None
+                self.logger.warning("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
+                raise exc
         return client_results, client_logs
     
     def register_async_call_back_func(self, call_back_func, invoke_async_func_on_complete = True):
@@ -228,7 +216,7 @@ class GlobusComputeCommunicator:
             self.async_func_kwargs['local_model_key'] = local_model_key
             self.async_func_kwargs['local_model_url'] = local_model_url
         # Send task to client
-        task_id = client.submit_task(
+        task_id, task_fut = client.submit_task(
             self.gcx,
             self.async_func,
             self.cfg,
@@ -238,7 +226,7 @@ class GlobusComputeCommunicator:
             callback = self.call_back_func if hasattr(self, 'call_back_func') else None
         ) 
         # Register new tasks
-        self.__register_task(task_id, client_idx, self.async_func.__name__)
+        self.__register_task(task_id, task_fut, client_idx, self.async_func.__name__)
     
     def run_async_task_on_available_clients(self):
         """Run asynchronous task on all available clients."""
