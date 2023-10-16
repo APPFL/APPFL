@@ -3,11 +3,10 @@ import uuid
 import os.path as osp
 from collections import OrderedDict
 from appfl.config import ClientTask
-from appfl.misc.logging import ClientLogger
 from omegaconf import DictConfig, OmegaConf
 from globus_compute_sdk import Executor, Client
 from .utils.s3_storage import CloudStorage, LargeObjectWrapper
-from .utils.globus_compute_endpoint import GlobusComputeClientEndpoint, ClientEndpointStatus
+from .utils.endpoint import GlobusComputeClientEndpoint, ClientEndpointStatus
 
 class GlobusComputeCommunicator:
     def __init__(self, cfg: DictConfig, gcc : Client, logger):
@@ -22,7 +21,7 @@ class GlobusComputeCommunicator:
         self.gcx = Executor(funcx_client=gcc, batch_enabled=True)
         self.use_s3bucket = cfg.server.s3_bucket is not None
         if self.use_s3bucket:
-            self.logger.info('Using S3 bucket for model transfer.')
+            self.logger.info(f'Using S3 bucket {cfg.server.s3_bucket} for model transfer.')
             CloudStorage.init(cfg, temp_dir= osp.join(cfg.server.output_dir, 'tmp'),logger= self.logger)
 
     def __register_task(self, task_id, client_id, task_name):
@@ -57,7 +56,7 @@ class GlobusComputeCommunicator:
             return CloudStorage.download_object(results, to_device=self.cfg.server.device, delete_cloud=True, delete_local=True)
     
     def __handle_params(self, args, kwargs):
-        """Parse function's parameters and upload to S3 """
+        """Parse function's parameters and upload large parameters to S3 """
         # Handling args
         _args = list(args)
         for i, obj in enumerate(_args):
@@ -77,13 +76,12 @@ class GlobusComputeCommunicator:
                     kwargs[k] = obj.data
         return args, kwargs
 
-    def __handle_funcx_result(self, res, task_id, do_finalize=True):
-        """Handle returned results from Funcx"""
+    def __handle_globus_compute_result(self, res, task_id, do_finalize=True):
+        """Handle returned results from Globus Compute endpoint."""
         # Obtain the client logs
         client_log = {}
         if type(res) == tuple:
             res, client_log = res
-            self.logger.info("--- Client logs ---\n" + ClientLogger.to_str(client_log))
         else:
             client_log = None
         # Download client results from S3 bucker if necessary
@@ -105,9 +103,10 @@ class GlobusComputeCommunicator:
         task_id = future.task_id
         return self.__handle_funcx_result(res, task_id, do_finalize=False)
     
-    def __handle_dict_result(self, dict_result, task_id):
-        """Handle returned dictionary object from Funcx"""
-        return self.__handle_funcx_result(dict_result['result'], task_id)
+    def decay_learning_rate(self):
+        """Perform learning rate decay."""
+        self.cfg.fed.args.optim_args.lr *=  self.cfg.fed.args.server_lr_decay_exp_gamma
+        self.logger.info("Learning rate is set to %.06f" % (self.cfg.fed.args.optim_args.lr))
 
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
         """Broadcast an excutable task with all agruments to all federated learning clients"""
@@ -115,9 +114,9 @@ class GlobusComputeCommunicator:
         args, kwargs = self.__handle_params(args, kwargs)
 
         # Execute training tasks at clients
-        for client_idx, client_cfg in enumerate(self.cfg.clients):
+        for client_idx, _ in enumerate(self.cfg.clients):
             if self.use_s3bucket and exct_func.__name__ == 'client_training':
-                local_model_key = str(uuid.uuid4()) + f"_client_state_{client_idx}"
+                local_model_key = f"{str(uuid.uuid4())}_client_state_{client_idx}"
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 kwargs['local_model_key'] = local_model_key
                 kwargs['local_model_url'] = local_model_url
@@ -128,12 +127,14 @@ class GlobusComputeCommunicator:
                 **kwargs
             )
             self.__register_task(task_id, client_idx, exct_func.__name__)
+        
         # Logging
         if not silent:
-            for task_id in  self.executing_tasks:
-                self.logger.info("Task '%s' (id: %s) is assigned to %s." %(
-                    exct_func.__name__, task_id, 
+            for task_id in self.executing_tasks:
+                self.logger.info("Task '%s' is assigned to %s." %(
+                    exct_func.__name__, 
                     self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
+        
         return self.executing_tasks
     
     def receive_sync_endpoints_updates(self):
@@ -141,6 +142,7 @@ class GlobusComputeCommunicator:
         client_results = []
         client_logs    = OrderedDict()
         while True:
+            time.sleep(5)
             results = self.gcc.get_batch_result(list(self.executing_tasks))
             if len(results) != len(list(self.executing_tasks)):
                 raise Exception("Exception occurs on client side, stop the training!")
@@ -151,7 +153,7 @@ class GlobusComputeCommunicator:
                         # Training at client is succeeded
                         if 'result' in results[task_id]:
                             client_idx = self.executing_tasks[task_id].client_idx
-                            client_local_result, client_logs[client_idx] = self.__handle_dict_result(results[task_id], task_id)
+                            client_local_result, client_logs[client_idx] = self.__handle_globus_compute_result(results[task_id]['result'], task_id)
                             client_results.append(client_local_result)
                         else:
                             # TODO: handling situations when training has errors
@@ -245,8 +247,8 @@ class GlobusComputeCommunicator:
                 self.run_async_task_on_client(client_idx)
     
     def shutdown_all_clients(self):
-        """Cancel all the running tasks on the clients and shutdown the funcx executor."""
-        self.logger.info("Shutting down all clients.")
+        """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
+        self.logger.info("Shutting down all clients......")
         for client_idx in self.clients:
             if self.clients[client_idx].future is not None:
                 self.clients[client_idx].future.cancel()
@@ -257,6 +259,6 @@ class GlobusComputeCommunicator:
                 # except:
                 #     print(f"{self.clients[client_idx].future} is already canceled!")
         self.gcx.shutdown()
-        self.logger.info("All clients have been shutted down successfully.")
         # Clean-up cloud storage
         CloudStorage.clean_up()
+        self.logger.info("All clients have been shutted down successfully.")

@@ -40,7 +40,7 @@ model:
   num_pixel:   28 
   
 training:
-  num_epochs: 10
+  num_epochs: 1
   save_model_filename: "MNIST_CNN_FedAvg"
   save_model_dirname: "./save_models"
 

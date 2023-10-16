@@ -9,8 +9,7 @@ from botocore.exceptions import ClientError
 from appfl.misc.utils import dump_data_to_file, load_data_from_file, id_generator
 
 class LargeObjectWrapper(object):
-    MAX_SIZE_LIMIT = 1 * 1024 * 1024 
-    DEBUG = True
+    MAX_SIZE_LIMIT = 128 * 1024
     def __init__(self, data, name: str):
         self.data = data
         self.name= name
@@ -21,8 +20,6 @@ class LargeObjectWrapper(object):
     
     @property
     def can_send_directly(self):
-        if LargeObjectWrapper.DEBUG:    
-            return False
         return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
 
 class CloudStorage(object):

@@ -3,13 +3,13 @@ import argparse
 from models.cnn  import *
 from appfl.config import *
 from appfl.misc.data import *
-from appfl.misc.utils import *
-from appfl.misc.logging import *
 from globus_compute_sdk import Client
 from appfl.run_globus_compute_server import run_server
+from appfl.comm.globus_compute.utils.logging import GlobusComputeServerLogger
+from appfl.comm.globus_compute.utils.utils import get_executable_func, get_loss_func
 
 """
-python mnist_globus_compute.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
+python mnist_globus_compute.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml --send-final-model
 """
 
 """ read arguments """ 
@@ -26,6 +26,7 @@ parser.add_argument('--load-model-filename', type=str, default= "")
 parser.add_argument('--use-tensorboard', action='store_true', default=False)
 parser.add_argument('--save-model', action='store_true', default=False)
 parser.add_argument('--save-model-state-dict', action='store_true', default=False)
+parser.add_argument('--send-final-model', action='store_true', default=False)
 parser.add_argument('--checkpoints-interval', type=float, default=2)
 
 args = parser.parse_args()
@@ -33,6 +34,7 @@ args = parser.parse_args()
 def main():
     # Configuration    
     cfg = OmegaConf.structured(GlobusComputeConfig)
+    cfg.send_final_model = args.send_final_model
     cfg.reproduce = args.reproduce
     cfg.load_model = args.load_model
     cfg.load_model_dirname  = args.load_model_dirname
@@ -51,7 +53,7 @@ def main():
     load_globus_compute_server_config(cfg, args.server_config)
 
     # config logger
-    mLogging.config_logger(cfg)    
+    GlobusComputeServerLogger.config_logger(cfg)    
     
     """ Server-defined model """
     ModelClass = get_executable_func(cfg.get_model)()

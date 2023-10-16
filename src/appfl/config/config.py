@@ -64,6 +64,7 @@ class Config:
 
     # Saving state_dict (clients)
     save_model_state_dict: bool = False
+    send_final_model: bool = False
 
     # Logging and recording outputs
     output_dirname: str = "output"
