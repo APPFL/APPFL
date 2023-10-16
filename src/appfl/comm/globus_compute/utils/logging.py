@@ -328,8 +328,3 @@ class GlobusComputeClientLogger:
             else:
                 event_dict = event_dict[event]
         self.timer_stack.pop()
-
-    @staticmethod
-    def to_str(client_log):
-        """TODO: This may not be useful"""
-        return OmegaConf.to_yaml(OmegaConf.create(client_log))
