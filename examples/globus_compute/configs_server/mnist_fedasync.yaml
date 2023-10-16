@@ -35,11 +35,11 @@ algorithm:
     clip_norm: 1
     ## Asynchronous settings
     K: 3
-    alpha: 0.9,
+    alpha: 0.9
     staleness_func:
       name: "constant"
       args: 
-        a: 0.5, 
+        a: 0.5
         b: 4
     gradient_based: True
 
