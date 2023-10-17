@@ -1,4 +1,4 @@
-import time
+import uuid
 from enum import Enum
 from collections import OrderedDict
 
@@ -27,10 +27,14 @@ class GlobusComputeClientEndpoint:
         self._status   = ClientEndpointStatus.AVAILABLE
         self.task_name = "N/A"
         self.executing_task_id = None
+
+    def cancel_task(self):
+        """Cancel the currently running task."""
+        self._set_no_runing_task()
         
     def submit_task(self, gcx, exct_func, *args, callback = None, **kwargs):
         """
-        Submit a task to the globus compute client endpoint
+        Submit a task to the client globus comput endpoint
         Args:
             gcx: Globus Compute executor for sumbitting tasks to the Globus Compute client endpoint
             exct_func: Executale function to be run on the client endpoint.
@@ -39,17 +43,12 @@ class GlobusComputeClientEndpoint:
             kwargs: keyword arguments for the executable function.
         """
         if self.status != ClientEndpointStatus.AVAILABLE: 
-            return '0'
-        try:
-            gcx.endpoint_id = self.client_cfg.endpoint_id
-            self.future = gcx.submit(exct_func, *args, **kwargs)
-            if callback is not None:
-                self.future.add_done_callback(callback)
-            while self.future.task_id is None:
-                time.sleep(0.1) # TODO: How to make this a better way for task submission
-            self._status = ClientEndpointStatus.RUNNING
-            self.task_name = exct_func.__name__
-            self.executing_task_id = self.future.task_id
-            return self.executing_task_id
-        except:
-            return '0'
+            return '0', None
+        gcx.endpoint_id = self.client_cfg.endpoint_id
+        self.future = gcx.submit(exct_func, *args, **kwargs)
+        if callback is not None:
+            self.future.add_done_callback(callback)
+        self._status = ClientEndpointStatus.RUNNING
+        self.task_name = exct_func.__name__
+        self.executing_task_id = str(uuid.uuid4())
+        return self.executing_task_id, self.future

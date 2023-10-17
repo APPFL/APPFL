@@ -9,8 +9,7 @@ from botocore.exceptions import ClientError
 from appfl.misc.utils import dump_data_to_file, load_data_from_file, id_generator
 
 class LargeObjectWrapper(object):
-    MAX_SIZE_LIMIT = 1 * 1024 * 1024 
-    DEBUG = True
+    MAX_SIZE_LIMIT = 1 * 1      # anything using this wrapper is sent via S3
     def __init__(self, data, name: str):
         self.data = data
         self.name= name
@@ -21,8 +20,6 @@ class LargeObjectWrapper(object):
     
     @property
     def can_send_directly(self):
-        if LargeObjectWrapper.DEBUG:    
-            return False
         return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
 
 class CloudStorage(object):
@@ -172,15 +169,11 @@ class CloudStorage(object):
         if object_name is not None:
             try:
                 self.client.download_file(self.bucket, object_name, file_path)
-                if self.logger is not None:
-                    self.logger.info(f"Successfully download object {object_name} from S3 bucket {self.bucket}")
-                else:
-                    print(f"Successfully download object {object_name} from S3 bucket {self.bucket}")
             except:
                 if self.logger is not None:
-                    self.logger.info(f"Error in downloading object {object_name} from S3 bucket")
+                    self.logger.info(f"Error in downloading object {object_name} from S3")
                 else:
-                    print(f"Error in downloading object {object_name} from S3 bucket")
+                    print(f"Error in downloading object {object_name} from S3")
                 raise
             try:
                 if delete_cloud:
@@ -188,9 +181,9 @@ class CloudStorage(object):
                 return
             except:
                 if self.logger is not None:
-                    self.logger.info(f"Error in deleteing object {object_name} from S3 bucket")
+                    self.logger.info(f"Error in deleteing object {object_name} from S3")
                 else:
-                    print(f"Error in deleteing object {object_name} from S3 bucket")
+                    print(f"Error in deleteing object {object_name} from S3")
 
     @classmethod
     def upload_object(cls, data, object_name = None, object_url = None, ext = 'pt', temp_dir = None, register_for_clean = False):
@@ -228,17 +221,13 @@ class CloudStorage(object):
             file_size *= 1e-3
             if file_size < 1000 or metric == 'GB':
                 if cs.logger is not None:
-                    cs.logger.info(f"Uploading object {object_name} ({file_size:.2f} {metric}) to S3")
+                    cs.logger.info(f"Uploading model ({file_size:.2f} {metric}) to S3")
                 else:
-                    print(f"Uploading object {object_name} ({file_size:.2f} {metric}) to S3")
+                    print(f"Uploading model ({file_size:.2f} {metric}) to S3")
                 break
 
         if object_name is not None and register_for_clean:
             cs.registered_obj.add(object_name)
-            if cs.logger is not None:
-                cs.logger.info(f"Register object {object_name} for clean up")
-            else:
-                print(f"Register object {object_name} for clean up")
 
         return cs.upload_file(file_path, object_url, object_name)
     
@@ -272,9 +261,9 @@ class CloudStorage(object):
             file_size *= 1e-3
             if file_size < 1000 or metric == 'GB':
                 if cs.logger is not None:
-                    cs.logger.info(f"Downloaded object {object_name} ({file_size:.2f} {metric}) from S3")
+                    cs.logger.info(f"Downloaded model ({file_size:.2f} {metric}) from S3")
                 else:
-                    print(f"Downloaded object {object_name} ({file_size:.2f} {metric}) from S3")
+                    print(f"Downloaded model ({file_size:.2f} {metric}) from S3")
                 break
 
         data = load_data_from_file(file_path, to_device)

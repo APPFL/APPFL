@@ -1,12 +1,12 @@
 server:
   device: cpu
-  data_dir  : "./log_globus_compute_appfl/fedavg_server"
-  output_dir: "./log_globus_compute_appfl/fedavg_server"
+  data_dir  : "./log_globus_compute_appfl/fedasync_server"
+  output_dir: "./log_globus_compute_appfl/fedasync_server"
   s3_bucket: "appflx-models"
   s3_creds: "globus_compute/creds/credential.csv"
 
 algorithm:
-  servername: 'ServerFedAvg'
+  servername: 'ServerFedAsynchronous'
   clientname: 'GlobusComputeClientOptim'
   args:
     ## Server update
@@ -33,6 +33,15 @@ algorithm:
     clip_grad: False
     clip_value: 1
     clip_norm: 1
+    ## Asynchronous settings
+    K: 3
+    alpha: 0.9
+    staleness_func:
+      name: "constant"
+      args: 
+        a: 0.5
+        b: 4
+    send_gradient: True
 
 model:
   num_channel: 1
@@ -40,8 +49,8 @@ model:
   num_pixel:   28 
   
 training:
-  num_epochs: 5
-  save_model_filename: "MNIST_CNN_FedAvg"
+  num_epochs: 15
+  save_model_filename: "MNIST_CNN_FedAsync"
   save_model_dirname: "./save_models"
 
 dataset:
