@@ -15,11 +15,11 @@ python mnist_globus_compute.py --client_config path_to_client_config.yaml --serv
 """ read arguments """ 
 parser = argparse.ArgumentParser()  
 parser.add_argument("--client_config", type=str, default="globus_compute/configs_client/mnist.yaml")
-# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg.yaml") 
-parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedasync.yaml") 
+parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedasync.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedbuffer.yaml") 
 
 ## other agruments
-parser.add_argument('--clients-test', action='store_true', default=False)
 parser.add_argument('--reproduce', action='store_true', default=False) 
 parser.add_argument('--load-model', action='store_true', default=False) 
 parser.add_argument('--load-model-dirname', type=str, default= "")
@@ -38,7 +38,7 @@ def main():
     cfg.send_final_model = args.send_final_model
     cfg.reproduce = args.reproduce
     cfg.load_model = args.load_model
-    cfg.load_model_dirname  = args.load_model_dirname
+    cfg.load_model_dirname = args.load_model_dirname
     cfg.load_model_filename = args.load_model_filename
     cfg.save_model_state_dict = args.save_model_state_dict
     cfg.save_model = args.save_model
@@ -47,7 +47,6 @@ def main():
     cfg.validation = True   
     if cfg.reproduce == True:
         set_seed(1)
-    mode = 'clients_testing' if args.clients_test else 'train'
 
     # loading globus compute configs from file
     load_globus_compute_client_config(cfg, args.client_config)
@@ -70,7 +69,7 @@ def main():
     server_test_dataset = None
     server_val_dataset  = None
     gcc = Client()
-    run_server(cfg, model, loss_fn, val_metric, gcc, server_test_dataset, server_val_dataset, mode=mode)
+    run_server(cfg, model, loss_fn, val_metric, gcc, server_test_dataset, server_val_dataset)
 
 if __name__ == "__main__":
     main()

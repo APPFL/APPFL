@@ -95,10 +95,10 @@ class APPFLGlobusComputeServer(abc.ABC):
                 LargeObjectWrapper(global_state, server_model_basename),
             )
             testing_results, _ = self.communicator.receive_sync_endpoints_updates()
-            testing_results = self._parse_client_testing_results(testing_results)
+            testing_results = self.__parse_client_testing_results(testing_results)
             self.eval_logger.log_client_testing(testing_results)
     
-    def _parse_client_testing_results(self, testing_results):
+    def __parse_client_testing_results(self, testing_results):
         ret = OrderedDict()
         for res in testing_results:
             client_idx = res['client_idx']
@@ -110,27 +110,6 @@ class APPFLGlobusComputeServer(abc.ABC):
         if self.cfg.server_do_testing:
             test_loss, test_accuracy = validation(self.server, self.server_testing_dataloader, self.val_metric)
             self.eval_logger.log_server_testing({'acc': test_accuracy, 'loss': test_loss})
-
-    def set_server_dataset(self, validation_dataset=None, testing_dataset=None):
-        """Set validation and testing dataset at the server side if given."""
-        val_loader, test_loader = None, None
-        val_size, test_size     = 0,0
-        if self.cfg.server_do_validation: 
-            val_loader = get_dataloader(self.cfg, validation_dataset, mode='val')
-            val_size   = len(validation_dataset) if val_loader is not None else 0
-        if self.cfg.server_do_testing:
-            test_loader= get_dataloader(self.cfg, testing_dataset,    mode='test')
-            test_size  = len(testing_dataset)if test_loader is not None else 0
-        if val_loader is None:
-            self.cfg.server_do_validation = False
-            self.logger.info("Validation dataset at server is empty")
-        if test_loader is None:
-            self.cfg.server_do_testing = False
-            self.logger.info("Testing dataset at server is empty")
-
-        GlobusComputeServerLogger.log_server_data_info({"val": val_size, "test": test_size})
-        self.server_testing_dataloader = test_loader
-        self.server_validation_dataloader = val_loader
 
     def _do_server_validation(self, step:int):
         val_loss    = 0.0
@@ -149,7 +128,7 @@ class APPFLGlobusComputeServer(abc.ABC):
     def _parse_client_logs(self, step:int, client_logs):
         """Parse validation results at clients from client logs"""
         if self.cfg.client_do_validation:
-            validation_results = self._get_eval_results_from_logs(client_logs)
+            validation_results = self.__get_eval_results_from_logs(client_logs)
             self.eval_logger.log_client_validation(validation_results, step)
             if self.cfg.use_tensorboard:
                 # Add them to tensorboard
@@ -158,7 +137,7 @@ class APPFLGlobusComputeServer(abc.ABC):
                     for val_k in validation_results[client_idx]:
                         self.writer.add_scalar("%s-%s" % (client_name, val_k), validation_results[client_idx][val_k], step)
 
-    def _get_eval_results_from_logs(self, logs):
+    def __get_eval_results_from_logs(self, logs):
         val_results = {}
         for client_idx in logs:
             val_results[client_idx] = {
@@ -186,17 +165,33 @@ class APPFLGlobusComputeServer(abc.ABC):
             LargeObjectWrapper(global_state, server_model_basename)
         )
 
-    def run(self, model: nn.Module, loss_fn: nn.Module, val_metric: Any, mode='train'):
-        assert mode in ['train', 'clients_testing']
+    def set_server_dataset(self, validation_dataset=None, testing_dataset=None):
+        """Set validation and testing dataset at the server side if given."""
+        val_loader, test_loader = None, None
+        val_size, test_size     = 0,0
+        if self.cfg.server_do_validation: 
+            val_loader = get_dataloader(self.cfg, validation_dataset, mode='val')
+            val_size   = len(validation_dataset) if val_loader is not None else 0
+        if self.cfg.server_do_testing:
+            test_loader= get_dataloader(self.cfg, testing_dataset,    mode='test')
+            test_size  = len(testing_dataset)if test_loader is not None else 0
+        if val_loader is None:
+            self.cfg.server_do_validation = False
+            self.logger.info("Validation dataset at server is empty")
+        if test_loader is None:
+            self.cfg.server_do_testing = False
+            self.logger.info("Testing dataset at server is empty")
+
+        GlobusComputeServerLogger.log_server_data_info({"val": val_size, "test": test_size})
+        self.server_testing_dataloader = test_loader
+        self.server_validation_dataloader = val_loader
+
+    def run(self, model: nn.Module, loss_fn: nn.Module, val_metric: Any):
         self._initialize_training(model, loss_fn, val_metric)
         self._validate_clients_data()
         self._set_client_weights()
         self._initialize_fl_server()
-        if mode == "train":
-            self._do_training()
-        elif mode == 'clients_testing':
-            ## TODO: Check when we call this part
-            assert self.cfg.load_model == True
+        self._do_training()
         self._do_client_testing()
         self._do_server_testing()
         if self.cfg.send_final_model:
@@ -271,14 +266,15 @@ class APPFLGlobusComputeAsyncServer(APPFLGlobusComputeServer):
                 self._lr_step(t+1)
 
             # Send new model to the client
-            self.communicator.send_task_to_one_client(
-                client_idx,
-                client_training,
-                self.weights,
-                LargeObjectWrapper(global_state, f"{server_model_basename}_{t}"),
-                do_validation = self.cfg.client_do_validation,
-                global_epoch = t+1
-            )
+            if (t+1) < self.cfg.num_epochs:
+                self.communicator.send_task_to_one_client(
+                    client_idx,
+                    client_training,
+                    self.weights,
+                    LargeObjectWrapper(global_state, f"{server_model_basename}_{t}"),
+                    do_validation = self.cfg.client_do_validation,
+                    global_epoch = t+1
+                )
 
             # Server validation and saving checkpoint
             if (t+1) % self.cfg.server_validation_step == 0:
@@ -296,7 +292,6 @@ def run_server(
     gcc: Client,
     test_data: Dataset = Dataset(),
     val_data : Dataset = Dataset(),
-    mode = 'train'
     ):
     if cfg.fed.args.is_async:
         server = APPFLGlobusComputeAsyncServer(cfg, gcc)
@@ -304,7 +299,7 @@ def run_server(
         server = APPFLGlobusComputeSyncServer(cfg, gcc)
     try:
         server.set_server_dataset(validation_dataset=val_data, testing_dataset=test_data) 
-        server.run(model, loss_fn, val_metric, mode)
+        server.run(model, loss_fn, val_metric)
     except Exception as e:
         traceback.print_exc()
         print("Training fails, cleaning things up... ...")

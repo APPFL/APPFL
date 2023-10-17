@@ -6,8 +6,8 @@ from collections import OrderedDict
 from appfl.config import ClientTask
 from omegaconf import DictConfig, OmegaConf
 from globus_compute_sdk import Executor, Client
+from .utils.endpoint import GlobusComputeClientEndpoint
 from .utils.s3_storage import CloudStorage, LargeObjectWrapper
-from .utils.endpoint import GlobusComputeClientEndpoint, ClientEndpointStatus
 
 class GlobusComputeCommunicator:
     def __init__(self, cfg: DictConfig, gcc : Client, logger):
@@ -204,13 +204,7 @@ class GlobusComputeCommunicator:
         for client_idx in self.clients:
             if self.clients[client_idx].future is not None:
                 self.clients[client_idx].future.cancel()
-                # print(f"Cancelling the future {self.clients[client_idx].future}")
-                # try:
-                #     self.clients[client_idx].future.cancel()
-                #     print(f"Finish cancelling the furture: {self.clients[client_idx].future}")
-                # except:
-                #     print(f"{self.clients[client_idx].future} is already canceled!")
         self.gcx.shutdown()
         # Clean-up cloud storage
         CloudStorage.clean_up()
-        self.logger.info("All clients have been shutted down successfully.")
+        self.logger.info("The server and all clients have been shutted down successfully.")
