@@ -4,16 +4,20 @@ import time
 import torch
 from torch.optim import *
 from .fl_base import BaseClient
+from appfl.misc import compute_gradient
 
 class GlobusComputeClientOptim(BaseClient):
     """GlobusComputeClientOptim is the ClientOptim accompanied with a ClientLogger for recording the training process."""
-    def __init__(self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, global_epoch=0, **kwargs):
+    def __init__(self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, global_epoch=0, send_gradient=False, **kwargs):
         super(GlobusComputeClientOptim, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
         super(GlobusComputeClientOptim, self).client_log_title()
         self.round = global_epoch
+        self.send_gradient = send_gradient
         self.__dict__.update(kwargs)
 
     def update(self, cli_logger):
+        if self.send_gradient:
+            original_model = copy.deepcopy(self.model.state_dict())
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)  
 
@@ -69,5 +73,8 @@ class GlobusComputeClientOptim(BaseClient):
             scale_value = sensitivity / self.epsilon
             super(GlobusComputeClientOptim, self).laplace_mechanism_output_perturb(scale_value)
         
-        return self.primal_state, cli_logger
+        if self.send_gradient:
+            return compute_gradient(original_model, self.model), cli_logger
+        else:
+            return self.primal_state, cli_logger
  

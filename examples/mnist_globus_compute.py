@@ -15,7 +15,8 @@ python mnist_globus_compute.py --client_config path_to_client_config.yaml --serv
 """ read arguments """ 
 parser = argparse.ArgumentParser()  
 parser.add_argument("--client_config", type=str, default="globus_compute/configs_client/mnist.yaml")
-parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg.yaml") 
+parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedasync.yaml") 
 
 ## other agruments
 parser.add_argument('--clients-test', action='store_true', default=False)

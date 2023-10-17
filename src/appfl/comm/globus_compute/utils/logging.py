@@ -36,7 +36,7 @@ class GlobusComputeEvalLogger:
             - result_type: str: type of the results
         """
         for cli_name in results:
-            c = "[%8s] %20s" %  (result_type, cli_name)
+            c = "[%8s] %15s" %  (result_type, cli_name)
             for k in results[cli_name]:
                 c+= self.__format(k, results[cli_name][k])
             self.main_logger.info(c)

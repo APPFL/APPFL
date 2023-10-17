@@ -85,7 +85,7 @@ class APPFLGlobusComputeServer(abc.ABC):
         pass 
 
     def _do_client_testing(self):
-        """Perform tesing at clients TODO: Test this- unchecked """
+        """Perform tesing at clients."""
         if self.cfg.client_do_testing:
             global_state = self.server.model.state_dict()
             server_model_basename = str(uuid.uuid4()) + "_server_state"
@@ -215,7 +215,7 @@ class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
         start_time = time.time()
         server_model_basename = str(uuid.uuid4()) + "_server_state"
         for t in range(self.cfg.num_epochs):
-            self.logger.info(" ============ Epoch [%d/%d] ============ " % (t+1, self.cfg.num_epochs))
+            self.logger.info(" ======================== Epoch [%d/%d] ======================== " % (t+1, self.cfg.num_epochs))
             per_iter_start = time.time()
             global_state = self.server.model.state_dict()
             self._lr_step(t)
@@ -232,13 +232,61 @@ class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
             # Perform global update
             self.server.update(local_states)
             
+            # Server validation and saving checkpoint
             if (t+1) % self.cfg.server_validation_step == 0:
                 self._do_server_validation(t+1)
-
             self._save_checkpoint(t+1)
 
             self.logger.info(f"Total training time: {time.time()-start_time:.3f}")
             self.logger.info(f"Training time for epoch {t+1}: {time.time()-per_iter_start:.3f}")
+    
+class APPFLGlobusComputeAsyncServer(APPFLGlobusComputeServer):
+    def __init__(self, cfg: DictConfig, gcc: Client):
+        super(APPFLGlobusComputeAsyncServer, self).__init__(cfg, gcc)
+        self.global_epoch = 0
+        self.client_model_timestamp = {i : 0 for i in range(self.cfg.num_clients)}
+
+    def _do_training(self):
+        start_time = time.time()
+        server_model_basename = str(uuid.uuid4()) + "_server_state"
+        # Broadcast the global model to the clients at the beginning
+        global_state = self.server.model.state_dict()
+        self.communicator.send_task_to_all_clients(
+            client_training,
+            self.weights,
+            LargeObjectWrapper(global_state, f"{server_model_basename}_{0}"),
+            do_validation = self.cfg.client_do_validation,
+            global_epoch = 0 # TODO: check this 0 or 1?
+        )
+        for t in range(self.cfg.num_epochs):
+            self.logger.info(" ======================== Epoch [%d/%d] ======================== " % (t+1, self.cfg.num_epochs))
+            client_idx, local_update, client_log = self.communicator.receive_async_endpoint_update()
+            self._parse_client_logs(t+1, client_log)
+            
+            # Perform asynchrnous global update
+            prev_global_step = self.server.global_step
+            self.server.update(local_update, self.client_model_timestamp[client_idx], client_idx)
+            self.client_model_timestamp[client_idx] = self.server.global_step
+            if prev_global_step != self.server.global_step:
+                self._lr_step(t+1)
+
+            # Send new model to the client
+            self.communicator.send_task_to_one_client(
+                client_idx,
+                client_training,
+                self.weights,
+                LargeObjectWrapper(global_state, f"{server_model_basename}_{t}"),
+                do_validation = self.cfg.client_do_validation,
+                global_epoch = t+1
+            )
+
+            # Server validation and saving checkpoint
+            if (t+1) % self.cfg.server_validation_step == 0:
+                self._do_server_validation(t+1)
+            self._save_checkpoint(t+1)
+
+            self.logger.info(f"Total training time: {time.time()-start_time:.3f}")
+        self.communicator.cancel_all_tasks()
 
 def run_server(
     cfg: DictConfig, 
@@ -250,7 +298,10 @@ def run_server(
     val_data : Dataset = Dataset(),
     mode = 'train'
     ):
-    server = APPFLGlobusComputeSyncServer(cfg, gcc)
+    if cfg.fed.args.is_async:
+        server = APPFLGlobusComputeAsyncServer(cfg, gcc)
+    else:
+        server = APPFLGlobusComputeSyncServer(cfg, gcc)
     try:
         server.set_server_dataset(validation_dataset=val_data, testing_dataset=test_data) 
         server.run(model, loss_fn, val_metric, mode)

@@ -23,6 +23,11 @@ def load_executable_func(cfg_dict):
         assert len(exct_func.source) > 0, "Source file is empty."
     return exct_func
 
+def check_asynchronous(alg_name):
+    """Check whether a give algorithm is an asynchronous FL algorithm."""
+    async_list = ['ServerFedAsynchronous', 'ServerFedBuffer']
+    return alg_name in async_list
+
 def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str):
     """Load the server configurations from the yaml configuration file to the GlobusComputeConfig object."""
     assert osp.exists(config_file), "Config file {config_file} not found!"
@@ -48,11 +53,16 @@ def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str
         cfg.test_data_batch_size = data['test_data_batch_size']
     
     # Load FL algorithm configs
-    cfg.fed =Federated()        # TODO: Zilinghan What if Asynchronous???
-                                # TODO: Allow user to choose between num_local_epochs and num_local_steps
+    is_async = check_asynchronous(data['algorithm']['servername'])
+    if is_async:
+        cfg.fed = FedAsync()
+    else:
+        cfg.fed = Federated()
+    # TODO: Allow user to choose between num_local_epochs and num_local_steps
     cfg.fed.servername = data['algorithm']['servername']
     cfg.fed.clientname = data['algorithm']['clientname'] if 'clientname' in data['algorithm'] else 'GlobusComputeClientOptim'
     cfg.fed.args = OmegaConf.create(data['algorithm']['args'])
+    cfg.fed.args.is_async = is_async
     # Load training configs
     cfg.num_epochs = data['training']['num_epochs']
     if 'save_model_dirname' in data['training']:

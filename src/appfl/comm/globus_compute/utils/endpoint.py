@@ -27,6 +27,10 @@ class GlobusComputeClientEndpoint:
         self._status   = ClientEndpointStatus.AVAILABLE
         self.task_name = "N/A"
         self.executing_task_id = None
+
+    def cancel_task(self):
+        """Cancel the currently running task."""
+        self._set_no_runing_task()
         
     def submit_task(self, gcx, exct_func, *args, callback = None, **kwargs):
         """

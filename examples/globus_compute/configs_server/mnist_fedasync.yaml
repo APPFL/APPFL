@@ -41,7 +41,7 @@ algorithm:
       args: 
         a: 0.5
         b: 4
-    gradient_based: True
+    send_gradient: True
 
 model:
   num_channel: 1
@@ -49,7 +49,7 @@ model:
   num_pixel:   28 
   
 training:
-  num_epochs: 5
+  num_epochs: 15
   save_model_filename: "MNIST_CNN_FedAsync"
   save_model_dirname: "./save_models"
 

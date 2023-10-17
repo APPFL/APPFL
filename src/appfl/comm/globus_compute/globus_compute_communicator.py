@@ -98,12 +98,6 @@ class GlobusComputeCommunicator:
         if do_finalize:
             self.__finalize_task(task_id)
         return res, client_log
-
-    def __handle_future_result(self, future):
-        """Handle returned Future object from Funcx"""
-        res = future.result()
-        task_id = future.task_id
-        return self.__handle_funcx_result(res, task_id, do_finalize=False)
     
     def decay_learning_rate(self):
         """Perform learning rate decay."""
@@ -111,7 +105,7 @@ class GlobusComputeCommunicator:
         self.logger.info("Learning rate is set to %.06f" % (self.cfg.fed.args.optim_args.lr))
 
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
-        """Broadcast an excutable task with all agruments to all federated learning clients"""
+        """Broadcast an executable task with all arguments to all federated learning clients."""
         # Prepare args, kwargs before sending to clients
         args, kwargs = self.__handle_params(args, kwargs)
 
@@ -136,9 +130,29 @@ class GlobusComputeCommunicator:
                 self.logger.info("Task '%s' is assigned to %s." %(
                     exct_func.__name__, 
                     self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
+
+    def send_task_to_one_client(self, client_idx, exct_func, *args, silent = False, **kwargs):
+        """Send an executable task with all arguments to one federated learning client."""
+        # Prepare args, kwargs before sending to clients
+        args, kwargs = self.__handle_params(args, kwargs)
+
+        if self.use_s3bucket and exct_func.__name__ == 'client_training':
+            local_model_key = f"{str(uuid.uuid4())}_client_state_{client_idx}"
+            local_model_url = CloudStorage.presign_upload_object(local_model_key)
+            kwargs['local_model_key'] = local_model_key
+            kwargs['local_model_url'] = local_model_url
+        task_id, task_fut = self.clients[client_idx].submit_task(
+            self.gcx,
+            exct_func,
+            *(self.cfg, client_idx, *args),
+            **kwargs
+        )
+        self.__register_task(task_id, task_fut, client_idx, exct_func.__name__)
         
-        return self.executing_tasks
-    
+        # Logging
+        if not silent:
+            self.logger.info(f"Task {exct_func.__name__} is assigned to {self.cfg.clients[client_idx].name}.")
+
     def receive_sync_endpoints_updates(self):
         """Receive synchronous updates from all client endpoints."""
         client_results = []
@@ -157,83 +171,33 @@ class GlobusComputeCommunicator:
                 self.logger.warning("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
                 raise exc
         return client_results, client_logs
-    
-    def register_async_call_back_func(self, call_back_func, invoke_async_func_on_complete = True):
-        """
-        Register callback function for asynchronous tasks sent to federated learning clients.
-        Args:
-            call_back_func (function): callback function invoked after the sent task finishes.
-            invoke_async_func_on_complete (bool): whether to invoke a new asynchrnous task to clients after completion of previous task.
-        """
-        def __cbfn(res):
-            # Return directly if the task is already canceled
-            if res.task_id is None or res.task_id not in self.executing_tasks: 
-                return
-            task_id = res.task_id
-            client_task  = self.executing_tasks[task_id]
-            task_name = client_task.task_name
-            client_name = self.clients[client_task.client_idx].client_cfg.name
-            if self.stopping_func() == False:
-                result, client_log = self.__handle_future_result(res)
-                # Call the provided callback function to do global model update
-                call_back_func(result, client_task.client_idx, client_log)
-                # Update the task status
-                self.__set_task_success_status(task_id, time.time(), client_log)
-                # Assign new task to client
-                if invoke_async_func_on_complete:
-                    self.run_async_task_on_client(client_task.client_idx)
-                # Do the server validation after assigning new tasks to the client to save time
-                self.validation_func()
-            else:
-                if res.cancelled:
-                    self.logger.info("Task '%s' (id: %s) from %s is canceled." % (task_name, task_id, client_name))
-                else:
-                    res.cancel()
-                    self.logger.info("Task '%s' (id: %s) from %s is being canceled." % (task_name, task_id, client_name))
 
-            self.__finalize_task(res.task_id)
-        self.call_back_func = __cbfn
-    
-    def register_stopping_criteria(self, stopping_func):
-        self.stopping_func = stopping_func
+    def receive_async_endpoint_update(self):
+        """Receive asynchronous update from only one client endpoint."""
+        assert len(self.executing_task_futs), "There is no active client endpoint running tasks."
+        client_log = OrderedDict()
+        try:
+            fut = next(concurrent.futures.as_completed(list(self.executing_task_futs)))
+            result = fut.result()
+            task_id = self.executing_task_futs[fut]
+            client_idx = self.executing_tasks[task_id].client_idx
+            client_local_result, client_log[client_idx] = self.__handle_globus_compute_result(result, task_id)
+            del self.executing_task_futs[fut]
+        except Exception as exc:
+                self.logger.warning("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
+                raise exc
+        return client_idx, client_local_result, client_log
 
-    def register_validation_func(self, validation_func):
-        self.validation_func = validation_func
-
-    def register_async_func(self, exct_func, *args, **kwargs):
-        self.async_func        = exct_func
-        self.async_func_args   = args
-        self.async_func_kwargs = kwargs
-
-    def run_async_task_on_client(self, client_idx):
-        """Run asynchronous task on a certain clients."""
-        client = self.clients[client_idx]
-        self.logger.info("Async task '%s' is assigned to %s." %(self.async_func.__name__, client.client_cfg.name)) 
-        self.async_func_args, self.async_func_kwargs = self.__handle_params(self.async_func_args, self.async_func_kwargs)
-        if self.use_s3bucket and self.async_func.__name__ == 'client_training':
-            local_model_key = str(uuid.uuid4()) + f"_client_state_{client_idx}"
-            local_model_url = CloudStorage.presign_upload_object(local_model_key)
-            self.async_func_kwargs['local_model_key'] = local_model_key
-            self.async_func_kwargs['local_model_url'] = local_model_url
-        # Send task to client
-        task_id, task_fut = client.submit_task(
-            self.gcx,
-            self.async_func,
-            self.cfg,
-            client_idx,
-            *self.async_func_args,
-            **self.async_func_kwargs,
-            callback = self.call_back_func if hasattr(self, 'call_back_func') else None
-        ) 
-        # Register new tasks
-        self.__register_task(task_id, task_fut, client_idx, self.async_func.__name__)
-    
-    def run_async_task_on_available_clients(self):
-        """Run asynchronous task on all available clients."""
-        for client_idx in self.clients:
-            if self.clients[client_idx].status == ClientEndpointStatus.AVAILABLE:
-                self.run_async_task_on_client(client_idx)
-    
+    def cancel_all_tasks(self):
+        """Cancel all on-the-fly client tasks."""
+        for task_fut in self.executing_task_futs:
+            task_fut.cancel()
+            task_id = self.executing_task_futs[task_fut]
+            client_idx = self.executing_tasks[task_id].client_idx
+            self.clients[client_idx].cancel_task()
+        self.executing_task_futs = {}
+        self.executing_tasks = {}
+ 
     def shutdown_all_clients(self):
         """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
         self.logger.info("Shutting down all clients......")
