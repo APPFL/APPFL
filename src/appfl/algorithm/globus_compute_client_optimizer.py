@@ -16,6 +16,7 @@ class GlobusComputeClientOptim(BaseClient):
         self.__dict__.update(kwargs)
 
     def update(self, cli_logger):
+        start_time=time.time()
         if self.send_gradient:
             original_model = copy.deepcopy(self.model.state_dict())
         self.model.to(self.cfg.device)
@@ -53,7 +54,6 @@ class GlobusComputeClientOptim(BaseClient):
 
         ## client evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            start_time=time.time()
             cli_logger.start_timer("Validation")
             test_loss, test_accuracy =self.client_validation()
             cli_logger.add_info(
