@@ -158,10 +158,10 @@ class GlobusComputeCommunicator:
         client_results = []
         client_logs    = OrderedDict()
         while len(self.executing_task_futs):
+            fut = next(concurrent.futures.as_completed(list(self.executing_task_futs)))
+            task_id = self.executing_task_futs[fut]
             try:
-                fut = next(concurrent.futures.as_completed(list(self.executing_task_futs)))
                 result = fut.result()
-                task_id = self.executing_task_futs[fut]
                 client_idx = self.executing_tasks[task_id].client_idx
                 client_local_result, client_logs[client_idx] = self.__handle_globus_compute_result(result, task_id)
                 client_results.append(client_local_result)

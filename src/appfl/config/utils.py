@@ -28,6 +28,11 @@ def check_asynchronous(alg_name):
     async_list = ['ServerFedAsynchronous', 'ServerFedBuffer']
     return alg_name in async_list
 
+def check_step_optimizer(optim_name):
+    """Check whether a client local optimizer (trainer) runs for a certain number of steps (batches) or not."""
+    step_optim_list = ["GlobusComputeClientStepOptim"]
+    return optim_name in step_optim_list
+
 def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str):
     """Load the server configurations from the yaml configuration file to the GlobusComputeConfig object."""
     assert osp.exists(config_file), "Config file {config_file} not found!"
@@ -58,9 +63,12 @@ def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str
         cfg.fed = FedAsync()
     else:
         cfg.fed = Federated()
-    # TODO: Allow user to choose between num_local_epochs and num_local_steps
     cfg.fed.servername = data['algorithm']['servername']
     cfg.fed.clientname = data['algorithm']['clientname'] if 'clientname' in data['algorithm'] else 'GlobusComputeClientOptim'
+    if check_step_optimizer(data['algorithm']['clientname']):
+        assert 'num_local_steps' in data['algorithm']['args'], "Please provide the number of local steps for step-based client optimizer."
+    else:
+        assert 'num_local_epochs' in data['algorithm']['args'], "Please provide the number of local epochs for epoch-based client optimizer."
     cfg.fed.args = OmegaConf.create(data['algorithm']['args'])
     cfg.fed.args.is_async = is_async
     # Load training configs
@@ -89,7 +97,7 @@ def load_globus_compute_client_config(cfg: GlobusComputeConfig, config_file: str
     return cfg    
 
 #====================================================================================
-# The following functions are foe APPFLx web application
+# The following functions are for APPFLx web application
 
 def load_appfl_server_config_funcx(cfg: GlobusComputeConfig, config_file: str):
     # Modified (ZL): load the configuration file for the appfl server
