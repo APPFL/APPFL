@@ -1,0 +1,1 @@
+1. For FedCompass, when sending one model to more than one clients, do not send the same model more than once. This not only saves the communication load, also avoids any race condition on the cloud storage side.

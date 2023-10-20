@@ -24,9 +24,14 @@ def load_executable_func(cfg_dict):
     return exct_func
 
 def check_asynchronous(alg_name):
-    """Check whether a give algorithm is an asynchronous FL algorithm."""
-    async_list = ['ServerFedAsynchronous', 'ServerFedBuffer']
+    """Check whether a given algorithm is an asynchronous FL algorithm."""
+    async_list = ['ServerFedAsynchronous', 'ServerFedBuffer', 'ServerFedCompass', 'ServerFedCompassMom', 'ServerFedCompassNova']
     return alg_name in async_list
+
+def check_compass(alg_name):
+    """Check whether a given algorithm uses the compass scheduler."""
+    compass_list = ['ServerFedCompass', 'ServerFedCompassMom', 'ServerFedCompassNova']
+    return alg_name in compass_list
 
 def check_step_optimizer(optim_name):
     """Check whether a client local optimizer (trainer) runs for a certain number of steps (batches) or not."""
@@ -56,21 +61,24 @@ def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str
         cfg.train_data_batch_size = data['train_data_batch_size']
     if 'test_data_batch_size' in data:
         cfg.test_data_batch_size = data['test_data_batch_size']
-    
     # Load FL algorithm configs
     is_async = check_asynchronous(data['algorithm']['servername'])
-    if is_async:
-        cfg.fed = FedAsync()
-    else:
-        cfg.fed = Federated()
-    cfg.fed.servername = data['algorithm']['servername']
-    cfg.fed.clientname = data['algorithm']['clientname'] if 'clientname' in data['algorithm'] else 'GlobusComputeClientOptim'
-    if check_step_optimizer(data['algorithm']['clientname']):
+    use_compass = check_compass(data['algorithm']['servername'])
+    is_step_optimizer = check_step_optimizer(data['algorithm']['clientname'])
+    # Perform some sanity checks
+    if is_step_optimizer:
         assert 'num_local_steps' in data['algorithm']['args'], "Please provide the number of local steps for step-based client optimizer."
     else:
         assert 'num_local_epochs' in data['algorithm']['args'], "Please provide the number of local epochs for epoch-based client optimizer."
+    if use_compass:
+        assert is_step_optimizer, "Compass scheduler only works with step-based client optimizer."
+    # Load FL algorithm configs
+    cfg.fed = Federated()
+    cfg.fed.servername = data['algorithm']['servername']
+    cfg.fed.clientname = data['algorithm']['clientname']
     cfg.fed.args = OmegaConf.create(data['algorithm']['args'])
     cfg.fed.args.is_async = is_async
+    cfg.fed.args.use_compass = use_compass
     # Load training configs
     cfg.num_epochs = data['training']['num_epochs']
     if 'save_model_dirname' in data['training']:

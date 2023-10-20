@@ -103,6 +103,16 @@ class GlobusComputeCommunicator:
         """Perform learning rate decay."""
         self.cfg.fed.args.optim_args.lr *=  self.cfg.fed.args.server_lr_decay_exp_gamma
         self.logger.info("Learning rate is set to %.06f" % (self.cfg.fed.args.optim_args.lr))
+    
+    def set_learning_rate(self, lr):
+        """Set learning rate."""
+        self.cfg.fed.args.optim_args.lr = lr
+        self.logger.info("Learning rate is set to %.06f" % (self.cfg.fed.args.optim_args.lr))
+    
+    def set_local_steps(self, num_local_steps):
+        """Set client local training steps."""
+        self.cfg.fed.args.num_local_steps = num_local_steps
+        self.logger.info("Local training steps is set to %d" % (self.cfg.fed.args.num_local_steps))
 
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
         """Broadcast an executable task with all arguments to all federated learning clients."""

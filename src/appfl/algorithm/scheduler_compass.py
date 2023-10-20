@@ -1,13 +1,18 @@
+import abc
 import math
 import time
+import uuid
 import threading
-from typing import Any
 from logging import Logger
+from typing import Any, Union
 from collections import OrderedDict
 from appfl.comm.mpi import MpiCommunicator
+from appfl.comm.globus_compute import GlobusComputeCommunicator
+from appfl.comm.globus_compute.utils.s3_storage import LargeObjectWrapper
+from appfl.comm.globus_compute.globus_compute_client_function import client_training
 
-class SchedulerCompass:
-    def __init__(self, communicator: MpiCommunicator, server: Any, max_local_steps: int, num_clients: int, num_global_epochs: int, lr: float, logger: Logger, use_nova: bool, q_ratio: float = 0.2, lambda_val: float = 1.5):
+class SchedulerCompass(abc.ABC):
+    def __init__(self, communicator: Union[MpiCommunicator, GlobusComputeCommunicator], server: Any, max_local_steps: int, num_clients: int, num_global_epochs: int, lr: float, logger: Logger, use_nova: bool, q_ratio: float = 0.2, lambda_val: float = 1.5, **kwargs):
         self.iter = 0
         self.lr = lr
         self.communicator = communicator
@@ -21,17 +26,27 @@ class SchedulerCompass:
         self.max_local_steps_bound =  math.floor(1.2 * self.max_local_steps)
         self.SPEED_MOMENTUM = 0.9
         self.LATEST_TIME_FACTOR = lambda_val
-        self.LR_DECAY = 0.985
+        self.LR_DECAY = 0.995
         self.client_info = {}
         self.group_of_arrival = OrderedDict()
         self.use_nova = use_nova # whether to use normalized averaging
         self.start_time = time.time()
+        self.__dict__.update(kwargs)
+
+    @abc.abstractmethod
+    def _recv_local_model_from_client(self):
+        pass
+
+    @abc.abstractmethod
+    def _send_global_model_to_client(self, client_idx, client_steps, client_lr):
+        pass
 
     def update(self):
         """Schedule update when receive information from one client."""
-        client_idx, local_model = self.communicator.recv_local_model_from_client()
+        client_idx, local_model, local_log = self._recv_local_model_from_client()
         self._record_info(client_idx)
         self._update(local_model, client_idx)
+        return local_log
 
     def _update(self, local_model: dict, client_idx: int):
         self.iter += 1
@@ -190,7 +205,8 @@ class SchedulerCompass:
         client_lr = self.lr * (self.LR_DECAY) ** (math.floor(self.client_info[client_idx]['total_steps']/self.max_local_steps))
         # self.logger.info(f"Total number of steps for client{client_idx} is {self.client_info[client_idx]['total_steps']}")
         # self.logger.info(f"Learning rate for client{client_idx} is {client_lr}")
-        self.communicator.send_global_model_to_client(self.server.model.state_dict(), {'done': False, 'steps': self.client_info[client_idx]['local_steps'], 'lr': client_lr}, client_idx)
+        client_steps = self.client_info[client_idx]['local_steps']
+        self._send_global_model_to_client(client_idx, client_steps, client_lr)
 
     def _group_aggregation(self, group_idx: int):        
         if group_idx in self.group_of_arrival:
@@ -220,3 +236,29 @@ class SchedulerCompass:
             else:
                 self.server.model.to("cpu")
                 self.server.update_all()
+
+class SchedulerCompassMPI(SchedulerCompass):
+    def _recv_local_model_from_client(self):
+        client_idx, local_model = self.communicator.recv_local_model_from_client()
+        return client_idx, local_model, None
+
+    def _send_global_model_to_client(self, client_idx, client_steps, client_lr):
+        self.communicator.send_global_model_to_client(self.server.model.state_dict(), {'done': False, 'steps': client_steps, 'lr': client_lr}, client_idx)
+
+class SchedulerCompassGlobusCompute(SchedulerCompass):
+    def _recv_local_model_from_client(self):
+        return self.communicator.receive_async_endpoint_update()
+
+    def _send_global_model_to_client(self, client_idx, client_steps, client_lr):
+        if not hasattr(self, 'server_model_basename'):
+            self.server_model_basename = str(uuid.uuid4()) + "_server_state"
+        self.communicator.set_learning_rate(client_lr)
+        self.communicator.set_local_steps(client_steps)
+        self.communicator.send_task_to_one_client(
+            client_idx,
+            client_training,
+            self.server.weights,
+            LargeObjectWrapper(self.server.model.state_dict(), f"{self.server_model_basename}_{self.iter+1}"),
+            do_validation=self.do_validation,
+            global_epoch=self.iter+1,
+        )
