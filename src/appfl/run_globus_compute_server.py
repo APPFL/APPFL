@@ -349,6 +349,7 @@ def run_server(
         server.set_server_dataset(validation_dataset=val_data, testing_dataset=test_data) 
         server.run(model, loss_fn, val_metric)
     except Exception as e:
-        traceback.print_exc()
-        print("Training fails, cleaning things up... ...")
+        logger = GlobusComputeServerLogger.get_logger()
+        logger.error("Training failed with the exception.")
+        logger.error(traceback.format_exc())
         server.cleanup()

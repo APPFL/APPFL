@@ -185,7 +185,7 @@ class GlobusComputeCommunicator:
                 client_results.append(client_local_result)
                 del self.executing_task_futs[fut]
             except Exception as exc:
-                self.logger.warning("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
+                self.logger.error("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
                 raise exc
         return client_results, client_logs
 
@@ -201,7 +201,7 @@ class GlobusComputeCommunicator:
             client_local_result, client_log[client_idx] = self.__handle_globus_compute_result(result, task_id)
             del self.executing_task_futs[fut]
         except Exception as exc:
-                self.logger.warning("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
+                self.logger.error("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
                 raise exc
         return client_idx, client_local_result, client_log
 
@@ -218,10 +218,7 @@ class GlobusComputeCommunicator:
     def shutdown_all_clients(self):
         """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
         self.logger.info("Shutting down all clients......")
-        for client_idx in self.clients:
-            if self.clients[client_idx].future is not None:
-                self.clients[client_idx].future.cancel()
-        self.gcx.shutdown()
+        self.gcx.shutdown(wait=False, cancel_futures=True)
         # Clean-up cloud storage
         CloudStorage.clean_up()
         self.logger.info("The server and all clients have been shutted down successfully.")
