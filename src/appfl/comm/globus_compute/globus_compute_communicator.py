@@ -102,17 +102,25 @@ class GlobusComputeCommunicator:
     def decay_learning_rate(self):
         """Perform learning rate decay."""
         self.cfg.fed.args.optim_args.lr *=  self.cfg.fed.args.server_lr_decay_exp_gamma
-        self.logger.info("Learning rate is set to %.06f" % (self.cfg.fed.args.optim_args.lr))
+        self.logger.info("Learning rate is set to %.06f." % (self.cfg.fed.args.optim_args.lr))
     
-    def set_learning_rate(self, lr):
+    def set_learning_rate(self, lr, client_idx = None):
         """Set learning rate."""
         self.cfg.fed.args.optim_args.lr = lr
-        self.logger.info("Learning rate is set to %.06f" % (self.cfg.fed.args.optim_args.lr))
+        if client_idx is None:
+            self.logger.info("Learning rate is set to %.06f." % (self.cfg.fed.args.optim_args.lr))
+        else:
+            client_name = self.clients[client_idx].client_cfg.name
+            self.logger.info("Learning rate is set to %.06f at %s." % (self.cfg.fed.args.optim_args.lr, client_name))
     
-    def set_local_steps(self, num_local_steps):
+    def set_local_steps(self, num_local_steps, client_idx = None):
         """Set client local training steps."""
         self.cfg.fed.args.num_local_steps = num_local_steps
-        self.logger.info("Local training steps is set to %d" % (self.cfg.fed.args.num_local_steps))
+        if client_idx is None:
+            self.logger.info("Local training steps is set to %d." % (self.cfg.fed.args.num_local_steps))
+        else:
+            client_name = self.clients[client_idx].client_cfg.name
+            self.logger.info("Local training steps is set to %d at %s." % (self.cfg.fed.args.num_local_steps, client_name))
 
     def send_task_to_all_clients(self, exct_func, *args, silent = False, **kwargs):
         """Broadcast an executable task with all arguments to all federated learning clients."""

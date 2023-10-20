@@ -252,8 +252,8 @@ class SchedulerCompassGlobusCompute(SchedulerCompass):
     def _send_global_model_to_client(self, client_idx, client_steps, client_lr):
         if not hasattr(self, 'server_model_basename'):
             self.server_model_basename = str(uuid.uuid4()) + "_server_state"
-        self.communicator.set_learning_rate(client_lr)
-        self.communicator.set_local_steps(client_steps)
+        self.communicator.set_learning_rate(client_lr, client_idx=client_idx)
+        self.communicator.set_local_steps(client_steps, client_idx=client_idx)
         self.communicator.send_task_to_one_client(
             client_idx,
             client_training,
