@@ -15,10 +15,10 @@ algorithm:
     server_momentum_param_1: 0.9
     server_momentum_param_2: 0.99
     ## Clients optimizer
-    optim: "SGD"
+    optim: "Adam"
     num_local_steps: 100
     optim_args: 
-      lr: 0.01
+      lr: 0.003
     ## Differential Privacy
     use_dp: False
     epsilon: 1
