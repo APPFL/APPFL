@@ -14,14 +14,19 @@ python mnist_globus_compute.py --client_config path_to_client_config.yaml --serv
 
 """ read arguments """ 
 parser = argparse.ArgumentParser()  
+## Client config choices
 parser.add_argument("--client_config", type=str, default="globus_compute/configs_client/mnist.yaml")
-# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg.yaml") 
+# parser.add_argument("--client_config", type=str, default="globus_compute/configs_client/mnist_class_noiid.yaml")
+# parser.add_argument("--client_config", type=str, default="globus_compute/configs_client/mnist_dual_dirichlet_noiid.yaml")
+
+## Server config choices
+parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedasync.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedbuffer.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg_step_optim.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedasync_step_optim.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedbuffer_step_optim.yaml") 
-parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedcompass_step_optim.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedcompass_step_optim.yaml") 
 
 ## other agruments
 parser.add_argument('--reproduce', action='store_true', default=False) 

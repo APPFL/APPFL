@@ -1,19 +1,14 @@
-def get_data(
-    cfg,
-    client_idx: int,
-    mode='train'):
-    # TODO: Support other datasets, not only MNIST at client
+def get_data(cfg, client_idx: int, mode='train'):
     import torch
-    import torchvision
-    from   torchvision.transforms import ToTensor
     import numpy as np
+    import torchvision
     import os.path as osp
-    
     from appfl.misc.data import Dataset
+    from torchvision.transforms import ToTensor
 
-    ## Prepare local dataset directory
-    data_dir       = cfg.clients[client_idx].data_dir
-    local_dir      = osp.join(data_dir,"RawData")
+    # Prepare local dataset directory
+    data_dir = cfg.clients[client_idx].data_dir
+    local_dir = osp.join(data_dir,"RawData")
     data_raw = torchvision.datasets.MNIST(
         local_dir, download = True, 
         train = True if mode == 'train' else False, 

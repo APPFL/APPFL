@@ -185,7 +185,6 @@ class GlobusComputeCommunicator:
                 client_results.append(client_local_result)
                 del self.executing_task_futs[fut]
             except Exception as exc:
-                client_results[self.executing_tasks[task_id]] = None
                 self.logger.warning("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
                 raise exc
         return client_results, client_logs
