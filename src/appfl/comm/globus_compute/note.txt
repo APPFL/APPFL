@@ -1,1 +1,2 @@
-1. For FedCompass, when sending one model to more than one clients, do not send the same model more than once. This not only saves the communication load, also avoids any race condition on the cloud storage side.
+1. [Done] For FedCompass, when sending one model to more than one clients, do not send the same model more than once. This not only saves the communication load, also avoids any race condition on the cloud storage side.    
+2. Update the logging format for learning rate and local steps.

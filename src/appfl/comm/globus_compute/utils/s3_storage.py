@@ -57,6 +57,7 @@ class CloudStorage(object):
             new_inst.logger = logger
             new_inst.session_id = id_generator() + str(time.time())
             new_inst.registered_obj = set()
+            new_inst.uploaded_obj = {}
             cls.instc = new_inst
         return cls.instc
     
@@ -107,6 +108,7 @@ class CloudStorage(object):
                     'object_name': object_name
                 }
             }
+            self.uploaded_obj[object_name] = s3_obj
             return s3_obj
         # Upload the object directly
         try:
@@ -131,6 +133,7 @@ class CloudStorage(object):
                     'object_url': response
                 }
             }
+            self.uploaded_obj[object_name] = s3_obj
             return s3_obj
         except Exception as e:
             if self.logger is not None:
@@ -208,6 +211,9 @@ class CloudStorage(object):
             object_name = data.name
             data = data.data
         cs = cls.get_instance()
+
+        if object_name in cs.uploaded_obj:
+            return cs.uploaded_obj[object_name]
 
         temp_dir = temp_dir if temp_dir is not None else cs.temp_dir
         os.makedirs(temp_dir, exist_ok=True)
