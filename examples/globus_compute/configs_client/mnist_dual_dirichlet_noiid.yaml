@@ -5,7 +5,7 @@ clients:
     output_dir: "./output"
     data_dir:   "./output"
     get_data:
-      script_file: "globus_compute/datasets/mnist.py"
+      script_file: "globus_compute/datasets/mnist_dual_dirichlet_noiid.py"
       call:   "get_data"
 
   - name: appfl_test2
@@ -14,7 +14,7 @@ clients:
     output_dir: "./output"
     data_dir:   "./output"
     get_data:
-      script_file: "globus_compute/datasets/mnist.py"
+      script_file: "globus_compute/datasets/mnist_dual_dirichlet_noiid.py"
       call:   "get_data"
 
   - name: appfl_test3
@@ -23,5 +23,5 @@ clients:
     output_dir: "./output"
     data_dir:   "./output"
     get_data:
-      script_file: "globus_compute/datasets/mnist.py"
+      script_file: "globus_compute/datasets/mnist_dual_dirichlet_noiid.py"
       call:   "get_data"

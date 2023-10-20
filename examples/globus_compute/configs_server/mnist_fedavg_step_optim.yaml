@@ -1,13 +1,13 @@
 server:
   device: cpu
-  data_dir  : "./log_globus_compute_appfl/fedavg_server"
-  output_dir: "./log_globus_compute_appfl/fedavg_server"
+  data_dir  : "./log_globus_compute_appfl/fedavg_server_stepoptim_client"
+  output_dir: "./log_globus_compute_appfl/fedavg_server_stepoptim_client"
   s3_bucket: "appflx-models"
   s3_creds: "globus_compute/creds/credential.csv"
 
 algorithm:
   servername: 'ServerFedAvg'
-  clientname: 'GlobusComputeClientOptim'
+  clientname: 'GlobusComputeClientStepOptim'
   args:
     ## Server update
     server_learning_rate: 0.01
@@ -16,7 +16,7 @@ algorithm:
     server_momentum_param_2: 0.99
     ## Clients optimizer
     optim: "Adam"
-    num_local_epochs: 1
+    num_local_steps: 100
     optim_args: 
       lr: 0.003
     ## Differential Privacy

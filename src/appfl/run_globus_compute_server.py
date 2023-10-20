@@ -251,7 +251,7 @@ class APPFLGlobusComputeAsyncServer(APPFLGlobusComputeServer):
             self.weights,
             LargeObjectWrapper(global_state, f"{server_model_basename}_{0}"),
             do_validation = self.cfg.client_do_validation,
-            global_epoch = 0 # TODO: check this 0 or 1?
+            global_epoch = 0
         )
         for t in range(self.cfg.num_epochs):
             self.logger.info(" ======================== Epoch [%d/%d] ======================== " % (t+1, self.cfg.num_epochs))
@@ -284,6 +284,52 @@ class APPFLGlobusComputeAsyncServer(APPFLGlobusComputeServer):
             self.logger.info(f"Total training time: {time.time()-start_time:.3f}")
         self.communicator.cancel_all_tasks()
 
+class APPFLGlobusComputeCompassServer(APPFLGlobusComputeServer):
+    def __init__(self, cfg: DictConfig, gcc: Client):
+        super(APPFLGlobusComputeCompassServer, self).__init__(cfg, gcc)
+        self.global_epoch = 0
+        self.client_model_timestamp = {i : 0 for i in range(self.cfg.num_clients)}
+
+    def _do_training(self):
+        start_time = time.time()
+        server_model_basename = str(uuid.uuid4()) + "_server_state"
+        # Initialize the compass scheduler
+        self.scheduler = SchedulerCompassGlobusCompute(
+            self.communicator,
+            self.server,
+            self.cfg.fed.args.num_local_steps,
+            self.cfg.num_clients,
+            self.cfg.num_epochs,
+            self.cfg.fed.args.optim_args.lr,
+            self.logger,
+            self.cfg.fed.servername == "ServerFedCompassNova",
+            self.cfg.fed.args.q_ratio,
+            self.cfg.fed.args.lambda_val,
+            do_validation=self.cfg.client_do_validation
+        )
+        # Broadcast the global model to the clients at the beginning
+        global_state = self.server.model.state_dict()
+        self.communicator.send_task_to_all_clients(
+            client_training,
+            self.weights,
+            LargeObjectWrapper(global_state, f"{server_model_basename}_{0}"),
+            do_validation = self.cfg.client_do_validation,
+            global_epoch = 0
+        )
+        
+        for t in range(self.cfg.num_epochs):
+            self.logger.info(" ======================== Epoch [%d/%d] ======================== " % (t+1, self.cfg.num_epochs))
+            client_log = self.scheduler.update()
+            self._parse_client_logs(t+1, client_log)
+
+            # Server validation and saving checkpoint
+            if (t+1) % self.cfg.server_validation_step == 0:
+                self._do_server_validation(t+1)
+            self._save_checkpoint(t+1)
+
+            self.logger.info(f"Total training time: {time.time()-start_time:.3f}")
+        self.communicator.cancel_all_tasks()
+
 def run_server(
     cfg: DictConfig, 
     model: nn.Module,
@@ -293,7 +339,9 @@ def run_server(
     test_data: Dataset = Dataset(),
     val_data : Dataset = Dataset(),
     ):
-    if cfg.fed.args.is_async:
+    if cfg.fed.args.use_compass:
+        server = APPFLGlobusComputeCompassServer(cfg, gcc)
+    elif cfg.fed.args.is_async:
         server = APPFLGlobusComputeAsyncServer(cfg, gcc)
     else:
         server = APPFLGlobusComputeSyncServer(cfg, gcc)
@@ -301,6 +349,7 @@ def run_server(
         server.set_server_dataset(validation_dataset=val_data, testing_dataset=test_data) 
         server.run(model, loss_fn, val_metric)
     except Exception as e:
-        traceback.print_exc()
-        print("Training fails, cleaning things up... ...")
+        logger = GlobusComputeServerLogger.get_logger()
+        logger.error("Training failed with the exception.")
+        logger.error(traceback.format_exc())
         server.cleanup()
