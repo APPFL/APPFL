@@ -27,7 +27,7 @@ We use separate python files for examples on various datasets with different com
 - `mnist_mpi_async.py` contains example on the partitioned MNIST dataset using MPUI for asynchronous federated learning.
 - `mnist_mpi_privacy.py` contains example on the partitioned MNIST dataset using MPI for synchrnous privacy-preserving federated learning.
 - `mnist_grpc.py` contains example on the partitioned MNIST dataset using gRPC for synchronous federated learning.
-- `mnist_globus_compute` contains example on the partitioned MNIST dataset using [Globus Compute](https://funcx.readthedocs.io/en/latest/) for synchronous federated learing.
+- `mnist_globus_compute` contains example on the partitioned MNIST dataset using [Globus Compute](https://funcx.readthedocs.io/en/latest/) for synchronous or **asynchronous** federated learing.
 
 
 ### MNIST, CIFAR10, Coronahack, CelebA
@@ -65,7 +65,7 @@ mpiexec -np 6 python ./mnist_grpc.py --partition class_noiid --loss_fn losses/ce
 ```
 
 #### Globus Compute Communication
-[Globus Compute](https://funcx.readthedocs.io/en/latest/index.html) is a distributed function as a service platform. It is used to support federated learning among **real-world** distributed and **heterogeneous** computing facilities. The following command starts an FL server which interacts with Globus Compute Endpoints (FL clients) to perform FL experiments. Please see the detialed instructions about how to setup experiments using Globus Compute [here](globus_compute/README.md).
+[Globus Compute](https://funcx.readthedocs.io/en/latest/index.html) is a distributed function as a service platform. It is used to support federated learning among **real-world** distributed and **heterogeneous** computing facilities. The following command starts an FL server which interacts with Globus Compute Endpoints (FL clients) to perform FL experiments. ***Please see the detialed instructions about how to setup experiments using Globus Compute [here](globus_compute/README.md).***
 ```bash
 python mnist_globus_compute.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
 ```
