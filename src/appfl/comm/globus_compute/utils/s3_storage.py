@@ -40,7 +40,7 @@ class CloudStorage(object):
             new_inst = cls.__new__(cls)
             new_inst.bucket = cfg.server.s3_bucket
             kwargs = {}
-            if cfg.server.s3_creds == "":
+            if cfg.server.s3_creds != "":
                 with open(cfg.server.s3_creds) as file:
                     reader = csv.reader(file)
                     keys = next(reader)
