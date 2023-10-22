@@ -23,3 +23,27 @@ authors:
     family-names: Kim
     email: youngdaekim26@gmail.com
     affiliation: ExxonMobil Technology and Engineering Company
+  - given-names: Zilinghan
+    family-names: Li
+    email: zilinghan.li@anl.gov
+    affiliation: Argonne National Laboratory
+  - given-names: Sang-il
+    family-names: Yim
+    email: yim@anl.gov
+    affiliation: Argonne National Laboratory
+  - given-names: Trung-Hieu
+    faimly-names: Hoang
+    email: hthieu@illinois.edu
+    affiliation: University of Illinois at Urbana-Champaign
+  - given-names: Shourya
+    family-names: Bose
+    email: shbose@ucsc.edu
+    affiliation: University of California, Santa Cruz
+  - given-names: Shilan
+    family-names: He
+    email: shilanh2@illinois.edu
+    affiliation: University of Illinois at Urbana-Champaign
+  - given-names: Ravi
+    family-names: Madduri
+    email: madduri@anl.gov
+    affiliation: Argonne National Laboratory
