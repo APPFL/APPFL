@@ -24,12 +24,13 @@ class FedServer(BaseServer):
         self.step = OrderedDict()
         self.list_named_parameters = []
         self.pseudo_grad = OrderedDict()
-        self.m_vector = OrderedDict()
-        self.v_vector = OrderedDict()
-        for name, _ in self.model.named_parameters():
-            self.list_named_parameters.append(name)
-            self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device)
-            self.v_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device) + self.server_adapt_param**2
+        if hasattr(self, "server_adapt_param"):
+            self.m_vector = OrderedDict()
+            self.v_vector = OrderedDict()
+            for name, _ in self.model.named_parameters():
+                self.list_named_parameters.append(name)
+                self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device)
+                self.v_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device) + self.server_adapt_param**2
 
     def update_m_vector(self):
         """Update the `m_vector` in adaptive federated optimization."""
