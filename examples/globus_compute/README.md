@@ -1,4 +1,4 @@
-# Instructions: Using Globus Compute for Federated Learning
+# <img src="../../docs/_static/globus_compute.jpg" alt="Globus Compute" width="40"> Instructions: Using Globus Compute for Federated Learning
 
 ## FL Client Setup
 To setup a **real-world** federated learning client on a **distributed** computing machine, you need to (1) install the APPFL package locally, and (2) create and start a Globus Compute endpoint. [**Note**: Globus Compute endpoint is only supported on linux machine. If you use windows, please use WSL.]
@@ -105,15 +105,23 @@ To set up a federated learning server using Globus Compute for real-world FL exp
 
 ## Appendix
 Explanations for the provided server configuration files in `configs_server`:
-- [`mnist_fedavg.yaml`](configs_server/mnist_fedavg.yaml): Server configuration for FedAvg algorithm, and each client updates for one epoch for each local training round.
-- [`mnist_fedavg_step_optim.yaml`](configs_server/mnist_fedavg_step_optim.yaml): Server configuration for FedAvg algorithm, and each client updates for 100 steps (batches) for each local training round.
-- [`configs_server/mnist_fedasync.yaml`](configs_server/mnist_fedasync.yaml): Server configuration for [FedAsync](http://arxiv.org/abs/1903.03934) algorithm, and each client updates for one epoch for each local training round.
-- [`configs_server/mnist_fedasync_step_optim.yaml`](configs_server/mnist_fedasync_step_optim.yaml): Server configuration for [FedAsync](http://arxiv.org/abs/1903.03934) algorithm, and each client updates for 100 steps (batches) for each local training round.
-- [`configs_server/mnist_fedbuffer.yaml`](configs_server/mnist_fedbuffer.yaml): Server configuration for [FedBuffer](https://arxiv.org/abs/2106.06639) algorithm, and each client updates for one epoch for each local training round.
-- [`configs_server/mnist_fedbuffer_step_optim.yaml`](configs_server/mnist_fedbuffer_step_optim.yaml): Server configuration for [FedBuffer](https://arxiv.org/abs/2106.06639) algorithm, and each client updates for 100 steps (batches) for each local training round.
-- [`configs_server/mnist_fedcompass_step_optim.yaml`](configs_server/mnist_fedcompass_step_optim.yaml): Server configuration for [FedCompass](https://arxiv.org/abs/2309.14675) algorithm, and each client updates for different number of local steps according to their computing power for each local training round.
+- [`mnist_fedavg.yaml`](configs_server/mnist_fedavg.yaml): Server configuration for [FedAvg](https://proceedings.mlr.press/v54/mcmahan17a/mcmahan17a.pdf) algorithm, and each client updates for one epoch for each local training round.
+- [`mnist_fedavgm.yaml`](configs_server/mnist_fedavgm.yaml): Server configuration for [FedAvgMomentum](https://arxiv.org/abs/1909.06335) algorithm, and each client updates for one epoch for each local training round.
+- [`mnist_fedadam.yaml`](configs_server/mnist_fedadam.yaml): Server configuration for [FedAdam](https://arxiv.org/abs/2003.00295) algorithm, and each client updates for one epoch for each local training round.
+- [`mnist_fedadagrad.yaml`](configs_server/mnist_fedadagrad.yaml): Server configuration for [FedAdagrad](https://arxiv.org/abs/2003.00295) algorithm, and each client updates for one epoch for each local training round.
+- [`mnist_fedyogi.yaml`](configs_server/mnist_fedyogi.yaml): Server configuration for [FedYogi](https://arxiv.org/abs/2003.00295) algorithm, and each client updates for one epoch for each local training round.
+- [`mnist_fedasync.yaml`](configs_server/mnist_fedasync.yaml): Server configuration for [FedAsync](http://arxiv.org/abs/1903.03934) algorithm, and each client updates for one epoch for each local training round.
+- [`mnist_fedbuffer.yaml`](configs_server/mnist_fedbuffer.yaml): Server configuration for [FedBuffer](https://arxiv.org/abs/2106.06639) algorithm, and each client updates for one epoch for each local training round.
+- [`mnist_fedavg_step_optim.yaml`](configs_server/mnist_fedavg_step_optim.yaml): Server configuration for [FedAvg](https://proceedings.mlr.press/v54/mcmahan17a/mcmahan17a.pdf) algorithm, and each client updates for 100 steps (batches) for each local training round.
+- [`mnist_fedavgm_step_optim.yaml`](configs_server/mnist_fedavgm_step_optim.yaml): Server configuration for [FedAvgMomentum](https://arxiv.org/abs/1909.06335) algorithm, and each client updates for 100 steps (batches) for each local training round.
+- [`mnist_fedadam_step_optim.yaml`](configs_server/mnist_fedadam_step_optim.yaml): Server configuration for [FedAdam](https://arxiv.org/abs/2003.00295) algorithm, and each client updates for 100 steps (batches) for each local training round.
+- [`mnist_fedadagrad_step_optim.yaml`](configs_server/mnist_fedadagrad_step_optim.yaml): Server configuration for [FedAdagrad](https://arxiv.org/abs/2003.00295) algorithm, and each client updates for 100 steps (batches) for each local training round.
+- [`mnist_fedyogi_step_optim.yaml`](configs_server/mnist_fedyogi_step_optim.yaml): Server configuration for [FedYogi](https://arxiv.org/abs/2003.00295) algorithm, and each client updates for 100 steps (batches) for each local training round.
+- [`mnist_fedasync_step_optim.yaml`](configs_server/mnist_fedasync_step_optim.yaml): Server configuration for [FedAsync](http://arxiv.org/abs/1903.03934) algorithm, and each client updates for 100 steps (batches) for each local training round.
+- [`mnist_fedbuffer_step_optim.yaml`](configs_server/mnist_fedbuffer_step_optim.yaml): Server configuration for [FedBuffer](https://arxiv.org/abs/2106.06639) algorithm, and each client updates for 100 steps (batches) for each local training round.
+- [`mnist_fedcompass_step_optim.yaml`](configs_server/mnist_fedcompass_step_optim.yaml): Server configuration for [FedCompass](https://arxiv.org/abs/2309.14675) algorithm, and each client updates for different number of local steps according to their computing power for each local training round.
 
 Explanations for the provided client configuration files in `configs_client`:
-- [`configs_client/mnist.yaml`](configs_client/mnist.yaml): The client local datasets are equally and randomly partitioned MNIST dataset, which is identically and independently distributed (IID).
-- [`configs_client/mnist_class_noiid.yaml`](configs_client/mnist_class_noiid.yaml): The client local datasets are non-IID partitioned MNIST dataset using the *Class Partition* strategy, check **Appendix D.1.1** of our [FedCompass](https://arxiv.org/pdf/2309.14675.pdf) paper for details.
-- [`configs_client/mnist_dual_dirichlet_noiid.yaml`](configs_client/mnist_dual_dirichlet_noiid.yaml): The client local datasets are non-IID partitioned MNIST dataset using the *Dual Dirichlet Partition* strategy, check **Appendix D.1.2** of our [FedCompass](https://arxiv.org/pdf/2309.14675.pdf) paper for details.
+- [`mnist.yaml`](configs_client/mnist.yaml): The client local datasets are equally and randomly partitioned MNIST dataset, which is identically and independently distributed (IID).
+- [`mnist_class_noiid.yaml`](configs_client/mnist_class_noiid.yaml): The client local datasets are non-IID partitioned MNIST dataset using the *Class Partition* strategy, check **Appendix D.1.1** of our [FedCompass](https://arxiv.org/pdf/2309.14675.pdf) paper for details.
+- [`mnist_dual_dirichlet_noiid.yaml`](configs_client/mnist_dual_dirichlet_noiid.yaml): The client local datasets are non-IID partitioned MNIST dataset using the *Dual Dirichlet Partition* strategy, check **Appendix D.1.2** of our [FedCompass](https://arxiv.org/pdf/2309.14675.pdf) paper for details.
