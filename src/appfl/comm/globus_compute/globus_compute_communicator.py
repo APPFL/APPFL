@@ -24,6 +24,7 @@ class GlobusComputeCommunicator:
         if self.use_s3bucket:
             self.logger.info(f'Using S3 bucket {cfg.server.s3_bucket} for model transfer.')
             CloudStorage.init(cfg, temp_dir= osp.join(cfg.server.output_dir, 'tmp'),logger= self.logger)
+            cfg.server.s3_creds = ""
 
     def __register_task(self, task_id, task_fut, client_id, task_name):
         """Register new client task to the list of executing tasks - call after task submission """
