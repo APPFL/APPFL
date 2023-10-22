@@ -21,9 +21,18 @@ parser.add_argument("--client_config", type=str, default="globus_compute/configs
 
 ## Server config choices
 parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavgm.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedadam.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedadagrad.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedyogi.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedasync.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedbuffer.yaml") 
+
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavg_step_optim.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedavgm_step_optim.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedadam_step_optim.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedadagrad_step_optim.yaml") 
+# parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedyogi_step_optim.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedasync_step_optim.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedbuffer_step_optim.yaml") 
 # parser.add_argument("--server_config", type=str, default= "globus_compute/configs_server/mnist_fedcompass_step_optim.yaml") 
