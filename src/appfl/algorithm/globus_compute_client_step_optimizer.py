@@ -67,13 +67,17 @@ class GlobusComputeClientStepOptim(BaseClient):
             per_iter_time = time.time() - start_time
             super(GlobusComputeClientStepOptim, self).client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)   
 
-        self.primal_state = copy.deepcopy(self.model.to('cpu').state_dict())
-
         ## Differential Privacy 
+        self.primal_state = copy.deepcopy(self.model.state_dict())
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
             super(GlobusComputeClientStepOptim, self).laplace_mechanism_output_perturb(scale_value)
+        
+        ## Move the model parameter to CPU (if not) for communication
+        if (self.cfg.device == "cuda"):            
+            for k in self.primal_state:
+                self.primal_state[k] = self.primal_state[k].cpu()
         
         if self.send_gradient:
             return compute_gradient(original_model, self.model), cli_logger
