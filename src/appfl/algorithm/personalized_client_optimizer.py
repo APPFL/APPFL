@@ -68,15 +68,15 @@ class PersonalizedClientOptim(BaseClient):
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
             super(PersonalizedClientOptim, self).laplace_mechanism_output_perturb(scale_value)
-
-        ## Move the model parameter to CPU (if not) for communication
-        if (self.cfg.device == "cuda"):            
-            for k in self.primal_state:
-                self.primal_state[k] = self.primal_state[k].cpu()
             
         ## Save each client model periodically  
         if self.cfg.personalization == True and self.cfg.save_model_state_dict == True and ((self.round) % self.cfg.checkpoints_interval == 0 or self.round== self.cfg.num_epochs):
             save_partial_model_iteration(self.round, self.model, self.cfg, client_id=self.id)
+            
+        ## Move the model parameter to CPU (if not) for communication
+        if (self.cfg.device == "cuda"):            
+            for k in self.primal_state:
+                self.primal_state[k] = self.primal_state[k].cpu()
 
         return self.primal_state
  
