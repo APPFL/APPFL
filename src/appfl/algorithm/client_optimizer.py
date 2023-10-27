@@ -5,6 +5,8 @@ import torch
 import numpy as np
 from torch.optim import *
 from .fl_base import BaseClient
+from ..misc.utils import *
+from typing import OrderedDict
 
 class ClientOptim(BaseClient):
     """This client optimizer which perform updates for certain number of epochs in each training round."""
@@ -18,6 +20,10 @@ class ClientOptim(BaseClient):
     def update(self):
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        model_param_names = [names for names,_ in self.model.named_parameters()]
+        
+        if self.clip_grad or self.use_dp:
+            named_param_old = copy.deepcopy(self.model.state_dict())
 
         ## Initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
@@ -68,6 +74,12 @@ class ClientOptim(BaseClient):
                 torch.save(self.model.state_dict(), os.path.join(path, "%s_%s.pt" % (self.round, t)))
  
         self.round += 1
+        
+        if self.clip_grad or self.use_dp:
+            named_param_new = self.model.state_dict()
+            norm_diff = norm_difference(named_param_old,named_param_new,1)
+            upd = add_params(mul_params(sub_params(named_param_old,named_param_new,model_param_names),(self.clip_value/norm_diff),model_param_names),named_param_old,model_param_names)
+            self.model.load_state_dict(upd,strict=False)
 
         ## Move the model parameter to CPU (if not) for communication
         self.primal_state = copy.deepcopy(self.model.state_dict())
