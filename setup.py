@@ -79,5 +79,9 @@ setuptools.setup(
             "fastparquet",
             "tqdm",
         ],
+        "llm": [
+            "transformers",
+            "peft",
+        ]
     },
 )
