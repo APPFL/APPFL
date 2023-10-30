@@ -9,11 +9,10 @@ To setup a **real-world** federated learning client on a **distributed** computi
     conda activate APPFL
     ```
 
-2. Install APPFL-Client package.
+2. Install APPFL package.
     ```
-    git clone https://github.com/APPFL/APPFLx-Client.git appflx && cd appflx
-    pip install -r requirements.txt
-    pip install -e .
+    git clone https://github.com/APPFL/APPFL.git appfl && cd appfl
+    pip install -e ".[dev,examples]"
     ```
 
 3. Creat a Globus account at https://app.globus.org. If you can find your organization in Globus, it is highly recommeneded to use your organization account to log in to Globus as that makes it easier for your collaborators to verify your identity (which is very import for building trust in FL). Otherwise, you can register a Globus account using your commonly-used email address.
@@ -23,7 +22,47 @@ To setup a **real-world** federated learning client on a **distributed** computi
     globus-compute-endpoint configure <YOUR_ENDPOINT_NAME>
     ```
 
-5. Configure the endpoint. The command above will create a configuration file at `$HOME/.globus_compute/<YOUR_ENDPOINT_NAME>/config.yaml`. This file should be updated with the appropriate configurations for the computational system you are targeting before you start the endpoint. Globus Compute document shows some of the example setups [here](https://funcx.readthedocs.io/en/latest/endpoints.html#example-configurations).
+5. Configure the endpoint. The command above will create a configuration file at `$HOME/.globus_compute/<YOUR_ENDPOINT_NAME>/config.yaml`. This file should be updated with the appropriate configurations for the computational system you are targeting before you start the endpoint. Globus Compute document shows some of the example setups [here](https://funcx.readthedocs.io/en/latest/endpoints.html#example-configurations). We also provide two example configuration yaml files here for [CPU](./endpoint_config/delta_ncsa_cpu.yaml) or [GPU](./endpoint_config/delta_ncsa_gpu.yaml) usage on the [Delta supercomputer @ NCSA](https://ncsa-delta-doc.readthedocs-hosted.com/en/latest/). Here comes the detailed explanation for the GPU configuration yaml file:
+    - partition: The partition is a logical grouping of computing nodes for different usage, and you can obtain all partition informations of your HPC by running `sinfo -s`
+    - account: The account name for the SLURM scheduler to charge CPU/GPU hours. In Delta, if your group name is bbvf, then the account should be bbvf-delta-cpu or bbvf-delta-gpu for CPU/GPU usage.
+    - exclusive: Whether to request nodes which are not shared with other running jobs. **(Note: In most cases, set it to False, otherwise, it is very very hard to get GPU resources.)**
+    - worker_init: You need to specify the commands to be run before starting a worker, such as loading a module `module load` (or module collection `module restore`) and activating a conda environment. Separate commands by semicolon (`;`).
+    - scheduler_option: Here you need to provide some #SBATCH (or other scheduler related) directives, such as setting up constraints, requesting GPUs, and disable GPU binding policy.
+    - init_blocks: In terms of SLURM scheduling, this refers to the number of slurm batch jobs submitted when you start the endpoint. **(For our FL usecase, we just need 1.)**
+    - min_blocks: Minimum number of slurm batch jobs when there are no/few tasks. If you choose 0, then the slurm job will be canceled when there are no tasks. **(For our FL usecase, we want to set this to 1 instead of 0.)**
+    - max_blocks: Maximum number of slurm batch jobs when there are more tasks and available resources. **(For our FL usecase, we do not need auto scaling and just need to set this to 1.)**
+        ```
+        display_name: NCSA Delta GPU
+        engine:
+            type: HighThroughputEngine
+            max_workers_per_node: 2
+            worker_debug: False
+
+            address:
+                type: address_by_interface
+                ifname: eth6.560
+
+            provider:
+                type: SlurmProvider
+                partition: gpuA40x4
+                account: bbvf-delta-gpu
+
+                launcher:
+                    type: SrunLauncher
+
+                # Command to be run before starting a worker
+                # e.g., "module load anaconda3; source activate gce_env"
+                worker_init: "conda activate globus-compute"
+                exclusive: False
+
+                scheduler_options: "#SBATCH --constraint='projects'\n#SBATCH --gpus-per-node=1\n#SBATCH --gpu-bind=none"
+
+                init_blocks: 1
+                min_blocks: 1
+                max_blocks: 1
+
+                walltime: 00:30:00
+        ```
 
 6. Start the endpoint. Before starting the funcX endpoint, you need to first change to a certain directory you want, which will be the root directory for funcX when accessing your file system or writing output files. Please select that root directory carefully. When you are in your desired directory, run the following command by replacing `<YOUR_ENDPOINT_NAME>` with your endpoint name to start the funcX endpoint. [**Note**: Whenever you start your endpoint, you should start it in the created conda environment.]
     ```
