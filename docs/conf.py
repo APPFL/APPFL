@@ -20,7 +20,7 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'APPFL'
-copyright = '2021, Argonne National Laboratory'
+copyright = '2023, Argonne National Laboratory'
 author = 'Argonne National Laboratory'
 
 
