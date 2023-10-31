@@ -104,13 +104,13 @@ Personalization layers allow certain layers of the model to remain local to each
 
 #### MPI Synchronous Communication
 
-```
+```bash
 mpiexec -n 43 python personalization_fedloadforecast.py --personalization_layers FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight --personalization_config_name MyPersonalization
 ```
 
 #### Serial Run
 
-```
+```bash
 python personalization_fedloadforecast.py --personalization_layers FCLayer1.weight,FCLayer1.bias,FCLayer2.weight,FCLayer2.bias,FCLayer3.weight,FCLayer3.bias,prelu1.weight,prelu2.weight --personalization_config_name MyPersonalization
 ```
 
@@ -120,18 +120,34 @@ FLamby is a cross-silo FL benchmark, and running experiments on it is similar to
 
 #### MPI Synchronous Communication
 
-```
+```bash
 mpiexec -np 7 python flamby_mpi_sync.py --num_epochs 5 --dataset TcgaBrca --num_local_steps 50 --server ServerFedAvg 
 ```
 
 #### MPI Asynchronous Communication
 
-```
+```bash
 mpiexec -np 7 python flamby_mpi_async.py --num_epochs 30 --dataset TcgaBrca --num_local_steps 100 --server ServerFedAsynchronous --val_range 1
 ```
 
 #### Serially Run
 
-```
+```bash
 python flamby_serial.py --num_clients 6 --num_epochs 5 --dataset TcgaBrca --num_local_steps 50 --server ServerFedAvg 
 ```
+
+### Using Lossy Compresssion (Experimental)
+
+To use lossy compression for given examples, you need to follow the instructions in [Lossy Compression](../src/appfl/compressor/README.md) to install the required packages and run the experiments.
+
+Then add the following arguments to the command line:
+
+#### MPI Synchronous Communication
+
+```bash
+--enable_compression --lossy_compressor CompressorLossy --error_bounding_mode ErrorBoundingMode --error_bound ErrorBound 
+```
+
+#### Rest of the Examples
+
+Awaiting to be added.
