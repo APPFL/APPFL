@@ -1,4 +1,4 @@
-iport setuptools
+import setuptools
 
 # Build Author list
 authors = {
