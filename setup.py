@@ -1,4 +1,4 @@
-import setuptools
+iport setuptools
 
 # Build Author list
 authors = {
@@ -51,7 +51,10 @@ setuptools.setup(
         "mpi4py",
         "boto3",
         "botocore",
-        "globus-compute-sdk"
+        "globus-compute-sdk",
+        "zfpy",
+        "blosc",
+        "zstd"
     ],
     extras_require={
         "dev": [
