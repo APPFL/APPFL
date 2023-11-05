@@ -36,13 +36,8 @@ class AlpacaDataset(data.Dataset):
     This class provides a class to load a json file into Alpaca-formated dataset.
     For dataset details visit: https://crfm.stanford.edu/2023/03/13/alpaca.html
     """
-    def __init__(self, data_path, tokenizer, partition="train", max_words=224):
+    def __init__(self, data_path, tokenizer, max_words=224):
         self.instructions = json.load(open(data_path))
-        if partition == "train":
-            self.instructions = self.instructions
-        else:
-            self.instructions = self.instructions[:200]
-
         self.max_words = max_words
         self.tokenizer = tokenizer
         self.prompt_dict = {
