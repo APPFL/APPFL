@@ -51,7 +51,8 @@ setuptools.setup(
         "mpi4py",
         "boto3",
         "botocore",
-        "globus-compute-sdk"
+        "globus-compute-sdk",
+        "globus-compute-endpoint"
     ],
     extras_require={
         "dev": [
