@@ -32,7 +32,7 @@ If you want to even minimize the installation of package dependencies, you can u
 
 .. note::
 
-    ``torch`` may need to be updated manually to supprt CUDA. Please check GPU support in `PyTorch <pytorch.org>`_.
+    ``torch`` may need to be updated manually to supprt CUDA. Please check GPU support in `PyTorch <https://pytorch.org/get-started/locally/>`_.
 
 Developer installation
 ----------------------
