@@ -76,7 +76,7 @@ def client_training(cfg, client_idx, weights, global_state, local_model_key="", 
    
     ## Download global state
     cli_logger.start_timer("Download global state")
-    temp_dir = osp.join(cfg.output_dirname, "tmp")
+    temp_dir = osp.join(cfg.output_dirname, "tmp"+str(client_idx))
     global_state = load_global_state(cfg, global_state, temp_dir)
     cli_logger.stop_timer("Download global state")
 
@@ -149,7 +149,7 @@ def client_testing(cfg, client_idx, weights, global_state):
 
     ## Download global state
     cli_logger.start_timer("Download global state")
-    temp_dir = osp.join(cfg.output_dirname, "tmp")
+    temp_dir = osp.join(cfg.output_dirname, "tmp"+str(client_idx))
     global_state = load_global_state(cfg, global_state, temp_dir)
     cli_logger.stop_timer("Download global state")
     

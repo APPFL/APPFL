@@ -7,6 +7,7 @@ from globus_compute_sdk import Client
 from appfl.run_globus_compute_server import run_server
 from appfl.comm.globus_compute.utils.logging import GlobusComputeServerLogger
 from appfl.comm.globus_compute.utils.utils import get_executable_func, get_loss_func
+from globus_compute.datasets.mnist import download_data
 
 """
 python mnist_globus_compute.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml --send-final-model
@@ -87,6 +88,8 @@ def main():
     server_test_dataset = None
     server_val_dataset  = None
     gcc = Client()
+
+    download_data(cfg)
     run_server(cfg, model, loss_fn, val_metric, gcc, server_test_dataset, server_val_dataset)
 
 if __name__ == "__main__":

@@ -23,7 +23,8 @@ class GlobusComputeCommunicator:
         self.use_s3bucket = cfg.server.s3_bucket is not None
         if self.use_s3bucket:
             self.logger.info(f'Using S3 bucket {cfg.server.s3_bucket} for model transfer.')
-            CloudStorage.init(cfg, temp_dir= osp.join(cfg.server.output_dir, 'tmp'),logger= self.logger)
+            for client_idx, client_cfg in enumerate(self.cfg.clients):
+                CloudStorage.init(cfg, temp_dir= osp.join(cfg.server.output_dir, "tmp"+str(client_idx)),logger= self.logger)
             cfg.server.s3_creds = ""
 
     def __register_task(self, task_id, task_fut, client_id, task_name):
