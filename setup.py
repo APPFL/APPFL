@@ -6,12 +6,12 @@ authors = {
     "Minseok Ryu": "mryu@anl.gov",
     "Youngdae Kim": "youngdae@anl.gov",
     "Hieu Hoang": "thoang@anl.gov",
-    "Zachary Ross": "zross@anl.gov",  
+    "Zachary Ross": "zross@anl.gov",
     "Zilinghan Li": "zilinghan.li@anl.gov",
     "Sang-il Yim": "yim@anl.gov",
     "Shourya Bose": "shbose@ucsc.edu",
     "Shilan He": "shilanh2@illinois.edu",
-    "Ravi Madduri": "madduri@anl.gov"
+    "Ravi Madduri": "madduri@anl.gov",
 }
 AUTHOR = ""
 for i, (k, v) in enumerate(authors.items()):
@@ -54,7 +54,11 @@ setuptools.setup(
         "globus-compute-sdk",
         "zfpy",
         "blosc",
-        "zstd"
+        "zstd",
+        "scipy",
+        "lz4",
+        "python-xz",
+        "scipy",
     ],
     extras_require={
         "dev": [
