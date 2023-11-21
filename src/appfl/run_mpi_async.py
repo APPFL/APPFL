@@ -10,6 +10,7 @@ from appfl.misc import validation, compute_gradient
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
+
 def run_server(
     cfg: DictConfig,
     comm: MPI.Comm,
@@ -18,7 +19,7 @@ def run_server(
     num_clients: int,
     test_dataset: Dataset = Dataset(),
     dataset_name: str = "MNIST",
-    metric: Any = None
+    metric: Any = None,
 ):
     """
     run_server:
@@ -27,14 +28,14 @@ def run_server(
         cfg: the configuration for the FL experiment
         comm: MPI communicator
         model: neural network model to train
-        loss_fn: loss function 
+        loss_fn: loss function
         num_clients: the number of clients used in PPFL simulation
         test_dataset: optional testing data. If given, validation will run based on this data
         dataset_name: optional dataset name
         metric: evaluation metric function
     """
     device = "cpu"  # server aggregation happens on CPU
-    communicator = MpiCommunicator(comm)
+    communicator = MpiCommunicator(comm, cfg)
 
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
@@ -44,7 +45,10 @@ def run_server(
     ## Using tensorboard to visualize the test loss.
     if cfg.use_tensorboard:
         from tensorboardX import SummaryWriter
-        writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))
+
+        writer = SummaryWriter(
+            comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients)
+        )
 
     ## Run validation if test data is given or the configuration is enabled.
     if cfg.validation == True and len(test_dataset) > 0:
@@ -66,12 +70,14 @@ def run_server(
     communicator.scatter(weights, 0)
 
     ## Asynchronous federated learning server
-    server = eval(cfg.fed.servername)(weights[1:], copy.deepcopy(model), loss_fn, num_clients, device,**cfg.fed.args)
+    server = eval(cfg.fed.servername)(
+        weights[1:], copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args
+    )
 
     start_time = time.time()
     iter = 0
-    client_model_step = {i : 0 for i in range(0, num_clients)}
-    client_start_time = {i : start_time for i in range(0, num_clients)}
+    client_model_step = {i: 0 for i in range(0, num_clients)}
+    client_start_time = {i: start_time for i in range(0, num_clients)}
 
     server.model.to("cpu")
     global_model = server.model.state_dict()
@@ -84,17 +90,21 @@ def run_server(
     while True:
         iter += 1
         client_idx, local_model = communicator.recv_local_model_from_client()
-        logger.info(f"[Server Log] [Step #{iter:3}] Receive model from client {client_idx}")
+        logger.info(
+            f"[Server Log] [Step #{iter:3}] Receive model from client {client_idx}"
+        )
         local_update_start = client_start_time[client_idx]
         local_update_time = time.time() - client_start_time[client_idx]
         global_update_start = time.time()
-        
+
         server.update(local_model, client_model_step[client_idx], client_idx)
         global_update_time = time.time() - global_update_start
         if iter < cfg.num_epochs:
             client_model_step[client_idx] = server.global_step
             client_start_time[client_idx] = time.time()
-            communicator.send_global_model_to_client(server.model.state_dict(), {'done': False}, client_idx) 
+            communicator.send_global_model_to_client(
+                server.model.state_dict(), {"done": False}, client_idx
+            )
         ## Do server validation
         validation_start = time.time()
         if cfg.validation == True:
@@ -116,19 +126,20 @@ def run_server(
         logger.info(f"[Server Log] [Step #{iter:3}] Iteration Logs:")
         if iter != 1:
             logger.info(server.log_title())
-        server.logging_iteration(cfg, logger, iter-1)
+        server.logging_iteration(cfg, logger, iter - 1)
 
         ## Break after number of communication rounds
-        if iter == cfg.num_epochs: 
+        if iter == cfg.num_epochs:
             break
-    
+
     ## Notify the clients about the end of the learning
     for i in range(num_clients):
-        communicator.send_global_model_to_client(None, {'done': True}, i)
+        communicator.send_global_model_to_client(None, {"done": True}, i)
     communicator.cleanup()
 
     ## Summary
     server.logging_summary(cfg, logger)
+
 
 def run_client(
     cfg: DictConfig,
@@ -137,7 +148,7 @@ def run_client(
     loss_fn: nn.Module,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
-    metric: Any = None
+    metric: Any = None,
 ):
     """
     run_client:
@@ -147,13 +158,13 @@ def run_client(
         cfg: the configuration for the FL experiment
         comm: MPI communicator
         model: neural network model to train
-        loss_fn: loss function 
+        loss_fn: loss function
         train_data: training data
         test_data: validation data
         metric: evaluation metric function
     """
-    client_idx = comm.Get_rank()-1
-    communicator = MpiCommunicator(comm)
+    client_idx = comm.Get_rank() - 1
+    communicator = MpiCommunicator(comm, cfg)
 
     ## log for clients
     output_filename = cfg.output_filename + "_client_%s" % (client_idx)
@@ -202,10 +213,10 @@ def run_client(
     while True:
         model = communicator.recv_global_model_from_server(source=0)
         if isinstance(model, tuple):
-            model, done = model[0], model[1]['done']
+            model, done = model[0], model[1]["done"]
         else:
             done = False
-        if done: 
+        if done:
             break
         client.model.load_state_dict(model)
         client.update()
