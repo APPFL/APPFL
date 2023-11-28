@@ -22,7 +22,7 @@ def get_loss_func(cfg):
     elif cfg.loss == "MSE":
         return mse_loss
 
-def get_dataloader(cfg, dataset, mode):
+def get_dataloader(cfg, dataset, mode, use_data_collator=False):
     """ Create a torch `DataLoader` object from the dataset, configuration, and set mode."""
     if dataset is None:
         return None
@@ -36,10 +36,21 @@ def get_dataloader(cfg, dataset, mode):
     else:
         batch_size = cfg.test_data_batch_size
         shuffle    = cfg.test_data_shuffle
-    return DataLoader(
+    if use_data_collator:
+        from transformers import default_data_collator
+        return DataLoader(
             dataset,
-            batch_size  = batch_size,
-            num_workers = cfg.num_workers,
-            shuffle     = shuffle,
-            pin_memory  = True
+            batch_size=batch_size,
+            num_workers=cfg.num_workers,
+            shuffle=shuffle,
+            pin_memory=True,
+            collate_fn=default_data_collator
+        )
+    else:
+        return DataLoader(
+            dataset,
+            batch_size=batch_size,
+            num_workers=cfg.num_workers,
+            shuffle=shuffle,
+            pin_memory=True
         )

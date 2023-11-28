@@ -108,6 +108,7 @@ class GlobusComputeClientConfig:
     data_dir    : str = "./"
     get_data    :  DictConfig = OmegaConf.create({})
     data_pipeline: DictConfig = OmegaConf.create({})
+    custom_configs: DictConfig = OmegaConf.create({})
 
 @dataclass
 class ExecutableFunc:
@@ -154,3 +155,6 @@ class GlobusComputeConfig(Config):
 
     # Cloud storage
     use_cloud_transfer: bool = True
+
+    # Custom configuration
+    custom_configs: DictConfig = OmegaConf.create({})

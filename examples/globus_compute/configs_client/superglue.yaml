@@ -1,0 +1,9 @@
+clients:
+  - name: delta-gcep-gpu-01
+    endpoint_id: "4faf78f8-46b2-4d11-b4b1-bf25734a05d3"
+    device: cuda
+    output_dir: "./output"
+    data_dir: "./output"
+    get_data:
+      script_file: "./globus_compute/datasets/superglue.py"
+      call:   "get_data"

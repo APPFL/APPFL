@@ -39,55 +39,53 @@ def check_step_optimizer(optim_name):
     return optim_name in step_optim_list
 
 def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str):
-    """Load the server configurations from the yaml configuration file to the GlobusComputeConfig object."""
+    """
+    Load the server configurations from the yaml configuration file to the GlobusComputeConfig object.
+    """
     assert osp.exists(config_file), "Config file {config_file} not found!"
     with open(config_file) as fi:
         data = yaml.load(fi, Loader = yaml.SafeLoader)
-    cfg.server   = OmegaConf.structured(GlobusComputeServerConfig(**data['server']))
-    assert 'func' in data and 'get_model' in data['func'], "Please specify the function to obtain the model."
-    assert 'get_model' in data['func'], "Please specify the function to obtain the model."
-    assert 'val_metric' in data['func'], "Please specify the validation metric function."
-    cfg.get_model= load_executable_func(data['func']['get_model'])
-    cfg.val_metric = load_executable_func(data['func']['val_metric'])
-    # TODO: Zilinghan what is this data - this is a general dataset if each client does not specify a local dataloader
-    if 'get_data' in data['func']:
-        cfg.get_data = load_executable_func(data['func']['get_data'])
-    if 'get_loss' in data['func']:
-        cfg.get_loss = load_executable_func(data['func']['get_loss'])
-        cfg.loss = ""
-    elif 'loss' in data:
-        cfg.loss = data['loss']
-    if 'train_data_batch_size' in data:
-        cfg.train_data_batch_size = data['train_data_batch_size']
-    if 'test_data_batch_size' in data:
-        cfg.test_data_batch_size = data['test_data_batch_size']
-    # Load FL algorithm configs
+    cfg.server = OmegaConf.structured(GlobusComputeServerConfig(**data['server']))
+    # Load functions if provided
+    if 'func' in data:
+        if 'get_model' in data['func']:
+            cfg.get_model = load_executable_func(data['func']['get_model'])
+        if 'val_metric' in data['func']:
+            cfg.val_metric = load_executable_func(data['func']['val_metric'])
+        if 'get_data' in data['func']:
+            cfg.get_data = load_executable_func(data['func']['get_data'])
+        if 'get_loss' in data['func']:
+            cfg.get_loss = load_executable_func(data['func']['get_loss'])
+            cfg.loss = ""
+        elif 'loss' in data:
+            cfg.loss = data['loss']
+    # Load training parameters
+    if 'training' in data:
+        for key, value in data['training'].items():
+            setattr(cfg, key, value)
+    if 'model' in data:
+        cfg.model_kwargs = data['model']
+    if 'dataset' in data:
+        cfg.dataset = data['dataset']['name']
+    # Load custom configurations
+    if 'custom_configs' in data:
+        cfg.custom_configs = OmegaConf.create(data['custom_configs'])
+    # Load federated learning algorithm configs
     is_async = check_asynchronous(data['algorithm']['servername'])
     use_compass = check_compass(data['algorithm']['servername'])
     is_step_optimizer = check_step_optimizer(data['algorithm']['clientname'])
-    # Perform some sanity checks
     if is_step_optimizer:
         assert 'num_local_steps' in data['algorithm']['args'], "Please provide the number of local steps for step-based client optimizer."
     else:
         assert 'num_local_epochs' in data['algorithm']['args'], "Please provide the number of local epochs for epoch-based client optimizer."
     if use_compass:
         assert is_step_optimizer, "Compass scheduler only works with step-based client optimizer."
-    # Load FL algorithm configs
     cfg.fed = Federated()
     cfg.fed.servername = data['algorithm']['servername']
     cfg.fed.clientname = data['algorithm']['clientname']
     cfg.fed.args = OmegaConf.create(data['algorithm']['args'])
     cfg.fed.args.is_async = is_async
     cfg.fed.args.use_compass = use_compass
-    # Load training configs
-    cfg.num_epochs = data['training']['num_epochs']
-    if 'save_model_dirname' in data['training']:
-        cfg.save_model_dirname = data['training']['save_model_dirname']
-    cfg.save_model_filename= data['training']['save_model_filename']
-    # Load model configs
-    cfg.model_kwargs = data['model']
-    # Load dataset configs
-    cfg.dataset  = data['dataset']['name']      # TODO: Zilinghan I think this is not very useful
     
 def load_globus_compute_client_config(cfg: GlobusComputeConfig, config_file: str):
     """Load the client configurations from the yaml configuration file to the GlobusComputeConfig object."""
