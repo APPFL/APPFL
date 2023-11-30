@@ -12,7 +12,7 @@ from .comm.globus_compute import GlobusComputeCommunicator
 from .comm.globus_compute.utils.utils import get_dataloader
 from .comm.globus_compute.utils.s3_storage import LargeObjectWrapper
 from .comm.globus_compute.utils.logging import GlobusComputeServerLogger
-from .comm.globus_compute.globus_compute_client_function import client_validate_data, client_testing, client_training, client_model_saving
+from .comm.globus_compute.globus_compute_client_function import *
 
 class APPFLGlobusComputeServer(abc.ABC):
     def __init__(self, cfg: DictConfig, gcc: Client):
@@ -35,15 +35,18 @@ class APPFLGlobusComputeServer(abc.ABC):
         self.best_accuracy = 0.0
         self.data_info_at_client = None
     
-    def _initialize_training(self, model: nn.Module, loss_fn: nn.Module, val_metric: Any):
+    def _initialize_training(self, model: Optional[nn.Module], loss_fn: Optional[nn.Module], val_metric: Any):
         """Set up model, loss function, and validation metric."""
-        self.model =  model
+        self.model = model
         self.loss_fn =loss_fn
         self.val_metric = val_metric
+        if model is None:
+            self.partial_aggregation = True
     
     def _validate_clients_data(self):
         """Validate the dataloader provided by the clients."""
-        mode = ['train', 'val', 'test']
+        # mode = ['train', 'val', 'test']
+        mode = ['train', 'val']
         self.communicator.send_task_to_all_clients(client_validate_data, mode)
         data_info_at_client, _ = self.communicator.receive_sync_endpoints_updates()
         assert len(data_info_at_client) > 0, "Number of clients need to be larger than 0"
@@ -71,14 +74,14 @@ class APPFLGlobusComputeServer(abc.ABC):
         """Initialize federated learning server."""
         self.server  = eval(self.cfg.fed.servername)(
             self.weights, 
-            copy.deepcopy(self.model), 
+            copy.deepcopy(self.model) if not self.partial_aggregation else None, 
             self.loss_fn, 
             self.cfg.num_clients, 
             "cpu", 
             **self.cfg.fed.args        
         )
         # Server model should stay on CPU for serialization
-        self.server.model.to("cpu")
+        self.server.model.to("cpu") if not self.partial_aggregation else None
     
     @abc.abstractmethod
     def _do_training(self):
@@ -140,9 +143,14 @@ class APPFLGlobusComputeServer(abc.ABC):
     def __get_eval_results_from_logs(self, logs):
         val_results = {}
         for client_idx in logs:
-            val_results[client_idx] = {
-                **logs[client_idx]['info']['Validation']
-            }   
+            if 'Validation' in logs[client_idx]['info']:
+                val_results[client_idx] = {
+                    **logs[client_idx]['info']['Validation']
+                }
+            elif 'Training' in logs[client_idx]['info']:
+                val_results[client_idx] = {
+                    **logs[client_idx]['info']['Training']
+                } 
         return val_results
 
     def _save_checkpoint(self, step):
@@ -158,12 +166,13 @@ class APPFLGlobusComputeServer(abc.ABC):
 
     def _send_final_model(self):
         """Send the final model to the clients for saving."""
-        global_state = self.server.model.state_dict()
+        global_state = self.server.model.state_dict() if not self.partial_aggregation else self.server.model_state_dict
         server_model_basename = f"final_model_{str(uuid.uuid4())}"
         self.communicator.send_task_to_all_clients(
             client_model_saving,
             LargeObjectWrapper(global_state, server_model_basename)
         )
+        self.communicator.receive_sync_endpoints_updates()
 
     def set_server_dataset(self, validation_dataset=None, testing_dataset=None):
         """Set validation and testing dataset at the server side if given."""
@@ -212,15 +221,24 @@ class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
         for t in range(self.cfg.num_epochs):
             self.logger.info(" ======================== Epoch [%d/%d] ======================== " % (t+1, self.cfg.num_epochs))
             per_iter_start = time.time()
-            global_state = self.server.model.state_dict()
+            global_state = self.server.model.state_dict() if not self.partial_aggregation else self.server.model_state_dict
+            global_state = None if len(global_state) == 0 else global_state
             self._lr_step(t)
-            self.communicator.send_task_to_all_clients(
-                client_training,
-                self.weights,
-                LargeObjectWrapper(global_state, f"{server_model_basename}_{t}"),
-                do_validation = self.cfg.client_do_validation,
-                global_epoch = t+1
-            )
+            if self.partial_aggregation:
+                self.communicator.send_task_to_all_clients(
+                    client_peft,
+                    LargeObjectWrapper(global_state, f"{server_model_basename}_{t}") if global_state is not None else None,
+                    do_validation = self.cfg.client_do_validation,
+                    global_epoch = t+1
+                )
+            else:
+                self.communicator.send_task_to_all_clients(
+                    client_training,
+                    self.weights,
+                    LargeObjectWrapper(global_state, f"{server_model_basename}_{t}"),
+                    do_validation = self.cfg.client_do_validation,
+                    global_epoch = t+1
+                )
             local_states, client_logs = self.communicator.receive_sync_endpoints_updates()
             self._parse_client_logs(t+1, client_logs)
 

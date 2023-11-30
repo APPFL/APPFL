@@ -195,3 +195,75 @@ def client_model_saving(cfg, client_idx, global_state):
     
     cli_logger.mark_event("Stop endpoint execution")
     return True, cli_logger.to_dict()
+
+def client_peft(cfg, client_idx, global_state, local_model_key="", local_model_url="", do_validation=False, global_epoch=0):
+    """
+    client_peft:
+        Do client local training using local data and send the trained model back to the server via S3 bucket.
+    Inputs:
+        - cfg: FL experiment configuration
+        - client_idx: index of the local client, used for finding corresponding info from `cfg`
+        - global_state: state dictionary for the global model
+        - local_model_key: s3 object key the local model to be sent back to the server via S3
+        - local_model_url: presigned url for uploading local model to S3
+        - do_validation: whether to perform local validation
+        - global_epoch: current global epoch
+    """
+    import json
+    import os.path as osp
+    from appfl.comm.globus_compute.utils.utils import get_dataloader
+    from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
+    from appfl.comm.globus_compute.utils.client_utils import get_dataset, send_client_state, load_global_state
+    from appfl.algorithm.globus_compute_client_llm_finetune_optimizer import GlobusComputeClientLLMFineTuneOptim
+
+    ## Create logger
+    cli_logger = GlobusComputeClientLogger()
+    cli_logger.mark_event("Start endpoint execution")
+
+    ## Load client configs
+    cfg.device = cfg.clients[client_idx].device
+    cfg.output_dirname = cfg.clients[client_idx].output_dir
+
+    cli_logger.start_timer('Load dataset')
+    ## Prepare training/validation data
+    train_dataset = get_dataset(cfg, client_idx, mode='train')
+    train_dataloader = get_dataloader(cfg, train_dataset, mode='train', use_data_collator=True)
+    if do_validation:
+        val_dataset = get_dataset(cfg, client_idx, mode='val')
+        val_dataloader = get_dataloader(cfg, val_dataset, mode='val', use_data_collator=True) 
+    else:
+        val_dataloader = None
+    cli_logger.stop_timer('Load dataset')
+
+    ## Download global state
+    temp_dir = osp.join(cfg.output_dirname, "tmp")
+    if global_state is not None:
+        cli_logger.start_timer("Download global state")
+        global_state = load_global_state(cfg, global_state, temp_dir)
+        cli_logger.stop_timer("Download global state")
+    
+    ## Instantiate training agent at client 
+    client= GlobusComputeClientLLMFineTuneOptim(
+        global_state=global_state,
+        model_name=cfg.clients[client_idx].custom_configs.model_name,
+        dataloader=train_dataloader,
+        test_dataloader=val_dataloader,
+        lora_config=cfg.custom_configs.lora_config,
+        cfg=cfg,
+        **cfg.fed.args
+    )
+
+    ## Perform a client update
+    cli_logger.start_timer("Client local training")
+    client_state, cli_logger = client.update(cli_logger=cli_logger)
+    cli_logger.stop_timer("Client local training")
+
+    ## Send client state to server
+    cli_logger.start_timer("Upload client state")
+    res = send_client_state(cfg, client_state, temp_dir, local_model_key, local_model_url)
+    cli_logger.stop_timer("Upload client state")
+    
+    cli_logger.mark_event("Stop endpoint execution")
+    with open('log.json', 'w') as f:
+        json.dump(cli_logger.to_dict(), f, indent=4)
+    return res, cli_logger.to_dict()
