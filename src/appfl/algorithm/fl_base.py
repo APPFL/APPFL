@@ -22,12 +22,19 @@ class BaseServer:
     def __init__(
         self,
         weights: OrderedDict,
-        model: nn.Module,
-        loss_fn: nn.Module,
+        model: Optional[nn.Module],
+        loss_fn: Optional[nn.Module],
         num_clients: int,
         device: str,
     ):
-        self.model = model
+        if model is not None:
+            self.partial_aggregation = False
+            self.model = model
+            self.model_state_inited = True
+        else:
+            self.partial_aggregation = True
+            self.model_state_dict = {}
+            self.model_state_inited = False     # whether the model state dictionary is initialized
         self.loss_fn = loss_fn
         self.num_clients = num_clients
         self.device = device
@@ -38,7 +45,7 @@ class BaseServer:
             self.primal_states[i] = OrderedDict()
 
     def get_model(self) -> nn.Module:
-        return copy.deepcopy(self.model)
+        return copy.deepcopy(self.model) if not self.partial_aggregation else self.model_state_dict
 
     def set_weights(self, weights: OrderedDict):
         for key, value in weights.items():

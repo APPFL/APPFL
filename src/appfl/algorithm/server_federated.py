@@ -24,27 +24,30 @@ class FedServer(BaseServer):
         self.step = OrderedDict()
         self.list_named_parameters = []
         self.pseudo_grad = OrderedDict()
-        for name, _ in self.model.named_parameters():
-            self.list_named_parameters.append(name)
-        if hasattr(self, "server_momentum_param_1"):
-            self.m_vector = OrderedDict()
+        if not self.partial_aggregation:
             for name, _ in self.model.named_parameters():
                 self.list_named_parameters.append(name)
-                self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device)
-        if hasattr(self, "server_adapt_param"):
-            self.v_vector = OrderedDict()
-            for name, _ in self.model.named_parameters():
-                self.v_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device) + self.server_adapt_param**2
+            if hasattr(self, "server_momentum_param_1"):
+                self.m_vector = OrderedDict()
+                for name, _ in self.model.named_parameters():
+                    self.list_named_parameters.append(name)
+                    self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device)
+            if hasattr(self, "server_adapt_param"):
+                self.v_vector = OrderedDict()
+                for name, _ in self.model.named_parameters():
+                    self.v_vector[name] = torch.zeros_like(self.model.state_dict()[name], device=device) + self.server_adapt_param**2
 
     def update_m_vector(self):
         """Update the `m_vector` in adaptive federated optimization."""
-        for name, _ in self.model.named_parameters():
+        for name in self.list_named_parameters:
+            if not self.model_state_inited:
+                self.m_vector[name] = torch.zeros_like(self.model_state_dict[name], device=self.device)
             self.m_vector[name] = self.server_momentum_param_1 * self.m_vector[name] - (1.0 - self.server_momentum_param_1) * self.pseudo_grad[name]
 
     def compute_pseudo_gradient(self):
         """Compute the gradient from the client local updates, where gradient is the difference between the old model and the new model."""
-        for name, _ in self.model.named_parameters():
-            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
+        for name in self.list_named_parameters:
+            self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name] if not self.partial_aggregation else self.model_state_dict[name])
             for i in range(self.num_clients):
                 self.pseudo_grad[name] += self.weights[i] * (self.global_state[name] - self.primal_states[i][name])
 
@@ -54,18 +57,27 @@ class FedServer(BaseServer):
         pass
 
     def update(self, local_states: list):
-        self.global_state = copy.deepcopy(self.model.state_dict())
-        ## Load the client local states
+        # Init model state dict when server does not have model arch initially
+        if self.partial_aggregation and not self.model_state_inited:
+            for key, value in local_states[0].items():
+                self.model_state_dict[key] = torch.zeros_like(value, device=self.device)
+                self.list_named_parameters.append(key)
+
+        self.global_state = copy.deepcopy(self.model.state_dict()) if not self.partial_aggregation else self.model_state_dict
+
+        # Load the client local states to the server device
         for sid, states in enumerate(local_states):
             if states is not None:
                 self.primal_states[sid] = states
-        for i in range(self.num_clients): 
-            for name in self.model.state_dict():
+        for i in range(self.num_clients):
+            for name in self.primal_states[i]:
                 self.primal_states[i][name] = self.primal_states[i][name].to(self.device)
 
         ## Update global state
-        self.compute_step() 
-        for name in self.model.state_dict():        
+        self.compute_step()
+
+        state_dict_keys = self.model.state_dict().keys() if not self.partial_aggregation else self.model_state_dict.keys()
+        for name in state_dict_keys:        
             if name in self.list_named_parameters: 
                 self.global_state[name] += self.step[name]            
             else:
@@ -74,7 +86,12 @@ class FedServer(BaseServer):
                     tmpsum += self.primal_states[i][name]                
                 self.global_state[name] = torch.div(tmpsum, self.num_clients)
 
-        self.model.load_state_dict(self.global_state)
+        if not self.partial_aggregation:
+            self.model.load_state_dict(self.global_state)
+        else:
+            for name in self.list_named_parameters:
+                self.model_state_dict[name] = self.global_state[name]
+        self.model_state_inited = True
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:
