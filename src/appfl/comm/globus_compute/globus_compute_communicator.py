@@ -102,8 +102,9 @@ class GlobusComputeCommunicator:
     
     def decay_learning_rate(self):
         """Perform learning rate decay."""
-        self.cfg.fed.args.optim_args.lr *=  self.cfg.fed.args.server_lr_decay_exp_gamma
-        self.logger.info("Learning rate is set to %.06f." % (self.cfg.fed.args.optim_args.lr))
+        if hasattr(self.cfg.fed.args, 'server_lr_decay_exp_gamma'):
+            self.cfg.fed.args.optim_args.lr *=  self.cfg.fed.args.server_lr_decay_exp_gamma
+            self.logger.info("Learning rate is set to %.06f." % (self.cfg.fed.args.optim_args.lr))
     
     def set_learning_rate(self, lr, client_idx = None):
         """Set learning rate."""
@@ -130,7 +131,7 @@ class GlobusComputeCommunicator:
 
         # Execute training tasks at clients
         for client_idx, _ in enumerate(self.cfg.clients):
-            if self.use_s3bucket and exct_func.__name__ == 'client_training':
+            if self.use_s3bucket and (exct_func.__name__ == 'client_training' or exct_func.__name__ == 'client_peft'):
                 local_model_key = f"{str(uuid.uuid4())}_client_state_{client_idx}"
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 kwargs['local_model_key'] = local_model_key
@@ -174,7 +175,7 @@ class GlobusComputeCommunicator:
 
     def receive_sync_endpoints_updates(self):
         """Receive synchronous updates from all client endpoints."""
-        client_results = []
+        client_results = OrderedDict()
         client_logs    = OrderedDict()
         while len(self.executing_task_futs):
             fut = next(concurrent.futures.as_completed(list(self.executing_task_futs)))
@@ -182,13 +183,16 @@ class GlobusComputeCommunicator:
             try:
                 result = fut.result()
                 client_idx = self.executing_tasks[task_id].client_idx
-                client_local_result, client_logs[client_idx] = self.__handle_globus_compute_result(result, task_id)
-                client_results.append(client_local_result)
+                client_results[client_idx], client_logs[client_idx] = self.__handle_globus_compute_result(result, task_id)
                 del self.executing_task_futs[fut]
             except Exception as exc:
                 self.logger.error("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
                 raise exc
-        return client_results, client_logs
+        client_results_list = []
+        sorted_client_idx = sorted(self.clients.keys())
+        for client_idx in sorted_client_idx:
+            client_results_list.append(client_results[client_idx])
+        return client_results_list, client_logs
 
     def receive_async_endpoint_update(self):
         """Receive asynchronous update from only one client endpoint."""
