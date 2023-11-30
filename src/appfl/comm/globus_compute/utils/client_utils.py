@@ -40,22 +40,21 @@ def load_global_state(cfg, global_state, temp_dir):
     """Download the global state if it resides on S3."""
     if CloudStorage.is_cloud_storage_object(global_state):
         CloudStorage.init(cfg, temp_dir)
-        global_state = CloudStorage.download_object(global_state)  
+        global_state = CloudStorage.download_object(global_state, to_device=cfg.device)  
     return global_state
 
 def save_global_model(cfg, global_state, save_dir):
     """Save the global state in the local file system."""
     if CloudStorage.is_cloud_storage_object(global_state):
         CloudStorage.init(cfg, save_dir)
-        global_state = CloudStorage.download_object(global_state, delete_local=False)  
-    else:
-        os.makedirs(save_dir, exist_ok=True)
-        save_file_name = save_dir + "/final_model.pt"
-        uniq = 1
-        while os.path.exists(save_file_name):
-            save_file_name = save_dir + f"/final_model_{uniq}.pt"
-            uniq += 1
-        torch.save(global_state, save_file_name)
+        global_state = CloudStorage.download_object(global_state)  
+    os.makedirs(save_dir, exist_ok=True)
+    save_file_name = save_dir + "/final_model.pt"
+    uniq = 1
+    while os.path.exists(save_file_name):
+        save_file_name = save_dir + f"/final_model_{uniq}.pt"
+        uniq += 1
+    torch.save(global_state, save_file_name)
 
 def send_client_state(cfg, client_state, temp_dir, local_model_key, local_model_url):
     if cfg.use_cloud_transfer == False:
