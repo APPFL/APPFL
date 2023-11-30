@@ -12,35 +12,35 @@ algorithm:
     ## Clients optimizer
     optim: "AdamW"
     num_local_epochs: 1
+    server_lr_decay_exp_gamma : 0.85 
     optim_args: 
       lr: 0.0001
     scheduler_args:
       step_size: 1
-      gamma: 0.85    
-    client_weights: "equal"
+      gamma: 0.95    
+    client_weights: "sample_size"
     ## Differential Privacy
     use_dp: False
     clip_grad: False
   
 training:
-  num_epochs: 1
+  num_epochs: 5
   train_data_batch_size: 4
   test_data_batch_size: 4
-  save_model_dirname: "./model/cb"
-  save_model_filename: "lora_globus_compute"
   send_final_model: True
   client_do_validation: True
-  client_do_testing: True
+  client_do_testing: False
   server_do_validation: False
   server_do_testing: False
 
 custom_configs:
-  lora_configs:
+  lora_config:
     r: 8
     lora_alpha: 32
     target_modules: ["q_proj", "v_proj"]
     bias: "none"
     lora_dropout: 0.05
   training_configs:
-    model_name: /projects/bbke/zl52/llama2/llama/models_hf/7B_chat
     gradient_accumulation_steps: 1
+    max_words: 324
+  dataset: copa

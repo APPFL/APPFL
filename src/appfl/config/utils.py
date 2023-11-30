@@ -97,6 +97,8 @@ def load_globus_compute_client_config(cfg: GlobusComputeConfig, config_file: str
             client['get_data'] = load_executable_func(client['get_data'])
         if 'data_pipeline' in client:
             client['data_pipeline']= OmegaConf.create(client['data_pipeline'])
+        if 'custom_configs' in client:
+            client['custom_configs'] = OmegaConf.create(client['custom_configs'])
         client_cfg = OmegaConf.structured(GlobusComputeClientConfig(**client))
         cfg.clients.append(client_cfg)
     cfg.num_clients = len(cfg.clients)

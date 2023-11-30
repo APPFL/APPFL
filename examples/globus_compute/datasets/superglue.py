@@ -9,7 +9,7 @@ def get_data(cfg, client_idx: int, mode="train"):
     from transformers import AutoTokenizer
     from appfl.misc.data import AlpacaDataset
     data_root_path = "/projects/bbvf/zl52/globus-compute-endpoint/superglue_partitioned_data"
-    data_path = f"{data_root_path}/{cfg.custom_configs.llm.dataset}/{client_idx}/{mode}.json"
+    data_path = f"{data_root_path}/{cfg.custom_configs.dataset}/{client_idx}/{mode}.json"
     tokenizer = AutoTokenizer.from_pretrained("/projects/bbke/zl52/llama2/llama/models_hf/7B_chat")
     tokenizer.pad_token_id = tokenizer.eos_token_id
-    return AlpacaDataset(data_path, tokenizer, cfg.custom_configs.llm.max_words)
+    return AlpacaDataset(data_path, tokenizer, cfg.custom_configs.training_configs.max_words)

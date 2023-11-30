@@ -1,0 +1,37 @@
+clients:
+  - name: delta-gcep-gpu-01
+    endpoint_id: "4faf78f8-46b2-4d11-b4b1-bf25734a05d3"
+    device: cuda
+    output_dir: "./model/copa"
+    get_data:
+      script_file: "./globus_compute/datasets/superglue.py"
+      call:   "get_data"
+    custom_configs:
+      model_name: /projects/bbke/zl52/llama2/llama/models_hf/7B_chat
+  - name: delta-gcep-gpu-02
+    endpoint_id: "d984a4b8-6b83-41e6-8f44-686ed4f6c304"
+    device: cuda
+    output_dir: "./model/copa"
+    get_data:
+      script_file: "./globus_compute/datasets/superglue.py"
+      call:   "get_data"
+    custom_configs:
+      model_name: /projects/bbke/zl52/llama2/llama/models_hf/7B_chat
+  - name: delta-gcep-gpu-03
+    endpoint_id: "4436e07c-e697-448b-8d6a-d68a46227f8f"
+    device: cuda
+    output_dir: "./model/copa"
+    get_data:
+      script_file: "./globus_compute/datasets/superglue.py"
+      call:   "get_data"
+    custom_configs:
+      model_name: /projects/bbke/zl52/llama2/llama/models_hf/7B_chat
+  - name: delta-gcep-gpu-04
+    endpoint_id: "5f3782f7-f130-46d9-a617-547d1c597ccb"
+    device: cuda
+    output_dir: "./model/copa"
+    get_data:
+      script_file: "./globus_compute/datasets/superglue.py"
+      call:   "get_data"
+    custom_configs:
+      model_name: /projects/bbke/zl52/llama2/llama/models_hf/7B_chat
