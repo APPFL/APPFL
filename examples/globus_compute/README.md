@@ -69,10 +69,12 @@ To setup a **real-world** federated learning client on a **distributed** computi
     globus-compute-endpoint start <YOUR_ENDPOINT_NAME>
     ```
 
-7. Finally, the client need to get and note down the endpoint id by running the following command.
+7. The client need to get and note down the endpoint id by running the following command.
     ```
     globus-compute-endpoint list
     ```
+
+8. Finally, if the client wants to run the provided MNIST example using globus compute, it is highly recommended to first download the MNIST dataset into the computing machine by running the [`examples/globus_compute/datasets/download_mnist.py`](./datasets/download_mnist.py) and providing the `data_dir` argument, especially if all the clients are running on the same machine to avoid race condition during the run-time downloading.
 
 ## FL Server Setup
 To set up a federated learning server using Globus Compute for real-world FL experiments on heterogeneous computing facilities, you need to do the following steps.
@@ -132,10 +134,12 @@ To set up a federated learning server using Globus Compute for real-world FL exp
 - `get_loss`: function to get the training loss function
 - `val_metric`: function to validate the trained model
 
-6. The server also needs to collect the following information and files from the clients, and put them in the [client configuration file](./configs_client/mnist.yaml).
+6. The server also needs to collect the following information and files from the clients, and put them in the [client configuration file](./configs_client/mnist_iid.yaml).
 - `endpoint_id`: Globus Compute Endpoint ID
 - `device`: computing device for the client, `cpu` or `cuda`
 - `get_data`: data loader function to load the client local dataset. [**Note**: This function will be run on the client computing machine, on the directory where the client starts the Globus Compute endpoint, so the client has to make sure that the data path in the data loader file is correct.]
+- `data_dir`: [Optional] For the MNIST example, it should be the path to the client-downloaded MNIST datasets.
+- `output_dir`: [Optional] Root directory for storing the outputs, default is `./output` if not provided. All the output files are stored in the nested directory: `output_dir/endpoint_id`.
 
 7. Finally, the server can start the experiment by running the following script in the `examples` folder.
     ```
@@ -161,6 +165,6 @@ Explanations for the provided server configuration files in `configs_server`:
 - [`mnist_fedcompass_step_optim.yaml`](configs_server/mnist_fedcompass_step_optim.yaml): Server configuration for [FedCompass](https://arxiv.org/abs/2309.14675) algorithm, and each client updates for different number of local steps according to their computing power for each local training round.
 
 Explanations for the provided client configuration files in `configs_client`:
-- [`mnist.yaml`](configs_client/mnist.yaml): The client local datasets are equally and randomly partitioned MNIST dataset, which is identically and independently distributed (IID).
+- [`mnist_iid.yaml`](configs_client/mnist_iid.yaml): The client local datasets are equally and randomly partitioned MNIST dataset, which is identically and independently distributed (IID).
 - [`mnist_class_noiid.yaml`](configs_client/mnist_class_noiid.yaml): The client local datasets are non-IID partitioned MNIST dataset using the *Class Partition* strategy, check **Appendix D.1.1** of our [FedCompass](https://arxiv.org/pdf/2309.14675.pdf) paper for details.
 - [`mnist_dual_dirichlet_noiid.yaml`](configs_client/mnist_dual_dirichlet_noiid.yaml): The client local datasets are non-IID partitioned MNIST dataset using the *Dual Dirichlet Partition* strategy, check **Appendix D.1.2** of our [FedCompass](https://arxiv.org/pdf/2309.14675.pdf) paper for details.

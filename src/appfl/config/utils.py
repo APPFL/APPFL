@@ -100,6 +100,8 @@ def load_globus_compute_client_config(cfg: GlobusComputeConfig, config_file: str
         if 'data_pipeline' in client:
             client['data_pipeline']= OmegaConf.create(client['data_pipeline'])
         client_cfg = OmegaConf.structured(GlobusComputeClientConfig(**client))
+        # Make sure the output directory is unique for each client
+        client_cfg.output_dir = osp.join(client_cfg.output_dir, client_cfg.endpoint_id)
         cfg.clients.append(client_cfg)
     cfg.num_clients = len(cfg.clients)
     return cfg    
