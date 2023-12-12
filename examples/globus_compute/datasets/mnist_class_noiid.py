@@ -8,9 +8,9 @@ def get_data(cfg, client_idx: int, mode='train'):
 
     # Prepare local dataset directory
     data_dir = cfg.clients[client_idx].data_dir
-    local_dir = osp.join(data_dir,"RawData")
+    local_dir = osp.join(data_dir, "RawData")
     data_raw = torchvision.datasets.MNIST(
-        local_dir, download = True, 
+        local_dir, download = False, 
         train = True if mode == 'train' else False, 
         transform= ToTensor()
     )
