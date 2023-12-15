@@ -206,7 +206,7 @@ def run_client(
         num_gpu = torch.cuda.device_count()
         if num_gpu > 1:
             is_multiple_gpu = True
-        if comm_rank - 1 == num_gpu:
+        if comm_size - 1 == num_gpu:
             is_gpu_proc_matching = True
         client_per_gpu = math.ceil(num_clients/num_gpu)
 
