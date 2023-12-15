@@ -236,8 +236,8 @@ def run_client(
         
         clients.append(client)
 
-        if gpuindex not in cid_thread_dict:
-            cid_thread_dict[gpuindex] = []
+        if gpuindex not in client_thread_dict:
+            client_thread_dict[gpuindex] = []
         client_thread_dict[gpuindex].append(client)
 
     while True: 
@@ -256,8 +256,8 @@ def run_client(
         local_models = OrderedDict()
         if ismultipleGPU:
             threads = []
-            for key in cid_thread_dict.keys():
-                th = threading.Thread(target=gpu_parallel_run, args=(local_models, model, cid_thread_dict[key], cfg,))
+            for key in client_thread_dict.keys():
+                th = threading.Thread(target=gpu_parallel_run, args=(local_models, model, client_thread_dict[key], cfg,))
                 threads.append(th)
                 th.start()
             for th in threads:
