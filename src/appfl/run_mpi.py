@@ -198,20 +198,28 @@ def run_client(
         cfg.validation = False
         test_dataloader = None
 
-    ismultipleGPU = False
+    is_multiple_gpu = False
+    is_gpu_proc_matching = False
+    client_per_gpu = num_clients
     if "cuda" in cfg.device:
         ## Check available GPUs if CUDA is used
         num_gpu = torch.cuda.device_count()
-        client_per_gpu = math.ceil(num_clients/num_gpu)
         if num_gpu > 1:
-            ismultipleGPU = True
+            is_multiple_gpu = True
+        if comm_rank - 1 == num_gpu:
+            is_gpu_proc_matching = True
+        client_per_gpu = math.ceil(num_clients/num_gpu)
 
     clients = []
     client_thread_dict = {}
     gpuindex = 0
     for cid in num_client_groups[comm_rank - 1]:
-        if ismultipleGPU:
-            gpuindex = int(math.floor(cid/client_per_gpu))
+        if is_multiple_gpu:
+            gpuindex = 0
+            if is_gpu_proc_matching:
+                gpuindex = comm_rank - 1
+            else:
+                gpuindex = int(math.floor(cid/client_per_gpu))
             cfg.device = f"cuda:{gpuindex}"
             
         client = eval(cfg.fed.clientname)(
@@ -254,9 +262,10 @@ def run_client(
                 del model[key]
         ## Start local update   
         local_models = OrderedDict()
-        if ismultipleGPU:
+        keys = client_thread_dict.keys()
+        if len(keys) > 1:
             threads = []
-            for key in client_thread_dict.keys():
+            for key in keys:
                 th = threading.Thread(target=gpu_parallel_run, args=(local_models, model, client_thread_dict[key], cfg,))
                 threads.append(th)
                 th.start()
