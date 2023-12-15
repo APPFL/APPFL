@@ -14,6 +14,9 @@ from torch.utils.data import DataLoader
 from appfl.comm.mpi import MpiSyncCommunicator
 from appfl.misc import validation, save_model_iteration, save_partial_model_iteration
 
+
+import threading
+
 def run_server(
     cfg: DictConfig,
     comm: MPI.Comm,
@@ -129,6 +132,13 @@ def run_server(
     server.logging_summary(cfg, logger)
 
 
+def gpu_parallel_run(local_models, model, clients, cfg):
+    for client in clients:
+        cid = client.id
+        client.model.load_state_dict(model, strict=not cfg.personalization)
+        local_model = client.update()
+        local_models[cid] = local_model
+
 def run_client(
     cfg: DictConfig,
     comm: MPI.Comm,
@@ -188,17 +198,23 @@ def run_client(
         cfg.validation = False
         test_dataloader = None
 
+    ismultipleGPU = False
     if "cuda" in cfg.device:
         ## Check available GPUs if CUDA is used
         num_gpu = torch.cuda.device_count()
         client_per_gpu = math.ceil(num_clients/num_gpu)
+        if num_gpu > 1:
+            ismultipleGPU = True
 
     clients = []
+    client_thread_dict = {}
+    gpuindex = 0
     for cid in num_client_groups[comm_rank - 1]:
-        if "cuda" in cfg.device:
+        if ismultipleGPU:
             gpuindex = int(math.floor(cid/client_per_gpu))
             cfg.device = f"cuda:{gpuindex}"
-        clients.append(eval(cfg.fed.clientname)(
+            
+        client = eval(cfg.fed.clientname)(
             cid,
             weights[cid],
             # deepcopy the common model if there is no personalization, else use the the clients' own model
@@ -216,8 +232,13 @@ def run_client(
             test_dataloader,
             metric,
             **cfg.fed.args,
-        )
-    )
+            )
+        
+        clients.append(client)
+
+        if gpuindex not in cid_thread_dict:
+            cid_thread_dict[gpuindex] = []
+        client_thread_dict[gpuindex].append(client)
 
     while True: 
         ## Receive global model
@@ -233,13 +254,23 @@ def run_client(
                 del model[key]
         ## Start local update   
         local_models = OrderedDict()
-        for client in clients:
-            cid = client.id
-            client.model.load_state_dict(model, strict=not cfg.personalization)
-            local_model = client.update()
-            local_models[cid] = local_model
+        if ismultipleGPU:
+            threads = []
+            for key in cid_thread_dict.keys():
+                th = threading.Thread(target=gpu_parallel_run, args=(local_models, model, cid_thread_dict[key], cfg,))
+                threads.append(th)
+                th.start()
+            for th in threads:
+                th.join()
+        else:
+            for client in clients:
+                cid = client.id
+                client.model.load_state_dict(model, strict=not cfg.personalization)
+                local_model = client.update()
+                local_models[cid] = local_model
         ## Send local models
         communicator.send_local_models_to_server(local_models, 0)
 
     for client in clients:
         client.outfile.close()
+
