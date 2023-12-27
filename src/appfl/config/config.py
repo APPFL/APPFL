@@ -94,7 +94,7 @@ class Config:
     client: DictConfig = OmegaConf.create({"id": 1})
 
     # Lossy compression enabling
-    lossy_compressed_client: bool = False
+    enable_compression: bool = False
     lossy_compressor: str = "SZ2"
     lossless_compressor: str = "blosc"
 

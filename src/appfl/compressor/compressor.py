@@ -40,7 +40,7 @@ class Compressor:
         elif self.cfg.lossy_compressor == "SZx":
             self.compressor_lib_path = self.cfg.compressor_szx_path
 
-    def compress(self, ori_data: np.ndarray):
+    def _compress(self, ori_data: np.ndarray):
         """
         Compress data with chosen compressor
         :param ori_data: compressed data, numpy array format
@@ -94,8 +94,8 @@ class Compressor:
             if "weight" in name and param_flat.size > self.param_count_threshold:
                 lossy_original_size += param_flat.size * 4
                 lossy_elements += param_flat.size
-                compressed_weights[name] = self.compress(ori_data=param_flat)
-                lossy_compressed_size += len(compressed_weights[name])
+                compressed_weights[name] = self._compress(ori_data=param_flat)
+                lossy_compressed_size += len(compressed_weights[name]) # TODO: Check - do we need to times 4 here?
             else:
                 lossless_original_size += param_flat.size * 4
                 lossless = b""
@@ -111,7 +111,7 @@ class Compressor:
                     lossless = lzma.compress(param_flat.tobytes())
                 else:
                     raise NotImplementedError
-                lossless_compressed_size += len(lossless)
+                lossless_compressed_size += len(lossless) # TODO: Check - do we need to times 4 here?
                 compressed_weights[name] = lossless
         if lossy_compressed_size != 0:
             print(
@@ -119,15 +119,15 @@ class Compressor:
                 + str(lossy_original_size / lossy_compressed_size)
             )
         print(
+            "Lossless Compression Ratio: "
+            + str(lossless_original_size / lossless_compressed_size)
+        )
+        print(
             "Total Compression Ratio: "
             + str(
                 (lossy_original_size + lossless_original_size)
                 / (lossy_compressed_size + lossless_compressed_size)
             )
-        )
-        print(
-            "Lossless Compression Ratio: "
-            + str(lossless_original_size / lossless_compressed_size)
         )
         return (
             pickle.dumps(compressed_weights),
@@ -140,7 +140,7 @@ class Compressor:
         decomp_weights = pickle.loads(compressed_model)
         for name, param in model_copy.state_dict().items():
             if "weight" in name and param.numel() > self.param_count_threshold:
-                decomp_weights[name] = self.decompress(
+                decomp_weights[name] = self._decompress(
                     cmp_data=decomp_weights[name],
                     ori_shape=(param.numel(),),
                     ori_dtype=np.float32,
@@ -175,7 +175,7 @@ class Compressor:
         # return model_copy
         return new_dict
 
-    def decompress(
+    def _decompress(
         self, cmp_data, ori_shape: Tuple[int, ...], ori_dtype: np.dtype
     ) -> np.ndarray:
         # Decompress data with chosen compressor

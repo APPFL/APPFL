@@ -3,24 +3,22 @@ import time
 import torch
 import numpy as np
 from mpi4py import MPI
-from appfl.config import Config
+from typing import Optional
 from appfl.compressor import Compressor
-
 
 class MpiCommunicator:
     """A general MPI communicator for synchronous or asynchronous federated learning experiments
     on multiple MPI processes, where each process can represent ONLY ONE federated learning client.
     """
 
-    def __init__(self, comm, cfg: Config):
+    def __init__(self, comm, compresser: Optional[Compressor]=None):
         self.comm = comm
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
         self.dests = []
         self.recv_queue = []
         self.queue_status = [False for _ in range(self.comm_size - 1)]
-        self.cfg = cfg
-        self.compressor = Compressor(cfg)
+        self.compressor = compresser
 
     def scatter(self, contents, source):
         """Scattering the contents to all clients from the source."""
@@ -109,7 +107,7 @@ class MpiCommunicator:
             )
 
     def send_local_model_to_server(self, model, dest):
-        if self.cfg.lossy_compressed_client:
+        if self.compressor is not None:
             model_bytes, _ = self.compressor.compress_model(model)
         else:
             model_buffer = io.BytesIO()
@@ -159,7 +157,7 @@ class MpiCommunicator:
                     source=self.dests[client_idx],
                     tag=self.dests[client_idx] + self.comm_size,
                 )
-                if self.cfg.lossy_compressed_client:
+                if self.compressor is not None:
                     model = self.compressor.decompress_model(model_bytes, model_copy)
                 else:
                     model_buffer = io.BytesIO(model_bytes.tobytes())

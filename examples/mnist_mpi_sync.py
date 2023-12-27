@@ -17,6 +17,11 @@ To run MPI with 5 clients:
 mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
 """
 
+"""
+To run MPI with 5 clients with compression:
+mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --enable_compression
+"""
+
 ## read arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default="cpu")
@@ -117,15 +122,13 @@ parser.add_argument(
 ## compression
 parser.add_argument(
     "--enable_compression",
-    action=argparse.BooleanOptionalAction,
-    required=False,
-    default=False,
+    action="store_true"
 )
 parser.add_argument(
     "--lossy_compressor",
     type=str,
-    default="None",
-    choices=["None", "SZ3", "SZ2", "SZx", "ZFP"],
+    default="SZ3",
+    choices=["SZ3", "SZ2", "SZx", "ZFP"],
 )
 parser.add_argument(
     "--error_bounding_mode", type=str, default="REL", choices=["ABS", "REL"]
@@ -138,7 +141,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--lossless_compressor",
-    action="store_true",
+    type=str,
     default="blosc",
 )
 
@@ -191,7 +194,7 @@ def main():
     cfg.fed.args.server_momentum_param_2 = args.mparam_2  # FedAdam
 
     ## compression
-    cfg.lossy_compressed_client = args.enable_compression
+    cfg.enable_compression = args.enable_compression
     cfg.lossy_compressor = args.lossy_compressor
     cfg.error_bounding_mode = args.error_bounding_mode
     cfg.error_bound = args.error_bound
