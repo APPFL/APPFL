@@ -233,7 +233,7 @@ def main():
     print("-------Loading_Time=", time.time() - start_time)
 
     ## Running
-    if args.num_clients == comm_size - 1:
+    if args.num_clients == comm_size - 1:   # One client per MPI process
         if comm_rank == 0:
             rms.run_server(
                 cfg,
@@ -249,7 +249,7 @@ def main():
             rms.run_client(
                 cfg, comm, model, loss_fn, train_datasets, test_dataset, metric
             )
-    else:
+    else:   # Multiple clients per MPI process
         if comm_rank == 0:
             rm.run_server(
                 cfg,

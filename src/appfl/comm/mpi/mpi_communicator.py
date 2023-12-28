@@ -162,7 +162,6 @@ class MpiCommunicator:
                 else:
                     model_buffer = io.BytesIO(model_bytes.tobytes())
                     model = torch.load(model_buffer)
-                    print(model)
                 self.queue_status[client_idx] = False
                 return client_idx, model
 

@@ -54,7 +54,7 @@ mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losse
 
 For asynchronous communication, the number of clients is exactly equal to the number of MPI processes minus one, so we are launching 5 clients running FL asynchronously for the following commands. We do not allow more than one client to run serially on one MPI process for asynchronous cases as it is not making sense.
 
-```
+```bash
 mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20 --server ServerFedCompass
 ```
 
@@ -145,9 +145,10 @@ Then add the following arguments to the command line:
 #### MPI Synchronous Communication
 
 ```bash
---enable_compression --lossy_compressor CompressorLossy --error_bounding_mode ErrorBoundingMode --error_bound ErrorBound 
+mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --enable_compression
 ```
 
-#### Rest of the Examples
-
-Awaiting to be added.
+#### MPI Asynchronous Communication
+```bash
+mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20 --server ServerFedCompass --enable_compression
+```

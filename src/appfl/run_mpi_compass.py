@@ -83,7 +83,7 @@ def run_server(
 
     ## Obtain the scheduler
     if cfg.fed.servername.startswith("ServerFedCompass"):
-        scheduler = SchedulerCompass(
+        scheduler = SchedulerCompassMPI(
             communicator,
             server,
             cfg.fed.args.num_local_steps,
