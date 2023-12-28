@@ -99,11 +99,10 @@ class Config:
     lossless_compressor: str = "blosc"
 
     # Lossy compression path configuration
-    home = os.path.expanduser("~")
     ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
-    compressor_sz2_path: str = home + "/SZ/build/sz/libSZ" + ext
-    compressor_sz3_path: str = home + "/SZ3/build/tools/sz3c/libSZ3c" + ext
-    compressor_szx_path: str = home + "/SZx-main/build/lib/libSZx" + ext
+    compressor_sz2_path: str = "../.compressor/SZ/build/sz/libSZ" + ext
+    compressor_sz3_path: str = "../.compressor/SZ3/build/tools/sz3c/libSZ3c" + ext
+    compressor_szx_path: str = "../.compressor/SZx-main/build/lib/libSZx" + ext
 
     # Compressor parameters
     error_bounding_mode: str = ""
