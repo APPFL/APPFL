@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-APPFL: Argonne Privacy-Preserving Federated Learning
+APPFL: Advanced Privacy-Preserving Federated Learning
 ====================================================
 
 .. image:: _static/logo/logo_small.png

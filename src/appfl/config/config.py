@@ -124,12 +124,12 @@ class GlobusComputeServerConfig:
 
 @dataclass
 class GlobusComputeClientConfig:
-    name: str = ""
-    endpoint_id: str = ""
-    device: str = "cpu"
-    output_dir: str = "./"
-    data_dir: str = "./"
-    get_data: DictConfig = OmegaConf.create({})
+    name        : str = ""
+    endpoint_id : str = ""
+    device      : str = "cpu"
+    output_dir  : str = "./output"
+    data_dir    : str = "./datasets"
+    get_data    :  DictConfig = OmegaConf.create({})
     data_pipeline: DictConfig = OmegaConf.create({})
 
 
