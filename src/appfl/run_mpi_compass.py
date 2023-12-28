@@ -9,7 +9,7 @@ from appfl.comm.mpi import MpiCommunicator
 from appfl.misc import validation, compute_gradient
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
-
+from appfl.compressor import Compressor
 
 def run_server(
     cfg: DictConfig,
@@ -36,7 +36,7 @@ def run_server(
         metric: evaluation metric function
     """
     device = "cpu"  # server aggregation happens on CPU
-    communicator = MpiCommunicator(comm, cfg)
+    communicator = MpiCommunicator(comm, Compressor(cfg) if cfg.enable_compression else None)
 
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
@@ -163,7 +163,7 @@ def run_client(
         metric: evaluation metric function
     """
     client_idx = comm.Get_rank() - 1
-    communicator = MpiCommunicator(comm, cfg)
+    communicator = MpiCommunicator(comm, Compressor(cfg) if cfg.enable_compression else None)
 
     ## log for clients
     output_filename = cfg.output_filename + "_client_%s" % (client_idx)

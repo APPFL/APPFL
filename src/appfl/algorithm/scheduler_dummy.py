@@ -1,3 +1,4 @@
+import copy
 from typing import Any
 from appfl.comm.mpi import MpiCommunicator
 
@@ -12,7 +13,7 @@ class SchedulerDummy:
 
     def update(self):
         """Schedule update when receive information from one client."""
-        client_idx, local_model =  self.communicator.recv_local_model_from_client()
+        client_idx, local_model =  self.communicator.recv_local_model_from_client(copy.deepcopy(self.server.model))
         self._update(local_model, client_idx)
 
     def _update(self, local_model: dict, client_idx: int):

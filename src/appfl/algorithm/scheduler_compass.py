@@ -1,4 +1,5 @@
 import abc
+import copy
 import math
 import time
 import uuid
@@ -239,7 +240,7 @@ class SchedulerCompass(abc.ABC):
 
 class SchedulerCompassMPI(SchedulerCompass):
     def _recv_local_model_from_client(self):
-        client_idx, local_model = self.communicator.recv_local_model_from_client()
+        client_idx, local_model = self.communicator.recv_local_model_from_client(copy.deepcopy(self.server.model))
         return client_idx, local_model, None
 
     def _send_global_model_to_client(self, client_idx, client_steps, client_lr):
