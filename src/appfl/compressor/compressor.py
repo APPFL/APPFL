@@ -92,12 +92,12 @@ class Compressor:
         for name, param in model.items():
             param_flat = param.flatten().detach().cpu().numpy()
             if "weight" in name and param_flat.size > self.param_count_threshold:
-                lossy_original_size += param_flat.size * 4
+                lossy_original_size += param_flat.nbytes
                 lossy_elements += param_flat.size
                 compressed_weights[name] = self._compress(ori_data=param_flat)
-                lossy_compressed_size += len(compressed_weights[name]) # TODO: Check - do we need to times 4 here?
+                lossy_compressed_size += len(compressed_weights[name])
             else:
-                lossless_original_size += param_flat.size * 4
+                lossless_original_size += param_flat.nbytes
                 lossless = b""
                 if self.lossless_compressor == "zstd":
                     lossless = zstd.compress(param_flat, 10)
@@ -111,7 +111,7 @@ class Compressor:
                     lossless = lzma.compress(param_flat.tobytes())
                 else:
                     raise NotImplementedError
-                lossless_compressed_size += len(lossless) # TODO: Check - do we need to times 4 here?
+                lossless_compressed_size += len(lossless)
                 compressed_weights[name] = lossless
         if lossy_compressed_size != 0:
             print(
