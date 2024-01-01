@@ -11,6 +11,7 @@ from omegaconf import DictConfig
 from typing import Any, Union, List
 from collections import OrderedDict
 from torch.utils.data import DataLoader
+from appfl.compressor import Compressor
 from appfl.comm.mpi import MpiSyncCommunicator
 from appfl.misc import validation, save_model_iteration, save_partial_model_iteration
 
@@ -39,7 +40,7 @@ def run_server(
         metric: evaluation metric function
     """
     device = "cpu"
-    communicator = MpiSyncCommunicator(comm)
+    communicator = MpiSyncCommunicator(comm, Compressor(cfg) if cfg.enable_compression else None)
 
     ## log for a server 
     logger = logging.getLogger(__name__)
@@ -84,13 +85,14 @@ def run_server(
 
     start_time = time.time()
     test_loss, test_accuracy, best_accuracy = 0.0, 0.0, 0.0
+    model_copy = copy.deepcopy(server.model)
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
         ## Local update
         server.model.to("cpu")
         global_model = server.model.state_dict()
         communicator.broadcast_global_model(global_model)
-        local_models = communicator.recv_all_local_models_from_clients(num_clients)
+        local_models = communicator.recv_all_local_models_from_clients(num_clients, model_copy)
         cfg.logginginfo.LocalUpdate_time = time.time() - per_iter_start
         ## Global update
         global_update_start = time.time()
@@ -152,7 +154,7 @@ def run_client(
         test_data: validation data
         metric: evaluation metric function
     """
-    communicator = MpiSyncCommunicator(comm)
+    communicator = MpiSyncCommunicator(comm, Compressor(cfg) if cfg.enable_compression else None)
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)

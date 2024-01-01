@@ -135,7 +135,7 @@ class MpiCommunicator:
         model = torch.load(model_buffer)
         return model if args is None else (model, args)
 
-    def recv_local_model_from_client(self, model_copy):
+    def recv_local_model_from_client(self, model_copy=None):
         """Receive a single local model from the front of the receiving queue."""
         while True:
             time.sleep(
