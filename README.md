@@ -1,11 +1,23 @@
-# APPFL: Advanced Privacy-Preserving Federated Learning
+<p align="center">
+  <a href="http://appfl.rtfd.io"><img src="https://github.com/APPFL/APPFL/blob/main/docs/_static/logo/logo_small.png?raw=true" alt="APPFL logo" style="width: 40%; height: auto;"></a>
+</p>
 
-![image](https://github.com/APPFL/APPFL/blob/main/docs/_static/logo/logo_small.png?raw=true)
+<p align="center" style="font-size: 18px;">
+    <b>APPFL - Advanced Privacy-Preserving Federated Learning Framework</b>.
+</p>
 
-[![DOI](https://zenodo.org/badge/414722606.svg)](https://zenodo.org/badge/latestdoi/414722606)
-[![Documentation Status](https://readthedocs.org/projects/appfl/badge/?version=latest)](https://appfl.readthedocs.io/en/latest/?badge=latest)
+<p align="center">
+  <a href="https://zenodo.org/badge/latestdoi/414722606" target="_blank">
+      <img src="https://zenodo.org/badge/414722606.svg" alt="DOI">
+  </a> 
+  <a href="https://appfl.readthedocs.io/en/latest/?badge=latest" target="_blank">
+      <img src="https://readthedocs.org/projects/appfl/badge/?version=latest" alt="Doc">
+  </a>
+  <a href="https://github.com/APPFL/APPFL/actions/workflows/build.yml" target="_blank">
+      <img src="https://github.com/APPFL/APPFL/actions/workflows/build.yml/badge.svg?branch=main&event=push" alt="Build">
+  </a>
+</p>
 
-[![build](https://github.com/APPFL/APPFL/actions/workflows/build.yml/badge.svg?branch=main&event=push)](https://github.com/APPFL/APPFL/actions/workflows/build.yml)
 
 Advanced Privacy-Preserving Federated Learning (APPFL) is an open-source software framework that allows research communities to implement, test, and validate various ideas for privacy-preserving federated learning (PPFL).
 With this framework, developers and/or users can
@@ -59,7 +71,9 @@ sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
 ```
 
 ## APPFL Framework Design
-<img src='docs/_static/design.jpg' width=450/>
+<p align="center">
+  <img src='docs/_static/design.jpg' style="width: 50%; height: auto;"/>
+</p>
 
 In the design of APPFL framework, we decompose an execution of federated learning experiment into three main components, *APPFL Server*, *APPFL Communicator*, and *APPFL Client*. The details and sub-components of these three are detailed as follows:
 
@@ -72,7 +86,7 @@ In the design of APPFL framework, we decompose an execution of federated learnin
     - FL-Alg Zoo [[src/appfl/algorithm]](src/appfl/algorithm/) - This folder contains serveral popular FL aggregation algorithms. 
 - APPFL Communicator [[src/appfl/comm]](src/appfl/comm/): The communicator is used for exchanging metadata as well as the model weights between the server and clients. We currently support the following three communication protocols for different use cases.
     
-    - MPI - Used for simulating FL experiment on one machine or HPC.
+    - MPI - Used for simulating FL experiment on one machine or HPC. MPI communicator now also supports model compression for efficient communication.
     - gRPC - Used for both simulating FL experiments on one machine or HPC, and running FL experiments on distributed machines.
     - [Globus Compute](https://funcx.readthedocs.io/en/latest/index.html) - Used for **easily** running FL experiments on distributed and heterogeneous machines.
 - APPFL Client: APPFL clients have local dataset on disk and and use dataloader to load them for the local trainer to train local models.
