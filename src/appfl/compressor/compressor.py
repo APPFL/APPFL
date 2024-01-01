@@ -3,7 +3,7 @@ from copy import deepcopy
 import zlib
 from . import pysz
 from ..config import Config
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 import numpy as np
 import pickle
 from . import pyszx
@@ -37,7 +37,7 @@ class Compressor:
         elif self.cfg.lossy_compressor == "SZx":
             self.compressor_lib_path = self.cfg.compressor_szx_path
 
-    def compress_model(self, model: Union[dict, OrderedDict, list[Union[dict, OrderedDict]]], batched: bool=False) -> Tuple[bytes, int]:
+    def compress_model(self, model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]], batched: bool=False) -> Tuple[bytes, int]:
         """
         Compress all the parameters of local model(s) for efficient communication. The local model can be batched as a list.
         :param model: local model parameters (can be nested)
@@ -175,7 +175,7 @@ class Compressor:
         else:
             raise NotImplementedError
 
-    def decompress_model(self, compressed_model: bytes, model: Union[dict, OrderedDict], batched: bool=False)-> Union[OrderedDict, dict, list[Union[OrderedDict, dict]]]:
+    def decompress_model(self, compressed_model: bytes, model: Union[dict, OrderedDict], batched: bool=False)-> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
         """
         Decompress all the communicated model parameters. The local model can be batched as a list.
         :param compressed_model: compressed model parameters as bytes
