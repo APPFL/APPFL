@@ -1,6 +1,7 @@
 .vscode
 .gitignore
 .DS_Store
+.compressor
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 note

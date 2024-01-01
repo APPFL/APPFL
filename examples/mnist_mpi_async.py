@@ -13,9 +13,15 @@ import appfl.run_mpi_compass as rmc
 from dataloader.mnist_dataloader import get_mnist
 
 """
-To run MPI with 5 clients:
+To run MPI with 5 clients (FedAsync and FedCompass):
 mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20
 mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20 --server ServerFedCompass
+"""
+
+"""
+To run MPI with 5 clients with compression (FedAsync and FedCompass):
+mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20 --enable_compression
+mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20 --server ServerFedCompass --enable_compression
 """
 
 ## read arguments
@@ -81,6 +87,32 @@ parser.add_argument("--use_scheduler", action="store_true")
 parser.add_argument("--q_ratio", type=float, default=0.2)
 parser.add_argument("--lambda_val", type=float, default=1.5)
 
+## compression
+parser.add_argument(
+    "--enable_compression",
+    action="store_true"
+)
+parser.add_argument(
+    "--lossy_compressor",
+    type=str,
+    default="SZ3",
+    choices=["SZ3", "SZ2", "SZx", "ZFP"],
+)
+parser.add_argument(
+    "--error_bounding_mode", type=str, default="REL", choices=["ABS", "REL"]
+)
+parser.add_argument(
+    "--error_bound",
+    type=float,
+    default=1e-3,
+    help="Error bound value for lossy compression",
+)
+parser.add_argument(
+    "--lossless_compressor",
+    type=str,
+    default="blosc",
+)
+
 args = parser.parse_args()
 
 if torch.cuda.is_available():
@@ -124,6 +156,13 @@ def main():
     cfg.fed.args.server_adapt_param = args.adapt_param          # FedAdam
     cfg.fed.args.server_momentum_param_1 = args.mparam_1        # FedAdam, FedAvgm
     cfg.fed.args.server_momentum_param_2 = args.mparam_2        # FedAdam
+
+    ## compression
+    cfg.enable_compression = args.enable_compression
+    cfg.lossy_compressor = args.lossy_compressor
+    cfg.error_bounding_mode = args.error_bounding_mode
+    cfg.error_bound = args.error_bound
+    cfg.lossless_compressor = args.lossless_compressor
 
     ## privacy preserving
     cfg.fed.args.use_dp = args.use_dp

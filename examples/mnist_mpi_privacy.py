@@ -55,6 +55,31 @@ parser.add_argument("--loss_fn_name", type=str, required=False, help="class name
 parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
 parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
+parser.add_argument(
+    "--enable_compression",
+    action="store_true"
+)
+parser.add_argument(
+    "--lossy_compressor",
+    type=str,
+    default="SZ3",
+    choices=["SZ3", "SZ2", "SZx", "ZFP"],
+)
+parser.add_argument(
+    "--error_bounding_mode", type=str, default="REL", choices=["ABS", "REL"]
+)
+parser.add_argument(
+    "--error_bound",
+    type=float,
+    default=1e-3,
+    help="Error bound value for lossy compression",
+)
+parser.add_argument(
+    "--lossless_compressor",
+    type=str,
+    default="blosc",
+)
+
 args = parser.parse_args()
 
 if torch.cuda.is_available():
@@ -90,6 +115,13 @@ def main():
     cfg.fed.args.clip_grad = args.clip_grad
     cfg.fed.args.clip_value = args.clip_value
     cfg.fed.args.clip_norm = args.clip_norm
+
+    ## compression
+    cfg.enable_compression = args.enable_compression
+    cfg.lossy_compressor = args.lossy_compressor
+    cfg.error_bounding_mode = args.error_bounding_mode
+    cfg.error_bound = args.error_bound
+    cfg.lossless_compressor = args.lossless_compressor
 
     ## outputs
     cfg.use_tensorboard = False
