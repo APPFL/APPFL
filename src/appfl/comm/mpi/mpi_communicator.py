@@ -1,17 +1,17 @@
-import io
-import time
-import torch
+import pickle
 import numpy as np
 from mpi4py import MPI
 from typing import Optional
+from collections import OrderedDict
 from appfl.compressor import Compressor
+from typing import Any, Optional, Union
 
 class MpiCommunicator:
-    """A general MPI communicator for synchronous or asynchronous federated learning experiments
-    on multiple MPI processes, where each process can represent ONLY ONE federated learning client.
     """
-
-    def __init__(self, comm, compresser: Optional[Compressor]=None):
+    A general MPI communicator for synchronous or asynchronous distributed/federated/decentralized 
+    learning experiments on multiple MPI processes, where each MPI process represents EXACTLY ONE learning client.
+    """
+    def __init__(self, comm: MPI.Intracomm, compresser: Optional[Compressor]=None):
         self.comm = comm
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
@@ -20,20 +20,45 @@ class MpiCommunicator:
         self.queue_status = [False for _ in range(self.comm_size - 1)]
         self.compressor = compresser
 
-    def scatter(self, contents, source):
-        """Scattering the contents to all clients from the source."""
+    def _obj_to_bytes(self, obj: Any) -> bytes:
+        """Convert an object to bytes."""
+        return pickle.dumps(obj)
+    
+    def _bytes_to_obj(self, bytes_obj: bytes) -> Any:
+        """Convert bytes to an object."""
+        return pickle.loads(bytes_obj)
+
+    def scatter(self, contents, source: int) -> Any:
+        """
+        Scattering the `contents` to all MPI processes from the `source`
+        :param `contents`: a list/sequence of contents to be scattered to all MPI processes
+        :param `source`: the rank of the source MPI process that scatters the contents
+        :return `content`: the content received by the current MPI process
+        """
         if source == self.comm_rank:
             assert (
                 len(contents) == self.comm_size
             ), "The size of the contents is not equal to the number of clients in scatter!"
-        return self.comm.scatter(contents, root=source)
+        content = self.comm.scatter(contents, root=source)
+        return content
 
-    def gather(self, content, dest):
-        """Gathering contents from all clients to the destination."""
-        return self.comm.gather(content, root=dest)
+    def gather(self, content, dest: int):
+        """
+        Gathering contents from all MPI processes to the destination process
+        :param `content`: the content to be gathered from all MPI processes
+        :param `dest`: the rank of the destination MPI process that gathers the contents
+        :return `contents`: a list of contents received by the destination MPI process
+        """
+        contents = self.comm.gather(content, root=dest)
+        return contents
 
-    def broadcast_global_model(self, model=None, args=None):
-        """Broadcast the global model state dict and additional arguments from FL server to FL clients."""
+    def broadcast_global_model(self, model: Optional[Union[dict, OrderedDict]]=None, args: Optional[dict]=None):
+        """
+        Broadcast the global model state dictionary and additional arguments from the server MPI process 
+        to all other client processes. The method is ONLY called by the server MPI process.
+        :param `model`: the global model state dictionary to be broadcasted
+        :param `args`: additional arguments to be broadcasted
+        """
         self.dests = (
             [i for i in range(self.comm_size) if i != self.comm_rank]
             if len(self.dests) == 0
@@ -44,14 +69,10 @@ class MpiCommunicator:
             for i in self.dests:
                 self.comm.send((0, args), dest=i, tag=i)
         else:
-            model_buffer = io.BytesIO()
-            torch.save(model, model_buffer)
-            model_bytes = model_buffer.getvalue()
+            model_bytes = self._obj_to_bytes(model)
             for i in self.dests:
-                if args is None:
-                    self.comm.send(len(model_bytes), dest=i, tag=i)
-                else:
-                    self.comm.send((len(model_bytes), args), dest=i, tag=i)
+                payload = (len(model_bytes), args) if args is not None else len(model_bytes)
+                self.comm.send(payload, dest=i, tag=i)
             for i in self.dests:
                 self.comm.Send(
                     np.frombuffer(model_bytes, dtype=np.byte),
@@ -61,11 +82,17 @@ class MpiCommunicator:
             self.recv_queue = [self.comm.irecv(source=i, tag=i) for i in self.dests]
             self.queue_status = [True for _ in range(self.comm_size - 1)]
 
-    def send_global_model_to_client(self, model=None, args=None, client_idx=-1):
-        """Send the global model to a certain client."""
+    def send_global_model_to_client(self, model: Optional[Union[dict, OrderedDict]]=None, args: Optional[dict]=None, client_idx: int=-1):
+        """
+        Send the global model state dict and additional arguments to a certain client
+        :param `model`: the global model state dictionary to be sent
+        :param `args`: additional arguments to be sent
+        :param `client_idx`: the index of the destination client
+        """
         assert (
             client_idx >= 0 and client_idx < self.comm_size
-        ), "Please provide a correct client idx!"
+        ), "Please provide a valid destination client index!"
+
         self.dests = (
             [i for i in range(self.comm_size) if i != self.comm_rank]
             if len(self.dests) == 0
@@ -77,21 +104,13 @@ class MpiCommunicator:
                 (0, args), dest=self.dests[client_idx], tag=self.dests[client_idx]
             )
         else:
-            model_buffer = io.BytesIO()
-            torch.save(model, model_buffer)
-            model_bytes = model_buffer.getvalue()
-            if args is None:
-                self.comm.send(
-                    len(model_bytes),
-                    dest=self.dests[client_idx],
-                    tag=self.dests[client_idx],
-                )
-            else:
-                self.comm.send(
-                    (len(model_bytes), args),
-                    dest=self.dests[client_idx],
-                    tag=self.dests[client_idx],
-                )
+            model_bytes = self._obj_to_bytes(model)
+            payload = (len(model_bytes), args) if args is not None else len(model_bytes)
+            self.comm.send(
+                payload, 
+                dest=self.dests[client_idx], 
+                tag=self.dests[client_idx]
+            )
             self.comm.Send(
                 np.frombuffer(model_bytes, dtype=np.byte),
                 dest=self.dests[client_idx],
@@ -106,44 +125,32 @@ class MpiCommunicator:
                 ),
             )
 
-    def send_local_model_to_server(self, model, dest):
+    def send_local_model_to_server(self, model: Union[dict, OrderedDict], dest: int):
+        """
+        Client sends the local model state dict to the server (dest).
+        :param `model`: the local model state dictionary to be sent
+        :param `dest`: the rank of the destination MPI process (server)
+        """
         if self.compressor is not None:
             model_bytes, _ = self.compressor.compress_model(model)
         else:
-            model_buffer = io.BytesIO()
-            torch.save(model, model_buffer)
-            model_bytes = model_buffer.getvalue()
+            model_bytes = self._obj_to_bytes(model)
         self.comm.isend(len(model_bytes), dest=dest, tag=self.comm_rank)
-        self.comm.Isend(
+        self.comm.Send(
             np.frombuffer(model_bytes, dtype=np.byte),
             dest=dest,
             tag=self.comm_rank + self.comm_size,
         )
 
-    def recv_global_model_from_server(self, source):
-        """Client receives the global model state dict from the server (source)."""
-        info = self.comm.recv(source=source, tag=self.comm_rank)
-        if isinstance(info, tuple):
-            model_size, args = info[0], info[1]
-        else:
-            model_size, args = info, None
-        if model_size == 0:
-            return None, args
-        model_bytes = np.empty(model_size, dtype=np.byte)
-        self.comm.Recv(model_bytes, source=source, tag=self.comm_rank + self.comm_size)
-        model_buffer = io.BytesIO(model_bytes.tobytes())
-        model = torch.load(model_buffer)
-        return model if args is None else (model, args)
-
     def recv_local_model_from_client(self, model_copy=None):
-        """Receive a single local model from the front of the receiving queue."""
+        """
+        Server receives the local model state dict from one finishing client.
+        :param `model_copy` [Optional]: a copy of the global model state dict ONLY used for decompression
+        """
         while True:
-            time.sleep(
-                1.0
-            )  # TODO: Sometimes error occurs without a short sleep due to race condition
             queue_idx, model_size = MPI.Request.waitany(self.recv_queue)
             if queue_idx != MPI.UNDEFINED:
-                model_bytes = np.empty(model_size, dtype=np.byte)
+                model_bytes = np.zeros(int(model_size), dtype=np.byte)
                 self.recv_queue.pop(queue_idx)
                 for i in range(len(self.queue_status)):
                     if self.queue_status[i]:
@@ -160,11 +167,47 @@ class MpiCommunicator:
                 if self.compressor is not None:
                     model = self.compressor.decompress_model(model_bytes, model_copy)
                 else:
-                    model_buffer = io.BytesIO(model_bytes.tobytes())
-                    model = torch.load(model_buffer)
+                    model = self._bytes_to_obj(model_bytes.tobytes())
                 self.queue_status[client_idx] = False
                 return client_idx, model
 
+    def recv_global_model_from_server(self, source):
+        """
+        Client receives the global model state dict from the server (source).
+        :param `source`: the rank of the source MPI process (server)
+        :return (`model`, `args`): the global model state dictionary and optional arguments received by the client
+        """
+        meta_data = self.comm.recv(source=source, tag=self.comm_rank)
+        if isinstance(meta_data, tuple):
+            model_size, args = meta_data[0], meta_data[1]
+        else:
+            model_size, args = meta_data, None
+        if model_size == 0:
+            return None, args
+        model_bytes = np.empty(model_size, dtype=np.byte)
+        self.comm.Recv(model_bytes, source=source, tag=self.comm_rank + self.comm_size)
+        model = self._bytes_to_obj(model_bytes.tobytes())
+        return model if args is None else (model, args)
+
     def cleanup(self):
-        for req in self.recv_queue:
-            req.cancel()
+        """
+        Clean up the MPI communicator by waiting for all pending requests.
+        """
+        while len(self.recv_queue) > 0:
+            queue_idx, model_size = MPI.Request.waitany(self.recv_queue)
+            if queue_idx != MPI.UNDEFINED:
+                model_bytes = np.zeros(int(model_size), dtype=np.byte)
+                self.recv_queue.pop(queue_idx)
+                for i in range(len(self.queue_status)):
+                    if self.queue_status[i]:
+                        if queue_idx == 0:
+                            client_idx = i
+                            break
+                        else:
+                            queue_idx -= 1
+                self.comm.Recv(
+                    model_bytes,
+                    source=self.dests[client_idx],
+                    tag=self.dests[client_idx] + self.comm_size,
+                )
+                self.queue_status[client_idx] = False

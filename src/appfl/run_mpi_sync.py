@@ -124,8 +124,8 @@ def run_server(
             break
 
     ## Notify the clients about the end of the learning
-    communicator.broadcast_global_model(args={"done": True})
     communicator.cleanup()
+    communicator.broadcast_global_model(args={"done": True})
 
     ## Summary
     server.logging_summary(cfg, logger)
