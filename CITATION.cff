@@ -12,7 +12,7 @@ type: software
 authors:
   - given-names: Minseok
     family-names: Ryu
-    email: mryu@anl.gov
+    email: minseok.ryu@asu.edu
     affiliation: Argonne National Laboratory
   - given-names: Kibaek
     family-names: Kim
@@ -43,6 +43,9 @@ authors:
     family-names: He
     email: shilanh2@illinois.edu
     affiliation: University of Illinois at Urbana-Champaign
+  - given-names: Grant
+    family-names: Wilkins
+    email: gfw27@cam.ac.uk
   - given-names: Ravi
     family-names: Madduri
     email: madduri@anl.gov
