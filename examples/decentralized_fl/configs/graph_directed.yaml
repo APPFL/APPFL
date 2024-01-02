@@ -1,0 +1,8 @@
+graph_type: directed
+clients:
+  client1:
+    neighbors: [client2, client3]
+  client2:
+    neighbors: [client1]
+  client3:
+    neighbors: [client1]

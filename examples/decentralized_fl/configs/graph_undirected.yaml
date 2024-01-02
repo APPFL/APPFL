@@ -1,0 +1,4 @@
+graph_type: undirected
+edges:
+  - [client1, client2]
+  - [client1, client3]
