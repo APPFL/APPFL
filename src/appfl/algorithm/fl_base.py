@@ -117,10 +117,12 @@ class BaseClient:
         self.loss_fn = loss_fn
         self.dataloader = dataloader
         self.cfg = cfg
-        self.outfile = outfile
         self.test_dataloader = test_dataloader
         self.metric = metric if metric is not None else self._default_metric
         self.primal_state = OrderedDict()
+        self.outfile = outfile
+        if type(outfile) == str:
+            self.outfile = open(outfile, "a")
 
     @abc.abstractmethod
     def update(self):

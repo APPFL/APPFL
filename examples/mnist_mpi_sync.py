@@ -217,9 +217,10 @@ def main():
     ## User-defined data
     train_datasets, test_dataset = get_mnist(
         comm,
-        cfg,
+        num_clients=cfg.num_clients,
         partition=args.partition,
         visualization=True,
+        output_dirname=cfg.output_dirname,
         seed=args.seed,
         alpha1=args.num_clients,
     )

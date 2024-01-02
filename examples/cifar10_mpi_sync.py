@@ -127,7 +127,15 @@ def main():
     metric = get_metric(args.metric, args.metric_name)
 
     ## User-defined data
-    train_datasets, test_dataset = get_cifar10(comm, cfg, partition=args.partition, visualization=True, seed=args.seed, alpha1=args.num_clients)
+    train_datasets, test_dataset = get_cifar10(
+        comm, 
+        num_clients=cfg.num_clients,
+        partition=args.partition, 
+        visualization=True, 
+        output_dirname=cfg.output_dirname, 
+        seed=args.seed, 
+        alpha1=args.num_clients
+    )
 
     ## Sanity check for the user-defined data
     if cfg.data_sanity == True:

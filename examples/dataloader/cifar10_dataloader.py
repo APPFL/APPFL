@@ -9,9 +9,15 @@ from omegaconf import DictConfig
 from .utils.transform import test_transform, train_transform
 from .utils.partition import iid_partition, class_noiid_partition, dirichlet_noiid_partition
 
-def get_cifar10(comm: Optional[MPI.Comm], cfg: DictConfig, partition: string = "iid", visualization: bool = True, **kwargs):
+def get_cifar10(
+        comm: Optional[MPI.Comm], 
+        num_clients: int,
+        partition: string = "iid", 
+        visualization: bool = True, 
+        output_dirname: string = "./outputs",
+        **kwargs
+):
     comm_rank = comm.Get_rank() if comm is not None else 0
-    num_clients = cfg.num_clients
 
     # Get the download directory for dataset
     dir = os.getcwd() + "/datasets/RawData"
@@ -37,7 +43,7 @@ def get_cifar10(comm: Optional[MPI.Comm], cfg: DictConfig, partition: string = "
 
     # Obtain the visualization output filename
     if visualization:
-        dir = cfg.output_dirname
+        dir = output_dirname
         if os.path.isdir(dir) == False:
             os.makedirs(dir, exist_ok=True)
         output_filename = f"CIFAR10_{num_clients}clients_{partition}_distribution"

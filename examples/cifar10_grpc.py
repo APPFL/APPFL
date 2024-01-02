@@ -1,4 +1,3 @@
-import sys
 import time
 import torch
 import argparse
@@ -115,7 +114,15 @@ def main():
     metric = get_metric(args.metric, args.metric_name)
 
     ## User-defined data
-    train_datasets, test_dataset = get_cifar10(comm, cfg, partition=args.partition, visualization=True, seed=args.seed, alpha1=args.num_clients)
+    train_datasets, test_dataset = get_cifar10(
+        comm, 
+        num_clients=cfg.num_clients,
+        partition=args.partition, 
+        visualization=True, 
+        output_dirname=cfg.output_dirname, 
+        seed=args.seed, 
+        alpha1=args.num_clients
+    )
 
 
     print("----------Loaded Datasets and Model----------Elapsed Time=", time.time() - start_time)
