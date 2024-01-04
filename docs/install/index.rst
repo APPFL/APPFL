@@ -1,13 +1,12 @@
 Installation
 ============
 
-This page describes how to install APPFL on a machine independent to operating systems.
-Machine-specific installation steps may be added later.
+This page describes how to install APPFL on a machine independent of operating systems.
 
 Conda environment
 -----------------
 
-We highly recommend to create new Conda virtual environment and install the required packages for APPFL.
+We highly recommend to create new conda environment and install the required packages for APPFL.
 
 .. code-block:: console
 
@@ -17,7 +16,7 @@ We highly recommend to create new Conda virtual environment and install the requ
 User installation
 -----------------
 
-For most users, including data scientists, this simple installation must be sufficient for running the package.
+For most users, including data scientists, this simple installation is sufficient for running the package.
 
 .. code-block:: console
 

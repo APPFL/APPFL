@@ -7,12 +7,9 @@ APPFL: Advanced Privacy-Preserving Federated Learning
 ====================================================
 
 .. image:: _static/logo/logo_small.png
+   :width: 50%
 
 .. automodule:: appfl
-
-
-Table of Contents
------------------
 
 .. toctree::
    :maxdepth: 2

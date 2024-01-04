@@ -1,11 +1,10 @@
 How to run PPFL
 ===============
 
-``APPFL`` provides users with the capabilities of simulating and training PPFL on either a single machine, a cluster, or multiple heterogeneous machines.
-We refer
+``APPFL`` provides users with the capabilities of simulating and training PPFL on either a single machine, a cluster, or multiple heterogeneous machines. We refer
 
-- **simulation** as running PPFL on a single machine or a cluster without actual data decentralization
-- **training** as running PPFL on multiple (heterogeneous) machines with actual decentralization of client datasets
+- **simulation** as running PPFL experiments on a single machine or a cluster without actual data decentralization
+- **training** as running PPFL experiments on multiple (heterogeneous) machines with actual decentralization of client datasets
 
 Hence, we describe two types of PPFL run:
 
@@ -24,7 +23,7 @@ Sample template
 
 .. note::
 
-    Before reading this section, please check out :ref:`Tutorials` for more detailed examples in notebooks.
+    Before reading this section, it is highly recommended to check out :ref:`Tutorials` for more detailed examples in notebooks.
 
 
 For either simulation or training, a skeleton of the script for running PPFL can be written as follows:
@@ -33,14 +32,20 @@ For either simulation or training, a skeleton of the script for running PPFL can
     :linenos:
 
     from appfl import *
-    from appfl.config import *
+    from appfl.config import Config
+    from omegaconf import OmegaConf
 
     def main():
 
         # load default configuration
-        cfg: DictConfig = OmegaConf.structured(Config)
+        cfg = OmegaConf.structured(Config)
 
+        # change configuration if needed
+        ...
+
+        # define model, loss, and data
         model = ... # user-defined model
+        loss_fn = ... # user-defined loss function
         data = ... # user-defined datasets
 
         # The choice of PPFL runs
@@ -51,6 +56,6 @@ For either simulation or training, a skeleton of the script for running PPFL can
 
 Some remarks are made as follows:
 
-- Line 7 loads the default configuration for PPFL run. See :ref:`How to set configuration` for more details.
-- User-defined model and data can be read as in lines 9 and 10; see :ref:`User-defined model` and :ref:`User-defined dataset`.
+- Line 8 loads the default configuration for PPFL run. See :ref:`How to set configuration` for more details.
+- User-defined model, loss, and data can be read as in lines 14 to 16; see :ref:`User-defined model` and :ref:`User-defined dataset` for more details.
 - Depending on our choice of PPFL run, we then call API functions in line 12.

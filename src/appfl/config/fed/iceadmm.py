@@ -20,7 +20,7 @@ class ICEADMM:
                 # "weight_decay": 1e-5,
             },
             ## Penalty
-            "init_penalty": 100.0,
+            "init_penalty": 500.0,
             ## Adaptive penalty
             ## Residual balancing (see (3.13) in "Distributed Optimization and Statistical Learning via the ADMM")
             ## penalty = penalty*(tau) if prim_res > (mu)*dual_res

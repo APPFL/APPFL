@@ -90,9 +90,6 @@ def run_server(
     while True:
         iter += 1
         client_idx, local_model = communicator.recv_local_model_from_client(copy.deepcopy(server.model))
-        logger.info(
-            f"[Server Log] [Step #{iter:3}] Receive model from client {client_idx}"
-        )
         local_update_start = client_start_time[client_idx]
         local_update_time = time.time() - client_start_time[client_idx]
         global_update_start = time.time()
@@ -123,7 +120,6 @@ def run_server(
         cfg.logginginfo.BestAccuracy = best_accuracy
         cfg.logginginfo.LocalUpdate_time = local_update_time
         cfg.logginginfo.GlobalUpdate_time = global_update_time
-        logger.info(f"[Server Log] [Step #{iter:3}] Iteration Logs:")
         if iter != 1:
             logger.info(server.log_title())
         server.logging_iteration(cfg, logger, iter - 1)

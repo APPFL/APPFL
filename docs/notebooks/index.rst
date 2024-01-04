@@ -1,10 +1,10 @@
 Notebooks
 =========
 
-This provides a collection of notebooks for tutorial.
+This section provides a collection of notebooks for tutorial.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     simple_mnist.ipynb
     how_to_config.ipynb    
