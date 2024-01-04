@@ -17,3 +17,15 @@ cd examples
 chmod +x compressor/install.sh
 ./compressor/install.sh
 ```
+
+## Citation
+Please check the following paper for details about how the compressor plays a role in federated learning. 
+
+```
+@article{wilkins2023efficient,
+  title={Efficient Communication in Federated Learning Using Floating-Point Lossy Compression},
+  author={Wilkins, Grant and Di, Sheng and Calhoun, Jon C and Kim, Kibaek and Underwood, Robert and Cappello, Franck},
+  journal={arXiv preprint arXiv:2312.13461},
+  year={2023}
+}
+```
