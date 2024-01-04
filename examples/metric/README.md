@@ -5,6 +5,6 @@ For example, for the image classification task with an ML model generating logit
 
 ```
 def accuracy(y_true, y_pred):
-    y_pred = y_pred.argmax(axis=1, keepdims=False)
+    y_pred = y_pred.argmax(axis=1)
     return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
 ```
