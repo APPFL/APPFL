@@ -28,7 +28,8 @@ APPFL: Advanced Privacy-Preserving Federated Learning
    users/user_model
    users/user_data
    notebooks/how_to_config
-   users/user_implemented_algorithm
+   users/user_implemented_sync_algorithm
+   users/user_implemented_async_algorithm
    users/user_loading_saving
    users/user_logging_recording
 

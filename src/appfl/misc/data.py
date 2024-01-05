@@ -3,15 +3,15 @@ from torch.utils import data
 
 
 class Dataset(data.Dataset):
-    """This class provides a simple way to define client dataset for supervised learning.
+    """
+    This class provides a simple way to define client dataset for supervised learning.
     This is derived from ``torch.utils.data.Dataset`` so that can be loaded to ``torch.utils.data.DataLoader``.
     Users may also create their own dataset class derived from this for more data processing steps.
 
     An empty ``Dataset`` class is created if no argument is given (i.e., ``Dataset()``).
 
-    Args:
-        data_input (torch.FloatTensor): optional data inputs
-        data_label (torch.Tensor): optional data ouputs (or labels)
+    :param data_input (`torch.FloatTensor`): optional data inputs
+    :param data_label (`torch.Tensor`): optional data ouputs (or labels)
     """
 
     def __init__(
