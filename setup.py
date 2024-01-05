@@ -3,7 +3,7 @@ import setuptools
 # Build Author list
 authors = {
     "Kibaek Kim": "kimk@anl.gov",
-    "Minseok Ryu": "mryu@anl.gov",
+    "Minseok Ryu": "minseok.ryu@asu.edu",
     "Youngdae Kim": "youngdae@anl.gov",
     "Hieu Hoang": "thoang@anl.gov",
     "Zachary Ross": "zross@anl.gov",
@@ -11,6 +11,7 @@ authors = {
     "Sang-il Yim": "yim@anl.gov",
     "Shourya Bose": "shbose@ucsc.edu",
     "Shilan He": "shilanh2@illinois.edu",
+    "Grant Wilkins": "gfw27@cam.ac.uk",
     "Ravi Madduri": "madduri@anl.gov",
 }
 AUTHOR = ""
@@ -25,7 +26,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="appfl",
-    version="0.3.2",
+    version="0.4.0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,

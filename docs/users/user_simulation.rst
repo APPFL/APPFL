@@ -1,14 +1,14 @@
 Simulating PPFL
 ===============
 
-This package provides users with the capability of simulating PPFL on either a single machine or a cluster.
+This package provides users with the capability of simulating PPFL on either a single machine or an HPC cluster.
 
 .. note::
 
-    Running (either training or simulating) PPFL on multiple heterogeneous machines is described in :ref:`Training PPFL`.
+    Running PPFL on multiple heterogeneous machines is described in :ref:`Training PPFL`.
 
 
-We describe how to simulate PPFL with a given model and datasets. For simulation, we assume that ``test_data`` is available to validate the training.
+We describe how to simulate PPFL with a given model and datasets. For simulation, we assume that ``test_data`` is available to validate the trained model.
 
 Serial run
 ----------

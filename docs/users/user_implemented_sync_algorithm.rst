@@ -1,9 +1,9 @@
-Implemented FL Algorithms 
-==========================
+Implemented sync FL algorithms 
+==============================
 
-Various global model update methods @ server
--------------------------------------------
-We have implemented various global model update methods taken place at the server given local model parameters received from clients, which are
+Various synchronous global model update methods @ FL server
+-----------------------------------------------------------
+We have implemented various synchronous global model update methods taken place at the FL server given local model parameters received from clients, which are
 
 - ``ServerFedAvg``            : averaging local model parameters to update global model parameters      
 - ``ServerFedAvgMomentum``    : ServerFedAvg with a momentum        
@@ -11,13 +11,13 @@ We have implemented various global model update methods taken place at the serve
 - ``ServerFedAdam``           : use of the adaptive moment estimation (Adam) algorithm for a global update 
 - ``ServerFedYogi``           : use of the Yogi algorithm for a global update         
 
-One can set which algorithm to use by setting ``servername`` in ``federated.py`` (e.g., ``cfg.fed.servername=ServerFedAvg``).
-One can configure each algorithm (e.g., selecting hyperparameters) in ``federated.py``.
+One can set which algorithm to use by setting ``servername`` in ``cfg.fed`` (e.g., ``cfg.fed.servername='ServerFedAvgMomentum'``).
+One can also configure the hyperparameters for each algorithm, as shown in ``appfl/config/federated.py``.
 
 .. literalinclude:: /../src/appfl/config/fed/federated.py
     :language: python
-    :lines: 31-41
-    :caption: configuration of the global update methods
+    :lines: 31-40
+    :caption: configurations of synchronous global update methods
 
 Roughly speaking, the global update is done as follow:
  

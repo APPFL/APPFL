@@ -24,11 +24,15 @@ The contents can be modified by revising ``log_title``, ``log_iteration``, and `
 
  
 FL results are recorded in ``.txt`` in a predefined directory. 
-To set the directory and the filename, for example, one can revise the configuration file as follows:
+To set the directory and the filename, for example, one can revise the configurations as follows:
 
 .. code-block:: 
 
+    # Loading Configurations
+    from OmegaConf import OmegaConf
+    from appfl.config import Config
+    cfg = OmegaConf.structured(Config)
     # FL Outputs
-    output_dirname: str = "./outputs"
-    output_filename: str = "result"    
+    cfg.output_dirname = "./outputs"
+    cfg.output_filename = "result"    
 

@@ -7,12 +7,9 @@ APPFL: Advanced Privacy-Preserving Federated Learning
 ====================================================
 
 .. image:: _static/logo/logo_small.png
+   :width: 50%
 
 .. automodule:: appfl
-
-
-Table of Contents
------------------
 
 .. toctree::
    :maxdepth: 2
@@ -31,7 +28,8 @@ Table of Contents
    users/user_model
    users/user_data
    notebooks/how_to_config
-   users/user_implemented_algorithm
+   users/user_implemented_sync_algorithm
+   users/user_implemented_async_algorithm
    users/user_loading_saving
    users/user_logging_recording
 

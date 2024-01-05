@@ -1,7 +1,7 @@
-How to run with gRPC
-====================
+How to run FL with gRPC
+=======================
 
-These notebooks represent the server and client services to run PPFL server-side and client-side.
+This section decribes how to run federated learning with gRPC by running FL-server and FL-client in the following two separate notebooks.
 
 .. toctree::
     :maxdepth: 1

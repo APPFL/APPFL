@@ -16,6 +16,12 @@
   <a href="https://github.com/APPFL/APPFL/actions/workflows/build.yml" target="_blank">
       <img src="https://github.com/APPFL/APPFL/actions/workflows/build.yml/badge.svg?branch=main&event=push" alt="Build">
   </a>
+  <a href="https://arxiv.org/abs/2202.03672">
+      <img src="https://img.shields.io/badge/arXiv-2202.03672-B31B1B.svg" alt="APPFL">
+  </a>
+  <a href="https://arxiv.org/abs/2308.08786">
+      <img src="https://img.shields.io/badge/arXiv-2308.08786-B31B1B.svg" alt="APPFLx">
+  </a>
 </p>
 
 
