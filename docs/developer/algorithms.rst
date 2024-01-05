@@ -3,7 +3,7 @@ How to add new algorithms
 
 Suppose that we are adding the configuration for our new algorithm.
 New algorithm should be implemented as two classes for server and client. 
-Implementation of the new classes should be derived from the following two base classes:
+Implementation of the new classes should be derived from the following two base classes: ``appfl.algorithm.BaseServer`` and ``appfl.algorithm.BaseClient``.
 
 .. autoclass:: appfl.algorithm.BaseServer
     :members:
@@ -21,7 +21,7 @@ Core algorithm class
 
 We first create classes for the global and local updates in ``appfl/algorithm``:
 
-- See two classes ``NewAlgoServer`` and ``NewAlgoClient`` in ``newalgo.py``
+- Create two classes ``NewAlgoServer`` and ``NewAlgoClient`` in ``newalgo.py``
 - In ``NewAlgoServer``, the ``update`` function conducts a global update by averaging the local model parameters sent from multiple clients
 - In ``NewAlgoClient``, the ``update`` function conducts a local update and send the resulting local model parameters to the server
 

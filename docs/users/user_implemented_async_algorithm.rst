@@ -1,4 +1,4 @@
-Implemented Async FL Algorithms
+Implemented async FL algorithms
 ===============================
 
 Various asynchronous global model update methods @ FL server
@@ -40,7 +40,7 @@ where
 .. literalinclude:: /../src/appfl/algorithm/server_fed_asynchronous.py
     :language: python
     :lines: 42-53
-    :caption: configurations of asynchronous global update methods
+    :caption: staleness functions
 
 The application of staleness factor may cause the global model to drift away from training data of slower clients (known as client drift). To mitigate this issue, 
 
@@ -49,5 +49,3 @@ The application of staleness factor may cause the global model to drift away fro
 - |ServerFedCompass|_ automatically and dynamically assigns various numbers of local steps to each client based on its computing power to make a group of clients send local models back almost simultaneously to reduce the usage global update frequency. The maximum ratio of the number of local steps for clients within a same group can be set by ``cfg.fed.args.q_ratio``, which will affect the grouping behavior of the FedCompass algorithm.
 
 For more details of those asynchronous FL algorithms, please refer to the papers.
-
-.. autofunction:: appfl.comm.globus_compute.globus_compute_client_function.client_validate_data
