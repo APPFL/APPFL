@@ -4,7 +4,7 @@ from mpi4py import MPI
 from typing import Optional
 from collections import OrderedDict
 from appfl.compressor import Compressor
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, List
 
 class MpiCommunicator:
     """
@@ -19,6 +19,7 @@ class MpiCommunicator:
         self.recv_queue = []
         self.queue_status = [False for _ in range(self.comm_size - 1)]
         self.compressor = compresser
+        self._model_tag = self.comm_rank + self.comm_size
 
     def _obj_to_bytes(self, obj: Any) -> bytes:
         """Convert an object to bytes."""
@@ -211,3 +212,96 @@ class MpiCommunicator:
                     tag=self.dests[client_idx] + self.comm_size,
                 )
                 self.queue_status[client_idx] = False
+
+    def send_local_model_to_neighbors(self, model: Union[dict, OrderedDict], neighbors: Union[int, List]):
+        """
+        Client sends the local model state dict to its neighbors.
+        :param `model`: the local model state dictionary to be sent
+        :param `neighbors`: a list of neighbor ranks
+        """
+        if self.compressor is not None:
+            model_bytes, _ = self.compressor.compress_model(model)
+        else:
+            model_bytes = self._obj_to_bytes(model)
+        model_bytes_np = np.frombuffer(model_bytes, dtype=np.byte)
+        neighbors = [neighbors] if isinstance(neighbors, int) else neighbors
+        for neighbor in neighbors:
+            self.comm.isend((len(model_bytes), self._model_tag), dest=neighbor, tag=self.comm_rank)
+            self.comm.Isend(
+                [model_bytes_np, len(model_bytes_np), MPI.BYTE],
+                dest=neighbor,
+                tag=self._model_tag,
+            )
+            print(f"Client {self.comm_rank} sent model to {neighbor} with tag {self._model_tag} {np.frombuffer(model_bytes, dtype=np.byte)[:20]}.")
+        self._model_tag += self.comm_size
+
+    def recv_local_model_from_neighbors(self, neighbors: Union[int, List], model_copy=None) -> OrderedDict:
+        """
+        Server receives the local model state dict from one finishing client.
+        :param `neighbors`: a list of neighbor ranks
+        :param `model_copy` [Optional]: a copy of the global model state dict ONLY used for decompression
+        """
+        neighbors = [neighbors] if isinstance(neighbors, int) else neighbors
+        local_models = OrderedDict()
+        recv_requests = [self.comm.irecv(source=neighbor, tag=neighbor) for neighbor in neighbors]
+        recv_counter = 0
+        while recv_counter < len(neighbors):
+            queue_idx, model_info = MPI.Request.waitany(recv_requests)
+            neighbor_idx = neighbors[queue_idx]
+            model_size, model_tag = model_info
+            model_bytes = np.zeros(int(model_size), dtype=np.byte)
+            self.comm.Recv(
+                model_bytes,
+                source=neighbor_idx,
+                tag=model_tag,
+            )
+            # request = self.comm.Irecv(
+            #     [model_bytes, len(model_bytes), MPI.BYTE],
+            #     source=neighbor_idx,
+            #     tag=model_tag,
+            # )
+            # request.Wait()
+            try:
+                if self.compressor is not None:
+                    model = self.compressor.decompress_model(model_bytes, model_copy)
+                else:
+                    model = self._bytes_to_obj(model_bytes.tobytes())
+            except:
+                print(f"Client {self.comm_rank} trying to receive model from {neighbor_idx} with tag {model_tag} {model_bytes[:20]}.")
+                print(model_bytes[-100:])
+                print(model_bytes[:100])
+                raise
+            local_models[neighbor_idx] = model
+            print(f"Client {self.comm_rank} received model from {neighbor_idx} with tag {model_tag} {model_bytes[:20]}.")
+            recv_counter += 1
+        return local_models
+
+
+
+        for neighbor in neighbors:
+            model_size, model_tag = self.comm.irecv(source=neighbor, tag=neighbor).wait() 
+            model_bytes = np.zeros(int(model_size), dtype=np.byte)
+            
+            # print(f"Before: {self.comm_rank} {model_bytes[:50]}")
+            request = self.comm.Irecv(
+                [model_bytes, len(model_bytes), MPI.BYTE],
+                source=neighbor,
+                tag=model_tag,
+            )
+            request.Wait()
+            # print(request.test(), request.Get_status(), request.Test())
+            # print(f"After: {self.comm_rank} {model_bytes[:50]}")
+            try:
+                if self.compressor is not None:
+                    model = self.compressor.decompress_model(model_bytes, model_copy)
+                else:
+                    model = self._bytes_to_obj(model_bytes.tobytes())
+            except:
+                print(f"Client {self.comm_rank} trying to receive model from {neighbor} with tag {model_tag} {model_bytes[:20]}.")
+                print(model_bytes[-100:])
+                print(model_bytes[:100])
+                print(request.test(), request.Get_status(), request.Test())
+                raise
+            local_models[neighbor] = model
+            print(f"Client {self.comm_rank} received model from {neighbor} with tag {model_tag} {model_bytes[:20]}.")
+        return local_models
