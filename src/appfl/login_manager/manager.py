@@ -5,7 +5,7 @@ import platform
 import threading
 from .tokenstore import get_token_storage_adapter
 from globus_sdk.scopes import AuthScopes, GroupsScopes
-from globus_sdk import NativeAppAuthClient
+from globus_sdk import NativeAppAuthClient, RefreshTokenAuthorizer, AuthClient, GroupsClient
 from typing import Iterator
 
 class LoginManager:
@@ -40,12 +40,15 @@ class LoginManager:
             yield from self.SCOPES['appfl_server'].items()
         else:
             yield from self.SCOPES['appfl_client'].items()
-    
-    def _start_auth_flow(self, *, scopes: list[str]) -> None:
-        auth_client = NativeAppAuthClient(
+
+    def _get_auth_client(self) -> NativeAppAuthClient:
+        return NativeAppAuthClient(
             client_id=self.APPFL_CLIENT_ID,
             app_name="APPFL",
         )
+    
+    def _start_auth_flow(self, *, scopes: list[str]) -> None:
+        auth_client = self._get_auth_client()
         auth_client.oauth2_start_flow(
             refresh_tokens=True,
             requested_scopes=scopes,
@@ -92,10 +95,7 @@ class LoginManager:
         Return `True` if at least one set of tokens are found and revoked.
         """
         with self._access_lock:
-            auth_client = NativeAppAuthClient(
-                client_id=self.APPFL_CLIENT_ID,
-                app_name="APPFL",
-            )
+            auth_client = self._get_auth_client()
             tokens_revoked = False
             for rs, token_data in self._token_storage.get_by_resource_server().items():
                 for token_key in ["access_token", "refresh_token"]:
@@ -105,6 +105,28 @@ class LoginManager:
                 tokens_revoked = True
             return tokens_revoked
             
+    def _get_authorizer(self, *, resource_server: str) -> RefreshTokenAuthorizer:
+        tokens = self._token_storage.get_token_data(resource_server)
+        if tokens is None:
+            raise LookupError(
+                f"Login manager could not find tokens for resource server: {resource_server}"
+            )
+        with self._access_lock:
+            return RefreshTokenAuthorizer(
+                tokens['refresh_token'],
+                self._get_auth_client(),
+                access_token=tokens['access_token'],
+                expires_at=tokens['expires_at_seconds'],
+                on_refresh=self._token_storage.on_refresh,
+            )
 
+    def get_auth_client(self) -> AuthClient:
+        return AuthClient(
+            authorizer=self._get_authorizer(resource_server=AuthScopes.resource_server)
+        )
     
+    def get_group_client(self) -> GroupsClient:
+        return GroupsClient(
+            authorizer=self._get_authorizer(resource_server=GroupsScopes.resource_server)
+        )
         
