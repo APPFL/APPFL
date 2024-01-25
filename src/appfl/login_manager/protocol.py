@@ -8,7 +8,7 @@ else:
 
 @runtime_checkable
 class LoginManagerProtocol(Protocol):
-    def ensure_logged_in(self) -> None:
+    def ensure_logged_in(self) -> bool:
         ...
     
     def logout(self) -> None:
