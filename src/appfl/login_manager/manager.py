@@ -79,16 +79,18 @@ class LoginManager:
         with self._access_lock:
             self._token_storage.store(token_response)
 
-    def ensure_logged_in(self) -> None:
+    def ensure_logged_in(self) -> bool:
         """
         Ensure that the user is logged in by checking if the token storage contains valid tokens.
+        Return `True` if the user has logged in, and `False` if the user just logged in.
         """
         with self._access_lock:
             token_data = self._token_storage.get_by_resource_server()
         for rs, _ in self.login_requirements:
             if rs not in token_data:
                 self.run_login_flow()
-                return
+                return False
+        return True
 
     def logout(self) -> None:
         """
