@@ -2,7 +2,7 @@ from collections import OrderedDict
 from copy import deepcopy
 import zlib
 from . import pysz
-from ..config import Config
+from ..config import Config, CompressorConfig
 from typing import Tuple, Union, List
 import numpy as np
 import pickle
@@ -15,7 +15,7 @@ import blosc
 import lzma
 
 class Compressor:
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Union[Config, CompressorConfig]):
         self.cfg = cfg
         self.sz_error_mode_dict = {
             "ABS": 0,

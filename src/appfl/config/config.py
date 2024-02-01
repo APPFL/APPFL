@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, List, Dict, Optional
 from omegaconf import DictConfig, OmegaConf
-import os
 import sys
 
 
@@ -9,6 +8,90 @@ from .fed.federated import *
 from .fed.fedasync import *
 from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
 from .fed.iiadmm import *
+
+@dataclass
+class CompressorConfig:
+    lossy_compressor: str = "SZ2"
+    lossless_compressor: str = "blosc"
+
+    # Lossy compression path configuration
+    ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
+    compressor_sz2_path: str = "../.compressor/SZ/build/sz/libSZ" + ext
+    compressor_sz3_path: str = "../.compressor/SZ3/build/tools/sz3c/libSZ3c" + ext
+    compressor_szx_path: str = "../.compressor/SZx-main/build/lib/libSZx" + ext
+
+    # Compressor parameters
+    error_bounding_mode: str = ""
+    error_bound: float = 0.0
+
+@dataclass
+class ClientAgentConfig:
+    train_configs: DictConfig = OmegaConf.create({
+        # Trainer
+        "trainer": "NaiveTrainer",
+        "device": "cpu",
+        # Training mode
+        "mode": "epoch",
+        "num_local_epochs": 1,
+        ## Alternatively
+        # "mode": "step",
+        # "num_local_steps": 100,
+        # Optimizer
+        "optim": "SGD",
+        "optim_args": {
+            "lr": 0.001,
+        },
+        # Loss function
+        "loss_fn": "CrossEntropyLoss",
+        "loss_fn_kwargs": {},
+        "loss_fn_path": "",
+        "loss_fn_name": "",
+        # Evaluation
+        "do_validation": True,
+        "metric_path": "./examples/metric/acc.py",
+        "metric_name": "accuracy",
+        # Differential Privacy
+        "use_dp": False,
+        "epsilon": 1,
+        # Gradient Clipping
+        "clip_grad": False,
+        "clip_value": 1,
+        "clip_norm": 1,
+        # Output and logging
+        "logging_id": "Client-0",
+        "output_dirname": "./output",
+        "output_filename": "result",
+        # Checkpointing
+        "save_model_state_dict": False,
+        "checkpoints_interval": 2,
+        "save_model_dirname": "./output/models",
+        "save_model_filename": "model",
+
+    })
+    model_configs: DictConfig = OmegaConf.create({
+        "model_path": "./examples/models/cnn.py",
+        "model_name": "CNN",
+        "model_kwargs": {
+            "num_channel": 1,
+            "num_classes": 10,
+            "num_pixel": 28,
+        },
+    })
+    data_configs: DictConfig = OmegaConf.create({
+        "dataloader_path": "./examples/dataloader/mnist_dataloader_test.py",
+        "dataloader_name": "get_mnist",
+        "dataloader_kwargs": {
+            "comm": None, 
+            "num_clients": 1,
+            "client_id": 0,
+            "train_batch_size": 64,
+            "test_batch_size": 64,
+        },
+    })
+    comm_configs: DictConfig = OmegaConf.create({
+        "enable_compression": False,
+        "compression_configs": CompressorConfig(),
+    })
 
 
 @dataclass
