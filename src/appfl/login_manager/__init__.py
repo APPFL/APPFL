@@ -1,1 +1,1 @@
-from .manager import LoginManager
+from .globus import GlobusLoginManager, GlobusAuthenticator

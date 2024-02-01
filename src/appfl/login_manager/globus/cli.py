@@ -1,6 +1,7 @@
-from appfl.login_manager import LoginManager
+from appfl.login_manager.globus import GlobusLoginManager
 
 def auth():
+    """Command line interface for authenticating with Globus Auth."""
     prompt = "Please select whether you are authenticating for the federated learning server or client (Enter 1 or 2)"
     while True:
         mode = input(
@@ -19,7 +20,7 @@ def auth():
                 f"{'-'*len(prompt)}\n"
             )
     is_fl_server = mode == "1"
-    login_manager = LoginManager(is_fl_server=is_fl_server)
+    login_manager = GlobusLoginManager(is_fl_server=is_fl_server)
     if login_manager.ensure_logged_in():
         action = input(
             f"You have already logged in as a federated learning {'server' if is_fl_server else 'client'}\n"

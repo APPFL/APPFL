@@ -3,14 +3,14 @@ from __future__ import annotations
 import sys
 import platform
 import threading
+from typing import Iterator, Optional
 from .tokenstore import get_token_storage_adapter
 from globus_sdk.scopes import AuthScopes, GroupsScopes
 from globus_sdk import NativeAppAuthClient, RefreshTokenAuthorizer, AuthClient, GroupsClient
-from typing import Iterator
 
-class LoginManager:
+class GlobusLoginManager:
     """
-    The LoginManager is used to hold a tokenstorage object and combine it with
+    The GlobusLoginManager is used to hold a tokenstorage object and combine it with
     - a login flow which authenticates the federated learning server and client users for the correct set of scopes
     - a helper method for ensuring that the user is logged in
     - a helper method to build Globus SDK client objects with correct RefreshTokenAuthorizer
@@ -106,7 +106,44 @@ class LoginManager:
                 self._token_storage.remove_tokens_for_resource_server(rs)
                 tokens_revoked = True
             return tokens_revoked
-            
+
+    def get_identity_client(self) -> AuthClient:
+        return AuthClient(
+            authorizer=self._get_authorizer(resource_server=AuthScopes.resource_server)
+        )
+    
+    def get_group_client(self) -> GroupsClient:
+        return GroupsClient(
+            authorizer=self._get_authorizer(resource_server=GroupsScopes.resource_server)
+        )
+
+    def get_auth_token(self) -> dict:
+        """This function is used for FL client to get the auth token for the FL server validation."""
+        assert not self._is_fl_server, "Server does not need auth tokens"
+        return {
+            "access_token": self._token_storage.get_token_data(AuthScopes.resource_server)['access_token'],
+            "expires_at": self._token_storage.get_token_data(AuthScopes.resource_server)['expires_at_seconds'],
+            "refresh_token": self._token_storage.get_token_data(AuthScopes.resource_server)['refresh_token'],
+        }
+
+    def get_identity_client_with_tokens(self, access_token=None, refresh_token=None, expires_at=None) -> Optional[AuthClient]:
+        """
+        Return a client object with the correct authorizer for the Globus identity (auth) server using provided tokens.
+        Return `None` for invalid token data. This function is intended to be invoked by FL server for validating
+        client information using the tokens provided by the client.
+        """
+        try:
+            authorizer = RefreshTokenAuthorizer(
+                refresh_token=refresh_token,
+                auth_client=self._get_auth_client(),
+                access_token=access_token,
+                expires_at=expires_at,
+                on_refresh=self._token_storage.on_refresh,
+            )
+            return AuthClient(authorizer=authorizer)
+        except Exception as e:
+            return None
+        
     def _get_authorizer(self, *, resource_server: str) -> RefreshTokenAuthorizer:
         tokens = self._token_storage.get_token_data(resource_server)
         if tokens is None:
@@ -121,14 +158,3 @@ class LoginManager:
                 expires_at=tokens['expires_at_seconds'],
                 on_refresh=self._token_storage.on_refresh,
             )
-
-    def get_auth_client(self) -> AuthClient:
-        return AuthClient(
-            authorizer=self._get_authorizer(resource_server=AuthScopes.resource_server)
-        )
-    
-    def get_group_client(self) -> GroupsClient:
-        return GroupsClient(
-            authorizer=self._get_authorizer(resource_server=GroupsScopes.resource_server)
-        )
-        

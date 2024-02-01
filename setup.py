@@ -90,7 +90,7 @@ setuptools.setup(
     },
     entry_points={
         "console_scripts": [
-            "appfl-auth=appfl.login_manager.cli:auth",
+            "appfl-auth=appfl.login_manager.globus.cli:auth",
         ],
     },
 )
