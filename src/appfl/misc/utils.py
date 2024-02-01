@@ -8,6 +8,8 @@ import copy
 import os.path as osp
 import pickle as pkl
 import string
+import importlib.util
+import sys
 
 def validation(self, dataloader, metric):
     if self.loss_fn is None or dataloader is None:
@@ -229,3 +231,124 @@ def load_source_file(file_path):
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
+
+
+def create_instance_from_file(file_path, class_name, *args, **kwargs):
+    """
+    Creates an instance of a class from a given file path.
+
+    :param file_path: The file path where the class is defined.
+    :param class_name: The name of the class to be instantiated.
+    :param args: Positional arguments to be passed to the class constructor.
+    :param kwargs: Keyword arguments to be passed to the class constructor.
+    :return: An instance of the specified class, or None if creation fails.
+    """
+    try:
+        # Normalize the file path
+        file_path = os.path.abspath(file_path)
+
+        # Check if the file exists
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Extract module name and directory from the file path
+        module_dir, module_file = os.path.split(file_path)
+        module_name, _ = os.path.splitext(module_file)
+
+        # Add module directory to sys.path
+        if module_dir not in sys.path:
+            sys.path.append(module_dir)
+
+        # Load the module
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Get the class and create an instance
+        cls = getattr(module, class_name)
+        instance = cls(*args, **kwargs)
+
+        return instance
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+    
+def get_function_from_file(file_path, function_name):
+    """
+    Gets a function from a given file path.
+
+    :param file_path: The file path where the function is defined.
+    :param function_name: The name of the function to be retrieved.
+    :return: The function object, or None if retrieval fails.
+    """
+    try:
+        # Normalize the file path
+        file_path = os.path.abspath(file_path)
+
+        # Check if the file exists
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Extract module name and directory from the file path
+        module_dir, module_file = os.path.split(file_path)
+        module_name, _ = os.path.splitext(module_file)
+
+        # Add module directory to sys.path
+        if module_dir not in sys.path:
+            sys.path.append(module_dir)
+
+        # Load the module
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Get the function
+        function = getattr(module, function_name)
+
+        return function
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+    
+def run_function_from_file(file_path, function_name, *args, **kwargs):
+    """
+    Runs a function from a given file path.
+
+    :param file_path: The file path where the function is defined.
+    :param function_name: The name of the function to be executed.
+    :param args: Positional arguments to be passed to the function.
+    :param kwargs: Keyword arguments to be passed to the function.
+    :return: The result of the function execution, or None if execution fails.
+    """
+    try:
+        # Normalize the file path
+        file_path = os.path.abspath(file_path)
+
+        # Check if the file exists
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Extract module name and directory from the file path
+        module_dir, module_file = os.path.split(file_path)
+        module_name, _ = os.path.splitext(module_file)
+
+        # Add module directory to sys.path
+        if module_dir not in sys.path:
+            sys.path.append(module_dir)
+
+        # Load the module
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Get the function and run it
+        function = getattr(module, function_name)
+        result = function(*args, **kwargs)
+
+        return result
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
