@@ -1,1 +1,2 @@
-from .client_logger import *
+from .client_logger import ClientTrainerFileLogger
+from .server_logger import ServerAgentFileLogger
