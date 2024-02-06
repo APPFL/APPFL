@@ -5,7 +5,7 @@ from omegaconf import DictConfig
 from typing import Optional
 from torch.utils.data import DataLoader
 from appfl.misc import create_instance_from_file, get_function_from_file
-from appfl.logging import ClientFileLogger
+from appfl.logger import ClientTrainerFileLogger
 
 class BaseTrainer:
     """
@@ -31,9 +31,9 @@ class BaseTrainer:
         self.train_configs = train_configs
         self.loss_fn = self._get_loss_fn()
         self.metric = self._get_metric()
-        self.create_logger()
+        self._create_logger()
 
-    def create_logger(self):
+    def _create_logger(self):
         """
         Create logger for logging local training process
         You can overwrite this method to create your own logger.
@@ -45,7 +45,7 @@ class BaseTrainer:
             kwargs["file_dir"] = self.train_configs.output_dirname
         if hasattr(self.train_configs, "output_filename"):
             kwargs["file_name"] = self.train_configs.output_filename
-        self.logger = ClientFileLogger(**kwargs)
+        self.logger = ClientTrainerFileLogger(**kwargs)
 
     @abc.abstractmethod
     def get_parameters(self):

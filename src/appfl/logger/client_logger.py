@@ -3,7 +3,7 @@ import logging
 import pathlib
 from typing import List, Dict, Union
 
-class ClientFileLogger:
+class ClientTrainerFileLogger:
     def __init__(self, logging_id: str="", file_dir: str="", file_name: str="") -> None:
         fmt = logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') if logging_id == "" else logging.Formatter(f'[%(asctime)s %(levelname)-4s {logging_id}]: %(message)s')
         self.logger = logging.getLogger(__name__)

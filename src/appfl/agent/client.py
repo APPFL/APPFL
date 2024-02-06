@@ -33,7 +33,7 @@ class APPFLClientAgent:
     def load_data(self, data_configs: DictConfig):
         self.train_dataloader, self.val_dataloader = run_function_from_file(
             data_configs.dataloader_path,
-            'get_mnist',
+            data_configs.dataloader_name,
             **data_configs.dataloader_kwargs
         )
 
