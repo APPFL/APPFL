@@ -2,18 +2,19 @@ import copy
 import torch
 from omegaconf import DictConfig
 from appfl.aggregator import BaseAggregator
-from typing import Union, Dict, OrderedDict
+from typing import Union, Dict, OrderedDict, Any
 
 class FedAvgAggregator(BaseAggregator):
     def __init__(
         self,
         model: torch.nn.Module,
-        client_weights: DictConfig,
         aggregator_config: DictConfig,
+        logger: Any
     ):
         self.model = model
-        self.client_weights = client_weights
+        self.client_weights = aggregator_config.get("client_weights", "equal")
         self.aggregator_config = aggregator_config
+        self.logger = logger
 
         self.named_parameters = set()
         for name, _ in self.model.named_parameters():
@@ -23,20 +24,23 @@ class FedAvgAggregator(BaseAggregator):
         """
         Take the weighted average of local models from clients and return the global model.
         """
-        # Initialize the global model to zeros
+        global_state = copy.deepcopy(self.model.state_dict())
         for name in self.model.state_dict():
-            self.model.state_dict()[name] = torch.zeros_like(self.model.state_dict()[name])
-
+            global_state[name] = torch.zeros_like(self.model.state_dict()[name])
+        
         for client_id, model in local_models.items():
             for name in self.model.state_dict():
                 if name in self.named_parameters:
-                    self.model.state_dict()[name] += self.client_weights[client_id] * model[name]
+                    weight = self.client_weights[client_id] if isinstance(self.client_weights, dict) else 1.0 / len(local_models)
+                    global_state[name] += weight * model[name]
                 else:
-                    self.model.state_dict()[name] += model[name]
+                    global_state[name] += model[name]
+        
         for name in self.model.state_dict():
             if name not in self.named_parameters:
-                self.model.state_dict()[name] = torch.div(self.model.state_dict()[name], len(local_models))
-        return copy.deepcopy(self.model.state_dict())
+                global_state[name] = torch.div(global_state[name], len(local_models))
+        self.model.load_state_dict(global_state)
+        return global_state
     
     def get_parameters(self) -> Union[Dict, OrderedDict]:
         return copy.deepcopy(self.model.state_dict())

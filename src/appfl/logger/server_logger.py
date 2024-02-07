@@ -4,7 +4,8 @@ import logging
 
 class ServerAgentFileLogger:
     def __init__(self, file_dir: str="", file_name: str="") -> None:
-        fmt = logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s')
+        fmt = logging.Formatter('[%(asctime)s %(levelname)-4s server]: %(message)s')
+        file_name += "_server"
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         s_handler = logging.StreamHandler()

@@ -1,8 +1,8 @@
+import sys
+from .default import *
 from dataclasses import dataclass, field
 from typing import Any, List, Dict, Optional
 from omegaconf import DictConfig, OmegaConf
-import sys
-
 
 from .fed.federated import *
 from .fed.fedasync import *
@@ -25,69 +25,85 @@ class CompressorConfig:
     error_bound: float = 0.0
 
 @dataclass
-class ClientAgentConfig:
-    train_configs: DictConfig = OmegaConf.create({
-        # Trainer
-        "trainer": "NaiveTrainer",
+class ServerAgentConfig:
+    client_configs: DictConfig = OmegaConf.create({
+        "train_configs": OmegaConf.create({
+            # Trainer
+            "trainer": "NaiveTrainer",
+            # Training mode
+            "mode": "epoch",
+            "num_local_epochs": 1,
+            ## Alternatively
+            # "mode": "step",
+            # "num_local_steps": 100,
+            # Optimizer
+            "optim": "SGD",
+            "optim_args": {
+                "lr": 0.001,
+            },
+            # Loss function
+            "loss_fn": "CrossEntropyLoss",
+            "loss_fn_kwargs": {},
+            "loss_fn_path": "",
+            "loss_fn_name": "",
+            # Evaluation
+            "do_validation": True,
+            "metric_path": "../../examples/metric/acc.py",
+            "metric_name": "accuracy",
+            # Differential Privacy
+            "use_dp": False,
+            "epsilon": 1,
+            # Gradient Clipping
+            "clip_grad": False,
+            "clip_value": 1,
+            "clip_norm": 1,
+            # Checkpointing
+            "save_model_state_dict": False,
+            "checkpoints_interval": 2,
+        }),
+        "model_configs": OmegaConf.create({
+            "model_path": "../../examples/models/cnn.py",
+            "model_name": "CNN",
+            "model_kwargs": {
+                "num_channel": 1,
+                "num_classes": 10,
+                "num_pixel": 28,
+            },
+        }),
+        "comm_configs": OmegaConf.create({
+            "enable_compression": False,
+            "compression_configs": CompressorConfig(),
+        }),
+    })
+    server_configs: DictConfig = OmegaConf.create({
+        "scheduler": "SyncScheduler",
+        "scheduler_args": {
+            "num_clients": 3,
+        },
+        "aggregator": "FedAvgAggregator",
+        "aggregator_args": {
+            "weights": "equal",
+        },
         "device": "cpu",
-        # Training mode
-        "mode": "epoch",
-        "num_local_epochs": 1,
-        ## Alternatively
-        # "mode": "step",
-        # "num_local_steps": 100,
-        # Optimizer
-        "optim": "SGD",
-        "optim_args": {
-            "lr": 0.001,
-        },
-        # Loss function
-        "loss_fn": "CrossEntropyLoss",
-        "loss_fn_kwargs": {},
-        "loss_fn_path": "",
-        "loss_fn_name": "",
-        # Evaluation
-        "do_validation": True,
-        "metric_path": "./examples/metric/acc.py",
-        "metric_name": "accuracy",
-        # Differential Privacy
-        "use_dp": False,
-        "epsilon": 1,
-        # Gradient Clipping
-        "clip_grad": False,
-        "clip_value": 1,
-        "clip_norm": 1,
-        # Output and logging
-        "logging_id": "Client-0",
-        "output_dirname": "./output",
-        "output_filename": "result",
-        # Checkpointing
-        "save_model_state_dict": False,
-        "checkpoints_interval": 2,
-        "save_model_dirname": "./output/models",
-        "save_model_filename": "model",
+        "num_epochs": 2,
+        "server_validation": False,
+        "logging_output_dirname": "./output",
+        "logging_output_filename": "result",
+    })
 
-    })
-    model_configs: DictConfig = OmegaConf.create({
-        "model_path": "./examples/models/cnn.py",
-        "model_name": "CNN",
-        "model_kwargs": {
-            "num_channel": 1,
-            "num_classes": 10,
-            "num_pixel": 28,
-        },
-    })
-    data_configs: DictConfig = OmegaConf.create({
-        "dataloader_path": "./examples/dataloader/mnist_dataloader_test.py",
-        "dataloader_name": "get_mnist",
-        "dataloader_kwargs": {
-            "comm": None, 
-            "num_clients": 1,
-            "client_id": 0,
-            "train_batch_size": 64,
-            "test_batch_size": 64,
-        },
-    })
+@dataclass
+class ClientAgentConfig:
+    """
+    ClientAgentConfig is a dataclass that holds the configurations for the client agent. 
+    It basically holds the following types of configurations:
+    - train_configs: Configurations for local training, such as trainer, device, optimizer, loss function, etc.
+    - model_configs: Configurations for the AI model
+    - comm_configs: Configurations for communication, such as compression, etc.
+    - data_configs: Configurations for the data loader
+    """
+    train_configs: DictConfig = field(default_factory=default_train_config)
+    model_configs: DictConfig = field(default_factory=default_model_config)
+    data_configs: DictConfig = field(default_factory=default_data_config)
     comm_configs: DictConfig = OmegaConf.create({
         "enable_compression": False,
         "compression_configs": CompressorConfig(),
