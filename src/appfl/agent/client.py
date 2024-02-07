@@ -1,4 +1,6 @@
+import uuid
 import importlib
+import torch.nn as nn
 from omegaconf import DictConfig
 from appfl.trainer import BaseTrainer
 from appfl.compressor import Compressor
@@ -6,12 +8,20 @@ from appfl.config import ClientAgentConfig
 from appfl.misc import create_instance_from_file, run_function_from_file
 
 class APPFLClientAgent:
+    """
+    The APPFLClientAgent should act on behalf of the FL client to:
+    - do the local training job using configurations `APPFLClientAgent.train`
+    - prepare data for communication `APPFLClientAgent.get_parameters`
+    - load parameters from the server `APPFLClientAgent.load_parameters`
+
+    User can overwrite any method to customize the behavior of the client agent.
+    """
     def __init__(self, client_agent_config: ClientAgentConfig = ClientAgentConfig()):
         self.train_configs = client_agent_config.train_configs
         self.comm_configs = client_agent_config.comm_configs
 
-        self.load_model(client_agent_config.model_configs)
-        self.load_data(client_agent_config.data_configs)
+        self._load_model(client_agent_config.model_configs)
+        self._load_data(client_agent_config.data_configs)
 
         trainer_module = importlib.import_module('appfl.trainer')
         if not hasattr(trainer_module, self.train_configs.trainer):
@@ -23,26 +33,43 @@ class APPFLClientAgent:
             self.train_configs,
         )
 
-    def load_model(self, model_configs: DictConfig):
-        self.model = create_instance_from_file(
+    def get_id(self):
+        """Return a unique client id for server to distinguish clients."""
+        if not hasattr(self, 'client_id'):
+            self.client_id = str(uuid.uuid4())
+        return self.client_id
+
+    def train(self):
+        """Train the model locally."""
+        self.trainer.train()
+
+    def get_parameters(self):
+        """Return parameters for communication"""
+        params = self.trainer.get_parameters()
+        if self.comm_configs.enable_compression:
+            if not hasattr(self, 'compressor'):
+                self.compressor = Compressor(self.comm_configs)
+            params = self.compressor.compress_model(params)[0]
+        return params
+    
+    def load_parameters(self, params):
+        """Load parameters from the server."""
+        self.model.load_state_dict(params)
+
+    def _load_model(self, model_configs: DictConfig):
+        """Load model from file."""
+        self.model: nn.Module = create_instance_from_file(
             model_configs.model_path,
             model_configs.model_name,
             **model_configs.model_kwargs
         )
 
-    def load_data(self, data_configs: DictConfig):
+    def _load_data(self, data_configs: DictConfig):
+        """Get train and validation dataloaders from local dataloader file."""
         self.train_dataloader, self.val_dataloader = run_function_from_file(
             data_configs.dataloader_path,
             data_configs.dataloader_name,
             **data_configs.dataloader_kwargs
         )
 
-    def train(self):
-        self.trainer.train()
-
-    def get_parameters(self):
-        params = self.trainer.get_parameters()
-        if self.comm_configs.enable_compression:
-            compressor = Compressor(self.comm_configs)
-            params = compressor.compress_model(params)[0]
-        return params
+    
