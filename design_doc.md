@@ -1,7 +1,9 @@
 # Design Document for APPFL Package
 
 ## APPFL Workflow 
-
+<p align="center">
+  <img src='docs/_static/workflow.jpg' style="width: 100%; height: auto;"/>
+</p>
 
 ## Code Structure for the Package
 ```
