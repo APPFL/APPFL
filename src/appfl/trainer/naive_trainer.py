@@ -2,7 +2,7 @@ import copy
 import time
 import torch
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Dict
 from torch.optim import *
 from .base_trainer import BaseTrainer
 from appfl.privacy import laplace_mechanism_output_perturb
@@ -42,6 +42,18 @@ class NaiveTrainer(BaseTrainer):
                 title.insert(1, "Epoch")
             self.logger.log_title(title)
         
+        # # TEST
+        # if do_validation:
+        #     val_loss, val_accuracy = self._validate()
+        # per_epoch_time = 0
+        # self.logger.log_content(
+        #     [self.round, 0, per_epoch_time, 0, 0] 
+        #     if not do_validation
+        #     else [self.round, 0, per_epoch_time, 0, 0, val_loss, val_accuracy]
+        # )   
+        # ## TEST END
+
+
         # Start training
         optimizer = eval(self.train_configs.optim)(self.model.parameters(), **self.train_configs.optim_args)
         if self.train_configs.mode == "epoch":
@@ -110,7 +122,7 @@ class NaiveTrainer(BaseTrainer):
             for k in self.model_state:
                 self.model_state[k] = self.model_state[k].cpu()
 
-    def get_parameters(self):
+    def get_parameters(self) -> Dict:
         hasattr(self, "model_state"), "Please make sure the model has been trained before getting its parameters"
         return self.model_state
 

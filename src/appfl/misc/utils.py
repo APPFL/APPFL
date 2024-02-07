@@ -243,36 +243,32 @@ def create_instance_from_file(file_path, class_name, *args, **kwargs):
     :param kwargs: Keyword arguments to be passed to the class constructor.
     :return: An instance of the specified class, or None if creation fails.
     """
-    try:
-        # Normalize the file path
-        file_path = os.path.abspath(file_path)
+    # Normalize the file path
+    file_path = os.path.abspath(file_path)
 
-        # Check if the file exists
-        if not os.path.isfile(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
+    # Check if the file exists
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
 
-        # Extract module name and directory from the file path
-        module_dir, module_file = os.path.split(file_path)
-        module_name, _ = os.path.splitext(module_file)
+    # Extract module name and directory from the file path
+    module_dir, module_file = os.path.split(file_path)
+    module_name, _ = os.path.splitext(module_file)
 
-        # Add module directory to sys.path
-        if module_dir not in sys.path:
-            sys.path.append(module_dir)
+    # Add module directory to sys.path
+    if module_dir not in sys.path:
+        sys.path.append(module_dir)
 
-        # Load the module
-        spec = importlib.util.spec_from_file_location(module_name, file_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+    # Load the module
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
 
-        # Get the class and create an instance
-        cls = getattr(module, class_name)
-        instance = cls(*args, **kwargs)
+    # Get the class and create an instance
+    cls = getattr(module, class_name)
+    instance = cls(*args, **kwargs)
 
-        return instance
+    return instance
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None
     
 def get_function_from_file(file_path, function_name):
     """

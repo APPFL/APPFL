@@ -2,7 +2,7 @@ import abc
 import numpy as np
 import torch.nn as nn
 from omegaconf import DictConfig
-from typing import Optional
+from typing import Optional, Dict
 from torch.utils.data import DataLoader
 from appfl.misc import create_instance_from_file, get_function_from_file
 from appfl.logger import ClientTrainerFileLogger
@@ -41,14 +41,14 @@ class BaseTrainer:
         kwargs = {}
         if hasattr(self.train_configs, "logging_id"):
             kwargs["logging_id"] = self.train_configs.logging_id
-        if hasattr(self.train_configs, "output_dirname"):
-            kwargs["file_dir"] = self.train_configs.output_dirname
-        if hasattr(self.train_configs, "output_filename"):
-            kwargs["file_name"] = self.train_configs.output_filename
+        if hasattr(self.train_configs, "logging_output_dirname"):
+            kwargs["file_dir"] = self.train_configs.logging_output_dirname
+        if hasattr(self.train_configs, "logging_output_filename"):
+            kwargs["file_name"] = self.train_configs.logging_output_filename
         self.logger = ClientTrainerFileLogger(**kwargs)
 
     @abc.abstractmethod
-    def get_parameters(self):
+    def get_parameters(self) -> Dict:
         """Return local model parameters"""
         pass
 
