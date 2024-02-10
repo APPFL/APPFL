@@ -1,7 +1,8 @@
 from typing import Optional, Dict
+from appfl.login_manager import BaseAuthenticator
 from appfl.login_manager.globus import GlobusLoginManager
 
-class GlobusAuthenticator:
+class GlobusAuthenticator(BaseAuthenticator):
     """
     Authenticator for federated learning server and client using Globus Auth.
     :param is_fl_server: Whether the authenticator is for the FL server or client.
@@ -30,17 +31,24 @@ class GlobusAuthenticator:
 
     def get_auth_token(self) -> dict:
         """
-        Invoked by FL client to get the auth tokens for the FL server validation.
+        Invoked by FL client to get the auth tokens as a `dict` for the FL server validation.
         """
         assert not self.is_fl_server, "Server does not need auth tokens"
-        return self.login_manager.get_auth_token()
+        auth_tokens = self.login_manager.get_auth_token()
+        auth_tokens["expires_at"] = str(auth_tokens["expires_at"])
+        return auth_tokens
 
     def validate_auth_token(self, auth_tokens: Dict) -> bool:
         """
         Invoked by FL server to validate the auth tokens provided by the FL client.
+        Return `True` if the tokens are valid, `False` otherwise.
         """
         assert self.is_fl_server, "Client does not need to validate auth tokens"
-        identity_client = self.login_manager.get_identity_client_with_tokens(**auth_tokens)
+        identity_client = self.login_manager.get_identity_client_with_tokens(
+            access_token=auth_tokens["access_token"],
+            refresh_token=auth_tokens["refresh_token"],
+            expires_at=int(auth_tokens["expires_at"]),
+        )
         if identity_client is None:
             return False
         user_info = identity_client.oauth2_userinfo()
