@@ -57,5 +57,9 @@ def get_token_storage_adapter(*, is_fl_server: bool) -> SQLiteAdapter:
     """
     filename = _get_storage_filename()
     namespace = _resolve_namespace(is_fl_server)
-    return SQLiteAdapter(filename, namespace=namespace)
+    return SQLiteAdapter(
+        filename, 
+        namespace=namespace,
+        connect_params={"check_same_thread": False},
+    )
 
