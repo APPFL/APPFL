@@ -1,14 +1,11 @@
-import grpc
 import logging
-from concurrent import futures
 from .grpc_communicator_pb2 import *
 from . import grpc_communicator_pb2_grpc
 from .grpc_utils import construct_tensor_record
 
 class GRPCCommunicator(grpc_communicator_pb2_grpc.GRPCCommunicatorServicer):
-    def __init__(self, servicer_id, port, operator):
+    def __init__(self, servicer_id, operator):
         self.servicer_id = servicer_id
-        self.port = port
         self.operator = operator
         self.logger = logging.getLogger(__name__)
 
@@ -74,23 +71,3 @@ class GRPCCommunicator(grpc_communicator_pb2_grpc.GRPCCommunicatorServicer):
         ack = Acknowledgment(header=proto.header, status=status)
         return ack
 
-
-def serve(servicer, max_message_size=2 * 1024 * 1024):
-    server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=10),
-        options=[
-            ("grpc.max_send_message_length", max_message_size),
-            ("grpc.max_receive_message_length", max_message_size),
-        ],
-    )
-    grpc_communicator_pb2_grpc.add_GRPCCommunicatorServicer_to_server(
-        servicer, server
-    )
-    server.add_insecure_port("[::]:" + servicer.port)
-    server.start()
-    try:
-        server.wait_for_termination()
-    except KeyboardInterrupt:
-        logger = logging.getLogger(__name__)
-        logger.info("Terminating the server ...")
-        return

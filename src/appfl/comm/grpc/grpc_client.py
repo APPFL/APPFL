@@ -3,46 +3,35 @@ import time
 import logging
 import numpy as np
 from .grpc_utils import *
+from appfl.login_manager import *
 from .grpc_communicator_pb2 import *
+from .channel import create_grpc_channel
 from .grpc_communicator_pb2_grpc import GRPCCommunicatorStub
 
 class APPFLgRPCClient:
-    def __init__(
-        self,
-        client_id,
-        server_uri,
-        use_tls,
-        max_message_size=2 * 1024 * 1024,
-        api_key=None,
-    ):
+    def __init__(self, client_id, cfg):
         self.logger = logging.getLogger(__name__)
         self.client_id = client_id
-        self.max_message_size = max_message_size
-        channel_options = [
-            ("grpc.max_send_message_length", max_message_size),
-            ("grpc.max_receive_message_length", max_message_size),
-        ]
-        if use_tls == True:
-            self.channel = grpc.secure_channel(
-                server_uri, grpc.ssl_channel_credentials(), options=channel_options
-            )
-        else:
-            self.channel = grpc.insecure_channel(server_uri, options=channel_options)
-
+        self.max_message_size = cfg.max_message_size
+        self.channel = create_grpc_channel(
+            server_uri=cfg.uri,
+            use_ssl=cfg.use_ssl,
+            use_authenticator=cfg.use_authenticator,
+            root_certificates=cfg.client.root_certificates,
+            authenticator=eval(cfg.authenticator)(**cfg.client.authenticator_kwargs) if cfg.use_authenticator else None,
+            max_message_size=self.max_message_size,
+        )
         grpc.channel_ready_future(self.channel).result(timeout=60)
         self.stub = GRPCCommunicatorStub(self.channel)
         self.header = Header(server_id=1, client_id=self.client_id)
         self.time_get_job = 0.0
         self.time_get_tensor = 0.0
         self.time_send_results = 0.0
-        self.metadata = []
-        if api_key:
-            self.metadata.append(("x-api-key", api_key))
 
     def get_job(self, job_done):
         request = JobRequest(header=self.header, job_done=job_done)
         start = time.time()
-        response = self.stub.GetJob(request, metadata=self.metadata)
+        response = self.stub.GetJob(request)
         end = time.time()
         self.time_get_job += end - start
         self.logger.info(
@@ -63,7 +52,7 @@ class APPFLgRPCClient:
             round_number,
         )
         start = time.time()
-        response = self.stub.GetTensorRecord(request, metadata=self.metadata)
+        response = self.stub.GetTensorRecord(request)
         end = time.time()
         self.logger.debug(
             f"[Client ID: {self.client_id: 03}] Received Tensor record (name,round)=(%s,%d)",
@@ -80,7 +69,7 @@ class APPFLgRPCClient:
 
     def get_weight(self, training_size):
         request = WeightRequest(header=self.header, size=training_size)
-        response = self.stub.GetWeight(request, metadata=self.metadata)
+        response = self.stub.GetWeight(request)
         self.logger.debug(
             f"[Client ID: {self.client_id: 03}] Received weight = %e", response.weight
         )
@@ -107,7 +96,7 @@ class APPFLgRPCClient:
             proto, max_message_size=self.max_message_size
         )
         start = time.time()
-        self.stub.SendLearningResults(iter(databuffer), metadata=self.metadata)
+        self.stub.SendLearningResults(iter(databuffer))
         end = time.time()
         if round_number > 1:
             self.time_send_results += end - start
