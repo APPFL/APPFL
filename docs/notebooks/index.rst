@@ -9,4 +9,4 @@ This section provides a collection of notebooks for tutorial.
     simple_mnist.ipynb
     how_to_config.ipynb    
     launch_gRPC
-    
+    launch_gRPC_auth
