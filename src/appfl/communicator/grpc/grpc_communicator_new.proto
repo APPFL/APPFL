@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dictionary;
+
+// Define a message that represents a dictionary with string keys and string values
+message StringDictionary {
+  map<string, string> entries = 1;
+}
+
+service DictionaryService {
+  // Define an RPC method to send a dictionary
+  rpc SendDictionary (StringDictionary) returns (Response);
+}
+
+message Response {
+  string message = 1;
+}
