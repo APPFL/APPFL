@@ -4,8 +4,8 @@ Auxiliary function to create a secure/insecure gRPC channel.
 
 import grpc
 from typing import Optional
+from .auth import APPFLAuthMetadataProvider
 from appfl.login_manager import BaseAuthenticator
-from appfl.communicator.grpc import APPFLAuthMetadataProvider
 
 def create_grpc_channel(
     server_uri: str,

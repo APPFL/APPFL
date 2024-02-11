@@ -29,7 +29,7 @@ class GlobusAuthenticator(BaseAuthenticator):
                     "Please make sure the group exists and you are the admin or manager of the group."
                 ) from e
 
-    def get_auth_token(self) -> dict:
+    def get_auth_token(self) -> dict[str, str]:
         """
         Invoked by FL client to get the auth tokens as a `dict` for the FL server validation.
         """
