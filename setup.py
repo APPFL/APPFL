@@ -88,4 +88,9 @@ setuptools.setup(
             "tqdm",
         ],
     },
+    entry_points={
+        "console_scripts": [
+            "appfl-auth=appfl.login_manager.globus.cli:auth",
+        ],
+    },
 )

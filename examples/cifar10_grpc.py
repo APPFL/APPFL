@@ -10,6 +10,7 @@ from metric.utils import get_metric
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
 from dataloader.cifar10_dataloader import get_cifar10
+from appfl.comm.grpc import load_credential_from_file, ROOT_CERTIFICATE, SERVER_CERTIFICATE, SERVER_CERTIFICATE_KEY
 
 ## read arguments  
 parser = argparse.ArgumentParser() 
@@ -53,6 +54,20 @@ parser.add_argument("--clip_norm", type=float, default=1, help="Type of the used
 parser.add_argument("--loss_fn", type=str, required=False, help="path to the custom loss function definition file, use cross-entropy loss by default if no path is specified")
 parser.add_argument("--loss_fn_name", type=str, required=False, help="class name for the custom loss in the loss function definition file, choose the first class by default if no name is specified")
 
+## evaluation metric
+parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
+parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
+
+## grpc communication
+parser.add_argument('--use_ssl', action="store_true", default=True)
+parser.add_argument('--use_authenticator', action="store_true", default=True)
+parser.add_argument('--uri', type=str, default="localhost:50051")
+parser.add_argument('--server_certificate_key', type=str, default="default")
+parser.add_argument('--server_certificate', type=str, default="default")
+parser.add_argument('--root_certificates', type=str, default="default")
+parser.add_argument('--authenticator', type=str, default="Globus", choices=["Globus", "Naive"])
+parser.add_argument('--globus_group_id', type=str, default="77c1c74b-a33b-11ed-8951-7b5a369c0a53")
+
 args = parser.parse_args()    
 
 if torch.cuda.is_available():
@@ -71,6 +86,34 @@ def main():
     cfg.reproduce = True
     if cfg.reproduce == True:
         set_seed(1)
+
+    ## GRPC configurations
+    cfg.uri = args.uri
+    cfg.use_ssl = args.use_ssl
+    cfg.use_authenticator = args.use_authenticator
+    cfg.server.server_certificate_key = (
+        load_credential_from_file(args.server_certificate_key) 
+        if args.server_certificate_key != "default"
+        else SERVER_CERTIFICATE_KEY
+    )
+    cfg.server.server_certificate = (
+        load_credential_from_file(args.server_certificate) 
+        if args.server_certificate != "default"
+        else SERVER_CERTIFICATE
+    )
+    cfg.client.root_certificates = (
+        load_credential_from_file(args.root_certificates) 
+        if args.root_certificates != "default"
+        else ROOT_CERTIFICATE
+    )
+    if args.authenticator == "Globus":
+        cfg.server.authenticator_kwargs.is_fl_server = True
+        cfg.server.authenticator_kwargs.globus_group_id = args.globus_group_id
+        cfg.client.authenticator_kwargs.is_fl_server = False
+    else:
+        cfg.server.authenticator_kwargs = {}
+        cfg.client.authenticator_kwargs = {}
+    cfg.authenticator = args.authenticator + "Authenticator"
 
     ## dataset
     cfg.train_data_batch_size = args.train_data_batch_size

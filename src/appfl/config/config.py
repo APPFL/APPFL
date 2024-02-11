@@ -4,10 +4,9 @@ from omegaconf import DictConfig, OmegaConf
 import os
 import sys
 
-
 from .fed.federated import *
 from .fed.fedasync import *
-from .fed.iceadmm import *  ## TODO: combine iceadmm and iiadmm under the name of ADMM.
+from .fed.iceadmm import * 
 from .fed.iiadmm import *
 
 
@@ -80,18 +79,33 @@ class Config:
     p_layers: List[str] = field(default_factory=lambda: [])
     config_name: str = ""
 
-    #
-    # gRPC configutations
-    #
+    ## gRPC configutations ##
 
     # 100 MB for gRPC maximum message size
-    max_message_size: int = 104857600
+    max_message_size: int = 10485760
+    use_ssl: bool = False
+    use_authenticator: bool = False
+    authenticator: str = "Globus" # "Globus", "Naive"
+    uri: str = "localhost:50051"
 
     operator: DictConfig = OmegaConf.create({"id": 1})
-    server: DictConfig = OmegaConf.create(
-        {"id": 1, "host": "localhost", "port": 50051, "use_tls": False, "api_key": None}
-    )
-    client: DictConfig = OmegaConf.create({"id": 1})
+    server: DictConfig = OmegaConf.create({
+        "id": 1, 
+        "authenticator_kwargs": {
+            "is_fl_server": True,
+            "globus_group_id": "77c1c74b-a33b-11ed-8951-7b5a369c0a53",
+        },
+        "server_certificate_key": "default",
+        "server_certificate": "default",
+        "max_workers": 10,
+    })
+    client: DictConfig = OmegaConf.create({
+        "id": 1,
+        "root_certificates": "default",
+        "authenticator_kwargs": {
+            "is_fl_server": False,
+        },
+    })
 
     # Lossy compression enabling
     enable_compression: bool = False
