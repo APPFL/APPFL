@@ -43,10 +43,6 @@ def run_client(
     """
 
     logger = logging.getLogger(__name__)
-    if cfg.server.use_tls == True:
-        uri = cfg.server.host
-    else:
-        uri = cfg.server.host + ":" + str(cfg.server.port)
 
     ## We assume to have as many GPUs as the number of MPI processes.
     if cfg.device == "cuda":
@@ -62,16 +58,7 @@ def run_client(
     if cfg.batch_training == False:
         batch_size = len(train_data)
 
-    logger.debug(
-        f"[Client ID: {cid: 03}] connecting to (uri,tls)=({uri},{cfg.server.use_tls})."
-    )
-    comm = APPFLgRPCClient(
-        cid,
-        uri,
-        cfg.server.use_tls,
-        max_message_size=cfg.max_message_size,
-        api_key=cfg.server.api_key,
-    )
+    comm = APPFLgRPCClient(cid, cfg)
 
     # Retrieve its weight from a server.
     weight = -1.0

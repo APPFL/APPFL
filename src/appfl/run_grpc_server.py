@@ -1,17 +1,11 @@
-import grpc
 import logging
 import torch.nn as nn
 from typing import Any
 from .misc.data import Dataset
 from omegaconf import DictConfig
-from .comm.grpc import serve, GRPCCommunicator, APPFLgRPCServer
-
-def grpc_server_on(channel) -> bool:
-    try:
-        grpc.channel_ready_future(channel).result(timeout=1)
-        return True
-    except grpc.FutureTimeoutError:
-        return False
+from appfl.login_manager import *
+from .comm.grpc.serve import serve 
+from .comm.grpc import GRPCCommunicator, APPFLgRPCServer
 
 def run_server(
     cfg: DictConfig,
@@ -33,14 +27,18 @@ def run_server(
         test_data (Dataset): optional testing data. If given, validation will run based on this data.
     """
 
-    # Do not launch a server if it is already on.
-    # channel = grpc.insecure_channel(cfg.server.host + ':' + str(cfg.server.port))
-    # if grpc_server_on(channel):
-    #     print("Server is already running . . .")
-    #     return
-
-    communicator = GRPCCommunicator(cfg.server.id, str(cfg.server.port), APPFLgRPCServer(cfg, model, loss_fn, test_data, num_clients, metric))
+    communicator = GRPCCommunicator(cfg.server.id, APPFLgRPCServer(cfg, model, loss_fn, test_data, num_clients, metric))
 
     logger = logging.getLogger(__name__)
     logger.info("Starting the server to listen to requests from clients . . .")
-    serve(communicator, max_message_size=cfg.max_message_size)
+    
+    serve(
+        server_uri=cfg.uri,
+        servicer=communicator,
+        use_ssl=cfg.use_ssl,
+        use_authenticator=cfg.use_authenticator,
+        server_certificate_key=cfg.server.server_certificate_key,
+        server_certificate=cfg.server.server_certificate,
+        authenticator=eval(cfg.authenticator)(**cfg.server.authenticator_kwargs) if cfg.use_authenticator else None,
+        max_message_size=cfg.max_message_size ,
+    )
