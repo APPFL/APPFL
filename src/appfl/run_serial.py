@@ -15,7 +15,7 @@ def run_serial(
     train_data: Dataset,
     test_data: Dataset = Dataset(),
     dataset_name: str = "MNIST",
-    metric: Any = None
+    metric: Any = None,
 ):
     """
     run_serial:

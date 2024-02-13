@@ -62,6 +62,17 @@ parser.add_argument("--loss_fn_name", type=str, required=False, help="class name
 parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to the custom evaluation metric function definition file, use accuracy by default if no path is specified")
 parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
+## data readiness metrics
+parser.add_argument(
+    "--dr_metrics", 
+    nargs="*", 
+    type=str, 
+    required=False, 
+    help="Usage: --dr_metrics ci ss"
+         "ci: to measure class imbalance of each client" 
+         "ss: to measure sample size"
+)
+
 args = parser.parse_args()    
 
 if torch.cuda.is_available():
@@ -129,7 +140,8 @@ def main():
         visualization=True, 
         output_dirname=cfg.output_dirname, 
         seed=args.seed, 
-        alpha1=args.num_clients
+        alpha1=args.num_clients,
+        dr_metrics = args.dr_metrics
     )
 
     ## Sanity check for the user-defined data

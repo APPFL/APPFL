@@ -17,6 +17,8 @@ def iid_partition(train_data_raw, num_clients, visualization, output=None):
         for idx in split_train_data_raw[i]:
             train_data_input.append(train_data_raw[idx][0].tolist())
             train_data_label.append(train_data_raw[idx][1])
+
+
             label = train_data_raw[idx][1]
             if not label in label_counts:
                 label_counts[label] = 0
@@ -127,6 +129,7 @@ def class_noiid_partition(train_data_raw, num_clients, visualization, output=Non
         for idx in client_datasets[i]:
             train_data_input.append(train_data_raw[idx][0].tolist())
             train_data_label.append(train_data_raw[idx][1])
+
         train_datasets.append(
             Dataset(
                 torch.FloatTensor(train_data_input),

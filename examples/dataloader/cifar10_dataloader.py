@@ -2,16 +2,17 @@ import os
 import torch
 import torchvision
 from mpi4py import MPI
-from typing import Optional
+from typing import Optional, List
 from appfl.config import *
 from appfl.misc.data import Dataset
-from omegaconf import DictConfig
 from .utils.transform import test_transform, train_transform
 from .utils.partition import iid_partition, class_noiid_partition, dirichlet_noiid_partition
+from .utils.generate_readiness_report import generate_readiness_report
 
 def get_cifar10(
         comm: Optional[MPI.Comm], 
         num_clients: int,
+        dr_metrics: Optional[List[str]]=None,
         partition: string = "iid", 
         visualization: bool = True, 
         output_dirname: string = "./outputs",
@@ -62,5 +63,9 @@ def get_cifar10(
         train_datasets = class_noiid_partition(train_data_raw, num_clients, visualization=visualization and comm_rank==0, output=filename, **kwargs)
     elif partition == "dirichlet_noiid":
         train_datasets = dirichlet_noiid_partition(train_data_raw, num_clients, visualization=visualization and comm_rank==0, output=filename, **kwargs)
+
+    # Data readiness
+    if dr_metrics is not None:
+        generate_readiness_report(train_datasets,dr_metrics)
+
     return train_datasets, test_dataset
-    
