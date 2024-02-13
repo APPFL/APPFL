@@ -82,6 +82,7 @@ class BaseServer:
         logger.info("Clipping=%s" % (cfg.fed.args.clip_value if (cfg.fed.args.clip_grad or cfg.fed.args.use_dp) else False))
         logger.info("Elapsed_time=%s" % (round(cfg["logginginfo"]["Elapsed_time"], 2)))
         logger.info("BestAccuracy=%s" % (round(cfg["logginginfo"]["BestAccuracy"], 2)))
+        logger.info("Data_Readiness_Metric=%s" % (cfg.dr_metrics))
 
 class BaseClient:
     """

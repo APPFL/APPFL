@@ -18,9 +18,12 @@ class Dataset(data.Dataset):
         self,
         data_input: torch.FloatTensor = torch.FloatTensor(),
         data_label: torch.Tensor = torch.Tensor(),
+        data_gender: torch.Tensor = torch.Tensor(),
     ):
         self.data_input = data_input
         self.data_label = data_label
+        self.data_gender = data_gender  # New field for gender data
+
 
     def __len__(self):
         """This returns the sample size."""

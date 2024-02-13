@@ -112,6 +112,9 @@ class Config:
     flat_model_dtype: str = "np.float32"
     param_cutoff: int = 1024
 
+    #data readiness
+    dr_metrics: str = ""
+
 
 @dataclass
 class GlobusComputeServerConfig:

@@ -14,9 +14,16 @@ def iid_partition(train_data_raw, num_clients, visualization, output=None):
         client_dataset_info[i] = {}
         train_data_input = []
         train_data_label = []
+        train_data_gender = []
         for idx in split_train_data_raw[i]:
             train_data_input.append(train_data_raw[idx][0].tolist())
             train_data_label.append(train_data_raw[idx][1])
+
+            # Generate random gender (assuming two genders for simplicity)
+            num_samples = len(train_data_raw)
+            client_seed = 42 * (i + 1)
+            train_data_gender = torch.randint(0, 2, (num_samples,), dtype=torch.int64, generator=torch.manual_seed(client_seed))
+
             label = train_data_raw[idx][1]
             if not label in label_counts:
                 label_counts[label] = 0
@@ -28,6 +35,7 @@ def iid_partition(train_data_raw, num_clients, visualization, output=None):
             Dataset(
                 torch.FloatTensor(train_data_input),
                 torch.tensor(train_data_label),
+                train_data_gender
             )
         )
     # Visualize the data distribution among clients
@@ -124,13 +132,19 @@ def class_noiid_partition(train_data_raw, num_clients, visualization, output=Non
     for i in range(num_clients):
         train_data_input = []
         train_data_label = []
+        train_data_gender = []
         for idx in client_datasets[i]:
             train_data_input.append(train_data_raw[idx][0].tolist())
             train_data_label.append(train_data_raw[idx][1])
+
+            # Generate random gender (assuming two genders for simplicity)
+            num_samples = len(train_data_raw)
+            train_data_gender = torch.randint(0, 2, (num_samples,), dtype=torch.int64, generator=torch.manual_seed(42))
         train_datasets.append(
             Dataset(
                 torch.FloatTensor(train_data_input),
                 torch.tensor(train_data_label),
+                train_data_gender
             )
         )
     return train_datasets

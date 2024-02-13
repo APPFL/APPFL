@@ -8,13 +8,17 @@ from appfl.misc.data import Dataset
 from omegaconf import DictConfig
 from .utils.transform import test_transform, train_transform
 from .utils.partition import iid_partition, class_noiid_partition, dirichlet_noiid_partition
+from .utils.generate_readiness_report import generate_readiness_report
+from .utils.drmetrics.imbalance_degree import imbalance_degree
 
 def get_mnist(
         comm: Optional[MPI.Comm], 
         num_clients: int,
+        dr_metrics: string,
         partition: string = "iid",
         visualization: bool = True,
         output_dirname: string = "./outputs",
+        
         **kwargs
 ):
     comm_rank = comm.Get_rank() if comm is not None else 0
@@ -62,5 +66,11 @@ def get_mnist(
         train_datasets = class_noiid_partition(train_data_raw, num_clients, visualization=visualization and comm_rank==0, output=filename, **kwargs)
     elif partition == "dirichlet_noiid":
         train_datasets = dirichlet_noiid_partition(train_data_raw, num_clients, visualization=visualization and comm_rank==0, output=filename, **kwargs)
+    
+    # data readiness report generation
+    if dr_metrics:
+        generate_readiness_report(train_datasets,dr_metrics)
+
     return train_datasets, test_dataset
+
     
