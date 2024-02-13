@@ -1,7 +1,6 @@
 from .drmetrics.imbalance_degree import imbalance_degree
 
-def generate_readiness_report(train_datasets,dr_metrics):
-
+def generate_readiness_report(train_datasets, dr_metrics):
     print("------- Data Readiness Report - Begin --------")
     if "ci" in dr_metrics:
         print("Class Imbalance Degree:")

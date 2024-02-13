@@ -63,8 +63,15 @@ parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to
 parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
 ## data readiness metrics
-parser.add_argument("--dr_metrics",type=str, required=False, default=False, help="ci: to measure class imbalance of each client, ss: to measure sample size")
-
+parser.add_argument(
+    "--dr_metrics", 
+    nargs="*", 
+    type=str, 
+    required=False, 
+    help="Usage: --dr_metrics ci ss"
+         "ci: to measure class imbalance of each client" 
+         "ss: to measure sample size"
+)
 
 args = parser.parse_args()    
 
