@@ -48,7 +48,7 @@ class CustomActionResponse(_message.Message):
     results: str
     def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., results: _Optional[str] = ...) -> None: ...
 
-class DataBuffer(_message.Message):
+class DataBufferNew(_message.Message):
     __slots__ = ["data_bytes"]
     DATA_BYTES_FIELD_NUMBER: _ClassVar[int]
     data_bytes: bytes
@@ -67,10 +67,10 @@ class GlobalModelRespone(_message.Message):
     GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
     HEADER_FIELD_NUMBER: _ClassVar[int]
     META_DATA_FIELD_NUMBER: _ClassVar[int]
-    global_model: str
+    global_model: bytes
     header: ServerHeader
     meta_data: str
-    def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., global_model: _Optional[str] = ..., meta_data: _Optional[str] = ...) -> None: ...
+    def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., global_model: _Optional[bytes] = ..., meta_data: _Optional[str] = ...) -> None: ...
 
 class LocalModelRequest(_message.Message):
     __slots__ = ["header", "local_model", "meta_data"]

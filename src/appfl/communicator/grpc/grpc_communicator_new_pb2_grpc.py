@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import grpc_communicator_new_pb2 as grpc__communicator__new__pb2
+from . import grpc_communicator_new_pb2 as grpc__communicator__new__pb2
 
 
 class NewGRPCCommunicatorStub(object):
@@ -22,12 +22,12 @@ class NewGRPCCommunicatorStub(object):
         self.GetGlobalModel = channel.unary_stream(
                 '/NewGRPCCommunicator/GetGlobalModel',
                 request_serializer=grpc__communicator__new__pb2.GlobalModelRequest.SerializeToString,
-                response_deserializer=grpc__communicator__new__pb2.DataBuffer.FromString,
+                response_deserializer=grpc__communicator__new__pb2.DataBufferNew.FromString,
                 )
         self.SendLocalModel = channel.stream_stream(
                 '/NewGRPCCommunicator/SendLocalModel',
-                request_serializer=grpc__communicator__new__pb2.DataBuffer.SerializeToString,
-                response_deserializer=grpc__communicator__new__pb2.DataBuffer.FromString,
+                request_serializer=grpc__communicator__new__pb2.DataBufferNew.SerializeToString,
+                response_deserializer=grpc__communicator__new__pb2.DataBufferNew.FromString,
                 )
         self.CustomAction = channel.unary_unary(
                 '/NewGRPCCommunicator/CustomAction',
@@ -74,12 +74,12 @@ def add_NewGRPCCommunicatorServicer_to_server(servicer, server):
             'GetGlobalModel': grpc.unary_stream_rpc_method_handler(
                     servicer.GetGlobalModel,
                     request_deserializer=grpc__communicator__new__pb2.GlobalModelRequest.FromString,
-                    response_serializer=grpc__communicator__new__pb2.DataBuffer.SerializeToString,
+                    response_serializer=grpc__communicator__new__pb2.DataBufferNew.SerializeToString,
             ),
             'SendLocalModel': grpc.stream_stream_rpc_method_handler(
                     servicer.SendLocalModel,
-                    request_deserializer=grpc__communicator__new__pb2.DataBuffer.FromString,
-                    response_serializer=grpc__communicator__new__pb2.DataBuffer.SerializeToString,
+                    request_deserializer=grpc__communicator__new__pb2.DataBufferNew.FromString,
+                    response_serializer=grpc__communicator__new__pb2.DataBufferNew.SerializeToString,
             ),
             'CustomAction': grpc.unary_unary_rpc_method_handler(
                     servicer.CustomAction,
@@ -126,7 +126,7 @@ class NewGRPCCommunicator(object):
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/NewGRPCCommunicator/GetGlobalModel',
             grpc__communicator__new__pb2.GlobalModelRequest.SerializeToString,
-            grpc__communicator__new__pb2.DataBuffer.FromString,
+            grpc__communicator__new__pb2.DataBufferNew.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -142,8 +142,8 @@ class NewGRPCCommunicator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.stream_stream(request_iterator, target, '/NewGRPCCommunicator/SendLocalModel',
-            grpc__communicator__new__pb2.DataBuffer.SerializeToString,
-            grpc__communicator__new__pb2.DataBuffer.FromString,
+            grpc__communicator__new__pb2.DataBufferNew.SerializeToString,
+            grpc__communicator__new__pb2.DataBufferNew.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

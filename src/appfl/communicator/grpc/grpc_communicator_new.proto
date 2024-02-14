@@ -2,14 +2,14 @@ syntax = "proto3";
 
 service NewGRPCCommunicator {
   rpc GetConfiguration (ConfigurationRequest) returns (ConfigurationResponse) {}
-  rpc GetGlobalModel (GlobalModelRequest) returns (stream DataBuffer) {}
-  rpc SendLocalModel (stream DataBuffer) returns (stream DataBuffer) {}
+  rpc GetGlobalModel (GlobalModelRequest) returns (stream DataBufferNew) {}
+  rpc SendLocalModel (stream DataBufferNew) returns (stream DataBufferNew) {}
   rpc CustomAction (CustomActionRequest) returns (CustomActionResponse) {}
 }
 
 // Binary data buffer for transmitted data with larger size 
 // i.e., data that may exceed the maximum message size
-message DataBuffer {
+message DataBufferNew {
   bytes  data_bytes = 1; // data
 } 
 
@@ -47,7 +47,7 @@ message GlobalModelRequest {
 
 message GlobalModelRespone {
   ServerHeader header = 1;
-  string global_model = 2;
+  bytes global_model = 2;
   string meta_data = 3;
 }
 
