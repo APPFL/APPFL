@@ -48,5 +48,5 @@ class ClientTrainerFileLogger:
         content = " ".join(["%*s" % (l, c) if not isinstance(c, float) else "%*.4f" % (l, c) for l, c in zip(length, contents)])
         self.logger.info(content)
 
-    def log_info(self, info: str) -> None:
+    def info(self, info: str) -> None:
         self.logger.info(info)

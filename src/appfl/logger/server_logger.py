@@ -26,5 +26,5 @@ class ServerAgentFileLogger:
             f_handler.setFormatter(fmt)
             self.logger.addHandler(f_handler)
 
-    def log_info(self, info: str) -> None:
+    def info(self, info: str) -> None:
         self.logger.info(info)
