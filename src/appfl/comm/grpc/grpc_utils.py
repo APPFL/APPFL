@@ -10,6 +10,7 @@ def construct_tensor_record(name, nparray):
     )
 
 def proto_to_databuffer(proto, max_message_size=(2 * 1024 * 1024)):
+    max_message_size = max_message_size - 16 # 16 bytes for the message size field
     data_bytes = proto.SerializeToString()
     data_bytes_size = len(data_bytes)
     message_size = (

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 service GRPCCommunicator {
     rpc GetJob(JobRequest) returns (JobResponse) {}
-    rpc GetTensorRecord(TensorRequest) returns (TensorRecord) {}
+    rpc GetTensorRecord(TensorRequest) returns (stream DataBuffer) {}
     rpc GetWeight(WeightRequest) returns (WeightResponse) {}
     rpc SendLearningResults(stream DataBuffer) returns (Acknowledgment) {}
 }

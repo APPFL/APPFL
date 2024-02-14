@@ -52,7 +52,12 @@ class APPFLgRPCClient:
             round_number,
         )
         start = time.time()
-        response = self.stub.GetTensorRecord(request)
+        response = TensorRecord()
+        bytes_received = b""
+        for bytes in self.stub.GetTensorRecord(request):
+            bytes_received += bytes.data_bytes
+        response.ParseFromString(bytes_received)
+
         end = time.time()
         self.logger.debug(
             f"[Client ID: {self.client_id: 03}] Received Tensor record (name,round)=(%s,%d)",

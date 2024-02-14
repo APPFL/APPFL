@@ -19,10 +19,10 @@ class GRPCCommunicatorStub(object):
                 request_serializer=grpc__communicator__pb2.JobRequest.SerializeToString,
                 response_deserializer=grpc__communicator__pb2.JobResponse.FromString,
                 )
-        self.GetTensorRecord = channel.unary_unary(
+        self.GetTensorRecord = channel.unary_stream(
                 '/GRPCCommunicator/GetTensorRecord',
                 request_serializer=grpc__communicator__pb2.TensorRequest.SerializeToString,
-                response_deserializer=grpc__communicator__pb2.TensorRecord.FromString,
+                response_deserializer=grpc__communicator__pb2.DataBuffer.FromString,
                 )
         self.GetWeight = channel.unary_unary(
                 '/GRPCCommunicator/GetWeight',
@@ -71,10 +71,10 @@ def add_GRPCCommunicatorServicer_to_server(servicer, server):
                     request_deserializer=grpc__communicator__pb2.JobRequest.FromString,
                     response_serializer=grpc__communicator__pb2.JobResponse.SerializeToString,
             ),
-            'GetTensorRecord': grpc.unary_unary_rpc_method_handler(
+            'GetTensorRecord': grpc.unary_stream_rpc_method_handler(
                     servicer.GetTensorRecord,
                     request_deserializer=grpc__communicator__pb2.TensorRequest.FromString,
-                    response_serializer=grpc__communicator__pb2.TensorRecord.SerializeToString,
+                    response_serializer=grpc__communicator__pb2.DataBuffer.SerializeToString,
             ),
             'GetWeight': grpc.unary_unary_rpc_method_handler(
                     servicer.GetWeight,
@@ -124,9 +124,9 @@ class GRPCCommunicator(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/GRPCCommunicator/GetTensorRecord',
+        return grpc.experimental.unary_stream(request, target, '/GRPCCommunicator/GetTensorRecord',
             grpc__communicator__pb2.TensorRequest.SerializeToString,
-            grpc__communicator__pb2.TensorRecord.FromString,
+            grpc__communicator__pb2.DataBuffer.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
