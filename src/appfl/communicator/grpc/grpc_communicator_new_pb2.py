@@ -13,21 +13,37 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bgrpc_communicator_new.proto\x12\ndictionary\"~\n\x10StringDictionary\x12:\n\x07\x65ntries\x18\x01 \x03(\x0b\x32).dictionary.StringDictionary.EntriesEntry\x1a.\n\x0c\x45ntriesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x1b\n\x08Response\x12\x0f\n\x07message\x18\x01 \x01(\t2Y\n\x11\x44ictionaryService\x12\x44\n\x0eSendDictionary\x12\x1c.dictionary.StringDictionary\x1a\x14.dictionary.Responseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bgrpc_communicator_new.proto\" \n\nDataBuffer\x12\x12\n\ndata_bytes\x18\x01 \x01(\x0c\"!\n\x0c\x43lientHeader\x12\x11\n\tclient_id\x18\x01 \x01(\t\"-\n\x0cServerHeader\x12\x1d\n\x06status\x18\x01 \x01(\x0e\x32\r.ServerStatus\"H\n\x14\x43onfigurationRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"M\n\x15\x43onfigurationResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x15\n\rconfiguration\x18\x02 \x01(\t\"F\n\x12GlobalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"\\\n\x12GlobalModelRespone\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"Z\n\x11LocalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x13\n\x0blocal_model\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"\\\n\x12LocalModelResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"W\n\x13\x43ustomActionRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x0e\n\x06\x61\x63tion\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"F\n\x14\x43ustomActionResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x0f\n\x07results\x18\x02 \x01(\t*,\n\x0cServerStatus\x12\x07\n\x03RUN\x10\x00\x12\x08\n\x04\x44ONE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\x32\x83\x02\n\x13NewGRPCCommunicator\x12\x43\n\x10GetConfiguration\x12\x15.ConfigurationRequest\x1a\x16.ConfigurationResponse\"\x00\x12\x36\n\x0eGetGlobalModel\x12\x13.GlobalModelRequest\x1a\x0b.DataBuffer\"\x00\x30\x01\x12\x30\n\x0eSendLocalModel\x12\x0b.DataBuffer\x1a\x0b.DataBuffer\"\x00(\x01\x30\x01\x12=\n\x0c\x43ustomAction\x12\x14.CustomActionRequest\x1a\x15.CustomActionResponse\"\x00\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'grpc_communicator_new_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _STRINGDICTIONARY_ENTRIESENTRY._options = None
-  _STRINGDICTIONARY_ENTRIESENTRY._serialized_options = b'8\001'
-  _STRINGDICTIONARY._serialized_start=43
-  _STRINGDICTIONARY._serialized_end=169
-  _STRINGDICTIONARY_ENTRIESENTRY._serialized_start=123
-  _STRINGDICTIONARY_ENTRIESENTRY._serialized_end=169
-  _RESPONSE._serialized_start=171
-  _RESPONSE._serialized_end=198
-  _DICTIONARYSERVICE._serialized_start=200
-  _DICTIONARYSERVICE._serialized_end=289
+  _SERVERSTATUS._serialized_start=813
+  _SERVERSTATUS._serialized_end=857
+  _DATABUFFER._serialized_start=31
+  _DATABUFFER._serialized_end=63
+  _CLIENTHEADER._serialized_start=65
+  _CLIENTHEADER._serialized_end=98
+  _SERVERHEADER._serialized_start=100
+  _SERVERHEADER._serialized_end=145
+  _CONFIGURATIONREQUEST._serialized_start=147
+  _CONFIGURATIONREQUEST._serialized_end=219
+  _CONFIGURATIONRESPONSE._serialized_start=221
+  _CONFIGURATIONRESPONSE._serialized_end=298
+  _GLOBALMODELREQUEST._serialized_start=300
+  _GLOBALMODELREQUEST._serialized_end=370
+  _GLOBALMODELRESPONE._serialized_start=372
+  _GLOBALMODELRESPONE._serialized_end=464
+  _LOCALMODELREQUEST._serialized_start=466
+  _LOCALMODELREQUEST._serialized_end=556
+  _LOCALMODELRESPONSE._serialized_start=558
+  _LOCALMODELRESPONSE._serialized_end=650
+  _CUSTOMACTIONREQUEST._serialized_start=652
+  _CUSTOMACTIONREQUEST._serialized_end=739
+  _CUSTOMACTIONRESPONSE._serialized_start=741
+  _CUSTOMACTIONRESPONSE._serialized_end=811
+  _NEWGRPCCOMMUNICATOR._serialized_start=860
+  _NEWGRPCCOMMUNICATOR._serialized_end=1119
 # @@protoc_insertion_point(module_scope)

@@ -1,25 +1,102 @@
-from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional
+from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+DONE: ServerStatus
+ERROR: ServerStatus
+RUN: ServerStatus
 
-class Response(_message.Message):
-    __slots__ = ["message"]
-    MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    message: str
-    def __init__(self, message: _Optional[str] = ...) -> None: ...
+class ClientHeader(_message.Message):
+    __slots__ = ["client_id"]
+    CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
+    client_id: str
+    def __init__(self, client_id: _Optional[str] = ...) -> None: ...
 
-class StringDictionary(_message.Message):
-    __slots__ = ["entries"]
-    class EntriesEntry(_message.Message):
-        __slots__ = ["key", "value"]
-        KEY_FIELD_NUMBER: _ClassVar[int]
-        VALUE_FIELD_NUMBER: _ClassVar[int]
-        key: str
-        value: str
-        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
-    ENTRIES_FIELD_NUMBER: _ClassVar[int]
-    entries: _containers.ScalarMap[str, str]
-    def __init__(self, entries: _Optional[_Mapping[str, str]] = ...) -> None: ...
+class ConfigurationRequest(_message.Message):
+    __slots__ = ["header", "meta_data"]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    META_DATA_FIELD_NUMBER: _ClassVar[int]
+    header: ClientHeader
+    meta_data: str
+    def __init__(self, header: _Optional[_Union[ClientHeader, _Mapping]] = ..., meta_data: _Optional[str] = ...) -> None: ...
+
+class ConfigurationResponse(_message.Message):
+    __slots__ = ["configuration", "header"]
+    CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    configuration: str
+    header: ServerHeader
+    def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., configuration: _Optional[str] = ...) -> None: ...
+
+class CustomActionRequest(_message.Message):
+    __slots__ = ["action", "header", "meta_data"]
+    ACTION_FIELD_NUMBER: _ClassVar[int]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    META_DATA_FIELD_NUMBER: _ClassVar[int]
+    action: str
+    header: ClientHeader
+    meta_data: str
+    def __init__(self, header: _Optional[_Union[ClientHeader, _Mapping]] = ..., action: _Optional[str] = ..., meta_data: _Optional[str] = ...) -> None: ...
+
+class CustomActionResponse(_message.Message):
+    __slots__ = ["header", "results"]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    RESULTS_FIELD_NUMBER: _ClassVar[int]
+    header: ServerHeader
+    results: str
+    def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., results: _Optional[str] = ...) -> None: ...
+
+class DataBuffer(_message.Message):
+    __slots__ = ["data_bytes"]
+    DATA_BYTES_FIELD_NUMBER: _ClassVar[int]
+    data_bytes: bytes
+    def __init__(self, data_bytes: _Optional[bytes] = ...) -> None: ...
+
+class GlobalModelRequest(_message.Message):
+    __slots__ = ["header", "meta_data"]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    META_DATA_FIELD_NUMBER: _ClassVar[int]
+    header: ClientHeader
+    meta_data: str
+    def __init__(self, header: _Optional[_Union[ClientHeader, _Mapping]] = ..., meta_data: _Optional[str] = ...) -> None: ...
+
+class GlobalModelRespone(_message.Message):
+    __slots__ = ["global_model", "header", "meta_data"]
+    GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    META_DATA_FIELD_NUMBER: _ClassVar[int]
+    global_model: str
+    header: ServerHeader
+    meta_data: str
+    def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., global_model: _Optional[str] = ..., meta_data: _Optional[str] = ...) -> None: ...
+
+class LocalModelRequest(_message.Message):
+    __slots__ = ["header", "local_model", "meta_data"]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    LOCAL_MODEL_FIELD_NUMBER: _ClassVar[int]
+    META_DATA_FIELD_NUMBER: _ClassVar[int]
+    header: ClientHeader
+    local_model: str
+    meta_data: str
+    def __init__(self, header: _Optional[_Union[ClientHeader, _Mapping]] = ..., local_model: _Optional[str] = ..., meta_data: _Optional[str] = ...) -> None: ...
+
+class LocalModelResponse(_message.Message):
+    __slots__ = ["global_model", "header", "meta_data"]
+    GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    META_DATA_FIELD_NUMBER: _ClassVar[int]
+    global_model: str
+    header: ServerHeader
+    meta_data: str
+    def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., global_model: _Optional[str] = ..., meta_data: _Optional[str] = ...) -> None: ...
+
+class ServerHeader(_message.Message):
+    __slots__ = ["status"]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    status: ServerStatus
+    def __init__(self, status: _Optional[_Union[ServerStatus, str]] = ...) -> None: ...
+
+class ServerStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = []
