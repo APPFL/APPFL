@@ -1,17 +1,41 @@
 syntax = "proto3";
 
-package dictionary;
-
-// Define a message that represents a dictionary with string keys and string values
-message StringDictionary {
-  map<string, string> entries = 1;
+service NewGRPCCommunicator {
+  rpc GetConfiguration (ConfigurationRequest) returns (ConfigurationResponse) {}
+  rpc GetGlobalModel (GlobalModelRequest) returns (stream DataBuffer) {}
+  rpc SendLocalModel (stream DataBuffer) returns (LocalModelResponse) {}
+  rpc CustomAction (CustomActionRequest) returns (CustomActionResponse) {}
 }
 
-service DictionaryService {
-  // Define an RPC method to send a dictionary
-  rpc SendDictionary (StringDictionary) returns (Response);
+message DataBuffer {
+  bytes  data_bytes = 2; // data
+} 
+
+message ClientHeader {
+  string client_id = 1;
 }
 
-message Response {
-  string message = 1;
+message ServerHeader {
+  ServerStatus status = 1;
+}
+
+enum ServerStatus {
+  RUN = 0;
+  DONE = 1;
+  ERROR = 2;
+}
+
+message ConfigurationRequest {
+  ClientHeader header = 1;
+  string meta_data = 2;
+}
+
+message ConfigurationResponse {
+  ServerHeader header = 1;
+  string configuration = 2;
+}
+
+message GlobalModelRequest {
+  ClientHeader header = 1;
+  string meta_data = 2;
 }
