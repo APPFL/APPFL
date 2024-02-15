@@ -13,15 +13,15 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bgrpc_communicator_new.proto\"#\n\rDataBufferNew\x12\x12\n\ndata_bytes\x18\x01 \x01(\x0c\"!\n\x0c\x43lientHeader\x12\x11\n\tclient_id\x18\x01 \x01(\t\"-\n\x0cServerHeader\x12\x1d\n\x06status\x18\x01 \x01(\x0e\x32\r.ServerStatus\"H\n\x14\x43onfigurationRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"M\n\x15\x43onfigurationResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x15\n\rconfiguration\x18\x02 \x01(\t\"F\n\x12GlobalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"\\\n\x12GlobalModelRespone\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"Z\n\x11LocalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x13\n\x0blocal_model\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"\\\n\x12LocalModelResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"W\n\x13\x43ustomActionRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x0e\n\x06\x61\x63tion\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"F\n\x14\x43ustomActionResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x0f\n\x07results\x18\x02 \x01(\t*,\n\x0cServerStatus\x12\x07\n\x03RUN\x10\x00\x12\x08\n\x04\x44ONE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\x32\x8c\x02\n\x13NewGRPCCommunicator\x12\x43\n\x10GetConfiguration\x12\x15.ConfigurationRequest\x1a\x16.ConfigurationResponse\"\x00\x12\x39\n\x0eGetGlobalModel\x12\x13.GlobalModelRequest\x1a\x0e.DataBufferNew\"\x00\x30\x01\x12\x36\n\x0eSendLocalModel\x12\x0e.DataBufferNew\x1a\x0e.DataBufferNew\"\x00(\x01\x30\x01\x12=\n\x0c\x43ustomAction\x12\x14.CustomActionRequest\x1a\x15.CustomActionResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bgrpc_communicator_new.proto\"#\n\rDataBufferNew\x12\x12\n\ndata_bytes\x18\x01 \x01(\x0c\"!\n\x0c\x43lientHeader\x12\x11\n\tclient_id\x18\x01 \x01(\t\"-\n\x0cServerHeader\x12\x1d\n\x06status\x18\x01 \x01(\x0e\x32\r.ServerStatus\"H\n\x14\x43onfigurationRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"M\n\x15\x43onfigurationResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x15\n\rconfiguration\x18\x02 \x01(\t\"I\n\x15GetGlobalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"_\n\x15GetGlobalModelRespone\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"a\n\x18UpdateGlobalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x13\n\x0blocal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"c\n\x19UpdateGlobalModelResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"W\n\x13\x43ustomActionRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x0e\n\x06\x61\x63tion\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"F\n\x14\x43ustomActionResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x0f\n\x07results\x18\x02 \x01(\t*,\n\x0cServerStatus\x12\x07\n\x03RUN\x10\x00\x12\x08\n\x04\x44ONE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\x32\x92\x02\n\x13NewGRPCCommunicator\x12\x43\n\x10GetConfiguration\x12\x15.ConfigurationRequest\x1a\x16.ConfigurationResponse\"\x00\x12<\n\x0eGetGlobalModel\x12\x16.GetGlobalModelRequest\x1a\x0e.DataBufferNew\"\x00\x30\x01\x12\x39\n\x11UpdateGlobalModel\x12\x0e.DataBufferNew\x1a\x0e.DataBufferNew\"\x00(\x01\x30\x01\x12=\n\x0c\x43ustomAction\x12\x14.CustomActionRequest\x1a\x15.CustomActionResponse\"\x00\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'grpc_communicator_new_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _SERVERSTATUS._serialized_start=816
-  _SERVERSTATUS._serialized_end=860
+  _SERVERSTATUS._serialized_start=836
+  _SERVERSTATUS._serialized_end=880
   _DATABUFFERNEW._serialized_start=31
   _DATABUFFERNEW._serialized_end=66
   _CLIENTHEADER._serialized_start=68
@@ -32,18 +32,18 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _CONFIGURATIONREQUEST._serialized_end=222
   _CONFIGURATIONRESPONSE._serialized_start=224
   _CONFIGURATIONRESPONSE._serialized_end=301
-  _GLOBALMODELREQUEST._serialized_start=303
-  _GLOBALMODELREQUEST._serialized_end=373
-  _GLOBALMODELRESPONE._serialized_start=375
-  _GLOBALMODELRESPONE._serialized_end=467
-  _LOCALMODELREQUEST._serialized_start=469
-  _LOCALMODELREQUEST._serialized_end=559
-  _LOCALMODELRESPONSE._serialized_start=561
-  _LOCALMODELRESPONSE._serialized_end=653
-  _CUSTOMACTIONREQUEST._serialized_start=655
-  _CUSTOMACTIONREQUEST._serialized_end=742
-  _CUSTOMACTIONRESPONSE._serialized_start=744
-  _CUSTOMACTIONRESPONSE._serialized_end=814
-  _NEWGRPCCOMMUNICATOR._serialized_start=863
-  _NEWGRPCCOMMUNICATOR._serialized_end=1131
+  _GETGLOBALMODELREQUEST._serialized_start=303
+  _GETGLOBALMODELREQUEST._serialized_end=376
+  _GETGLOBALMODELRESPONE._serialized_start=378
+  _GETGLOBALMODELRESPONE._serialized_end=473
+  _UPDATEGLOBALMODELREQUEST._serialized_start=475
+  _UPDATEGLOBALMODELREQUEST._serialized_end=572
+  _UPDATEGLOBALMODELRESPONSE._serialized_start=574
+  _UPDATEGLOBALMODELRESPONSE._serialized_end=673
+  _CUSTOMACTIONREQUEST._serialized_start=675
+  _CUSTOMACTIONREQUEST._serialized_end=762
+  _CUSTOMACTIONRESPONSE._serialized_start=764
+  _CUSTOMACTIONRESPONSE._serialized_end=834
+  _NEWGRPCCOMMUNICATOR._serialized_start=883
+  _NEWGRPCCOMMUNICATOR._serialized_end=1157
 # @@protoc_insertion_point(module_scope)

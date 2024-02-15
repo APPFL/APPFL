@@ -21,11 +21,11 @@ class NewGRPCCommunicatorStub(object):
                 )
         self.GetGlobalModel = channel.unary_stream(
                 '/NewGRPCCommunicator/GetGlobalModel',
-                request_serializer=grpc__communicator__new__pb2.GlobalModelRequest.SerializeToString,
+                request_serializer=grpc__communicator__new__pb2.GetGlobalModelRequest.SerializeToString,
                 response_deserializer=grpc__communicator__new__pb2.DataBufferNew.FromString,
                 )
-        self.SendLocalModel = channel.stream_stream(
-                '/NewGRPCCommunicator/SendLocalModel',
+        self.UpdateGlobalModel = channel.stream_stream(
+                '/NewGRPCCommunicator/UpdateGlobalModel',
                 request_serializer=grpc__communicator__new__pb2.DataBufferNew.SerializeToString,
                 response_deserializer=grpc__communicator__new__pb2.DataBufferNew.FromString,
                 )
@@ -51,7 +51,7 @@ class NewGRPCCommunicatorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def SendLocalModel(self, request_iterator, context):
+    def UpdateGlobalModel(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -73,11 +73,11 @@ def add_NewGRPCCommunicatorServicer_to_server(servicer, server):
             ),
             'GetGlobalModel': grpc.unary_stream_rpc_method_handler(
                     servicer.GetGlobalModel,
-                    request_deserializer=grpc__communicator__new__pb2.GlobalModelRequest.FromString,
+                    request_deserializer=grpc__communicator__new__pb2.GetGlobalModelRequest.FromString,
                     response_serializer=grpc__communicator__new__pb2.DataBufferNew.SerializeToString,
             ),
-            'SendLocalModel': grpc.stream_stream_rpc_method_handler(
-                    servicer.SendLocalModel,
+            'UpdateGlobalModel': grpc.stream_stream_rpc_method_handler(
+                    servicer.UpdateGlobalModel,
                     request_deserializer=grpc__communicator__new__pb2.DataBufferNew.FromString,
                     response_serializer=grpc__communicator__new__pb2.DataBufferNew.SerializeToString,
             ),
@@ -125,13 +125,13 @@ class NewGRPCCommunicator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/NewGRPCCommunicator/GetGlobalModel',
-            grpc__communicator__new__pb2.GlobalModelRequest.SerializeToString,
+            grpc__communicator__new__pb2.GetGlobalModelRequest.SerializeToString,
             grpc__communicator__new__pb2.DataBufferNew.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def SendLocalModel(request_iterator,
+    def UpdateGlobalModel(request_iterator,
             target,
             options=(),
             channel_credentials=None,
@@ -141,7 +141,7 @@ class NewGRPCCommunicator(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_stream(request_iterator, target, '/NewGRPCCommunicator/SendLocalModel',
+        return grpc.experimental.stream_stream(request_iterator, target, '/NewGRPCCommunicator/UpdateGlobalModel',
             grpc__communicator__new__pb2.DataBufferNew.SerializeToString,
             grpc__communicator__new__pb2.DataBufferNew.FromString,
             options, channel_credentials,

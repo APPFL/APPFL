@@ -54,7 +54,7 @@ class DataBufferNew(_message.Message):
     data_bytes: bytes
     def __init__(self, data_bytes: _Optional[bytes] = ...) -> None: ...
 
-class GlobalModelRequest(_message.Message):
+class GetGlobalModelRequest(_message.Message):
     __slots__ = ["header", "meta_data"]
     HEADER_FIELD_NUMBER: _ClassVar[int]
     META_DATA_FIELD_NUMBER: _ClassVar[int]
@@ -62,7 +62,7 @@ class GlobalModelRequest(_message.Message):
     meta_data: str
     def __init__(self, header: _Optional[_Union[ClientHeader, _Mapping]] = ..., meta_data: _Optional[str] = ...) -> None: ...
 
-class GlobalModelRespone(_message.Message):
+class GetGlobalModelRespone(_message.Message):
     __slots__ = ["global_model", "header", "meta_data"]
     GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
     HEADER_FIELD_NUMBER: _ClassVar[int]
@@ -72,31 +72,31 @@ class GlobalModelRespone(_message.Message):
     meta_data: str
     def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., global_model: _Optional[bytes] = ..., meta_data: _Optional[str] = ...) -> None: ...
 
-class LocalModelRequest(_message.Message):
-    __slots__ = ["header", "local_model", "meta_data"]
-    HEADER_FIELD_NUMBER: _ClassVar[int]
-    LOCAL_MODEL_FIELD_NUMBER: _ClassVar[int]
-    META_DATA_FIELD_NUMBER: _ClassVar[int]
-    header: ClientHeader
-    local_model: str
-    meta_data: str
-    def __init__(self, header: _Optional[_Union[ClientHeader, _Mapping]] = ..., local_model: _Optional[str] = ..., meta_data: _Optional[str] = ...) -> None: ...
-
-class LocalModelResponse(_message.Message):
-    __slots__ = ["global_model", "header", "meta_data"]
-    GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
-    HEADER_FIELD_NUMBER: _ClassVar[int]
-    META_DATA_FIELD_NUMBER: _ClassVar[int]
-    global_model: str
-    header: ServerHeader
-    meta_data: str
-    def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., global_model: _Optional[str] = ..., meta_data: _Optional[str] = ...) -> None: ...
-
 class ServerHeader(_message.Message):
     __slots__ = ["status"]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     status: ServerStatus
     def __init__(self, status: _Optional[_Union[ServerStatus, str]] = ...) -> None: ...
+
+class UpdateGlobalModelRequest(_message.Message):
+    __slots__ = ["header", "local_model", "meta_data"]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    LOCAL_MODEL_FIELD_NUMBER: _ClassVar[int]
+    META_DATA_FIELD_NUMBER: _ClassVar[int]
+    header: ClientHeader
+    local_model: bytes
+    meta_data: str
+    def __init__(self, header: _Optional[_Union[ClientHeader, _Mapping]] = ..., local_model: _Optional[bytes] = ..., meta_data: _Optional[str] = ...) -> None: ...
+
+class UpdateGlobalModelResponse(_message.Message):
+    __slots__ = ["global_model", "header", "meta_data"]
+    GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    META_DATA_FIELD_NUMBER: _ClassVar[int]
+    global_model: bytes
+    header: ServerHeader
+    meta_data: str
+    def __init__(self, header: _Optional[_Union[ServerHeader, _Mapping]] = ..., global_model: _Optional[bytes] = ..., meta_data: _Optional[str] = ...) -> None: ...
 
 class ServerStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = []

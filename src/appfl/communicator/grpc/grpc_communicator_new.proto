@@ -2,8 +2,8 @@ syntax = "proto3";
 
 service NewGRPCCommunicator {
   rpc GetConfiguration (ConfigurationRequest) returns (ConfigurationResponse) {}
-  rpc GetGlobalModel (GlobalModelRequest) returns (stream DataBufferNew) {}
-  rpc SendLocalModel (stream DataBufferNew) returns (stream DataBufferNew) {}
+  rpc GetGlobalModel (GetGlobalModelRequest) returns (stream DataBufferNew) {}
+  rpc UpdateGlobalModel (stream DataBufferNew) returns (stream DataBufferNew) {}
   rpc CustomAction (CustomActionRequest) returns (CustomActionResponse) {}
 }
 
@@ -40,26 +40,26 @@ message ConfigurationResponse {
   string configuration = 2;
 }
 
-message GlobalModelRequest {
+message GetGlobalModelRequest {
   ClientHeader header = 1;
   string meta_data = 2;
 }
 
-message GlobalModelRespone {
+message GetGlobalModelRespone {
   ServerHeader header = 1;
   bytes global_model = 2;
   string meta_data = 3;
 }
 
-message LocalModelRequest {
+message UpdateGlobalModelRequest {
   ClientHeader header = 1;
-  string local_model = 2;
+  bytes local_model = 2;
   string meta_data = 3;
 }
 
-message LocalModelResponse {
+message UpdateGlobalModelResponse {
   ServerHeader header = 1;
-  string global_model = 2;
+  bytes global_model = 2;
   string meta_data = 3;
 }
 
