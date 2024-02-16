@@ -19,7 +19,7 @@ class SyncScheduler(BaseScheduler):
         )
         self.num_clients = self.server_config.num_clients
 
-    def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict]) -> Future:
+    def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Future:
         """
         Schedule a synchronous global aggregation for the local model from a client.
         The method will return a future object for the aggregated model, which will

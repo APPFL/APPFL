@@ -38,7 +38,7 @@ class APPFLServerAgent:
         self.aggregator: BaseAggregator = self._get_aggregator()
         self.scheduler: BaseScheduler = self._get_scheduler()
 
-    def get_client_configs(self) -> DictConfig:
+    def get_client_configs(self, **kwargs) -> DictConfig:
         """Return the FL configurations that are shared among all clients."""
         return self.server_agent_config.client_configs
     
@@ -46,7 +46,8 @@ class APPFLServerAgent:
             self, 
             client_id: Union[int, str],
             local_model: Union[Dict, OrderedDict],
-            blocking: bool = False
+            blocking: bool = False,
+            **kwargs
         ) -> Union[Dict, OrderedDict, Future]:
         """
         Update the global model using the local model from a client and return the updated global model.
@@ -56,7 +57,7 @@ class APPFLServerAgent:
             Setting `blocking` to `True` will block the client until the global model is available. 
             Otherwise, the method may return a `Future` object if the most up-to-date global model is not yet available.
         """
-        global_model = self.scheduler.schedule(client_id, local_model)
+        global_model = self.scheduler.schedule(client_id, local_model, **kwargs)
         if not isinstance(global_model, Future):
             return global_model
         if blocking:
@@ -64,9 +65,9 @@ class APPFLServerAgent:
         else:
             return global_model # return the `Future` object
         
-    def get_parameters(self) -> Union[Dict, OrderedDict]:
+    def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict]:
         """Return the global model to the clients."""
-        return self.aggregator.get_parameters()
+        return self.aggregator.get_parameters(**kwargs)
 
     def _create_logger(self) -> None:
         kwargs = {}

@@ -42,5 +42,5 @@ class FedAvgAggregator(BaseAggregator):
         self.model.load_state_dict(global_state)
         return global_state
     
-    def get_parameters(self) -> Union[Dict, OrderedDict]:
+    def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict]:
         return copy.deepcopy(self.model.state_dict())

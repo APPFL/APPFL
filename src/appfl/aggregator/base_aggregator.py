@@ -11,6 +11,6 @@ class BaseAggregator:
         pass
 
     @abc.abstractmethod
-    def get_parameters(self) -> Union[Dict, OrderedDict]:
+    def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict]:
         """Return global model parameters"""
         pass

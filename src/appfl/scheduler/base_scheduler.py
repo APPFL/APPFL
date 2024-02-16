@@ -16,7 +16,7 @@ class BaseScheduler:
         self.logger = logger
 
     @abc.abstractmethod
-    def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict]) -> Union[Future, Dict, OrderedDict]:
+    def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Union[Future, Dict, OrderedDict]:
         """
         Schedule the global aggregation for the local model from a client.
         :param local_model: the local model from a client
