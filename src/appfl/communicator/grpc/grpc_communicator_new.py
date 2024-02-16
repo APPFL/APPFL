@@ -1,58 +1,124 @@
+import io
 import grpc
 import json
-import pickle
+import torch
 import logging
 from typing import Optional
+from concurrent import futures
 from omegaconf import OmegaConf
 from .grpc_communicator_new_pb2 import *
 from .grpc_communicator_new_pb2_grpc import *
 from appfl.agent import APPFLServerAgent
 from appfl.logger import ServerAgentFileLogger
-from concurrent import futures
-from .utils import proto_to_databuffer_new
+from .utils import proto_to_databuffer_new, serialize_model
 
 class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
     def __init__(
         self,
         server_agent: APPFLServerAgent,
+        max_message_size: int = 2 * 1024 * 1024,
         logger: Optional[ServerAgentFileLogger] = None,
     ) -> None:
         self.server_agent = server_agent
+        self.max_message_size = max_message_size
         self.logger = logger if logger is not None else self._default_logger()
 
     def GetConfiguration(self, request, context):
-        self.logger.info(f"Received GetConfiguration request: {request}")
-        client_configs = self.server_agent.get_client_configs()
+        """
+        Client requests the FL configurations that are shared among all clients from the server.
+        :param: `request.header.client_id`: A unique client ID
+        :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+        :return `response.header.status`: Server status
+        :return `response.configuration`: JSON serialized FL configurations
+        """
+        if len(request.meta_data) == 0: 
+            meta_data = {}
+        else:
+            meta_data = json.loads(request.meta_data)
+        self.logger.info(f"[DEBUG] - {meta_data}")
+        client_configs = self.server_agent.get_client_configs(**meta_data)
         client_configs = OmegaConf.to_container(client_configs, resolve=True)
         client_configs_serialized = json.dumps(client_configs)
-        self.logger.info(f"Sending client configurations: {client_configs_serialized}")
-        return ConfigurationResponse(
-            header=ServerHeader(
-                status=ServerStatus.RUN
-            ),
+        response = ConfigurationResponse(
+            header=ServerHeader(status=ServerStatus.RUN),
             configuration=client_configs_serialized,
         )
+        return response
     
     def GetGlobalModel(self, request, context):
         """
-        Return the global model to clients
+        Return the global model to clients. This method is supposed to be called by clients to get the initial and final global model. Returns are sent back as a stream of messages.
+        :param: `request.header.client_id`: A unique client ID
+        :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+        :return `response.header.status`: Server status
+        :return `response.global_model`: Serialized global model
         """
-        model = self.server_agent.get_parameters()
-        model_serialized = pickle.dumps(model)
-        proto = GlobalModelRespone(
+        if len(request.meta_data) == 0: 
+            meta_data = {}
+        else:
+            meta_data = json.loads(request.meta_data)
+        self.logger.info(f"[DEBUG] - {meta_data}")
+        model = self.server_agent.get_parameters(**meta_data)
+        model_serialized = serialize_model(model)
+        response_proto = GetGlobalModelRespone(
             header=ServerHeader(status=ServerStatus.RUN),
             global_model=model_serialized,
         )
-        self.logger.info("LLL")
-        for bytes in proto_to_databuffer_new(proto):
+        for bytes in proto_to_databuffer_new(response_proto, max_message_size=self.max_message_size):
             yield bytes
 
-    
-    def SendLocalModel(self, request_iterator, context):   
-        self.logger.info(f"Received SendLocalModel request: {request_iterator[0]}") 
+    def UpdateGlobalModel(self, request_iterator, context):
+        """
+        Update the global model with the local model from a client. This method will return the updated global model to the client as a stream of messages.
+        :param: request_iterator: A stream of `DataBufferNew` messages - which contains serialized request in `UpdateGlobalModelRequest` type.
+
+        If concatenating all messages in `request_iterator` to get a `request`, then
+        :param: request.header.client_id: A unique client ID
+        :param: request.local_model: Serialized local model
+        :param: request.meta_data: JSON serialized metadata dictionary (if needed)
+        """
+        request = UpdateGlobalModelRequest()
+        bytes_received = b""
+        for bytes in request_iterator:
+            bytes_received += bytes.data_bytes
+        request.ParseFromString(bytes_received)
+        client_id = request.header.client_id
+        local_model = torch.load(io.BytesIO(request.local_model))
+        if len(request.meta_data) == 0: 
+            meta_data = {}
+        else:
+            meta_data = json.loads(request.meta_data)
+        global_model = self.server_agent.global_update(client_id, local_model, blocking=True, **meta_data)
+        global_model_serialized = serialize_model(global_model)
+        response = UpdateGlobalModelResponse(
+            header=ServerHeader(status=ServerStatus.RUN),
+            global_model=global_model_serialized,
+        )
+        for bytes in proto_to_databuffer_new(response, max_message_size=self.max_message_size):
+            yield bytes
     
     def CustomAction(self, request, context):
-        self.logger.info(f"Received CustomAction request: {request}")
+        """
+        This function is the entry point for any custom action that the server agent can perform. The server agent should implement the custom action and call this function to perform the action.
+        :param: `request.header.client_id`: A unique client ID
+        :param: `request.action`: A string tag representing the custom action
+        :param: `request.meta_data`: JSON serialized metadata dictionary for the custom action (if needed)
+        :return `response.header.status`: Server status
+        :return `response.meta_data`: JSON serialized metadata dictionary for return values (if needed)
+        """
+        client_id = request.header.client_id
+        action = request.action
+        if len(request.meta_data) == 0: 
+            meta_data = {}
+        else:
+            meta_data = json.loads(request.meta_data)
+        self.logger.info(f"[DEBUG] - {meta_data} - {action} - {client_id}")
+        response = CustomActionResponse(
+            header=ServerHeader(status=ServerStatus.RUN),
+            meta_data=json.dumps({"TEST": "TEST"}),
+        )
+        return response
+
     
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
