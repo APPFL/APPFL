@@ -1,9 +1,9 @@
 import copy
 import time
 import torch
+import importlib
 import numpy as np
 from typing import Tuple, Dict
-from torch.optim import *
 from .base_trainer import BaseTrainer
 from appfl.privacy import laplace_mechanism_output_perturb
 
@@ -42,20 +42,10 @@ class NaiveTrainer(BaseTrainer):
                 title.insert(1, "Epoch")
             self.logger.log_title(title)
         
-        # # TEST
-        # if do_validation:
-        #     val_loss, val_accuracy = self._validate()
-        # per_epoch_time = 0
-        # self.logger.log_content(
-        #     [self.round, 0, per_epoch_time, 0, 0] 
-        #     if not do_validation
-        #     else [self.round, 0, per_epoch_time, 0, 0, val_loss, val_accuracy]
-        # )   
-        # ## TEST END
-
-
         # Start training
-        optimizer = eval(self.train_configs.optim)(self.model.parameters(), **self.train_configs.optim_args)
+        optim_module = importlib.import_module("torch.optim")
+        assert hasattr(optim_module, self.train_configs.optim), f"Optimizer {self.train_configs.optim} not found in torch.optim"
+        optimizer = getattr(optim_module, self.train_configs.optim)(self.model.parameters(), **self.train_configs.optim_args)
         if self.train_configs.mode == "epoch":
             for epoch in range(self.train_configs.num_local_epochs):
                 start_time = time.time()

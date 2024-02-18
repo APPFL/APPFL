@@ -1,11 +1,8 @@
 import abc
-import numpy as np
 import torch.nn as nn
 from omegaconf import DictConfig
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from torch.utils.data import DataLoader
-from appfl.misc import create_instance_from_file, get_function_from_file
-from appfl.logger import ClientTrainerFileLogger
 
 class BaseTrainer:
     """
@@ -13,39 +10,33 @@ class BaseTrainer:
         Abstract base trainer for FL clients.
     Args:
         model: torch neural network model to train
+        loss_fn: loss function for the model training
+        metric: metric function for the model evaluation
         train_dataloader: training data loader
         val_dataloader: validation data loader
         train_configs: training configurations
+        logger: logger for the trainer
     """
     def __init__(
         self,
-        model: nn.Module,
-        train_dataloader: DataLoader,
+        model: Optional[nn.Module]=None,
+        loss_fn: Optional[nn.Module]=None,
+        metric: Optional[Any]=None,
+        train_dataloader: Optional[DataLoader]=None,
         val_dataloader: Optional[DataLoader]=None,
         train_configs: DictConfig = DictConfig({}),
+        logger: Optional[Any]=None,
+        **kwargs
     ):
         self.round = 0
         self.model = model
+        self.loss_fn = loss_fn
+        self.metric = metric
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
         self.train_configs = train_configs
-        self.loss_fn = self._get_loss_fn()
-        self.metric = self._get_metric()
-        self._create_logger()
-
-    def _create_logger(self):
-        """
-        Create logger for logging local training process
-        You can overwrite this method to create your own logger.
-        """
-        kwargs = {}
-        if hasattr(self.train_configs, "logging_id"):
-            kwargs["logging_id"] = self.train_configs.logging_id
-        if hasattr(self.train_configs, "logging_output_dirname"):
-            kwargs["file_dir"] = self.train_configs.logging_output_dirname
-        if hasattr(self.train_configs, "logging_output_filename"):
-            kwargs["file_name"] = self.train_configs.logging_output_filename
-        self.logger = ClientTrainerFileLogger(**kwargs)
+        self.logger = logger
+        self.__dict__.update(kwargs)
 
     @abc.abstractmethod
     def get_parameters(self) -> Dict:
@@ -55,40 +46,3 @@ class BaseTrainer:
     @abc.abstractmethod
     def train(self):
         pass
-
-    def _get_loss_fn(self):
-        """Get loss function"""
-        loss_fn = None
-        if hasattr(self.train_configs, "loss_fn"):
-            kwargs = self.train_configs.get("loss_fn_kwargs", {})
-            if hasattr(nn, self.train_configs.loss_fn):                
-                loss_fn = getattr(nn, self.train_configs.loss_fn)(**kwargs)
-        elif hasattr(self.train_configs, "loss_fn_path") and hasattr(self.train_configs, "loss_fn_name"):
-            loss_fn = create_instance_from_file(
-                self.train_configs.loss_fn_path,
-                self.train_configs.loss_fn_name,
-                **self.train_configs.loss_fn_kwargs
-            )
-        if loss_fn is None:
-            raise ValueError("Invalid loss function")
-        return loss_fn
-
-    def _get_metric(self):
-        """Get evaluation metric."""
-        metric = None
-        if hasattr(self.train_configs, "metric_path") and hasattr(self.train_configs, "metric_name"):
-            metric = get_function_from_file(
-                self.train_configs.metric_path,
-                self.train_configs.metric_name,
-            )
-        if metric is None:
-            metric = self._default_metric
-        return metric
-
-    def _default_metric(self, y_true, y_pred):
-        """Default metric: percentage of correct predictions"""
-        if len(y_pred.shape) == 1:
-            y_pred = np.round(y_pred)
-        else:
-            y_pred = y_pred.argmax(axis=1)
-        return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
