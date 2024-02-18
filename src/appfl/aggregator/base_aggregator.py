@@ -1,5 +1,5 @@
 import abc
-from typing import Dict, Union, OrderedDict
+from typing import Dict, Union, OrderedDict, Tuple
 
 class BaseAggregator:
 
@@ -11,6 +11,6 @@ class BaseAggregator:
         pass
 
     @abc.abstractmethod
-    def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict]:
+    def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
         """Return global model parameters"""
         pass

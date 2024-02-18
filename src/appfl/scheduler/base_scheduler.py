@@ -1,8 +1,7 @@
 import abc
 from omegaconf import DictConfig
 from concurrent.futures import Future
-from typing import Union, Dict, Any
-from collections import OrderedDict
+from typing import Union, Dict, Any, Tuple, OrderedDict
 
 class BaseScheduler:
     def __init__(
@@ -16,7 +15,7 @@ class BaseScheduler:
         self.logger = logger
 
     @abc.abstractmethod
-    def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Union[Future, Dict, OrderedDict]:
+    def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
         """
         Schedule the global aggregation for the local model from a client.
         :param local_model: the local model from a client
