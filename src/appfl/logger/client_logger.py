@@ -4,7 +4,7 @@ import logging
 import pathlib
 from typing import List, Dict, Union
 
-class ClientTrainerFileLogger:
+class ClientAgentFileLogger:
     def __init__(self, logging_id: str="", file_dir: str="", file_name: str="") -> None:
         file_name += f"_{logging_id}"
         fmt = logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') if logging_id == "" else logging.Formatter(f'[%(asctime)s %(levelname)-4s {logging_id}]: %(message)s')
