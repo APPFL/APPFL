@@ -4,7 +4,7 @@ from typing import Dict, Union, OrderedDict, Tuple
 class BaseAggregator:
 
     @abc.abstractmethod
-    def aggregate(self, local_models: Union[Union[Dict, OrderedDict], Dict[Union[str, int], Union[Dict, OrderedDict]]], **kwargs) -> Union[Dict, OrderedDict]:
+    def aggregate(self, *args, **kwargs) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
         """
         Aggregate local model(s) from clients and return the global model
         """
