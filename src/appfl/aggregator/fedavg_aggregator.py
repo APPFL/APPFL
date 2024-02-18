@@ -2,7 +2,7 @@ import copy
 import torch
 from omegaconf import DictConfig
 from appfl.aggregator import BaseAggregator
-from typing import Union, Dict, OrderedDict, Any, Tuple
+from typing import Union, Dict, OrderedDict, Any
 
 class FedAvgAggregator(BaseAggregator):
     def __init__(

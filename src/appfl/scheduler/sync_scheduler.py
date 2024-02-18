@@ -6,18 +6,18 @@ from appfl.scheduler import BaseScheduler
 class SyncScheduler(BaseScheduler):
     def __init__(
         self, 
-        server_configs: DictConfig, 
+        scheduler_configs: DictConfig, 
         aggregator: Any,
         logger: Any
     ):
-        super().__init__(server_configs, aggregator, logger)
+        super().__init__(scheduler_configs, aggregator, logger)
         self.local_models = {}
         self.future = {}
         assert (
-            hasattr(self.server_config, "num_clients"), 
+            hasattr(self.scheduler_configs, "num_clients"), 
             f"{self.__class__.__name__}: num_clients attribute is not found in the server configuration."
         )
-        self.num_clients = self.server_config.num_clients
+        self.num_clients = self.scheduler_configs.num_clients
 
     def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Future:
         """

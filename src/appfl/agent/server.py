@@ -26,7 +26,6 @@ class APPFLServerAgent:
         self._load_model()
         self._load_loss()
         self._load_metric()
-        self._get_aggregator()
         self._get_scheduler()
 
     def get_client_configs(self, **kwargs) -> DictConfig:
@@ -58,7 +57,11 @@ class APPFLServerAgent:
         
     def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
         """Return the global model to the clients."""
-        return self.aggregator.get_parameters(**kwargs)
+        global_model = self.scheduler.get_parameters(**kwargs)
+        if not isinstance(global_model, Future):
+            return global_model
+        else:
+            return global_model.result()
 
     def _create_logger(self) -> None:
         kwargs = {}
@@ -126,18 +129,15 @@ class APPFLServerAgent:
         else:
             self.metric = None
 
-    def _get_aggregator(self) -> None:
-        """Obtain the global aggregator."""
-        self.aggregator = eval(self.server_agent_config.server_configs.aggregator)(
+    def _get_scheduler(self) -> None:
+        """Obtain the scheduler."""
+        self._aggregator: BaseAggregator = eval(self.server_agent_config.server_configs.aggregator)(
             self.model,
             OmegaConf.create(self.server_agent_config.server_configs.aggregator_kwargs),
             self.logger,
         )
-        
-    def _get_scheduler(self) -> None:
-        """Obtain the scheduler."""
-        self.scheduler = eval(self.server_agent_config.server_configs.scheduler)(
+        self.scheduler: BaseScheduler = eval(self.server_agent_config.server_configs.scheduler)(
             OmegaConf.create(self.server_agent_config.server_configs.scheduler_kwargs),
-            self.aggregator,
+            self._aggregator,
             self.logger,
         )
