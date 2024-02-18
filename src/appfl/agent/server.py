@@ -25,6 +25,7 @@ class APPFLServerAgent:
         self._create_logger()
         self._load_model()
         self._load_loss()
+        self._load_metric()
         self._get_aggregator()
         self._get_scheduler()
 
@@ -129,7 +130,7 @@ class APPFLServerAgent:
         """Obtain the global aggregator."""
         self.aggregator = eval(self.server_agent_config.server_configs.aggregator)(
             self.model,
-            OmegaConf.create(self.server_agent_config.server_configs.aggregator_args),
+            OmegaConf.create(self.server_agent_config.server_configs.aggregator_kwargs),
             self.logger,
         )
         

@@ -1,8 +1,6 @@
 import os
 import torch
 import torchvision
-from mpi4py import MPI
-from typing import Optional
 from appfl.config import *
 from appfl.misc.data import Dataset
 from torch.utils.data import DataLoader
@@ -63,7 +61,6 @@ def iid_partition(train_data_raw, num_clients, visualization, output=None):
     return train_datasets
 
 def get_mnist(
-        comm: Optional[MPI.Comm], 
         num_clients: int,
         client_id: int,
         train_batch_size: int = 64,
@@ -73,18 +70,12 @@ def get_mnist(
         output_dirname: string = "./outputs",
         **kwargs
 ):
-    comm_rank = comm.Get_rank() if comm is not None else 0
 
     # Get the download directory for dataset
     dir = os.getcwd() + "/datasets/RawData"
 
     # Root download the data if not already available.
-    if comm_rank == 0:
-        test_data_raw = torchvision.datasets.MNIST(dir, download=True, train=False, transform=test_transform("MNIST"))
-    if comm is not None:
-        comm.Barrier()
-    if comm_rank > 0:
-        test_data_raw = torchvision.datasets.MNIST(dir, download=False, train=False, transform=test_transform("MNIST"))
+    test_data_raw = torchvision.datasets.MNIST(dir, download=True, train=False, transform=test_transform("MNIST"))
 
     # Obtain the testdataset
     test_data_input = []
@@ -112,7 +103,7 @@ def get_mnist(
     else: filename = None
 
     # Partition the dataset
-    train_datasets = iid_partition(train_data_raw, num_clients, visualization=visualization and comm_rank==0, output=filename)
+    train_datasets = iid_partition(train_data_raw, num_clients, visualization=visualization, output=filename)
     train_dataloader = DataLoader(
         train_datasets[client_id],
         batch_size=train_batch_size,

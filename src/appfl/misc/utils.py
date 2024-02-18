@@ -361,6 +361,8 @@ def create_instance_from_file_source(source, class_name, *args, **kwargs):
     # Create a temporary file to store the source code
     _home = pathlib.Path.home()
     dirname = osp.join(_home, ".appfl", "tmp")
+    if not osp.exists(dirname):
+        pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
     file_path = osp.join(dirname, f"{id_generator()}.py")
     with open(file_path, "w") as file:
         file.write(source)
@@ -384,6 +386,8 @@ def get_function_from_file_source(source, function_name):
     # Create a temporary file to store the source code
     _home = pathlib.Path.home()
     dirname = osp.join(_home, ".appfl", "tmp")
+    if not osp.exists(dirname):
+        pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
     file_path = osp.join(dirname, f"{id_generator()}.py")
     with open(file_path, "w") as file:
         file.write(source)

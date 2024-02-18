@@ -96,6 +96,9 @@ class APPFLClientAgent:
         - `model_source` and `model_name`: load model from a raw file source string (usually sent from the server)
         - Users can define their own way to load the model from other sources
         """
+        if not hasattr(self.client_agent_config, "model_configs"):
+            self.model = None
+            return
         if hasattr(self.client_agent_config.model_configs, "model_path") and hasattr(self.client_agent_config.model_configs, "model_name"):
             kwargs = self.client_agent_config.model_configs.get("model_kwargs", {})
             self.model = create_instance_from_file(
@@ -121,6 +124,9 @@ class APPFLClientAgent:
         - `loss_fn`: load commonly-used loss function from `torch.nn` module
         - Users can define their own way to load the loss function from other sources
         """
+        if not hasattr(self.client_agent_config, "train_configs"):
+            self.loss_fn = None
+            return
         if hasattr(self.client_agent_config.train_configs, "loss_fn_path") and hasattr(self.client_agent_config.train_configs, "loss_fn_name"):
             kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
             self.loss_fn = create_instance_from_file(
@@ -151,6 +157,9 @@ class APPFLClientAgent:
         - `metric_source` and `metric_name`: load metric function from a raw file source string (usually sent from the server)
         - Users can define their own way to load the metric function from other sources
         """
+        if not hasattr(self.client_agent_config, "train_configs"):
+            self.metric = None
+            return
         if hasattr(self.client_agent_config.train_configs, "metric_path") and hasattr(self.client_agent_config.train_configs, "metric_name"):
             self.metric = get_function_from_file(
                 self.client_agent_config.train_configs.metric_path,
@@ -173,15 +182,15 @@ class APPFLClientAgent:
             self.trainer = None
             return
         trainer_module = importlib.import_module('appfl.trainer')
-        if not hasattr(trainer_module, self.train_configs.trainer):
-            raise ValueError(f'Invalid trainer name: {self.train_configs.trainer}')
-        self.trainer: BaseTrainer = getattr(trainer_module, self.train_configs.trainer)(
+        if not hasattr(trainer_module, self.client_agent_config.train_configs.trainer):
+            raise ValueError(f'Invalid trainer name: {self.client_agent_config.train_configs.trainer}')
+        self.trainer: BaseTrainer = getattr(trainer_module, self.client_agent_config.train_configs.trainer)(
             model=self.model, 
             loss_fn=self.loss_fn,
             metric=self.metric,
             train_dataloader=self.train_dataloader, 
             val_dataloader=self.val_dataloader,
-            train_configs=self.train_configs,
+            train_configs=self.client_agent_config.train_configs,
             logger=self.logger,
         )
     
