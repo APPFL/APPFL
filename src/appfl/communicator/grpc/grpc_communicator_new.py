@@ -35,7 +35,6 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
             meta_data = {}
         else:
             meta_data = json.loads(request.meta_data)
-        self.logger.info(f"[DEBUG] - {meta_data}")
         client_configs = self.server_agent.get_client_configs(**meta_data)
         client_configs = OmegaConf.to_container(client_configs, resolve=True)
         client_configs_serialized = json.dumps(client_configs)
@@ -57,12 +56,17 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
             meta_data = {}
         else:
             meta_data = json.loads(request.meta_data)
-        self.logger.info(f"[DEBUG] - {meta_data}")
         model = self.server_agent.get_parameters(**meta_data)
+        if isinstance(model, tuple):
+            model = model[0]
+            meta_data = json.dumps(model[1])
+        else:
+            meta_data = json.dumps({})
         model_serialized = serialize_model(model)
         response_proto = GetGlobalModelRespone(
             header=ServerHeader(status=ServerStatus.RUN),
             global_model=model_serialized,
+            meta_data=meta_data,
         )
         for bytes in proto_to_databuffer_new(response_proto, max_message_size=self.max_message_size):
             yield bytes
@@ -89,10 +93,16 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
         else:
             meta_data = json.loads(request.meta_data)
         global_model = self.server_agent.global_update(client_id, local_model, blocking=True, **meta_data)
+        if isinstance(global_model, tuple):
+            global_model = global_model[0]
+            meta_data = json.dumps(global_model[1])
+        else:
+            meta_data = json.dumps({})
         global_model_serialized = serialize_model(global_model)
         response = UpdateGlobalModelResponse(
             header=ServerHeader(status=ServerStatus.RUN),
             global_model=global_model_serialized,
+            meta_data=meta_data,
         )
         for bytes in proto_to_databuffer_new(response, max_message_size=self.max_message_size):
             yield bytes
@@ -118,7 +128,6 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
             meta_data=json.dumps({"TEST": "TEST"}),
         )
         return response
-
     
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
@@ -130,7 +139,6 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
         s_handler.setFormatter(fmt)
         logger.addHandler(s_handler)
         return logger
-    
 
 def serve(servicer, max_message_size=2 * 1024 * 1024):
     server = grpc.server(
