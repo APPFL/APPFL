@@ -1,11 +1,12 @@
+import torch.nn as nn
 from appfl.scheduler import *
 from appfl.aggregator import *
 from concurrent.futures import Future
 from appfl.config import ServerAgentConfig
 from omegaconf import OmegaConf, DictConfig
-from typing import Union, Dict, OrderedDict
 from appfl.logger import ServerAgentFileLogger
-from appfl.misc import create_instance_from_file
+from typing import Union, Dict, OrderedDict, Tuple
+from appfl.misc import create_instance_from_file, get_function_from_file
 
 class APPFLServerAgent:
     """
@@ -21,22 +22,11 @@ class APPFLServerAgent:
         server_agent_config: ServerAgentConfig = ServerAgentConfig()
     ) -> None:
         self.server_agent_config = server_agent_config
-        assert (
-            hasattr(self.server_agent_config.server_configs, "aggregator"), 
-            f"{self.__class__.__name__}: aggregator attribute is not found in the server agent configuration."
-        )
-        assert (
-            hasattr(self.server_agent_config.server_configs, "scheduler"), 
-            f"{self.__class__.__name__}: scheduler attribute is not found in the server agent configuration."
-        )
-        assert (
-            hasattr(self.server_agent_config.client_configs, "model_configs"), 
-            f"{self.__class__.__name__}: model_configs attribute is not found in the client agent configuration."
-        )
         self._create_logger()
-        self._load_model(self.server_agent_config.client_configs.model_configs)
-        self.aggregator: BaseAggregator = self._get_aggregator()
-        self.scheduler: BaseScheduler = self._get_scheduler()
+        self._load_model()
+        self._load_loss()
+        self._get_aggregator()
+        self._get_scheduler()
 
     def get_client_configs(self, **kwargs) -> DictConfig:
         """Return the FL configurations that are shared among all clients."""
@@ -48,7 +38,7 @@ class APPFLServerAgent:
             local_model: Union[Dict, OrderedDict],
             blocking: bool = False,
             **kwargs
-        ) -> Union[Dict, OrderedDict, Future]:
+        ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
         """
         Update the global model using the local model from a client and return the updated global model.
         :param: client_id: A unique client id for server to distinguish clients, which be obtained via `ClientAgent.get_id()`.
@@ -65,7 +55,7 @@ class APPFLServerAgent:
         else:
             return global_model # return the `Future` object
         
-    def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict]:
+    def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
         """Return the global model to the clients."""
         return self.aggregator.get_parameters(**kwargs)
 
@@ -77,26 +67,76 @@ class APPFLServerAgent:
             kwargs["file_name"] = self.server_agent_config.server_configs.logging_output_filename
         self.logger = ServerAgentFileLogger(**kwargs)
 
-    def _load_model(self, model_configs: DictConfig) -> None:
-        """Load model from the definition file."""
+    def _load_model(self) -> None:
+        """
+        Load model from the definition file, and read the source code of the model for sendind to the client.
+        User can overwrite this method to load the model from other sources.
+        """
+        model_configs = self.server_agent_config.client_configs.model_configs
         self.model = create_instance_from_file(
             model_configs.model_path,
             model_configs.model_name,
             **model_configs.model_kwargs
         )
+        # load the model source file and delete model path
+        with open(model_configs.model_path, 'r') as f:
+            self.server_agent_config.client_configs.model_configs.model_source = f.read()
+        del self.server_agent_config.client_configs.model_configs.model_path
 
-    def _get_aggregator(self) -> BaseAggregator:
+    def _load_loss(self) -> None:
+        """
+        Load loss function from various sources.
+        - `loss_fn_path` and `loss_fn_name`: load the loss function from a file.
+        - `loss_fn`: load the loss function from `torch.nn` module.
+        - Users can define their own way to load the loss function from other sources.
+        """
+        if hasattr(self.server_agent_config.client_configs.train_configs, "loss_fn_path") and hasattr(self.server_agent_config.client_configs.train_configs, "loss_fn_name"):
+            kwargs = self.server_agent_config.client_configs.train_configs.get("loss_fn_kwargs", {})
+            self.loss_fn = create_instance_from_file(
+                self.server_agent_config.client_configs.train_configs.loss_fn_path,
+                self.server_agent_config.client_configs.train_configs.loss_fn_name,
+                **kwargs
+            )
+            with open(self.server_agent_config.client_configs.train_configs.loss_fn_path, 'r') as f:
+                self.server_agent_config.client_configs.train_configs.loss_fn_source = f.read()
+            del self.server_agent_config.client_configs.train_configs.loss_fn_path
+        elif hasattr(self.server_agent_config.client_configs.train_configs, "loss_fn"):
+            kwargs = self.server_agent_config.client_configs.train_configs.get("loss_fn_kwargs", {})
+            if hasattr(nn, self.server_agent_config.client_configs.train_configs.loss_fn):
+                self.loss_fn = getattr(nn, self.server_agent_config.client_configs.train_configs.loss_fn)(**kwargs)
+            else:
+                self.loss_fn = None
+        else:
+            self.loss_fn = None
+
+    def _load_metric(self) -> None:
+        """
+        Load metric function from a file.
+        User can define their own way to load the metric function from other sources.
+        """
+        if hasattr(self.server_agent_config.client_configs.train_configs, "metric_path") and hasattr(self.server_agent_config.client_configs.train_configs, "metric_name"):
+            self.metric = get_function_from_file(
+                self.server_agent_config.client_configs.train_configs.metric_path,
+                self.server_agent_config.client_configs.train_configs.metric_name,
+            )
+            with open(self.server_agent_config.client_configs.train_configs.metric_path, 'r') as f:
+                self.server_agent_config.client_configs.train_configs.metric_source = f.read()
+            del self.server_agent_config.client_configs.train_configs.metric_path
+        else:
+            self.metric = None
+
+    def _get_aggregator(self) -> None:
         """Obtain the global aggregator."""
-        return eval(self.server_agent_config.server_configs.aggregator)(
+        self.aggregator = eval(self.server_agent_config.server_configs.aggregator)(
             self.model,
             OmegaConf.create(self.server_agent_config.server_configs.aggregator_args),
             self.logger,
         )
         
-    def _get_scheduler(self) -> BaseScheduler:
+    def _get_scheduler(self) -> None:
         """Obtain the scheduler."""
-        return eval(self.server_agent_config.server_configs.scheduler)(
-            OmegaConf.create(self.server_agent_config.server_configs.scheduler_args),
+        self.scheduler = eval(self.server_agent_config.server_configs.scheduler)(
+            OmegaConf.create(self.server_agent_config.server_configs.scheduler_kwargs),
             self.aggregator,
             self.logger,
         )

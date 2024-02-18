@@ -1,19 +1,25 @@
 import uuid
 import importlib
 import torch.nn as nn
-from omegaconf import DictConfig
-from typing import Union, Dict, OrderedDict
 from appfl.trainer import BaseTrainer
-from appfl.compressor import Compressor
 from appfl.config import ClientAgentConfig
-from appfl.misc import create_instance_from_file, run_function_from_file
+from omegaconf import DictConfig, OmegaConf
+from typing import Union, Dict, OrderedDict
+from appfl.logger import ClientAgentFileLogger
+from appfl.misc import create_instance_from_file, \
+    run_function_from_file, \
+    get_function_from_file, \
+    create_instance_from_file_source, \
+    get_function_from_file_source
 
 class APPFLClientAgent:
     """
     The `APPFLClientAgent` should act on behalf of the FL client to:
+    - load configurations received from the server `APPFLClientAgent.load_config`
     - do the local training job using configurations `APPFLClientAgent.train`
     - prepare data for communication `APPFLClientAgent.get_parameters`
     - load parameters from the server `APPFLClientAgent.load_parameters`
+    - get a unique client id for server to distinguish clients `APPFLClientAgent.get_id`
 
     User can overwrite any class method to customize the behavior of the client agent.
     """
@@ -21,21 +27,22 @@ class APPFLClientAgent:
         self, 
         client_agent_config: ClientAgentConfig = ClientAgentConfig()
     ) -> None:
-        self.train_configs = client_agent_config.train_configs
-        self.comm_configs = client_agent_config.comm_configs
+        self.client_agent_config = client_agent_config
+        self._create_logger()
+        self._load_model()
+        self._load_loss()
+        self._load_metric()
+        self._load_data()
+        self._load_trainer()
 
-        self._load_model(client_agent_config.model_configs)
-        self._load_data(client_agent_config.data_configs)
-
-        trainer_module = importlib.import_module('appfl.trainer')
-        if not hasattr(trainer_module, self.train_configs.trainer):
-            raise ValueError(f'Invalid trainer name: {self.train_configs.trainer}')
-        self.trainer: BaseTrainer = getattr(trainer_module, self.train_configs.trainer)(
-            self.model, 
-            self.train_dataloader, 
-            self.val_dataloader,
-            self.train_configs,
-        )
+    def load_config(self, config: DictConfig) -> None:
+        """Load additional configurations provided by the server."""
+        self.client_agent_config = OmegaConf.merge(self.client_agent_config, config)
+        self._load_model()
+        self._load_loss()
+        self._load_metric()
+        self._load_data()
+        self._load_trainer()
 
     def get_id(self) -> str:
         """Return a unique client id for server to distinguish clients."""
@@ -50,30 +57,131 @@ class APPFLClientAgent:
     def get_parameters(self) -> Union[Dict, OrderedDict, bytes]:
         """Return parameters for communication"""
         params = self.trainer.get_parameters()
-        if self.comm_configs.enable_compression:
-            if not hasattr(self, 'compressor'):
-                self.compressor = Compressor(self.comm_configs)
-            params = self.compressor.compress_model(params)[0]
         return params
     
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
         self.model.load_state_dict(params)
 
-    def _load_model(self, model_configs: DictConfig) -> None:
-        """Load model from file."""
-        self.model: nn.Module = create_instance_from_file(
-            model_configs.model_path,
-            model_configs.model_name,
-            **model_configs.model_kwargs
-        )
+    def _create_logger(self):
+        """
+        Create logger for the client agent to log local training process.
+        You can modify or overwrite this method to create your own logger.
+        """
+        if hasattr(self, "logger"):
+            return
+        kwargs = {}
+        if not hasattr(self.client_agent_config, "train_configs"):
+            kwargs["logging_id"] = self.get_id()
+            kwargs["file_dir"] = "./output"
+            kwargs["file_name"] = "result"
+        else:
+            kwargs["logging_id"] = self.client_agent_config.train_configs.get("logging_id", self.get_id())
+            kwargs["file_dir"] = self.client_agent_config.train_configs.get("logging_output_dirname", "./output")
+            kwargs["file_name"] = self.client_agent_config.train_configs.get("logging_output_filename", "result")
+        self.logger = ClientAgentFileLogger(**kwargs)
 
-    def _load_data(self, data_configs: DictConfig) -> None:
+    def _load_data(self) -> None:
         """Get train and validation dataloaders from local dataloader file."""
         self.train_dataloader, self.val_dataloader = run_function_from_file(
-            data_configs.dataloader_path,
-            data_configs.dataloader_name,
-            **data_configs.dataloader_kwargs
+            self.client_agent_config.data_configs.dataloader_path,
+            self.client_agent_config.data_configs.dataloader_name,
+            **self.client_agent_config.data_configs.dataloader_kwargs
         )
 
+    def _load_model(self) -> None:
+        """
+        Load model from various sources with optional keyword arguments `model_kwargs`:
+        - `model_path` and `model_name`: load model from a local file (usually for local simulation)
+        - `model_source` and `model_name`: load model from a raw file source string (usually sent from the server)
+        - Users can define their own way to load the model from other sources
+        """
+        if hasattr(self.client_agent_config.model_configs, "model_path") and hasattr(self.client_agent_config.model_configs, "model_name"):
+            kwargs = self.client_agent_config.model_configs.get("model_kwargs", {})
+            self.model = create_instance_from_file(
+                self.client_agent_config.model_configs.model_path,
+                self.client_agent_config.model_configs.model_name,
+                **kwargs
+            )
+        elif hasattr(self.client_agent_config.model_configs, "model_source") and hasattr(self.client_agent_config.model_configs, "model_name"):
+            kwargs = self.client_agent_config.model_configs.get("model_kwargs", {})
+            self.model = create_instance_from_file_source(
+                self.client_agent_config.model_configs.model_source,
+                self.client_agent_config.model_configs.model_name,
+                **kwargs
+            )
+        else:
+            self.model = None
+
+    def _load_loss(self) -> None:
+        """
+        Load loss function from various sources with optional keyword arguments `loss_fn_kwargs`:
+        - `loss_fn_path` and `loss_fn_name`: load loss function from a local file (usually for local simulation)
+        - `loss_fn_source` and `loss_fn_name`: load loss function from a raw file source string (usually sent from the server)
+        - `loss_fn`: load commonly-used loss function from `torch.nn` module
+        - Users can define their own way to load the loss function from other sources
+        """
+        if hasattr(self.client_agent_config.train_configs, "loss_fn_path") and hasattr(self.client_agent_config.train_configs, "loss_fn_name"):
+            kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
+            self.loss_fn = create_instance_from_file(
+                self.client_agent_config.train_configs.loss_fn_path,
+                self.client_agent_config.train_configs.loss_fn_name,
+                **kwargs
+            )
+        elif hasattr(self.client_agent_config.train_configs, "loss_fn"):
+            kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
+            if hasattr(nn, self.client_agent_config.train_configs.loss_fn):                
+                self.loss_fn = getattr(nn, self.client_agent_config.train_configs.loss_fn)(**kwargs)
+            else:
+                self.loss_fn = None
+        elif hasattr(self.client_agent_config.train_configs, "loss_fn_source") and hasattr(self.client_agent_config.train_configs, "loss_fn_name"):
+            kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
+            self.loss_fn = create_instance_from_file_source(
+                self.client_agent_config.train_configs.loss_fn_source,
+                self.client_agent_config.train_configs.loss_fn_name,
+                **kwargs
+            )
+        else:
+            self.loss_fn = None
+
+    def _load_metric(self) -> None:
+        """
+        Load metric function from various sources:
+        - `metric_path` and `metric_name`: load metric function from a local file (usually for local simulation)
+        - `metric_source` and `metric_name`: load metric function from a raw file source string (usually sent from the server)
+        - Users can define their own way to load the metric function from other sources
+        """
+        if hasattr(self.client_agent_config.train_configs, "metric_path") and hasattr(self.client_agent_config.train_configs, "metric_name"):
+            self.metric = get_function_from_file(
+                self.client_agent_config.train_configs.metric_path,
+                self.client_agent_config.train_configs.metric_name
+            )
+        elif hasattr(self.client_agent_config.train_configs, "metric_source") and hasattr(self.client_agent_config.train_configs, "metric_name"):
+            self.metric = get_function_from_file_source(
+                self.client_agent_config.train_configs.metric_source,
+                self.client_agent_config.train_configs.metric_name
+            )
+        else:
+            self.metric = None
+
+    def _load_trainer(self) -> None:
+        """Obtain a local trainer"""
+        if not hasattr(self.client_agent_config, "train_configs"):
+            self.trainer = None
+            return
+        if not hasattr(self.client_agent_config.train_configs, "trainer"):
+            self.trainer = None
+            return
+        trainer_module = importlib.import_module('appfl.trainer')
+        if not hasattr(trainer_module, self.train_configs.trainer):
+            raise ValueError(f'Invalid trainer name: {self.train_configs.trainer}')
+        self.trainer: BaseTrainer = getattr(trainer_module, self.train_configs.trainer)(
+            model=self.model, 
+            loss_fn=self.loss_fn,
+            metric=self.metric,
+            train_dataloader=self.train_dataloader, 
+            val_dataloader=self.val_dataloader,
+            train_configs=self.train_configs,
+            logger=self.logger,
+        )
     

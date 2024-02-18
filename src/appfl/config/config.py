@@ -48,7 +48,7 @@ class ServerAgentConfig:
             "loss_fn_name": "",
             # Evaluation
             "do_validation": True,
-            "metric_path": "../../examples/metric/acc.py",
+            "metric_path": "./examples/metric/acc.py",
             "metric_name": "accuracy",
             # Differential Privacy
             "use_dp": False,
@@ -62,7 +62,7 @@ class ServerAgentConfig:
             "checkpoints_interval": 2,
         }),
         "model_configs": OmegaConf.create({
-            "model_path": "../../examples/models/cnn.py",
+            "model_path": "./examples/models/cnn.py",
             "model_name": "CNN",
             "model_kwargs": {
                 "num_channel": 1,
@@ -77,8 +77,8 @@ class ServerAgentConfig:
     })
     server_configs: DictConfig = OmegaConf.create({
         "scheduler": "SyncScheduler",
-        "scheduler_args": {
-            "num_clients": 3,
+        "scheduler_kwargs": {
+            "num_clients": 2,
         },
         "aggregator": "FedAvgAggregator",
         "aggregator_args": {
