@@ -31,6 +31,7 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
         :return `response.header.status`: Server status
         :return `response.configuration`: JSON serialized FL configurations
         """
+        self.logger.info(f"Received GetConfiguration request from client {request.header.client_id}")
         if len(request.meta_data) == 0: 
             meta_data = {}
         else:
@@ -52,6 +53,7 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
         :return `response.header.status`: Server status
         :return `response.global_model`: Serialized global model
         """
+        self.logger.info(f"Received GetGlobalModel request from client {request.header.client_id}")
         if len(request.meta_data) == 0: 
             meta_data = {}
         else:
@@ -86,6 +88,7 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
         for bytes in request_iterator:
             bytes_received += bytes.data_bytes
         request.ParseFromString(bytes_received)
+        self.logger.info(f"Received UpdateGlobalModel request from client {request.header.client_id}")
         client_id = request.header.client_id
         local_model = torch.load(io.BytesIO(request.local_model))
         if len(request.meta_data) == 0: 
@@ -116,6 +119,7 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
         :return `response.header.status`: Server status
         :return `response.meta_data`: JSON serialized metadata dictionary for return values (if needed)
         """
+        self.logger.info(f"Received CustomAction {request.action} request from client {request.header.client_id}")
         client_id = request.header.client_id
         action = request.action
         if len(request.meta_data) == 0: 
