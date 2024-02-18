@@ -20,7 +20,7 @@ class FedAvgAggregator(BaseAggregator):
         for name, _ in self.model.named_parameters():
             self.named_parameters.add(name)
 
-    def aggregate(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]) -> Dict:
+    def aggregate(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs) -> Dict:
         """
         Take the weighted average of local models from clients and return the global model.
         """

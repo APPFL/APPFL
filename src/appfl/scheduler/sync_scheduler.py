@@ -26,6 +26,7 @@ class SyncScheduler(BaseScheduler):
         be set after all clients have submitted their local models for the global aggregation.
         :param local_model: the local model from a client
         :param client_id: the index of the client
+        :param kwargs: additional keyword arguments for the scheduler
         :return: the future object for the aggregated model
         """
         assert (
@@ -36,7 +37,7 @@ class SyncScheduler(BaseScheduler):
         self.local_models[client_id] = local_model
         self.future[client_id] = future
         if len(self.local_models) == self.num_clients:
-            aggregated_model = self.aggregator.aggregate(self.local_models)
+            aggregated_model = self.aggregator.aggregate(self.local_models, **kwargs)
             while self.future:
                 client_id, future = self.future.popitem()
                 future.set_result(aggregated_model)

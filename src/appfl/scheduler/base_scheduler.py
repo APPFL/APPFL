@@ -20,6 +20,7 @@ class BaseScheduler:
         Schedule the global aggregation for the local model from a client.
         :param local_model: the local model from a client
         :param client_idx: the index of the client
+        :param kwargs: additional keyword arguments for the scheduler
         :return: the aggregated model or a future object for the aggregated model
         """
         pass
