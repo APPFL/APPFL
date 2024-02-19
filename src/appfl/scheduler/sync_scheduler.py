@@ -24,8 +24,8 @@ class SyncScheduler(BaseScheduler):
         Schedule a synchronous global aggregation for the local model from a client.
         The method will return a future object for the aggregated model, which will
         be set after all clients have submitted their local models for the global aggregation.
+        :param client_id: the id of the client
         :param local_model: the local model from a client
-        :param client_id: the index of the client
         :param kwargs: additional keyword arguments for the scheduler
         :return: the future object for the aggregated model
         """
