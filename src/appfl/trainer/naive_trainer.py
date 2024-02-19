@@ -28,6 +28,10 @@ class NaiveTrainer(BaseTrainer):
         else:
             assert hasattr(self.train_configs, "num_local_steps"), "Number of local steps must be specified"
         
+        send_gradient = self.train_configs.get("send_gradient", False)
+        if send_gradient:
+            self.model_prev = copy.deepcopy(self.model.state_dict())
+
         self.model.to(self.train_configs.get("device", "cpu"))
         do_validation = self.train_configs.get("do_validation", False) and self.val_dataloader is not None
         
@@ -112,6 +116,10 @@ class NaiveTrainer(BaseTrainer):
             for k in self.model_state:
                 self.model_state[k] = self.model_state[k].cpu()
 
+        # Compute the gradient if needed
+        if send_gradient:
+            self._compute_gradient()
+
     def get_parameters(self) -> Dict:
         hasattr(self, "model_state"), "Please make sure the model has been trained before getting its parameters"
         return self.model_state
@@ -162,3 +170,17 @@ class NaiveTrainer(BaseTrainer):
                 norm_type=self.train_configs.clip_norm,
             )
         return loss.item(), output.detach().cpu().numpy(), target.detach().cpu().numpy()
+    
+    def _compute_gradient(self) -> None:
+        """
+        Compute the gradient of the model and store in `self.model_state`,
+        where gradient = prev_model - new_model
+        """
+        self.logger.info("Computing gradient")
+        if not hasattr(self, 'named_parameters'):
+            self.named_parameters = set()
+            for name, _ in self.model.named_parameters():
+                self.named_parameters.add(name)
+        for name in self.model_state:
+            if name in self.named_parameters:
+                self.model_state[name] = self.model_prev[name] - self.model_state[name]
