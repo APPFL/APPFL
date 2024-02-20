@@ -69,13 +69,11 @@ class CompassScheduler(BaseScheduler):
                 self.client_info[client_id]['goa']
                 if 'goa' in self.client_info[client_id] else -1
             )
-            self.logger.info(f"Client {client_id} is in group {arrival_group_idx}")
             global_model = (
                 self._single_update(client_id, local_model, buffer=False, **kwargs)
                 if arrival_group_idx == -1
                 else self._group_update(client_id, local_model, arrival_group_idx, **kwargs)
             )
-            self.logger.info(f"Metadata: {global_model[1] if type(global_model) == tuple else {}}")
             return global_model
         
     def _record_info(self, client_id: Union[int, str]) -> None:
@@ -140,7 +138,6 @@ class CompassScheduler(BaseScheduler):
             self.general_buffer['timestamp'][client_id] = self.client_info[client_id]['timestamp']
             global_model = self.aggregator.get_parameters(**kwargs)
         self.client_info[client_id]['timestamp'] = self.global_timestamp
-        self.logger.info("Before assign group")
         self._assign_group(client_id, **kwargs)
         local_steps = self.client_info[client_id]['local_steps']
         return global_model, {'local_steps': local_steps}
@@ -185,10 +182,11 @@ class CompassScheduler(BaseScheduler):
             self.group_buffer[group_idx]['local_models'][client_id] = local_model
             self.group_buffer[group_idx]['local_steps'][client_id] = self.client_info[client_id]['local_steps']
             self.group_buffer[group_idx]['timestamp'][client_id] = self.client_info[client_id]['timestamp']
-            self.future_record[client_id] = Future()
+            future = Future()
+            self.future_record[client_id] = future
             if len(self.arrival_group[group_idx]['clients']) == 0:
                 self._group_aggregation(group_idx, **kwargs)
-            return self.future_record[client_id]
+            return future
 
     def _group_aggregation(
             self, 
@@ -201,7 +199,6 @@ class CompassScheduler(BaseScheduler):
         :param `group_idx`: the index of the client arrival group
         :param `kwargs`: additional keyword arguments for the scheduler
         """
-        self.logger.info(f"Group {group_idx} is aggregated")
         if group_idx in self.arrival_group and group_idx in self.group_buffer:
             # merge the general buffer and group buffer
             local_models = {
@@ -274,7 +271,6 @@ class CompassScheduler(BaseScheduler):
                     self.scheduler_configs.latest_time_factor
                 )
             }
-            self.logger.info(f"Client {client_id} is assigned to group {self.group_counter} with time {self.arrival_group[self.group_counter]['latest_arrival_time'] - curr_time}")
             group_timer = threading.Timer(
                 self.arrival_group[self.group_counter]['latest_arrival_time'] - curr_time,
                 self._group_aggregation,
@@ -317,10 +313,8 @@ class CompassScheduler(BaseScheduler):
                 assigned_group = group
                 assigned_steps = local_steps
         if assigned_group == -1:
-            self.logger.info(f"Client {client_id} cannot join any group")
             return False
         else:
-            self.logger.info(f"Client {client_id} is assigned to group {assigned_group} with time {self.arrival_group[assigned_group]['latest_arrival_time'] - curr_time}")
             self.arrival_group[assigned_group]['clients'].append(client_id)
             self.client_info[client_id]['goa'] = assigned_group
             self.client_info[client_id]['local_steps'] = assigned_steps

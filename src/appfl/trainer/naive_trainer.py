@@ -176,7 +176,6 @@ class NaiveTrainer(BaseTrainer):
         Compute the gradient of the model and store in `self.model_state`,
         where gradient = prev_model - new_model
         """
-        self.logger.info("Computing gradient")
         if not hasattr(self, 'named_parameters'):
             self.named_parameters = set()
             for name, _ in self.model.named_parameters():
