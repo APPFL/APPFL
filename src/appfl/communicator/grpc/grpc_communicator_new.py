@@ -97,8 +97,8 @@ class NewGRPCCommunicator(NewGRPCCommunicatorServicer):
             meta_data = json.loads(request.meta_data)
         global_model = self.server_agent.global_update(client_id, local_model, blocking=True, **meta_data)
         if isinstance(global_model, tuple):
-            global_model = global_model[0]
             meta_data = json.dumps(global_model[1])
+            global_model = global_model[0]
         else:
             meta_data = json.dumps({})
         global_model_serialized = serialize_model(global_model)
