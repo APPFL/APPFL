@@ -76,6 +76,10 @@ If the install process failed, you can try:
 sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
 ```
 
+### Network Communication of Nodes from different Sites
+
+Pls follow the instructions in the 'NodeCommunication.ipynb' to setup multinode communication.
+
 ## APPFL Framework Design
 <p align="center">
   <img src='docs/_static/design.jpg' style="width: 50%; height: auto;"/>
