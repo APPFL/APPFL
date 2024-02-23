@@ -23,7 +23,7 @@ def default_train_config():
         "loss_fn_name": "",
         # Evaluation
         "do_validation": True,
-        "metric_path": "../../examples/metric/acc.py",
+        "metric_path": "./examples/metric/acc.py",
         "metric_name": "accuracy",
         # Differential Privacy
         "use_dp": False,
@@ -46,7 +46,7 @@ def default_train_config():
 
 def default_model_config():
     return OmegaConf.create({
-        "model_path": "../../examples/models/cnn.py",
+        "model_path": "./examples/models/cnn.py",
         "model_name": "CNN",
         "model_kwargs": {
             "num_channel": 1,
@@ -57,7 +57,7 @@ def default_model_config():
 
 def default_data_config():
     return OmegaConf.create({
-        "dataloader_path": "../../examples/dataloader/mnist_dataloader_test.py",
+        "dataloader_path": "./examples/dataloader/mnist_dataloader_test.py",
         "dataloader_name": "get_mnist",
         "dataloader_kwargs": {
             "comm": None, 
