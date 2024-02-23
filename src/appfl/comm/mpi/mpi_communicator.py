@@ -1,6 +1,6 @@
+import mpi4py
 import pickle
 import numpy as np
-from mpi4py import MPI
 from typing import Optional
 from collections import OrderedDict
 from appfl.compressor import Compressor
@@ -11,7 +11,7 @@ class MpiCommunicator:
     A general MPI communicator for synchronous or asynchronous distributed/federated/decentralized 
     learning experiments on multiple MPI processes, where each MPI process represents EXACTLY ONE learning client.
     """
-    def __init__(self, comm: MPI.Intracomm, compresser: Optional[Compressor]=None):
+    def __init__(self, comm: mpi4py.MPI.Intracomm, compresser: Optional[Compressor]=None):
         self.comm = comm
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
