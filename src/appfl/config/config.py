@@ -127,7 +127,7 @@ class Config:
     param_cutoff: int = 1024
 
     # Data readiness
-    dr_metrics: List[str] = field(default_factory=lambda: [])
+    dr_metrics: Optional[List[str]] = field(default_factory=lambda: [])
 
 
 @dataclass
