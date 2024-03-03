@@ -134,7 +134,8 @@ def main():
         output_dirname=cfg.output_dirname, 
         seed=args.seed, 
         alpha1=args.num_clients,
-        dr_metrics = args.dr_metrics
+        dr_metrics = args.dr_metrics,
+        cfg=cfg
     )
 
     ## Sanity check for the user-defined data
