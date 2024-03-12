@@ -1,3 +1,17 @@
+==========
+Developers
+==========
+
+.. toctree::
+   :maxdepth: 2
+   :titlesonly:
+
+   algorithms
+   how_to_test
+   ../README
+   release_guide
+
+
 How to contribute
 =================
 

@@ -1,5 +1,5 @@
-Implemented async FL algorithms
-===============================
+Asynchronous algorithms
+=======================
 
 Various asynchronous global model update methods @ FL server
 ------------------------------------------------------------

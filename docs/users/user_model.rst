@@ -1,5 +1,5 @@
-User-defined model and loss functions
-=====================================
+How to define model
+===================
 
 User-defined models can be anything derived from ``torch.nn.Module``.
 For example, we can define a convolutional neural network (CNN) as follows:

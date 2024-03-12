@@ -1,5 +1,8 @@
 myst-parser
-sphinx_rtd_theme
+pydata-sphinx-theme
+sphinx-design
+sphinx-copybutton
+sphinx-contributors
 nbsphinx
 google
 protobuf

@@ -1,3 +1,3 @@
-Implemented personalized FL algorithms
-======================================
+Personalization algorithms
+==========================
 To be added.

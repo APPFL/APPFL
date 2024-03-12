@@ -30,7 +30,7 @@ Let's make sure that ``dist`` directory is empty or does not exsit at the root o
 
 .. code-block:: shell
 
-    $ python -m build
+    python -m build
 
 
 Uploading the distribution archives
@@ -40,7 +40,7 @@ We upload the distribution archives to the test server by the following command.
 
 .. code-block:: shell
 
-    $ twine upload --repository testpypi dist/*
+    twine upload --repository testpypi dist/*
 
 
 Installing the new test package
@@ -50,7 +50,7 @@ Once the distribution archives are uploaded, anyone can install the new test pac
 
 .. code-block:: shell
 
-    $ pip install -i https://test.pypi.org/simple/ --extra-index-url=https://pypi.org/simple "appfl-YOUR-NAME[dev,examples,analytics]"
+    pip install -i https://test.pypi.org/simple/ --extra-index-url=https://pypi.org/simple "appfl-YOUR-NAME[dev,examples,analytics]"
 
 
 Release

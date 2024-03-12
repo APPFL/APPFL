@@ -10,8 +10,8 @@ We highly recommend to create new conda environment and install the required pac
 
 .. code-block:: console
 
-    $ conda create -n APPFL python=3.8
-    $ conda activate APPFL
+    conda create -n APPFL python=3.8
+    conda activate APPFL
 
 User installation
 -----------------
@@ -20,14 +20,14 @@ For most users, including data scientists, this simple installation is sufficien
 
 .. code-block:: console
 
-    $ pip install pip --upgrade
-    $ pip install "appfl[analytics,examples]"
+    pip install pip --upgrade
+    pip install "appfl[analytics,examples]"
 
 If you want to even minimize the installation of package dependencies, you can use:
 
 .. code-block:: console
 
-    $ pip install appfl
+    pip install appfl
 
 .. note::
 
@@ -41,12 +41,12 @@ To set up the development environment,
 
 .. code-block:: console
 
-    $ git clone https://github.com/APPFL/APPFL.git
-    $ cd APPFL
-    $ pip install -e ".[dev,examples,analytics]"
+    git clone https://github.com/APPFL/APPFL.git
+    cd APPFL
+    pip install -e ".[dev,examples,analytics]"
 
 On Ubuntu, if the installation process failed, you can try:
 
 .. code-block:: console
 
-    $ sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
+    sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc

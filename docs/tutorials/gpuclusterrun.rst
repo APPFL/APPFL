@@ -1,5 +1,5 @@
-How to Run on GPU Cluster
-=========================
+On GPU Cluster (Argonne's Swing)
+================================
 
 This describes how to set up the environment to run APPFL in GPU cluster. This tutorial is generated based on SWING GPU cluster in Argonne National Laboratory. The cluster information is avaiable at `Laboratory Computing Resource Center <https://www.lcrc.anl.gov/systems/resources/swing/>`_. In this tutorial, we use MNIST example to run APPFL in the cluster. 
 
@@ -11,9 +11,9 @@ We upload the data and example code from local machine to cluster.
 
 .. code-block:: console
 
-	$ cd APPFL/examples
-	$ ssh [your_id]@[cluster_destination] mkdir -p workspace	 
-	$ scp -r * [your_id]@[cluster_destination]:workspace	
+	cd APPFL/examples
+	ssh [your_id]@[cluster_destination] mkdir -p workspace	 
+	scp -r * [your_id]@[cluster_destination]:workspace	
 
 Please check if the workspace folder contains "datasets", "mnist.py", "models" for this tutorial.
 
@@ -23,18 +23,18 @@ This tutorial uses `modules <https://hpc-wiki.info/hpc/Modules>`_ in SWING clust
 
 .. code-block:: console
 
-	$ module load gcc/9.2.0-r4tyw54 cuda/11.4.0-gqbcqie openmpi/4.1.4-cuda-ucx anaconda3
+	module load gcc/9.2.0-r4tyw54 cuda/11.4.0-gqbcqie openmpi/4.1.4-cuda-ucx anaconda3
 
 Creating Conda Environment and Installing APPFL
----------------------------------------------
+-----------------------------------------------
 Anaconda environment is used to control dependencies.
 
 .. code-block:: console
 
-	$ conda create -n APPFL python=3.8
-	$ conda activate APPFL
-	$ pip install pip --upgrade	
-	$ pip install "appfl[dev,examples,analytics]"
+	conda create -n APPFL python=3.8
+	conda activate APPFL
+	pip install pip --upgrade	
+	pip install "appfl[dev,examples,analytics]"
 
 
 Modifying Dependencies for CUDA Support
@@ -43,9 +43,9 @@ SWING Cluster uses CUDA 11.4 version, so we need to modify torch version to adju
 
 .. code-block:: console
 
-	$ pip uninstall torch tourchvision	
-	$ pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
-	$ conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
+	pip uninstall torch tourchvision	
+	pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
+	conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
 
 .. Note::
 
@@ -57,8 +57,8 @@ SWING Cluster uses Slurm workload manager for job management. The job management
 
 
 .. code-block:: console
+	:caption: test.sh
 
-	$ vim test.sh
 	#!/bin/bash
 	#
 	#SBATCH --job-name=APPFL-test
@@ -73,13 +73,18 @@ The script needs to be submitted to run.
 
 .. code-block:: console
 
-	$ sbatch test.sh
+	sbatch test.sh
+
+You may see the output.
+
+.. code-block:: console
+
 	Submitted batch job {job_id}
 
 The output file is generated when the script run.
 
 .. code-block:: console
 
-	$ cat slurm-{job_number}.out
+	cat slurm-{job_number}.out
 	
 

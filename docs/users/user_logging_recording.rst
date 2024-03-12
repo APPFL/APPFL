@@ -1,5 +1,5 @@
-Logging and recording FL results
-================================
+Logging
+=======
 
 The log of the FL results looks like the following:
 

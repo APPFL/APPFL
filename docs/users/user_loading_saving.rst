@@ -1,5 +1,5 @@
-Loading and saving models
-=========================
+Checkpointing
+=============
 
 Loading
 -------
