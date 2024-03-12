@@ -12,16 +12,21 @@
 #
 import os
 import sys
+import subprocess
+import datetime
+
+sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../src'))
 
-# import sphinx_book_theme
-import sphinx_rtd_theme
+# import pydata_sphinx_theme
 
 # -- Project information -----------------------------------------------------
 
 project = 'APPFL'
-copyright = '2023, Argonne National Laboratory'
-author = 'Argonne National Laboratory'
+copyright = '2002-%d, UChicago Argonne, LLC and the APPFL Development Team' % datetime.date.today().year
+author = 'The APPFL Development Team'
+
+git_describe_version = subprocess.check_output(['git', 'describe', '--always']).strip().decode('utf-8')
 
 
 # -- General configuration ---------------------------------------------------
@@ -42,9 +47,10 @@ extensions = [
         'sphinx.ext.ifconfig',
         'sphinx.ext.autosectionlabel',
         'myst_parser',
-        # 'sphinx_book_theme',
-        'sphinx_rtd_theme',
         'nbsphinx',
+        'sphinx_contributors',
+        'sphinx_copybutton',
+        'sphinx_design',
 ]
 
 autodoc_mock_imports = [
@@ -55,6 +61,7 @@ autodoc_mock_imports = [
         # "google",
         # "protobuf",
         "mpi4py",
+        "zfpy",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -74,30 +81,25 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_data']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-# html_theme = 'sphinx_book_theme'
-# html_theme_path = [sphinx_book_theme.get_html_theme_path()]
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'pydata_sphinx_theme'
 
-# html_logo = '_static/logo/appfl.png'
+html_logo = '_static/logo_yellow_with_name.png'
+html_last_updated_fmt = r'%Y-%m-%dT%H:%M:%S%z (' + git_describe_version + ')'
 
 html_theme_options = {
-    # header settings
-#     "repository_url": "https://github.com/APPFL/APPFL",
-#     "use_repository_button": True,
-#     "use_issues_button": True,
-#     "use_edit_page_button": True,
-#     "repository_branch": "main",
-#     "path_to_docs": "docs",
-#     "use_download_button": False,
-    # sidebar settings
-#     "show_navbar_depth": 1,
-#     "logo_only": True,
+    # "content_footer_items": ["last-updated"],
+    "footer_items": ["copyright", "sphinx-version", "last-updated"],
+    "show_toc_level": 2,
+    # "use_edit_page_button": True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_css_files = [
+    'css/custom.css',
+]
 
 # html_copy_source = False
 

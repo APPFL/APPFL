@@ -1,5 +1,5 @@
-How to run PPFL
-===============
+Basic PPFL Training
+===================
 
 ``APPFL`` provides users with the capabilities of simulating and training PPFL on either a single machine, a cluster, or multiple heterogeneous machines. We refer
 
@@ -57,5 +57,13 @@ For either simulation or training, a skeleton of the script for running PPFL can
 Some remarks are made as follows:
 
 - Line 8 loads the default configuration for PPFL run. See :ref:`How to set configuration` for more details.
-- User-defined model, loss, and data can be read as in lines 14 to 16; see :ref:`User-defined model` and :ref:`User-defined dataset` for more details.
+- User-defined model, loss, and data can be read as in lines 14 to 16; see :ref:`How to define model` and :ref:`How to define datasets` for more details.
 - Depending on our choice of PPFL run, we then call API functions in line 12.
+
+.. toctree::
+   :maxdepth: 1
+   :titlesonly:
+
+   user_model
+   user_data
+   ../notebooks/how_to_config

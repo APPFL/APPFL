@@ -1,15 +1,18 @@
-How to add new algorithms
-=========================
+Adding new algorithms
+=====================
 
 Suppose that we are adding the configuration for our new algorithm.
-New algorithm should be implemented as two classes for server and client. 
-Implementation of the new classes should be derived from the following two base classes: ``appfl.algorithm.BaseServer`` and ``appfl.algorithm.BaseClient``.
+New algorithm should be implemented as two classes for server and client.
+
+Base classes
+------------
+
+
+Implementation of the new classes should be derived from the following two base classes:
 
 .. autoclass:: appfl.algorithm.BaseServer
-    :members:
 
 .. autoclass:: appfl.algorithm.BaseClient
-    :members:
 
 Example: NewAlgo
 ----------------

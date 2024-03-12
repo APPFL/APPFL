@@ -1,3 +1,3 @@
-Implemented privacy-preserving FL algorithms
-============================================
+Privacy-preserving algorithms
+=============================
 To be added.

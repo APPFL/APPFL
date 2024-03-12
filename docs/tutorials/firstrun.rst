@@ -6,22 +6,22 @@ We first make sure that the APPFL package and its dependencies are installed and
 
 .. code-block:: console
 
-    $ git clone https://github.com/APPFL/APPFL.git
-    $ cd APPFL
-    $ pip install -e ".[examples]"
-    $ cd examples
+    git clone https://github.com/APPFL/APPFL.git
+    cd APPFL
+    pip install -e ".[examples]"
+    cd examples
 
 The first example can be simply run using the following command, which launchs a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
 
 .. code-block:: console
 
-    $ python ./mnist_serial.py --num_clients 5
+    python ./mnist_serial.py --num_clients 5
 
 If we want to run **synchronous** FL experiment in parallel using MPI, we can run the example using the following command. 
 
 .. code-block:: console
 
-    $ mpiexec -np 6 python ./mnist_mpi_sync.py
+    mpiexec -np 6 python ./mnist_mpi_sync.py
 
 .. note::
 
@@ -35,7 +35,7 @@ If we want to run **asynchronous** FL experiment in parallel using MPI, we can r
 
 .. code-block:: console
 
-    $ mpiexec -np 6 python ./mnist_mpi_async.py 
+    mpiexec -np 6 python ./mnist_mpi_async.py 
 
 .. note::
 
@@ -45,12 +45,12 @@ As the package name suggests, in addition to general differential privacy techni
 
 .. code-block:: console
 
-    $ mpiexec -np 6 python ./mnist_mpi_privacy.py --server IIADMM
-    $ mpiexec -np 6 python ./mnist_mpi_privacy.py --server ICEADMM
+    mpiexec -np 6 python ./mnist_mpi_privacy.py --server IIADMM
+    mpiexec -np 6 python ./mnist_mpi_privacy.py --server ICEADMM
 
 
 We can also simulate PPFL using the gRPC communication protocol. The following command launchs five MPI processes, with one running the gRPC-based FL server and four running the gRPC-based FL clients.
 
 .. code-block:: console
 
-    $ mpiexec -np 5 python ./mnist_grpc.py 
+    mpiexec -np 5 python ./mnist_grpc.py 

@@ -1,5 +1,5 @@
-Implemented sync FL algorithms 
-==============================
+Synchronous algorithms 
+======================
 
 Various synchronous global model update methods @ FL server
 -----------------------------------------------------------
