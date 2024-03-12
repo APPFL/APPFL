@@ -32,13 +32,13 @@ With this framework, developers and/or users can
 - **simulate** various PPFL algorithms on high-performance computing (HPC) architecture with MPI,
 - implement **user-defined PPFL algorithms** in a plug-and-play manner.
 
-Such algorithmic components include federated learning (FL) algorithm, privacy technique, communication protocol, FL model to train, and data.
+The algorithmic components of the framework include federated learning (FL) algorithm, privacy technique, communication protocol, FL model to train, and data.
 
 - [Documentation](http://appfl.rtfd.io/): please check out the documentation for tutorials, users guide, and developers guide.
 
 ## Installation
 
-We highly recommend to create new Conda virtual environment and install the required packages for APPFL.
+We highly recommend to create a new Conda virtual environment and install the required packages for APPFL.
 
 ```shell
 conda create -n APPFL python=3.8
