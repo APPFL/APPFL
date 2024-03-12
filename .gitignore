@@ -26,6 +26,7 @@ examples/Slurm_outputs/*
 examples/PostProcessing/*
 examples/datasets/PreprocessedData/
 examples/datasets/RawData/Deepcovid
+examples/datasets/RawData/Credit
 examples/datasets/RawData/cifar-10-batches-py
 examples/gcloud/resulting_models
 # examples/models/
@@ -33,7 +34,6 @@ examples/datasets/RawData/Deepcovid
 examples/datasets/RawData/Coronahack
 examples/datasets/RawData/FEMNIST
 examples/datasets/RawData/MNIST
-examples/datasets/RawData/Credit
 examples/datasets/RawData/cifar-10-python.tar.gz
 examples/datasets/PreprocessedData/Coronahack_Clients_4
 examples/datasets/CovidDatasets
