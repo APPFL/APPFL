@@ -12,6 +12,7 @@ class BaseServer:
     """
     BaseServer:
         Abstract base FL server class.
+
     Args:
         weights (Dict): aggregation weight assigned to each client
         model (nn.Module): torch neural network model to train
@@ -88,6 +89,7 @@ class BaseClient:
     """
     BaseClient:
         Abstract base FL client class.
+
     Args:
         id: unique ID for each client
         weight: aggregation weight assigned to each client
@@ -201,6 +203,7 @@ class BaseClient:
         """
         laplace_mechanism_output_perturb:
             Differential privacy for output perturbation based on Laplacian distribution.This output perturbation adds Laplace noise to ``primal_state``. Variance is euqal to `2*(scale_value)^2`, and `scale_value = sensitivty/epsilon`, where `sensitivity` is determined by data, algorithm.
+            
         Args:
             scale_value: scaling vector to control the variance of Laplacian distribution
         """
