@@ -28,7 +28,7 @@
 </p>
 
 
-Advanced Privacy-Preserving Federated Learning (APPFL) is an open-source software framework that allows research communities to implement, test, and validate various ideas for privacy-preserving federated learning (PPFL).
+Advanced Privacy-Preserving Federated Learning (APPFL) is an open-source software framework that allows research communities to implement, test, and validate different aspects of privacy-preserving federated learning (PPFL).
 With this framework, developers and/or users can
 
 - train a user-defined neural network model on **decentralized data with differential privacy**,
@@ -41,7 +41,7 @@ The algorithmic components of the framework include federated learning (FL) algo
 
 ## Installation
 
-We highly recommend to create a new Conda virtual environment and install the required packages for APPFL.
+We highly recommend creating a new Conda virtual environment and install the required packages for APPFL.
 
 ```shell
 conda create -n APPFL python=3.8
