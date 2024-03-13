@@ -1,21 +1,18 @@
 # 🗜 Model Parameter Compressor
 
-The compressor is used for compressing the model parameters or gradients in a lossy manner before the client sends them back to the server for communication efficiency. The server then will decompress the compressed model for aggregation. 
+The `appfl.compressor` module can be used for compressing the model parameters or gradients in a lossy manner before the client sends them back to the server for more efficient communication. The server then will decompress the compressed model before the global aggregation. 
 
-We implement the following lossy compressors. Please refer to their official project/GitHub pages if you want more detailed information of them. Here, we only provide the installation instructions. **Note: SZx need particular permission to access because collaboration with a third-party, so we omit its installation here.**.
+The `appfl.compressor` currently supports the following lossy compressors. Please refer to their official project/GitHub pages if you want more detailed information of them. Here, we only provide the installation instructions. **Note: SZx need particular permission to access because of the collaboration with a third-party, so we omit its installation here.**
 
-1. [SZ2](https://github.com/szcompressor/SZ)
-2. [SZ3](https://github.com/szcompressor/SZ3)
-3. [ZFP](https://pypi.org/project/zfpy/)
-4. [SZx](https://github.com/szcompressor/SZx)
+1. [SZ2: Error-bounded Lossy Compressor for HPC Data](https://github.com/szcompressor/SZ)
+2. [SZ3: A Modular Error-bounded Lossy Compression Framework for Scientific Datasets](https://github.com/szcompressor/SZ3)
+3. [ZFP: Compressed Floating-Point and Integer Arrays](https://pypi.org/project/zfpy/)
+4. [SZX: An Ultra-fast Error-bounded Lossy Compressor for Scientific Datasets](https://github.com/szcompressor/SZx)
 
 ## Installation
-We provide a script for installing all the above compressors [`examples/compressor/install.sh`](../../../examples/compressor/install.sh). You can install them by running the following commands in the `examples` directory.
-
+Users can easily install all the above compressors by running the following command.
 ```bash
-cd examples
-chmod +x compressor/install.sh
-./compressor/install.sh
+appfl-install-compressor
 ```
 
 ## Citation

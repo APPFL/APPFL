@@ -2,9 +2,11 @@
 .gitignore
 .DS_Store
 .compressor
+*.pptx
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 note
+datasets
 *output*
 trials
 examples/output*

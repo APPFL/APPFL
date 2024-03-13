@@ -59,7 +59,6 @@ setuptools.setup(
         "scipy",
         "lz4",
         "python-xz",
-        "scipy",
     ],
     extras_require={
         "dev": [
@@ -91,6 +90,7 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "appfl-auth=appfl.login_manager.globus.cli:auth",
+            "appfl-install-compressor=appfl.compressor.install:install_compressor"
         ],
     },
 )
