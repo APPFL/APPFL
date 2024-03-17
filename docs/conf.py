@@ -91,6 +91,13 @@ html_theme_options = {
     "footer_items": ["copyright", "sphinx-version", "last-updated"],
     "show_toc_level": 2,
     # "use_edit_page_button": True,
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/APPFL/APPFL",
+            "icon": "fab fa-github",
+        },
+    ],
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
