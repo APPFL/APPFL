@@ -20,13 +20,12 @@ for i, (k, v) in enumerate(authors.items()):
         AUTHOR += ", "
     AUTHOR += f"{k} <{v}>"
 
-
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="appfl",
-    version="0.4.1",
+    version="0.4.2",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -64,6 +63,10 @@ setuptools.setup(
         "dev": [
             "sphinx",
             "sphinx_rtd_theme",
+            "pydata-sphinx-theme",
+            "sphinx-design",
+            "sphinx-copybutton",
+            "sphinx-contributors",
             "myst-parser",
             "nbsphinx",
             "twine",
