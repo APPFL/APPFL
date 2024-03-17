@@ -27,8 +27,8 @@ else
     make install
     echo -e "\033[32mSZ2 installation done.\033[0m"
     echo "======================"
+    cd ../..
 fi
-cd ../..
 
 # Install SZ3
 if [ -d "SZ3" ]; then
@@ -42,8 +42,8 @@ else
     make install
     echo -e "\033[32mSZ3 installation done.\033[0m"
     echo "======================"
+    cd ../..
 fi
-cd ../..
 
 # Install SZx
 echo -e "\033[31mSZx is not open source, please install it manually by contacting the author.\033[0m"

@@ -9,7 +9,6 @@ from .fed.fedasync import *
 from .fed.iceadmm import * 
 from .fed.iiadmm import *
 
-
 @dataclass
 class Config:
     fed: Any = field(default_factory=Federated)
@@ -114,9 +113,11 @@ class Config:
 
     # Lossy compression path configuration
     ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
-    compressor_sz2_path: str = "../.compressor/SZ/build/sz/libSZ" + ext
-    compressor_sz3_path: str = "../.compressor/SZ3/build/tools/sz3c/libSZ3c" + ext
-    compressor_szx_path: str = "../.compressor/SZx-main/build/lib/libSZx" + ext
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    base_dir = os.path.abspath(os.path.join(current_dir, os.pardir, os.pardir, os.pardir))
+    compressor_sz2_path: str = os.path.join(base_dir, ".compressor/SZ/build/sz/libSZ" + ext)
+    compressor_sz3_path: str = os.path.join(base_dir, ".compressor/SZ3/build/tools/sz3c/libSZ3c" + ext)
+    compressor_szx_path: str = os.path.join(base_dir, ".compressor/SZx-main/build/lib/libSZx" + ext)
 
     # Compressor parameters
     error_bounding_mode: str = ""
