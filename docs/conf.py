@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 # -- Project information -----------------------------------------------------
 
 project = 'APPFL'
-copyright = '2002-%d, UChicago Argonne, LLC and the APPFL Development Team' % datetime.date.today().year
+copyright = '2022-%d, UChicago Argonne, LLC and the APPFL Development Team' % datetime.date.today().year
 author = 'The APPFL Development Team'
 
 git_describe_version = subprocess.check_output(['git', 'describe', '--always']).strip().decode('utf-8')
@@ -97,6 +97,11 @@ html_theme_options = {
             "url": "https://github.com/APPFL/APPFL",
             "icon": "fab fa-github",
         },
+        {
+            "name": "Discord",
+            "url": "https://discord.gg/bBW56EYGUS",
+            "icon": "fab fa-discord",
+        }
     ],
 }
 
