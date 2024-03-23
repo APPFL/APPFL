@@ -29,3 +29,13 @@ The users can store their raw datasets in this directory for further loading, an
 - Make a subdirectory named ``CELEBA`` under this directory.
 - Download and preprocess the dataset according to the LEAF instructions: https://github.com/TalwalkarLab/leaf/tree/master/data/celeba
 - Copy the directories ``train`` , ``test`` and ``raw`` folders and paste them under ``examples/datasets/RawData/CELEBA``
+
+## Example 4. Credit Data
+
+- Make a subdirectory named ``Credit`` under this directory.
+- Download the dataset from https://www.kaggle.com/datasets/parisrohan/credit-score-classification
+- Store the dataset (i.e., `archive` directory) in the ``examples/datasets/RawData/Credit/archive`` 
+- Now just run the following command inside the ``examples`` directory with the data readiness metrics to run and generate the readiness report
+    ```
+    python ./credit_serial.py --num_clients 5 --dr_metrics=ci,ss,rr,ds,dup,dc,dd --sens_attr=Occupation
+    ```

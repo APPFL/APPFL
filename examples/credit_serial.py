@@ -8,7 +8,7 @@ from appfl.misc.utils import *
 from losses.utils import get_loss
 from models.utils import get_model
 from metric.utils import get_metric
-from dataloader.mnist_dataloader import get_mnist
+from dataloader.credit_dataloader import get_credit_data
 
 """
 To run serially with 5 clients:
@@ -20,11 +20,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default="cpu")
 
 ## dataset
-parser.add_argument("--dataset", type=str, default="MNIST")
+parser.add_argument("--dataset", type=str, default="CREDIT")
 parser.add_argument("--num_channel", type=int, default=1)
-parser.add_argument("--num_classes", type=int, default=10)
+parser.add_argument("--num_classes", type=int, default=3)
 parser.add_argument("--num_pixel", type=int, default=28)
-parser.add_argument("--model", type=str, default="CNN")
+parser.add_argument("--model", type=str, default="CNNSmall")
 parser.add_argument("--partition", type=str, default="iid", choices=["iid", "class_noiid", "dirichlet_noiid"])
 parser.add_argument("--seed", type=int, default=42)
 
@@ -69,9 +69,31 @@ parser.add_argument(
     help="Usage: --dr_metrics ci ss"
          "ci: to measure class imbalance of each client" 
          "ss: to measure sample size"
+         "rr: to measure representation rates of sensitive attributes"
+         "ds: to measure data sparisty"
+         "dup: to measure duplicity of the data"
+         "dc: to measure data consistency"
+         "dd: to measure data distribution"
+)
+
+
+## sensitive attributes for fairness metrics
+parser.add_argument(
+    "--sens_attr", 
+    nargs="*", 
+    type=str, 
+    required=False, 
+    help="Provide the sensitive attributes to be used for fairness metrics"
 )
 
 args = parser.parse_args()
+
+dr_metrics = ','.join(args.dr_metrics)
+
+if "rr" in dr_metrics:
+    if args.sens_attr is None:
+        raise ValueError("Sensitive attributes are required for representation rate metric. Please provide the sensitive attributes using --sens_attr option.(eg. --sens_attr=Occupation)")
+    
 
 if torch.cuda.is_available():
     args.device = "cuda"
@@ -126,7 +148,7 @@ def main():
     metric = get_metric(args.metric, args.metric_name)
 
     ## User-defined data
-    train_datasets, test_dataset = get_mnist(
+    train_datasets, test_dataset = get_credit_data(
         None, 
         num_clients=cfg.num_clients, 
         partition=args.partition, 
@@ -135,6 +157,7 @@ def main():
         seed=args.seed, 
         alpha1=args.num_clients,
         dr_metrics = args.dr_metrics,
+        sens_attr = args.sens_attr,
         cfg=cfg
     )
 

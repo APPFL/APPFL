@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 import math
 
-class CNN(nn.Module):
+class CNNSmall(nn.Module):
     def __init__(self, num_channel, num_classes, num_pixel):
         super().__init__()
         self.conv1 = nn.Conv2d(
-            num_channel, 32, kernel_size=5, padding=0, stride=1, bias=True
+            num_channel, 32, kernel_size=3, padding=1, stride=1, bias=True
         )
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=5, padding=0, stride=1, bias=True)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=1, bias=True)
         self.maxpool = nn.MaxPool2d(kernel_size=(2, 2))
         self.act = nn.ReLU(inplace=True)
 
@@ -22,7 +22,7 @@ class CNN(nn.Module):
         X = X / 2
         X = int(X)
 
-        self.fc1 = nn.Linear(64 * X * X, 512)
+        self.fc1 = nn.Linear(8 * X * X  , 512)
         self.fc2 = nn.Linear(512, num_classes)
 
     def forward(self, x):
@@ -34,5 +34,3 @@ class CNN(nn.Module):
         x = self.act(self.fc1(x))
         x = self.fc2(x)
         return x
-
-
