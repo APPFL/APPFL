@@ -10,7 +10,7 @@ from appfl.misc import create_instance_from_file, get_function_from_file
 from appfl.logger import ServerAgentFileLogger
 from concurrent.futures import Future
 from omegaconf import OmegaConf, DictConfig
-from typing import Union, Dict, OrderedDict, Tuple
+from typing import Union, Dict, OrderedDict, Tuple, Optional
 
 class APPFLServerAgent:
     """
@@ -91,9 +91,55 @@ class APPFLServerAgent:
             self, 
             client_id: Union[int, str],
             sample_size: int,
-        ) -> None:
-        """Set the size of the local dataset of a client."""
+            sync: bool = False,
+            blocking: bool = False,
+        ) -> Optional[Union[Dict, Future]]:
+        """
+        Set the size of the local dataset of a client.
+        :param: client_id: A unique client id for server to distinguish clients, which can be obtained via `ClientAgent.get_id()`.
+        :param: sample_size: The size of the local dataset of a client.
+        :param: sync: Whether to synchronize the sample size among all clients. If `True`, the method can return the relative weight of the client.
+        :param: blocking: Whether to block the client until the sample size of all clients is synchronized. 
+            If `True`, the method will return the relative weight of the client.
+            Otherwise, the method may return a `Future` object of the relative weight, which will be resolved 
+            when the sample size of all clients is synchronized.
+        """
+        if sync:
+            assert (
+                hasattr(self.server_agent_config.server_configs, "num_clients") or
+                hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") or
+                hasattr(self.server_agent_config.server_configs.aggregator_kwargs, "num_clients")
+            ), "The number of clients should be set in the server configurations."
+            num_clients = (
+                self.server_agent_config.server_configs.num_clients if
+                hasattr(self.server_agent_config.server_configs, "num_clients") else
+                self.server_agent_config.server_configs.scheduler_kwargs.num_clients if
+                hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") else
+                self.server_agent_config.server_configs.aggregator_kwargs.num_clients
+            )
         self.aggregator.set_client_sample_size(client_id, sample_size)
+        if sync:
+            if not hasattr(self, "_client_sample_size"):
+                self._client_sample_size = {}
+                self._client_sample_size_future = {}
+                self._client_sample_size_lock = threading.Lock()
+            with self._client_sample_size_lock:
+                self._client_sample_size[client_id] = sample_size
+                future = Future()
+                self._client_sample_size_future[client_id] = future
+                if len(self._client_sample_size) == num_clients:
+                    total_sample_size = sum(self._client_sample_size.values())
+                    for client_id in self._client_sample_size_future:
+                        self._client_sample_size_future[client_id].set_result(
+                            {"client_weight": self._client_sample_size[client_id] / total_sample_size}
+                        )
+                    self._client_sample_size = {}
+                    self._client_sample_size_future = {}
+            if blocking:
+                return future.result()
+            else:
+                return future
+        return None
 
     def training_finished(self, internal_check: bool = False) -> bool:
         """Notify the client whether the training is finished."""
