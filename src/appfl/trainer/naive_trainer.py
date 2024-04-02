@@ -39,6 +39,8 @@ class NaiveTrainer(BaseTrainer):
             logger=logger,
             **kwargs
         )
+        if not hasattr(self.train_configs, "device"):
+            self.train_configs.device = "cpu"
         self.train_dataloader = DataLoader(
             self.train_dataset,
             batch_size=self.train_configs.get("train_batch_size", 32),
@@ -51,33 +53,27 @@ class NaiveTrainer(BaseTrainer):
             shuffle=self.train_configs.get("val_data_shuffle", False),
             num_workers=self.train_configs.get("num_workers", 0),
         ) if self.val_dataset is not None else None
-
+        self._sanity_check()
         
     def train(self):
         """
         Train the model for a certain number of local epochs or steps and store the mode state
         (probably with perturbation for differential privacy) in `self.model_state`.
         """
-        # Sanity check
-        assert hasattr(self.train_configs, "mode"), "Training mode must be specified"
-        assert self.train_configs.mode in ["epoch", "step"], "Training mode must be either 'epoch' or 'step'"
-        if self.train_configs.mode == "epoch":
-            assert hasattr(self.train_configs, "num_local_epochs"), "Number of local epochs must be specified"
-        else:
-            assert hasattr(self.train_configs, "num_local_steps"), "Number of local steps must be specified"
-        
+        # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
         if send_gradient:
             self.model_prev = copy.deepcopy(self.model.state_dict())
 
-        self.model.to(self.train_configs.get("device", "cpu"))
+        self.model.to(self.train_configs.device)
+
         do_validation = self.train_configs.get("do_validation", False) and self.val_dataloader is not None
         do_pre_validation = self.train_configs.get("do_pre_validation", False) and do_validation
         
         # Set up logging title
         if self.round == 0:
             title = (
-                ["Round", "Pre Val?" "Time", "Train Loss", "Train Accuracy"] 
+                ["Round", "Time", "Train Loss", "Train Accuracy"] 
                 if not do_validation
                 else (
                     ["Round", "Pre Val?", "Time", "Train Loss", "Train Accuracy", "Val Loss", "Val Accuracy"] 
@@ -91,7 +87,10 @@ class NaiveTrainer(BaseTrainer):
 
         if do_pre_validation:
             val_loss, val_accuracy = self._validate()
-            self.logger.log_content([self.round, "Y", " ", " ", " ", val_loss, val_accuracy])
+            content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]  
+            if self.train_configs.mode == "epoch":
+                content.insert(1, 0)
+            self.logger.log_content(content)
         
         # Start training
         optim_module = importlib.import_module("torch.optim")
@@ -169,7 +168,7 @@ class NaiveTrainer(BaseTrainer):
             self.model_state = copy.deepcopy(self.model.state_dict())
         
         # Move to CPU for communication
-        if self.train_configs.get("device", "cpu") == "cuda":
+        if self.train_configs.device == "cuda":
             for k in self.model_state:
                 self.model_state[k] = self.model_state[k].cpu()
 
@@ -181,12 +180,23 @@ class NaiveTrainer(BaseTrainer):
         hasattr(self, "model_state"), "Please make sure the model has been trained before getting its parameters"
         return self.model_state
 
+    def _sanity_check(self):
+        """
+        Check if the configurations are valid.
+        """
+        assert hasattr(self.train_configs, "mode"), "Training mode must be specified"
+        assert self.train_configs.mode in ["epoch", "step"], "Training mode must be either 'epoch' or 'step'"
+        if self.train_configs.mode == "epoch":
+            assert hasattr(self.train_configs, "num_local_epochs"), "Number of local epochs must be specified"
+        else:
+            assert hasattr(self.train_configs, "num_local_steps"), "Number of local steps must be specified"
+
     def _validate(self) -> Tuple[float, float]:
         """
         Validate the model
         :return: loss, accuracy
         """
-        device = self.train_configs.get("device", "cpu")
+        device = self.train_configs.device
         self.model.eval()
         val_loss = 0
         with torch.no_grad():
@@ -210,7 +220,7 @@ class NaiveTrainer(BaseTrainer):
         :param target: target label
         :return: loss, prediction, label
         """
-        device = self.train_configs.get("device", "cpu")
+        device = self.train_configs.device
         data = data.to(device)
         target = target.to(device)
         optimizer.zero_grad()
@@ -239,4 +249,4 @@ class NaiveTrainer(BaseTrainer):
                 self.named_parameters.add(name)
         for name in self.model_state:
             if name in self.named_parameters:
-                self.model_state[name] = self.model_prev[name] - self.model_state[name]
+                self.model_state[name] = self.model_prev[name].cpu() - self.model_state[name]

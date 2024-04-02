@@ -6,8 +6,8 @@ import numpy as np
 import torch.nn as nn
 from omegaconf import DictConfig
 from collections import OrderedDict
-from torch.utils.data import DataLoader
 from typing import Any, Optional, Tuple
+from torch.utils.data import DataLoader, Dataset
 from appfl.trainer.base_trainer import BaseTrainer
 from appfl.privacy import laplace_mechanism_output_perturb
 
@@ -22,8 +22,8 @@ class ICEADMMTrainer(BaseTrainer):
         model: Optional[nn.Module]=None,
         loss_fn: Optional[nn.Module]=None,
         metric: Optional[Any]=None,
-        train_dataset: Optional[DataLoader]=None,
-        val_dataset: Optional[DataLoader]=None,
+        train_dataset: Optional[Dataset]=None,
+        val_dataset: Optional[Dataset]=None,
         train_configs: DictConfig = DictConfig({}),
         logger: Optional[Any]=None,
         **kwargs
@@ -68,9 +68,9 @@ class ICEADMMTrainer(BaseTrainer):
             self.named_parameters.add(name)
             self.primal_states[name] = param.data
             self.dual_states[name] = torch.zeros_like(param.data)
+        self._sanity_check()
 
     def train(self):
-        self._sanity_check()
         self.model.train()
         self.model.to(self.train_configs.device)
         do_validation = self.train_configs.get("do_validation", False) and self.val_dataloader is not None
@@ -79,7 +79,7 @@ class ICEADMMTrainer(BaseTrainer):
         """Set up logging title"""
         if self.round == 0:
             title = (
-                ["Round", "Pre Val?" "Time", "Train Loss", "Train Accuracy"] 
+                ["Round", "Time", "Train Loss", "Train Accuracy"] 
                 if not do_validation
                 else (
                     ["Round", "Pre Val?", "Time", "Train Loss", "Train Accuracy", "Val Loss", "Val Accuracy"] 
@@ -91,9 +91,13 @@ class ICEADMMTrainer(BaseTrainer):
                 title.insert(1, "Epoch")
             self.logger.log_title(title)
 
-        if do_pre_validation:
+        pre_val_interval = self.train_configs.get("pre_validation_interval", 1)
+        if do_pre_validation and (self.round + 1) % pre_val_interval == 0:
             val_loss, val_accuracy = self._validate()
-            self.logger.log_content([self.round, "Y", " ", " ", " ", val_loss, val_accuracy])
+            content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]  
+            if self.train_configs.mode == "epoch":
+                content.insert(1, 0)
+            self.logger.log_content(content)
 
         optim_module = importlib.import_module("torch.optim")
         assert hasattr(optim_module, self.train_configs.optim), f"Optimizer {self.train_configs.optim} not found in torch.optim"
@@ -115,7 +119,7 @@ class ICEADMMTrainer(BaseTrainer):
                 start_time = time.time()
                 train_loss, target_true, target_pred = 0, [], []
                 for data, target in self.train_dataloader:
-                    loss, pred, label = self._train_batch(optimizer, data, target)
+                    loss, pred, label = self._train_batch(optimizer, data, target, global_state)
                     train_loss += loss
                     target_true.append(label)
                     target_pred.append(pred)
@@ -145,7 +149,7 @@ class ICEADMMTrainer(BaseTrainer):
                 except:
                     data_iter = iter(self.train_dataloader)
                     data, target = next(data_iter)
-                loss, pred, label = self._train_batch(optimizer, data, target)
+                loss, pred, label = self._train_batch(optimizer, data, target, global_state)
                 train_loss += loss
                 target_true.append(label)
                 target_pred.append(pred)
@@ -167,7 +171,6 @@ class ICEADMMTrainer(BaseTrainer):
             )
         
         self.round += 1
-
 
         for name, param in self.model.named_parameters():
             param.data = self.primal_states[name].to(self.train_configs.device)
