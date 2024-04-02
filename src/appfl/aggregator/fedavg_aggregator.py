@@ -20,34 +20,44 @@ class FedAvgAggregator(BaseAggregator):
         for name, _ in self.model.named_parameters():
             self.named_parameters.add(name)
 
+        self.step = {}
+
+    def get_parameters(self, **kwargs) -> Dict:
+        return copy.deepcopy(self.model.state_dict())
+
     def aggregate(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs) -> Dict:
         """
         Take the weighted average of local models from clients and return the global model.
         """
         global_state = copy.deepcopy(self.model.state_dict())
-        for name in self.model.state_dict():
-            global_state[name] = torch.zeros_like(self.model.state_dict()[name])
         
-        for client_id, model in local_models.items():
-            for name in self.model.state_dict():
-                if name in self.named_parameters:
-                    if (
-                        self.client_weights_mode == "sample_size" and
-                        hasattr(self, "client_sample_size") and
-                        client_id in self.client_sample_size
-                    ):
-                        weight = self.client_sample_size[client_id] / sum(self.client_sample_size.values())
-                    else:
-                        weight = 1.0 / len(local_models)
-                    global_state[name] += weight * model[name]
-                else:
-                    global_state[name] += model[name]
+        self.compute_steps(local_models)
         
         for name in self.model.state_dict():
             if name not in self.named_parameters:
                 global_state[name] = torch.div(global_state[name], len(local_models))
+            else:
+                global_state[name] += self.step[name]
+            
         self.model.load_state_dict(global_state)
         return global_state
     
-    def get_parameters(self, **kwargs) -> Dict:
-        return copy.deepcopy(self.model.state_dict())
+    def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]):
+        """
+        Compute the changes to the global model after the aggregation.
+        """
+        for name in self.model.state_dict():
+            self.step[name] = torch.zeros_like(self.model.state_dict()[name])
+        for client_id, model in local_models.items():
+            if (
+                self.client_weights_mode == "sample_size" and
+                hasattr(self, "client_sample_size") and
+                client_id in self.client_sample_size
+            ):
+                weight = self.client_sample_size[client_id] / sum(self.client_sample_size.values())
+            else:
+                weight = 1.0 / len(local_models)
+            for name in self.named_parameters:
+                self.step[name] += weight * (model[name] - self.model.state_dict()[name])
+    
+
