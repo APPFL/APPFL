@@ -28,12 +28,6 @@ class ICEADMMAggregator(BaseAggregator):
         self.dual_states = OrderedDict()
         self.primal_states_curr = OrderedDict()
         self.primal_states_prev = OrderedDict()
-        assert "num_clients" in self.aggregator_config
-        for i in range(aggregator_config.num_clients):
-            self.primal_states[i] = OrderedDict()
-            self.dual_states[i] = OrderedDict()
-            self.primal_states_curr[i] = OrderedDict()
-            self.primal_states_prev[i] = OrderedDict()
         self.device = self.aggregator_config.device if "device" in self.aggregator_config else "cpu"
 
     def aggregate(
@@ -41,18 +35,26 @@ class ICEADMMAggregator(BaseAggregator):
         local_models: Dict[Union[str, int], Union[Dict, OrderedDict]],
         **kwargs
     ) -> Dict:
+        if len(self.primal_states) == 0:
+            self.num_clients = len(local_models)
+            for i in local_models:
+                self.primal_states[i] = OrderedDict()
+                self.dual_states[i] = OrderedDict()
+                self.primal_states_curr[i] = OrderedDict()
+                self.primal_states_prev[i] = OrderedDict()
+
         global_state = copy.deepcopy(self.model.state_dict())
 
         for client_id, model in local_models.items():
             if model is not None:
                 self.primal_states[client_id] = model["primal"]
                 self.dual_states[client_id] = model["dual"]
-                self.penalty[client_id] = model["penalty"][client_id] # ?? Check this
+                self.penalty[client_id] = model["penalty"]
         
         # Calculate the primal residual
         primal_res = 0
         for client_id in local_models:
-            for name, _ in self.named_parameters:
+            for name in self.named_parameters:
                 primal_res += torch.sum(torch.square(
                     global_state[name].to(self.device)
                     - self.primal_states[client_id][name].to(self.device)
@@ -100,3 +102,6 @@ class ICEADMMAggregator(BaseAggregator):
         
         self.model.load_state_dict(global_state)
         return global_state
+    
+    def get_parameters(self, **kwargs) -> Dict:
+        return copy.deepcopy(self.model.state_dict())
