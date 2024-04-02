@@ -1,16 +1,9 @@
+import io
+import torch
 from .grpc_communicator_pb2 import DataBuffer
-from .grpc_communicator_pb2 import TensorRecord
-
-def construct_tensor_record(name, nparray):
-    return TensorRecord(
-        name=name,
-        data_shape=list(nparray.shape),
-        data_bytes=nparray.tobytes(order="C"),
-        data_dtype="np." + str(nparray.dtype),
-    )
 
 def proto_to_databuffer(proto, max_message_size=(2 * 1024 * 1024)):
-    max_message_size = max_message_size - 16 # 16 bytes for the message size field
+    max_message_size = int(0.9 * max_message_size)
     data_bytes = proto.SerializeToString()
     data_bytes_size = len(data_bytes)
     message_size = (
@@ -19,5 +12,15 @@ def proto_to_databuffer(proto, max_message_size=(2 * 1024 * 1024)):
 
     for i in range(0, data_bytes_size, message_size):
         chunk = data_bytes[i : i + message_size]
-        msg = DataBuffer(size=message_size, data_bytes=chunk)
+        msg = DataBuffer(data_bytes=chunk)
         yield msg
+
+def serialize_model(model):
+    """Serialize a model to a byte string."""
+    buffer = io.BytesIO()
+    torch.save(model, buffer)
+    return buffer.getvalue()
+
+def load_credential_from_file(filepath):
+    with open(filepath, "rb") as f:
+        return f.read()
