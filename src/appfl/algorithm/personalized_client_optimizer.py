@@ -39,8 +39,8 @@ class PersonalizedClientOptim(BaseClient):
                 loss.backward()
                 optimizer.step()
                 # ----- Implementing clipping. Using idea that if per-update clip is C/n then total clip for n epochs
-                # is at most C by traingle inequality.
-                clip_factor = model_parameters_clip_factor(self.model,pre_update_params,self.clip_value,self.clip_norm) / self.num_local_epochs
+                # is at most C by triangle inequality.
+                clip_factor = model_parameters_clip_factor(self.model,pre_update_params,self.clip_value/self.num_local_epochs,self.clip_norm)
                 if self.clip_grad or self.use_dp:
                     scale_update(self.model,pre_update_params,scale=clip_factor)
                 # -----
