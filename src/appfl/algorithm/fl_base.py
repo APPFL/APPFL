@@ -212,3 +212,18 @@ class BaseClient:
             scale = torch.zeros_like(param.data) + scale_value
             m = torch.distributions.laplace.Laplace(mean, scale)
             self.primal_state[name] += m.sample()
+            
+    def laplace_mechanism_output_perturb_personalized(self, scale_value):
+        """
+        laplace_mechanism_output_perturb:
+            Differential privacy for output perturbation based on Laplacian distribution.This output perturbation adds Laplace noise to ``primal_state``. Variance is euqal to `2*(scale_value)^2`, and `scale_value = sensitivty/epsilon`, where `sensitivity` is determined by data, algorithm.
+            
+        Args:
+            scale_value: scaling vector to control the variance of Laplacian distribution
+        """
+        for name, param in self.model.named_parameters():
+            if name not in self.cfg.p_layers:
+                mean = torch.zeros_like(param.data)
+                scale = torch.zeros_like(param.data) + scale_value
+                m = torch.distributions.laplace.Laplace(mean, scale)
+                self.primal_state[name] += m.sample()

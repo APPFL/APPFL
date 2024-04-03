@@ -67,7 +67,7 @@ class PersonalizedClientOptim(BaseClient):
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(PersonalizedClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            super(PersonalizedClientOptim, self).laplace_mechanism_output_perturb_personalized(scale_value)
             
         ## Save each client model periodically  
         if self.cfg.personalization == True and self.cfg.save_model_state_dict == True and ((self.round) % self.cfg.checkpoints_interval == 0 or self.round== self.cfg.num_epochs):
@@ -79,4 +79,3 @@ class PersonalizedClientOptim(BaseClient):
                 self.primal_state[k] = self.primal_state[k].cpu()
 
         return self.primal_state
- 

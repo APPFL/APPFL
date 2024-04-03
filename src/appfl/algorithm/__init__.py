@@ -8,6 +8,7 @@ from .client_step_optimizer import *
 from .globus_compute_client_optimizer import *
 from .globus_compute_client_step_optimizer import *
 from .personalized_client_optimizer import *
+from .personalized_client_step_optimizer import *
 from .server_fed_avg import *
 from .server_fed_avgmom import *
 from .server_fed_adagrad import *
