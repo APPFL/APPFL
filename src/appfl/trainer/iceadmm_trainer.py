@@ -6,8 +6,8 @@ import numpy as np
 import torch.nn as nn
 from omegaconf import DictConfig
 from collections import OrderedDict
-from typing import Any, Optional, Tuple
 from torch.utils.data import DataLoader, Dataset
+from typing import Any, Optional, Tuple
 from appfl.trainer.base_trainer import BaseTrainer
 from appfl.privacy import laplace_mechanism_output_perturb
 
@@ -71,6 +71,7 @@ class ICEADMMTrainer(BaseTrainer):
         self._sanity_check()
 
     def train(self):
+        assert hasattr(self, "weight"), "You must set the weight of the client before training. Use `set_weight` method."
         self.model.train()
         self.model.to(self.train_configs.device)
         do_validation = self.train_configs.get("do_validation", False) and self.val_dataloader is not None
@@ -172,6 +173,7 @@ class ICEADMMTrainer(BaseTrainer):
         
         self.round += 1
 
+        """Differential Privacy"""
         for name, param in self.model.named_parameters():
             param.data = self.primal_states[name].to(self.train_configs.device)
         if self.train_configs.get("use_dp", False):
@@ -214,7 +216,6 @@ class ICEADMMTrainer(BaseTrainer):
             assert hasattr(self.train_configs, "num_local_epochs"), "Number of local epochs must be specified"
         else:
             assert hasattr(self.train_configs, "num_local_steps"), "Number of local steps must be specified"
-        assert hasattr(self, "weight"), "You must set the weight of the client before training. Use `set_weight` method."
         if getattr(self.train_configs, "clip_grad", False) or getattr(self.train_configs, "use_dp", False):
             assert hasattr(self.train_configs, "clip_value"), "Gradient clipping value must be specified"
             assert hasattr(self.train_configs, "clip_norm"), "Gradient clipping norm must be specified"

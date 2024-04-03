@@ -35,7 +35,10 @@ class FedAvgAggregator(BaseAggregator):
         
         for name in self.model.state_dict():
             if name not in self.named_parameters:
-                global_state[name] = torch.div(global_state[name], len(local_models))
+                param_sum = torch.zeros_like(self.model.state_dict()[name])
+                for _, model in local_models.items():
+                    param_sum += model[name]
+                global_state[name] = torch.div(param_sum, len(local_models))
             else:
                 global_state[name] += self.step[name]
             
@@ -46,7 +49,7 @@ class FedAvgAggregator(BaseAggregator):
         """
         Compute the changes to the global model after the aggregation.
         """
-        for name in self.model.state_dict():
+        for name in self.named_parameters:
             self.step[name] = torch.zeros_like(self.model.state_dict()[name])
         for client_id, model in local_models.items():
             if (

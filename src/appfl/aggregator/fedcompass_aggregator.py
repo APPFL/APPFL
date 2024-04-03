@@ -6,8 +6,8 @@ from typing import Union, Dict, OrderedDict, Any, Optional
 
 class FedCompassAggregator(BaseAggregator):
     """
-    Aggregator for `FedCompass` semi-asynchronous federated learning algorithm.
-    Paper reference: https://arxiv.org/abs/2309.14675
+    FedCompass semi-asynchronous federated learning algorithm.
+    For more details, check paper: https://arxiv.org/abs/2309.14675
     """
     def __init__(
         self,

@@ -7,6 +7,11 @@ from typing import Any, Dict, Union
 from appfl.aggregator import BaseAggregator
 
 class ICEADMMAggregator(BaseAggregator):
+    """
+    ICEADMM Aggregator class for Federated Learning.
+    It has to be used with the ICEADMMTrainer.
+    For more details, check paper: https://arxiv.org/pdf/2110.15318.pdf
+    """
     def __init__(
         self,
         model: nn.Module,
