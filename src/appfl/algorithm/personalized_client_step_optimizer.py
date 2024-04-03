@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from torch.optim import *
 from .fl_base import BaseClient
-from ..misc.utils import save_partial_model_iteration, model_parameters_norm, scale_update
+from ..misc.utils import save_partial_model_iteration, model_parameters_clip_factor, scale_update
 
 class PersonalizedClientStepOptim(BaseClient):
     """This client optimizer which perform updates for certain number of steps/batches in each training round."""
@@ -76,15 +76,13 @@ class PersonalizedClientStepOptim(BaseClient):
             optimizer.step()
             # ----- Implementing clipping. Using idea that if per-update clip is C/n then total clip for n epochs
             # is at most C by traingle inequality.
-            model_norm = model_parameters_norm(self.model,self.clip_value,self.clip_norm) / self.num_local_steps
+            clip_factor = model_parameters_clip_factor(self.model,pre_update_params,self.clip_value,self.clip_norm) / self.num_local_steps
             if self.clip_grad or self.use_dp:
-                scale_update(self.model,pre_update_params,model_norm)
+                scale_update(self.model,pre_update_params,scale=clip_factor)
                 # -----
             target_true.append(target.detach().cpu().numpy())
             target_pred.append(output.detach().cpu().numpy())
             train_loss += loss.item()
-            if self.clip_grad or self.use_dp:
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)
         
         self.round += 1
 

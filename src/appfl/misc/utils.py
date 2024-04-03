@@ -222,20 +222,20 @@ def dump_data_to_file(obj, file_path: str):
         raise RuntimeError("File extension %s is not supported" % file_ext)
     return True
 
-def model_parameters_norm(model, C, norm_type=1):
+def model_parameters_clip_factor(model, pre_update_params, C, norm_type=1):
     """
-    Compute the norm of all the parameters of a model and return that norm
-    if it is below the threshold C, otherwise return C.
+    Compute the norm of all the parameters of a model and return that C / norm
+    if norm is below the threshold C, otherwise return 1.
     :model: The PyTorch model
     :C: The threshold value
     :param norm_type: The type of norm to compute (default is 2, which is the L2 norm)
     """
     total_norm = 0.0
-    for param in model.parameters():
-        param_norm = param.data.norm(norm_type)
+    for param_old, param_new in zip(pre_update_params,list(model.parameters())):
+        param_norm = torch.norm(param_old-param_new,p=norm_type)
         total_norm += param_norm.item() ** norm_type
     total_norm = total_norm ** (1. / norm_type)
-    return min(total_norm, C)
+    return ( C / total_norm ) if total_norm > C else 1
 
 def scale_update(model, pre_update_params, scale = 1.0):
     """
