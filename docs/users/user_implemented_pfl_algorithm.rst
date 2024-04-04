@@ -19,9 +19,11 @@ This is an example configuration:
 .. code-block:: python
 
     cfg.personalization = True
-    cfg.p_layers = ["personalized_layer_1", "personalized_layer_1"]
+    cfg.p_layers = ["personalized_layer_1", "personalized_layer_2"]
     cfg.fed.clientname = "PersonalizedClientOptim"
     cfg.fed.args.use_dp = True
+    cfg.fed.args.clip_value = 100.
+    cfg.fed.args.clip_norm = 1 # laplace mechanism requires 1-norm
 
 A detailed example is available in our Github repository: `examples/personalization_fedloadforecast.py`
 
