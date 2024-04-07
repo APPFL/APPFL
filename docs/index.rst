@@ -55,14 +55,14 @@ APPFL is primarily composed of the following six technical components: *Aggregat
 
    .. grid-item-card:: 
       
-      Compression
-      ^^^^^^^^^^^
+      Compressor
+      ^^^^^^^^^^
       Supports several lossy compressors, including `SZ2 <https://github.com/szcompressor/SZ>`_, `SZ3 <https://github.com/szcompressor/SZ3>`_, `ZFP <https://pypi.org/project/zfpy/>`_, and `SZx <https://github.com/szcompressor/SZx>`_.
 
 APPFL aims to maintain a composable design of the package, where each technical component is extendible and independent from each other. Users can use the configuration files to specify the desired item from each component to launch FL experiments according their needs.
 
-APPFL Framework Overview
-========================
+Framework Overview
+==================
 
 .. image:: _static/design-logic.jpg
    :width: 90%
