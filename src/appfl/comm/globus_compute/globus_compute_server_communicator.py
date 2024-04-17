@@ -1,22 +1,18 @@
+import os
 import time
 import uuid
-import os.path as osp
-import concurrent.futures
-from collections import OrderedDict
-from omegaconf import DictConfig, OmegaConf
-from globus_compute_sdk import Executor, Client
-from .utils.endpoint import GlobusComputeClientEndpoint
-from .utils.s3_storage import CloudStorage, LargeObjectWrapper
-from .utils.config import ClientTask
-
 import pathlib
 import logging
+from omegaconf import OmegaConf
+from collections import OrderedDict
+from globus_compute_sdk import Executor, Client
 from concurrent.futures import Future, as_completed
-from typing import Optional, Dict, List, Union, Tuple
-from appfl.agent import APPFLServerAgent
-from appfl.config import ClientAgentConfig
+from typing import Optional, Dict, List, Union, Tuple, Any
 from appfl.logger import ServerAgentFileLogger
-
+from appfl.config import ClientAgentConfig, ServerAgentConfig
+from .utils.config import ClientTask
+from .utils.endpoint import GlobusComputeClientEndpoint
+from .utils.s3_storage import CloudStorage, LargeObjectWrapper
 
 class GlobusComputeServerCommunicator:
     """
@@ -28,7 +24,7 @@ class GlobusComputeServerCommunicator:
     documentation at https://globus-compute.readthedocs.io/en/latest/endpoints.html.
 
     :param `gcc`: Globus Compute client object
-    :param `server_agent`: APPFL server agent object
+    :param `server_agent_config`: The server agent configuration
     :param `client_agent_configs`: A list of client agent configurations.
     :param [Optional] `logger`: Optional logger object
     :param [Optional] `s3_bucket`: Optional S3 bucket name for large model transfer. It should be noted that Globus 
@@ -39,7 +35,7 @@ class GlobusComputeServerCommunicator:
     """
     def __init__(
         self,
-        server_agent: APPFLServerAgent,
+        server_agent_config: ServerAgentConfig,
         client_agent_configs: List[ClientAgentConfig],
         logger: Optional[ServerAgentFileLogger] = None,
         *,
@@ -50,10 +46,9 @@ class GlobusComputeServerCommunicator:
     ):
         gcc = Client()
         self.gce = Executor(funcx_client=gcc) # Globus Compute Executor
-        self.server_agent = server_agent
         self.logger = logger if logger is not None else self._default_logger()
-        client_config_from_server = self.server_agent.get_client_configs()
-        """Initiate the Globus Compute client endpoints."""
+        client_config_from_server = server_agent_config.client_configs
+        # Initiate the Globus Compute client endpoints.
         self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
         for client_config in client_agent_configs:
             assert hasattr(client_config, "endpoint_id"), "Client configuration must have an endpoint_id."
@@ -63,10 +58,12 @@ class GlobusComputeServerCommunicator:
                 client_endpoint_id, 
                 OmegaConf.merge(client_config_from_server, client_config),
             )
-        """Initilize the S3 bucket for large model transfer if necessary."""
+        # Initilize the S3 bucket for large model transfer if necessary.
         self.use_s3bucket = s3_bucket is not None
         if self.use_s3bucket:
             self.logger.info(f'Using S3 bucket {s3_bucket} for model transfer.')
+            if not os.path.exists(s3_temp_dir):
+                pathlib.Path(s3_temp_dir).mkdir(parents=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
         
         self.executing_tasks: Dict[str, ClientTask] = {}
@@ -155,70 +152,100 @@ class GlobusComputeServerCommunicator:
     def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
         """
         Receive task results from all clients that have running tasks.
+        :return `client_results`: A dictionary containing the results from all clients - Dict[client_endpoint_id, client_model]
+        :return `client_metadata`: A dictionary containing the metadata from all clients - Dict[client_endpoint_id, client_metadata]
         """
-        client_results, client_logs = {}, {}
+        client_results, client_metadata = {}, {}
         while len(self.executing_task_futs):
             fut = next(as_completed(list(self.executing_task_futs)))
             task_id = self.executing_task_futs[fut]
             try:
                 result = fut.result()
                 client_endpoint_id = self.executing_tasks[task_id].client_endpoint_id
-                client_res, client_log = self.__parse_globus_compute_result(result, task_id)
-                
-
-    def __parse_globus_compute_result(self, result, task_id, do_finalize=True):
+                client_model, client_metadata = self.__parse_globus_compute_result(result, task_id)
+                client_results[client_endpoint_id] = client_model
+                client_metadata[client_endpoint_id] = client_metadata
+                # Set the status of the finished task
+                client_log = client_metadata.get("log", {})
+                self.executing_tasks[task_id].end_time = time.time()
+                self.executing_tasks[task_id].success = True
+                self.executing_tasks[task_id].log = client_log # TODO: Check this line
+                # Clean up the task
+                self.logger.info(f"Recieved results of task '{self.executing_tasks[task_id].task_name}' from {client_endpoint_id}.")
+                self.client_endpoints[client_endpoint_id].status
+                self.executing_tasks.pop(task_id)
+                self.executing_task_futs.pop(fut)
+            except Exception as e:
+                self.logger.info(f"Task {self.executing_tasks[task_id].task_name} on {client_endpoint_id} failed with an error.")
+                raise e
+        return client_results, client_metadata
+    
+    def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
         """
-        Parse the returned results from Globus Compute endpoint.
-        The results can be composed to two parts: the actual results for the
-        task and the client logs throughout the task execution for monitoring.
-        :param `result`: The result returned from the Globus Compute endpoint.
-        :param `task_id`: The ID of the task being executed.
+        Receive task results from the first client that finishes the task.
+        :return `client_endpoint_id`: The client endpoint id from which the result is received.
+        :return `client_model`: The model returned from the client
+        :return `client_metadata`: The metadata returned from the client
         """
-        # Obtain the client logs.
-        client_log = {}
-        if type(result) == tuple:
-            result, client_log = result
-        else:
-            client_log = None
-        # Download client results from S3 bucker if necessary
-        res = self.__process_client_results(res)
-        # Change the status of the finished task
-        self.__set_task_success_status(task_id, time.time(), client_log)
-        # Log the receipt of the task results
-        client_name = self.clients[self.executing_tasks[task_id].client_idx].client_cfg.name
-        client_task_name = self.executing_tasks[task_id].task_name
-        self.logger.info("Recieved results of task '%s' from %s." %(client_task_name, client_name))
-        # Finalize the experiment if necessary
-        if do_finalize:
-            self.__finalize_task(task_id)
-        return res, client_log
-
-    def __process_client_results(self, results):
-        """Process results from clients, download file from S3 if necessary"""
-        if not self.use_s3bucket:
-            return results
-        for key in results:
-            if CloudStorage.is_cloud_storage_object(results[key]):
-                results[key] = CloudStorage.download_object(results[key], to_device=self.cfg.server.device, delete_cloud=True, delete_local=True)
-        return results
-
-    def receive_sync_endpoints_updates(self):
-        """Receive synchronous updates from all client endpoints."""
-        client_results = []
-        client_logs    = OrderedDict()
-        while len(self.executing_task_futs):
-            fut = next(concurrent.futures.as_completed(list(self.executing_task_futs)))
+        assert len(self.executing_task_futs), "There is no active client endpoint running tasks."
+        try:
+            fut = next(as_completed(list(self.executing_task_futs)))
             task_id = self.executing_task_futs[fut]
-            try:
-                result = fut.result()
-                client_idx = self.executing_tasks[task_id].client_idx
-                client_local_result, client_logs[client_idx] = self.__handle_globus_compute_result(result, task_id)
-                client_results.append(client_local_result)
-                del self.executing_task_futs[fut]
-            except Exception as exc:
-                self.logger.error("Task %s on %s is failed with an error." % (self.executing_tasks[task_id].task_name, self.cfg.clients[self.executing_tasks[task_id].client_idx].name))
-                raise exc
-        return client_results, client_logs
+            result = fut.result()
+            client_endpoint_id = self.executing_tasks[task_id].client_endpoint_id
+            client_model, client_metadata = self.__parse_globus_compute_result(result, task_id)
+            # Set the status of the finished task
+            client_log = client_metadata.get("log", {})
+            self.executing_tasks[task_id].end_time = time.time()
+            self.executing_tasks[task_id].success = True
+            self.executing_tasks[task_id].log = client_log # TODO: Check this line
+            # Clean up the task
+            self.logger.info(f"Recieved results of task '{self.executing_tasks[task_id].task_name}' from {client_endpoint_id}.")
+            self.client_endpoints[client_endpoint_id].status
+            self.executing_tasks.pop(task_id)
+            self.executing_task_futs.pop(fut)
+        except Exception as e:
+            self.logger.info(f"Task {self.executing_tasks[task_id].task_name} on {client_endpoint_id} failed with an error.")
+            raise e
+        return client_endpoint_id, client_model, client_metadata
+
+    def shutdown_all_clients(self):
+        """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
+        self.logger.info("Shutting down all clients......")
+        self.gce.shutdown(wait=False, cancel_futures=True)
+        # Clean-up cloud storage
+        CloudStorage.clean_up()
+        self.logger.info("The server and all clients have been shutted down successfully.")
+
+    def cancel_all_tasks(self):
+        """Cancel all on-the-fly client tasks."""
+        for task_fut in self.executing_task_futs:
+            task_fut.cancel()
+            task_id = self.executing_task_futs[task_fut]
+            client_endpoint_id = self.executing_tasks[task_id].client_endpoint_id
+            self.client_endpoints[client_endpoint_id].cancel_task()
+        self.executing_task_futs = {}
+        self.executing_tasks = {}
+
+    def __parse_globus_compute_result(self, result):
+        """
+        Parse the returned results from a Globus Compute endpoint.
+        The results can be composed of two parts:
+        - Model parameters (can be model, gradients, compressed model, etc.)
+        - Metadata (may contain additional information such as logs, etc.)
+        :param `result`: The result returned from the Globus Compute endpoint.
+        :return `model`: The model parameters returned from the client
+        :return `metadata`: The metadata returned from the client
+        """
+        if isinstance(result, tuple):
+            model, metadata = result
+        else:
+            model, metadata = result, {}
+        # Download model from S3 bucket if necessary
+        if self.use_s3bucket:
+            if CloudStorage.is_cloud_storage_object(model):
+                model = CloudStorage.download_object(model, delete_cloud=True, delete_local=True)
+        return model, metadata
 
     def __register_task(self, task_id, task_fut, client_endpoint_id, task_name):
         """
@@ -233,7 +260,6 @@ class GlobusComputeServerCommunicator:
             )
         )
         self.executing_task_futs[task_fut] = task_id
-
 
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
