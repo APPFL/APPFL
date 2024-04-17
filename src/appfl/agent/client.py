@@ -11,7 +11,8 @@ from appfl.misc import create_instance_from_file, \
     run_function_from_file, \
     get_function_from_file, \
     create_instance_from_file_source, \
-    get_function_from_file_source
+    get_function_from_file_source, \
+    run_function_from_file_source
 
 class APPFLClientAgent:
     """
@@ -99,11 +100,18 @@ class APPFLClientAgent:
 
     def _load_data(self) -> None:
         """Get train and validation dataloaders from local dataloader file."""
-        self.train_dataset, self.val_dataset = run_function_from_file(
-            self.client_agent_config.data_configs.dataset_path,
-            self.client_agent_config.data_configs.dataset_name,
-            **self.client_agent_config.data_configs.dataset_kwargs
-        )
+        if hasattr(self.client_agent_config.data_configs, "dataset_source"):
+            self.train_dataset, self.val_dataset = run_function_from_file_source(
+                self.client_agent_config.data_configs.dataset_source,
+                self.client_agent_config.data_configs.dataset_name,
+                **self.client_agent_config.data_configs.dataset_kwargs
+            )
+        else:
+            self.train_dataset, self.val_dataset = run_function_from_file(
+                self.client_agent_config.data_configs.dataset_path,
+                self.client_agent_config.data_configs.dataset_name,
+                **self.client_agent_config.data_configs.dataset_kwargs
+            )
 
     def _load_model(self) -> None:
         """
