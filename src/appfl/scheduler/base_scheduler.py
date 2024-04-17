@@ -43,6 +43,7 @@ class BaseScheduler:
             kwargs.get("init_model", True) 
             and self.scheduler_configs.get("same_init_model", True) 
             and (not kwargs.get("serial_run", False))
+            and (not kwargs.get("globus_compute_run", False))
         ):
             if not hasattr(self, "init_model_requests"):
                 self.init_model_requests = 0

@@ -26,22 +26,13 @@ class GlobusComputeServerCommunicator:
     :param `gcc`: Globus Compute client object
     :param `server_agent_config`: The server agent configuration
     :param `client_agent_configs`: A list of client agent configurations.
-    :param [Optional] `logger`: Optional logger object
-    :param [Optional] `s3_bucket`: Optional S3 bucket name for large model transfer. It should be noted that Globus 
-        Compute only supports 5MB parameter transfer. If the model size is larger, it should be uploaded to
-        an S3 bucket and downloaded by the clients.
-    :param [Optional] `s3_creds_file`: A file containing the credentials to access the S3 bucket
-    :param [Optional] `s3_temp_dir`: Temporary directory for S3 bucket operations
+    :param [Optional] `logger`: Optional logger object.
     """
     def __init__(
         self,
         server_agent_config: ServerAgentConfig,
         client_agent_configs: List[ClientAgentConfig],
         logger: Optional[ServerAgentFileLogger] = None,
-        *,
-        s3_bucket: Optional[str] = None,
-        s3_creds_file: Optional[str] = None,
-        s3_temp_dir: str = str(pathlib.Path.home() / ".appfl" / "s3_tmp_dir"),
         **kwargs,
     ):
         gcc = Client()
@@ -52,6 +43,10 @@ class GlobusComputeServerCommunicator:
         self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
         for client_config in client_agent_configs:
             assert hasattr(client_config, "endpoint_id"), "Client configuration must have an endpoint_id."
+            # Read the client dataloader source file
+            with open(client_config.data_configs.dataset_path, "r") as file:
+                client_config.data_configs.dataset_source = file.read()
+            del client_config.data_configs.dataset_path
             client_endpoint_id = client_config.endpoint_id
             del client_config.endpoint_id
             self.client_endpoints[client_endpoint_id] = GlobusComputeClientEndpoint(
@@ -59,9 +54,12 @@ class GlobusComputeServerCommunicator:
                 OmegaConf.merge(client_config_from_server, client_config),
             )
         # Initilize the S3 bucket for large model transfer if necessary.
+        s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_bucket", None)
         self.use_s3bucket = s3_bucket is not None
         if self.use_s3bucket:
             self.logger.info(f'Using S3 bucket {s3_bucket} for model transfer.')
+            s3_creds_file = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_creds_file", None)
+            s3_temp_dir = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_temp_dir", str(pathlib.Path.home() / ".appfl" / "s3_tmp_dir"))
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
@@ -85,13 +83,13 @@ class GlobusComputeServerCommunicator:
         :param `need_model_response`: Whether the task requires a model response from the clients
             If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
         """
-        if self.use_s3bucket:
+        if self.use_s3bucket and model is not None:
             model_wrapper = LargeObjectWrapper(
                 data=model,
                 name=str(uuid.uuid4()) + "_server_state",
             )
             if not model_wrapper.can_send_directly:
-                model = CloudStorage.upload_object(model, register_for_clean=True)
+                model = CloudStorage.upload_object(model_wrapper, register_for_clean=True)
         for i, client_endpoint_id in enumerate(self.client_endpoints):
             client_metadata = (
                 metadata[i] if isinstance(metadata, list) else metadata
@@ -159,14 +157,14 @@ class GlobusComputeServerCommunicator:
         while len(self.executing_task_futs):
             fut = next(as_completed(list(self.executing_task_futs)))
             task_id = self.executing_task_futs[fut]
+            client_endpoint_id = self.executing_tasks[task_id].client_endpoint_id
             try:
                 result = fut.result()
-                client_endpoint_id = self.executing_tasks[task_id].client_endpoint_id
-                client_model, client_metadata = self.__parse_globus_compute_result(result, task_id)
+                client_model, client_metadata_local = self.__parse_globus_compute_result(result)
                 client_results[client_endpoint_id] = client_model
-                client_metadata[client_endpoint_id] = client_metadata
+                client_metadata[client_endpoint_id] = client_metadata_local
                 # Set the status of the finished task
-                client_log = client_metadata.get("log", {})
+                client_log = client_metadata_local.get("log", {})
                 self.executing_tasks[task_id].end_time = time.time()
                 self.executing_tasks[task_id].success = True
                 self.executing_tasks[task_id].log = client_log # TODO: Check this line
@@ -193,7 +191,7 @@ class GlobusComputeServerCommunicator:
             task_id = self.executing_task_futs[fut]
             result = fut.result()
             client_endpoint_id = self.executing_tasks[task_id].client_endpoint_id
-            client_model, client_metadata = self.__parse_globus_compute_result(result, task_id)
+            client_model, client_metadata = self.__parse_globus_compute_result(result)
             # Set the status of the finished task
             client_log = client_metadata.get("log", {})
             self.executing_tasks[task_id].end_time = time.time()
@@ -205,6 +203,7 @@ class GlobusComputeServerCommunicator:
             self.executing_tasks.pop(task_id)
             self.executing_task_futs.pop(fut)
         except Exception as e:
+            client_endpoint_id = self.executing_tasks[task_id].client_endpoint_id
             self.logger.info(f"Task {self.executing_tasks[task_id].task_name} on {client_endpoint_id} failed with an error.")
             raise e
         return client_endpoint_id, client_model, client_metadata

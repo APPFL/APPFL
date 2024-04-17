@@ -39,8 +39,8 @@ class CloudStorage(object):
     @classmethod
     def init(
         cls, 
-        s3_bucket: str,
-        s3_creds_file: Optional[str],
+        s3_bucket: Optional[str]=None,
+        s3_creds_file: Optional[str]=None,
         s3_tmp_dir: str = str(pathlib.Path.home() / ".appfl" / "s3_tmp_dir"),
         logger = None
     ):
