@@ -96,6 +96,8 @@ class APPFLClientAgent:
             kwargs["logging_id"] = self.client_agent_config.train_configs.get("logging_id", self.get_id())
             kwargs["file_dir"] = self.client_agent_config.train_configs.get("logging_output_dirname", "./output")
             kwargs["file_name"] = self.client_agent_config.train_configs.get("logging_output_filename", "result")
+        if hasattr(self.client_agent_config, "experiment_id"):
+            kwargs["experiment_id"] = self.client_agent_config.experiment_id
         self.logger = ClientAgentFileLogger(**kwargs)
 
     def _load_data(self) -> None:

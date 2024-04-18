@@ -18,7 +18,7 @@ def globus_compute_client_entry_point(
     
     client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
     if model is not None:
-        model = load_global_model(model)
+        model = load_global_model(client_agent.client_agent_config, model)
         client_agent.load_parameters(model)
 
     if task_name == "get_sample_size":

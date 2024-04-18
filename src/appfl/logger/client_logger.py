@@ -2,12 +2,18 @@ import os
 import uuid
 import logging
 import pathlib
+from datetime import datetime
 from typing import List, Dict, Union
 
 class ClientAgentFileLogger:
-    def __init__(self, logging_id: str="", file_dir: str="", file_name: str="") -> None:
-        file_name += f"_{logging_id}"
-        fmt = logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') if logging_id == "" else logging.Formatter(f'[%(asctime)s %(levelname)-4s {logging_id}]: %(message)s')
+    def __init__(self, logging_id: str="", file_dir: str="", file_name: str="", experiment_id: str="") -> None:
+        if file_name != "":
+            file_name += f"_{logging_id}_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        fmt = (
+            logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') 
+            if logging_id == "" 
+            else logging.Formatter(f'[%(asctime)s %(levelname)-4s {logging_id}]: %(message)s')
+        )
         self.logger = logging.getLogger(__name__+"_"+logging_id if logging_id != "" else str(uuid.uuid4()))
         self.logger.setLevel(logging.INFO)
         s_handler = logging.StreamHandler()
@@ -17,11 +23,7 @@ class ClientAgentFileLogger:
         if file_dir != "" and file_name != "":
             if not os.path.exists(file_dir):
                 pathlib.Path(file_dir).mkdir(parents=True)
-            uniq = 1
             real_file_name = f"{file_dir}/{file_name}.txt"
-            while os.path.exists(real_file_name):
-                real_file_name = f"{file_dir}/{file_name}_{uniq}.txt"
-                uniq += 1
             self.logger.info(f"Logging to {real_file_name}")
             f_handler = logging.FileHandler(real_file_name)
             f_handler.setLevel(logging.INFO)
@@ -50,3 +52,9 @@ class ClientAgentFileLogger:
 
     def info(self, info: str) -> None:
         self.logger.info(info)
+
+    def debug(self, debug: str) -> None:
+        self.logger.debug(debug)
+
+    def error(self, error: str) -> None:
+        self.logger.error(error)
