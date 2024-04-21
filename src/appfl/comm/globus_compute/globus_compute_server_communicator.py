@@ -52,6 +52,8 @@ class GlobusComputeServerCommunicator:
             del client_config.data_configs.dataset_path
             client_endpoint_id = client_config.endpoint_id
             client_config.experiment_id = experiment_id
+            if not hasattr(client_config.train_configs, "logging_id"):
+                client_config.train_configs.logging_id = client_config.endpoint_id
             self.client_endpoints[client_endpoint_id] = GlobusComputeClientEndpoint(
                 client_endpoint_id, 
                 OmegaConf.merge(client_config_from_server, client_config),

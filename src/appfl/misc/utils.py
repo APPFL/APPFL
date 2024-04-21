@@ -221,7 +221,6 @@ def load_data_from_file(
     For uncompressed model weights of PyTorch models, the weights are stored in a dictionary in the `pt` or `pth` file.
     For compressed model weights of PyTorch models, the weights are stored as bytes in the `pkl` file.
     """
-    print(f'[DEBUG] file_path: {file_path}')
     TORCH_EXT = ['.pt', '.pth']
     PICKLE_EXT= ['.pkl']
     file_ext = osp.splitext(osp.basename(file_path))[-1]
