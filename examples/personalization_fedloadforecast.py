@@ -61,6 +61,7 @@ parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=4)
+parser.add_argument("--num_local_steps", type=int, default=4)
 
 ## server
 parser.add_argument("--server", type=str, default="ServerFedAdam")
@@ -93,6 +94,7 @@ parser.add_argument("--metric", type=str, default='metric/mae.py')
 ## personalization
 parser.add_argument("--personalization_layers", type=list_of_strings, default=[])
 parser.add_argument("--personalization_config_name", type=str, default = "")
+parser.add_argument("--opt_type",type=str,choices=['step','epoch'],default='step')
 
 ## profile performance?
 parser.add_argument("--profile_code", type=int, default=0)
@@ -142,11 +144,15 @@ def main():
 
     ## clients
     if cfg.personalization:
-        cfg.fed.clientname = "PersonalizedClientOptim"
+        if args.opt_type == 'step':
+            cfg.fed.clientname = "PersonalizedClientStepOptim"
+        else:
+            cfg.fed.clientname = "PersonalizedClientOptim"
     cfg.num_clients = args.num_clients
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_epochs = args.num_local_epochs
+    cfg.fed.args.num_local_steps = args.num_local_steps
 
     ## server
     cfg.fed.servername = args.server
@@ -221,7 +227,7 @@ def main():
 
 
 if __name__ == "__main__": 
-    if args.profile_code:
+    if not args.profile_code:
         main()
     else:
         rank = MPI.COMM_WORLD.Get_rank()
@@ -237,4 +243,3 @@ if __name__ == "__main__":
         ps.print_stats()
         with open (os.getcwd()+'/code_profile/rank_%d.txt'%rank,'w') as f:
             f.write(s.getvalue())
-

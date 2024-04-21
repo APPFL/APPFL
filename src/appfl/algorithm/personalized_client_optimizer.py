@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from torch.optim import *
 from .fl_base import BaseClient
-from ..misc.utils import save_partial_model_iteration
+from ..misc.utils import save_partial_model_iteration, model_parameters_clip_factor, scale_update
 
 class PersonalizedClientOptim(BaseClient):
     def __init__(
@@ -35,18 +35,18 @@ class PersonalizedClientOptim(BaseClient):
                 optimizer.zero_grad()
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
+                pre_update_params = [param.clone() for param in self.model.parameters()] # save pre-update params
                 loss.backward()
                 optimizer.step()
+                # ----- Implementing clipping. Using idea that if per-update clip is C/n then total clip for n epochs
+                # is at most C by triangle inequality.
+                clip_factor = model_parameters_clip_factor(self.model,pre_update_params,self.clip_value/self.num_local_epochs,self.clip_norm)
+                if self.clip_grad or self.use_dp:
+                    scale_update(self.model,pre_update_params,scale=clip_factor)
+                # -----
                 train_loss += loss.item()
                 target_true.append(target.detach().cpu().numpy())
                 target_pred.append(output.detach().cpu().numpy())
-
-                if self.clip_grad or self.use_dp:
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.clip_value,
-                        norm_type=self.clip_norm,
-                    )
             
             train_loss /= len(self.dataloader)
             target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
@@ -67,7 +67,7 @@ class PersonalizedClientOptim(BaseClient):
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(PersonalizedClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            super(PersonalizedClientOptim, self).laplace_mechanism_output_perturb_personalized(scale_value)
             
         ## Save each client model periodically  
         if self.cfg.personalization == True and self.cfg.save_model_state_dict == True and ((self.round) % self.cfg.checkpoints_interval == 0 or self.round== self.cfg.num_epochs):
@@ -79,4 +79,3 @@ class PersonalizedClientOptim(BaseClient):
                 self.primal_state[k] = self.primal_state[k].cpu()
 
         return self.primal_state
- 

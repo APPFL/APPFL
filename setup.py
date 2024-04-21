@@ -88,6 +88,7 @@ setuptools.setup(
             "pyarrow",
             "fastparquet",
             "tqdm",
+            "wget",
         ],
     },
     entry_points={
