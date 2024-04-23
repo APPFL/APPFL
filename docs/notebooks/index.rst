@@ -7,5 +7,6 @@ This section provides a collection of notebooks for tutorial.
     :maxdepth: 1
 
     configuration
+    serial_fl
     simple_mnist.ipynb
     launch_gRPC_auth

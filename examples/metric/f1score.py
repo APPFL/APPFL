@@ -41,4 +41,11 @@ def f1score(y_true, y_pred, average='macro'):
     
     return overall_f1
 
+def f1_micro(y_true, y_pred):
+    return f1score(y_true, y_pred, average='micro')
 
+def f1_macro(y_true, y_pred):
+    return f1score(y_true, y_pred, average='macro')
+
+def f1_weighted(y_true, y_pred):
+    return f1score(y_true, y_pred, average='weighted')
