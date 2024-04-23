@@ -10,3 +10,4 @@ We present a collection of tutorials for APPFL framework.
     ../notebooks/index
     gpuclusterrun
     gcloud
+    aws
