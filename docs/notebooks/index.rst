@@ -9,3 +9,4 @@ This section provides a collection of notebooks for tutorial.
     configuration.ipynb
     serial_fl.ipynb
     launch_gRPC_auth
+    compression.ipynb
