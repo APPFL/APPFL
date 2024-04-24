@@ -41,7 +41,7 @@ class GlobusComputeServerCommunicator:
         self.logger = logger if logger is not None else self._default_logger()
         client_config_from_server = server_agent_config.client_configs
         # Create a unique experiment ID for this federated learning experiment
-        experiment_id = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        experiment_id = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         # Initiate the Globus Compute client endpoints.
         self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
         for client_config in client_agent_configs:
