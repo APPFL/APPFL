@@ -4,14 +4,14 @@ import torchvision
 import torchvision.transforms as transforms
 from appfl.misc.data import Dataset, iid_partition, class_noniid_partition, dirichlet_noniid_partition
 
-def get_mnist(
+def get_cifar10(
     num_clients: int,
     client_id: int,
     partition_strategy: str = "iid",
     **kwargs
 ):
     """
-    Return the MNIST dataset for a given client.
+    Return the CIFAR10 dataset for a given client.
     :param num_clients: total number of clients
     :param client_id: the client id
     """
@@ -19,7 +19,7 @@ def get_mnist(
     dir = os.getcwd() + "/datasets/RawData"
 
     # Root download the data if not already available.
-    test_data_raw = torchvision.datasets.MNIST(dir, download=True, train=False, transform=transforms.ToTensor())
+    test_data_raw = torchvision.datasets.CIFAR10(dir, download=True, train=False, transform=transforms.ToTensor())
 
     # Obtain the testdataset
     test_data_input = []
@@ -30,7 +30,7 @@ def get_mnist(
     test_dataset = Dataset(torch.FloatTensor(test_data_input), torch.tensor(test_data_label))
 
     # Training data for multiple clients
-    train_data_raw = torchvision.datasets.MNIST(dir, download=False, train=True, transform=transforms.ToTensor())
+    train_data_raw = torchvision.datasets.CIFAR10(dir, download=False, train=True, transform=transforms.ToTensor())
 
     # Partition the dataset
     if partition_strategy == "iid":

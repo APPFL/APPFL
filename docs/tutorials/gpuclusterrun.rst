@@ -1,73 +1,66 @@
-On GPU Cluster (Argonne's Swing)
-================================
+Simulation on GPU cluster
+=========================
 
-This describes how to set up the environment to run APPFL in GPU cluster. This tutorial is generated based on SWING GPU cluster in Argonne National Laboratory. The cluster information is avaiable at `Laboratory Computing Resource Center <https://www.lcrc.anl.gov/systems/resources/swing/>`_. In this tutorial, we use MNIST example to run APPFL in the cluster. 
+This describes how to set up the environment to run APPFL using MPI in a GPU cluster for simulation, which is useful for benchmarking the performance of different FL algoirthms on various datasets. In this example, we partition the CIFAR10 in an non-independent and identically distributed (non-IID) manner into five client splits and train a Resnet-18 model using the FedAvg algorithm.
 
-Preparing Training
---------------------------------
-We assume user run the MNIST example in locally machine according to `Our first run MNIST <https://github.com/APPFL/APPFL/blob/main/docs/tutorials/firstrun.rst>`_. MNIST datasets will be downloaded while running the MNIST example.
+.. note::
 
-We upload the data and example code from local machine to cluster.
-
-.. code-block:: console
-
-	cd APPFL/examples
-	ssh [your_id]@[cluster_destination] mkdir -p workspace	 
-	scp -r * [your_id]@[cluster_destination]:workspace	
-
-Please check if the workspace folder contains "datasets", "mnist.py", "models" for this tutorial.
+	This tutorial is generated based on the `Delta supercomputer <https://docs.ncsa.illinois.edu/systems/delta/en/latest>`_ at the National Center for Supercomputing Applications (NCSA), which uses Slurm as it job scheduler. 
 
 Loading Modules
-------------------------------------
+---------------
+
+Most HPC clusters use `modules <https://hpc-wiki.info/hpc/Modules>`_ to manage the environment, and the module configuration may vary depending on the clusters you use. On the Delta supercomputer, the following modules are loaded.
+
 This tutorial uses `modules <https://hpc-wiki.info/hpc/Modules>`_ in SWING cluster. The module configuration may vary depending on the Clusters. 
 
 .. code-block:: console
 
-	module load gcc/9.2.0-r4tyw54 cuda/11.4.0-gqbcqie openmpi/4.1.4-cuda-ucx anaconda3
+	1) gcc/11.4.0   2) openmpi/4.1.6   3) cuda/11.8.0   4) cue-login-env/1.0   5) slurm-env/0.1   6) default-s11   7) anaconda3_gpu/23.9.0
+
+You need to run `module save` to save the current module configuration.
+
+.. code-block:: bash
+
+	module save
 
 Creating Conda Environment and Installing APPFL
 -----------------------------------------------
-Anaconda environment is used to control dependencies.
+Now, we can create a conda environment and install APPFL.
 
-.. code-block:: console
+.. code-block:: bash
 
-	conda create -n APPFL python=3.8
-	conda activate APPFL
-	pip install pip --upgrade	
-	pip install "appfl[dev,examples,analytics]"
+    conda create -n appfl python=3.10
+    conda activate appfl
+    git clone https://github.com/APPFL/APPFL.git
+    cd APPFL
+    pip install -e ".[examples]"
+    cd examples
 
-
-Modifying Dependencies for CUDA Support
----------------------------------------------
-SWING Cluster uses CUDA 11.4 version, so we need to modify torch version to adjust to the CUDA version. CUDA version may vary depending on the Clusters. A different version of CUDA may require changing the `torch <https://pytorch.org/get-started/locally/>`_ versions.
-
-.. code-block:: console
-
-	pip uninstall torch tourchvision	
-	pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
-	conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
-
-.. Note::
-
-	``pip install chardet`` may need to resolve the dependency issue from the torchvision package.
 
 Creating Batch Script
----------------------------------------------
-SWING Cluster uses Slurm workload manager for job management. The job management configuration may vary depending on the Clusters. 
+---------------------
+The Delta supercomputer uses Slurm workload manager for job management. 
 
-
-.. code-block:: console
-	:caption: test.sh
+.. code-block:: bash
+	:caption: submit.sh
 
 	#!/bin/bash
-	#
-	#SBATCH --job-name=APPFL-test
-	#SBATCH --account=<your_project_name>
-	#SBATCH --nodes=1
-	#SBATCH --gres=gpu:2
-	#SBATCH --time=00:05:00
+	#SBATCH --mem=150g                              # required number of memory
+	#SBATCH --nodes=1                               # number of required nodes
+	#SBATCH --ntasks-per-node=6                    	# number of tasks per node [SHOULD BE EQUAL TO THE NUMBER OF CLIENTS+1]
+	#SBATCH --cpus-per-task=1                       # <- match to OMP_NUM_THREADS
+	#SBATCH --partition=gpuA40x4                    # <- or one of: gpuA100x4 gpuA40x4 gpuA100x8 gpuMI100x8
+	#SBATCH --account=<xxxx-delta-gpu>              # <- one of: replace xxxx with your project name
+	#SBATCH --job-name=APPFL-test				    # job name
+	#SBATCH --time=00:15:00                         # dd-hh:mm:ss for the job
+	#SBATCH --gpus-per-node=1
+	#SBATCH --gpu-bind=none
 
-	mpiexec -np 2 --mca opal_cuda_support 1 python ./mnist.py --num_clients=2
+	source ~/.bashrc
+	conda activate appfl
+	cd <your_path_to_appfl>/examples
+	mpiexec -np 6 python ./mpi/run_mpi.py --server_config ./configs/cifar10/server_fedcompass.yaml --client_config ./configs/cifar10/client_1.yaml
 
 The script needs to be submitted to run.
 
@@ -81,10 +74,8 @@ You may see the output.
 
 	Submitted batch job {job_id}
 
-The output file is generated when the script run.
+The output file `slurm-{job_id}.out` is generated when the script starts to run, and you can check the output in real-time by running the following command.
 
 .. code-block:: console
 
-	cat slurm-{job_number}.out
-	
-
+	tail -f -n 10 slurm-{job_id}.out
