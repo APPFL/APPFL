@@ -27,39 +27,43 @@
   </a>
 </p>
 
+APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source and highly extensible software framework that allows research communities to implement, test, and validate various ideas related to privacy-preserving federated learning (FL), and deploy real FL experiments easily and safely among distributed clients to train more robust ML models.With this framework, developers and users can easily
 
-Advanced Privacy-Preserving Federated Learning (APPFL) is an open-source software framework that allows research communities to implement, test, and validate different aspects of privacy-preserving federated learning (PPFL).
-With this framework, developers and/or users can
+* Train any user-defined machine learning model on decentralized data with optional differential privacy and client authentication.
+* Simulate various synchronous, asynchronous, and semi-asynchronous PPFL algorihtms on high-performance computing (HPC) architecture with MPI.
+* Implement customizations in a plug-and-play manner for all aspects of FL, including aggregation algorithms, server scheduling strategies, and client local trainers.
 
-- train a user-defined neural network model on **decentralized data with differential privacy**,
-- **simulate** various PPFL algorithms on high-performance computing (HPC) architecture with MPI,
-- implement **user-defined PPFL algorithms** in a plug-and-play manner.
+[Documentation](http://appfl.rtfd.io/): please check out our documentation for tutorials, users guide, and developers guide.
 
-The algorithmic components of the framework include federated learning (FL) algorithm, privacy technique, communication protocol, FL model to train, and data.
+## Table of Contents
 
-- [Documentation](http://appfl.rtfd.io/): please check out the documentation for tutorials, users guide, and developers guide.
+* [Installation](#harmmer_and_wrench-installation)
+* [Technical Components](#bricks-technical-components)
+* [Framework Overview](#frame_with_picture-framework-overview)
+* [Citation](#page_facing_up-citation)
+* [Acknowledgements](#trophy-acknowledgements)
 
-## Installation
+## :harmmer_and_wrench: Installation
 
 We highly recommend creating a new Conda virtual environment and install the required packages for APPFL.
 
-```shell
-conda create -n APPFL python=3.8
-conda activate APPFL
+```bash
+conda create -n appfl python=3.8
+conda activate appfl
 ```
 
 ### User installation
 
 For most users such as data scientists, this simple installation must be sufficient for running the package.
 
-```shell
+```bash
 pip install pip --upgrade
-pip install "appfl[analytics,examples]"
+pip install "appfl[examples, compressor]"
 ```
 
 If we want to even minimize the installation of package dependencies, we can skip the installation of a few pacakges (e.g., `matplotlib` and `jupyter`):
 
-```shell
+```bash
 pip install "appfl"
 ```
 
@@ -68,42 +72,37 @@ pip install "appfl"
 Code developers and contributors may want to work on the local repositofy. 
 To set up the development environment, 
 
-```shell
+```bash
 git clone https://github.com/APPFL/APPFL.git
 cd APPFL
-pip install -e ".[dev,examples,analytics]"
+pip install -e ".[dev,examples,compressor]"
 ```
+
 On Ubuntu:
 If the install process failed, you can try:
-```shell
+```bash
 sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
 ```
 
-## APPFL Framework Design
+## :bricks: Technical Components
+
+APPFL is primarily composed of the following six technical components
+
+* Aggregator: APPFL supports several popular algorithms to aggregate one or several client local models.
+* Scheduler: APPFL supports several synchronous, asynchronous, and semi-asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models.
+* Trianer: APPFL supports several client local trainers for various training tasks.
+* Privacy: APPFL supprots several global/local differential privacy schemes.
+* Communicator: APPFL supports MPI for single-machine/cluster simulation, and gRPC and Globus Compute with authenticator for secure distributed training.
+* Compressor: APPFL supports several lossy compressors for model parameters, including [SZ2](https://github.com/szcompressor/SZ), [SZ3](https://github.com/szcompressor/SZ3), [ZFP](https://pypi.org/project/zfpy/), and [SZx](https://github.com/szcompressor/SZx).
+
+## :frame_with_picture Framework Overview
 <p align="center">
-  <img src='docs/_static/design.jpg' style="width: 50%; height: auto;"/>
+  <img src='docs/_static/design-logic.jpg' style="width: 85%; height: auto;"/>
 </p>
 
-In the design of APPFL framework, we decompose an execution of federated learning experiment into three main components, *APPFL Server*, *APPFL Communicator*, and *APPFL Client*. The details and sub-components of these three are detailed as follows:
+In the design of the APPFL framework, we essentially create the server agent and client agent, using the six technical components above as building blocks, to act on behalf of the FL server and clients to conduct FL experiments. For more details, please refer to our [documentation](http://appfl.rtfd.io/).
 
-- APPFL Server: APPFL server orchestrates the whole FL experiment run by providing the model architecture, loss and metric, and configurations used in the training, and aggregating the client trained models synchronously or asynchronously using certain federated learning algorithms.
-    
-    - Model Zoo [[examples/models]](examples/models/) - This folder contains model architectures used in the given examples, and users can define their own arch for use.
-    - Loss [[examples/losses]](examples/losses/) - This folder contains commonly used loss function in ML, and users can define their own loss by inheritting `nn.Module`.
-    - Metric [[examples/metric]](examples/metric/) - This folder contains commonly used evaluation metric for checking the performance of the model.
-    - Configuration - As shown in all the example scripts in the `examples` directory, users can setup the configurations and hyperparameters by passing arguments to the FL experiment runs.
-    - FL-Alg Zoo [[src/appfl/algorithm]](src/appfl/algorithm/) - This folder contains serveral popular FL aggregation algorithms. 
-- APPFL Communicator [[src/appfl/comm]](src/appfl/comm/): The communicator is used for exchanging metadata as well as the model weights between the server and clients. We currently support the following three communication protocols for different use cases.
-    
-    - MPI - Used for simulating FL experiment on one machine or HPC. MPI communicator now also supports model compression for efficient communication.
-    - gRPC - Used for both simulating FL experiments on one machine or HPC, and running FL experiments on distributed machines.
-    - [Globus Compute](https://funcx.readthedocs.io/en/latest/index.html) - Used for **easily** running FL experiments on distributed and heterogeneous machines.
-- APPFL Client: APPFL clients have local dataset on disk and and use dataloader to load them for the local trainer to train local models.
-    - Private Data - Each client should have on-premise private local datasets on their computing machine. For example scripts in the `examples` directory, we use `examples/datasets/RawData` to store the private datasets.
-    - Dataloader [[examples/dataloader]](examples/dataloader/) - Dataloader is used to load the datasets from the storage for the trainer to use. The dataloaders in `examples/dataloader` provide a test dataset and several training datasets (one for each client) for the federated learning experiments in the MPI setting.
-    - Trainer Zoo [[src/appfl/algorithm]](src/appfl/algorithm/) - This folder contains serveral commonly used local training algorithms, such as algorithm for training a model for a certain number of epochs or batches and algorithm for training a personalized FL model.
-
-## Citation
+## :page_facing_up: Citation
 If you find APPFL useful for your research or development, please consider citing the following papers:
 ```
 @inproceedings{ryu2022appfl,
@@ -125,6 +124,6 @@ If you find APPFL useful for your research or development, please consider citin
 }
 ```
 
-## Acknowledgements
+## :trophy: Acknowledgements
 
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357.
