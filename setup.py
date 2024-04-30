@@ -80,6 +80,7 @@ setuptools.setup(
             "tqdm",
             "jupyter",
             "matplotlib",
+            "wget",
         ],
         "compressor": [
             "lz4",

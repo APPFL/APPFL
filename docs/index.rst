@@ -103,8 +103,8 @@ Main Topics
    tutorials/index
    users/index
    developer/index
+   publication/index
    community/index
-
 
 Acknowledgement
 ===============
