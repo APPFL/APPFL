@@ -6,6 +6,7 @@
 *.pptx
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
+examples/config_gc/creds/credential.csv
 note
 datasets
 *output*
