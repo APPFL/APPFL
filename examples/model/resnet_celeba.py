@@ -1,13 +1,7 @@
-from torchvision import *
-import torch.nn as nn
 import torch
-from torch import Tensor
-from enum import Enum
-from torchvision.models._api import Weights, WeightsEnum
-from torchvision.models._meta import _IMAGENET_CATEGORIES
+import torch.nn as nn
+from torchvision import models
 from torchvision.models.resnet import BasicBlock, ResNet18_Weights
-from torchvision.transforms._presets import ImageClassification
-from functools import partial
 
 class ResNet(models.resnet.ResNet):
     # ResNet 18 Architecture Implementation to adapt grayscale and 28 X 28 pixel size input    
@@ -93,4 +87,3 @@ def resnet18(num_channel, num_classes=-1, pretrained=0):
       
     return model
     
-

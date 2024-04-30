@@ -31,7 +31,17 @@ For some of the datasets used in the `examples` folder, such as `MNIST` and `CIF
 - In the newly generated directory `leaf/data/femnist/data`, copy the two directories `train` and `test` and paste them in `examples/datasets/RawData/FEMNIST`.
  
 
-## Example 3. CelebA
+## CelebA
 - Make a subdirectory named `RawData/CELEBA` under this `examples/dataset` directory.
 - Download and preprocess the dataset according to the LEAF instructions: https://github.com/TalwalkarLab/leaf/tree/master/data/celeba
 - Copy the directories `train` , `test` and `raw` folders and paste them under `examples/datasets/RawData/CELEBA`.
+
+### FLamby
+
+- [FLamby](https://github.com/owkin/FLamby) is a benchmark for cross-silo federated learning with seven naturally distributed real-world datasets. To use FLamby, please following the installation instructions from the [official Github](https://github.com/owkin/FLamby?tab=readme-ov-file#installation) of FLamby (Please use the installation options via pip to install `flamby` in the same conda env as `appfl`). For example, you can install the Fed-TCGA dataset by running the following commands:
+
+    ```bash
+    git clone https://github.com/owkin/FLamby.git
+    cd FLamby
+    pip install -e ".[tcga]"
+    ```
