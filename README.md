@@ -37,13 +37,13 @@ APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source and hig
 
 ## Table of Contents
 
-* [Installation](#harmmer_and_wrench-installation)
+* [Installation](#hammer_and_wrench-installation)
 * [Technical Components](#bricks-technical-components)
 * [Framework Overview](#frame_with_picture-framework-overview)
 * [Citation](#page_facing_up-citation)
 * [Acknowledgements](#trophy-acknowledgements)
 
-## :harmmer_and_wrench: Installation
+## :hammer_and_wrench: Installation
 
 We highly recommend creating a new Conda virtual environment and install the required packages for APPFL.
 
@@ -95,7 +95,7 @@ APPFL is primarily composed of the following six technical components
 * Communicator: APPFL supports MPI for single-machine/cluster simulation, and gRPC and Globus Compute with authenticator for secure distributed training.
 * Compressor: APPFL supports several lossy compressors for model parameters, including [SZ2](https://github.com/szcompressor/SZ), [SZ3](https://github.com/szcompressor/SZ3), [ZFP](https://pypi.org/project/zfpy/), and [SZx](https://github.com/szcompressor/SZx).
 
-## :frame_with_picture Framework Overview
+## :frame_with_picture: Framework Overview
 <p align="center">
   <img src='docs/_static/design-logic.jpg' style="width: 85%; height: auto;"/>
 </p>
