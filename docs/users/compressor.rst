@@ -1,7 +1,7 @@
-Model Compression
-=================
+APPFL Compressor
+================
 
-User can compress the model parameters using the following lossy compression techniques:
+Currently, APPFL supports the following lossy compressors:
 
 - `SZ2: Error-bounded Lossy Compressor for HPC Data <https://github.com/szcompressor/SZ>`_
 - `SZ3: A Modular Error-bounded Lossy Compression Framework for Scientific Datasets <https://github.com/szcompressor/SZ3>`_
@@ -22,42 +22,37 @@ User can install the compressors by running the following command:
 
 Configuration
 -------------
-User can create a compressor instance by providing a `Config` object and setting necessary parameters. The following example shows how to create a `SZ2` compressor instance:
+User can configure the compressor by setting it `client_configs.comm_configs.compressor_configs` in the server configuration file. The following is an example of the configuration:
 
 .. code-block:: python
 
-    from appfl.config import Config
-    from appfl.compressor import Compressor
-
-    # set the configuration
-    config = Config()
-    config.enable_compression = True
-    config.lossy_compressor = "SZ2"         # ["SZ2", "SZ3", "ZFP", "SZx"]
-    config.lossless_compressor = "blosc"    # ["blosc", "zstd", "gzip", "zlib", "lzma"]
-    config.error_bounding_mode = "REL"      # ["ABS", "REL"]
-    config.error_bound = 1e-3
-    
-    # create the compressor instance
-    compressor = Compressor(config)
+    client_configs:
+        comm_configs:
+            compressor_configs:
+            enable_compression: True
+            lossy_compressor:  "SZ2"
+            lossless_compressor: "blosc"
+            error_bounding_mode: "REL"
+            error_bound: 1e-3
+            flat_model_dtype: "np.float32"
+            param_cutoff: 1024
 
 Usage
 -----
-User can compress the model parameters by calling the `compress_model` method of the `Compressor` instance. To decompress the model parameters, use can call the `decompress_model` method by providing the compressed model parameters and a model instance (as a reference to the model architecture).
+
+The compressor is used in the `APPFLClientAgent.get_parameters` method to compress the model parameters using `compressor.compress_model` before sending them to the server, as shown below
 
 .. code-block:: python
 
-    # create a CNN model
-    cnn = CNN(num_channel=3, num_classes=10, nun_pixel=32)
+    def get_parameters(self) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
+        """Return parameters for communication"""
+        params = self.trainer.get_parameters()
+        if isinstance(params, tuple):
+            params, metadata = params
+        else:
+            metadata = None
+        if self.enable_compression:
+            params = self.compressor.compress_model(params)
+        return params if metadata is None else (params, metadata)
 
-    # compress the model parameters
-    compressed_model, lossy_elements = compressor.compress_model(cnn.state_dict())
-
-    # decompress the model parameters
-    decompressed_model = compressor.decompress_model(compressed_model, model)
-
-.. note::
-    The CNN model used in the above example is defined as follows:
-
-    .. literalinclude:: /../examples/models/cnn.py
-        :language: python
-        :caption: User-defined convolutionsl neural network model: examples/models/cnn.py
+On the server side, the model parameters are decompressed using `compressor.decompress_model` before updating the model by the `APPFLServerAgent.global_update`.
