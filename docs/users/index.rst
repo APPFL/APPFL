@@ -4,9 +4,8 @@ User Guide
 .. toctree::
    :maxdepth: 2
    :titlesonly:
-   
+
+   technical_components
    user_run
    advanced
    compressor
-   user_loading_saving.rst
-   user_logging_recording

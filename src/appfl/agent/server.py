@@ -19,7 +19,7 @@ class APPFLServerAgent:
     - take the local model from a client, update the global model, and return it `APPFLServerAgent.global_update`
     - provide the global model to the clients (no input and no aggregation) `APPFLServerAgent.get_parameters`
 
-    User can overwrite any class method to customize the behavior of the client agent.
+    User can overwrite any class method to customize the behavior of the server agent.
     """
     def __init__(
         self,
@@ -58,6 +58,8 @@ class APPFLServerAgent:
         :param: blocking: The global model may not be immediately available for certain aggregation methods (e.g. any synchronous method).
             Setting `blocking` to `True` will block the client until the global model is available. 
             Otherwise, the method may return a `Future` object if the most up-to-date global model is not yet available.
+        :return: The updated global model (as a Dict or OrderedDict), and optional metadata (as a Dict) if `blocking` is `True`.
+            Otherwise, return the `Future` object of the updated global model and optional metadata.
         """
         if self.training_finished(internal_check=True):
             global_model = self.scheduler.get_parameters(init_model=False)
@@ -78,7 +80,16 @@ class APPFLServerAgent:
         blocking: bool = False,
         **kwargs
     ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
-        """Return the global model to the clients."""
+        """
+        Return the global model to the clients.
+        :param: `blocking`: The global model may not be immediately available (e.g. if the server wants to wait for all client
+            to send the `get_parameters` request before returning the global model for same model initialization). 
+            Setting `blocking` to `True` will block the client until the global model is available. 
+        :param: `kwargs`: Additional arguments for the method. Specifically,
+            - `init_model`: whether getting the initial model (which should be same among all clients, thus blocking)
+            - `serial_run`: set `True` if for serial simulation run, thus no blocking is needed.
+            - `globus_compute_run`: set `True` if for globus compute run, thus no blocking is needed.
+        """
         global_model = self.scheduler.get_parameters(**kwargs)
         if not isinstance(global_model, Future):
             return global_model
@@ -142,7 +153,7 @@ class APPFLServerAgent:
         return None
 
     def training_finished(self, internal_check: bool = False) -> bool:
-        """Notify the client whether the training is finished."""
+        """Indicate whether the training is finished."""
         finished = self.server_agent_config.server_configs.num_global_epochs <= self.scheduler.get_num_global_epochs()
         if finished and not internal_check:
             if not hasattr(self, "num_finish_calls"):
@@ -153,7 +164,7 @@ class APPFLServerAgent:
         return finished
     
     def server_terminated(self):
-        """Whether the server can be terminated from listening to the clients."""
+        """Indicate whether the server can be terminated from listening to the clients."""
         if not hasattr(self, "num_finish_calls"):
             return False
         num_clients = (
