@@ -4,8 +4,8 @@ APPFL Scheduler
 APPFL scheduler is the interface between the communicator and the aggregator. Whenever the communicator receives the local model from a single client, it directly hands the local model to the scheduler, and the scheduler will decide when to aggregate the local model. Currently, APPFL supports three scheduler:
 
 - :ref:`Synchronous Scheduler`
-- :ref:`Asynchronous Scheduler`
-- :ref:`Compass Scheduler`
+- :ref:`Naive Asynchronous Scheduler`
+- :ref:`Compass Asynchronous Scheduler`
 
 All schedulers are inherited from the base class `BaseScheduler`. If user wants to implement a new scheduler, the user needs to inherit the `BaseScheduler` and implement the `schedule` and `get_num_global_epochs` methods.
 
@@ -93,10 +93,10 @@ Synchronous scheduler waits for all clients to submit their local models before 
             :return: the number of global epochs
             """
 
-Asynchronous Scheduler
-----------------------
+Naive Asynchronous Scheduler
+----------------------------
 
-Asynchronous scheduler aggregates the local models from the clients as soon as the local model is received.
+Naiv asynchronous scheduler aggregates the local models from the clients as soon as the local model is received.
 
 .. code:: python
 
@@ -129,8 +129,8 @@ Asynchronous scheduler aggregates the local models from the clients as soon as t
             Return the total number of global epochs for federated learning.
             """
 
-Compass Scheduler
------------------
+Compass Asynchronous Scheduler
+------------------------------
 
 Compass is COMputing Power Aware Scheduler, which is a semi-asynchronous scheduler, which 
 

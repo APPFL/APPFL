@@ -11,7 +11,15 @@ Currently, APPFL supports the following lossy compressors:
 Installation
 ------------
 
-User can install the compressors by running the following command:
+Users need to first make sure that they have installed the required packages for the compressors when installling `appfl`.
+
+.. code-block:: bash
+
+    pip install "appfl[compressor]"
+    # OR: If installed from source code
+    pip install -e ".[compressor]""
+
+Users then can install the compressors by running the following command:
 
 .. code-block:: bash
 
@@ -19,6 +27,44 @@ User can install the compressors by running the following command:
 
 .. note::
     SZx is not open source so we omit its installation here. Please install it manually by contacting the author.
+
+Functionalities
+---------------
+
+The APPFL compressor can be used to compress and decompress the model parameters by invoking the `compressor.compress_model` and `compressor.decompress_model` methods.
+
+.. code-block:: python
+
+    class Compressor:
+        def __init__(self, compressor_config: DictConfig):
+            pass
+
+        def compress_model(
+            self, 
+            model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]], 
+            batched: bool=False
+        ) -> bytes:
+            """
+            Compress all the parameters of local model(s) for efficient communication. The local model can be batched as a list.
+            :param model: local model parameters (can be nested)
+            :param batched: whether the input is a batch of models
+            :return: compressed model parameters as bytes
+            """
+            pass
+
+        def decompress_model(
+            self, 
+            compressed_model: bytes, 
+            model: Union[dict, OrderedDict], 
+            batched: bool=False
+        )-> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
+            """
+            Decompress all the communicated model parameters. The local model can be batched as a list.
+            :param compressed_model: compressed model parameters as bytes
+            :param model: a model sample for de-compression reference
+            :param batched: whether the input is a batch of models
+            :return decompressed_model: decompressed model parameters
+            """
 
 Configuration
 -------------
@@ -37,8 +83,8 @@ User can configure the compressor by setting it `client_configs.comm_configs.com
             flat_model_dtype: "np.float32"
             param_cutoff: 1024
 
-Usage
------
+Usage in APPFL
+--------------
 
 The compressor is used in the `APPFLClientAgent.get_parameters` method to compress the model parameters using `compressor.compress_model` before sending them to the server, as shown below
 
@@ -56,3 +102,43 @@ The compressor is used in the `APPFLClientAgent.get_parameters` method to compre
         return params if metadata is None else (params, metadata)
 
 On the server side, the model parameters are decompressed using `compressor.decompress_model` before updating the model by the `APPFLServerAgent.global_update`.
+
+
+Stand-alone Usage
+-----------------
+
+In APPFL, the compressor is seamlessly integrated into the communication process for user's convenience. However, users can also use the compressor as a stand-alone tool. The following is an example of how to use the compressor to compress and decompress the model parameters.
+
+.. code-block:: python
+
+    from torch import nn
+    from omegaconf import OmegaConf
+    from appfl.compressor import Compressor
+
+    # Define a test model 
+    model = nn.Sequential(
+        nn.Conv2d(1, 20, 5),
+        nn.ReLU(),
+        nn.Conv2d(20, 64, 5),
+        nn.ReLU()
+    )
+
+    # Load the compressor configuration
+    compressor_config = OmegaConf.create({
+        "enable_compression": True,
+        "lossy_compressor": "SZ2",
+        "lossless_compressor": "blosc",
+        "error_bounding_mode": "REL",
+        "error_bound": 1e-3,
+        "flat_model_dtype": "np.float32",
+        "param_cutoff": 1024
+    })
+
+    # Initialize the compressor
+    compressor = Compressor(compressor_config)
+
+    # Compress the model parameters
+    compressed_model = compressor.compress_model(model.state_dict())
+
+    # Decompress the model parameters
+    decompressed_model = compressor.decompress_model(compressed_model, model)
