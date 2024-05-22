@@ -5,11 +5,21 @@ the server and clients need to communicate primal and dual states, and a
 penalty parameter. In addition, the clients also need to know its relative
 sample size for local training purposes.
 """
+import argparse
 from omegaconf import OmegaConf
 from appfl.agent import APPFLClientAgent
 from appfl.comm.grpc import GRPCClientCommunicator
 
-client_agent_config = OmegaConf.load("config/client_2.yaml")
+argparser = argparse.ArgumentParser()
+argparser.add_argument(
+    "--config", 
+    type=str, 
+    default="config/mnist/client_1.yaml",
+    help="Path to the configuration file."
+)
+args = argparser.parse_args()
+
+client_agent_config = OmegaConf.load(args.config)
 
 client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
 client_communicator = GRPCClientCommunicator(

@@ -8,4 +8,3 @@ User Guide
    technical_components
    user_run
    advanced
-   compressor

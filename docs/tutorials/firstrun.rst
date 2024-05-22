@@ -55,9 +55,9 @@ As the package name suggests, in addition to general differential privacy techni
 
 .. code-block:: console
 
-    mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config config/server_iiadmm.yaml
+    mpiexec -n 6 python  ./mpi/run_mpi_admm.py --server_config ./config/mnist/server_iiadmm.yaml
     # OR
-    mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config config/server_iceadmm.yaml
+    mpiexec -n 6 python  ./mpi/run_mpi_admm.py --server_config ./config/mnist/server_iceadmm.yaml
 
 .. note::
 
@@ -80,16 +80,16 @@ First, we need to run the following command to start a federated learning server
 
 .. code-block:: console
 
-    python grpc/run_server.py --config config/server_fedcompass.yaml
+    python ./grpc/run_server.py --config config/mnist/server_fedcompass.yaml
 
 Open a second terminal to start a client using the following command to talk to the server.
 
 .. code-block:: console
 
-    python grpc/run_client_1.py
+    python ./grpc/run_client.py --config config/mnist/client_1.yaml
 
 Open a third terminal to start another client using the following command to talk to the server.
     
 .. code-block:: console
     
-    python grpc/run_client_2.py
+    python ./grpc/run_client.py --config config/mnist/client_2.yaml
