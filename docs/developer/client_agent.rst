@@ -1,2 +1,0 @@
-Defining your client agent
-==========================

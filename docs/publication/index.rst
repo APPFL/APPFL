@@ -7,14 +7,13 @@ This page presents the publications using the APPFL framework. You may also find
 ----
 
 - **[ICLR 2024]** Z. Li, P. Chaturvedi, S. He, H. Chen, G. Singh, V. Kindratenko, E. A. Huerta, K. Kim, and R. Madduri, "Fedcompass: Efficient cross-silo federated learning on heterogeneous client devices using a computing power-aware scheduler," in *The Twelfth International Conference on Learning Representations*, 2024. `[Paper] <https://openreview.net/forum?id=msXxrttLOi>`_
-- **[Preprint]** S. Bose, Y. Zhang, and K. Kim, "Addressing heterogeneity in federated load forecasting with personalization layers," *arXiv preprint arXiv:2404.01517*, 2024. `[Paper] <https://arxiv.org/pdf/2404.01517.pdf>`_
+- **[ICDCS 2024]** G. Wilkins, S. Di, J. C. Calhoun, K. Kim, R. Underwood, and F. Cappello, "Efficient communication in federated learning using floating-point lossy compression," to appear in *International Conference on Distributed Computing Systems*, 2024. `[Paper] <https://arxiv.org/pdf/2312.13461.pdf>`_
 - **[CiSE 2024]** Z. Li, S. He, P. Chaturvedi, V. Kindratenko, E. A. Huerta, K. Kim, and R. Madduri, "Secure federated learning across heterogeneous cloud and high-performance computing resources - a case study on federated fine-tuning of llama 2," in *Computing in Science & Engineering*, 2024. `[Paper] <https://arxiv.org/pdf/2402.12271.pdf>`_
-
+- **[Preprint]** S. Bose, Y. Zhang, and K. Kim, "Addressing heterogeneity in federated load forecasting with personalization layers," *arXiv preprint arXiv:2404.01517*, 2024. `[Paper] <https://arxiv.org/pdf/2404.01517.pdf>`_
 
 2023
 ----
 
-- **[Preprint]** G. Wilkins, S. Di, J. C. Calhoun, K. Kim, R. Underwood, and F. Cappello, "Efficient communication in federated learning using floating-point lossy compression," *arXiv preprint arXiv:2312.13461*, 2023. `[Paper] <https://arxiv.org/pdf/2312.13461.pdf>`_
 - **[Preprint]** T.-H. Hoang, J. Fuhrman, R. Madduri, M. Li, P. Chaturvedi, Z. Li, K. Kim, M. Ryu, R. Chard, E. Huerta et al., "Enabling end-to-end secure federated learning in biomedical research on heterogeneous computing environments with appflx," *arXiv preprint arXiv:2312.08701*, 2023. `[Paper] <https://arxiv.org/pdf/2312.08701.pdf>`_
 - **[Preprint]** S. Bose, Y. Zhang, and K. Kim, "Privacy-preserving load forecasting via personalized model obfuscation," *arXiv preprint arXiv:2312.00036*, 2023. `[Paper] <https://arxiv.org/pdf/2312.00036.pdf>`_
 - **[Preprint]** S. Bose and K. Kim, "Federated short-term load forecasting with personalization layers for heterogeneous clients," *arXiv preprint arXiv:2309.13194*, 2023. `[Paper] <https://arxiv.org/pdf/2309.13194.pdf>`_

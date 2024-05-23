@@ -45,6 +45,7 @@ First, user needs to load configuration files for the client and server agents. 
 Then for the FL server, we can create an MPI communicator to serve the requests from the clients using the ``serve`` method.
 
 .. code-block:: python
+
     from appfl.comm.mpi import MPIServerCommunicator
     if rank == 0:
         server_communicator = MPIServerCommunicator(

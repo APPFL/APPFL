@@ -8,9 +8,7 @@ Developer Guide
    algorithms
    schedulers
    trainers
-   privacy
    server_agent
-   client_agent
    ../README
    release_guide
 

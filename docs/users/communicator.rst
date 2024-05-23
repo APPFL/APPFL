@@ -175,8 +175,8 @@ During the federated learning process, the client can communicates to the server
             :return: the response from the server (if any)
             """
 
-Example Usage
-~~~~~~~~~~~~~
+Example Usage (MPI)
+~~~~~~~~~~~~~~~~~~~
 
 Here is an example of how to use the MPI communicator in APPFL to start FL experiments.
 
@@ -339,8 +339,8 @@ During the federated learning process, the client can communicate to the server 
             :return: the response from the server
             """
 
-Example Usage
-~~~~~~~~~~~~~
+Example Usage (gRPC)
+~~~~~~~~~~~~~~~~~~~~
 
 Below shows an example on how to start a server using `GRPCServerCommunicator`, which waits for incoming requests from clients. 
 
@@ -350,7 +350,7 @@ Below shows an example on how to start a server using `GRPCServerCommunicator`, 
 
 To interact with the server and start an FL experiment, you can start a client using `GRPCClientCommunicator` as shown below.
 
-.. literalinclude:: ../../examples/grpc/run_client_1.py
+.. literalinclude:: ../../examples/grpc/run_client.py
     :language: python
     :caption: Running Federated Learning with gRPC Client Communicator.
 
