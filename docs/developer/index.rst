@@ -1,13 +1,16 @@
-==========
-Developers
-==========
+Developer Guide
+===============
 
 .. toctree::
    :maxdepth: 2
    :titlesonly:
 
    algorithms
-   how_to_test
+   schedulers
+   trainers
+   privacy
+   server_agent
+   client_agent
    ../README
    release_guide
 

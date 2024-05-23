@@ -23,5 +23,6 @@ In additional to the examples above, we also provide instructions on how to defi
    :titlesonly:
 
    user_model
+   user_loss
+   user_metric
    user_data
-   ../notebooks/how_to_config

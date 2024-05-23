@@ -1,5 +1,5 @@
-Adding new algorithms
-=====================
+Adding new aggregators
+======================
 
 Suppose that we are adding the configuration for our new algorithm.
 New algorithm should be implemented as two classes for server and client.
