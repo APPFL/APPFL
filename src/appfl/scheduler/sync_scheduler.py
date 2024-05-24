@@ -13,10 +13,6 @@ class SyncScheduler(BaseScheduler):
         super().__init__(scheduler_configs, aggregator, logger)
         self.local_models = {}
         self.future = {}
-        assert (
-            hasattr(self.scheduler_configs, "num_clients"), 
-            f"{self.__class__.__name__}: num_clients attribute is not found in the server configuration."
-        )
         self.num_clients = self.scheduler_configs.num_clients
         self._num_global_epochs = 0
 
@@ -30,10 +26,6 @@ class SyncScheduler(BaseScheduler):
         :param kwargs: additional keyword arguments for the scheduler
         :return: the future object for the aggregated model
         """
-        assert (
-            client_id not in self.local_models, 
-            f"{self.__class__.__name__}: client {client_id} has already submitted the local model."
-        )
         future = Future()
         self.local_models[client_id] = local_model
         self.future[client_id] = future
