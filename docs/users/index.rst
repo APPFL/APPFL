@@ -32,10 +32,21 @@ In the design of the APPFL framework, we essentially create the *server agent* a
   * gRPC: Used for both simulating FL experiments on one machine or HPC, and running FL experiments on distributed machines. It can be integrated with several authentication strategies to authorize the clients for secure FL experiments.
   * `Globus Compute <https://funcx.readthedocs.io/en/latest/index.html>`_: Used for easily running FL experiments on distributed and heterogeneous machines. It is integrated with Globus authentication to authorize the clients for secure FL experiments.
 
+APPFL Components
+----------------
+
 .. toctree::
    :maxdepth: 2
    :titlesonly:
 
    technical_components
+
+User and Developer Guide
+------------------------
+
+.. toctree::
+   :maxdepth: 2
+   :titlesonly:
+
    user_run
    ../developer/index

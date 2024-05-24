@@ -31,7 +31,7 @@ Users then can install the compressors by running the following command:
 Functionalities
 ---------------
 
-The APPFL compressor can be used to compress and decompress the model parameters by invoking the `compressor.compress_model` and `compressor.decompress_model` methods.
+The APPFL compressor can be used to compress and decompress the model parameters by invoking the ``compressor.compress_model`` and ``compressor.decompress_model`` methods.
 
 .. code-block:: python
 
@@ -68,7 +68,7 @@ The APPFL compressor can be used to compress and decompress the model parameters
 
 Configuration
 -------------
-User can configure the compressor by setting it `client_configs.comm_configs.compressor_configs` in the server configuration file. The following is an example of the configuration:
+User can configure the compressor by setting it ``client_configs.comm_configs.compressor_configs`` in the server configuration file. The following is an example of the configuration:
 
 .. code-block:: python
 
@@ -86,7 +86,7 @@ User can configure the compressor by setting it `client_configs.comm_configs.com
 Usage in APPFL
 --------------
 
-The compressor is used in the `APPFLClientAgent.get_parameters` method to compress the model parameters using `compressor.compress_model` before sending them to the server, as shown below
+The compressor is used in the ``APPFLClientAgent.get_parameters`` method to compress the model parameters using ``compressor.compress_model`` before sending them to the server, as shown below
 
 .. code-block:: python
 
@@ -101,7 +101,7 @@ The compressor is used in the `APPFLClientAgent.get_parameters` method to compre
             params = self.compressor.compress_model(params)
         return params if metadata is None else (params, metadata)
 
-On the server side, the model parameters are decompressed using `compressor.decompress_model` before updating the model by the `APPFLServerAgent.global_update`.
+On the server side, the model parameters are decompressed using ``compressor.decompress_model`` before updating the model by the ``APPFLServerAgent.global_update``.
 
 
 Stand-alone Usage

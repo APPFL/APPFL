@@ -19,28 +19,28 @@ MPI: Message Passing Interface
 
 MPI can be used for simulating federated learning on a single machine or a cluster of machines. It is composed of two parts:
 
-- MPI Server Communicator (`appfl.comm.mpi.MPIServerCommunicator`) which starts a server to listen to incoming requests from clients for various tasks.
-- MPI Client Communicator (`appfl.comm.mpi.MPIClientCommunicator`) which sends requests to the server for various tasks.
+- MPI Server Communicator (``appfl.comm.mpi.MPIServerCommunicator``) which starts a server to listen to incoming requests from clients for various tasks.
+- MPI Client Communicator (``appfl.comm.mpi.MPIClientCommunicator``) which sends requests to the server for various tasks.
 
 MPI Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the server side, the server only needs to create an instance of `MPIServerCommunicator` and call the `serve` method to start the server. The server will listen to incoming requests from clients for various tasks.
+For the server side, the server only needs to create an instance of ``MPIServerCommunicator`` and call the ``serve`` method to start the server. The server will listen to incoming requests from clients for various tasks.
 
 The server can handle the following tasks:
 
-- Get configurations that are shared among all clients via the `_get_configuration` method.
-- Get the global model via the `_get_global_model` method.
-- Update the global model with the local model from the client via the `_update_global_model` method.
-- Invoke custom action on the server via the `_invoke_custom_action` method.
+- Get configurations that are shared among all clients via the ``_get_configuration`` method.
+- Get the global model via the ``_get_global_model`` method.
+- Update the global model with the local model from the client via the ``_update_global_model`` method.
+- Invoke custom action on the server via the ``_invoke_custom_action`` method.
 
 .. note::
     
-    The server will automatically stop itself after reaching the specified `num_global_epochs`.
+    The server will automatically stop itself after reaching the specified ``num_global_epochs``.
 
 .. note::
     
-    You can add any custom tasks by implementing the corresponding methods in the `_invoke_custom_action` class.
+    You can add any custom tasks by implementing the corresponding methods in the ``_invoke_custom_action`` class.
 
 .. code:: python
 
@@ -125,11 +125,11 @@ The server can handle the following tasks:
 MPI Client Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-During the federated learning process, the client can communicates to the server by invoking corresponding methods in the `MPIClientCommunicator` class. For example, after a client finish a local training round, it can send the local model to the server for global aggregation by calling the `update_global_model` method.
+During the federated learning process, the client can communicates to the server by invoking corresponding methods in the ``MPIClientCommunicator`` class. For example, after a client finish a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
 
 .. note:: 
 
-    You can add any custom tasks by implementing the corresponding methods in the `invoke_custom_action` class. Also make sure that the server has the corresponding handler codes implemented in the `_invoke_custom_action` method.
+    You can add any custom tasks by implementing the corresponding methods in the ``invoke_custom_action`` class. Also make sure that the server has the corresponding handler codes implemented in the ``_invoke_custom_action`` method.
 
 .. code:: python
 
@@ -190,24 +190,24 @@ gRPC: Google Remote Procedure Call
 
 gRPC can be used either for simulating federated learning on a single machine or cluster, or for running federated learning on real-world distributed machines. It is composed of two parts:
 
-- gRPC Server Communicator (`appfl.comm.grpc.GRPCServerCommunicator`) which creats a server for listenning to incoming requests from clients for various tasks.
-- gRPC Client Communicator (`appfl.comm.grpc.GRPCClientCommunicator`) which sends requests to the server for various tasks.
+- gRPC Server Communicator (``appfl.comm.grpc.GRPCServerCommunicator``) which creats a server for listenning to incoming requests from clients for various tasks.
+- gRPC Client Communicator (``appfl.comm.grpc.GRPCClientCommunicator``) which sends requests to the server for various tasks.
 
 gRPC Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the server side, the server only needs to create an instance of `GRPCServerCommunicator` and call the `serve` method (available in `appfl.comm.grpc`) to start the server. The server will listen to incoming requests from clients for various tasks.
+For the server side, the server only needs to create an instance of ``GRPCServerCommunicator`` and call the ``serve`` method (available in ``appfl.comm.grpc``) to start the server. The server will listen to incoming requests from clients for various tasks.
 
 The server can handle the following tasks:
 
-- Get configurations that are shared among all clients via the `GetConfiguration` method.
-- Get the global model via the `GetGlobalModel` method.
-- Update the global model with the local model from the client via the `UpdateGlobalModel` method.
-- Invoke custom action on the server via the `InvokeCustomAction` method.
+- Get configurations that are shared among all clients via the ``GetConfiguration`` method.
+- Get the global model via the ``GetGlobalModel`` method.
+- Update the global model with the local model from the client via the ``UpdateGlobalModel`` method.
+- Invoke custom action on the server via the ``InvokeCustomAction`` method.
 
 .. note:: 
 
-    You can add any custom tasks by implementing the corresponding methods in the `InvokeCustomAction` class.
+    You can add any custom tasks by implementing the corresponding methods in the ``InvokeCustomAction`` class.
 
 .. code:: python
 
@@ -274,11 +274,11 @@ The server can handle the following tasks:
 gRPC Client Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-During the federated learning process, the client can communicate to the server by invoking corresponding methods in the `GRPCClientCommunicator` class. For example, after a client finish a local training round, it can send the local model to the server for global aggregation by calling the `update_global_model` method.
+During the federated learning process, the client can communicate to the server by invoking corresponding methods in the ``GRPCClientCommunicator`` class. For example, after a client finish a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
 
 .. note:: 
 
-    You can add any custom tasks by implementing the corresponding methods in the `invoke_custom_action` class. Also make sure that the server has the corresponding handler codes implemented in the `InvokeCustomAction` method.
+    You can add any custom tasks by implementing the corresponding methods in the ``invoke_custom_action`` class. Also make sure that the server has the corresponding handler codes implemented in the ``InvokeCustomAction`` method.
 
 .. code:: python
 

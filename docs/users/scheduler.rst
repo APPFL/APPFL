@@ -7,11 +7,11 @@ APPFL scheduler is the interface between the communicator and the aggregator. Wh
 - :ref:`Naive Asynchronous Scheduler`
 - :ref:`Compass Asynchronous Scheduler`
 
-All schedulers are inherited from the base class `BaseScheduler`. If user wants to implement a new scheduler, the user needs to inherit the `BaseScheduler` and implement the `schedule` and `get_num_global_epochs` methods.
+All schedulers are inherited from the base class ``BaseScheduler``. If user wants to implement a new scheduler, the user needs to inherit the ``BaseScheduler`` and implement the ``schedule`` and ``get_num_global_epochs`` methods.
 
 .. note::
 
-    The `scheduler_configs` should be passed in the server configuration YAML file under the key: `server_configs.scheduler_kwargs`, and the type of scheduler to use should be passed under the key: `server_configs.scheduler`.
+    The ``scheduler_configs`` should be passed in the server configuration YAML file under the key: ``server_configs.scheduler_kwargs``, and the type of scheduler to use should be passed under the key: ``server_configs.scheduler``.
 
 .. code:: python
 

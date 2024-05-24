@@ -39,20 +39,20 @@ The aggregator has the following three main functionalities.
                 self.client_sample_size = {}
             self.client_sample_size[client_id] = sample_size
 
-To define a new aggregate, you need to inherit the `BaseAggregator` class and implement the `aggregate` and `get_parameters` methods. You can also define additional methods as needed.
+To define a new aggregate, you need to inherit the ``BaseAggregator`` class and implement the ``aggregate`` and ``get_parameters`` methods. You can also define additional methods as needed.
 
 Available Aggregators
 ---------------------
 
-All available aggregators are defined in the `appfl.aggregator` module, including:
+All available aggregators are defined in the ``appfl.aggregator`` module, including:
 
-- `FedAvgAggregator`: [Synchronous] Federated Averaging (FedAvg) aggregator 
-- `FedAvgMAggregator`: [Synchronous] Federated Averaging with Momentum (FedAvgM) aggregator
-- `FedYogiAggregator`: [Synchronous] Federated Yogi (FedYogi) aggregator
-- `FedAdamAggregator`: [Synchronous] Federated Adam (FedAdam) aggregator
-- `FedAdagradAggregator`: [Synchronous] Federated Adagrad (FedAdagrad) aggregator
-- `FedAsyncAggregator`: [Asynchronous] Federated Asynchronous (FedAsync) aggregator
-- `FedBuffAggregator`: [Asynchronous] Federated Buffered (FedBuff) aggregator
-- `FedCompassAggregator`: [Semi-Asynchronous] FedCompass aggregator
-- `ICEADMMAggregator`: [Synchronous] ICEADMM aggregator
-- `IIADMMAggregator`: [Synchronous] IIADMM aggregator
+- ``FedAvgAggregator``: [Synchronous] Federated Averaging (FedAvg) aggregator 
+- ``FedAvgMAggregator``: [Synchronous] Federated Averaging with Momentum (FedAvgM) aggregator
+- ``FedYogiAggregator``: [Synchronous] Federated Yogi (FedYogi) aggregator
+- ``FedAdamAggregator``: [Synchronous] Federated Adam (FedAdam) aggregator
+- ``FedAdagradAggregator``: [Synchronous] Federated Adagrad (FedAdagrad) aggregator
+- ``FedAsyncAggregator``: [Asynchronous] Federated Asynchronous (FedAsync) aggregator
+- ``FedBuffAggregator``: [Asynchronous] Federated Buffered (FedBuff) aggregator
+- ``FedCompassAggregator``: [Semi-Asynchronous] FedCompass aggregator
+- ``ICEADMMAggregator``: [Synchronous] ICEADMM aggregator
+- ``IIADMMAggregator``: [Synchronous] IIADMM aggregator

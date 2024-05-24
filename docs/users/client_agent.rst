@@ -16,7 +16,7 @@ Specifically, the current client agent has the following functionalities.
 
 .. note::
 
-    User can also define their functionalities by either inheriting the `APPFLClientAgent` class or directly adding new methods to the current client agent. Additionally, if you think your added functionalities are useful for other users, please consider contributing to the APPFL package by submitting a pull request.
+    User can also define their functionalities by either inheriting the ``APPFLClientAgent`` class or directly adding new methods to the current client agent. Additionally, if you think your added functionalities are useful for other users, please consider contributing to the APPFL package by submitting a pull request.
 
 .. code-block:: python
 
@@ -66,7 +66,7 @@ Specifically, the current client agent has the following functionalities.
 Configurations
 --------------
 
-As shown above, to create a client agent, you need to provide the configurations for the client agent. The configurations for the client agent are defined in the `appfl.config.ClientAgentConfig` class, which can be loaded from a YAML file. The following shows an example configuration YAML file for the client agent, 
+As shown above, to create a client agent, you need to provide the configurations for the client agent. The configurations for the client agent are defined in the ``appfl.config.ClientAgentConfig`` class, which can be loaded from a YAML file. The following shows an example configuration YAML file for the client agent, 
 
 .. note::
 
@@ -79,6 +79,6 @@ As shown above, to create a client agent, you need to provide the configurations
 
 The above configuration file contains serveral client-**specific** cnofigurations, such as the device to use and the way to load the private local dataset:
 
-- `data_configs`: This is the most important component in the client configuration file. It contains the path in client's local machine to the file which defines how to load the local dataset (`dataset_path`), the name of the function in the file to load the dataset (`dataset_name`), and any keyword arguments if needed (`dataset_kwargs`).
-- `train_configs`: This contains the device to use in training and some logging configurations.
-- `comm_configs`: The client may also need to specify some comminucation settings in order to connect to the server. For example, if the experiment uses gRPC as the communication method, then the client needs to specify the `server_uri`, `max_message_size`, and `use_ssl` to establish the connection to the server.
+- ``data_configs``: This is the most important component in the client configuration file. It contains the path in client's local machine to the file which defines how to load the local dataset (``dataset_path``), the name of the function in the file to load the dataset (``dataset_name``), and any keyword arguments if needed (``dataset_kwargs``).
+- ``train_configs``: This contains the device to use in training and some logging configurations.
+- ``comm_configs``: The client may also need to specify some comminucation settings in order to connect to the server. For example, if the experiment uses gRPC as the communication method, then the client needs to specify the ``server_uri``, ``max_message_size``, and ``use_ssl`` to establish the connection to the server.

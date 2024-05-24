@@ -15,7 +15,7 @@ Specifically, the current server agent has the following functionalities.
 
 .. note::
 
-    User can also define their functionalities by either inheriting the `APPFLServerAgent` class or directly adding new methods to the current server agent. Additionally, if you think your added functionalities are useful for other users, please consider contributing to the APPFL package by submitting a pull request.
+    User can also define their functionalities by either inheriting the ``APPFLServerAgent`` class or directly adding new methods to the current server agent. Additionally, if you think your added functionalities are useful for other users, please consider contributing to the APPFL package by submitting a pull request.
 
 .. code-block:: python
 
@@ -99,12 +99,12 @@ Specifically, the current server agent has the following functionalities.
 Configurations
 --------------
 
-As shown above, to create a server agent, you need to provide the configurations for the server agent. The configurations for the server agent are defined in the `appfl.config.ServerAgentConfig` class, which can be directly loaded from a YAML file. The following file is an example configuration YAML file for the server agent.
+As shown above, to create a server agent, you need to provide the configurations for the server agent. The configurations for the server agent are defined in the ``appfl.config.ServerAgentConfig`` class, which can be directly loaded from a YAML file. The following file is an example configuration YAML file for the server agent.
 
 The configuration files is composed of two main parts:
 
-- `client_configs`: Containing the configurations that are shared among all clients. This part is used to define the configurations for the federated learning process, including the type of trainers, the model architecture, the compression configurations, etc.
-- `server_configs`: Containing the configurations for the server agent, including the configurations for the aggregation method, the scheduling method, etc.
+- ``client_configs``: Containing the configurations that are shared among all clients. This part is used to define the configurations for the federated learning process, including the type of trainers, the model architecture, the compression configurations, etc.
+- ``server_configs``: Containing the configurations for the server agent, including the configurations for the aggregation method, the scheduling method, etc.
 
 
 .. literalinclude:: ../_static/server_fedavg.yaml
@@ -116,42 +116,42 @@ Client Configurations
 
 For client configurations that are shared among all clients, it is composed of three main components:
 
-- `train_configs`: This component contains all training-related configurations, which can be further classified into the following sub-components:
+- ``train_configs``: This component contains all training-related configurations, which can be further classified into the following sub-components:
 
-    - *Trainer configurations*: It should be noted that the required trainer configurations depend on the trainer you use. You can also define your own trainer with any additional configurations you need, and then provide those configurations under `client_config.train_configs` in the server configuration yaml file.
+    - *Trainer configurations*: It should be noted that the required trainer configurations depend on the trainer you use. You can also define your own trainer with any additional configurations you need, and then provide those configurations under ``client_config.train_configs`` in the server configuration yaml file.
 
-        - `trainer`: The class name of the trainer you would like to use for client local training. The trainer name should be defined in `src/appfl/trainer`. For example, `NaiveTrainer` simply updates the model for a certain number of epochs or batches.
-        - `mode`: For `NaiveTrainer`, mode is a required configuration to with allowable values `epoch` or `step` to specify whether you want to train for a certain number of epochs or only a certain number of steps/batches.
-        - `num_local_steps`/`num_local_epochs`: Number of steps (if `mode=step`) or epochs (if `mode=epoch`) for an FL client in each local training round.
-        - `optim`: Name of the optimizer to use from the `torch.optim` module.
-        - `optim_args`: Keyword arguments for the selected optimizer.
-        - `do_validation`: Whether to perform client-side validation in each training round.
-        - `do_pre_validation`: Whether to perform client-side validation prior to local training.
-        - `use_dp`: Whether to use differential privacy.
-        - `epsilon`, `clip_grad`, `clip_value`, `clip_norm`: Parameters used if differential privacy is enabled.
+        - ``trainer``: The class name of the trainer you would like to use for client local training. The trainer name should be defined in ``src/appfl/trainer``. For example, ``NaiveTrainer`` simply updates the model for a certain number of epochs or batches.
+        - ``mode``: For ``NaiveTrainer``, mode is a required configuration to with allowable values ``epoch`` or ``step`` to specify whether you want to train for a certain number of epochs or only a certain number of steps/batches.
+        - ``num_local_steps`` / ``num_local_epochs``: Number of steps (if ``mode=step``) or epochs (if ``mode=epoch``) for an FL client in each local training round.
+        - ``optim``: Name of the optimizer to use from the ``torch.optim`` module.
+        - ``optim_args``: Keyword arguments for the selected optimizer.
+        - ``do_validation``: Whether to perform client-side validation in each training round.
+        - ``do_pre_validation``: Whether to perform client-side validation prior to local training.
+        - ``use_dp``: Whether to use differential privacy.
+        - ``epsilon``, ``clip_grad``, ``clip_value``, ``clip_norm``: Parameters used if differential privacy is enabled.
     - *Loss function*: To specify the loss function to use during local training, we provide two options:
   
-        - Loss function from `torch`: By providing the name of the loss function available in `torch.nn` (e.g., `CrossEntropyLoss`) in `loss_fn` and corresponding arguments in `loss_fn_kwargs`, user can employ loss function available in PyTorch.
-        - Loss function defined in local file: User can define their own loss function by inheriting `nn.Module` and defining its `forward()` function. Then the user needs to privide the path to the defined loss function file in `loss_fn_path`, and the class name of the defined loss function in `loss_fn_name`.
-    - *Metric function*: To specify the metric function used during validation, user need to provide path to the file containing the metric function in `metric_path` and the name of the metric function in `metric_name`. 
+        - Loss function from ``torch``: By providing the name of the loss function available in `torch.nn` (e.g., ``CrossEntropyLoss``) in ``loss_fn`` and corresponding arguments in ``loss_fn_kwargs``, user can employ loss function available in PyTorch.
+        - Loss function defined in local file: User can define their own loss function by inheriting ``nn.Module`` and defining its ``forward()`` function. Then the user needs to privide the path to the defined loss function file in ``loss_fn_path``, and the class name of the defined loss function in ``loss_fn_name``.
+    - *Metric function*: To specify the metric function used during validation, user need to provide path to the file containing the metric function in ``metric_path`` and the name of the metric function in ``metric_name``. 
     - *Dataloader settings*: While the server-side configuration does not contain any information about each client's local dataset, it can specify the configurations when converting the dataset to dataloader, such as the batch size and whether to shuffle.
-- `model_configs`: This component contains the definition of the machine learning model used in the FL experiment. The model architecture should be defined as a `torch.nn.Module` in a local file on the server-side and then provides the following information:
+- ``model_configs``: This component contains the definition of the machine learning model used in the FL experiment. The model architecture should be defined as a ``torch.nn.Module`` in a local file on the server-side and then provides the following information:
 
-    - `model_path`: Path to the model definition file.
-    - `model_name`: Class name of the defined model.
-    - `model_kwargs`: Keyword arguments for initiating a model.
-- `comm_configs`: This component contains the settings for the communication between the FL server and clients, such as the `compression_configs`.
+    - ``model_path``: Path to the model definition file.
+    - ``model_name``: Class name of the defined model.
+    - ``model_kwargs``: Keyword arguments for initiating a model.
+- ``comm_configs``: This component contains the settings for the communication between the FL server and clients, such as the ``compression_configs``.
 
 Server Configurations
 ~~~~~~~~~~~~~~~~~~~~~
 
 Specifically, it contains the following key components:
 
-- *Scheduler configurations*: User can specify the name of the scheduler (`scheduler`), and the corresponding keyword arguments (`scheduler_kwargs`). All supported schedulers are available at `src/appfl/scheduler`.
-- *Aggregator configurations*: User can specify the name of the aggregator (`aggregator`), and the corresponding keyword arguments (`aggregator_kwargs`). All supported aggregators are available at `src/appfl/aggregator`.
-- *Communicator configurations*: Containing the configurations for the communication between the server and clients, such as the `grpc_configs`.
-- *Logging configurations and others*: Containing the configurations for logging  such as the `logging_output_dirname` and `logging_output_filename`, as well as `num_global_epochs`.
+- *Scheduler configurations*: User can specify the name of the scheduler (``scheduler``), and the corresponding keyword arguments (``scheduler_kwargs``). All supported schedulers are available at ``src/appfl/scheduler``.
+- *Aggregator configurations*: User can specify the name of the aggregator (``aggregator``), and the corresponding keyword arguments (``aggregator_kwargs``). All supported aggregators are available at ``src/appfl/aggregator``.
+- *Communicator configurations*: Containing the configurations for the communication between the server and clients, such as the ``grpc_configs``.
+- *Logging configurations and others*: Containing the configurations for logging  such as the ``logging_output_dirname`` and ``logging_output_filename``, as well as ```num_global_epochs```.
 
 .. note::
 
-    You may notices that both `server_configs` and `client_configs` have a `comm_configs` fields. Actually, when creating the server agent, its communication configurations will be the merging of `server_configs.comm_configs` and `client_configs.comm_configs`. However, `client_configs.comm_configs` will also be shared with clients, while `server_configs.comm_configs` will not. As we want the clients to be aware of the compressor configurations, we put `compressor_configs` under `client_configs.comm_configs` to share with the clients during the FL experiment.
+    You may notices that both ``server_configs`` and ``client_configs`` have a ``comm_configs`` fields. Actually, when creating the server agent, its communication configurations will be the merging of ``server_configs.comm_configs`` and ``client_configs.comm_configs``. However, ``client_configs.comm_configs`` will also be shared with clients, while ``server_configs.comm_configs`` will not. As we want the clients to be aware of the compressor configurations, we put ``compressor_configs`` under ``client_configs.comm_configs`` to share with the clients during the FL experiment.

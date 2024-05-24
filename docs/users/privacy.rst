@@ -1,4 +1,4 @@
 APPFL Privacy
 =============
 
-For all privacy-preserving techniques, user can put them under `appfl.privacy` submodule.
+For all privacy-preserving techniques, user can put them under ``appfl.privacy`` submodule.
