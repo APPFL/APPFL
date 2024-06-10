@@ -30,7 +30,7 @@
 APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source and highly extensible software framework that allows research communities to implement, test, and validate various ideas related to privacy-preserving federated learning (FL), and deploy real FL experiments easily and safely among distributed clients to train more robust ML models.With this framework, developers and users can easily
 
 * Train any user-defined machine learning model on decentralized data with optional differential privacy and client authentication.
-* Simulate various synchronous, asynchronous, and semi-asynchronous PPFL algorihtms on high-performance computing (HPC) architecture with MPI.
+* Simulate various synchronous and asynchronous PPFL algorihtms on high-performance computing (HPC) architecture with MPI.
 * Implement customizations in a plug-and-play manner for all aspects of FL, including aggregation algorithms, server scheduling strategies, and client local trainers.
 
 [Documentation](http://appfl.rtfd.io/): please check out our documentation for tutorials, users guide, and developers guide.
@@ -89,7 +89,7 @@ sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
 APPFL is primarily composed of the following six technical components
 
 * Aggregator: APPFL supports several popular algorithms to aggregate one or several client local models.
-* Scheduler: APPFL supports several synchronous, asynchronous, and semi-asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models.
+* Scheduler: APPFL supports several synchronous and asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models.
 * Trianer: APPFL supports several client local trainers for various training tasks.
 * Privacy: APPFL supprots several global/local differential privacy schemes.
 * Communicator: APPFL supports MPI for single-machine/cluster simulation, and gRPC and Globus Compute with authenticator for secure distributed training.
@@ -97,7 +97,7 @@ APPFL is primarily composed of the following six technical components
 
 ## :bulb: Framework Overview
 <p align="center">
-  <img src='docs/_static/design-logic.jpg' style="width: 85%; height: auto;"/>
+  <img src='docs/_static/design-logic-new.jpg' style="width: 85%; height: auto;"/>
 </p>
 
 In the design of the APPFL framework, we essentially create the server agent and client agent, using the six technical components above as building blocks, to act on behalf of the FL server and clients to conduct FL experiments. For more details, please refer to our [documentation](http://appfl.rtfd.io/).

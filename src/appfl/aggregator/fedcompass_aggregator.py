@@ -6,7 +6,7 @@ from typing import Union, Dict, OrderedDict, Any, Optional
 
 class FedCompassAggregator(BaseAggregator):
     """
-    FedCompass semi-asynchronous federated learning algorithm.
+    FedCompass asynchronous federated learning algorithm.
     For more details, check paper: https://arxiv.org/abs/2309.14675
     """
     def __init__(

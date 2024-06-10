@@ -5,7 +5,7 @@ from appfl.agent import APPFLServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 
 # Load server and client agents configurations
-server_agent_config = OmegaConf.load("config_gc/server_fedavg.yaml")
+server_agent_config = OmegaConf.load("config_gc/server_fedcompass.yaml")
 client_agent_configs = OmegaConf.load("config_gc/clients.yaml")
 
 # Create server agent
@@ -47,13 +47,14 @@ while not server_agent.training_finished():
             global_model, metadata = global_model
         else:
             metadata = {}
-        server_communicator.send_task_to_one_client(
-            client_endpoint_id,
-            task_name="train",
-            model=global_model,
-            metadata=metadata,
-            need_model_response=True,
-        )
+        if not server_agent.training_finished():
+            server_communicator.send_task_to_one_client(
+                client_endpoint_id,
+                task_name="train",
+                model=global_model,
+                metadata=metadata,
+                need_model_response=True,
+            )
     # Deal with the model futures
     del_keys = []
     for client_endpoint_id in model_futures:
@@ -63,13 +64,14 @@ while not server_agent.training_finished():
                 global_model, metadata = global_model
             else:
                 metadata = {}
-            server_communicator.send_task_to_one_client(
-                client_endpoint_id,
-                task_name="train",
-                model=global_model,
-                metadata=metadata,
-                need_model_response=True,
-            )
+            if not server_agent.training_finished():
+                server_communicator.send_task_to_one_client(
+                    client_endpoint_id,
+                    task_name="train",
+                    model=global_model,
+                    metadata=metadata,
+                    need_model_response=True,
+                )
             del_keys.append(client_endpoint_id)
     for key in del_keys:
         model_futures.pop(key)

@@ -4,11 +4,11 @@ APPFL Aggregator
 Functionalities
 ---------------
 
-The APPFL Aggregator is used for aggregating one or more client local model(s) to update the global model. Depending on the synchronity of the FL algorithm, the aggregator can take
+The APPFL Aggregator is used for aggregating one or more client local model(s) to update the global model. Depending on the synchroneity of the FL algorithm, the aggregator can take
 
 - only one client model to update the global model (for asynchronous FL)
 - a list of client models to update the global model (for synchronous FL)
-- one or a list of client models to update the global model (for semi-asynchronous FL)
+- one or a list of client models to update the global model (for asynchronous FL)
 
 
 The aggregator has the following three main functionalities.
@@ -53,6 +53,6 @@ All available aggregators are defined in the ``appfl.aggregator`` module, includ
 - ``FedAdagradAggregator``: [Synchronous] Federated Adagrad (FedAdagrad) aggregator
 - ``FedAsyncAggregator``: [Asynchronous] Federated Asynchronous (FedAsync) aggregator
 - ``FedBuffAggregator``: [Asynchronous] Federated Buffered (FedBuff) aggregator
-- ``FedCompassAggregator``: [Semi-Asynchronous] FedCompass aggregator
+- ``FedCompassAggregator``: [Asynchronous] FedCompass aggregator
 - ``ICEADMMAggregator``: [Synchronous] ICEADMM aggregator
 - ``IIADMMAggregator``: [Synchronous] IIADMM aggregator

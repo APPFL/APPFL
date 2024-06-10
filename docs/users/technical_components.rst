@@ -1,7 +1,7 @@
 APPFL Components
 ================
 
-.. image:: ../_static/design-logic.jpg
+.. image:: ../_static/design-logic-new.jpg
    :width: 90%
    :align: center
 

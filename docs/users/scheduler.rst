@@ -132,7 +132,7 @@ Naiv asynchronous scheduler aggregates the local models from the clients as soon
 Compass Asynchronous Scheduler
 ------------------------------
 
-Compass is COMputing Power Aware Scheduler, which is a semi-asynchronous scheduler, which 
+Compass is COMputing Power Aware Scheduler, which is an asynchronous scheduler, which 
 
 - estimates and updates the computing power of each client on-the-fly;
 - synchronizes the arrival of a group of client models by assigning different number of tasks according to estimated computing power;
@@ -142,7 +142,7 @@ Compass is COMputing Power Aware Scheduler, which is a semi-asynchronous schedul
 
     class CompassScheduler(BaseScheduler):
         """
-        Scheduler for `FedCompass` semi-asynchronous federated learning algorithm.
+        Scheduler for `FedCompass` asynchronous federated learning algorithm.
         Paper reference: https://arxiv.org/abs/2309.14675
         """
         def __init__(
@@ -173,7 +173,7 @@ Compass is COMputing Power Aware Scheduler, which is a semi-asynchronous schedul
                 **kwargs
             ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
-            Schedule a semi-asynchronous global aggregation for the local model from a client
+            Schedule an asynchronous global aggregation for the local model from a client
             using the `Compass` algorithm. The method will either return the current global model 
             directly, or a `Future` object for the global model.
             :param `client_id`: the id of the client

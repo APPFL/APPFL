@@ -46,7 +46,7 @@ If we want to run FL experiment in parallel using MPI, we can run the example us
 .. note::
 
     1. ``-np 6`` in the above command means that we are launching 6 MPI processes. As a result, the number of clients is equal to the number of processes minus one (one MPI process is used as an FL server), which is 5 in this case.
-    2. You can easily run different FL algorithms (synchronous, asynchronous, and semi-asynchronous) simply by changing the server configuration file accordingly. For example, you can run the `FedAsync <https://arxiv.org/pdf/1903.03934.pdf>`_ algorithm by changing the server configuration file to `./configs/mnist/server_fedasync.yaml`.
+    2. You can easily run different FL algorithms (synchronous and asynchronous) simply by changing the server configuration file accordingly. For example, you can run the `FedAsync <https://arxiv.org/pdf/1903.03934.pdf>`_ algorithm by changing the server configuration file to `./configs/mnist/server_fedasync.yaml`.
 
 MPI simulation with privacy
 ---------------------------

@@ -11,7 +11,7 @@ APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source softwar
 With this framework, developers and/or users can easily
 
 * Train any user-defined machine learning model on decentralized data with optional differential privacy and client authentication,
-* Simulate various synchronous, asynchronous, and semi-asynchronous PPFL algorihtms on high-performance computing (HPC) architecture with MPI, 
+* Simulate various synchronous, asynchronous and PPFL algorihtms on high-performance computing (HPC) architecture with MPI, 
 * Implement customizations in a plug-and-play manner for all aspects of FL, including aggregation algorithms, server scheduling strategies, and client local trainers.
 
 Technical Components
@@ -31,7 +31,7 @@ APPFL is primarily composed of the following six technical components: *Aggregat
       
       Scheduler
       ^^^^^^^^^
-      Supports several synchronous, asynchronous, and semi-asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models. 
+      Supports several synchronous and asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models. 
 
    .. grid-item-card:: 
       
