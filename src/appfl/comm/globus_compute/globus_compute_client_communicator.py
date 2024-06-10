@@ -40,3 +40,5 @@ def globus_compute_client_entry_point(
             meta_data["local_model_url"],
         )
         return local_model, meta_data_local
+    else:
+        raise NotImplementedError(f"Task {task_name} is not implemented in the client endpoint.")

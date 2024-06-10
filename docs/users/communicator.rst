@@ -357,4 +357,142 @@ To interact with the server and start an FL experiment, you can start a client u
 Globus Compute
 --------------
 
-TBA
+`Globus Compute <https://globus-compute.readthedocs.io/>`_ is a distributed function as a service platform, which can be used for running federated learning on real-world distributed machines. It can turn each client into an endpoint which can be patched with remote functions on the server side to run federated learning tasks. It is composed of two parts:
+
+- Globus Compute Server Communicator (``appfl.comm.globus_compute.GlobusComputeServerCommunicator``), which can send task to the client endpoints and receive the results.
+- Globus Compute Client Entry Point (``appfl.comm.globus_compute.GlobusComputeClientCommunicator.globus_compute_client_entry_point``), which is the entry point for the client to execute the task and send the results back to the server.
+
+Globus Compute Server Communicator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Globus Compute is a server-driven communication protocol, where the server sends tasks to the clients and receives the results to control the FL process. It is composed of the following methods to send tasks to the clients and receive the results:
+
+.. code:: python
+
+    class GlobusComputeServerCommunicator:
+        """
+        Communicator used by the federated learning server which plans to use Globus Compute
+        for orchestrating the federated learning experiments.
+
+        Globus Compute is a distributed function-as-a-service platform that allows users to run
+        functions on specified remote endpoints. For more details, check the Globus Compute SDK 
+        documentation at https://globus-compute.readthedocs.io/en/latest/endpoints.html.
+
+        :param `gcc`: Globus Compute client object
+        :param `server_agent_config`: The server agent configuration
+        :param `client_agent_configs`: A list of client agent configurations.
+        :param [Optional] `logger`: Optional logger object.
+        """
+
+        def send_task_to_all_clients(
+            self,
+            task_name: str,
+            *,
+            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+            metadata: Union[Dict, List[Dict]] = {},
+            need_model_response: bool = False,
+        ):
+            """
+            Send a specific task to all clients.
+            :param `task_name`: Name of the task to be executed on the clients
+            :param [Optional] `model`: Model to be sent to the clients
+            :param [Optional] `metadata`: Additional metadata to be sent to the clients
+            :param `need_model_response`: Whether the task requires a model response from the clients
+                If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
+            """
+            pass
+
+        def send_task_to_one_client(
+            self,
+            client_endpoint_id: str,
+            task_name: str,
+            *,
+            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+            metadata: Optional[Dict] = {},
+            need_model_response: bool = False,
+        ):
+            """
+            Send a specific task to one specific client endpoint.
+            :param `client_endpoint_id`: The client endpoint id to which the task is sent.
+            :param `task_name`: Name of the task to be executed on the clients
+            :param [Optional] `model`: Model to be sent to the clients
+            :param [Optional] `metadata`: Additional metadata to be sent to the clients
+            :param `need_model_response`: Whether the task requires a model response from the clients
+                If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
+            """
+            pass
+
+        def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
+            """
+            Receive task results from all clients that have running tasks.
+            :return `client_results`: A dictionary containing the results from all clients - Dict[client_endpoint_id, client_model]
+            :return `client_metadata`: A dictionary containing the metadata from all clients - Dict[client_endpoint_id, client_metadata]
+            """
+            pass
+        
+        def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
+            """
+            Receive task results from the first client that finishes the task.
+            :return `client_endpoint_id`: The client endpoint id from which the result is received.
+            :return `client_model`: The model returned from the client
+            :return `client_metadata`: The metadata returned from the client
+            """
+            pass
+
+        def shutdown_all_clients(self):
+            """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
+            pass
+
+        def cancel_all_tasks(self):
+            """Cancel all on-the-fly client tasks."""
+            pass
+
+Globus Compute Client Entry Point
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For all tasks the server sent to the client, the tasks should be implemented in the client entry point function, which is the entry point for the client to execute the task and send the results back to the server. Below shows the current client entry point function which only supports the ``get_sample_size`` and ``train`` tasks. User can freely add more tasks by implementing the corresponding functions in the client entry point.
+
+.. code:: python
+
+    def globus_compute_client_entry_point(
+        task_name="N/A",
+        client_agent_config=None,
+        model=None,
+        meta_data=None,
+    ):
+        """
+        Entry point for the Globus Compute client endpoint for federated learning.
+        :param `task_name`: The name of the task to be executed.
+        :param `client_agent_config`: The configuration for the client agent.
+        :param `model`: [Optional] The model to be used for the task.
+        :param `meta_data`: [Optional] The metadata for the task.
+        :return `model_local`: The local model after the task is executed. [Return `None` if the task does not return a model.]
+        :return `meta_data_local`: The local metadata after the task is executed. [Return `{}` if the task does not return metadata.]
+        """
+        from appfl.agent import APPFLClientAgent
+        from appfl.comm.globus_compute.utils.client_utils import load_global_model, send_local_model
+        
+        client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
+        if model is not None:
+            model = load_global_model(client_agent.client_agent_config, model)
+            client_agent.load_parameters(model)
+
+        if task_name == "get_sample_size":
+            return None, {
+                "sample_size": client_agent.get_sample_size()
+            }
+        
+        elif task_name == "train":
+            client_agent.train()
+            local_model = client_agent.get_parameters()
+            if isinstance(local_model, tuple):
+                local_model, meta_data_local = local_model
+            else:
+                meta_data_local = {}
+            local_model = send_local_model(
+                client_agent.client_agent_config, 
+                local_model,
+                meta_data["local_model_key"],
+                meta_data["local_model_url"],
+            )
+            return local_model, meta_data_local
