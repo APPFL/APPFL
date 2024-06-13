@@ -12,12 +12,12 @@ from concurrent.futures import Future
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional
 
-class APPFLServerAgent:
+class ServerAgent:
     """
-    `APPFLServerAgent` should act on behalf of the FL server to:
-    - provide configurations that are shared among all clients to the clients (e.g. trainer, model, etc.) `APPFLServerAgent.get_client_configs`
-    - take the local model from a client, update the global model, and return it `APPFLServerAgent.global_update`
-    - provide the global model to the clients (no input and no aggregation) `APPFLServerAgent.get_parameters`
+    `ServerAgent` should act on behalf of the FL server to:
+    - provide configurations that are shared among all clients to the clients (e.g. trainer, model, etc.) `ServerAgent.get_client_configs`
+    - take the local model from a client, update the global model, and return it `ServerAgent.global_update`
+    - provide the global model to the clients (no input and no aggregation) `ServerAgent.get_parameters`
 
     User can overwrite any class method to customize the behavior of the server agent.
     """

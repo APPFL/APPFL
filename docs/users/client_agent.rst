@@ -16,11 +16,11 @@ Specifically, the current client agent has the following functionalities.
 
 .. note::
 
-    User can also define their functionalities by either inheriting the ``APPFLClientAgent`` class or directly adding new methods to the current client agent. Additionally, if you think your added functionalities are useful for other users, please consider contributing to the APPFL package by submitting a pull request.
+    User can also define their functionalities by either inheriting the ``ClientAgent`` class or directly adding new methods to the current client agent. Additionally, if you think your added functionalities are useful for other users, please consider contributing to the APPFL package by submitting a pull request.
 
 .. code-block:: python
 
-    class APPFLClientAgent:
+    class ClientAgent:
         def __init__(
             self, 
             client_agent_config: ClientAgentConfig = ClientAgentConfig()

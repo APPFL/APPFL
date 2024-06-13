@@ -7,7 +7,7 @@ sample size for local training purposes.
 """
 import argparse
 from omegaconf import OmegaConf
-from appfl.agent import APPFLClientAgent
+from appfl.agent import ClientAgent
 from appfl.communicator.grpc import GRPCClientCommunicator
 
 argparser = argparse.ArgumentParser()
@@ -21,7 +21,7 @@ args = argparser.parse_args()
 
 client_agent_config = OmegaConf.load(args.config)
 
-client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
+client_agent = ClientAgent(client_agent_config=client_agent_config)
 client_communicator = GRPCClientCommunicator(
     client_id = client_agent.get_id(),
     **client_agent_config.comm_configs.grpc_configs,

@@ -5,14 +5,14 @@ from omegaconf import OmegaConf
 from concurrent.futures import Future
 from .grpc_communicator_pb2 import *
 from .grpc_communicator_pb2_grpc import *
-from appfl.agent import APPFLServerAgent
+from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from .utils import proto_to_databuffer, serialize_model
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
     def __init__(
         self,
-        server_agent: APPFLServerAgent,
+        server_agent: ServerAgent,
         max_message_size: int = 2 * 1024 * 1024,
         logger: Optional[ServerAgentFileLogger] = None,
     ) -> None:

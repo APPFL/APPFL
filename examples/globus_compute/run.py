@@ -1,7 +1,7 @@
 from omegaconf import OmegaConf
 from concurrent.futures import Future
 from globus_compute_sdk import Client
-from appfl.agent import APPFLServerAgent
+from appfl.agent import ServerAgent
 from appfl.communicator.globus_compute import GlobusComputeServerCommunicator
 
 # Load server and client agents configurations
@@ -9,7 +9,7 @@ server_agent_config = OmegaConf.load("config_gc/server_fedcompass.yaml")
 client_agent_configs = OmegaConf.load("config_gc/clients.yaml")
 
 # Create server agent
-server_agent = APPFLServerAgent(server_agent_config=server_agent_config)
+server_agent = ServerAgent(server_agent_config=server_agent_config)
 
 # Create server communicator
 gcc = Client()

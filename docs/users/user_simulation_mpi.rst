@@ -17,7 +17,7 @@ First, user needs to load configuration files for the client and server agents. 
 
     from mpi4py import MPI
     from omegaconf import OmegaConf
-    from appfl.agent import APPFLClientAgent, APPFLServerAgent
+    from appfl.agent import ClientAgent, ServerAgent
     
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -31,7 +31,7 @@ First, user needs to load configuration files for the client and server agents. 
         if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
             server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
         # Create the server agent
-        server_agent = APPFLServerAgent(server_agent_config=server_agent_config)
+        server_agent = ServerAgent(server_agent_config=server_agent_config)
     else:
         # Load and set client configuration
         client_agent_config = OmegaConf.load("<path_to_client_config>.yaml")
@@ -40,7 +40,7 @@ First, user needs to load configuration files for the client and server agents. 
         client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
         client_agent_config.data_configs.dataset_kwargs.visualization = True if rank == 1 else False
         # Create the client agent 
-        client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
+        client_agent = ClientAgent(client_agent_config=client_agent_config)
 
 Then for the FL server, we can create an MPI communicator to serve the requests from the clients using the ``serve`` method.
 

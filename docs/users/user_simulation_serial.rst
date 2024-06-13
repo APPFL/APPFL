@@ -42,11 +42,11 @@ The user then creates server agent and client agents using the configurations.
 
 .. code-block:: python
 
-    from appfl.agent import APPFLClientAgent, APPFLServerAgent
+    from appfl.agent import ClientAgent, ServerAgent
 
-    server_agent = APPFLServerAgent(server_agent_config=server_agent_config)
+    server_agent = ServerAgent(server_agent_config=server_agent_config)
     client_agents = [
-        APPFLClientAgent(client_agent_config=client_agent_configs[i]) 
+        ClientAgent(client_agent_config=client_agent_configs[i]) 
         for i in range(args.num_clients)
     ]
 

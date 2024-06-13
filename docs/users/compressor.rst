@@ -85,7 +85,7 @@ User can configure the compressor by setting it ``client_configs.comm_configs.co
 Usage in APPFL
 --------------
 
-The compressor is used in the ``APPFLClientAgent.get_parameters`` method to compress the model parameters using ``compressor.compress_model`` before sending them to the server, as shown below
+The compressor is used in the ``ClientAgent.get_parameters`` method to compress the model parameters using ``compressor.compress_model`` before sending them to the server, as shown below
 
 .. code-block:: python
 
@@ -100,7 +100,7 @@ The compressor is used in the ``APPFLClientAgent.get_parameters`` method to comp
             params = self.compressor.compress_model(params)
         return params if metadata is None else (params, metadata)
 
-On the server side, the model parameters are decompressed using ``compressor.decompress_model`` before updating the model by the ``APPFLServerAgent.global_update``.
+On the server side, the model parameters are decompressed using ``compressor.decompress_model`` before updating the model by the ``ServerAgent.global_update``.
 
 
 Stand-alone Usage

@@ -15,11 +15,11 @@ Specifically, the current server agent has the following functionalities.
 
 .. note::
 
-    User can also define their functionalities by either inheriting the ``APPFLServerAgent`` class or directly adding new methods to the current server agent. Additionally, if you think your added functionalities are useful for other users, please consider contributing to the APPFL package by submitting a pull request.
+    User can also define their functionalities by either inheriting the ``ServerAgent`` class or directly adding new methods to the current server agent. Additionally, if you think your added functionalities are useful for other users, please consider contributing to the APPFL package by submitting a pull request.
 
 .. code-block:: python
 
-    class APPFLServerAgent:
+    class ServerAgent:
         def __init__(
             self,
             server_agent_config: ServerAgentConfig = ServerAgentConfig()

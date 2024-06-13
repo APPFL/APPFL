@@ -14,15 +14,15 @@ from appfl.misc import create_instance_from_file, \
     get_function_from_file_source, \
     run_function_from_file_source
 
-class APPFLClientAgent:
+class ClientAgent:
     """
-    The `APPFLClientAgent` should act on behalf of the FL client to:
-    - load configurations received from the server `APPFLClientAgent.load_config`
-    - get the size of the local dataset `APPFLClientAgent.get_sample_size`
-    - do the local training job using configurations `APPFLClientAgent.train`
-    - prepare data for communication `APPFLClientAgent.get_parameters`
-    - load parameters from the server `APPFLClientAgent.load_parameters`
-    - get a unique client id for server to distinguish clients `APPFLClientAgent.get_id`
+    The `ClientAgent` should act on behalf of the FL client to:
+    - load configurations received from the server `ClientAgent.load_config`
+    - get the size of the local dataset `ClientAgent.get_sample_size`
+    - do the local training job using configurations `ClientAgent.train`
+    - prepare data for communication `ClientAgent.get_parameters`
+    - load parameters from the server `ClientAgent.load_parameters`
+    - get a unique client id for server to distinguish clients `ClientAgent.get_id`
 
     Developers can add new methods to the client agent to support more functionalities,
     and use Fork + Pull Request to contribute to the project.

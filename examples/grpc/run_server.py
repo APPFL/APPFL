@@ -1,6 +1,6 @@
 import argparse
 from omegaconf import OmegaConf
-from appfl.agent import APPFLServerAgent
+from appfl.agent import ServerAgent
 from appfl.communicator.grpc import GRPCServerCommunicator, serve
 
 argparser = argparse.ArgumentParser()
@@ -13,7 +13,7 @@ argparser.add_argument(
 args = argparser.parse_args()
 
 server_agent_config = OmegaConf.load(args.config)
-server_agent = APPFLServerAgent(server_agent_config=server_agent_config)
+server_agent = ServerAgent(server_agent_config=server_agent_config)
 
 communicator = GRPCServerCommunicator(
     server_agent,

@@ -5,7 +5,7 @@ from mpi4py import MPI
 from omegaconf import OmegaConf
 from typing import Optional, Dict
 from concurrent.futures import Future
-from appfl.agent import APPFLServerAgent
+from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from .serializer import byte_to_request, response_to_byte, model_to_byte
 from .config import MPITask, MPITaskRequest, MPITaskResponse, MPIServerStatus
@@ -14,7 +14,7 @@ class MPIServerCommunicator:
     def __init__(
         self, 
         comm,
-        server_agent: APPFLServerAgent,
+        server_agent: ServerAgent,
         logger: Optional[ServerAgentFileLogger] = None,
     ) -> None:
         self.comm = comm

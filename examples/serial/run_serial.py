@@ -4,7 +4,7 @@ It should be noted that only synchronous FL can be simulated in this way.
 """
 import argparse
 from omegaconf import OmegaConf
-from appfl.agent import APPFLClientAgent, APPFLServerAgent
+from appfl.agent import ClientAgent, ServerAgent
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--server_config", type=str, default="configs/mnist/server_fedavg.yaml")
@@ -19,7 +19,7 @@ if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
     server_agent_config.server_configs.aggregator_kwargs.num_clients = args.num_clients
 
 # Create server agent
-server_agent = APPFLServerAgent(server_agent_config=server_agent_config)
+server_agent = ServerAgent(server_agent_config=server_agent_config)
 
 # Load base client configurations and set corresponding fields for different clients
 client_agent_configs = [OmegaConf.load(args.client_config) for _ in range(args.num_clients)]
@@ -31,7 +31,7 @@ for i in range(args.num_clients):
 
 # Load client agents
 client_agents = [
-    APPFLClientAgent(client_agent_config=client_agent_configs[i]) 
+    ClientAgent(client_agent_config=client_agent_configs[i]) 
     for i in range(args.num_clients)
 ]
 

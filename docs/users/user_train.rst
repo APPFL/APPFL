@@ -11,11 +11,11 @@ The server needs to load configuration from a configuration file, then we can cr
 .. code-block:: python
 
     from omegaconf import OmegaConf
-    from appfl.agent import APPFLServerAgent
+    from appfl.agent import ServerAgent
     from appfl.communicator.grpc import GRPCServerCommunicator, serve
 
     server_agent_config = OmegaConf.load('<path_to_config_file>.yaml')
-    server_agent = APPFLServerAgent(server_agent_config=server_agent_config)
+    server_agent = ServerAgent(server_agent_config=server_agent_config)
 
     communicator = GRPCServerCommunicator(
         server_agent,
@@ -36,12 +36,12 @@ The client also loads configuration from a configuration file, and then it start
 .. code-block:: python
 
     from omegaconf import OmegaConf
-    from appfl.agent import APPFLClientAgent
+    from appfl.agent import ClientAgent
     from appfl.communicator.grpc import GRPCClientCommunicator
 
     client_agent_config = OmegaConf.load('<path_to_config_file>.yaml')
 
-    client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
+    client_agent = ClientAgent(client_agent_config=client_agent_config)
     client_communicator = GRPCClientCommunicator(
         client_id = client_agent.get_id(),
         **client_agent_config.comm_configs.grpc_configs,

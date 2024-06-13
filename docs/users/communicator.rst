@@ -48,13 +48,13 @@ The server can handle the following tasks:
         def __init__(
             self, 
             comm,
-            server_agent: APPFLServerAgent,
+            server_agent: ServerAgent,
             logger: Optional[ServerAgentFileLogger] = None,
         ) -> None:
             """
             Create an MPI server communicator.
             :param `comm`: MPI communicator object
-            :param `server_agent`: `APPFLServerAgent` object
+            :param `server_agent`: `ServerAgent` object
             :param `logger`: A logger object for logging messages
             """
 
@@ -214,13 +214,13 @@ The server can handle the following tasks:
     class GRPCServerCommunicator(GRPCCommunicatorServicer):
         def __init__(
             self,
-            server_agent: APPFLServerAgent,
+            server_agent: ServerAgent,
             max_message_size: int = 2 * 1024 * 1024,
             logger: Optional[ServerAgentFileLogger] = None,
         ) -> None:
             """
             Creates a gRPC server communicator.
-            :param `server_agent`: `APPFLServerAgent` object
+            :param `server_agent`: `ServerAgent` object
             :param `max_message_size`: Maximum message size in bytes to be sent/received. 
                 Object size larger than this will be split into multiple messages.
             :param `logger`: A logger object for logging messages
@@ -469,10 +469,10 @@ For all tasks the server sent to the client, the tasks should be implemented in 
         :return `model_local`: The local model after the task is executed. [Return `None` if the task does not return a model.]
         :return `meta_data_local`: The local metadata after the task is executed. [Return `{}` if the task does not return metadata.]
         """
-        from appfl.agent import APPFLClientAgent
+        from appfl.agent import ClientAgent
         from appfl.communicator.globus_compute.utils.client_utils import load_global_model, send_local_model
         
-        client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
+        client_agent = ClientAgent(client_agent_config=client_agent_config)
         if model is not None:
             model = load_global_model(client_agent.client_agent_config, model)
             client_agent.load_parameters(model)

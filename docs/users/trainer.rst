@@ -43,7 +43,7 @@ APPFL local trainer is the main building blocking of the APPFL client agent for 
             Train the model.
             """
 
-For the input parameters of the trainer (e.g., model, loss_fn), they are loaded from the client-specific configuration file as well as the configurations sent by the server, and processed by the ``APPFLClientAgent`` before initializing the trainer. 
+For the input parameters of the trainer (e.g., model, loss_fn), they are loaded from the client-specific configuration file as well as the configurations sent by the server, and processed by the ``ClientAgent`` before initializing the trainer. 
 
 .. note::
 

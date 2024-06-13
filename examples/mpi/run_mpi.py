@@ -1,7 +1,7 @@
 import argparse
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from appfl.agent import APPFLClientAgent, APPFLServerAgent
+from appfl.agent import ClientAgent, ServerAgent
 from appfl.communicator.mpi import MPIClientCommunicator, MPIServerCommunicator
 
 argparse = argparse.ArgumentParser()
@@ -21,7 +21,7 @@ if rank == 0:
     if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
         server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
     # Create the server agent and communicator
-    server_agent = APPFLServerAgent(server_agent_config=server_agent_config)
+    server_agent = ServerAgent(server_agent_config=server_agent_config)
     server_communicator = MPIServerCommunicator(comm, server_agent, logger=server_agent.logger)
     # Start the server to serve the clients
     server_communicator.serve()
@@ -33,7 +33,7 @@ else:
     client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
     client_agent_config.data_configs.dataset_kwargs.visualization = True if rank == 1 else False
     # Create the client agent and communicator
-    client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
+    client_agent = ClientAgent(client_agent_config=client_agent_config)
     client_communicator = MPIClientCommunicator(comm, server_rank=0)
     # Load the configurations and initial global model
     client_config = client_communicator.get_configuration()

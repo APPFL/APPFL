@@ -1,2 +1,2 @@
-from .client import APPFLClientAgent
-from .server import APPFLServerAgent
+from .client import ClientAgent
+from .server import ServerAgent
