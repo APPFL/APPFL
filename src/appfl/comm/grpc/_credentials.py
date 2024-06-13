@@ -4,7 +4,10 @@ Adopted from https://github.com/grpc/grpc/blob/master/examples/python/auth/_cred
 """
 
 import os
-from .utils import load_credential_from_file
+
+def load_credential_from_file(filepath):
+    with open(filepath, "rb") as f:
+        return f.read()
 
 current_path = os.path.dirname(__file__)
 SERVER_CERTIFICATE = load_credential_from_file(

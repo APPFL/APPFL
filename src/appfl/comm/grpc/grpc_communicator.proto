@@ -1,75 +1,78 @@
 syntax = "proto3";
 
 service GRPCCommunicator {
-  rpc GetConfiguration (ConfigurationRequest) returns (ConfigurationResponse) {}
-  rpc GetGlobalModel (GetGlobalModelRequest) returns (stream DataBuffer) {}
-  rpc UpdateGlobalModel (stream DataBuffer) returns (stream DataBuffer) {}
-  rpc InvokeCustomAction (CustomActionRequest) returns (CustomActionResponse) {}
+    rpc GetJob(JobRequest) returns (JobResponse) {}
+    rpc GetTensorRecord(TensorRequest) returns (stream DataBuffer) {}
+    rpc GetWeight(WeightRequest) returns (WeightResponse) {}
+    rpc SendLearningResults(stream DataBuffer) returns (Acknowledgment) {}
 }
 
-// Binary data buffer for transmitted data with larger size 
-// i.e., data that may exceed the maximum message size
+message Header {
+    uint32 server_id = 1;
+    uint32 client_id = 2;
+}
+
+// Binary data encoding messages such as LearningResults.
 message DataBuffer {
-  bytes  data_bytes = 1; // data
+    uint32 size       = 1; // size of this buffer
+    bytes  data_bytes = 2; // data
 } 
 
-// Header to include for all client requests for server to identify the client
-message ClientHeader {
-  string client_id = 1;
+enum Job {
+    INIT   = 0;
+    WEIGHT = 1;
+    TRAIN  = 2;
+    QUIT   = 3;
 }
 
-// Header to include for all server responses for client to know the server status
-message ServerHeader {
-  ServerStatus status = 1;
+enum MessageStatus {
+    OK    = 0;
+    EMPTY = 1;
 }
 
-// Status code for the server
-enum ServerStatus {
-  RUN = 0;
-  DONE = 1;
-  ERROR = 2;
+message Acknowledgment {
+    Header        header = 1;
+    MessageStatus status = 2;
 }
 
-message ConfigurationRequest {
-  ClientHeader header = 1;
-  string meta_data = 2;
+message JobRequest {
+    Header header   = 1;
+    Job    job_done = 3;
 }
 
-message ConfigurationResponse {
-  ServerHeader header = 1;
-  string configuration = 2;
+message JobResponse {
+    Header header       = 1;
+    uint32 round_number = 2;
+    Job    job_todo     = 3;
 }
 
-message GetGlobalModelRequest {
-  ClientHeader header = 1;
-  string meta_data = 2;
+message LearningResults {
+    Header                header       = 1;
+    uint32                round_number = 2;
+    float                 penalty      = 3;
+    repeated TensorRecord primal       = 4;
+    repeated TensorRecord dual         = 5;
 }
 
-message GetGlobalModelRespone {
-  ServerHeader header = 1;
-  bytes global_model = 2;
-  string meta_data = 3;
+message TensorRequest {
+    Header header       = 1;
+    string name         = 2;
+    uint32 round_number = 3;
 }
 
-message UpdateGlobalModelRequest {
-  ClientHeader header = 1;
-  bytes local_model = 2;
-  string meta_data = 3;
+message TensorRecord {
+    string         name       = 1;
+    repeated int32 data_shape = 2;
+    bytes          data_bytes = 3;
+    string         data_dtype = 4;
 }
 
-message UpdateGlobalModelResponse {
-  ServerHeader header = 1;
-  bytes global_model = 2;
-  string meta_data = 3;
+message WeightRequest {
+    Header header = 1;
+    uint32 size   = 2;
 }
 
-message CustomActionRequest {
-  ClientHeader header = 1;
-  string action = 2;
-  string meta_data = 3;
-}
-
-message CustomActionResponse {
-  ServerHeader header = 1;
-  string results = 2;
+message WeightResponse {
+    Header header = 1;
+    float  weight = 2;
 }

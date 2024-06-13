@@ -8,7 +8,7 @@ sample size for local training purposes.
 import argparse
 from omegaconf import OmegaConf
 from appfl.agent import APPFLClientAgent
-from appfl.comm.grpc import GRPCClientCommunicator
+from appfl.communicator.grpc import GRPCClientCommunicator
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(

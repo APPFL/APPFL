@@ -46,7 +46,7 @@ Then for the FL server, we can create an MPI communicator to serve the requests 
 
 .. code-block:: python
 
-    from appfl.comm.mpi import MPIServerCommunicator
+    from appfl.communicator.mpi import MPIServerCommunicator
     if rank == 0:
         server_communicator = MPIServerCommunicator(
             comm, 
@@ -64,7 +64,7 @@ For the clients, we can start the FL training process by doing the following pro
 
 .. code-block:: python
 
-    from appfl.comm.mpi import MPIClientCommunicator
+    from appfl.communicator.mpi import MPIClientCommunicator
     if rank != 0:
         client_communicator = MPIClientCommunicator(comm, server_rank=0)
         # Load the configurations and initial global model

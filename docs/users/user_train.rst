@@ -6,13 +6,13 @@ To run PPFL with decentralized data on multiple machines, we use `gRPC <https://
 Launch a gRPC server
 --------------------
 
-The server needs to load configuration from a configuration file, then we can create a gRPC FL serverto listen to request from clients by calling the ``serve()`` function from ``appfl.comm.grpc`` module.
+The server needs to load configuration from a configuration file, then we can create a gRPC FL serverto listen to request from clients by calling the ``serve()`` function from ``appfl.communicator.grpc`` module.
 
 .. code-block:: python
 
     from omegaconf import OmegaConf
     from appfl.agent import APPFLServerAgent
-    from appfl.comm.grpc import GRPCServerCommunicator, serve
+    from appfl.communicator.grpc import GRPCServerCommunicator, serve
 
     server_agent_config = OmegaConf.load('<path_to_config_file>.yaml')
     server_agent = APPFLServerAgent(server_agent_config=server_agent_config)
@@ -37,7 +37,7 @@ The client also loads configuration from a configuration file, and then it start
 
     from omegaconf import OmegaConf
     from appfl.agent import APPFLClientAgent
-    from appfl.comm.grpc import GRPCClientCommunicator
+    from appfl.communicator.grpc import GRPCClientCommunicator
 
     client_agent_config = OmegaConf.load('<path_to_config_file>.yaml')
 

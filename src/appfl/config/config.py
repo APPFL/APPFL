@@ -25,4 +25,3 @@ class ClientAgentConfig:
     data_configs: DictConfig = OmegaConf.create({})
     comm_configs: DictConfig = OmegaConf.create({})
     additional_configs: DictConfig = OmegaConf.create({})
-
