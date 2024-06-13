@@ -1,9 +1,9 @@
 import logging
-from .grpc_communicator_pb2 import *
-from . import grpc_communicator_pb2_grpc
+from .grpc_communicator_old_pb2 import *
+from . import grpc_communicator_old_pb2_grpc
 from .grpc_utils import construct_tensor_record, proto_to_databuffer
 
-class GRPCCommunicator(grpc_communicator_pb2_grpc.GRPCCommunicatorServicer):
+class GRPCCommunicator(grpc_communicator_old_pb2_grpc.GRPCCommunicatorServicer):
     def __init__(self, servicer_id, operator):
         self.servicer_id = servicer_id
         self.operator = operator

@@ -5,7 +5,7 @@ import numpy as np
 from appfl.algorithm import *
 from appfl.misc.utils import *
 from collections import OrderedDict
-from .grpc_communicator_pb2 import Job
+from .grpc_communicator_old_pb2 import Job
 from torch.utils.data import DataLoader
 
 class APPFLgRPCServer:

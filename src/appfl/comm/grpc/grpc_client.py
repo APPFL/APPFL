@@ -4,9 +4,9 @@ import logging
 import numpy as np
 from .grpc_utils import *
 from appfl.login_manager import *
-from .grpc_communicator_pb2 import *
+from .grpc_communicator_old_pb2 import *
 from .channel import create_grpc_channel
-from .grpc_communicator_pb2_grpc import GRPCCommunicatorStub
+from .grpc_communicator_old_pb2_grpc import GRPCCommunicatorStub
 
 class APPFLgRPCClient:
     def __init__(self, client_id, cfg):

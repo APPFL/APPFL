@@ -1,5 +1,5 @@
-from .grpc_communicator_pb2 import DataBuffer
-from .grpc_communicator_pb2 import TensorRecord
+from .grpc_communicator_old_pb2 import DataBuffer
+from .grpc_communicator_old_pb2 import TensorRecord
 
 def construct_tensor_record(name, nparray):
     return TensorRecord(
