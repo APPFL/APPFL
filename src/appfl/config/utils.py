@@ -25,7 +25,7 @@ def load_executable_func(cfg_dict):
 
 def check_asynchronous(alg_name):
     """Check whether a given algorithm is an asynchronous FL algorithm."""
-    async_list = ['ServerFedAsynchronous', 'ServerFedBuffer', 'ServerFedCompass', 'ServerFedCompassMom', 'ServerFedCompassNova']
+    async_list = ['ServerFedAsynchronous', 'ServerFedBuffer', 'ServerFedCompass', 'ServerFedCompassMom', 'ServerFedCompassNova', 'ServerAREA', 'ServerMIFA']
     return alg_name in async_list
 
 def check_compass(alg_name):

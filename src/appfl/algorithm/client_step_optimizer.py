@@ -14,11 +14,14 @@ class ClientStepOptim(BaseClient):
         super(ClientStepOptim, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
         self.__dict__.update(kwargs)
         super(ClientStepOptim, self).client_log_title()
+        ## Add memory
+        if self.cfg.fed.servername in ['ServerAREA','ServerMIFA']:
+            self.memory = copy.deepcopy(model)
 
     def update(self):
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
-        
+
         ## Initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
             start_time=time.time()
