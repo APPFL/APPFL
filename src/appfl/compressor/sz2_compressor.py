@@ -13,8 +13,9 @@ from copy import deepcopy
 from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Tuple, Union, List
+from .base_compressor import BaseCompressor
 
-class SZ2Compressor:
+class SZ2Compressor(BaseCompressor):
     """
     SZ2Compressor is a class that compresses and decompresses model parameters using SZ2 lossy compressor.
     :param compressor_config: the configuration of the compressor

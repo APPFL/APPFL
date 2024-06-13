@@ -11,8 +11,9 @@ from copy import deepcopy
 from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Tuple, Union, List
+from .base_compressor import BaseCompressor
 
-class ZFPCompressor:
+class ZFPCompressor(BaseCompressor):
     """
     ZFPCompressor compresses the model parameters using ZFP lossy compressor.
     :param compressor_config: configuration for the compressor
