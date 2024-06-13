@@ -15,10 +15,10 @@ First, user needs to load configuration files for the client and server agents a
 
     num_clients = 10
     server_agent_config = OmegaConf.load(
-        '<your_example_path>/config/mnist/server_fedavg.yaml'
+        '<your_example_path>/configs/mnist/server_fedavg.yaml'
     )
     client_agent_configs = [
-        OmegaConf.load('<your_example_path>/config/mnist/client_1.yaml') 
+        OmegaConf.load('<your_example_path>/configs/mnist/client_1.yaml') 
         for _ in range(args.num_clients)
     ]
 

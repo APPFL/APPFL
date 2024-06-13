@@ -39,11 +39,10 @@ client_configs:
     compressor_configs:
       enable_compression: False
       # Used if enable_compression is True
-      lossy_compressor:  "SZ2"
+      lossy_compressor:  "SZ2Compressor"
       lossless_compressor: "blosc"
       error_bounding_mode: "REL"
       error_bound: 1e-3
-      flat_model_dtype: "np.float32"
       param_cutoff: 1024
 
 server_configs:

@@ -75,8 +75,8 @@ parser.add_argument("--metric", type=str, default='metric/acc.py', help="path to
 parser.add_argument("--metric_name", type=str, required=False, help="function name for the custom eval metric function in the metric function definition file, choose the first function by default if no name is specified")
 
 ## grpc communication
-parser.add_argument('--use_ssl', action="store_true", default=True)
-parser.add_argument('--use_authenticator', action="store_true", default=True)
+parser.add_argument('--use_ssl', action="store_true", default=False)
+parser.add_argument('--use_authenticator', action="store_true", default=False)
 parser.add_argument('--uri', type=str, default="localhost:50051")
 parser.add_argument('--server_certificate_key', type=str, default="default")
 parser.add_argument('--server_certificate', type=str, default="default")

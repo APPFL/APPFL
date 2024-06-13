@@ -3,10 +3,10 @@ APPFL Compressor
 
 Currently, APPFL supports the following lossy compressors:
 
-- `SZ2: Error-bounded Lossy Compressor for HPC Data <https://github.com/szcompressor/SZ>`_
-- `SZ3: A Modular Error-bounded Lossy Compression Framework for Scientific Datasets <https://github.com/szcompressor/SZ3>`_
-- `SZx: An Ultra-fast Error-bounded Lossy Compressor for Scientific Datasets <https://github.com/szcompressor/SZx>`_
-- `ZFP: Compressed Floating-Point and Integer Arrays <https://pypi.org/project/zfpy/>`_
+- `SZ2: Error-bounded Lossy Compressor for HPC Data <https://github.com/szcompressor/SZ>`_ via ``SZ2Compressor``
+- `SZ3: A Modular Error-bounded Lossy Compression Framework for Scientific Datasets <https://github.com/szcompressor/SZ3>`_ via ``SZ3Compressor``
+- `SZx: An Ultra-fast Error-bounded Lossy Compressor for Scientific Datasets <https://github.com/szcompressor/SZx>`_ via ``SZxCompressor``
+- `ZFP: Compressed Floating-Point and Integer Arrays <https://pypi.org/project/zfpy/>`_ via ``ZFPCompressor``
 
 Installation
 ------------
@@ -31,11 +31,11 @@ Users then can install the compressors by running the following command:
 Functionalities
 ---------------
 
-The APPFL compressor can be used to compress and decompress the model parameters by invoking the ``compressor.compress_model`` and ``compressor.decompress_model`` methods.
+The APPFL compressor can be used to compress and decompress the model parameters by invoking the ``compressor.compress_model`` and ``compressor.decompress_model`` methods. For example, for ``SZ2Compressor``, the following is the method signature:
 
 .. code-block:: python
 
-    class Compressor:
+    class SZ2Compressor:
         def __init__(self, compressor_config: DictConfig):
             pass
 
@@ -76,11 +76,10 @@ User can configure the compressor by setting it ``client_configs.comm_configs.co
         comm_configs:
             compressor_configs:
             enable_compression: True
-            lossy_compressor:  "SZ2"
+            lossy_compressor:  "SZ2Compressor"
             lossless_compressor: "blosc"
             error_bounding_mode: "REL"
             error_bound: 1e-3
-            flat_model_dtype: "np.float32"
             param_cutoff: 1024
 
 Usage in APPFL
@@ -113,7 +112,7 @@ In APPFL, the compressor is seamlessly integrated into the communication process
 
     from torch import nn
     from omegaconf import OmegaConf
-    from appfl.compressor import Compressor
+    from appfl.compressor import SZ2Compressor
 
     # Define a test model 
     model = nn.Sequential(
@@ -125,17 +124,14 @@ In APPFL, the compressor is seamlessly integrated into the communication process
 
     # Load the compressor configuration
     compressor_config = OmegaConf.create({
-        "enable_compression": True,
-        "lossy_compressor": "SZ2",
         "lossless_compressor": "blosc",
         "error_bounding_mode": "REL",
         "error_bound": 1e-3,
-        "flat_model_dtype": "np.float32",
         "param_cutoff": 1024
     })
 
     # Initialize the compressor
-    compressor = Compressor(compressor_config)
+    compressor = SZ2Compressor(compressor_config)
 
     # Compress the model parameters
     compressed_model = compressor.compress_model(model.state_dict())

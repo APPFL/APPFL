@@ -7,7 +7,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--config", 
     type=str, 
-    default="config/mnist/client_1.yaml",
+    default="configs/mnist/client_1.yaml",
     help="Path to the configuration file."
 )
 args = argparser.parse_args()

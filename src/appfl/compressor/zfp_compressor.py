@@ -1,5 +1,3 @@
-import os
-import sys
 import gzip
 import lzma
 import zfpy
@@ -9,37 +7,24 @@ import blosc
 import torch
 import pickle
 import numpy as np
-from . import pysz
-from . import pyszx
 from copy import deepcopy
 from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Tuple, Union, List
 
-class Compressor:
+class ZFPCompressor:
+    """
+    ZFPCompressor compresses the model parameters using ZFP lossy compressor.
+    :param compressor_config: configuration for the compressor
+        - lossless_compressor: the lossless compressor used in combination with ZFP (blosc, gzip, lzma, zstd, zlib)
+        - error_bounding_mode: the error bounding mode used in ZFP (ABS, REL)
+        - error_bound (float): the error bound used in ZFP
+        - param_cutoff (int): the threshold of the number of elements in a tensor to determine whether to use lossy compression
+    """
     def __init__(self, compressor_config: DictConfig):
-        current_path = os.path.dirname(os.path.abspath(__file__))
-        appfl_root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))
         self.cfg = compressor_config
-        self.sz_error_mode_dict = {
-            "ABS": 0,
-            "REL": 1,
-            "ABS_AND_REL": 2,
-            "ABS_OR_REL": 3,
-            "PSNR": 4,
-            "NORM": 5,
-            "PW_REL": 10,
-        }
         self.lossless_compressor = compressor_config.lossless_compressor
-        self.compressor_lib_path = ""
         self.param_count_threshold = compressor_config.param_cutoff
-        ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
-        if self.cfg.lossy_compressor == "SZ2":
-            self.compressor_lib_path = os.path.join(appfl_root_dir, ".compressor/SZ/build/sz/libSZ") + ext
-        elif self.cfg.lossy_compressor == "SZ3":
-            self.compressor_lib_path = os.path.join(appfl_root_dir, ".compressor/SZ3/build/tools/sz3c/libSZ3c") + ext
-        elif self.cfg.lossy_compressor == "SZx":
-            self.compressor_lib_path = os.path.join(appfl_root_dir, ".compressor/SZx-main/build/lib/libSZx") + ext
 
     def compress_model(
         self, 
@@ -181,11 +166,6 @@ class Compressor:
                     raise NotImplementedError
                 lossless_compressed_size += len(lossless)
                 compressed_weights[name] = lossless
-        # if lossy_compressed_size != 0:
-        #     print("Lossy Compression Ratio: " + str(lossy_original_size / lossy_compressed_size))
-        # if lossless_compressed_size != 0:
-        #     print("Lossless Compression Ratio: " + str(lossless_original_size / lossless_compressed_size))
-        # print("Total Compression Ratio: " + str((lossy_original_size + lossless_original_size) / (lossy_compressed_size + lossless_compressed_size)))
         return (
             compressed_weights,
             lossy_elements,
@@ -197,39 +177,13 @@ class Compressor:
         :param ori_data: compressed data, numpy array format
         :return: decompressed data,numpy array format
         """
-        if self.cfg.lossy_compressor == "SZ3" or self.cfg.lossy_compressor == "SZ2":
-            compressor = pysz.SZ(szpath=self.compressor_lib_path)
-            error_mode = self.sz_error_mode_dict[self.cfg.error_bounding_mode]
-            error_bound = self.cfg.error_bound
-            compressed_arr, comp_ratio = compressor.compress(
-                data=ori_data,
-                eb_mode=error_mode,
-                eb_abs=error_bound,
-                eb_rel=error_bound,
-                eb_pwr=error_bound,
+        if self.cfg.error_bounding_mode == "ABS":
+            return zfpy.compress_numpy(ori_data, tolerance=self.cfg.error_bound)
+        elif self.cfg.error_bounding_mode == "REL":
+            range_data = abs(np.max(ori_data) - np.min(ori_data))
+            return zfpy.compress_numpy(
+                ori_data, tolerance=self.cfg.error_bound * range_data
             )
-            return compressed_arr.tobytes()
-        elif self.cfg.lossy_compressor == "SZx":
-            compressor = pyszx.SZx(szxpath=self.compressor_lib_path)
-            error_mode = self.sz_error_mode_dict[self.cfg.error_bounding_mode]
-            error_bound = self.cfg.error_bound
-            compressed_arr, comp_ratio = compressor.compress(
-                data=ori_data,
-                eb_mode=error_mode,
-                eb_abs=error_bound,
-                eb_rel=error_bound,
-            )
-            return compressed_arr.tobytes()
-        elif self.cfg.lossy_compressor == "ZFP":
-            if self.cfg.error_bounding_mode == "ABS":
-                return zfpy.compress_numpy(ori_data, tolerance=self.cfg.error_bound)
-            elif self.cfg.error_bounding_mode == "REL":
-                range_data = abs(np.max(ori_data) - np.min(ori_data))
-                return zfpy.compress_numpy(
-                    ori_data, tolerance=self.cfg.error_bound * range_data
-                )
-            else:
-                raise NotImplementedError
         else:
             raise NotImplementedError
 
@@ -299,25 +253,4 @@ class Compressor:
         :param ori_dtype: the dtype of original data
         :return: decompressed data,numpy array format
         """
-        if self.cfg.lossy_compressor == "SZ3" or self.cfg.lossy_compressor == "SZ2":
-            compressor = pysz.SZ(szpath=self.compressor_lib_path)
-            cmp_data = np.frombuffer(cmp_data, dtype=np.uint8)
-            decompressed_arr = compressor.decompress(
-                data_cmpr=cmp_data,
-                original_shape=ori_shape,
-                original_dtype=ori_dtype,
-            )
-            return decompressed_arr
-        elif self.cfg.lossy_compressor == "SZx":
-            compressor = pyszx.SZx(szxpath=self.compressor_lib_path)
-            cmp_data = np.frombuffer(cmp_data, dtype=np.uint8)
-            decompressed_arr = compressor.decompress(
-                data_cmpr=cmp_data,
-                original_shape=ori_shape,
-                original_dtype=ori_dtype,
-            )
-            return decompressed_arr
-        elif self.cfg.lossy_compressor == "ZFP":
-            return zfpy.decompress_numpy(cmp_data)
-        else:
-            raise NotImplementedError
+        return zfpy.decompress_numpy(cmp_data)

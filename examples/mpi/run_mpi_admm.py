@@ -4,8 +4,8 @@ the extendibility of the framework to support custom algorithms. In this case,
 the server and clients need to communicate primal and dual states, and a  
 penalty parameter. In addition, the clients also need to know its relative
 sample size for local training purposes.
-mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config config/mnist/server_iiadmm.yaml
-mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config config/mnist/server_iceadmm.yaml
+mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config configs/mnist/server_iiadmm.yaml
+mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config configs/mnist/server_iceadmm.yaml
 """
 
 import argparse
@@ -15,8 +15,8 @@ from appfl.agent import APPFLClientAgent, APPFLServerAgent
 from appfl.communicator.mpi import MPIClientCommunicator, MPIServerCommunicator
 
 argparse = argparse.ArgumentParser()
-argparse.add_argument("--server_config", type=str, default="config/mnist/server_iceadmm.yaml")
-argparse.add_argument("--client_config", type=str, default="config/mnist/client_1.yaml")
+argparse.add_argument("--server_config", type=str, default="configs/mnist/server_iceadmm.yaml")
+argparse.add_argument("--client_config", type=str, default="configs/mnist/client_1.yaml")
 args = argparse.parse_args()
 
 comm = MPI.COMM_WORLD

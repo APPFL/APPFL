@@ -4,7 +4,7 @@ import threading
 import torch.nn as nn
 from appfl.scheduler import *
 from appfl.aggregator import *
-from appfl.compressor import Compressor
+from appfl.compressor import *
 from appfl.config import ServerAgentConfig
 from appfl.misc import create_instance_from_file, get_function_from_file
 from appfl.logger import ServerAgentFileLogger
@@ -269,7 +269,7 @@ class APPFLServerAgent:
             return
         if getattr(self.server_agent_config.server_configs.comm_configs.compressor_configs, "enable_compression", False):
             self.enable_compression = True
-            self.compressor = Compressor(
+            self.compressor = eval(self.server_agent_config.server_configs.comm_configs.compressor_configs.lossy_compressor)(
                 self.server_agent_config.server_configs.comm_configs.compressor_configs
             )
 

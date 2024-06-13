@@ -1,8 +1,8 @@
 import uuid
 import importlib
 import torch.nn as nn
+from appfl.compressor import *
 from appfl.trainer import BaseTrainer
-from appfl.compressor import Compressor
 from appfl.config import ClientAgentConfig
 from omegaconf import DictConfig, OmegaConf
 from typing import Union, Dict, OrderedDict, Tuple
@@ -234,6 +234,6 @@ class APPFLClientAgent:
             return
         if getattr(self.client_agent_config.comm_configs.compressor_configs, "enable_compression", False):
             self.enable_compression = True
-            self.compressor = Compressor(
+            self.compressor = eval(self.client_agent_config.comm_configs.compressor_configs.lossy_compressor)(
                self.client_agent_config.comm_configs.compressor_configs
             )

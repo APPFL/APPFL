@@ -98,7 +98,8 @@ An FL server running the `FedCompass <https://arxiv.org/pdf/2309.14675.pdf>`_ al
 
 .. code-block:: shell
 
-    python examples/grpc/run_server.py --config config/mnist/server_fedcompass.yaml
+    cd examples
+    python grpc/run_server.py --config configs/mnist/server_fedcompass.yaml
 
 .. note::
 

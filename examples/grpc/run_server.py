@@ -7,7 +7,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--config", 
     type=str, 
-    default="config/mnist/server_fedavg.yaml",
+    default="configs/mnist/server_fedavg.yaml",
     help="Path to the configuration file."
 )
 args = argparser.parse_args()
