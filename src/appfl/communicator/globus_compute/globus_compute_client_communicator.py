@@ -14,7 +14,7 @@ def globus_compute_client_entry_point(
     :return `meta_data_local`: The local metadata after the task is executed. [Return `{}` if the task does not return metadata.]
     """
     from appfl.agent import APPFLClientAgent
-    from appfl.comm.globus_compute.utils.client_utils import load_global_model, send_local_model
+    from appfl.communicator.globus_compute.utils.client_utils import load_global_model, send_local_model
     
     client_agent = APPFLClientAgent(client_agent_config=client_agent_config)
     if model is not None:

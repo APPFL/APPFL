@@ -6,7 +6,7 @@ from .grpc_communicator_pb2 import *
 from .grpc_communicator_pb2_grpc import *
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
-from appfl.comm.grpc import proto_to_databuffer, serialize_model, create_grpc_channel
+from appfl.communicator.grpc import proto_to_databuffer, serialize_model, create_grpc_channel
 
 class GRPCClientCommunicator:
     """
