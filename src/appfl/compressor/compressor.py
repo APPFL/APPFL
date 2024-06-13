@@ -12,10 +12,12 @@ import numpy as np
 from . import pysz
 from . import pyszx
 from copy import deepcopy
+from appfl.misc import deprecated
 from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Tuple, Union, List
 
+@deprecated("Compressor class is deprecated and will be removed in the future. Please use the name of the compressor directly.")
 class Compressor:
     def __init__(self, compressor_config: DictConfig):
         current_path = os.path.dirname(os.path.abspath(__file__))
