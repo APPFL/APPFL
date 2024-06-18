@@ -11,6 +11,7 @@ note
 datasets
 *output*
 trials
+local_test
 examples/output*
 examples/globus_compute/creds
 examples/log_globus_compute_appfl

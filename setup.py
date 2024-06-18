@@ -89,6 +89,9 @@ setuptools.setup(
             "blosc",
             "python-xz",
         ],
+        "proxystore": [
+            "proxystore[all]",
+        ],
     },
     entry_points={
         "console_scripts": [
