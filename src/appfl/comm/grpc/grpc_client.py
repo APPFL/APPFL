@@ -6,7 +6,7 @@ from .grpc_utils import *
 from appfl.login_manager import *
 from .grpc_communicator_old_pb2 import *
 from .channel import create_grpc_channel
-from .grpc_communicator_old_pb2_grpc import GRPCCommunicatorStub
+from .grpc_communicator_old_pb2_grpc import GRPCCommunicatorV0Stub
 
 class APPFLgRPCClient:
     def __init__(self, client_id, cfg):
@@ -22,7 +22,7 @@ class APPFLgRPCClient:
             max_message_size=self.max_message_size,
         )
         grpc.channel_ready_future(self.channel).result(timeout=60)
-        self.stub = GRPCCommunicatorStub(self.channel)
+        self.stub = GRPCCommunicatorV0Stub(self.channel)
         self.header = Header(server_id=1, client_id=self.client_id)
         self.time_get_job = 0.0
         self.time_get_tensor = 0.0

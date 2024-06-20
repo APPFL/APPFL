@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-service GRPCCommunicator {
+service GRPCCommunicatorV0 {
     rpc GetJob(JobRequest) returns (JobResponse) {}
-    rpc GetTensorRecord(TensorRequest) returns (stream DataBuffer) {}
+    rpc GetTensorRecord(TensorRequest) returns (stream DataBufferV0) {}
     rpc GetWeight(WeightRequest) returns (WeightResponse) {}
-    rpc SendLearningResults(stream DataBuffer) returns (Acknowledgment) {}
+    rpc SendLearningResults(stream DataBufferV0) returns (Acknowledgment) {}
 }
 
 message Header {
@@ -13,7 +13,7 @@ message Header {
 }
 
 // Binary data encoding messages such as LearningResults.
-message DataBuffer {
+message DataBufferV0 {
     uint32 size       = 1; // size of this buffer
     bytes  data_bytes = 2; // data
 } 
