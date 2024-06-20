@@ -61,7 +61,7 @@ class ServerAgent:
         :return: The updated global model (as a Dict or OrderedDict), and optional metadata (as a Dict) if `blocking` is `True`.
             Otherwise, return the `Future` object of the updated global model and optional metadata.
         """
-        if self.training_finished(internal_check=True):
+        if self.training_finished():
             global_model = self.scheduler.get_parameters(init_model=False)
             return global_model
         else:
@@ -152,10 +152,11 @@ class ServerAgent:
                 return future
         return None
 
-    def training_finished(self, internal_check: bool = False) -> bool:
+    def training_finished(self, **kwargs) -> bool:
         """Indicate whether the training is finished."""
         finished = self.server_agent_config.server_configs.num_global_epochs <= self.scheduler.get_num_global_epochs()
-        if finished and not internal_check:
+        status_to_clients = kwargs.get("status_to_clients", False)  # whether this call is invoked by the server to notify the clients
+        if finished and status_to_clients:
             if not hasattr(self, "num_finish_calls"):
                 self.num_finish_calls = 0
                 self._num_finish_calls_lock = threading.Lock()

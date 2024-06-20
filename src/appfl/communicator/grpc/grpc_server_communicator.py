@@ -99,7 +99,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         else:
             meta_data = json.dumps({})
         global_model_serialized = serialize_model(global_model)
-        status = ServerStatus.DONE if self.server_agent.training_finished() else ServerStatus.RUN
+        status = ServerStatus.DONE if self.server_agent.training_finished(status_to_clients=True) else ServerStatus.RUN
         response = UpdateGlobalModelResponse(
             header=ServerHeader(status=status),
             global_model=global_model_serialized,

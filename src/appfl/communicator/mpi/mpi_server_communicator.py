@@ -153,7 +153,7 @@ class MPIServerCommunicator:
             else:
                 meta_data = json.dumps({})
             global_model_serialized = model_to_byte(global_model)
-            status = MPIServerStatus.DONE.value if self.server_agent.training_finished() else MPIServerStatus.RUN.value
+            status = MPIServerStatus.DONE.value if self.server_agent.training_finished(status_to_clients=True) else MPIServerStatus.RUN.value
             return MPITaskResponse(
                 status=status,
                 payload=global_model_serialized,
@@ -225,7 +225,7 @@ class MPIServerCommunicator:
                 else:
                     meta_data = json.dumps({})
                 global_model_serialized = model_to_byte(global_model)
-                status = MPIServerStatus.DONE.value if self.server_agent.training_finished() else MPIServerStatus.RUN.value
+                status = MPIServerStatus.DONE.value if self.server_agent.training_finished(status_to_clients=True) else MPIServerStatus.RUN.value
                 response = MPITaskResponse(
                     status=status,
                     payload=global_model_serialized,

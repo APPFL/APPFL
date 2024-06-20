@@ -1,6 +1,7 @@
 """
 Serve a gRPC server
 """
+import time
 import grpc
 import logging
 from concurrent import futures
@@ -73,7 +74,12 @@ def serve(
         server.add_insecure_port(server_uri)
     server.start()
     try:
-        server.wait_for_termination()
+        while True:
+            time.sleep(1)
+            if servicer.server_agent.server_terminated():
+                print("Terminating the server ...")
+                server.stop(0)
+                break
     except KeyboardInterrupt:
         logger = logging.getLogger(__name__)
         logger.info("Terminating the server ...")
