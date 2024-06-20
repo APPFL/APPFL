@@ -2,12 +2,13 @@ import json
 import logging
 from typing import Optional
 from omegaconf import OmegaConf
+from proxystore.proxy import extract
 from concurrent.futures import Future
 from .grpc_communicator_pb2 import *
 from .grpc_communicator_pb2_grpc import *
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
-from .utils import proto_to_databuffer, serialize_model
+from .utils import proto_to_databuffer, serialize_model, deserialize_model
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
     def __init__(
@@ -92,6 +93,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             meta_data = {}
         else:
             meta_data = json.loads(request.meta_data)
+        if meta_data.get("_use_proxystore", False):
+            local_model_proxy = deserialize_model(local_model)
+            local_model = extract(local_model_proxy)
         global_model = self.server_agent.global_update(client_id, local_model, blocking=True, **meta_data)
         if isinstance(global_model, tuple):
             meta_data = json.dumps(global_model[1])
@@ -99,7 +103,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         else:
             meta_data = json.dumps({})
         global_model_serialized = serialize_model(global_model)
-        status = ServerStatus.DONE if self.server_agent.training_finished() else ServerStatus.RUN
+        status = ServerStatus.DONE if self.server_agent.training_finished(status_to_clients=True) else ServerStatus.RUN
         response = UpdateGlobalModelResponse(
             header=ServerHeader(status=status),
             global_model=global_model_serialized,

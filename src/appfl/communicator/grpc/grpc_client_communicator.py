@@ -1,13 +1,11 @@
-import io
 import grpc
 import json
-import torch
 from .grpc_communicator_pb2 import *
 from .grpc_communicator_pb2_grpc import *
 from omegaconf import OmegaConf, DictConfig
 from proxystore.proxy import Proxy, extract
 from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
-from appfl.communicator.grpc import proto_to_databuffer, serialize_model, create_grpc_channel
+from appfl.communicator.grpc import proto_to_databuffer, serialize_model, deserialize_model, create_grpc_channel
 
 class GRPCClientCommunicator:
     """
@@ -87,7 +85,7 @@ class GRPCClientCommunicator:
         response.ParseFromString(byte_received)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
-        model = torch.load(io.BytesIO(response.global_model))
+        model = deserialize_model(response.global_model)
         if isinstance(model, Proxy):
             model = extract(model)
         meta_data = json.loads(response.meta_data)
@@ -103,10 +101,14 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the updated global model with additional metadata. Specifically, `meta_data["status"]` is either "RUNNING" or "DONE".
         """
+        kwargs["_use_proxystore"] = isinstance(local_model, Proxy)
         meta_data = json.dumps(kwargs)
         request = UpdateGlobalModelRequest(
             header=ClientHeader(client_id=self.client_id),
-            local_model=serialize_model(local_model) if not isinstance(local_model, bytes) else local_model,
+            local_model=(
+                serialize_model(local_model) 
+                if (isinstance(local_model, Proxy) or (not isinstance(local_model, bytes))) else local_model
+            ),
             meta_data=meta_data,
         )
         byte_received = b''
@@ -116,7 +118,7 @@ class GRPCClientCommunicator:
         response.ParseFromString(byte_received)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
-        model = torch.load(io.BytesIO(response.global_model))
+        model = deserialize_model(response.global_model)
         if isinstance(model, Proxy):
             model = extract(model)
         meta_data = json.loads(response.meta_data)

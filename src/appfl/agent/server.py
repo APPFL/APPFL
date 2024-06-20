@@ -84,7 +84,7 @@ class ServerAgent:
             if isinstance(global_model, tuple):
                 metadata = global_model[1]
                 global_model = global_model[0]
-            return self.proxy(global_model)[0], metadata if len(metadata) > 0 else self.proxy(global_model)[0]
+            return (self.proxy(global_model)[0], metadata) if len(metadata) > 0 else self.proxy(global_model)[0]
         
     def get_parameters(
         self, 
@@ -111,7 +111,7 @@ class ServerAgent:
         if isinstance(global_model, tuple):
             metadata = global_model[1]
             global_model = global_model[0]
-        return self.proxy(global_model)[0], metadata if len(metadata) > 0 else self.proxy(global_model)[0]
+        return (self.proxy(global_model)[0], metadata) if len(metadata) > 0 else self.proxy(global_model)[0]
         
     def proxy(self, obj) -> Tuple[Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Proxy], bool]:
         """
