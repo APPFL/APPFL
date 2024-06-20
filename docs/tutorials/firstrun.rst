@@ -55,9 +55,9 @@ As the package name suggests, in addition to general differential privacy techni
 
 .. code-block:: console
 
-    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./configs/mnist/server_iiadmm.yaml
+    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./configs/mnist/server_iiadmm.yaml --client_config configs/mnist/client_1.yaml
     # OR
-    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./configs/mnist/server_iceadmm.yaml
+    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./configs/mnist/server_iceadmm.yaml --client_config configs/mnist/client_1.yaml
 
 .. note::
 

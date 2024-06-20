@@ -17,6 +17,8 @@ server_agent_config = OmegaConf.load(args.server_config)
 server_agent_config.server_configs.scheduler_kwargs.num_clients = args.num_clients
 if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
     server_agent_config.server_configs.aggregator_kwargs.num_clients = args.num_clients
+if hasattr(server_agent_config.server_configs.comm_configs, "proxystore_configs"):
+    del server_agent_config.server_configs.comm_configs.proxystore_configs # Remove proxystore configs for serial simulation
 
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)
@@ -28,6 +30,8 @@ for i in range(args.num_clients):
     client_agent_configs[i].data_configs.dataset_kwargs.num_clients = args.num_clients
     client_agent_configs[i].data_configs.dataset_kwargs.client_id = i
     client_agent_configs[i].data_configs.dataset_kwargs.visualization = True if i == 0 else False
+    if hasattr(client_agent_configs[i].comm_configs, "proxystore_configs"):
+        del client_agent_configs[i].comm_configs.proxystore_configs # Remove proxystore configs for serial simulation
 
 # Load client agents
 client_agents = [

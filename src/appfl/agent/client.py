@@ -1,6 +1,7 @@
 import uuid
 import importlib
 import torch.nn as nn
+from proxystore.store import Store
 from appfl.compressor import *
 from appfl.trainer import BaseTrainer
 from appfl.config import ClientAgentConfig
@@ -41,6 +42,7 @@ class ClientAgent:
         self._load_data()
         self._load_trainer()
         self._load_compressor()
+        self._load_proxystore()
 
     def load_config(self, config: DictConfig) -> None:
         """Load additional configurations provided by the server."""
@@ -74,11 +76,27 @@ class ClientAgent:
             metadata = None
         if self.enable_compression:
             params = self.compressor.compress_model(params)
-        return params if metadata is None else (params, metadata)
+        return self.proxy(params)[0] if metadata is None else (self.proxy(params)[0], metadata)
     
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
         self.model.load_state_dict(params)
+
+    def proxy(self, obj):
+        """
+        Create the proxy of the object.
+        :param obj: the object to be proxied.
+        :return: the proxied object and a boolean value indicating whether the object is proxied.
+        """
+        if self.enable_proxystore:
+            return self.proxystore.proxy(obj), True
+        else:
+            return obj, False
+        
+    def clean_up(self) -> None:
+        """Clean up the client agent."""
+        if hasattr(self, "proxystore") and self.proxystore is not None:
+            self.proxystore.close(clear=True)
 
     def _create_logger(self):
         """
@@ -236,4 +254,27 @@ class ClientAgent:
             self.enable_compression = True
             self.compressor = eval(self.client_agent_config.comm_configs.compressor_configs.lossy_compressor)(
                self.client_agent_config.comm_configs.compressor_configs
+            )
+
+    def _load_proxystore(self) -> None:
+        """
+        Create the proxystore for storing and sending the model parameters from the client to the server.
+        """
+        if hasattr(self, "proxystore") and self.proxystore is not None:
+            return
+        self.proxystore = None
+        self.enable_proxystore = False
+        if not hasattr(self.client_agent_config, "comm_configs"):
+            return
+        if not hasattr(self.client_agent_config.comm_configs, "proxystore_configs"):
+            return
+        if getattr(self.client_agent_config.comm_configs.proxystore_configs, "enable_proxystore", False):
+            self.enable_proxystore = True
+            from proxystore.connectors.redis import RedisConnector
+            from proxystore.connectors.file import FileConnector
+            self.proxystore = Store(
+                self.get_id(),
+                eval(self.client_agent_config.comm_configs.proxystore_configs.connector_type)(
+                    **self.client_agent_config.comm_configs.proxystore_configs.connector_configs
+                ),
             )

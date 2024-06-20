@@ -1,7 +1,8 @@
 import io
 import torch
 import pickle
-from dataclasses import asdict
+from dataclasses import fields
+from proxystore.proxy import Proxy, extract
 from typing import Dict, OrderedDict, Union
 from .config import MPITaskRequest, MPITaskResponse
 
@@ -15,7 +16,7 @@ def byte_to_request(byte_obj: bytes) -> MPITaskRequest:
 
 def request_to_byte(request: MPITaskRequest) -> bytes:
     """Convert a MPITaskRequest object to a byte object."""
-    request_dict = asdict(request)
+    request_dict = {field.name: getattr(request, field.name) for field in fields(request)}
     return pickle.dumps(request_dict)
 
 def byte_to_response(byte_obj: bytes) -> MPITaskResponse:
@@ -29,7 +30,7 @@ def byte_to_response(byte_obj: bytes) -> MPITaskResponse:
 
 def response_to_byte(response: MPITaskResponse) -> bytes:
     """Convert a MPITaskResponse object to a byte object."""
-    response_dict = asdict(response)
+    response_dict = {field.name: getattr(response, field.name) for field in fields(response)}
     return pickle.dumps(response_dict)
 
 def model_to_byte(model: Union[Dict, OrderedDict]) -> bytes:
@@ -38,6 +39,9 @@ def model_to_byte(model: Union[Dict, OrderedDict]) -> bytes:
     torch.save(model, buffer)
     return buffer.getvalue()
 
-def byte_to_model(byte_obj: bytes) -> Union[Dict, OrderedDict]:
+def byte_to_model(byte_obj: Union[bytes, Proxy]) -> Union[Dict, OrderedDict]:
     """Deserialize a byte string to a model."""
-    return torch.load(io.BytesIO(byte_obj))
+    if isinstance(byte_obj, bytes):
+        return torch.load(io.BytesIO(byte_obj))
+    else:
+        return extract(byte_obj)

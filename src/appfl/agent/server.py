@@ -11,6 +11,8 @@ from appfl.logger import ServerAgentFileLogger
 from concurrent.futures import Future
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional
+from proxystore.store import Store
+from proxystore.proxy import Proxy, extract
 
 class ServerAgent:
     """
@@ -39,6 +41,7 @@ class ServerAgent:
         self._load_metric()
         self._load_scheduler()
         self._load_compressor()
+        self._load_proxystore()
 
     def get_client_configs(self, **kwargs) -> DictConfig:
         """Return the FL configurations that are shared among all clients."""
@@ -50,7 +53,7 @@ class ServerAgent:
         local_model: Union[Dict, OrderedDict, bytes],
         blocking: bool = False,
         **kwargs
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Proxy]:
         """
         Update the global model using the local model from a client and return the updated global model.
         :param: client_id: A unique client id for server to distinguish clients, which be obtained via `ClientAgent.get_id()`.
@@ -59,29 +62,37 @@ class ServerAgent:
             Setting `blocking` to `True` will block the client until the global model is available. 
             Otherwise, the method may return a `Future` object if the most up-to-date global model is not yet available.
         :return: The updated global model (as a Dict or OrderedDict), and optional metadata (as a Dict) if `blocking` is `True`.
-            Otherwise, return the `Future` object of the updated global model and optional metadata.
+            (If proxystore is enabled, return the proxy of the updated global model.)
+            If `blocking` is False, return the `Future` object of the updated global model and optional metadata.
         """
-        if self.training_finished(internal_check=True):
+        if self.training_finished():
             global_model = self.scheduler.get_parameters(init_model=False)
-            return global_model
+            if isinstance(global_model, tuple):
+                metadata = global_model[1]
+                return self.proxy(global_model[0])[0], metadata
+            return self.proxy(global_model)[0]
         else:
             if isinstance(local_model, bytes):
                 local_model = self._bytes_to_model(local_model)
             global_model = self.scheduler.schedule(client_id, local_model, **kwargs)
-            if not isinstance(global_model, Future):
-                return global_model
-            if blocking:
-                return global_model.result() # blocking until the `Future` is done
-            else:
-                return global_model # return the `Future` object
+            metadata = {}
+            if isinstance(global_model, Future):
+                if blocking:
+                    global_model = global_model.result() # blocking until the `Future` is done
+                else:
+                    return global_model
+            if isinstance(global_model, tuple):
+                metadata = global_model[1]
+                global_model = global_model[0]
+            return self.proxy(global_model)[0], metadata if len(metadata) > 0 else self.proxy(global_model)[0]
         
     def get_parameters(
         self, 
         blocking: bool = False,
         **kwargs
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Proxy]:
         """
-        Return the global model to the clients.
+        Return the global model to the clients or the proxy of the global model.
         :param: `blocking`: The global model may not be immediately available (e.g. if the server wants to wait for all client
             to send the `get_parameters` request before returning the global model for same model initialization). 
             Setting `blocking` to `True` will block the client until the global model is available. 
@@ -91,12 +102,25 @@ class ServerAgent:
             - `globus_compute_run`: set `True` if for globus compute run, thus no blocking is needed.
         """
         global_model = self.scheduler.get_parameters(**kwargs)
-        if not isinstance(global_model, Future):
-            return global_model
-        if blocking:
-            return global_model.result() # blocking until the `Future` is done
+        metadata = {}
+        if isinstance(global_model, Future):
+            if blocking:
+                global_model = global_model.result()
+            else:
+                return global_model
+        if isinstance(global_model, tuple):
+            metadata = global_model[1]
+            global_model = global_model[0]
+        return self.proxy(global_model)[0], metadata if len(metadata) > 0 else self.proxy(global_model)[0]
+        
+    def proxy(self, obj) -> Tuple[Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Proxy], bool]:
+        """
+        Create the proxy of the object.
+        """
+        if self.enable_proxystore:
+            return self.proxystore.proxy(obj), True
         else:
-            return global_model # return the `Future` object
+            return obj, False
         
     def set_sample_size(
             self, 
@@ -152,10 +176,11 @@ class ServerAgent:
                 return future
         return None
 
-    def training_finished(self, internal_check: bool = False) -> bool:
+    def training_finished(self, **kwargs) -> bool:
         """Indicate whether the training is finished."""
         finished = self.server_agent_config.server_configs.num_global_epochs <= self.scheduler.get_num_global_epochs()
-        if finished and not internal_check:
+        status_to_clients = kwargs.get("status_to_clients", False)  # whether this call is invoked by the server to notify the clients
+        if finished and status_to_clients:
             if not hasattr(self, "num_finish_calls"):
                 self.num_finish_calls = 0
                 self._num_finish_calls_lock = threading.Lock()
@@ -176,9 +201,23 @@ class ServerAgent:
         )
         with self._num_finish_calls_lock:
             terminated = self.num_finish_calls >= num_clients
-        if terminated and hasattr(self.scheduler, "clean_up"):
-            self.scheduler.clean_up()
+        if terminated:
+            self.clean_up()
         return terminated
+    
+    def clean_up(self) -> None:
+        """
+        Nececessary clean-up operations.
+        No need to call this method if using `server_terminated` to check the termination status.
+        """
+        if not hasattr(self, "cleaned"):
+            self.cleaned = False
+        if not self.cleaned:
+            self.cleaned = True
+            if hasattr(self, "proxystore") and self.proxystore is not None:
+                self.proxystore.close(clear=True)
+            if hasattr(self.scheduler, "clean_up"):
+                self.scheduler.clean_up()
 
     def _create_logger(self) -> None:
         kwargs = {}
@@ -273,9 +312,33 @@ class ServerAgent:
                 self.server_agent_config.server_configs.comm_configs.compressor_configs
             )
 
+    def _load_proxystore(self) -> None:
+        """
+        Create the proxystore for storing and sending model parameters from the server to the clients.
+        """
+        self.proxystore = None
+        self.enable_proxystore = False
+        if not hasattr(self.server_agent_config.server_configs, "comm_configs"):
+            return
+        if not hasattr(self.server_agent_config.server_configs.comm_configs, "proxystore_configs"):
+            return
+        if getattr(self.server_agent_config.server_configs.comm_configs.proxystore_configs, "enable_proxystore", False):
+            self.enable_proxystore = True
+            from proxystore.connectors.redis import RedisConnector
+            from proxystore.connectors.file import FileConnector
+            self.proxystore = Store(
+                'server-proxystore',
+                eval(self.server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type)(
+                    **self.server_agent_config.server_configs.comm_configs.proxystore_configs.connector_configs
+                ),
+            )
+
     def _bytes_to_model(self, model_bytes: bytes) -> Union[Dict, OrderedDict]:
         """Deserialize the model from bytes."""
         if not self.enable_compression:
-            return torch.load(io.BytesIO(model_bytes))
+            model = torch.load(io.BytesIO(model_bytes))
+            if isinstance(model, Proxy):
+                model = extract(model)
+            return model
         else:
             return self.compressor.decompress_model(model_bytes, self.model)

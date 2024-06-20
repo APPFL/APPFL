@@ -7,6 +7,7 @@ from typing import Optional, Dict
 from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
+from proxystore.proxy import Proxy, extract
 from .serializer import byte_to_request, response_to_byte, model_to_byte
 from .config import MPITask, MPITaskRequest, MPITaskResponse, MPIServerStatus
 
@@ -116,7 +117,10 @@ class MPIServerCommunicator:
                 meta_data = json.dumps(model[1])
             else:
                 meta_data = json.dumps({})
-            model_serialized = model_to_byte(model)
+            if isinstance(model, Proxy):
+                model_serialized = model
+            else:
+                model_serialized = model_to_byte(model)
             return MPITaskResponse(
                 status=MPIServerStatus.RUN.value,
                 payload=model_serialized,
@@ -143,7 +147,10 @@ class MPIServerCommunicator:
         :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
         """
         self.logger.info(f"Received UpdateGlobalModel request from client {client_id}")
-        local_model = request.payload
+        if isinstance(request.payload, Proxy):
+            local_model = extract(request.payload)
+        else:
+            local_model = request.payload
         meta_data = json.loads(request.meta_data) if len(request.meta_data) > 0 else {}
         global_model = self.server_agent.global_update(client_id, local_model, blocking=False, **meta_data)
         if not isinstance(global_model, Future):
@@ -152,8 +159,15 @@ class MPIServerCommunicator:
                 global_model = global_model[0]
             else:
                 meta_data = json.dumps({})
-            global_model_serialized = model_to_byte(global_model)
-            status = MPIServerStatus.DONE.value if self.server_agent.training_finished() else MPIServerStatus.RUN.value
+            if isinstance(global_model, Proxy):
+                global_model_serialized = global_model
+            else:
+                global_model_serialized = model_to_byte(global_model)
+            status = (
+                MPIServerStatus.DONE.value 
+                if self.server_agent.training_finished(status_to_clients=True) 
+                else MPIServerStatus.RUN.value
+            )
             return MPITaskResponse(
                 status=status,
                 payload=global_model_serialized,
@@ -216,6 +230,9 @@ class MPIServerCommunicator:
         Return the updated global model to the client if the global model `Future` object is available.
         """
         delete_keys = []
+        # We assume that the global model is the same for all futures that are set at the same time
+        # so if we use proxystore, we only need to create a Proxy object once to speed up the process
+        global_model_proxy = None 
         for client_id, future in self._global_model_futures.items():
             if future.done():
                 global_model = future.result()
@@ -224,8 +241,19 @@ class MPIServerCommunicator:
                     global_model = global_model[0]
                 else:
                     meta_data = json.dumps({})
-                global_model_serialized = model_to_byte(global_model)
-                status = MPIServerStatus.DONE.value if self.server_agent.training_finished() else MPIServerStatus.RUN.value
+                if global_model_proxy is None:
+                    global_model_serialized, proxyed = self.server_agent.proxy(global_model)
+                    if not proxyed:
+                        global_model_serialized = model_to_byte(global_model)
+                    else:
+                        global_model_proxy = global_model_serialized
+                else:
+                    global_model_serialized = global_model_proxy
+                status = (
+                    MPIServerStatus.DONE.value 
+                    if self.server_agent.training_finished(status_to_clients=True) 
+                    else MPIServerStatus.RUN.value
+                )
                 response = MPITaskResponse(
                     status=status,
                     payload=global_model_serialized,

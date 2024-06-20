@@ -1,5 +1,7 @@
 from enum import Enum
+from typing import Union
 from dataclasses import dataclass
+from proxystore.proxy import Proxy
 
 class MPITask(Enum):
     """MPI task type"""
@@ -17,12 +19,12 @@ class MPIServerStatus(Enum):
 @dataclass
 class MPITaskRequest:
     """MPI task request"""
-    payload: bytes = b""
+    payload: Union[bytes, Proxy] = b""
     meta_data: str = ""
 
 @dataclass
 class MPITaskResponse:
     """MPI task response"""
     status: int = MPIServerStatus.RUN.value
-    payload: bytes = b""
+    payload: Union[bytes, Proxy] = b""
     meta_data: str = ""

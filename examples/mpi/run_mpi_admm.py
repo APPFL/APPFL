@@ -4,8 +4,8 @@ the extendibility of the framework to support custom algorithms. In this case,
 the server and clients need to communicate primal and dual states, and a  
 penalty parameter. In addition, the clients also need to know its relative
 sample size for local training purposes.
-mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config configs/mnist/server_iiadmm.yaml
-mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config configs/mnist/server_iceadmm.yaml
+mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config configs/mnist/server_iiadmm.yaml --client_config configs/mnist/client_1.yaml
+mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config configs/mnist/server_iceadmm.yaml --client_config configs/mnist/client_1.yaml
 """
 
 import argparse
@@ -58,9 +58,15 @@ else:
     while True:
         client_agent.train()
         local_model = client_agent.get_parameters()
-        new_global_model, metadata = client_communicator.update_global_model(local_model)
+        if isinstance(local_model, tuple):
+            metadata = local_model[1]
+            local_model = local_model[0]
+        else:
+            metadata = {}
+        new_global_model, metadata = client_communicator.update_global_model(local_model, **metadata)
         if metadata['status'] == 'DONE':
             break
         if 'local_steps' in metadata:
             client_agent.trainer.train_configs.num_local_steps = metadata['local_steps']
         client_agent.load_parameters(new_global_model)
+    client_agent.clean_up()
