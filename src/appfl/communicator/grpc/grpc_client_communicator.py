@@ -5,6 +5,7 @@ import torch
 from .grpc_communicator_pb2 import *
 from .grpc_communicator_pb2_grpc import *
 from omegaconf import OmegaConf, DictConfig
+from proxystore.proxy import Proxy, extract
 from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
 from appfl.communicator.grpc import proto_to_databuffer, serialize_model, create_grpc_channel
 
@@ -87,6 +88,8 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = torch.load(io.BytesIO(response.global_model))
+        if isinstance(model, Proxy):
+            model = extract(model)
         meta_data = json.loads(response.meta_data)
         if len(meta_data) == 0:
             return model
@@ -114,6 +117,8 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = torch.load(io.BytesIO(response.global_model))
+        if isinstance(model, Proxy):
+            model = extract(model)
         meta_data = json.loads(response.meta_data)
         meta_data["status"] = "DONE" if response.header.status == ServerStatus.DONE else "RUNNING"
         return model, meta_data
