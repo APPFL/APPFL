@@ -57,8 +57,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             meta_data = json.loads(request.meta_data)
         model = self.server_agent.get_parameters(**meta_data, blocking=True)
         if isinstance(model, tuple):
-            model = model[0]
             meta_data = json.dumps(model[1])
+            model = model[0]
         else:
             meta_data = json.dumps({})
         model_serialized = serialize_model(model)
