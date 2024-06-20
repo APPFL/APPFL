@@ -1,4 +1,4 @@
-from .grpc_communicator_old_pb2 import DataBuffer
+from .grpc_communicator_old_pb2 import DataBufferV0
 from .grpc_communicator_old_pb2 import TensorRecord
 
 def construct_tensor_record(name, nparray):
@@ -19,5 +19,5 @@ def proto_to_databuffer(proto, max_message_size=(2 * 1024 * 1024)):
 
     for i in range(0, data_bytes_size, message_size):
         chunk = data_bytes[i : i + message_size]
-        msg = DataBuffer(size=message_size, data_bytes=chunk)
+        msg = DataBufferV0(size=message_size, data_bytes=chunk)
         yield msg

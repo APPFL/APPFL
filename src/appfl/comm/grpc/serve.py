@@ -49,7 +49,7 @@ def serve(
         ],
         interceptors=(APPFLAuthMetadataInterceptor(authenticator),) if use_authenticator else None,
     )
-    add_GRPCCommunicatorServicer_to_server(servicer, server)
+    add_GRPCCommunicatorV0Servicer_to_server(servicer, server)
     if use_ssl:
         credentials = grpc.ssl_server_credentials(
             (

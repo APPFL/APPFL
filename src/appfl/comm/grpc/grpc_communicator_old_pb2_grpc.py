@@ -5,7 +5,7 @@ import grpc
 from . import grpc_communicator_old_pb2 as grpc__communicator__old__pb2
 
 
-class GRPCCommunicatorStub(object):
+class GRPCCommunicatorV0Stub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -15,28 +15,28 @@ class GRPCCommunicatorStub(object):
             channel: A grpc.Channel.
         """
         self.GetJob = channel.unary_unary(
-                '/GRPCCommunicator/GetJob',
+                '/GRPCCommunicatorV0/GetJob',
                 request_serializer=grpc__communicator__old__pb2.JobRequest.SerializeToString,
                 response_deserializer=grpc__communicator__old__pb2.JobResponse.FromString,
                 )
         self.GetTensorRecord = channel.unary_stream(
-                '/GRPCCommunicator/GetTensorRecord',
+                '/GRPCCommunicatorV0/GetTensorRecord',
                 request_serializer=grpc__communicator__old__pb2.TensorRequest.SerializeToString,
-                response_deserializer=grpc__communicator__old__pb2.DataBuffer.FromString,
+                response_deserializer=grpc__communicator__old__pb2.DataBufferV0.FromString,
                 )
         self.GetWeight = channel.unary_unary(
-                '/GRPCCommunicator/GetWeight',
+                '/GRPCCommunicatorV0/GetWeight',
                 request_serializer=grpc__communicator__old__pb2.WeightRequest.SerializeToString,
                 response_deserializer=grpc__communicator__old__pb2.WeightResponse.FromString,
                 )
         self.SendLearningResults = channel.stream_unary(
-                '/GRPCCommunicator/SendLearningResults',
-                request_serializer=grpc__communicator__old__pb2.DataBuffer.SerializeToString,
+                '/GRPCCommunicatorV0/SendLearningResults',
+                request_serializer=grpc__communicator__old__pb2.DataBufferV0.SerializeToString,
                 response_deserializer=grpc__communicator__old__pb2.Acknowledgment.FromString,
                 )
 
 
-class GRPCCommunicatorServicer(object):
+class GRPCCommunicatorV0Servicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def GetJob(self, request, context):
@@ -64,7 +64,7 @@ class GRPCCommunicatorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_GRPCCommunicatorServicer_to_server(servicer, server):
+def add_GRPCCommunicatorV0Servicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetJob': grpc.unary_unary_rpc_method_handler(
                     servicer.GetJob,
@@ -74,7 +74,7 @@ def add_GRPCCommunicatorServicer_to_server(servicer, server):
             'GetTensorRecord': grpc.unary_stream_rpc_method_handler(
                     servicer.GetTensorRecord,
                     request_deserializer=grpc__communicator__old__pb2.TensorRequest.FromString,
-                    response_serializer=grpc__communicator__old__pb2.DataBuffer.SerializeToString,
+                    response_serializer=grpc__communicator__old__pb2.DataBufferV0.SerializeToString,
             ),
             'GetWeight': grpc.unary_unary_rpc_method_handler(
                     servicer.GetWeight,
@@ -83,17 +83,17 @@ def add_GRPCCommunicatorServicer_to_server(servicer, server):
             ),
             'SendLearningResults': grpc.stream_unary_rpc_method_handler(
                     servicer.SendLearningResults,
-                    request_deserializer=grpc__communicator__old__pb2.DataBuffer.FromString,
+                    request_deserializer=grpc__communicator__old__pb2.DataBufferV0.FromString,
                     response_serializer=grpc__communicator__old__pb2.Acknowledgment.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'GRPCCommunicator', rpc_method_handlers)
+            'GRPCCommunicatorV0', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class GRPCCommunicator(object):
+class GRPCCommunicatorV0(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -107,7 +107,7 @@ class GRPCCommunicator(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/GRPCCommunicator/GetJob',
+        return grpc.experimental.unary_unary(request, target, '/GRPCCommunicatorV0/GetJob',
             grpc__communicator__old__pb2.JobRequest.SerializeToString,
             grpc__communicator__old__pb2.JobResponse.FromString,
             options, channel_credentials,
@@ -124,9 +124,9 @@ class GRPCCommunicator(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/GRPCCommunicator/GetTensorRecord',
+        return grpc.experimental.unary_stream(request, target, '/GRPCCommunicatorV0/GetTensorRecord',
             grpc__communicator__old__pb2.TensorRequest.SerializeToString,
-            grpc__communicator__old__pb2.DataBuffer.FromString,
+            grpc__communicator__old__pb2.DataBufferV0.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -141,7 +141,7 @@ class GRPCCommunicator(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/GRPCCommunicator/GetWeight',
+        return grpc.experimental.unary_unary(request, target, '/GRPCCommunicatorV0/GetWeight',
             grpc__communicator__old__pb2.WeightRequest.SerializeToString,
             grpc__communicator__old__pb2.WeightResponse.FromString,
             options, channel_credentials,
@@ -158,8 +158,8 @@ class GRPCCommunicator(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_unary(request_iterator, target, '/GRPCCommunicator/SendLearningResults',
-            grpc__communicator__old__pb2.DataBuffer.SerializeToString,
+        return grpc.experimental.stream_unary(request_iterator, target, '/GRPCCommunicatorV0/SendLearningResults',
+            grpc__communicator__old__pb2.DataBufferV0.SerializeToString,
             grpc__communicator__old__pb2.Acknowledgment.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

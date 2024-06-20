@@ -20,7 +20,7 @@ class Acknowledgment(_message.Message):
     status: MessageStatus
     def __init__(self, header: _Optional[_Union[Header, _Mapping]] = ..., status: _Optional[_Union[MessageStatus, str]] = ...) -> None: ...
 
-class DataBuffer(_message.Message):
+class DataBufferV0(_message.Message):
     __slots__ = ["data_bytes", "size"]
     DATA_BYTES_FIELD_NUMBER: _ClassVar[int]
     SIZE_FIELD_NUMBER: _ClassVar[int]
