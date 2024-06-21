@@ -1,6 +1,5 @@
 import logging
 import copy
-from collections import OrderedDict
 from .server_federated import FedServer
 from ..misc import *
 
@@ -15,7 +14,7 @@ class ServerAREA(FedServer):
         model: PyTorch model
         loss_fn: loss function
         num_clients: number of clients
-        device: server device (TODO: do we really need this, server aggregation is on CPU by default) 
+        device: server device
     """
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         self.counter = 0 
@@ -35,7 +34,7 @@ class ServerAREA(FedServer):
             self.pseudo_grad[name] += local_gradient[name]
         self.counter += 1
 
-    def update(self, local_model: dict, init_step: int, client_idx: int): 
+    def update(self, local_model: dict, **kwargs): 
         self.update_aggregator(local_model)
         if self.counter == self.K:
             self.global_state = copy.deepcopy(self.model.state_dict())
@@ -50,22 +49,14 @@ class ServerAREA(FedServer):
     def logging_summary(self, cfg, logger):
         super(FedServer, self).log_summary(cfg, logger)
         logger.info("client_learning_rate=%s " % (cfg.fed.args.optim_args.lr))
-        logger.info("model_mixing_parameter=%s " % (cfg.fed.args.alpha))
-        logger.info("staleness_func=%s" % (cfg.fed.args.staleness_func.name))
         logger.info("buffer_size=%s" % (cfg.fed.args.K))
-
         if cfg.summary_file != "":
             with open(cfg.summary_file, "a") as f:
-
                 f.write(
                     cfg.logginginfo.DataSet_name
-                    + " FedBuffer ClientLR "
+                    + " AREA ClientLR "
                     + str(cfg.fed.args.optim_args.lr)
-                    + " FedBuffer Alpha "
-                    + str(cfg.fed.args.alpha)
-                    + " FedBuffer Staleness Function"
-                    + str(cfg.fed.args.staleness_func.name)
-                    + " FedBuffer Buffer Size"
+                    + " AREA Buffer Size"
                     + str(cfg.fed.args.K)
                     + " TestAccuracy "
                     + str(cfg.logginginfo.accuracy)
