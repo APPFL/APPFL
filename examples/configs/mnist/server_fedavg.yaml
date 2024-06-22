@@ -62,8 +62,19 @@ server_configs:
       server_uri: localhost:50051
       max_message_size: 1048576
       use_ssl: False
+    # proxystore_configs:
+    #   enable_proxystore: False
+    #   connector_type: "FileConnector"
+    #   connector_configs:
+    #     store_dir: "./.proxystore_server/cache"
+    # proxystore_configs:
+    #   enable_proxystore: True
+    #   connector_type: "EndpointConnector"
+    #   connector_configs:
+    #     endpoints: ["621982b4-9adb-4aac-a748-18b0b6ec840b", "5c755a5b-3b27-4691-86eb-34a95a492e44"]
     proxystore_configs:
-      enable_proxystore: False
-      connector_type: "FileConnector"
+      enable_proxystore: True
+      connector_type: "S3Connector"
       connector_configs:
-        store_dir: "./.proxystore_server/cache"
+        s3_bucket: "appflx-bucket"
+        expiration: 3600

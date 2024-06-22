@@ -69,4 +69,5 @@ else:
         if 'local_steps' in metadata:
             client_agent.trainer.train_configs.num_local_steps = metadata['local_steps']
         client_agent.load_parameters(new_global_model)
+    client_communicator.invoke_custom_action(action='close_connection')
     client_agent.clean_up()

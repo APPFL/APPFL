@@ -103,7 +103,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         else:
             meta_data = json.dumps({})
         global_model_serialized = serialize_model(global_model)
-        status = ServerStatus.DONE if self.server_agent.training_finished(status_to_clients=True) else ServerStatus.RUN
+        status = ServerStatus.DONE if self.server_agent.training_finished() else ServerStatus.RUN
         response = UpdateGlobalModelResponse(
             header=ServerHeader(status=status),
             global_model=global_model_serialized,
@@ -143,6 +143,12 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     header=ServerHeader(status=ServerStatus.RUN),
                     results=results,
                 )
+            return response
+        elif action == "close_connection":
+            self.server_agent.close_connection(client_id)
+            response = CustomActionResponse(
+                header=ServerHeader(status=ServerStatus.DONE),
+            )
             return response
         else:
             raise NotImplementedError(f"Custom action {action} is not implemented.")
