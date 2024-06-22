@@ -163,7 +163,6 @@ class ServerAgent:
             self._close_connection_lock = threading.Lock()
         with self._close_connection_lock:
             self.closed_clients.add(client_id)
-        print(f"Client {client_id} has finished the communication with the server.")
     
     def server_terminated(self):
         """Indicate whether the server can be terminated from listening to the clients."""
