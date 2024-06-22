@@ -272,6 +272,8 @@ class ClientAgent:
             self.enable_proxystore = True
             from proxystore.connectors.redis import RedisConnector
             from proxystore.connectors.file import FileConnector
+            from proxystore.connectors.endpoint import EndpointConnector
+            from appfl.communicator.connector.s3 import S3Connector
             self.proxystore = Store(
                 self.get_id(),
                 eval(self.client_agent_config.comm_configs.proxystore_configs.connector_type)(

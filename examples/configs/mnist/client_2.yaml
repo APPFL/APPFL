@@ -23,8 +23,14 @@ comm_configs:
     server_uri: localhost:50051
     max_message_size: 1048576
     use_ssl: False
+  # proxystore_configs:
+  #   enable_proxystore: False
+  #   connector_type: "FileConnector"
+  #   connector_configs:
+  #     store_dir: "./.proxystore_client/cache"
   proxystore_configs:
     enable_proxystore: False
-    connector_type: "FileConnector"
+    connector_type: "S3Connector"
     connector_configs:
-      store_dir: "./.proxystore_client/cache"
+      s3_bucket: "appflx-bucket"
+      expiration: 3600
