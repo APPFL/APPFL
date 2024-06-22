@@ -78,6 +78,7 @@ def serve(
             time.sleep(1)
             if servicer.server_agent.server_terminated():
                 print("Terminating the server ...")
+                time.sleep(10) # sleep for 10 seconds to ensure clients receive the termination signal
                 server.stop(0)
                 break
     except KeyboardInterrupt:

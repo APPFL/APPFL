@@ -154,19 +154,20 @@ class ServerAgent:
 
     def training_finished(self, **kwargs) -> bool:
         """Indicate whether the training is finished."""
-        finished = self.server_agent_config.server_configs.num_global_epochs <= self.scheduler.get_num_global_epochs()
-        status_to_clients = kwargs.get("status_to_clients", False)  # whether this call is invoked by the server to notify the clients
-        if finished and status_to_clients:
-            if not hasattr(self, "num_finish_calls"):
-                self.num_finish_calls = 0
-                self._num_finish_calls_lock = threading.Lock()
-            with self._num_finish_calls_lock:
-                self.num_finish_calls += 1
-        return finished
+        return self.server_agent_config.server_configs.num_global_epochs <= self.scheduler.get_num_global_epochs()
+    
+    def close_connection(self, client_id: Union[int, str]) -> None:
+        """Record the client that has finished the communication with the server."""
+        if not hasattr(self, 'closed_clients'):
+            self.closed_clients = set()
+            self._close_connection_lock = threading.Lock()
+        with self._close_connection_lock:
+            self.closed_clients.add(client_id)
+        print(f"Client {client_id} has finished the communication with the server.")
     
     def server_terminated(self):
         """Indicate whether the server can be terminated from listening to the clients."""
-        if not hasattr(self, "num_finish_calls"):
+        if not hasattr(self, "closed_clients"):
             return False
         num_clients = (
             self.server_agent_config.server_configs.num_clients if 
@@ -175,8 +176,8 @@ class ServerAgent:
             hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") else
             self.server_agent_config.server_configs.aggregator_kwargs.num_clients
         )
-        with self._num_finish_calls_lock:
-            terminated = self.num_finish_calls >= num_clients
+        with self._close_connection_lock:
+            terminated = len(self.closed_clients) >= num_clients
         if terminated and hasattr(self.scheduler, "clean_up"):
             self.scheduler.clean_up()
         return terminated

@@ -153,7 +153,7 @@ class MPIServerCommunicator:
             else:
                 meta_data = json.dumps({})
             global_model_serialized = model_to_byte(global_model)
-            status = MPIServerStatus.DONE.value if self.server_agent.training_finished(status_to_clients=True) else MPIServerStatus.RUN.value
+            status = MPIServerStatus.DONE.value if self.server_agent.training_finished() else MPIServerStatus.RUN.value
             return MPITaskResponse(
                 status=status,
                 payload=global_model_serialized,
@@ -190,6 +190,9 @@ class MPIServerCommunicator:
                 self._meta_data_futures[client_id] = ret_val
                 self._check_meta_data_futures()
                 return None
+        elif action == "close_connection":
+            self.server_agent.close_connection(client_id)
+            return MPITaskResponse(status=MPIServerStatus.DONE.value)
         else:
             raise NotImplementedError(f"Custom action {action} is not implemented.")
         
@@ -225,7 +228,7 @@ class MPIServerCommunicator:
                 else:
                     meta_data = json.dumps({})
                 global_model_serialized = model_to_byte(global_model)
-                status = MPIServerStatus.DONE.value if self.server_agent.training_finished(status_to_clients=True) else MPIServerStatus.RUN.value
+                status = MPIServerStatus.DONE.value if self.server_agent.training_finished() else MPIServerStatus.RUN.value
                 response = MPITaskResponse(
                     status=status,
                     payload=global_model_serialized,
