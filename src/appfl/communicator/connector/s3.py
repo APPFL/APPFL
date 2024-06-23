@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import csv
 import sys
+import time
 import uuid
 import boto3
 import requests
@@ -47,6 +48,7 @@ class S3Connector:
         self, 
         s3_bucket: str,
         expiration: int = 3600,
+        max_attempts: int = 100,
         s3_creds_file: Optional[str] = None,
         clear: bool = True,
     ) -> None:
@@ -69,6 +71,7 @@ class S3Connector:
         self.client = boto3.client('s3', **s3_kwargs)
         self.uploaded_obj = set()
         self.expiration = expiration
+        self.max_attempts = max_attempts
         self.clear = clear
 
     def __enter__(self) -> Self:
@@ -85,7 +88,8 @@ class S3Connector:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(s3_bucket={self.bucket}, '
-            f'expiration={self.expiration})'
+            f'expiration={self.expiration}, '
+            f'max_attempts={self.max_attempts})'
         )
 
     def close(self, clear: bool | None = None) -> None:
@@ -116,6 +120,7 @@ class S3Connector:
         return {
             's3_bucket': self.bucket,
             'expiration': self.expiration,
+            'max_attempts': self.max_attempts,
             'clear': self.clear,
         }
 
@@ -146,7 +151,7 @@ class S3Connector:
             If an object associated with the key exists.
         """
         try:
-            response = requests.head(key.presigned_url)
+            response = requests.get(key.presigned_url)
             if response.status_code == 200:
                 return True
             return False
@@ -162,13 +167,18 @@ class S3Connector:
         Returns:
             Serialized object or `None` if the object does not exist.
         """
-        try:
-            response = requests.get(key.presigned_url)
-            if response.status_code == 200:
-                return response.content
-            return None
-        except:
-            return None
+        attemps = 0
+        while attemps < self.max_attempts:
+            try:
+                response = requests.get(key.presigned_url)
+                if response.status_code == 200:
+                    return response.content
+            except:
+                pass
+            attemps += 1
+            print(f"Attempt {attemps} to get object {key.object_name}")
+            time.sleep(1)
+        return None
 
     def get_batch(self, keys: Sequence[S3Key]) -> list[bytes | None]:
         """Get a batch of serialized objects associated with the keys.

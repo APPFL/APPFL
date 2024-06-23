@@ -96,7 +96,10 @@ class ClientAgent:
     def clean_up(self) -> None:
         """Clean up the client agent."""
         if hasattr(self, "proxystore") and self.proxystore is not None:
-            self.proxystore.close(clear=True)
+            try:
+                self.proxystore.close(clear=True)
+            except:
+                self.proxystore.close()
 
     def _create_logger(self):
         """
