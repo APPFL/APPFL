@@ -170,7 +170,7 @@ def run_client(
     communicator.gather(num_data, dest=0)
     weight = None
     weight = communicator.scatter(weight, source=0)
-
+    
     batchsize = cfg.train_data_batch_size
     if cfg.batch_training == False:
         batchsize = len(train_data[client_idx])
@@ -206,6 +206,10 @@ def run_client(
         **cfg.fed.args,
     )
 
+    ## Fix stepsize
+    if client.cfg.fed.servername in ['ServerAREA', 'ServerMIFA']:
+        client.cfg.fed.args.optim_args.lr *= weight
+
     while True:
         model = communicator.recv_global_model_from_server(source=0)
         if isinstance(model, tuple):
@@ -217,9 +221,18 @@ def run_client(
         client.model.load_state_dict(model)
         client.update()
         ## Compute gradient if the algorithm is gradient-based
-        if cfg.fed.args.gradient_based:
-            local_model = compute_gradient(model, client.model)
+        if client.cfg.fed.servername in ['ServerAREA', 'ServerMIFA']:
+            if client.cfg.fed.servername == 'ServerAREA':
+                local_model = compute_gradient(client.model.state_dict(), client.memory)
+                client.memory.load_state_dict(model)
+            else:
+                pseudo_grad = compute_gradient(model, client.model)
+                local_model = compute_gradient(pseudo_grad, client.memory)
+                client.memory.load_state_dict(pseudo_grad)
         else:
-            local_model = copy.deepcopy(client.primal_state)
+            if cfg.fed.args.gradient_based:
+                local_model = compute_gradient(model, client.model)
+            else:
+                local_model = copy.deepcopy(client.primal_state)
         communicator.send_local_model_to_server(local_model, dest=0)
     outfile.close()

@@ -57,7 +57,9 @@ parser.add_argument("--server", type=str, default="ServerFedAsynchronous",
                         'ServerFedAsynchronous', 
                         'ServerFedBuffer',
                         'ServerFedCompass',
-                        'ServerFedCompassMom'
+                        'ServerFedCompassMom',
+                        'ServerAREA',
+                        'ServerMIFA'
                     ])
 parser.add_argument("--num_epochs", type=int, default=20)
 parser.add_argument("--server_lr", type=float, default=0.01)
