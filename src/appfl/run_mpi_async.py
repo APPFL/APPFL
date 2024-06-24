@@ -206,17 +206,9 @@ def run_client(
         **cfg.fed.args,
     )
 
-
-    ## Initialize memory
+    ## Fix stepsize
     if client.cfg.fed.servername in ['ServerAREA', 'ServerMIFA']:
         client.cfg.fed.args.optim_args.lr *= weight
-        if client.cfg.fed.servername == 'ServerAREA':
-            client.memory = copy.deepcopy(model)
-        else:
-            temp = copy.deepcopy(client.primal_state)
-            for name in model.state_dict():
-                temp[name] = torch.zeros_like(model.state_dict()[name])
-            client.memory.load_state_dict(temp)
 
     while True:
         model = communicator.recv_global_model_from_server(source=0)

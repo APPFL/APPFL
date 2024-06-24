@@ -17,7 +17,12 @@ class ClientOptim(BaseClient):
         ## Add memory
         if self.cfg.fed.servername in ['ServerAREA','ServerMIFA']:
             self.memory = copy.deepcopy(model)
-
+            if self.cfg.fed.servername == 'ServerMIFA':
+                temp = copy.deepcopy(self.primal_state)
+                for name in model.state_dict():
+                    temp[name] = torch.zeros_like(model.state_dict()[name])
+                self.memory.load_state_dict(temp)
+            
     def update(self):
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
