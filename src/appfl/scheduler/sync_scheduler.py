@@ -1,3 +1,4 @@
+import threading
 from typing import Any, Union, Dict, OrderedDict
 from concurrent.futures import Future
 from omegaconf import DictConfig
@@ -15,6 +16,7 @@ class SyncScheduler(BaseScheduler):
         self.future = {}
         self.num_clients = self.scheduler_configs.num_clients
         self._num_global_epochs = 0
+        self._access_lock = threading.Lock()
 
     def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Future:
         """
@@ -26,21 +28,23 @@ class SyncScheduler(BaseScheduler):
         :param kwargs: additional keyword arguments for the scheduler
         :return: the future object for the aggregated model
         """
-        future = Future()
-        self.local_models[client_id] = local_model
-        self.future[client_id] = future
-        if len(self.local_models) == self.num_clients:
-            aggregated_model = self.aggregator.aggregate(self.local_models, **kwargs)
-            while self.future:
-                client_id, future = self.future.popitem()
-                future.set_result(aggregated_model)
-            self.local_models.clear()
-            self._num_global_epochs += 1
-        return future
+        with self._access_lock:
+            future = Future()
+            self.local_models[client_id] = local_model
+            self.future[client_id] = future
+            if len(self.local_models) == self.num_clients:
+                aggregated_model = self.aggregator.aggregate(self.local_models, **kwargs)
+                while self.future:
+                    client_id, future = self.future.popitem()
+                    future.set_result(aggregated_model)
+                self.local_models.clear()
+                self._num_global_epochs += 1
+            return future
     
     def get_num_global_epochs(self) -> int:
         """
         Get the number of global epochs.
         :return: the number of global epochs
         """
-        return self._num_global_epochs
+        with self._access_lock:
+            return self._num_global_epochs
