@@ -104,3 +104,46 @@ An FL server running the `FedCompass <https://arxiv.org/pdf/2309.14675.pdf>`_ al
 .. note::
 
   You may need to change path of the configuration file of grpc server to select different FL algoirthms.
+
+Generating SSL Certificates for Secure gRPC Connections
+----------------------
+
+1. Intall OpenSSL and Verify Installation
+
+.. code-block:: shell
+
+    sudo apt update
+    sudo apt install openssl
+    openssl version
+
+2. Generate a Private Key
+
+First, generate a private key. This key will be used to generate the certificate signing request (CSR) and the certificate itself.
+
+.. code-block:: shell
+
+    openssl genpkey -algorithm RSA -out server.key -aes256
+
+3. Generate a Certificate Signing Request (CSR)
+
+Next, generate a CSR using the private key. This request will be used to create the actual SSL certificate.
+You will be prompted to enter information about your organization and domain. Make sure to fill this out accurately.
+
+.. code-block:: shell
+
+    openssl req -new -key server.key -out server.csr
+
+4. Generate the SSL Certificate
+
+You can create a self-signed certificate or have your CSR signed by a Certificate Authority (CA). For development and testing purposes, a self-signed certificate is sufficient.
+
+For Self-Signed Certificate:
+.. code-block:: shell
+
+    openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+
+CA-Signed Certificate:
+If you prefer to have your CSR signed by a CA, you would send the server.csr file to the CA and receive a signed certificate in return. The exact process depends on the CA's requirements.
+
+5. Configure gRPC to Use SSL
+Once you have the server.key and server.crt files, you can configure your gRPC server to use them for SSL encryption.
