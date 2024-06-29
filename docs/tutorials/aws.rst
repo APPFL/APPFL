@@ -146,6 +146,7 @@ If you intend to send a certificate signing request to a certificate authority (
 Finally, a self-signed certificate (.crt file) is generated using the generated private key and certificate request file (optional). In this step, we will include the Subject Alternate Name (SAN) to cover different access scenarios (public network and private network).
 
 For Self-Signed Certificate:
+
 .. code-block:: shell
 
     openssl req -x509 -days 365 -key server.key -out server.crt \
