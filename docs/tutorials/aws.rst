@@ -105,7 +105,7 @@ An FL server running the `FedCompass <https://arxiv.org/pdf/2309.14675.pdf>`_ al
 
   You may need to change path of the configuration file of grpc server to select different FL algoirthms.
 
-Generating SSL Certificates for Secure gRPC Connections
+Generating SSL Certificates for Secure gRPC Connections on EC2
 ----------------------
 
 1. Intall OpenSSL and Verify Installation
@@ -116,31 +116,46 @@ Generating SSL Certificates for Secure gRPC Connections
     sudo apt install openssl
     openssl version
 
+.. note::
+    
+    If you find that the subsequent steps do not generate valid certificates, try changing the openssh version. The version I use for this Tutorial is OpenSSL 1.1.1w.
+
 2. Generate a Private Key
 
-First, generate a private key. This key will be used to generate the certificate signing request (CSR) and the certificate itself.
+First, a private key file (.key file) is generated for signing certificates.
 
 .. code-block:: shell
 
-    openssl genpkey -algorithm RSA -out server.key -aes256
+    openssl genpkey -algorithm RSA -out server.key
 
-3. Generate a Certificate Signing Request (CSR)
+3. Generate a Certificate Signing Request (CSR) [Optional]
 
-Next, generate a CSR using the private key. This request will be used to create the actual SSL certificate.
-You will be prompted to enter information about your organization and domain. Make sure to fill this out accurately.
+If you intend to send a certificate signing request to a certificate authority (CA), you can generate a certificate request (CSR) file. This step is optional and can be skipped if you intend to generate a self-signed certificate.
 
 .. code-block:: shell
 
-    openssl req -new -key server.key -out server.csr
+    openssl req -new -key server.key -out server.csr \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=example.com"
+
+.. note::
+    
+    You can change content in -subj based on your info. /C means countr; /ST means State; /L means City; /O means organization; And /CN means Common Name.
 
 4. Generate the SSL Certificate
 
-You can create a self-signed certificate or have your CSR signed by a Certificate Authority (CA). For development and testing purposes, a self-signed certificate is sufficient.
+Finally, a self-signed certificate (.crt file) is generated using the generated private key and certificate request file (optional). In this step, we will include the Subject Alternate Name (SAN) to cover different access scenarios (public network and private network).
 
 For Self-Signed Certificate:
 .. code-block:: shell
 
-    openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+    openssl req -x509 -days 365 -key server.key -out server.crt \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=example.com" \
+    -addext "subjectAltName = DNS:your.domain.name"
+
+.. note::
+    
+    Subject Alternate Name (SAN): In the -addext parameter, use -addext "subjectAltName = DNS:your.domain.name" to add a subject alternate name. Be sure to replace your.domain.name with the domain name or host name you wish to use as the SAN. For example, the Public IPv4 DNS of your EC2.
+    Certificate validity and key length: Depending on your security needs, you can adjust the validity of the certificate and the length of the generated key.
 
 CA-Signed Certificate:
 If you prefer to have your CSR signed by a CA, you would send the server.csr file to the CA and receive a signed certificate in return. The exact process depends on the CA's requirements.
