@@ -28,9 +28,14 @@ comm_configs:
   #   connector_type: "FileConnector"
   #   connector_configs:
   #     store_dir: "./.proxystore_client/cache"
+  # proxystore_configs:
+  #   enable_proxystore: True
+  #   connector_type: "S3Connector"
+  #   connector_configs:
+  #     s3_bucket: "appfl-bench"
+  #     expiration: 3600
   proxystore_configs:
     enable_proxystore: False
-    connector_type: "S3Connector"
+    connector_type: "EndpointConnector"
     connector_configs:
-      s3_bucket: "appflx-bucket"
-      expiration: 3600
+      endpoints: ["621982b4-9adb-4aac-a748-18b0b6ec840b", "5c755a5b-3b27-4691-86eb-34a95a492e44"]

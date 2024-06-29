@@ -60,6 +60,14 @@ class NaiveTrainer(BaseTrainer):
         Train the model for a certain number of local epochs or steps and store the mode state
         (probably with perturbation for differential privacy) in `self.model_state`.
         """
+        # randomize model weights if zero local steps
+        if (self.train_configs.mode == "step" and self.train_configs.num_local_steps == 0) or (self.train_configs.mode == "epoch" and self.train_configs.num_local_epochs == 0):
+            # for param in self.model.parameters():
+            #     param.data = torch.randn_like(param.data)
+            # self.model_state = copy.deepcopy(self.model.state_dict())
+            if not hasattr(self, 'model_state'):
+                self.model_state = copy.deepcopy(self.model.state_dict())
+            return
         # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
         if send_gradient:

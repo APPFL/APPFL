@@ -32,5 +32,5 @@ comm_configs:
     enable_proxystore: False
     connector_type: "S3Connector"
     connector_configs:
-      s3_bucket: "appflx-bucket"
+      s3_bucket: "appfl-bench"
       expiration: 3600

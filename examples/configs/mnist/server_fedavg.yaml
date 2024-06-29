@@ -3,7 +3,7 @@ client_configs:
     # Local trainer
     trainer: "NaiveTrainer"
     mode: "step"
-    num_local_steps: 100
+    num_local_steps: 0
     optim: "Adam"
     optim_args:
       lr: 0.001
@@ -11,8 +11,8 @@ client_configs:
     loss_fn_path: "./loss/celoss.py"
     loss_fn_name: "CELoss"
     # Client validation
-    do_validation: True
-    do_pre_validation: True
+    do_validation: False
+    do_pre_validation: False
     metric_path: "./metric/acc.py"
     metric_name: "accuracy"
     # Differential privacy
@@ -37,7 +37,7 @@ client_configs:
   
   comm_configs:
     compressor_configs:
-      enable_compression: True
+      enable_compression: False
       # Used if enable_compression is True
       lossy_compressor:  "SZ2Compressor"
       lossless_compressor: "blosc"
@@ -46,7 +46,7 @@ client_configs:
       param_cutoff: 1024
 
 server_configs:
-  scheduler: "SyncScheduler"
+  scheduler: "DummySyncScheduler"
   scheduler_kwargs:
     num_clients: 2
     same_init_model: True
@@ -54,7 +54,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 3
+  num_global_epochs: 30
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
@@ -67,14 +67,14 @@ server_configs:
     #   connector_type: "FileConnector"
     #   connector_configs:
     #     store_dir: "./.proxystore_server/cache"
+    proxystore_configs:
+      enable_proxystore: False
+      connector_type: "EndpointConnector"
+      connector_configs:
+        endpoints: ["621982b4-9adb-4aac-a748-18b0b6ec840b", "5c755a5b-3b27-4691-86eb-34a95a492e44"]
     # proxystore_configs:
     #   enable_proxystore: True
-    #   connector_type: "EndpointConnector"
+    #   connector_type: "S3Connector"
     #   connector_configs:
-    #     endpoints: ["621982b4-9adb-4aac-a748-18b0b6ec840b", "5c755a5b-3b27-4691-86eb-34a95a492e44"]
-    proxystore_configs:
-      enable_proxystore: True
-      connector_type: "S3Connector"
-      connector_configs:
-        s3_bucket: "appflx-bucket"
-        expiration: 3600
+    #     s3_bucket: "appfl-bench"
+    #     expiration: 3600
