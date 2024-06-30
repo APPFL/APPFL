@@ -1,6 +1,5 @@
 import gzip
 import lzma
-import zfpy
 import zlib
 import zstd
 import blosc
@@ -178,6 +177,7 @@ class ZFPCompressor(BaseCompressor):
         :param ori_data: compressed data, numpy array format
         :return: decompressed data,numpy array format
         """
+        import zfpy
         if self.cfg.error_bounding_mode == "ABS":
             return zfpy.compress_numpy(ori_data, tolerance=self.cfg.error_bound)
         elif self.cfg.error_bounding_mode == "REL":

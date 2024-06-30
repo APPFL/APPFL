@@ -2,7 +2,6 @@ import os
 import sys
 import gzip
 import lzma
-import zfpy
 import zlib
 import zstd
 import blosc
@@ -223,6 +222,7 @@ class Compressor:
             )
             return compressed_arr.tobytes()
         elif self.cfg.lossy_compressor == "ZFP":
+            import zfpy
             if self.cfg.error_bounding_mode == "ABS":
                 return zfpy.compress_numpy(ori_data, tolerance=self.cfg.error_bound)
             elif self.cfg.error_bounding_mode == "REL":
