@@ -5,8 +5,8 @@ import grpc
 import logging
 from concurrent import futures
 from typing import Any, Optional
-from .grpc_communicator_pb2 import *
-from .grpc_communicator_pb2_grpc import *
+from .grpc_communicator_old_pb2 import *
+from .grpc_communicator_old_pb2_grpc import *
 from appfl.login_manager import BaseAuthenticator
 from appfl.comm.grpc.auth import APPFLAuthMetadataInterceptor
 
@@ -49,7 +49,7 @@ def serve(
         ],
         interceptors=(APPFLAuthMetadataInterceptor(authenticator),) if use_authenticator else None,
     )
-    add_GRPCCommunicatorServicer_to_server(servicer, server)
+    add_GRPCCommunicatorV0Servicer_to_server(servicer, server)
     if use_ssl:
         credentials = grpc.ssl_server_credentials(
             (

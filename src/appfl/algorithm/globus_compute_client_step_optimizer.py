@@ -4,8 +4,9 @@ import time
 import torch
 from torch.optim import *
 from .fl_base import BaseClient
-from appfl.misc import compute_gradient
+from appfl.misc import compute_gradient, deprecated
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.trainer instead.")
 class GlobusComputeClientStepOptim(BaseClient):
     """GlobusComputeClientStepOptim is the ClientStepOptim accompanied with a ClientLogger for recording the training process."""
     def __init__(self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, global_epoch=0, send_gradient=False, **kwargs):

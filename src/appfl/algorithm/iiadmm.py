@@ -2,11 +2,13 @@ import copy
 import torch
 import logging
 from torch.optim import *
+from appfl.misc import deprecated
 from collections import OrderedDict
 from .ppfl_base import PPFLServer, PPFLClient
 
 log = logging.getLogger(__name__)
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.aggregator instead.")
 class IIADMMServer(PPFLServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         super(IIADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
@@ -82,6 +84,7 @@ class IIADMMServer(PPFLServer):
     def logging_summary(self, cfg, logger):
         super(IIADMMServer, self).log_summary(cfg, logger)
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.trainer instead.")
 class IIADMMClient(PPFLClient):
     def __init__(
         self,

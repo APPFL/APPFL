@@ -131,7 +131,7 @@ class MpiCommunicator:
         :param `dest`: the rank of the destination MPI process (server)
         """
         if self.compressor is not None:
-            model_bytes, _ = self.compressor.compress_model(model)
+            model_bytes = self.compressor.compress_model(model)
         else:
             model_bytes = self._obj_to_bytes(model)
         self.comm.isend(len(model_bytes), dest=dest, tag=self.comm_rank)

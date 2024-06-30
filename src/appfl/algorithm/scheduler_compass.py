@@ -7,11 +7,13 @@ import threading
 from logging import Logger
 from typing import Any, Union
 from collections import OrderedDict
+from appfl.misc import deprecated
 from appfl.comm.mpi import MpiCommunicator
 from appfl.comm.globus_compute import GlobusComputeCommunicator
 from appfl.comm.globus_compute.utils.s3_storage import LargeObjectWrapper
 from appfl.comm.globus_compute.globus_compute_client_function import client_training
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.scheduler instead.")
 class SchedulerCompass(abc.ABC):
     def __init__(self, communicator: Union[MpiCommunicator, GlobusComputeCommunicator], server: Any, max_local_steps: int, num_clients: int, num_global_epochs: int, lr: float, logger: Logger, use_nova: bool, q_ratio: float = 0.2, lambda_val: float = 1.5, **kwargs):
         self.iter = 0

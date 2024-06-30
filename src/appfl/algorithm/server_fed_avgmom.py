@@ -1,5 +1,7 @@
+from appfl.misc import deprecated
 from .server_federated import FedServer
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.aggregator instead.")
 class ServerFedAvgMomentum(FedServer):
     def update_m_vector(self):
         for name, _ in self.model.named_parameters():

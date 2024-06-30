@@ -6,5 +6,7 @@ This section provides a collection of notebooks for tutorial.
 .. toctree::
     :maxdepth: 1
 
-    simple_mnist.ipynb
+    configuration.ipynb
+    serial_fl.ipynb
     launch_gRPC_auth
+    compression.ipynb

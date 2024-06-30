@@ -1,12 +1,10 @@
-import sys
-import ctypes
-from ctypes.util import find_library
-import numpy as np
-
 """
 Python API for SZx
 """
-
+import sys
+import ctypes
+import numpy as np
+from ctypes.util import find_library
 
 class SZx:
     def __init__(self, szxpath=None):
@@ -14,7 +12,6 @@ class SZx:
         init SZx
         :param szxpath: the path to SZx dynamic library
         """
-
         if szxpath is None:
             szxpath = {
                 "darwin": "libSZx.dylib",

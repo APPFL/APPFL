@@ -5,7 +5,9 @@ import torch
 import numpy as np
 from torch.optim import *
 from .fl_base import BaseClient
+from appfl.misc import deprecated
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.trainer instead.")
 class ClientStepOptim(BaseClient):
     """This client optimizer which perform updates for certain number of steps/batches in each training round."""
     def __init__(

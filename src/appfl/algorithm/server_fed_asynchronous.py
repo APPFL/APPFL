@@ -2,9 +2,11 @@ import copy
 import logging
 from .server_federated import FedServer
 from ..misc import *
+from appfl.misc import deprecated
 
 logger = logging.getLogger(__name__)
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.aggregator instead.")
 class ServerFedAsynchronous(FedServer):
     """ 
     ServerFedAsynchronous:

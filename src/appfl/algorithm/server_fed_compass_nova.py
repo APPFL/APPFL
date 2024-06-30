@@ -3,9 +3,11 @@ import copy
 from collections import OrderedDict
 from .server_federated import FedServer
 from ..misc import *
+from appfl.misc import deprecated
 
 logger = logging.getLogger(__name__)
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.aggregator instead.")
 class ServerFedCompassNova(FedServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         self.counter = 0 

@@ -1,11 +1,13 @@
 import logging
 import copy
+from appfl.misc import deprecated
 from collections import OrderedDict
 from .server_federated import FedServer
 from ..misc import *
 
 logger = logging.getLogger(__name__)
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.aggregator instead.")
 class ServerFedBuffer(FedServer):
     """ 
     ServerFedBuffer

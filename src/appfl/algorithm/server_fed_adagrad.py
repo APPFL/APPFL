@@ -1,6 +1,8 @@
 import torch
+from appfl.misc import deprecated
 from .server_federated import FedServer
 
+@deprecated("appfl.algorithm is deprecated and will be removed in the future. Please use appfl.aggregator instead.")
 class ServerFedAdagrad(FedServer):
     def compute_step(self):
         super(ServerFedAdagrad, self).compute_pseudo_gradient()

@@ -1,4 +1,11 @@
 """
+[DEPRECATED]
+Warning: This module is deprecated and will be removed in future versions.
+Please use:
+    - `appfl.aggregator` for server aggregation algorithms,
+    - `appfl.trainer` for client local training algorithms,
+    - `appfl.scheduler` for server scheduling algorithms 
+
 This module provides a base class to define the functions required to implement PPFL algorithms.
 """
 from .fl_base import *

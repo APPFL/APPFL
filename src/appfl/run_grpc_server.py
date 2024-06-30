@@ -1,3 +1,7 @@
+"""
+[DEPRECATED] This run script is deprecated and will be removed in the future.
+"""
+
 import logging
 import torch.nn as nn
 from typing import Any
