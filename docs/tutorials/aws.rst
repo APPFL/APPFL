@@ -89,7 +89,7 @@ Install APPFL from source in a conda environment:
     cd APPFL
     conda create -n appfl python=3.10 --y
     conda activate appfl
-    pip install -e ".[examples, compressor]"
+    pip install -e ".[examples]"
 
 Launching a server
 ------------------

@@ -31,7 +31,6 @@ For either simulation or training, a skeleton of the script for running PPFL can
 .. code-block:: python
     :linenos:
 
-    from appfl import *
     from appfl.config import Config
     from omegaconf import OmegaConf
 

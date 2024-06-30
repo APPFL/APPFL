@@ -15,9 +15,9 @@ Users need to first make sure that they have installed the required packages for
 
 .. code-block:: bash
 
-    pip install "appfl[compressor]"
+    pip install appfl
     # OR: If installed from source code
-    pip install -e ".[compressor]""
+    pip install -e .
 
 Users then can install the compressors by running the following command:
 

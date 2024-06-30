@@ -54,6 +54,13 @@ setuptools.setup(
         "globus-compute-endpoint",
         "boto3",
         "botocore",
+        "lz4",
+        "zfpy",
+        "zstd",
+        "blosc",
+        "python-xz",
+        "matplotlib",
+        "torchvision",
     ],
     extras_require={
         "dev": [
@@ -73,21 +80,12 @@ setuptools.setup(
         ],
         "examples": [
             "opencv-python",
-            "torchvision",
             "pandas",
             "pyarrow",
             "fastparquet",
             "tqdm",
             "jupyter",
-            "matplotlib",
             "wget",
-        ],
-        "compressor": [
-            "lz4",
-            "zfpy",
-            "zstd",
-            "blosc",
-            "python-xz",
         ],
     },
     entry_points={

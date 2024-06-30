@@ -52,7 +52,7 @@ User and Developer Guide
    ../developer/index
 
 [DEPRECATED] Guide for APPFL v0
-===============================
+-------------------------------
 
 .. toctree::
    :maxdepth: 2

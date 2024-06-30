@@ -21,7 +21,7 @@ For most users, including data scientists, this simple installation is sufficien
 .. code-block:: console
 
     pip install pip --upgrade
-    pip install "appfl[examples,compressor]"
+    pip install "appfl[examples]"
 
 If you want to even minimize the installation of package dependencies, you can use:
 
@@ -43,7 +43,7 @@ To set up the development environment,
 
     git clone https://github.com/APPFL/APPFL.git
     cd APPFL
-    pip install -e ".[dev,examples,compressor]"
+    pip install -e ".[dev,examples]"
 
 On Ubuntu, if the installation process failed, you can try:
 
