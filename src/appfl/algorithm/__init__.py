@@ -5,6 +5,7 @@ from .fl_base import *
 from .ppfl_base import *
 from .client_optimizer import *
 from .client_step_optimizer import *
+from .client_adaptive_optimizer import *
 from .globus_compute_client_optimizer import *
 from .globus_compute_client_step_optimizer import *
 from .personalized_client_optimizer import *

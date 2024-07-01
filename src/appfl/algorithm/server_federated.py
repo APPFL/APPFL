@@ -24,6 +24,8 @@ class FedServer(BaseServer):
         self.step = OrderedDict()
         self.list_named_parameters = []
         self.pseudo_grad = OrderedDict()
+        self.gm_step = OrderedDict()
+        
         for name, _ in self.model.named_parameters():
             self.list_named_parameters.append(name)
         if hasattr(self, "server_momentum_param_1"):
@@ -47,6 +49,21 @@ class FedServer(BaseServer):
             self.pseudo_grad[name] = torch.zeros_like(self.model.state_dict()[name])
             for i in range(self.num_clients):
                 self.pseudo_grad[name] += self.weights[i] * (self.global_state[name] - self.primal_states[i][name])
+
+    def compute_geometricmean(self):
+        """Compute the global parameters using geomteric averaging of local parameters"""
+        for name, param in self.model.named_parameters():
+            weighted_log_sum = torch.zeros_like(param)
+            sum_weights = 0.0
+            
+            for i in range(self.num_clients):
+                primal_state_param = self.primal_states[i][name]
+                primal_state_param = torch.clamp(primal_state_param, min=1e-10)
+                weighted_log_sum += self.weights[i] * torch.log(primal_state_param)
+                sum_weights += self.weights[i]
+            geometric_mean_param = torch.exp(weighted_log_sum / sum_weights)
+            
+            self.gm_step[name] = geometric_mean_param - self.global_state[name]
 
     @abc.abstractmethod
     def compute_step(self):
