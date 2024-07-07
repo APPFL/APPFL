@@ -19,7 +19,7 @@ def get_mnist(
     dir = os.getcwd() + "/datasets/RawData"
 
     # Root download the data if not already available.
-    test_data_raw = torchvision.datasets.MNIST(dir, download=True, train=False, transform=transforms.ToTensor())
+    test_data_raw = torchvision.datasets.MNIST(dir, download={client_id==0}, train=False, transform=transforms.ToTensor())
 
     # Obtain the testdataset
     test_data_input = []

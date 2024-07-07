@@ -54,6 +54,12 @@ setuptools.setup(
         "globus-compute-endpoint",
         "boto3",
         "botocore",
+        "proxystore[all]",
+        "lz4",
+        "zfpy",
+        "zstd",
+        "blosc",
+        "python-xz",
     ],
     extras_require={
         "dev": [
@@ -81,16 +87,6 @@ setuptools.setup(
             "jupyter",
             "matplotlib",
             "wget",
-        ],
-        "compressor": [
-            "lz4",
-            "zfpy",
-            "zstd",
-            "blosc",
-            "python-xz",
-        ],
-        "proxystore": [
-            "proxystore[all]",
         ],
     },
     entry_points={

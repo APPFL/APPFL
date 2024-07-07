@@ -239,7 +239,7 @@ class ServerAgent:
         self.model = create_instance_from_file(
             model_configs.model_path,
             model_configs.model_name,
-            **model_configs.model_kwargs
+            **(model_configs.model_kwargs if hasattr(model_configs, "model_kwargs") else {})
         )
         # load the model source file and delete model path
         with open(model_configs.model_path, 'r') as f:
