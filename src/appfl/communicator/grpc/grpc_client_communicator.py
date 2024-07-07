@@ -56,9 +56,14 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the federated learning configurations
         """
+        if '_client_id' in kwargs:
+            client_id = str(kwargs["_client_id"])
+            del kwargs["_client_id"]
+        else:
+            client_id = str(self.client_id)
         meta_data = json.dumps(kwargs)
         request = ConfigurationRequest(
-            header=ClientHeader(client_id=self.client_id),
+            header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
         )
         response = self.stub.GetConfiguration(request)
@@ -73,9 +78,14 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the global model with additional metadata (if any)
         """
+        if '_client_id' in kwargs:
+            client_id = str(kwargs["_client_id"])
+            del kwargs["_client_id"]
+        else:
+            client_id = str(self.client_id)
         meta_data = json.dumps(kwargs)
         request = GetGlobalModelRequest(
-            header=ClientHeader(client_id=self.client_id),
+            header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
         )
         byte_received = b''
@@ -102,9 +112,14 @@ class GRPCClientCommunicator:
         :return: the updated global model with additional metadata. Specifically, `meta_data["status"]` is either "RUNNING" or "DONE".
         """
         kwargs["_use_proxystore"] = isinstance(local_model, Proxy)
+        if '_client_id' in kwargs:
+            client_id = str(kwargs["_client_id"])
+            del kwargs["_client_id"]
+        else:
+            client_id = str(self.client_id)
         meta_data = json.dumps(kwargs)
         request = UpdateGlobalModelRequest(
-            header=ClientHeader(client_id=self.client_id),
+            header=ClientHeader(client_id=client_id),
             local_model=(
                 serialize_model(local_model) 
                 if (isinstance(local_model, Proxy) or (not isinstance(local_model, bytes))) else local_model
@@ -132,9 +147,14 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the response from the server
         """
+        if '_client_id' in kwargs:
+            client_id = str(kwargs["_client_id"])
+            del kwargs["_client_id"]
+        else:
+            client_id = str(self.client_id)
         meta_data = json.dumps(kwargs)
         request = CustomActionRequest(
-            header=ClientHeader(client_id=self.client_id),
+            header=ClientHeader(client_id=client_id),
             action=action,
             meta_data=meta_data,
         )
