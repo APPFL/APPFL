@@ -40,6 +40,7 @@ class DummySyncScheduler(BaseScheduler):
                     future.set_result(self.local_model)
                 self.local_models = set()
                 self._num_global_epochs += 1
+                self.logger.info(f'The server receives models from all {self.num_clients} clients. Now it is epoch {self._num_global_epochs}')
             return future
     
     def get_num_global_epochs(self) -> int:

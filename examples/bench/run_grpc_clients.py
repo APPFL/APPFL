@@ -16,6 +16,11 @@ argparser.add_argument(
     default="configs/communication/client_grpc.yaml",
     help="Path to the configuration file."
 )
+argparser.add_argument(
+    '--server_uri',
+    type=str,
+    required=False,
+)
 args = argparser.parse_args()
 
 comm = MPI.COMM_WORLD
@@ -30,6 +35,9 @@ client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
 client_agent_config.data_configs.dataset_kwargs.client_id = rank
 client_agent_config.data_configs.dataset_kwargs.visualization = True if rank == 0 else False
 
+if args.server_uri:
+    client_agent_config.comm_configs.grpc_configs.server_uri = args.server_uri
+
 client_agent = ClientAgent(client_agent_config=client_agent_config)
 client_communicator = GRPCClientCommunicator(
     client_id = client_agent.get_id(),
@@ -41,10 +49,6 @@ client_agent.load_config(client_config)
 
 init_global_model = client_communicator.get_global_model(init_model=True)
 client_agent.load_parameters(init_global_model)
-
-# Send the number of local data to the server
-sample_size = client_agent.get_sample_size()
-client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size)
 
 start_time = time.time()
 
