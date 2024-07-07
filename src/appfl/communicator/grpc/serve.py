@@ -50,6 +50,7 @@ def serve(
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
         options=[
+            ("grpc.max_concurrent_streams", max_workers),
             ("grpc.max_send_message_length", max_message_size),
             ("grpc.max_receive_message_length", max_message_size),
         ],
