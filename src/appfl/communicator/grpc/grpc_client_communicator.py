@@ -61,7 +61,7 @@ class GRPCClientCommunicator:
             header=ClientHeader(client_id=self.client_id),
             meta_data=meta_data,
         )
-        response = self.stub.GetConfiguration(request)
+        response = self.stub.GetConfiguration(request, timeout=3600)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
@@ -79,7 +79,7 @@ class GRPCClientCommunicator:
             meta_data=meta_data,
         )
         byte_received = b''
-        for byte in self.stub.GetGlobalModel(request):
+        for byte in self.stub.GetGlobalModel(request, timeout=3600):
             byte_received += byte.data_bytes
         response = GetGlobalModelRespone()
         response.ParseFromString(byte_received)
@@ -112,7 +112,7 @@ class GRPCClientCommunicator:
             meta_data=meta_data,
         )
         byte_received = b''
-        for byte in self.stub.UpdateGlobalModel(proto_to_databuffer(request, max_message_size=self.max_message_size)):
+        for byte in self.stub.UpdateGlobalModel(proto_to_databuffer(request, max_message_size=self.max_message_size), timeout=3600):
             byte_received += byte.data_bytes
         response = UpdateGlobalModelResponse()
         response.ParseFromString(byte_received)
@@ -138,7 +138,7 @@ class GRPCClientCommunicator:
             action=action,
             meta_data=meta_data,
         )
-        response = self.stub.InvokeCustomAction(request)
+        response = self.stub.InvokeCustomAction(request, timeout=3600)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         if len(response.results) == 0:
