@@ -53,6 +53,10 @@ start_time = time.time()
 
 client_agent.train()
 local_model = client_agent.get_parameters()
+
+time_per_epoch = []
+prev_time = start_time
+
 while True:
     global_model_futures = []
     for i in range(num_clients):
@@ -70,9 +74,16 @@ while True:
         else:
             res = global_model_futures[i].result()
             del res
+    
+    time_per_epoch.append(time.time() - prev_time)
+    prev_time = time.time()        
+    print(time_per_epoch)
+    
     if metadata['status'] == 'DONE':
         break
     
+print(time_per_epoch)
+
 for i in range(num_clients):
     client_agent_communicator.client_id = i
     client_agent_communicator.invoke_custom_action(action='close_connection', _client_id=i)
