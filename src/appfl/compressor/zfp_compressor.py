@@ -1,7 +1,6 @@
 import gzip
 import lzma
 import zlib
-import zstd
 import blosc
 import torch
 import pickle
@@ -153,6 +152,7 @@ class ZFPCompressor(BaseCompressor):
                 lossless_original_size += param_flat.nbytes
                 lossless = b""
                 if self.lossless_compressor == "zstd":
+                    import zstd
                     lossless = zstd.compress(param_flat, 10)
                 elif self.lossless_compressor == "gzip":
                     lossless = gzip.compress(param_flat.tobytes())
@@ -215,6 +215,7 @@ class ZFPCompressor(BaseCompressor):
                 ).astype(np.float32)                
             else:
                 if self.lossless_compressor == "zstd":
+                    import zstd
                     compressed_weights[name] = zstd.decompress(compressed_weights[name])
                 elif self.lossless_compressor == "gzip":
                     compressed_weights[name] = gzip.decompress(compressed_weights[name])
