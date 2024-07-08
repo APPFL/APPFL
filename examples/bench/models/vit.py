@@ -1,8 +1,8 @@
 import torch
-from torchvision.models import vit_l_16
+from torchvision.models import vit_b_32
 
 def ViT():
-    return vit_l_16(pretrained=False)
+    return vit_b_32(weights=None)
 
 
 if __name__ == '__main__':

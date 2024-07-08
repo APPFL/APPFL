@@ -49,10 +49,10 @@ client_agent.load_config(client_config_from_server)
 init_model = client_agent_communicator.get_global_model(serial_run=True)
 client_agent.load_parameters(init_model)
 
-start_time = time.time()
-
 client_agent.train()
 local_model = client_agent.get_parameters()
+client_agent.logger.info(f'There are {num_clients} using grpc...')
+start_time = time.time()
 
 time_per_epoch = []
 prev_time = start_time
@@ -60,7 +60,6 @@ prev_time = start_time
 while True:
     global_model_futures = []
     for i in range(num_clients):
-        print(f"Client {i} is updating the global model.")
         global_model_futures.append(
             grpc_executor.submit(
                 client_agent_communicator.update_global_model,
@@ -77,12 +76,12 @@ while True:
     
     time_per_epoch.append(time.time() - prev_time)
     prev_time = time.time()        
-    print(time_per_epoch)
+    client_agent.logger.info(time_per_epoch)
     
     if metadata['status'] == 'DONE':
         break
     
-print(time_per_epoch)
+client_agent.logger.info(time_per_epoch)
 
 for i in range(num_clients):
     client_agent_communicator.client_id = i
@@ -91,4 +90,4 @@ for i in range(num_clients):
 client_agent.clean_up()
 
 end_time = time.time()
-print(f"Total time taken: {end_time - start_time:.2f} seconds")
+client_agent.logger.info(f"Total time taken: {end_time - start_time:.2f} seconds")
