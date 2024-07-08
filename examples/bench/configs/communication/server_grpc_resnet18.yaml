@@ -44,7 +44,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 1
+  num_global_epochs: 10
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
@@ -52,4 +52,4 @@ server_configs:
       server_uri: localhost:50051
       max_message_size: 536870912
       use_ssl: False
-      max_workers: 128
+      max_workers: 1024

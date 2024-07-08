@@ -29,7 +29,7 @@ client_configs:
     
   model_configs:
     model_path: "./models/resnets.py"
-    model_name: "ResNet152"
+    model_name: "ResNet50"
   
   comm_configs:
     compressor_configs:
