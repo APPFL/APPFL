@@ -1,0 +1,15 @@
+clients:
+  - endpoint_id: "29e6f637-4ae3-4848-8688-afdb9282b8b8"
+    client_id: 1
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cpu"
+      # Logging and outputs [Optional]
+      logging_id: "Client1"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./dataset/dummy_dataset.py"
+      dataset_name: "get_dummy"

@@ -127,13 +127,21 @@ class ClientAgent:
             self.train_dataset, self.val_dataset = run_function_from_file_source(
                 self.client_agent_config.data_configs.dataset_source,
                 self.client_agent_config.data_configs.dataset_name,
-                **self.client_agent_config.data_configs.dataset_kwargs
+                **(
+                    self.client_agent_config.data_configs.dataset_kwargs 
+                    if hasattr(self.client_agent_config.data_configs, "dataset_kwargs") 
+                    else {}
+                )
             )
         else:
             self.train_dataset, self.val_dataset = run_function_from_file(
                 self.client_agent_config.data_configs.dataset_path,
                 self.client_agent_config.data_configs.dataset_name,
-                **self.client_agent_config.data_configs.dataset_kwargs
+                **(
+                    self.client_agent_config.data_configs.dataset_kwargs
+                    if hasattr(self.client_agent_config.data_configs, "dataset_kwargs")
+                    else {}
+                )
             )
 
     def _load_model(self) -> None:

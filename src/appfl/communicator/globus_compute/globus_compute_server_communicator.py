@@ -37,7 +37,7 @@ class GlobusComputeServerCommunicator:
         **kwargs,
     ):
         gcc = Client()
-        self.gce = Executor(funcx_client=gcc) # Globus Compute Executor
+        self.gce = Executor(client=gcc) # Globus Compute Executor
         self.logger = logger if logger is not None else self._default_logger()
         client_config_from_server = server_agent_config.client_configs
         # Create a unique experiment ID for this federated learning experiment
@@ -63,7 +63,6 @@ class GlobusComputeServerCommunicator:
                 client_endpoint_id=client_endpoint_id,
                 client_config=OmegaConf.merge(client_config_from_server, client_config),
             )
-        print(self.client_endpoints)
         # Initilize the S3 bucket for large model transfer if necessary.
         if hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs"):
             s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_bucket", None)

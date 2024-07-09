@@ -19,7 +19,7 @@ class GlobusComputeCommunicator:
             client_idx: GlobusComputeClientEndpoint(client_idx, client_cfg)
             for client_idx, client_cfg in enumerate(self.cfg.clients)
         }
-        self.gcx = Executor(funcx_client=gcc)
+        self.gcx = Executor(client=gcc)
         self.use_s3bucket = cfg.server.s3_bucket is not None
         if self.use_s3bucket:
             self.logger.info(f'Using S3 bucket {cfg.server.s3_bucket} for model transfer.')
