@@ -36,8 +36,8 @@ def globus_compute_client_entry_point(
         local_model = send_local_model(
             client_agent.client_agent_config, 
             local_model,
-            meta_data["local_model_key"],
-            meta_data["local_model_url"],
+            meta_data["local_model_key"] if "local_model_key" in meta_data else None,
+            meta_data["local_model_url"] if "local_model_url" in meta_data else None,
         )
         return local_model, meta_data_local
     else:

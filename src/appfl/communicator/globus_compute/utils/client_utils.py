@@ -1,6 +1,6 @@
 import pathlib
 from appfl.config import ClientAgentConfig
-from typing import Union, Dict, OrderedDict, Any
+from typing import Union, Dict, OrderedDict, Any, Optional
 from .s3_storage import CloudStorage, LargeObjectWrapper
 
 def load_global_model(
@@ -20,8 +20,8 @@ def load_global_model(
 def send_local_model(
     client_agent_config: ClientAgentConfig,
     local_model:  Union[Dict, OrderedDict, bytes],
-    local_model_key: str,
-    local_model_url: str,
+    local_model_key: Optional[str],
+    local_model_url: Optional[str],
 ):
     if (
         hasattr(client_agent_config.comm_configs, "globus_compute_configs") and
