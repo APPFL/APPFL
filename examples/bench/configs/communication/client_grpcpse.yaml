@@ -1,0 +1,23 @@
+train_configs:
+  # Device
+  device: "cpu"
+  # Logging and outputs
+  logging_id: "Client1"
+  logging_output_dirname: "./output"
+  logging_output_filename: "result"
+
+# Local dataset
+data_configs:
+    dataset_path: "./dataset/dummy_dataset.py"
+    dataset_name: "get_dummy"
+
+comm_configs:
+  grpc_configs:
+    server_uri: localhost:50051
+    max_message_size: 536870912
+    use_ssl: False
+  proxystore_configs:
+    enable_proxystore: True
+    connector_type: "EndpointConnector"
+    connector_configs:
+      endpoints: ["ec8608cb-4c5f-4102-9aa9-30c899849a06", "2232bc8c-d6e0-4898-9313-42980d699042"]
