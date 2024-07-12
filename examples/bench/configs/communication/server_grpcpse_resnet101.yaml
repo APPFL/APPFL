@@ -29,7 +29,7 @@ client_configs:
     
   model_configs:
     model_path: "./models/resnets.py"
-    model_name: "ResNet34"
+    model_name: "ResNet101"
   
   comm_configs:
     compressor_configs:
@@ -53,3 +53,8 @@ server_configs:
       max_message_size: 536870912
       use_ssl: False
       max_workers: 1024
+    proxystore_configs:
+      enable_proxystore: True
+      connector_type: "EndpointConnector"
+      connector_configs:
+        endpoints: ["ec8608cb-4c5f-4102-9aa9-30c899849a06", "2232bc8c-d6e0-4898-9313-42980d699042"]

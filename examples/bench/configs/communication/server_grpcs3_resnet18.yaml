@@ -29,7 +29,7 @@ client_configs:
     
   model_configs:
     model_path: "./models/resnets.py"
-    model_name: "ResNet152"
+    model_name: "ResNet18"
   
   comm_configs:
     compressor_configs:
@@ -53,3 +53,9 @@ server_configs:
       max_message_size: 536870912
       use_ssl: False
       max_workers: 1024
+    proxystore_configs:
+      enable_proxystore: True
+      connector_type: "S3Connector"
+      connector_configs:
+        s3_bucket: "appfl-bench"
+        expiration: 3600
