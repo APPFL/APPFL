@@ -346,4 +346,5 @@ class ServerAgent:
                 model = extract(model)
             return model
         else:
+            print('The server is decompressing the model...')
             return self.compressor.decompress_model(model_bytes, self.model)
