@@ -56,6 +56,20 @@ def get_mnist(
             uniq += 1
     else: filename = None
 
+    # Obtain the data readines report output filename
+    if dr_metrics is not None:
+        drr_dir = output_dirname
+        if os.path.isdir(drr_dir) == False:
+            os.makedirs(drr_dir, exist_ok=True)
+        drr_output_filename = f"MNIST_{num_clients}clients_{partition}_readiness_report"
+        drr_file_ext = ".pdf"
+        drr_filename = dir + "/%s%s" % (drr_output_filename, drr_file_ext)
+        uniq = 1
+        while os.path.exists(drr_filename):
+            drr_filename = dir + "/%s_%d%s" % (drr_output_filename, uniq, drr_file_ext)
+            uniq += 1
+    else: drr_filename = None
+
     # Partition the dataset
     if partition == "iid":
         train_datasets = iid_partition(train_data_raw, num_clients, visualization=visualization and comm_rank==0, output=filename)
@@ -65,7 +79,7 @@ def get_mnist(
         train_datasets = dirichlet_noiid_partition(train_data_raw, num_clients, visualization=visualization and comm_rank==0, output=filename, **kwargs)
     
     # data readiness report generation
-    if dr_metrics is not None:
-        generate_readiness_report(train_datasets,dr_metrics)
+    if comm_rank == 0 and dr_metrics is not None:
+        generate_readiness_report(train_datasets,dr_metrics,output_filename=drr_filename)
 
     return train_datasets, test_dataset
