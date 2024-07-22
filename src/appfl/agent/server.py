@@ -1,4 +1,5 @@
 import io
+import time
 import torch
 import threading
 import torch.nn as nn
@@ -346,5 +347,17 @@ class ServerAgent:
                 model = extract(model)
             return model
         else:
-            print('The server is decompressing the model...')
-            return self.compressor.decompress_model(model_bytes, self.model)
+            if not hasattr(self, '_decompress_timer'):
+                self._decompress_timer = 0
+                self._decompress_counter = 0
+                self._timer_lock = threading.Lock()
+            
+            start_time = time.time()
+            ret = self.compressor.decompress_model(model_bytes, self.model)
+            total_time = time.time()-start_time()
+            with self._timer_lock:
+                self._decompress_timer = (self._decompress_counter * self._decompress_timer + total_time) / (self._decompress_counter + 1)
+                self._decompress_counter += 1
+            print(f'The average decompress time is {self._decompress_timer}')
+            return ret
+            
