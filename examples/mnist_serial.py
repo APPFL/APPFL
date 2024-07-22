@@ -66,9 +66,19 @@ parser.add_argument(
     nargs="*", 
     type=str, 
     required=False, 
-    help="Usage: --dr_metrics ci ss"
-         "ci: to measure class imbalance of each client" 
-         "ss: to measure sample size"
+    help=(
+        "Specify the data reporting metrics to be computed. Options include:\n"
+        "ci: to measure class imbalance of each client\n"
+        "comp: to measure completeness (proportion of non-missing values)\n"
+        "ss: to measure sample size\n"
+        "dim: to measure dimensions (shape) of the data\n"
+        "range: to measure value range (min and max values)\n"
+        "sparsity: to measure sparsity (proportion of zero values)\n"
+        "variance: to measure variance of the data\n"
+        "skewness: to measure skewness (asymmetry of the data distribution)\n"
+        "entropy: to measure entropy (uncertainty or randomness)\n"
+        "Usage: --dr_metrics ci comp ss"
+    )
 )
 
 args = parser.parse_args()
