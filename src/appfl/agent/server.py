@@ -354,7 +354,7 @@ class ServerAgent:
             
             start_time = time.time()
             ret = self.compressor.decompress_model(model_bytes, self.model)
-            total_time = time.time()-start_time()
+            total_time = time.time()-start_time
             with self._timer_lock:
                 self._decompress_timer = (self._decompress_counter * self._decompress_timer + total_time) / (self._decompress_counter + 1)
                 self._decompress_counter += 1
