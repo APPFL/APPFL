@@ -80,7 +80,7 @@ class ClientAgent:
     
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
-        self.model.load_state_dict(params)
+        self.trainer.load_parameters(params)
 
     def proxy(self, obj):
         """
