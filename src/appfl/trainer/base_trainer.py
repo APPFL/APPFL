@@ -46,3 +46,7 @@ class BaseTrainer:
     @abc.abstractmethod
     def train(self):
         pass
+
+    def load_parameters(self, params: Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Any]):
+        """Load model parameters."""
+        self.model.load_state_dict(params)
