@@ -36,7 +36,7 @@ class SyncScheduler(BaseScheduler):
                 aggregated_model = self.aggregator.aggregate(self.local_models, **kwargs)
                 while self.future:
                     client_id, future = self.future.popitem()
-                    future.set_result(aggregated_model)
+                    future.set_result(self._parse_aggregated_model(aggregated_model, client_id))
                 self.local_models.clear()
                 self._num_global_epochs += 1
             return future
@@ -48,3 +48,15 @@ class SyncScheduler(BaseScheduler):
         """
         with self._access_lock:
             return self._num_global_epochs
+        
+    def _parse_aggregated_model(self, aggregated_model: Dict, client_id: Union[int, str]) -> Dict:
+        """
+        Parse the aggregated model. Currently, this method is used to
+        parse different client gradients for the vertical federated learning.
+        :param aggregated_model: the aggregated model
+        :return: the parsed aggregated model
+        """
+        if client_id in aggregated_model:
+            return aggregated_model[client_id] # this is for vertical federated learning
+        else:
+            return aggregated_model

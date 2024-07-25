@@ -9,3 +9,4 @@ from .fedbuff_aggregator import FedBuffAggregator
 from .fedcompass_aggregator import FedCompassAggregator
 from .iiadmm_aggregator import IIADMMAggregator
 from .iceadmm_aggregator import ICEADMMAggregator
+from .vfl_aggregator import VFLAggregator

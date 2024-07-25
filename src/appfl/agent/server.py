@@ -236,16 +236,21 @@ class ServerAgent:
         Load model from the definition file, and read the source code of the model for sendind to the client.
         User can overwrite this method to load the model from other sources.
         """
-        model_configs = self.server_agent_config.client_configs.model_configs
+        model_configs = (
+            self.server_agent_config.client_configs.model_configs 
+            if hasattr(self.server_agent_config.client_configs, "model_configs") 
+            else self.server_agent_config.server_configs.model_configs
+        )
         self.model = create_instance_from_file(
             model_configs.model_path,
             model_configs.model_name,
             **(model_configs.model_kwargs if hasattr(model_configs, "model_kwargs") else {})
         )
         # load the model source file and delete model path
-        with open(model_configs.model_path, 'r') as f:
-            self.server_agent_config.client_configs.model_configs.model_source = f.read()
-        del self.server_agent_config.client_configs.model_configs.model_path
+        if hasattr(self.server_agent_config.client_configs, "model_configs"):
+            with open(model_configs.model_path, 'r') as f:
+                self.server_agent_config.client_configs.model_configs.model_source = f.read()
+            del self.server_agent_config.client_configs.model_configs.model_path
 
     def _load_loss(self) -> None:
         """
