@@ -298,11 +298,17 @@ class ServerAgent:
         """Obtain the scheduler."""
         self.aggregator: BaseAggregator = eval(self.server_agent_config.server_configs.aggregator)(
             self.model,
-            OmegaConf.create(self.server_agent_config.server_configs.aggregator_kwargs),
+            OmegaConf.create(
+                self.server_agent_config.server_configs.aggregator_kwargs if
+                hasattr(self.server_agent_config.server_configs, "aggregator_kwargs") else {}
+            ),
             self.logger,
         )
         self.scheduler: BaseScheduler = eval(self.server_agent_config.server_configs.scheduler)(
-            OmegaConf.create(self.server_agent_config.server_configs.scheduler_kwargs),
+            OmegaConf.create(
+                self.server_agent_config.server_configs.scheduler_kwargs if 
+                hasattr(self.server_agent_config.server_configs, "scheduler_kwargs") else {}
+            ),
             self.aggregator,
             self.logger,
         )
