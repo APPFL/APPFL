@@ -9,6 +9,7 @@ To add new trainers to ``APPFL``, you can create you own trainer class by inheri
 
 - ``train``: Do local training using local sensitive dataset.
 - ``get_parameters``: Return the parameters to be sent to the server for aggregation.
+- ``load_parameters``: [Optional] Load the aggregated parameters from the server.
 
 .. note::
 
@@ -55,6 +56,10 @@ To add new trainers to ``APPFL``, you can create you own trainer class by inheri
 
         def train(self):
             pass
+
+        def load_parameters(self, params: Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Any]):
+            """Load model parameters. You can define your own way to load the parameters by overriding this function."""
+            self.model.load_state_dict(params)
 
 You may add any configuration parameters into your trainer and access them using ``self.train_configs.your_config_param``. When you start the FL experiment, you can specify the trainer configuration parameter values in the server configuration file in the following way:
 

@@ -13,6 +13,7 @@ class SyncScheduler(BaseScheduler):
     ):
         super().__init__(scheduler_configs, aggregator, logger)
         self.local_models = {}
+        self.aggregation_kwargs = {}
         self.future = {}
         self.num_clients = self.scheduler_configs.num_clients
         self._num_global_epochs = 0
@@ -31,12 +32,19 @@ class SyncScheduler(BaseScheduler):
         with self._access_lock:
             future = Future()
             self.local_models[client_id] = local_model
+            for key, value in kwargs.items():
+                if key not in self.aggregation_kwargs:
+                    self.aggregation_kwargs[key] = {}
+                self.aggregation_kwargs[key][client_id] = value
             self.future[client_id] = future
             if len(self.local_models) == self.num_clients:
-                aggregated_model = self.aggregator.aggregate(self.local_models, **kwargs)
+                aggregated_model = self.aggregator.aggregate(
+                    self.local_models,
+                    **self.aggregation_kwargs
+                )
                 while self.future:
                     client_id, future = self.future.popitem()
-                    future.set_result(aggregated_model)
+                    future.set_result(self._parse_aggregated_model(aggregated_model, client_id))
                 self.local_models.clear()
                 self._num_global_epochs += 1
             return future
@@ -48,3 +56,15 @@ class SyncScheduler(BaseScheduler):
         """
         with self._access_lock:
             return self._num_global_epochs
+        
+    def _parse_aggregated_model(self, aggregated_model: Dict, client_id: Union[int, str]) -> Dict:
+        """
+        Parse the aggregated model. Currently, this method is used to
+        parse different client gradients for the vertical federated learning.
+        :param aggregated_model: the aggregated model
+        :return: the parsed aggregated model
+        """
+        if client_id in aggregated_model:
+            return aggregated_model[client_id] # this is for vertical federated learning
+        else:
+            return aggregated_model
