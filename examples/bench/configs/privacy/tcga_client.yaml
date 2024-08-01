@@ -1,0 +1,17 @@
+train_configs:
+  # Device
+  device: "cpu"
+  # Logging and outputs
+  logging_id: "Client1"
+  logging_output_dirname: "./output"
+  logging_output_filename: "result"
+  do_pre_validation: True
+
+# Local dataset
+data_configs:
+  dataset_path: "../dataset/flamby_dataset.py"
+  dataset_name: "get_flamby"
+  dataset_kwargs:
+    dataset: "TcgaBrca"
+    num_clients: 6
+    client_id: 0
