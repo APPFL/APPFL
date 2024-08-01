@@ -297,7 +297,7 @@ class ICEADMMTrainer(BaseTrainer):
         optimizer.step()
 
         """Gradient Clipping"""
-        if getattr(self.train_configs, "clip_grad", False):
+        if getattr(self.train_configs, "clip_grad", False) or getattr(self.train_configs, "use_dp", False):
             torch.nn.utils.clip_grad_norm_(
                 self.model.parameters(),
                 self.train_configs.clip_value,

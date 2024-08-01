@@ -236,7 +236,7 @@ class NaiveTrainer(BaseTrainer):
         loss = self.loss_fn(output, target)
         loss.backward()
         optimizer.step()
-        if self.train_configs.get("clip_grad", False):
+        if getattr(self.train_configs, "clip_grad", False) or getattr(self.train_configs, "use_dp", False):
             assert hasattr(self.train_configs, "clip_value"), "Gradient clipping value must be specified"
             assert hasattr(self.train_configs, "clip_norm"), "Gradient clipping norm must be specified"
             torch.nn.utils.clip_grad_norm_(
