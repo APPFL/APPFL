@@ -7,8 +7,9 @@ from appfl.scheduler import *
 from appfl.aggregator import *
 from appfl.compressor import *
 from appfl.config import ServerAgentConfig
-from appfl.misc import create_instance_from_file, get_function_from_file
+from appfl.misc import create_instance_from_file, get_function_from_file, run_function_from_file
 from appfl.logger import ServerAgentFileLogger
+from torch.utils.data import DataLoader
 from concurrent.futures import Future
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional
@@ -43,6 +44,7 @@ class ServerAgent:
         self._load_scheduler()
         self._load_compressor()
         self._load_proxystore()
+        self._load_val_data()
 
     def get_client_configs(self, **kwargs) -> DictConfig:
         """Return the FL configurations that are shared among all clients."""
@@ -176,6 +178,17 @@ class ServerAgent:
             else:
                 return future
         return None
+
+    def server_validate(self):
+        """
+        Validate the server model using the validation dataset.
+        """
+        if not hasattr(self, "_val_dataset"):
+            self.logger.info("No validation dataset is provided.")
+            return None
+        else:
+            return self._validate()
+
 
     def training_finished(self, **kwargs) -> bool:
         """Indicate whether the training is finished."""
@@ -369,6 +382,42 @@ class ServerAgent:
             with self._timer_lock:
                 self._decompress_timer = (self._decompress_counter * self._decompress_timer + total_time) / (self._decompress_counter + 1)
                 self._decompress_counter += 1
-            print(f'The average decompress time is {self._decompress_timer}')
             return ret
             
+    def _load_val_data(self) -> None:
+        if hasattr(self.server_agent_config.server_configs, "val_data_configs"):
+            self._val_dataset = run_function_from_file(
+                self.server_agent_config.server_configs.val_data_configs.dataset_path,
+                self.server_agent_config.server_configs.val_data_configs.dataset_name,
+                **(
+                    self.server_agent_config.server_configs.val_data_configs.dataset_kwargs
+                    if hasattr(self.server_agent_config.server_configs.val_data_configs, "dataset_kwargs")
+                    else {}
+                )
+            )
+            self._val_dataloader = DataLoader(
+                self._val_dataset,
+                batch_size=self.server_agent_config.server_configs.val_data_configs.get("batch_size", 1),
+                shuffle=self.server_agent_config.server_configs.val_data_configs.get("shuffle", False),
+                num_workers=self.server_agent_config.server_configs.val_data_configs.get("num_workers", 0),
+            )
+    
+    def _validate(self) -> Tuple[float, float]:
+        """
+        Validate the model
+        :return: loss, accuracy
+        """
+        device = self.server_agent_config.server_configs.get("device", "cpu")
+        self.model.eval()
+        val_loss = 0
+        with torch.no_grad():
+            target_pred, target_true = [], []
+            for data, target in self._val_dataloader:
+                data, target = data.to(device), target.to(device)
+                output = self.model(data)
+                val_loss += self.loss_fn(output, target).item()
+                target_true.append(target.detach().cpu().numpy())
+                target_pred.append(output.detach().cpu().numpy())
+        val_loss /= len(self._val_dataloader)
+        val_accuracy = float(self.metric(np.concatenate(target_true), np.concatenate(target_pred)))
+        return val_loss, val_accuracy
