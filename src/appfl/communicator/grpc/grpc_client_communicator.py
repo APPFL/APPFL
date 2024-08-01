@@ -47,7 +47,7 @@ class GRPCClientCommunicator:
             authenticator_args=authenticator_args,
             max_message_size=max_message_size,
         )
-        grpc.channel_ready_future(channel).result(timeout=60)
+        grpc.channel_ready_future(channel).result(timeout=3600)
         self.stub = GRPCCommunicatorStub(channel)
 
     def get_configuration(self, **kwargs) -> DictConfig:
