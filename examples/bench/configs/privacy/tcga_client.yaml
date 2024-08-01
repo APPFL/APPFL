@@ -5,7 +5,6 @@ train_configs:
   logging_id: "Client1"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
-  do_pre_validation: True
 
 # Local dataset
 data_configs:

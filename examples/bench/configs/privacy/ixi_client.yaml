@@ -1,6 +1,6 @@
 train_configs:
   # Device
-  device: "cpu"
+  device: "cuda"
   # Logging and outputs
   logging_id: "Client1"
   logging_output_dirname: "./output"
@@ -11,6 +11,6 @@ data_configs:
   dataset_path: "../dataset/flamby_dataset.py"
   dataset_name: "get_flamby"
   dataset_kwargs:
-    dataset: "HeartDisease"
-    num_clients: 4
+    dataset: "IXI"
+    num_clients: 3
     client_id: 0
