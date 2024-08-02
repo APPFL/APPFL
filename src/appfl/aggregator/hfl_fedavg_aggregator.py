@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 from appfl.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any
 
-class HFLRootFedAvgAggregator(BaseAggregator):
+class HFLFedAvgAggregator(BaseAggregator):
     def __init__(
         self,
         model: torch.nn.Module,
@@ -35,6 +35,7 @@ class HFLRootFedAvgAggregator(BaseAggregator):
             self.total_num_clients = 0
             for client_id in local_models:
                 self.total_num_clients += num_clients_dict.get(client_id, 1)
+                self.logger.info(f"Client {client_id} has {num_clients_dict.get(client_id, 1)} samples.")
         
         self.compute_steps(local_models, num_clients_dict)
         
@@ -48,7 +49,7 @@ class HFLRootFedAvgAggregator(BaseAggregator):
                 global_state[name] += self.step[name]
             
         self.model.load_state_dict(global_state)
-        return global_state
+        return global_state, {"num_clients": self.total_num_clients}
     
     def compute_steps(
         self, 

@@ -64,7 +64,13 @@ class SyncScheduler(BaseScheduler):
         :param aggregated_model: the aggregated model
         :return: the parsed aggregated model
         """
-        if client_id in aggregated_model:
-            return aggregated_model[client_id] # this is for vertical federated learning
+        if isinstance(aggregated_model, tuple):
+            if client_id in aggregated_model[0]:
+                return (aggregated_model[0][client_id], aggregated_model[1]) # this is for vertical federated learning
+            else:
+                return aggregated_model
         else:
-            return aggregated_model
+            if client_id in aggregated_model:
+                return aggregated_model[client_id] # this is for vertical federated learning
+            else:
+                return aggregated_model

@@ -10,6 +10,5 @@ from .fedcompass_aggregator import FedCompassAggregator
 from .iiadmm_aggregator import IIADMMAggregator
 from .iceadmm_aggregator import ICEADMMAggregator
 from .vfl_aggregator import VFLAggregator
-from .hfl_node_fedavg_aggregator import HFLNodeFedAvgAggregator
-from .hfl_root_fedavg_aggregator import HFLRootFedAvgAggregator
+from .hfl_fedavg_aggregator import HFLFedAvgAggregator
 from .dfl_node_fedavg_aggregator import DFLNodeFedAvgAggregator

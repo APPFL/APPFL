@@ -48,7 +48,10 @@ class HFLNodeAgent:
     def get_id(self) -> str:
         """Return a unique node id for HFL root server to distinguish the node and clients."""
         if not hasattr(self, 'node_id'):
-            self.node_id = str(uuid.uuid4())
+            if hasattr(self.hfl_node_agent_config, "node_id"):
+                self.node_id = self.hfl_node_agent_config.node_id
+            else:
+                self.node_id = str(uuid.uuid4())
         return self.node_id
         
     def load_client_configs(self, client_configs: DictConfig) -> None:

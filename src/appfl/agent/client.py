@@ -56,7 +56,10 @@ class ClientAgent:
     def get_id(self) -> str:
         """Return a unique client id for server to distinguish clients."""
         if not hasattr(self, 'client_id'):
-            self.client_id = str(uuid.uuid4())
+            if hasattr(self.client_agent_config, "client_id"):
+                self.client_id = self.client_agent_config.client_id
+            else:
+                self.client_id = str(uuid.uuid4())
         return self.client_id
     
     def get_sample_size(self) -> int:
