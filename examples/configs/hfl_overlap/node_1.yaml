@@ -1,6 +1,6 @@
 scheduler: "SyncScheduler"
 scheduler_kwargs:
-  num_clients: 2
+  num_clients: 3
 aggregator: "HFLNodeFedAvgAggregator"
 device: "cpu"
 logging_output_dirname: "./output"
@@ -8,10 +8,10 @@ logging_output_filename: "result"
 comm_configs:
   grpc_configs:
     connect:
-      server_uri: localhost:50052
+      server_uri: localhost:50053
       max_message_size: 1048576
       use_ssl: False
     serve:
-      server_uri: localhost:50051
+      server_uri: localhost:50052
       max_message_size: 1048576
       use_ssl: False

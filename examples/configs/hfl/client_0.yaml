@@ -2,7 +2,7 @@ train_configs:
   # Device
   device: "cpu"
   # Logging and outputs
-  logging_id: "Client2"
+  logging_id: "Client0"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 
@@ -12,15 +12,15 @@ data_configs:
   dataset_name: "get_mnist"
   dataset_kwargs:
     num_clients: 5
-    client_id: 2
+    client_id: 0
     partition_strategy: "class_noniid"
-    visualization: False
+    visualization: True
     output_dirname: "./output"
     output_filename: "visualization.pdf"
 
 comm_configs:
   grpc_configs:
     connect:
-      - server_uri: localhost:50053
+      - server_uri: localhost:50051
         max_message_size: 1048576
         use_ssl: False
