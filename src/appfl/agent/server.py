@@ -408,6 +408,7 @@ class ServerAgent:
         :return: loss, accuracy
         """
         device = self.server_agent_config.server_configs.get("device", "cpu")
+        self.model.to(device)
         self.model.eval()
         val_loss = 0
         with torch.no_grad():
@@ -420,4 +421,7 @@ class ServerAgent:
                 target_pred.append(output.detach().cpu().numpy())
         val_loss /= len(self._val_dataloader)
         val_accuracy = float(self.metric(np.concatenate(target_true), np.concatenate(target_pred)))
+        # Move the model back to the cpu for future aggregation
+        if device != 'cpu':
+            self.model.to('cpu')
         return val_loss, val_accuracy
