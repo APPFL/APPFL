@@ -25,3 +25,6 @@ comm_configs:
       - server_uri: localhost:50051
         max_message_size: 1048576
         use_ssl: False
+      - server_uri: localhost:50052
+        max_message_size: 1048576
+        use_ssl: False
