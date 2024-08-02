@@ -1,4 +1,5 @@
-client_id: Client2 # This is for simple debugging and logging and should be unqiue!
+client_id: Client2 # This is for simple debugging and should be unqiue!
+
 train_configs:
   # Device
   device: "cpu"
@@ -12,7 +13,7 @@ data_configs:
   dataset_path: "./dataset/mnist_dataset.py"
   dataset_name: "get_mnist"
   dataset_kwargs:
-    num_clients: 5
+    num_clients: 7
     client_id: 2
     partition_strategy: "class_noniid"
     visualization: False
@@ -22,6 +23,6 @@ data_configs:
 comm_configs:
   grpc_configs:
     connect:
-      - server_uri: localhost:50053
+      - server_uri: localhost:50052
         max_message_size: 1048576
         use_ssl: False

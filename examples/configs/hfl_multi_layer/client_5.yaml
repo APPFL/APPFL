@@ -1,9 +1,10 @@
-client_id: Client2 # This is for simple debugging and logging and should be unqiue!
+client_id: Client5 # This is for simple debugging and should be unqiue!
+
 train_configs:
   # Device
   device: "cpu"
   # Logging and outputs
-  logging_id: "Client2"
+  logging_id: "Client5"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 
@@ -12,8 +13,8 @@ data_configs:
   dataset_path: "./dataset/mnist_dataset.py"
   dataset_name: "get_mnist"
   dataset_kwargs:
-    num_clients: 5
-    client_id: 2
+    num_clients: 7
+    client_id: 5
     partition_strategy: "class_noniid"
     visualization: False
     output_dirname: "./output"

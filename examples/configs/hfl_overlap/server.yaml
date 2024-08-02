@@ -40,7 +40,7 @@ server_configs:
   scheduler_kwargs:
     num_clients: 3
     same_init_model: True
-  aggregator: "HFLRootFedAvgAggregator"
+  aggregator: "HFLFedAvgAggregator"
   device: "cpu"
   num_global_epochs: 10
   logging_output_dirname: "./output"

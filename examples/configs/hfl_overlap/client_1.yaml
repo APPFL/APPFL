@@ -1,3 +1,4 @@
+client_id: Client1 # This is for simple debugging and logging and should be unqiue!
 train_configs:
   # Device
   device: "cpu"

@@ -1,7 +1,9 @@
+node_id: HFLNode0 # This is for simple debugging and should be unqiue!
+
 scheduler: "SyncScheduler"
 scheduler_kwargs:
   num_clients: 2
-aggregator: "HFLNodeFedAvgAggregator"
+aggregator: "HFLFedAvgAggregator"
 device: "cpu"
 logging_output_dirname: "./output"
 logging_output_filename: "result"
