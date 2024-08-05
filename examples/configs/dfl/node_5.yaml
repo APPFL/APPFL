@@ -24,7 +24,7 @@ train_configs:
   # Device
   device: "cpu"
   # Logging and outputs
-  logging_id: "Client2"
+  logging_id: "Client5"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   
@@ -42,7 +42,7 @@ data_configs:
   dataset_name: "get_mnist"
   dataset_kwargs:
     num_clients: 6
-    client_id: 2
+    client_id: 5
     partition_strategy: "class_noniid"
     visualization: False
     output_dirname: "./output"
@@ -53,16 +53,16 @@ aggregator: "DFLNodeFedAvgAggregator"
 comm_configs:
   grpc_configs:
     serve:
-      server_uri: localhost:50053
+      server_uri: localhost:50056
       max_message_size: 1048576
       use_ssl: False
     connect:
-      - server_uri: localhost:50052
+      - server_uri: localhost:50051
         max_message_size: 1048576
         use_ssl: False
-      - server_uri: localhost:50054
+      - server_uri: localhost:50055
         max_message_size: 1048576
         use_ssl: False
-      - server_uri: localhost:50056
+      - server_uri: localhost:50053
         max_message_size: 1048576
         use_ssl: False

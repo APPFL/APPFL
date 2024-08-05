@@ -41,14 +41,14 @@ data_configs:
   dataset_path: "./dataset/mnist_dataset.py"
   dataset_name: "get_mnist"
   dataset_kwargs:
-    num_clients: 3
+    num_clients: 6
     client_id: 1
     partition_strategy: "class_noniid"
     visualization: False
     output_dirname: "./output"
     output_filename: "visualization.pdf"
 
-num_epochs: 10
+num_epochs: 20
 aggregator: "DFLNodeFedAvgAggregator"
 comm_configs:
   grpc_configs:
@@ -61,5 +61,8 @@ comm_configs:
         max_message_size: 1048576
         use_ssl: False
       - server_uri: localhost:50053
+        max_message_size: 1048576
+        use_ssl: False
+      - server_uri: localhost:50055
         max_message_size: 1048576
         use_ssl: False
