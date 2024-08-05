@@ -1,12 +1,15 @@
+import os
 import uuid
+import pathlib
 import importlib
 import torch.nn as nn
+from datetime import datetime
 from proxystore.store import Store
 from appfl.compressor import *
 from appfl.trainer import BaseTrainer
 from appfl.config import ClientAgentConfig
 from omegaconf import DictConfig, OmegaConf
-from typing import Union, Dict, OrderedDict, Tuple
+from typing import Union, Dict, OrderedDict, Tuple, Optional
 from appfl.logger import ClientAgentFileLogger
 from appfl.misc import create_instance_from_file, \
     run_function_from_file, \
@@ -85,6 +88,20 @@ class ClientAgent:
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
         self.trainer.load_parameters(params)
+        
+    def save_checkpoint(self, checkpoint_path: Optional[str]=None) -> None:
+        """Save the model to a checkpoint file."""
+        if checkpoint_path is None:
+            output_dir = self.client_agent_config.train_configs.get("checkpoint_dirname", "./output")
+            output_filename = self.client_agent_config.train_configs.get("checkpoint_filename", "checkpoint")
+            curr_time_str = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+            checkpoint_path = f"{output_dir}/{output_filename}_{self.get_id()}_{curr_time_str}.pth"
+            
+        # Make sure the directory exists
+        if not os.path.exists(os.path.dirname(checkpoint_path)):
+            pathlib.Path(os.path.dirname(checkpoint_path)).mkdir(parents=True)
+            
+        torch.save(self.model.state_dict(), checkpoint_path)
 
     def proxy(self, obj):
         """

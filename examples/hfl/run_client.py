@@ -39,9 +39,16 @@ client_agent.load_config(client_config)
 init_global_model = client_communicators[0].get_global_model(init_model=True)
 client_agent.load_parameters(init_global_model)
 
+round = 1
 while True:
     client_agent.train()
     local_model = client_agent.get_parameters()
+    # Do the checkpint here: feel free to add any custom checkpoint logic
+    if client_agent_config.train_configs.get("do_checkpoint", False):
+        if round % client_agent_config.train_configs.get("checkpoint_interval", 1) == 0:
+            client_agent.save_checkpoint() # You can give a custom path here
+    else: 
+        print(f"Round {round} completed.")
     # Submit update_global_model tasks via all connect communicators
     global_model_futures = []
     for client_communicator in client_communicators:
@@ -56,8 +63,11 @@ while True:
     if metadata['status'] == 'DONE':
         break
     if 'local_steps' in metadata:
-        client_agent.trainer.train_configs.num_local_steps = metadata['local_steps']
+        client_agent.trainer.train_configs.num_local_steps = metadata['local_steps']    
     client_agent.load_parameters(new_global_model)
+    # YOU CAN ALSO DO ANOTHER CHECKPOINT HERE
+    round += 1
+        
 # Close the connection with the server/intermediate node
 for client_communicator in client_communicators:
     client_communicator.invoke_custom_action(action='close_connection')

@@ -7,6 +7,10 @@ train_configs:
   logging_id: "Client0"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
+  # Checkpoint
+  checkpoint_dirname: "./output/checkpoint"
+  do_checkpoint: True
+  checkpoint_interval: 1
 
 # Local dataset
 data_configs:

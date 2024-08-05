@@ -1,5 +1,8 @@
+import os
 import copy
 import torch
+import pathlib
+from datetime import datetime
 from omegaconf import DictConfig
 from appfl.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any
@@ -20,6 +23,7 @@ class HFLFedAvgAggregator(BaseAggregator):
             self.named_parameters.add(name)
 
         self.step = {}
+        self.round = 0
 
     def get_parameters(self, **kwargs) -> Dict:
         return copy.deepcopy(self.model.state_dict())
@@ -28,6 +32,7 @@ class HFLFedAvgAggregator(BaseAggregator):
         """
         Take the weighted average of local models from clients and return the global model.
         """
+        self.round += 1
         global_state = copy.deepcopy(self.model.state_dict())
         
         num_clients_dict = kwargs.get("num_clients", {})
@@ -49,6 +54,22 @@ class HFLFedAvgAggregator(BaseAggregator):
                 global_state[name] += self.step[name]
             
         self.model.load_state_dict(global_state)
+        
+        # Save the global model if needed
+        if self.aggregator_config.get("do_checkpoint", False):
+            checkpoint_dir = self.aggregator_config.get('checkpoint_dirname', './output/checkpoints')
+            checkpoint_filename = self.aggregator_config.get('checkpoint_filename', 'global_model')
+            curr_time_str = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+            checkpoint_path = f"{checkpoint_dir}/{checkpoint_filename}_Server_{curr_time_str}.pth"
+            # Create the directory if it does not exist
+            if not os.path.exists(checkpoint_dir):
+                pathlib.Path(checkpoint_dir).mkdir(parents=True, exist_ok=True)
+            if self.round % self.aggregator_config.get("checkpoint_interval", 1) == 0:
+                torch.save(self.model.state_dict(), checkpoint_path)
+                self.logger.info(f"Saved global model to {checkpoint_path}")
+        else:
+            self.logger.info(f"Round {self.round} completed.")
+        
         return global_state, {"num_clients": self.total_num_clients}
     
     def compute_steps(
