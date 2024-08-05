@@ -16,9 +16,9 @@ client_configs:
     metric_path: "../metric/balanced_acc.py"
     metric_name: "metric"
     # Differential privacy
-    use_dp: False
+    use_dp: True
     epsilon: 1
-    clip_grad: False
+    clip_grad: True
     clip_value: 1
     clip_norm: 1
     # Data loader
@@ -42,7 +42,7 @@ server_configs:
   device: "cuda"
   num_global_epochs: 20
   logging_output_dirname: "./output"
-  logging_output_filename: "result-ISIC"
+  logging_output_filename: "result-ISIC-EP1"
   val_data_configs:
     dataset_path: "../dataset/flamby_dataset.py"
     dataset_name: "get_flamby"

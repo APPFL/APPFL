@@ -20,4 +20,4 @@ comm_configs:
     enable_proxystore: True
     connector_type: "EndpointConnector"
     connector_configs:
-      endpoints: ["ee1ff274-1d05-40a2-8d6f-b42a76df27c3", "2232bc8c-d6e0-4898-9313-42980d699042"]
+      endpoints: ["387953c5-26e2-4a6a-be8b-5cd8668d856b", "2232bc8c-d6e0-4898-9313-42980d699042"]
