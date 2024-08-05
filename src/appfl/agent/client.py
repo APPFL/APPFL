@@ -68,6 +68,7 @@ class ClientAgent:
     def get_parameters(self) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
         """Return parameters for communication"""
         params = self.trainer.get_parameters()
+        params = {k: v.cpu() for k, v in params.items()}
         if isinstance(params, tuple):
             params, metadata = params
         else:
