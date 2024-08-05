@@ -40,7 +40,7 @@ If we want to run FL experiment in parallel using MPI, we can run the example us
 
 .. code-block:: console
 
-    mpiexec -np 6 python ./mpi/run_mpi.py --server_config ./configs/mnist/server_fedcompass.yaml \
+    mpiexec -n 6 python ./mpi/run_mpi.py --server_config ./configs/mnist/server_fedcompass.yaml \
         --client_config ./configs/mnist/client_1.yaml
 
 .. note::
