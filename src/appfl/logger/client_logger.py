@@ -43,7 +43,7 @@ class ClientAgentFileLogger:
             self.logger.addHandler(s_handler)
         if file_dir != "" and file_name != "" and num_f_handlers == 0:
             if not os.path.exists(file_dir):
-                pathlib.Path(file_dir).mkdir(parents=True)
+                pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
             real_file_name = f"{file_dir}/{file_name}.txt"
             f_handler = logging.FileHandler(real_file_name)
             f_handler.setLevel(logging.INFO)

@@ -63,6 +63,11 @@ class DFLNodeAgent:
         with self._model_params_lock:
             self._init_model_available = True
             self._current_model_params = self.trainer.get_parameters()
+            # Move the model to CPU for communication
+            self._current_model_params = {
+                k: v.cpu() if isinstance(v, torch.Tensor) else v
+                for k, v in self._current_model_params.items()
+            }
             for future in self._get_parameters_futures:
                 future.set_result(self._current_model_params)
             self._get_parameters_futures = []
