@@ -23,10 +23,6 @@ train_configs:
   val_data_shuffle: False
   # Device
   device: "cpu"
-  # Logging and outputs
-  logging_id: "Client4"
-  logging_output_dirname: "./output"
-  logging_output_filename: "result"
   
 model_configs:
   seed: 42
@@ -48,8 +44,12 @@ data_configs:
     output_dirname: "./output"
     output_filename: "visualization.pdf"
 
+node_id: "Node4"
 num_epochs: 20
 aggregator: "DFLNodeFedAvgAggregator"
+logging_id: "DFLNode4"
+logging_output_dirname: "./output-dfl"
+logging_output_filename: "result"
 comm_configs:
   grpc_configs:
     serve:
@@ -63,6 +63,6 @@ comm_configs:
       - server_uri: localhost:50056
         max_message_size: 1048576
         use_ssl: False
-      - server_uri: localhost:50052
-        max_message_size: 1048576
-        use_ssl: False
+      # - server_uri: localhost:50052
+      #   max_message_size: 1048576
+      #   use_ssl: False

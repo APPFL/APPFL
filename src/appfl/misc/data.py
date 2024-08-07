@@ -141,8 +141,8 @@ def class_noniid_partition(
     """
     np.random.seed(seed)
     # training data for multiple clients
-    Cmin = {1: 10, 2: 7, 3: 6, 4: 5, 5: 5, 6: 4, 7: 4, 'none': 3}       # minimum sample classes for each client
-    Cmax = {1: 10, 2: 8, 3: 8, 4: 7, 5: 6, 6: 6, 7: 5, 'none': 5}       # maximum sample classes for each client
+    Cmin = {1: 10, 2: 7, 3: 6, 4: 5, 5: 5, 6: 6, 7: 4, 'none': 3}       # minimum sample classes for each client
+    Cmax = {1: 10, 2: 8, 3: 8, 4: 7, 5: 6, 6: 8, 7: 5, 'none': 5}       # maximum sample classes for each client
 
     # Split the dataset by label
     labels = []

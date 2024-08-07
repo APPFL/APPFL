@@ -48,7 +48,10 @@ class DFLNodeAgent:
         Return a unique node id other DFL nodes to distinguish the it.
         """
         if not hasattr(self, 'node_id'):
-            self.node_id = str(uuid.uuid4())
+            if hasattr(self.dfl_node_agent_config, "node_id"):
+                self.node_id = self.dfl_node_agent_config.node_id
+            else:
+                self.node_id = str(uuid.uuid4())
         return self.node_id
     
     def train(self) -> None:
@@ -119,6 +122,8 @@ class DFLNodeAgent:
             kwargs["file_dir"] = self.dfl_node_agent_config.logging_output_dirname
         if hasattr(self.dfl_node_agent_config, "logging_output_filename"):
             kwargs["file_name"] = self.dfl_node_agent_config.logging_output_filename
+        if hasattr(self.dfl_node_agent_config, "logging_id"):
+            kwargs["logging_id"] = self.dfl_node_agent_config.logging_id
         self.logger = ClientAgentFileLogger(**kwargs)
         
     def _load_model(self) -> None:
