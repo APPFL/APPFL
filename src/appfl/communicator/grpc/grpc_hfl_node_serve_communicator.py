@@ -81,10 +81,10 @@ class GRPCHFLNodeServeCommunicator(GRPCCommunicatorServicer):
                     # check init model availability again
                     model = self.hfl_node_agent.get_parameters(**meta_data)
                     if model is None:
-                        model = self.connect_communicator.get_global_model()
+                        model = self.connect_communicator.get_global_model(**meta_data)
                         self.hfl_node_agent.load_init_parameters(model)
             else:
-                model = self.connect_communicator.get_global_model()
+                model = self.connect_communicator.get_global_model(**meta_data)
         if isinstance(model, tuple):
             model, meta_data = model
         else:
@@ -115,6 +115,8 @@ class GRPCHFLNodeServeCommunicator(GRPCCommunicatorServicer):
             blocking=True,
             **meta_data,
         )
+        if isinstance(aggregated_model, tuple):
+            aggregated_model, meta_data = aggregated_model
         # Different processes execute sequentially through this block to ensure
         # only one process connects to the server to update the global model
         # TODO: The current implementation is only for synchronous aggregation
@@ -124,7 +126,7 @@ class GRPCHFLNodeServeCommunicator(GRPCCommunicatorServicer):
             if self._curr_num_clients == 1:
                 self.global_model, self.global_update_meta_data = self.connect_communicator.update_global_model(
                     local_model=aggregated_model,
-                    num_clients=self._num_clients,
+                    **meta_data,
                 )
                 self.hfl_node_agent.load_updated_model(self.global_model) # Load the updated model locally
             elif self._curr_num_clients == self._num_clients:

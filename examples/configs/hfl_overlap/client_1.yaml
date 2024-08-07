@@ -1,5 +1,4 @@
 client_id: Client1 # This is for simple debugging and logging and should be unqiue!
-
 train_configs:
   # Device
   device: "cpu"
@@ -7,10 +6,6 @@ train_configs:
   logging_id: "Client1"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
-  # Checkpoint
-  checkpoint_dirname: "./output/checkpoint"
-  do_checkpoint: True
-  checkpoint_interval: 1
 
 # Local dataset
 data_configs:
@@ -28,5 +23,8 @@ comm_configs:
   grpc_configs:
     connect:
       - server_uri: localhost:50051
+        max_message_size: 1048576
+        use_ssl: False
+      - server_uri: localhost:50052
         max_message_size: 1048576
         use_ssl: False

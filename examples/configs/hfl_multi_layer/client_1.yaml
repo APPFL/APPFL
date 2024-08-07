@@ -1,4 +1,4 @@
-client_id: Client1 # This is for simple debugging and logging and should be unqiue!
+client_id: Client1 # This is for simple debugging and should be unqiue!
 
 train_configs:
   # Device
@@ -7,17 +7,13 @@ train_configs:
   logging_id: "Client1"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
-  # Checkpoint
-  checkpoint_dirname: "./output/checkpoint"
-  do_checkpoint: True
-  checkpoint_interval: 1
 
 # Local dataset
 data_configs:
   dataset_path: "./dataset/mnist_dataset.py"
   dataset_name: "get_mnist"
   dataset_kwargs:
-    num_clients: 5
+    num_clients: 7
     client_id: 1
     partition_strategy: "class_noniid"
     visualization: False

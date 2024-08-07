@@ -1,3 +1,5 @@
+client_id: Client2 # This is for simple debugging and logging and should be unqiue!
+
 train_configs:
   # Device
   device: "cpu"
@@ -5,14 +7,18 @@ train_configs:
   logging_id: "Client2"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
+  # Checkpoint
+  checkpoint_dirname: "./output/checkpoint"
+  do_checkpoint: True
+  checkpoint_interval: 1
 
-# Local dataloader
+# Local dataset
 data_configs:
   dataset_path: "./dataset/mnist_dataset.py"
   dataset_name: "get_mnist"
   dataset_kwargs:
-    num_clients: 3
-    client_id: 1
+    num_clients: 5
+    client_id: 2
     partition_strategy: "class_noniid"
     visualization: False
     output_dirname: "./output"
@@ -20,6 +26,7 @@ data_configs:
 
 comm_configs:
   grpc_configs:
-    server_uri: localhost:50051
-    max_message_size: 1048576
-    use_ssl: False
+    connect:
+      - server_uri: localhost:50053
+        max_message_size: 1048576
+        use_ssl: False

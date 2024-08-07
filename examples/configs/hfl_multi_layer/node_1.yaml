@@ -1,0 +1,18 @@
+scheduler: "SyncScheduler"
+scheduler_kwargs:
+  num_clients: 2
+aggregator: "HFLFedAvgAggregator"
+device: "cpu"
+node_id: HFLNode1 # This is for simple debugging and should be unqiue!
+logging_output_dirname: "./output"
+logging_output_filename: "result"
+comm_configs:
+  grpc_configs:
+    connect:
+      server_uri: localhost:50054
+      max_message_size: 1048576
+      use_ssl: False
+    serve:
+      server_uri: localhost:50052
+      max_message_size: 1048576
+      use_ssl: False

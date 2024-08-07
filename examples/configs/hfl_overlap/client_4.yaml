@@ -1,16 +1,11 @@
-client_id: Client1 # This is for simple debugging and logging and should be unqiue!
-
+client_id: Client4 # This is for simple debugging and logging and should be unqiue!
 train_configs:
   # Device
   device: "cpu"
   # Logging and outputs
-  logging_id: "Client1"
+  logging_id: "Client4"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
-  # Checkpoint
-  checkpoint_dirname: "./output/checkpoint"
-  do_checkpoint: True
-  checkpoint_interval: 1
 
 # Local dataset
 data_configs:
@@ -18,7 +13,7 @@ data_configs:
   dataset_name: "get_mnist"
   dataset_kwargs:
     num_clients: 5
-    client_id: 1
+    client_id: 4
     partition_strategy: "class_noniid"
     visualization: False
     output_dirname: "./output"
@@ -27,6 +22,6 @@ data_configs:
 comm_configs:
   grpc_configs:
     connect:
-      - server_uri: localhost:50051
+      - server_uri: localhost:50053
         max_message_size: 1048576
         use_ssl: False

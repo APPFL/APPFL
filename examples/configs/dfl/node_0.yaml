@@ -23,10 +23,6 @@ train_configs:
   val_data_shuffle: False
   # Device
   device: "cpu"
-  # Logging and outputs
-  logging_id: "Client0"
-  logging_output_dirname: "./output"
-  logging_output_filename: "result"
   
 model_configs:
   seed: 42
@@ -41,15 +37,19 @@ data_configs:
   dataset_path: "./dataset/mnist_dataset.py"
   dataset_name: "get_mnist"
   dataset_kwargs:
-    num_clients: 3
+    num_clients: 6
     client_id: 0
     partition_strategy: "class_noniid"
     visualization: True
     output_dirname: "./output"
     output_filename: "visualization.pdf"
 
-num_epochs: 10
+node_id: "Node0"
+num_epochs: 20
 aggregator: "DFLNodeFedAvgAggregator"
+logging_id: "DFLNode0"
+logging_output_dirname: "./output-dfl"
+logging_output_filename: "result"
 comm_configs:
   grpc_configs:
     serve:
@@ -60,6 +60,9 @@ comm_configs:
       - server_uri: localhost:50052
         max_message_size: 1048576
         use_ssl: False
-      - server_uri: localhost:50053
+      - server_uri: localhost:50056
         max_message_size: 1048576
         use_ssl: False
+      # - server_uri: localhost:50054
+      #   max_message_size: 1048576
+      #   use_ssl: False

@@ -41,16 +41,12 @@ server_configs:
     num_clients: 3
     same_init_model: True
   aggregator: "HFLFedAvgAggregator"
-  aggregator_kwargs:
-    do_checkpoint: True
-    checkpoint_dirname: "./output/checkpoint"
-    checkpoint_interval: 1
   device: "cpu"
-  num_global_epochs: 3
+  num_global_epochs: 20
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
     grpc_configs:
-      server_uri: localhost:50053
+      server_uri: localhost:50055
       max_message_size: 1048576
       use_ssl: False
