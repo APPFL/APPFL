@@ -24,6 +24,8 @@ class HFLFedAvgAggregator(BaseAggregator):
 
         self.step = {}
         self.round = 0
+        self.lr = self.aggregator_config.get("lr", 1)
+        self.logger.info(f"Initialized HFLFedAvgAggregator with lr={self.lr}")
 
     def get_parameters(self, **kwargs) -> Dict:
         return copy.deepcopy(self.model.state_dict())
@@ -51,7 +53,7 @@ class HFLFedAvgAggregator(BaseAggregator):
                     param_sum += model[name] * num_clients_dict.get(client_id, 1)
                 global_state[name] = torch.div(param_sum, self.total_num_clients)
             else:
-                global_state[name] += self.step[name]
+                global_state[name] += self.step[name] * self.lr
             
         self.model.load_state_dict(global_state)
         
