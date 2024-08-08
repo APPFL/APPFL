@@ -26,7 +26,7 @@ class DFLNodeFedAvgAggregator(BaseAggregator):
     ):
         new_model = copy.deepcopy(self.model.state_dict())
         for name in self.model.state_dict():
-            param_sum = torch.zeros_like(self.model.state_dict()[name])
+            param_sum = torch.zeros_like(self.model.state_dict()[name], device='cpu')
             for model in neighbor_models:
                 param_sum += model[name]
             param_sum += local_model[name]
