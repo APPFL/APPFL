@@ -104,7 +104,8 @@ class NaiveSimTrainer(BaseTrainer):
 
         if do_pre_validation:
             val_loss, val_accuracy = self._validate()
-            content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]  
+            curr_time = time.time() - start_time
+            content = [self.round, "Y", curr_time, " ", " ", val_loss, val_accuracy]  
             if self.train_configs.mode == "epoch":
                 content.insert(1, 0)
             self.logger.log_content(content)
