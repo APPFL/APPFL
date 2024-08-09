@@ -249,6 +249,7 @@ class ServerAgent:
         Load model from the definition file, and read the source code of the model for sendind to the client.
         User can overwrite this method to load the model from other sources.
         """
+        self._set_seed()
         model_configs = (
             self.server_agent_config.client_configs.model_configs 
             if hasattr(self.server_agent_config.client_configs, "model_configs") 
@@ -425,3 +426,14 @@ class ServerAgent:
         if device != 'cpu':
             self.model.to('cpu')
         return val_loss, val_accuracy
+    
+    def _set_seed(self):
+        """
+        This function makes sure that all clients have the same initial model parameters.
+        """
+        seed_value = self.server_agent_config.client_configs.model_configs.get("seed", 42)
+        self.logger.info(f"Setting seed value to {seed_value}")
+        torch.manual_seed(seed_value)  # Set PyTorch seed
+        torch.cuda.manual_seed_all(seed_value)  # Set seed for all GPUs
+        torch.backends.cudnn.deterministic = True  # Use deterministic algorithms
+        torch.backends.cudnn.benchmark = False  # Disable this to ensure reproducibility

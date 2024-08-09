@@ -10,9 +10,26 @@ argparser.add_argument(
     default="configs/mnist/client_1.yaml",
     help="Path to the configuration file."
 )
+argparser.add_argument(
+    "--seed",
+    type=int,
+    default=0,
+    help="Random seed for dataset."
+)
+argparser.add_argument(
+    "--output_dir",
+    type=str,
+    default="output",
+    help="Output directory."
+)
+
 args = argparser.parse_args()
 
 client_agent_config = OmegaConf.load(args.config)
+
+client_agent_config.data_configs.dataset_kwargs.seed = args.seed
+client_agent_config.data_configs.dataset_kwargs.output_dirname = args.output_dir
+client_agent_config.train_configs.logging_output_dirname = args.output_dir
 
 client_agent = ClientAgent(client_agent_config=client_agent_config)
 client_communicator = GRPCClientCommunicator(

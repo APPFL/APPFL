@@ -1,18 +1,18 @@
 train_configs:
   # Device
-  device: "cpu"
+  device: "cuda"
   # Logging and outputs
   logging_id: "Client7"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   # Simulation
-  time_per_step: 0.1
-  time_per_step_std: 0.01
+  time_per_step: 0.88906352
+  time_per_step_std: 0.088906352
 
 # Local dataset
 data_configs:
-  dataset_path: "../dataset/mnist_dataset.py"
-  dataset_name: "get_mnist"
+  dataset_path: "../dataset/cifar10_dataset.py"
+  dataset_name: "get_cifar"
   dataset_kwargs:
     num_clients: 10
     client_id: 7
@@ -20,6 +20,7 @@ data_configs:
     visualization: False
     output_dirname: "./output"
     output_filename: "visualization.pdf"
+    seed: 1
 
 comm_configs:
   grpc_configs:

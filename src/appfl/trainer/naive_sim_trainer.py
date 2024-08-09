@@ -85,6 +85,7 @@ class NaiveSimTrainer(BaseTrainer):
 
         do_validation = self.train_configs.get("do_validation", False) and self.val_dataloader is not None
         do_pre_validation = self.train_configs.get("do_pre_validation", False) and do_validation
+        skip_post_validation = self.train_configs.get("skip_post_validation", False)
         
         # Set up logging title
         if self.round == 0:
@@ -125,7 +126,10 @@ class NaiveSimTrainer(BaseTrainer):
                 target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
                 train_accuracy = float(self.metric(target_true, target_pred))
                 if do_validation:
-                    val_loss, val_accuracy = self._validate()
+                    if skip_post_validation:
+                        val_loss, val_accuracy = 0, 0
+                    else:
+                        val_loss, val_accuracy = self._validate()
                 per_epoch_time = time.time() - start_time
                 self.logger.log_content(
                     [self.round, epoch, per_epoch_time, train_loss, train_accuracy] 
@@ -155,7 +159,10 @@ class NaiveSimTrainer(BaseTrainer):
             target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
             train_accuracy = float(self.metric(target_true, target_pred))
             if do_validation:
-                val_loss, val_accuracy = self._validate()
+                if skip_post_validation:
+                    val_loss, val_accuracy = 0, 0
+                else:
+                    val_loss, val_accuracy = self._validate()
             per_step_time = time.time() - start_time
             self.logger.log_content(
                 [self.round, per_step_time, train_loss, train_accuracy] 
