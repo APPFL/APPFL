@@ -99,7 +99,7 @@ class ClientAgent:
             
         # Make sure the directory exists
         if not os.path.exists(os.path.dirname(checkpoint_path)):
-            pathlib.Path(os.path.dirname(checkpoint_path)).mkdir(parents=True)
+            pathlib.Path(os.path.dirname(checkpoint_path)).mkdir(parents=True, exist_ok=True)
             
         torch.save(self.model.state_dict(), checkpoint_path)
 

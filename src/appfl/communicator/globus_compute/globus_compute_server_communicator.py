@@ -74,7 +74,7 @@ class GlobusComputeServerCommunicator:
             s3_creds_file = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_creds_file", None)
             s3_temp_dir = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_temp_dir", str(pathlib.Path.home() / ".appfl" / "globus_compute" / "server" / experiment_id))
             if not os.path.exists(s3_temp_dir):
-                pathlib.Path(s3_temp_dir).mkdir(parents=True)
+                pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
         
         self.executing_tasks: Dict[str, ClientTask] = {}

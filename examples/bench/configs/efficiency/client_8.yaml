@@ -1,0 +1,28 @@
+train_configs:
+  # Device
+  device: "cpu"
+  # Logging and outputs
+  logging_id: "Client8"
+  logging_output_dirname: "./output"
+  logging_output_filename: "result"
+  # Simulation
+  time_per_step: 0.1
+  time_per_step_std: 0.01
+
+# Local dataset
+data_configs:
+  dataset_path: "../dataset/mnist_dataset.py"
+  dataset_name: "get_mnist"
+  dataset_kwargs:
+    num_clients: 10
+    client_id: 8
+    partition_strategy: "class_noniid"
+    visualization: False
+    output_dirname: "./output"
+    output_filename: "visualization.pdf"
+
+comm_configs:
+  grpc_configs:
+    server_uri: localhost:50051
+    max_message_size: 1048576
+    use_ssl: False
