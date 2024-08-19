@@ -104,7 +104,7 @@ class NaiveSimTrainer(BaseTrainer):
 
         if do_pre_validation:
             val_loss, val_accuracy = self._validate()
-            curr_time = time.time() - start_time
+            curr_time = time.time() - self._first_start_time
             content = [self.round, "Y", curr_time, " ", " ", val_loss, val_accuracy]  
             if self.train_configs.mode == "epoch":
                 content.insert(1, 0)
@@ -192,7 +192,7 @@ class NaiveSimTrainer(BaseTrainer):
             self.model_state = copy.deepcopy(self.model.state_dict())
         
         # Move to CPU for communication
-        if self.train_configs.device == "cuda":
+        if 'cuda' in self.train_configs.device:
             for k in self.model_state:
                 self.model_state[k] = self.model_state[k].cpu()
 
