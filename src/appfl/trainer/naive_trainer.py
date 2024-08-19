@@ -185,7 +185,8 @@ class NaiveTrainer(BaseTrainer):
             self._compute_gradient()
 
     def get_parameters(self) -> Dict:
-        hasattr(self, "model_state"), "Please make sure the model has been trained before getting its parameters"
+        if not hasattr(self, "model_state"):
+            self.model_state = copy.deepcopy(self.model.state_dict())
         return self.model_state
 
     def _sanity_check(self):
