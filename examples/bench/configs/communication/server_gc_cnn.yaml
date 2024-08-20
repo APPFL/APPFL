@@ -28,15 +28,19 @@ client_configs:
     val_data_shuffle: False
     
   model_configs:
-    model_path: "./models/cnn.py"
-    model_name: "SimpleCNN"
+    model_path: "./models/fc.py"
+    model_name: "FC"
   
   # comm_configs will be copied to server_configs as well
   comm_configs:
     compressor_configs:
       enable_compression: False
-    # globus_compute_configs:
-    #   s3_bucket: "appflx-models" # We don't need it actually
+    proxystore_configs:
+      enable_proxystore: True
+      connector_type: "S3Connector"
+      connector_configs:
+        s3_bucket: "appfl-bench"
+        expiration: 3600
 
 server_configs:
   scheduler: "DummySyncScheduler"
@@ -47,6 +51,6 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 1
+  num_global_epochs: 10
   logging_output_dirname: "./output"
   logging_output_filename: "result"

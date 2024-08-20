@@ -2,19 +2,23 @@ import pathlib
 from appfl.config import ClientAgentConfig
 from typing import Union, Dict, OrderedDict, Any, Optional
 from .s3_storage import CloudStorage, LargeObjectWrapper
+from proxystore.proxy import Proxy, extract
 
 def load_global_model(
     client_agent_config: ClientAgentConfig,
     global_model: Any
 ):
-    s3_tmp_dir = str(
-        pathlib.Path.home() / ".appfl" / "globus_compute" / client_agent_config.endpoint_id / client_agent_config.experiment_id
-    )
-    if not pathlib.Path(s3_tmp_dir).exists():
-        pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
-    if CloudStorage.is_cloud_storage_object(global_model):
-        CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
-        global_model = CloudStorage.download_object(global_model)
+    if isinstance(global_model, Proxy):
+        global_model = extract(global_model)
+    else:
+        s3_tmp_dir = str(
+            pathlib.Path.home() / ".appfl" / "globus_compute" / client_agent_config.endpoint_id / client_agent_config.experiment_id
+        )
+        if not pathlib.Path(s3_tmp_dir).exists():
+            pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
+        if CloudStorage.is_cloud_storage_object(global_model):
+            CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
+            global_model = CloudStorage.download_object(global_model)
     return global_model
 
 def send_local_model(

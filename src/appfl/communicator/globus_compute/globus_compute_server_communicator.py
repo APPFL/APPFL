@@ -14,6 +14,7 @@ from appfl.config import ClientAgentConfig, ServerAgentConfig
 from .utils.config import ClientTask
 from .utils.endpoint import GlobusComputeClientEndpoint
 from .utils.s3_storage import CloudStorage, LargeObjectWrapper
+from proxystore.proxy import Proxy, extract
 
 class GlobusComputeServerCommunicator:
     """
@@ -255,9 +256,13 @@ class GlobusComputeServerCommunicator:
         else:
             model, metadata = result, {}
         # Download model from S3 bucket if necessary
-        if self.use_s3bucket:
-            if CloudStorage.is_cloud_storage_object(model):
-                model = CloudStorage.download_object(model, delete_cloud=True, delete_local=True)
+        if isinstance(model, Proxy):
+            model = extract(model)
+            print("Model is a proxy object.")
+        else:
+            if self.use_s3bucket:
+                if CloudStorage.is_cloud_storage_object(model):
+                    model = CloudStorage.download_object(model, delete_cloud=True, delete_local=True)
         return model, metadata
 
     def __register_task(self, task_id, task_fut, client_id, task_name):

@@ -1,5 +1,5 @@
 clients:
-  - endpoint_id: "29e6f637-4ae3-4848-8688-afdb9282b8b8"
+  - endpoint_id: "fcf5af2b-d1f1-43a6-b79e-c6f72dbcd35e"
     client_id: 1
     train_configs:
       # Device [Optional]: default is "cpu"
@@ -13,3 +13,11 @@ clients:
     data_configs:
       dataset_path: "./dataset/dummy_dataset.py"
       dataset_name: "get_dummy"
+
+    comm_configs:
+      proxystore_configs:
+        enable_proxystore: True
+        connector_type: "S3Connector"
+        connector_configs:
+          s3_bucket: "appfl-bench"
+          expiration: 3600
