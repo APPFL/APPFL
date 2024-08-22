@@ -5,7 +5,7 @@ Adding new schedulers
 
     We always welcome you to contribute your increments to ``APPFL`` by creating a pull request.
 
-To add new schedulers to ``APPFL``, you can create you own scheduler class by inheriting the ``appfl.scheduler.BaseScheduler`` and defining the following functions:
+To add new schedulers to ``APPFL``, you can create you own scheduler class by inheriting the ``appfl.algorithm.scheduler.BaseScheduler`` and defining the following functions:
 
 - ``schedule``: Take **one** ``client_id`` and **one** ``local_model`` from the certain client, and schedule a global aggregation with the aggregator for the client model. Return either the global model if the aggregation happens immediately, or a ``Future`` object otherwise.
 - ``get_num_global_epochs``: Return the total number of global epochs (global updates) for the server to know when to stop the FL process.

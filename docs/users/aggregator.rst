@@ -44,7 +44,7 @@ To define a new aggregate, you need to inherit the ``BaseAggregator`` class and 
 Available Aggregators
 ---------------------
 
-All available aggregators are defined in the ``appfl.aggregator`` module, including:
+All available aggregators are defined in the ``appfl.algorithm.aggregator`` module, including:
 
 - ``FedAvgAggregator``: [Synchronous] Federated Averaging (FedAvg) aggregator 
 - ``FedAvgMAggregator``: [Synchronous] Federated Averaging with Momentum (FedAvgM) aggregator

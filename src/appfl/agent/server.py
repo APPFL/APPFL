@@ -2,9 +2,9 @@ import io
 import torch
 import threading
 import torch.nn as nn
-from appfl.scheduler import *
-from appfl.aggregator import *
 from appfl.compressor import *
+from appfl.algorithm.scheduler import *
+from appfl.algorithm.aggregator import *
 from appfl.config import ServerAgentConfig
 from appfl.misc import create_instance_from_file, get_function_from_file
 from appfl.logger import ServerAgentFileLogger

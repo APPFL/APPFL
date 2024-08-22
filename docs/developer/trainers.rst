@@ -5,7 +5,7 @@ Adding new trainers
 
     We always welcome you to contribute your increments to ``APPFL`` by creating a pull request.
 
-To add new trainers to ``APPFL``, you can create you own trainer class by inheriting the ``appfl.trainer.BaseTrainer`` and defining the following functions:
+To add new trainers to ``APPFL``, you can create you own trainer class by inheriting the ``appfl.algorithm.trainer.BaseTrainer`` and defining the following functions:
 
 - ``train``: Do local training using local sensitive dataset.
 - ``get_parameters``: Return the parameters to be sent to the server for aggregation.

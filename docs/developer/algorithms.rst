@@ -5,7 +5,7 @@ Adding new aggregators
 
     We always welcome you to contribute your increments to ``APPFL`` by creating a pull request.
 
-To add new aggregators to ``APPFL``,  you can create your own aggregator class by inheriting the ``appfl.aggregator.BaseAggregator`` and defining the following functions:
+To add new aggregators to ``APPFL``,  you can create your own aggregator class by inheriting the ``appfl.algorithm.aggregator.BaseAggregator`` and defining the following functions:
 
 - ``aggregate``: Take a list of local models (for synchronous FL) or one local model (for asynchronous FL) or both (for asynchronous FL) as the input and return the updated global model parameters.
 - ``get_parameters``: Directly return the current global model parameters.

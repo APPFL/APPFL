@@ -24,8 +24,8 @@ The first example can be simply run using the following command, which launchs a
 .. code-block:: console
 
     python ./serial/run_serial.py --num_clients 5 \
-        --server_config ./configs/mnist/server_fedavg.yaml \
-        --client_config ./configs/mnist/client_1.yaml 
+        --server_config ./resources/configs/mnist/server_fedavg.yaml \
+        --client_config ./resources/configs/mnist/client_1.yaml 
 
 .. note::
 
@@ -40,13 +40,13 @@ If we want to run FL experiment in parallel using MPI, we can run the example us
 
 .. code-block:: console
 
-    mpiexec -n 6 python ./mpi/run_mpi.py --server_config ./configs/mnist/server_fedcompass.yaml \
-        --client_config ./configs/mnist/client_1.yaml
+    mpiexec -n 6 python ./mpi/run_mpi.py --server_config ./resources/configs/mnist/server_fedcompass.yaml \
+        --client_config ./resources/configs/mnist/client_1.yaml
 
 .. note::
 
     1. ``-np 6`` in the above command means that we are launching 6 MPI processes. As a result, the number of clients is equal to the number of processes minus one (one MPI process is used as an FL server), which is 5 in this case.
-    2. You can easily run different FL algorithms (synchronous and asynchronous) simply by changing the server configuration file accordingly. For example, you can run the `FedAsync <https://arxiv.org/pdf/1903.03934.pdf>`_ algorithm by changing the server configuration file to `./configs/mnist/server_fedasync.yaml`.
+    2. You can easily run different FL algorithms (synchronous and asynchronous) simply by changing the server configuration file accordingly. For example, you can run the `FedAsync <https://arxiv.org/pdf/1903.03934.pdf>`_ algorithm by changing the server configuration file to `./resources/configs/mnist/server_fedasync.yaml`.
 
 MPI simulation with privacy
 ---------------------------
@@ -55,9 +55,9 @@ As the package name suggests, in addition to general differential privacy techni
 
 .. code-block:: console
 
-    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./configs/mnist/server_iiadmm.yaml
+    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./resources/configs/mnist/server_iiadmm.yaml
     # OR
-    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./configs/mnist/server_iceadmm.yaml
+    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./resources/configs/mnist/server_iceadmm.yaml
 
 .. note::
 

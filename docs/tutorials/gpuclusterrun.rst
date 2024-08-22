@@ -60,7 +60,7 @@ The Delta supercomputer uses Slurm workload manager for job management.
 	source ~/.bashrc
 	conda activate appfl
 	cd <your_path_to_appfl>/examples
-	mpiexec -np 6 python ./mpi/run_mpi.py --server_config ./configs/cifar10/server_fedcompass.yaml --client_config ./configs/cifar10/client_1.yaml
+	mpiexec -np 6 python ./mpi/run_mpi.py --server_config ./resources/configs/cifar10/server_fedcompass.yaml --client_config ./resources/configs/cifar10/client_1.yaml
 
 The script needs to be submitted to run.
 

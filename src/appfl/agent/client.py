@@ -2,8 +2,8 @@ import uuid
 import importlib
 import torch.nn as nn
 from appfl.compressor import *
-from appfl.trainer import BaseTrainer
 from appfl.config import ClientAgentConfig
+from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
 from typing import Union, Dict, OrderedDict, Tuple
 from appfl.logger import ClientAgentFileLogger
@@ -208,7 +208,7 @@ class ClientAgent:
         if not hasattr(self.client_agent_config.train_configs, "trainer"):
             self.trainer = None
             return
-        trainer_module = importlib.import_module('appfl.trainer')
+        trainer_module = importlib.import_module('appfl.algorithm.trainer')
         if not hasattr(trainer_module, self.client_agent_config.train_configs.trainer):
             raise ValueError(f'Invalid trainer name: {self.client_agent_config.train_configs.trainer}')
         self.trainer: BaseTrainer = getattr(trainer_module, self.client_agent_config.train_configs.trainer)(
