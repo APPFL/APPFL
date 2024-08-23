@@ -187,7 +187,7 @@ class ICEADMMTrainer(BaseTrainer):
             self._model_state = copy.deepcopy(self.model.state_dict())
 
         """Move to CPU for communication"""
-        if self.train_configs.get("device", "cpu") == "cuda":
+        if "cuda" in self.train_configs.get("device", "cpu"):
             for k in self._model_state:
                 self._model_state[k] = self._model_state[k].cpu()
             for name in self.named_parameters:

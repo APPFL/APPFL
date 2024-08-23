@@ -14,8 +14,7 @@ from torch.optim import *
 from omegaconf import DictConfig
 from collections import OrderedDict
 from torch.utils.data import DataLoader
-from .comm.grpc.grpc_communicator_old_pb2 import Job
-from .comm.grpc.grpc_client import APPFLgRPCClient
+from appfl.comm.grpc import APPFLgRPCClient, Job
 
 def update_model_state(comm, model, round_number):
     new_state = {}

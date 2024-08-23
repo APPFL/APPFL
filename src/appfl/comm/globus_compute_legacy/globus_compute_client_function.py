@@ -37,9 +37,8 @@ def client_training(cfg, client_idx, weights, global_state, local_model_key="", 
     import importlib
     import os.path as osp
     from appfl.misc import client_log
-    from appfl.comm.globus_compute.utils.utils import get_dataloader
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
-    from appfl.comm.globus_compute.utils.client_utils import get_dataset, get_model, get_loss, get_val_metric, load_global_state, send_client_state
+    from appfl.comm.globus_compute.utils.client_utils import get_dataset, get_model, get_loss, get_val_metric, load_global_state, send_client_state, get_dataloader
 
     ## Create logger
     cli_logger = GlobusComputeClientLogger()
@@ -111,9 +110,8 @@ def client_testing(cfg, client_idx, weights, global_state):
     import importlib
     import os.path as osp
     from appfl.misc import client_log
-    from appfl.comm.globus_compute.utils.utils import get_dataloader
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
-    from appfl.comm.globus_compute.utils.client_utils import get_dataset, load_global_state, get_model, get_loss, get_val_metric
+    from appfl.comm.globus_compute.utils.client_utils import get_dataset, load_global_state, get_model, get_loss, get_val_metric, get_dataloader
     
     ## Create logger
     cli_logger = GlobusComputeClientLogger()

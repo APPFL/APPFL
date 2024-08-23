@@ -4,7 +4,9 @@ import torch
 from typing import Optional
 from collections import OrderedDict
 from appfl.compressor import Compressor
+from appfl.misc import deprecated
 
+@deprecated("MpiCommunicator is deprecated and will be removed in the future, please use appfl.comm.mpi.MPIServerCommunicator and appfl.comm.mpi.MPIClientCommunicator instead.")
 class MpiSyncCommunicator:
     """An MPI communicator specifically designed for synchronous federated learning experiments
     on multiple MPI processes, where each process can represent MORE THAN ONE federated learning

@@ -5,8 +5,8 @@ from appfl.agent import ClientAgent, ServerAgent
 from appfl.communicator.mpi import MPIClientCommunicator, MPIServerCommunicator
 
 argparse = argparse.ArgumentParser()
-argparse.add_argument("--server_config", type=str, default="configs/mnist/server_fedavg.yaml")
-argparse.add_argument("--client_config", type=str, default="configs/mnist/client_1.yaml")
+argparse.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_fedavg.yaml")
+argparse.add_argument("--client_config", type=str, default="./resources/configs/mnist/client_1.yaml")
 args = argparse.parse_args()
 
 comm = MPI.COMM_WORLD

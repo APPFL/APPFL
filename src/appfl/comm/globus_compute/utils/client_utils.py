@@ -1,7 +1,60 @@
 import os
 import torch
-from .utils import get_executable_func
+import pathlib
+from torch.utils.data import DataLoader
+from appfl.config import ClientAgentConfig
+from typing import Union, Dict, OrderedDict, Any
 from .s3_storage import CloudStorage, LargeObjectWrapper
+
+def load_global_model(
+    client_agent_config: ClientAgentConfig,
+    global_model: Any
+):
+    s3_tmp_dir = str(
+        pathlib.Path.home() / ".appfl" / "globus_compute" / client_agent_config.endpoint_id / client_agent_config.experiment_id
+    )
+    if not pathlib.Path(s3_tmp_dir).exists():
+        pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
+    if CloudStorage.is_cloud_storage_object(global_model):
+        CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
+        global_model = CloudStorage.download_object(global_model)
+    return global_model
+
+def send_local_model(
+    client_agent_config: ClientAgentConfig,
+    local_model:  Union[Dict, OrderedDict, bytes],
+    local_model_key: str,
+    local_model_url: str,
+):
+    if (
+        hasattr(client_agent_config.comm_configs, "globus_compute_configs") and
+        client_agent_config.comm_configs.globus_compute_configs.get("s3_bucket", None) is not None
+    ):
+        s3_tmp_dir = str(
+            pathlib.Path.home() / ".appfl" / "globus_compute" / client_agent_config.endpoint_id / client_agent_config.experiment_id
+        )
+        if not pathlib.Path(s3_tmp_dir).exists():
+            pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
+        local_model_wrapper = LargeObjectWrapper(local_model, local_model_key)
+        if not local_model_wrapper.can_send_directly:
+            CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
+            local_model = CloudStorage.upload_object(
+                local_model_wrapper, 
+                object_url=local_model_url, 
+                ext='pt' if not isinstance(local_model, bytes) else 'pkl'
+            )
+    return local_model
+
+
+## The following functions are used to support legacy code
+def get_executable_func(func_cfg):
+    if func_cfg.module != "":
+        import importlib
+        mdl = importlib.import_module(func_cfg.module)
+        return getattr(mdl, func_cfg.call)
+    elif func_cfg.source != "":
+        exec(func_cfg.source, globals())
+        return eval(func_cfg.call)
 
 def get_dataset(cfg, client_idx, mode='train'):
     """
@@ -66,3 +119,36 @@ def send_client_state(cfg, client_state, temp_dir, local_model_key, local_model_
         return CloudStorage.upload_object(client_state, object_url=local_model_url, ext='pt')
     else:
         return client_state.data
+    
+def mse_loss(pred, y):
+    return torch.nn.MSELoss()(pred.float(), y.float().unsqueeze(-1))
+
+def get_loss_func(cfg):
+    if cfg.loss == "":
+        return get_executable_func(cfg.get_loss)()
+    elif cfg.loss == "CrossEntropy":
+        return torch.nn.CrossEntropyLoss()
+    elif cfg.loss == "MSE":
+        return mse_loss
+
+def get_dataloader(cfg, dataset, mode):
+    """ Create a torch `DataLoader` object from the dataset, configuration, and set mode."""
+    if dataset is None:
+        return None
+    if len(dataset) == 0:
+        return None
+    assert mode in ['train', 'val', 'test']
+    if mode == 'train':
+        ## Configure training at client
+        batch_size = cfg.train_data_batch_size
+        shuffle    = cfg.train_data_shuffle
+    else:
+        batch_size = cfg.test_data_batch_size
+        shuffle    = cfg.test_data_shuffle
+    return DataLoader(
+            dataset,
+            batch_size  = batch_size,
+            num_workers = cfg.num_workers,
+            shuffle     = shuffle,
+            pin_memory  = True
+        )

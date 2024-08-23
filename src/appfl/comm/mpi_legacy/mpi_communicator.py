@@ -4,7 +4,9 @@ from mpi4py import MPI
 from collections import OrderedDict
 from appfl.compressor import Compressor
 from typing import Any, Optional, Union
+from appfl.misc import deprecated
 
+@deprecated("MpiCommunicator is deprecated and will be removed in the future, please use appfl.comm.mpi.MPIServerCommunicator and appfl.comm.mpi.MPIClientCommunicator instead.")
 class MpiCommunicator:
     """
     A general MPI communicator for synchronous or asynchronous distributed/federated/decentralized 

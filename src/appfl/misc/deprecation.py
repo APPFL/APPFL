@@ -6,6 +6,15 @@ appfl_version = '1.0.0'
 # A set to keep track of warnings that have already been shown
 _emitted_warnings = set()
 
+# Only one MPI process should show the warning
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    _process_emit_warning = rank in [0, 1]
+except:
+    _process_emit_warning = True
+
 def deprecated(reason='', silent=False, removal_version='2.0.0'):
     """
     This is a decorator which can be used to mark functions and classes
@@ -30,7 +39,7 @@ def deprecated(reason='', silent=False, removal_version='2.0.0'):
 
             @functools.wraps(orig_init)
             def new_init(self, *args, **kwargs):
-                if not silent and obj.__name__ not in _emitted_warnings:
+                if not silent and obj.__name__ not in _emitted_warnings and _process_emit_warning:
                     warnings.warn(
                         f"{obj.__name__} is deprecated and will be removed in {removal_version}: {reason}",
                         category=DeprecationWarning,
@@ -45,7 +54,7 @@ def deprecated(reason='', silent=False, removal_version='2.0.0'):
             # The obj is a function
             @functools.wraps(obj)
             def wrapper(*args, **kwargs):
-                if not silent and obj.__name__ not in _emitted_warnings:
+                if not silent and obj.__name__ not in _emitted_warnings and _process_emit_warning:
                     warnings.warn(
                         f"{obj.__name__} is deprecated: {reason}",
                         category=DeprecationWarning,

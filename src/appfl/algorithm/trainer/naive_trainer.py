@@ -168,7 +168,7 @@ class NaiveTrainer(BaseTrainer):
             self.model_state = copy.deepcopy(self.model.state_dict())
         
         # Move to CPU for communication
-        if self.train_configs.device == "cuda":
+        if "cuda" in self.train_configs.device:
             for k in self.model_state:
                 self.model_state[k] = self.model_state[k].cpu()
 

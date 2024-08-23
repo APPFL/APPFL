@@ -11,7 +11,6 @@ from .fed.iiadmm import *
 from ..misc.deprecation import deprecated
 
 @dataclass
-@deprecated(silent=True)
 class Config:
     fed: Any = field(default_factory=Federated)
 

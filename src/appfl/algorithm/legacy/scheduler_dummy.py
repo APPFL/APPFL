@@ -1,11 +1,10 @@
 import copy
 from typing import Any
 from appfl.misc import deprecated
-from appfl.comm.mpi import MpiCommunicator
 
 @deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.scheduler instead.")
 class SchedulerDummy:
-    def __init__(self, communicator: MpiCommunicator, server: Any, num_clients: int, num_global_epochs: int):
+    def __init__(self, communicator, server: Any, num_clients: int, num_global_epochs: int):
         self.iter = 0
         self.server = server
         self.communicator = communicator

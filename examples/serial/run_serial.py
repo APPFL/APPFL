@@ -7,8 +7,8 @@ from omegaconf import OmegaConf
 from appfl.agent import ClientAgent, ServerAgent
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument("--server_config", type=str, default="configs/mnist/server_fedavg.yaml")
-argparser.add_argument("--client_config", type=str, default="configs/mnist/client_1.yaml")
+argparser.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_fedavg.yaml")
+argparser.add_argument("--client_config", type=str, default="./resources/configs/mnist/client_1.yaml")
 argparser.add_argument("--num_clients", type=int, default=10)
 args = argparser.parse_args()
 

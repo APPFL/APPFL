@@ -16,7 +16,7 @@ from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Tuple, Union, List
 
-@deprecated("Compressor class is deprecated and will be removed in the future. Please use the name of the compressor directly.")
+@deprecated("Compressor class is deprecated and will be removed in the future. Please use the name of the compressor directly, e.g., SZ2Compressor.")
 class Compressor:
     def __init__(self, compressor_config: DictConfig):
         current_path = os.path.dirname(os.path.abspath(__file__))
