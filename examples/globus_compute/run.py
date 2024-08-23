@@ -5,8 +5,8 @@ from appfl.agent import ServerAgent
 from appfl.communicator.globus_compute import GlobusComputeServerCommunicator
 
 # Load server and client agents configurations
-server_agent_config = OmegaConf.load("config_gc/server_fedcompass.yaml")
-client_agent_configs = OmegaConf.load("config_gc/clients.yaml")
+server_agent_config = OmegaConf.load("./resources/config_gc/server_fedcompass.yaml")
+client_agent_configs = OmegaConf.load("./resources/config_gc/clients.yaml")
 
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)

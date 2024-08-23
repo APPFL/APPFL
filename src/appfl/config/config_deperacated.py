@@ -3,12 +3,10 @@ from typing import Any, List, Dict, Optional
 from omegaconf import DictConfig, OmegaConf
 import os
 import sys
-
 from .fed.federated import *
 from .fed.fedasync import *
 from .fed.iceadmm import * 
 from .fed.iiadmm import *
-from ..misc.deprecation import deprecated
 
 @dataclass
 class Config:
@@ -133,7 +131,6 @@ class Config:
 
 
 @dataclass
-@deprecated(silent=True)
 class GlobusComputeServerConfig:
     device: str = "cpu"
     output_dir: str = "./"
@@ -143,7 +140,6 @@ class GlobusComputeServerConfig:
 
 
 @dataclass
-@deprecated(silent=True)
 class GlobusComputeClientConfig:
     name        : str = ""
     endpoint_id : str = ""
@@ -155,7 +151,6 @@ class GlobusComputeClientConfig:
 
 
 @dataclass
-@deprecated(silent=True)
 class ExecutableFunc:
     module: str = ""
     call: str = ""
@@ -164,7 +159,6 @@ class ExecutableFunc:
 
 
 @dataclass
-@deprecated(silent=True)
 class ClientTask:
     task_id: str = ""
     task_name: str = ""
@@ -177,7 +171,6 @@ class ClientTask:
 
 
 @dataclass
-@deprecated(silent=True)
 class GlobusComputeConfig(Config):
     get_data: ExecutableFunc = field(default_factory=ExecutableFunc)
     get_model: ExecutableFunc = field(default_factory=ExecutableFunc)
@@ -203,4 +196,4 @@ class GlobusComputeConfig(Config):
     server_validation_step: int = 1
 
     # Cloud storage
-    use_cloud_transfer: bool = True
+    use_cloud_transfer: bool = False

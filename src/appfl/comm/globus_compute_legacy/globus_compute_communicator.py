@@ -23,7 +23,7 @@ class GlobusComputeCommunicator:
         self.use_s3bucket = cfg.server.s3_bucket is not None
         if self.use_s3bucket:
             self.logger.info(f'Using S3 bucket {cfg.server.s3_bucket} for model transfer.')
-            CloudStorage.init(cfg, temp_dir= osp.join(cfg.server.output_dir, 'tmp'),logger= self.logger)
+            CloudStorage.init(cfg, s3_tmp_dir= osp.join(cfg.server.output_dir, 'tmp'),logger= self.logger)
             cfg.server.s3_creds = ""
 
     def __register_task(self, task_id, task_fut, client_id, task_name):
@@ -221,5 +221,6 @@ class GlobusComputeCommunicator:
         self.logger.info("Shutting down all clients......")
         self.gcx.shutdown(wait=False, cancel_futures=True)
         # Clean-up cloud storage
-        CloudStorage.clean_up()
+        if self.use_s3bucket:
+            CloudStorage.clean_up()
         self.logger.info("The server and all clients have been shutted down successfully.")

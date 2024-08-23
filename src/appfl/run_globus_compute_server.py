@@ -16,7 +16,7 @@ from .comm.globus_compute import GlobusComputeCommunicator
 from .comm.globus_compute.utils.utils import get_dataloader
 from .comm.globus_compute.utils.s3_storage import LargeObjectWrapper
 from .comm.globus_compute.utils.logging import GlobusComputeServerLogger
-from .comm.globus_compute.globus_compute_client_function import client_validate_data, client_testing, client_training, client_model_saving
+from .comm.globus_compute import client_validate_data, client_testing, client_training, client_model_saving
 
 class APPFLGlobusComputeServer(abc.ABC):
     def __init__(self, cfg: DictConfig, gcc: Client):

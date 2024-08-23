@@ -218,7 +218,8 @@ class GlobusComputeServerCommunicator:
         self.logger.info("Shutting down all clients......")
         self.gce.shutdown(wait=False, cancel_futures=True)
         # Clean-up cloud storage
-        CloudStorage.clean_up()
+        if self.use_s3bucket:
+            CloudStorage.clean_up()
         self.logger.info("The server and all clients have been shutted down successfully.")
 
     def cancel_all_tasks(self):

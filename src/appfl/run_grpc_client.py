@@ -44,6 +44,7 @@ def run_client(
         train_data (Dataset): training data
         gpu_id (int): GPU ID
     """
+    time.sleep(5) # Make sure the server is ready.
 
     logger = logging.getLogger(__name__)
 

@@ -8,8 +8,7 @@ from logging import Logger
 from typing import Any, Union
 from collections import OrderedDict
 from appfl.misc import deprecated
-from appfl.comm.globus_compute import client_training
-from appfl.comm.globus_compute.utils.s3_storage import LargeObjectWrapper
+
 
 @deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.scheduler instead.")
 class SchedulerCompass(abc.ABC):
@@ -251,6 +250,8 @@ class SchedulerCompassGlobusCompute(SchedulerCompass):
         return self.communicator.receive_async_endpoint_update()
 
     def _send_global_model_to_client(self, client_idx, client_steps, client_lr):
+        from appfl.comm.globus_compute import client_training
+        from appfl.comm.globus_compute.utils.s3_storage import LargeObjectWrapper
         if not hasattr(self, 'server_model_basename'):
             self.server_model_basename = str(uuid.uuid4()) + "_server_state"
         self.communicator.set_learning_rate(client_lr, client_idx=client_idx)

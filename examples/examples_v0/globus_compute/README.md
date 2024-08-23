@@ -1,4 +1,4 @@
-# <img src="../../docs/_static/globus_compute.jpg" alt="Globus Compute" width="40"> Instructions: Using Globus Compute for Federated Learning
+# <img src="../../../docs/_static/globus_compute.jpg" alt="Globus Compute" width="40"> Instructions: Using Globus Compute for Federated Learning
 
 ## FL Client Setup
 To setup a **real-world** federated learning client on a **distributed** computing machine, you need to (1) install the APPFL package locally, and (2) create and start a Globus Compute endpoint. [**Note**: Globus Compute endpoint is only supported on linux machine. If you use windows, please use WSL.]

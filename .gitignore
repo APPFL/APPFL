@@ -1,5 +1,7 @@
 .vscode
 .gitignore
+creds
+log_globus_compute_appfl
 .DS_Store
 *.npz
 .compressor
