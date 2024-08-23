@@ -139,3 +139,5 @@ if __name__ == "__main__":
 # mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerAdaptiveFL --use_dp --epsilon=1.0
 
 sdfsdfsdljbkjsbndlcjndslkcfnsl
+
+dfsdsfsd
