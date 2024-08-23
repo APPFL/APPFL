@@ -130,3 +130,11 @@ if __name__ == "__main__":
 # python ./femnist.py
 # To run with resnet pretrained weight:
 # python ./femnist.py --model resnet18 --pretrained 1
+
+# Experiment settings
+# mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerFedAvg 
+# mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerAdaptiveFL 
+
+# mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerFedAvg --use_dp --epsilon=1.0
+# mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerAdaptiveFL --use_dp --epsilon=1.0
+
