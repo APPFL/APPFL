@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 from concurrent.futures import Future
 from globus_compute_sdk import Executor
 from typing import Optional, Union, Dict, OrderedDict, Tuple
-from appfl.communicator.globus_compute.globus_compute_client_communicator import globus_compute_client_entry_point
+from appfl.comm.globus_compute.globus_compute_client_communicator import globus_compute_client_entry_point
 
 class ClientEndpointStatus(Enum):
     UNAVAILABLE = 0

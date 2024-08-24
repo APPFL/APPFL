@@ -19,8 +19,8 @@ MPI: Message Passing Interface
 
 MPI can be used for simulating federated learning on a single machine or a cluster of machines. It is composed of two parts:
 
-- MPI Server Communicator (``appfl.communicator.mpi.MPIServerCommunicator``) which starts a server to listen to incoming requests from clients for various tasks.
-- MPI Client Communicator (``appfl.communicator.mpi.MPIClientCommunicator``) which sends requests to the server for various tasks.
+- MPI Server Communicator (``appfl.comm.mpi.MPIServerCommunicator``) which starts a server to listen to incoming requests from clients for various tasks.
+- MPI Client Communicator (``appfl.comm.mpi.MPIClientCommunicator``) which sends requests to the server for various tasks.
 
 MPI Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -190,13 +190,13 @@ gRPC: Google Remote Procedure Call
 
 gRPC can be used either for simulating federated learning on a single machine or cluster, or for running federated learning on real-world distributed machines. It is composed of two parts:
 
-- gRPC Server Communicator (``appfl.communicator.grpc.GRPCServerCommunicator``) which creats a server for listenning to incoming requests from clients for various tasks.
-- gRPC Client Communicator (``appfl.communicator.grpc.GRPCClientCommunicator``) which sends requests to the server for various tasks.
+- gRPC Server Communicator (``appfl.comm.grpc.GRPCServerCommunicator``) which creats a server for listenning to incoming requests from clients for various tasks.
+- gRPC Client Communicator (``appfl.comm.grpc.GRPCClientCommunicator``) which sends requests to the server for various tasks.
 
 gRPC Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the server side, the server only needs to create an instance of ``GRPCServerCommunicator`` and call the ``serve`` method (available in ``appfl.communicator.grpc``) to start the server. The server will listen to incoming requests from clients for various tasks.
+For the server side, the server only needs to create an instance of ``GRPCServerCommunicator`` and call the ``serve`` method (available in ``appfl.comm.grpc``) to start the server. The server will listen to incoming requests from clients for various tasks.
 
 The server can handle the following tasks:
 
@@ -359,8 +359,8 @@ Globus Compute
 
 `Globus Compute <https://globus-compute.readthedocs.io/>`_ is a distributed function as a service platform, which can be used for running federated learning on real-world distributed machines. It can turn each client into an endpoint which can be patched with remote functions on the server side to run federated learning tasks. It is composed of two parts:
 
-- Globus Compute Server Communicator (``appfl.communicator.globus_compute.GlobusComputeServerCommunicator``), which can send task to the client endpoints and receive the results.
-- Globus Compute Client Entry Point (``appfl.communicator.globus_compute.GlobusComputeClientCommunicator.globus_compute_client_entry_point``), which is the entry point for the client to execute the task and send the results back to the server.
+- Globus Compute Server Communicator (``appfl.comm.globus_compute.GlobusComputeServerCommunicator``), which can send task to the client endpoints and receive the results.
+- Globus Compute Client Entry Point (``appfl.comm.globus_compute.GlobusComputeClientCommunicator.globus_compute_client_entry_point``), which is the entry point for the client to execute the task and send the results back to the server.
 
 Globus Compute Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -470,7 +470,7 @@ For all tasks the server sent to the client, the tasks should be implemented in 
         :return `meta_data_local`: The local metadata after the task is executed. [Return `{}` if the task does not return metadata.]
         """
         from appfl.agent import ClientAgent
-        from appfl.communicator.globus_compute.utils.client_utils import load_global_model, send_local_model
+        from appfl.comm.globus_compute.utils.client_utils import load_global_model, send_local_model
         
         client_agent = ClientAgent(client_agent_config=client_agent_config)
         if model is not None:

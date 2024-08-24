@@ -5,7 +5,7 @@ from typing import Dict, Optional
 class ClientTask:
     task_id: str = ""
     task_name: str = ""
-    client_endpoint_id: str = ""
+    client_id: str = ""
     pending: bool = True
     success: bool = False
     start_time: float = -1

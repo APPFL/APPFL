@@ -2,7 +2,7 @@ import argparse
 from mpi4py import MPI
 from omegaconf import OmegaConf
 from appfl.agent import ClientAgent, ServerAgent
-from appfl.communicator.mpi import MPIClientCommunicator, MPIServerCommunicator
+from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 
 argparse = argparse.ArgumentParser()
 argparse.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_fedavg.yaml")

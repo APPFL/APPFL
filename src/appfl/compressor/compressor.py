@@ -320,6 +320,7 @@ class Compressor:
             )
             return decompressed_arr
         elif self.cfg.lossy_compressor == "ZFP":
+            import zfpy
             return zfpy.decompress_numpy(cmp_data)
         else:
             raise NotImplementedError

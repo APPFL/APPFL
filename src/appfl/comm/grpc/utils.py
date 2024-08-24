@@ -21,6 +21,10 @@ def serialize_model(model):
     torch.save(model, buffer)
     return buffer.getvalue()
 
+def deserialize_model(model_bytes):
+    """Deserialize a model from a byte string."""
+    return torch.load(io.BytesIO(model_bytes))
+
 def load_credential_from_file(filepath):
     with open(filepath, "rb") as f:
         return f.read()

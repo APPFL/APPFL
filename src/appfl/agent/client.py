@@ -1,11 +1,14 @@
+import os
 import uuid
+import pathlib
 import importlib
 import torch.nn as nn
+from datetime import datetime
 from appfl.compressor import *
 from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
-from typing import Union, Dict, OrderedDict, Tuple
+from typing import Union, Dict, OrderedDict, Tuple, Optional
 from appfl.logger import ClientAgentFileLogger
 from appfl.misc import create_instance_from_file, \
     run_function_from_file, \
@@ -54,7 +57,10 @@ class ClientAgent:
     def get_id(self) -> str:
         """Return a unique client id for server to distinguish clients."""
         if not hasattr(self, 'client_id'):
-            self.client_id = str(uuid.uuid4())
+            if hasattr(self.client_agent_config, "client_id"):
+                self.client_id = self.client_agent_config.client_id
+            else:
+                self.client_id = str(uuid.uuid4())
         return self.client_id
     
     def get_sample_size(self) -> int:
@@ -79,6 +85,20 @@ class ClientAgent:
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
         self.trainer.load_parameters(params)
+        
+    def save_checkpoint(self, checkpoint_path: Optional[str]=None) -> None:
+        """Save the model to a checkpoint file."""
+        if checkpoint_path is None:
+            output_dir = self.client_agent_config.train_configs.get("checkpoint_dirname", "./output")
+            output_filename = self.client_agent_config.train_configs.get("checkpoint_filename", "checkpoint")
+            curr_time_str = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+            checkpoint_path = f"{output_dir}/{output_filename}_{self.get_id()}_{curr_time_str}.pth"
+            
+        # Make sure the directory exists
+        if not os.path.exists(os.path.dirname(checkpoint_path)):
+            pathlib.Path(os.path.dirname(checkpoint_path)).mkdir(parents=True, exist_ok=True)
+            
+        torch.save(self.model.state_dict(), checkpoint_path)
 
     def _create_logger(self):
         """
@@ -106,13 +126,21 @@ class ClientAgent:
             self.train_dataset, self.val_dataset = run_function_from_file_source(
                 self.client_agent_config.data_configs.dataset_source,
                 self.client_agent_config.data_configs.dataset_name,
-                **self.client_agent_config.data_configs.dataset_kwargs
+                **(
+                    self.client_agent_config.data_configs.dataset_kwargs 
+                    if hasattr(self.client_agent_config.data_configs, "dataset_kwargs") 
+                    else {}
+                )
             )
         else:
             self.train_dataset, self.val_dataset = run_function_from_file(
                 self.client_agent_config.data_configs.dataset_path,
                 self.client_agent_config.data_configs.dataset_name,
-                **self.client_agent_config.data_configs.dataset_kwargs
+                **(
+                    self.client_agent_config.data_configs.dataset_kwargs
+                    if hasattr(self.client_agent_config.data_configs, "dataset_kwargs")
+                    else {}
+                )
             )
 
     def _load_model(self) -> None:

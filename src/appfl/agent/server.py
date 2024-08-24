@@ -6,9 +6,10 @@ from appfl.compressor import *
 from appfl.algorithm.scheduler import *
 from appfl.algorithm.aggregator import *
 from appfl.config import ServerAgentConfig
-from appfl.misc import create_instance_from_file, get_function_from_file
 from appfl.logger import ServerAgentFileLogger
+from appfl.misc import create_instance_from_file, get_function_from_file, run_function_from_file
 from concurrent.futures import Future
+from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional
 
@@ -39,6 +40,7 @@ class ServerAgent:
         self._load_metric()
         self._load_scheduler()
         self._load_compressor()
+        self._load_val_data()
 
     def get_client_configs(self, **kwargs) -> DictConfig:
         """Return the FL configurations that are shared among all clients."""
@@ -152,6 +154,16 @@ class ServerAgent:
                 return future
         return None
 
+    def server_validate(self):
+        """
+        Validate the server model using the validation dataset.
+        """
+        if not hasattr(self, "_val_dataset"):
+            self.logger.info("No validation dataset is provided.")
+            return None
+        else:
+            return self._validate()
+
     def training_finished(self, **kwargs) -> bool:
         """Indicate whether the training is finished."""
         return self.server_agent_config.server_configs.num_global_epochs <= self.scheduler.get_num_global_epochs()
@@ -163,7 +175,7 @@ class ServerAgent:
             self._close_connection_lock = threading.Lock()
         with self._close_connection_lock:
             self.closed_clients.add(client_id)
-    
+
     def server_terminated(self):
         """Indicate whether the server can be terminated from listening to the clients."""
         if not hasattr(self, "closed_clients"):
@@ -177,9 +189,21 @@ class ServerAgent:
         )
         with self._close_connection_lock:
             terminated = len(self.closed_clients) >= num_clients
-        if terminated and hasattr(self.scheduler, "clean_up"):
-            self.scheduler.clean_up()
+        if terminated:
+            self.clean_up()
         return terminated
+    
+    def clean_up(self) -> None:
+        """
+        Nececessary clean-up operations.
+        No need to call this method if using `server_terminated` to check the termination status.
+        """
+        if not hasattr(self, "cleaned"):
+            self.cleaned = False
+        if not self.cleaned:
+            self.cleaned = True
+            if hasattr(self.scheduler, "clean_up"):
+                self.scheduler.clean_up()
 
     def _create_logger(self) -> None:
         kwargs = {}
@@ -194,16 +218,22 @@ class ServerAgent:
         Load model from the definition file, and read the source code of the model for sendind to the client.
         User can overwrite this method to load the model from other sources.
         """
-        model_configs = self.server_agent_config.client_configs.model_configs
+        self._set_seed()
+        model_configs = (
+            self.server_agent_config.client_configs.model_configs 
+            if hasattr(self.server_agent_config.client_configs, "model_configs") 
+            else self.server_agent_config.server_configs.model_configs
+        )
         self.model = create_instance_from_file(
             model_configs.model_path,
             model_configs.model_name,
-            **model_configs.model_kwargs
+            **(model_configs.model_kwargs if hasattr(model_configs, "model_kwargs") else {})
         )
         # load the model source file and delete model path
-        with open(model_configs.model_path, 'r') as f:
-            self.server_agent_config.client_configs.model_configs.model_source = f.read()
-        del self.server_agent_config.client_configs.model_configs.model_path
+        if hasattr(self.server_agent_config.client_configs, "model_configs"):
+            with open(model_configs.model_path, 'r') as f:
+                self.server_agent_config.client_configs.model_configs.model_source = f.read()
+            del self.server_agent_config.client_configs.model_configs.model_path
 
     def _load_loss(self) -> None:
         """
@@ -251,11 +281,17 @@ class ServerAgent:
         """Obtain the scheduler."""
         self.aggregator: BaseAggregator = eval(self.server_agent_config.server_configs.aggregator)(
             self.model,
-            OmegaConf.create(self.server_agent_config.server_configs.aggregator_kwargs),
+            OmegaConf.create(
+                self.server_agent_config.server_configs.aggregator_kwargs if
+                hasattr(self.server_agent_config.server_configs, "aggregator_kwargs") else {}
+            ),
             self.logger,
         )
         self.scheduler: BaseScheduler = eval(self.server_agent_config.server_configs.scheduler)(
-            OmegaConf.create(self.server_agent_config.server_configs.scheduler_kwargs),
+            OmegaConf.create(
+                self.server_agent_config.server_configs.scheduler_kwargs if 
+                hasattr(self.server_agent_config.server_configs, "scheduler_kwargs") else {}
+            ),
             self.aggregator,
             self.logger,
         )
@@ -280,3 +316,56 @@ class ServerAgent:
             return torch.load(io.BytesIO(model_bytes))
         else:
             return self.compressor.decompress_model(model_bytes, self.model)
+            
+    def _load_val_data(self) -> None:
+        if hasattr(self.server_agent_config.server_configs, "val_data_configs"):
+            self._val_dataset = run_function_from_file(
+                self.server_agent_config.server_configs.val_data_configs.dataset_path,
+                self.server_agent_config.server_configs.val_data_configs.dataset_name,
+                **(
+                    self.server_agent_config.server_configs.val_data_configs.dataset_kwargs
+                    if hasattr(self.server_agent_config.server_configs.val_data_configs, "dataset_kwargs")
+                    else {}
+                )
+            )
+            self._val_dataloader = DataLoader(
+                self._val_dataset,
+                batch_size=self.server_agent_config.server_configs.val_data_configs.get("batch_size", 1),
+                shuffle=self.server_agent_config.server_configs.val_data_configs.get("shuffle", False),
+                num_workers=self.server_agent_config.server_configs.val_data_configs.get("num_workers", 0),
+            )
+    
+    def _validate(self) -> Tuple[float, float]:
+        """
+        Validate the model
+        :return: loss, accuracy
+        """
+        device = self.server_agent_config.server_configs.get("device", "cpu")
+        self.model.to(device)
+        self.model.eval()
+        val_loss = 0
+        with torch.no_grad():
+            target_pred, target_true = [], []
+            for data, target in self._val_dataloader:
+                data, target = data.to(device), target.to(device)
+                output = self.model(data)
+                val_loss += self.loss_fn(output, target).item()
+                target_true.append(target.detach().cpu().numpy())
+                target_pred.append(output.detach().cpu().numpy())
+        val_loss /= len(self._val_dataloader)
+        val_accuracy = float(self.metric(np.concatenate(target_true), np.concatenate(target_pred)))
+        # Move the model back to the cpu for future aggregation
+        if device != 'cpu':
+            self.model.to('cpu')
+        return val_loss, val_accuracy
+    
+    def _set_seed(self):
+        """
+        This function makes sure that all clients have the same initial model parameters.
+        """
+        seed_value = self.server_agent_config.client_configs.model_configs.get("seed", 42)
+        self.logger.info(f"Setting seed value to {seed_value}")
+        torch.manual_seed(seed_value)  # Set PyTorch seed
+        torch.cuda.manual_seed_all(seed_value)  # Set seed for all GPUs
+        torch.backends.cudnn.deterministic = True  # Use deterministic algorithms
+        torch.backends.cudnn.benchmark = False  # Disable this to ensure reproducibility
