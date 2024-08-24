@@ -16,8 +16,7 @@ class MpiCommunicator:
         self.comm_size = comm.Get_size()
         self.dests = []
         self.recv_queue = []
-        self.recv_queue_idx = []
-        self.queue_status = [False for _ in range(self.comm_size - 1)]
+        self.recv_queue_idx = []    # corresponding client index for each request in recv_queue
         self.compressor = compresser
 
     def _obj_to_bytes(self, obj: Any) -> bytes:
@@ -81,7 +80,6 @@ class MpiCommunicator:
                 )
             self.recv_queue = [self.comm.irecv(source=i, tag=i) for i in self.dests]
             self.recv_queue_idx = [i for i in range(self.comm_size - 1)]
-            self.queue_status = [True for _ in range(self.comm_size - 1)]
 
     def send_global_model_to_client(self, model: Optional[Union[dict, OrderedDict]]=None, args: Optional[dict]=None, client_idx: int=-1):
         """
@@ -118,7 +116,6 @@ class MpiCommunicator:
                 tag=self.dests[client_idx] + self.comm_size,
             )
             # print(f"Server sent the global model to client {client_idx}", flush=True)
-            self.queue_status[client_idx] = True
             self.recv_queue.append(
                 self.comm.irecv(
                     source=self.dests[client_idx], tag=self.dests[client_idx]
@@ -164,7 +161,6 @@ class MpiCommunicator:
                     model = self.compressor.decompress_model(model_bytes, model_copy)
                 else:
                     model = self._bytes_to_obj(model_bytes.tobytes())
-                self.queue_status[client_idx] = False
                 # print(f"Server received model from client {client_idx}", flush=True)
                 # print(f"Server has client queue: {self.recv_queue_idx}", flush=True)
                 return client_idx, model
@@ -202,4 +198,3 @@ class MpiCommunicator:
                     source=self.dests[client_idx],
                     tag=self.dests[client_idx] + self.comm_size,
                 )
-                self.queue_status[client_idx] = False
