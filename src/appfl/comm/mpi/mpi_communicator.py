@@ -16,6 +16,7 @@ class MpiCommunicator:
         self.comm_size = comm.Get_size()
         self.dests = []
         self.recv_queue = []
+        self.recv_queue_idx = []
         self.queue_status = [False for _ in range(self.comm_size - 1)]
         self.compressor = compresser
 
@@ -79,6 +80,7 @@ class MpiCommunicator:
                     tag=i + self.comm_size,
                 )
             self.recv_queue = [self.comm.irecv(source=i, tag=i) for i in self.dests]
+            self.recv_queue_idx = [i for i in range(self.comm_size - 1)]
             self.queue_status = [True for _ in range(self.comm_size - 1)]
 
     def send_global_model_to_client(self, model: Optional[Union[dict, OrderedDict]]=None, args: Optional[dict]=None, client_idx: int=-1):
@@ -115,14 +117,14 @@ class MpiCommunicator:
                 dest=self.dests[client_idx],
                 tag=self.dests[client_idx] + self.comm_size,
             )
+            # print(f"Server sent the global model to client {client_idx}", flush=True)
             self.queue_status[client_idx] = True
-            queue_idx = sum(self.queue_status[:client_idx])
-            self.recv_queue.insert(
-                queue_idx,
+            self.recv_queue.append(
                 self.comm.irecv(
                     source=self.dests[client_idx], tag=self.dests[client_idx]
                 ),
             )
+            self.recv_queue_idx.append(client_idx)
 
     def send_local_model_to_server(self, model: Union[dict, OrderedDict], dest: int):
         """
@@ -147,17 +149,12 @@ class MpiCommunicator:
         :param `model_copy` [Optional]: a copy of the global model state dict ONLY used for decompression
         """
         while True:
+            # print(f"Server waiting for clients...")
             queue_idx, model_size = MPI.Request.waitany(self.recv_queue)
             if queue_idx != MPI.UNDEFINED:
                 model_bytes = np.zeros(int(model_size), dtype=np.byte)
                 self.recv_queue.pop(queue_idx)
-                for i in range(len(self.queue_status)):
-                    if self.queue_status[i]:
-                        if queue_idx == 0:
-                            client_idx = i
-                            break
-                        else:
-                            queue_idx -= 1
+                client_idx = self.recv_queue_idx.pop(queue_idx)
                 self.comm.Recv(
                     model_bytes,
                     source=self.dests[client_idx],
@@ -168,6 +165,8 @@ class MpiCommunicator:
                 else:
                     model = self._bytes_to_obj(model_bytes.tobytes())
                 self.queue_status[client_idx] = False
+                # print(f"Server received model from client {client_idx}", flush=True)
+                # print(f"Server has client queue: {self.recv_queue_idx}", flush=True)
                 return client_idx, model
 
     def recv_global_model_from_server(self, source):
@@ -197,13 +196,7 @@ class MpiCommunicator:
             if queue_idx != MPI.UNDEFINED:
                 model_bytes = np.zeros(int(model_size), dtype=np.byte)
                 self.recv_queue.pop(queue_idx)
-                for i in range(len(self.queue_status)):
-                    if self.queue_status[i]:
-                        if queue_idx == 0:
-                            client_idx = i
-                            break
-                        else:
-                            queue_idx -= 1
+                client_idx = self.recv_queue_idx.pop(queue_idx)
                 self.comm.Recv(
                     model_bytes,
                     source=self.dests[client_idx],
