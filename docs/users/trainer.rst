@@ -55,7 +55,7 @@ For the input parameters of the trainer (e.g., model, loss_fn), they are loaded 
         client_configs:
             train_configs:
                 # Local trainer
-                trainer: "NaiveTrainer"
+                trainer: "VanillaTrainer"
                 mode: "step"
                 num_local_steps: 100
                 optim: "Adam"

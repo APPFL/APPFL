@@ -10,10 +10,10 @@ from torch.utils.data import Dataset, DataLoader
 from appfl.privacy import laplace_mechanism_output_perturb
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 
-class NaiveTrainer(BaseTrainer):
+class VanillaTrainer(BaseTrainer):
     """
-    NaiveTrainer:
-        Naive trainer for FL clients, which trains the model using `torch.optim` 
+    VanillaTrainer:
+        Vanilla trainer for FL clients, which trains the model using `torch.optim` 
         optimizers for a certain number of local epochs or local steps. 
         Users need to specify which training model to use in the configuration, 
         as well as the number of local epochs or steps.

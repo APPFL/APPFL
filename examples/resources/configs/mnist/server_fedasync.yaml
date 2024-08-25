@@ -1,7 +1,7 @@
 client_configs:
   train_configs:
     # Local trainer
-    trainer: "NaiveTrainer"
+    trainer: "VanillaTrainer"
     mode: "step"
     num_local_steps: 100
     optim: "Adam"

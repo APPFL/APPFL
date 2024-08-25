@@ -120,8 +120,8 @@ For client configurations that are shared among all clients, it is composed of t
 
     - *Trainer configurations*: It should be noted that the required trainer configurations depend on the trainer you use. You can also define your own trainer with any additional configurations you need, and then provide those configurations under ``client_config.train_configs`` in the server configuration yaml file.
 
-        - ``trainer``: The class name of the trainer you would like to use for client local training. The trainer name should be defined in ``src/appfl/trainer``. For example, ``NaiveTrainer`` simply updates the model for a certain number of epochs or batches.
-        - ``mode``: For ``NaiveTrainer``, mode is a required configuration to with allowable values ``epoch`` or ``step`` to specify whether you want to train for a certain number of epochs or only a certain number of steps/batches.
+        - ``trainer``: The class name of the trainer you would like to use for client local training. The trainer name should be defined in ``src/appfl/trainer``. For example, ``VanillaTrainer`` simply updates the model for a certain number of epochs or batches.
+        - ``mode``: For ``VanillaTrainer``, mode is a required configuration to with allowable values ``epoch`` or ``step`` to specify whether you want to train for a certain number of epochs or only a certain number of steps/batches.
         - ``num_local_steps`` / ``num_local_epochs``: Number of steps (if ``mode=step``) or epochs (if ``mode=epoch``) for an FL client in each local training round.
         - ``optim``: Name of the optimizer to use from the ``torch.optim`` module.
         - ``optim_args``: Keyword arguments for the selected optimizer.
