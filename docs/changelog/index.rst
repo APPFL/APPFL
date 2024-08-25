@@ -4,7 +4,7 @@ Changelog
 appfl v1.0.0
 ------------
 
-Version 1.0.0 of appfl was a major release that **refactored** the entire codebase to make it more modular, extensible, and functional, while remains backward compatible with the previous version. The release also included the following changes:
+Version 1.0.0 of appfl is a major release that refactors the entire codebase to make it more modular, extensible, and functional, while remains backward compatibility with the previous version. The release also included the following changes:
 
 New Features
 ~~~~~~~~~~~~
@@ -19,5 +19,5 @@ New Features
 Deprecated
 ~~~~~~~~~~
 
-- The previous version of appfl is still supported but deprecated and no longer maintained. Users are encouraged to upgrade to the new version for better performance, functionality, and extensibility.
-- Examples and tutorials for the previous version are still available in the ``examples/examples_v0`` directory of the appfl repository.
+- The previous version of appfl is still seamlessly supported but deprecated and no longer maintained. Users are encouraged to upgrade to the new version for better performance, functionality, and extensibility.
+- Examples and tutorials for the previous version are still available in the ``examples/examples_v0`` directory of the Github appfl repository.
