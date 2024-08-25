@@ -72,6 +72,7 @@ Main Topics
    users/index
    publication/index
    community/index
+   changelog/index
 
 Acknowledgement
 ===============

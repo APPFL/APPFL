@@ -8,11 +8,11 @@ Framework Overview
    :width: 90%
    :align: center
 
-In the design of the APPFL framework, we essentially create the *server agent* and *client agent*, using the six technical components above as building blocks, to act on behalf of the FL server and clients to conduct FL experiments. Specifically, 
+In the design of the APPFL framework, we essentially create the *server agent* and *client agent* to act on behalf of the FL server and clients to conduct FL experiments. Specifically, 
 
 * APPFL Server Agent: 
 
-  * Server Config: The server configuration is provided as a single yaml file which contains not only configuration for the FL server, such as aggregator and scheduler configurations, but also configurations that apply for all clients, such as local trainer type and configurations and model architectures, which will be broadcasted to all clients at the beginning of FL experiments.
+  * Server Config: The server configuration is provided as a single YAML file which contains not only configuration for the FL server, such as aggregator and scheduler configurations, but also configurations that apply for all clients, such as local trainer type and configurations and model architectures, which will be broadcasted to all clients at the beginning of FL experiments.
   * Compressor: If the experiment enables compression, the compressor component is used to decompress the model sent from the clients before global aggregation. 
   * Scheduler: The scheduler component handles the different arrival times of client local models, which controls the synchronism of the experiments. For example, the synchronous scheduler only passes client local models to the aggregator after all models arrive, while the asynchronous scheduler passes each client model to the aggregator immediately after it arrives.
   * Aggregator: The aggregator component takes one or more client local models, depending on the synchronism of the experiment, to update the global model.
@@ -21,7 +21,7 @@ In the design of the APPFL framework, we essentially create the *server agent* a
 
 * APPFL Clinet Agent: 
 
-   * Client Config: The client configuration is also provided as a yaml file for each client which contains client-specific configurations (e.g. dataloader for data on-premise), as well as uniform client configurations received from the server.
+   * Client Config: The client configuration is also provided as a YAML file for each client which contains client-specific configurations (e.g. dataloader for data on-premise), as well as uniform client configurations received from the server.
    * Compressor: If the experiment enables compression, the compressor component is used to compress the model parameters before sending to the server.
    * Trainer: The trainer component trains the machine learning model using each client's local data according to the training configurations in the client configuration.
    * Privacy: The privacy component provide an additional layer of protection againist data leakage.

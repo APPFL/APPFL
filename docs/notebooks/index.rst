@@ -1,5 +1,5 @@
-Notebooks
-=========
+Example Notebooks
+=================
 
 This section provides a collection of notebooks for tutorial.
 

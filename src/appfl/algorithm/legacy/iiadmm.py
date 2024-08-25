@@ -8,7 +8,7 @@ from .ppfl_base import PPFLServer, PPFLClient
 
 log = logging.getLogger(__name__)
 
-@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.trainer instead.")
+@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead.")
 class IIADMMServer(PPFLServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         super(IIADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)

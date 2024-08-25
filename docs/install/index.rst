@@ -10,7 +10,7 @@ We highly recommend to create new conda environment and install the required pac
 
 .. code-block:: console
 
-    conda create -n APPFL python=3.8
+    conda create -n APPFL python=3.10
     conda activate APPFL
 
 User installation

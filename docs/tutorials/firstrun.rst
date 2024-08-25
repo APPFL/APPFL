@@ -1,5 +1,5 @@
-First run on MNIST
-==================
+Quickstart
+==========
 
 In this page, we present how to run an example federated learning script on the MNIST dataset using the APPFL package. 
 
@@ -80,16 +80,16 @@ First, we need to run the following command to start a federated learning server
 
 .. code-block:: console
 
-    python ./grpc/run_server.py --config configs/mnist/server_fedcompass.yaml
+    python ./grpc/run_server.py --config ./resources/configs/mnist/server_fedcompass.yaml
 
 Open a second terminal to start a client using the following command to talk to the server.
 
 .. code-block:: console
 
-    python ./grpc/run_client.py --config configs/mnist/client_1.yaml
+    python ./grpc/run_client.py --config ./resources/configs/mnist/client_1.yaml
 
 Open a third terminal to start another client using the following command to talk to the server.
     
 .. code-block:: console
     
-    python ./grpc/run_client.py --config configs/mnist/client_2.yaml
+    python ./grpc/run_client.py --config ./resources/configs/mnist/client_2.yaml
