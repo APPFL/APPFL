@@ -1,3 +1,4 @@
+import sys
 import setuptools
 
 # Build Author list
@@ -22,6 +23,11 @@ for i, (k, v) in enumerate(authors.items()):
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
+    
+if sys.version_info >= (3, 9):
+    numpy_version = 'numpy==1.26.4'
+else:
+    numpy_version = 'numpy'  # Default numpy version for Python < 3.9
 
 setuptools.setup(
     name="appfl",
@@ -43,7 +49,7 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.8",
     install_requires=[
-        "numpy",
+        numpy_version,
         "torch",
         "grpcio",
         "grpcio-tools",
