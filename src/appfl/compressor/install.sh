@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Create a directory for all installation
-cd "$( dirname "${BASH_SOURCE[0]}" )"
-cd ../../.. && mkdir -p .compressor && cd .compressor
+cd ~
+mkdir -p .appfl/.compressor
+cd .appfl/.compressor
 
 # Install ZFP
 if pip show "zfpy" >/dev/null 2>&1; then

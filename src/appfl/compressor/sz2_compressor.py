@@ -7,6 +7,7 @@ import zstd
 import blosc
 import torch
 import pickle
+import pathlib
 import numpy as np
 from . import pysz
 from copy import deepcopy
@@ -25,8 +26,6 @@ class SZ2Compressor(BaseCompressor):
         - param_cutoff (int): the threshold of the number of elements in a tensor to determine whether to use lossy compression
     """
     def __init__(self, compressor_config: DictConfig):
-        current_path = os.path.dirname(os.path.abspath(__file__))
-        appfl_root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))
         self.cfg = compressor_config
         self.sz_error_mode_dict = {
             "ABS": 0,
@@ -42,7 +41,7 @@ class SZ2Compressor(BaseCompressor):
         self.compressor_lib_path = ""
         self.param_count_threshold = compressor_config.param_cutoff
         ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
-        self.compressor_lib_path = os.path.join(appfl_root_dir, ".compressor/SZ/build/sz/libSZ") + ext
+        self.compressor_lib_path = os.path.join(pathlib.Path.home(), ".appfl/.compressor/SZ/build/sz/libSZ") + ext
 
     def compress_model(
         self, 

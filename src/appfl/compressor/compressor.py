@@ -7,6 +7,7 @@ import zstd
 import blosc
 import torch
 import pickle
+import pathlib
 import numpy as np
 from . import pysz
 from . import pyszx
@@ -19,8 +20,6 @@ from typing import Tuple, Union, List
 @deprecated("Compressor class is deprecated and will be removed in the future. Please use the name of the compressor directly, e.g., SZ2Compressor.")
 class Compressor:
     def __init__(self, compressor_config: DictConfig):
-        current_path = os.path.dirname(os.path.abspath(__file__))
-        appfl_root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))
         self.cfg = compressor_config
         self.sz_error_mode_dict = {
             "ABS": 0,
@@ -36,11 +35,11 @@ class Compressor:
         self.param_count_threshold = compressor_config.param_cutoff
         ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
         if self.cfg.lossy_compressor == "SZ2":
-            self.compressor_lib_path = os.path.join(appfl_root_dir, ".compressor/SZ/build/sz/libSZ") + ext
+            self.compressor_lib_path = os.path.join(pathlib.Path.home(), ".appfl/.compressor/SZ/build/sz/libSZ") + ext
         elif self.cfg.lossy_compressor == "SZ3":
-            self.compressor_lib_path = os.path.join(appfl_root_dir, ".compressor/SZ3/build/tools/sz3c/libSZ3c") + ext
+            self.compressor_lib_path = os.path.join(pathlib.Path.home(), ".appfl/.compressor/SZ3/build/tools/sz3c/libSZ3c") + ext
         elif self.cfg.lossy_compressor == "SZx":
-            self.compressor_lib_path = os.path.join(appfl_root_dir, ".compressor/SZx-main/build/lib/libSZx") + ext
+            self.compressor_lib_path = os.path.join(pathlib.Path.home(), ".appfl/.compressor/SZx-main/build/lib/libSZx") + ext
 
     def compress_model(
         self, 
