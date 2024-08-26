@@ -20,4 +20,4 @@ Deprecated
 ~~~~~~~~~~
 
 - The previous version of appfl is still seamlessly supported but deprecated and no longer maintained. Users are encouraged to upgrade to the new version for better performance, functionality, and extensibility.
-- Examples and tutorials for the previous version are still available in the ``examples/examples_v0`` directory of the Github appfl repository.
+- Examples and tutorials for the previous version are still available in the ``examples/examples_legacy`` directory of the Github appfl repository.

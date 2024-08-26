@@ -1,6 +1,6 @@
 # 📝 Examples
 
-**[DEPRECATED] This `examples_v0` folder contains examples of the deprecated version of APPFL and will be removed in the future. Please also check examples in the `examples` folder.**
+**[DEPRECATED] This `examples_legacy` folder contains examples of the deprecated version of APPFL and will be removed in the future. Please also check examples in the `examples` folder.**
 
 
 This directory contains examples showing how to run federated learning experiments using various communication protocols, such as MPI, gRPC, and GlobusCompute.

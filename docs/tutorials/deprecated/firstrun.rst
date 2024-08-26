@@ -6,14 +6,14 @@ First run: MNIST
     This tutorial is for the deprecated version 0 of APPFL, and you may see many deprecation warnings when running the code. We highly recommend using the latest version of APPFL.
 
 We present how to run an example federated learning script on the MNIST dataset using APPFL. 
-We first make sure that the APPFL package and its dependencies are installed and change the directory to ``examples/examples_v0`` directory.
+We first make sure that the APPFL package and its dependencies are installed and change the directory to ``examples/examples_legacy`` directory.
 
 .. code-block:: console
 
     git clone https://github.com/APPFL/APPFL.git
     cd APPFL
     pip install -e ".[examples]"
-    cd examples/examples_v0
+    cd examples/examples_legacy
 
 The first example can be simply run using the following command, which launchs a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
 
