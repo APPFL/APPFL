@@ -19,7 +19,7 @@ All schedulers are inherited from the base class ``BaseScheduler``. If user want
         def __init__(
             self, 
             scheduler_configs: DictConfig, 
-            aggregator: Any,
+            aggregator: BaseAggregator,
             logger: Any
         ):
             """

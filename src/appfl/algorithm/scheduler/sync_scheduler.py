@@ -2,12 +2,13 @@ from typing import Any, Union, Dict, OrderedDict
 from concurrent.futures import Future
 from omegaconf import DictConfig
 from appfl.algorithm.scheduler import BaseScheduler
+from appfl.algorithm.aggregator import BaseAggregator
 
 class SyncScheduler(BaseScheduler):
     def __init__(
         self, 
         scheduler_configs: DictConfig, 
-        aggregator: Any,
+        aggregator: BaseAggregator,
         logger: Any
     ):
         super().__init__(scheduler_configs, aggregator, logger)

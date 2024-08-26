@@ -2,12 +2,13 @@ import abc
 from omegaconf import DictConfig
 from concurrent.futures import Future
 from typing import Union, Dict, Any, Tuple, OrderedDict
+from appfl.algorithm.aggregator import BaseAggregator
 
 class BaseScheduler:
     def __init__(
         self, 
         scheduler_configs: DictConfig, 
-        aggregator: Any,
+        aggregator: BaseAggregator,
         logger: Any
     ):
         self.scheduler_configs = scheduler_configs

@@ -1,13 +1,14 @@
 import threading
 from omegaconf import DictConfig
 from appfl.algorithm.scheduler import BaseScheduler
+from appfl.algorithm.aggregator import BaseAggregator
 from typing import Any, Union, Dict, OrderedDict, Tuple
 
 class AsyncScheduler(BaseScheduler):
     def __init__(
         self, 
         scheduler_configs: DictConfig,
-        aggregator: Any,
+        aggregator: BaseAggregator,
         logger: Any
     ):
         super().__init__(scheduler_configs, aggregator, logger)

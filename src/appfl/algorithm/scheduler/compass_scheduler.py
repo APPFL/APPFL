@@ -6,6 +6,7 @@ from collections import OrderedDict
 from concurrent.futures import Future
 from typing import Any, Union, Dict, Tuple
 from appfl.algorithm.scheduler import BaseScheduler
+from appfl.algorithm.aggregator import BaseAggregator
 
 class CompassScheduler(BaseScheduler):
     """
@@ -15,7 +16,7 @@ class CompassScheduler(BaseScheduler):
     def __init__(
         self,
         scheduler_configs: DictConfig,
-        aggregator: Any,
+        aggregator: BaseAggregator,
         logger: Any
     ):
         self.client_info = {}
