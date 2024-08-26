@@ -75,7 +75,6 @@ setuptools.setup(
         "blosc",
         "python-xz",
         "matplotlib",
-        "torchvision",
     ],
     extras_require={
         "dev": [
@@ -101,6 +100,8 @@ setuptools.setup(
             "tqdm",
             "jupyter",
             "wget",
+            "torchvision",
+            "tensorboard",
         ],
     },
     entry_points={

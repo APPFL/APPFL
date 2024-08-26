@@ -10,9 +10,9 @@ User-defined loss can be anything derived from ``torch.nn.Module`` with defined 
 
     class MASELoss(nn.Module):
         '''Mean Absolute Scaled Error Loss'''
-        def __init__(self):
+        def __init__(self, min_number=1e-8):
             super(MASELoss, self).__init__()
-            self.min_number = 1e-8 # floor for denominator to prevent inf losses
+            self.min_number = min_number # floor for denominator to prevent inf losses
 
         def forward(self, prediction, target):
             numerator = torch.mean( torch.abs(prediction-target) )
@@ -30,4 +30,6 @@ To use the loss function during the training, you need to provide the absolute/r
             # Loss function
             loss_fn_path: "<path_to_mase_loss>.py"
             loss_fn_name: "MASELoss"
+            loss_fn_kwargs:
+                min_number: 1e-8
         ...
