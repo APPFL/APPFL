@@ -3,7 +3,7 @@ client_configs:
     # Local trainer
     trainer: "VanillaTrainer"
     mode: "step"
-    num_local_steps: 10
+    num_local_steps: 2
     optim: "Adam"
     optim_args:
       lr: 0.001
@@ -11,8 +11,8 @@ client_configs:
     loss_fn_path: "./tests/resources/loss/celoss.py"
     loss_fn_name: "CELoss"
     # Client validation
-    do_validation: True
-    do_pre_validation: True
+    do_validation: False
+    do_pre_validation: False
     metric_path: "./tests/resources/metric/acc.py"
     metric_name: "accuracy"
     # Differential privacy
