@@ -8,7 +8,7 @@ from appfl.compressor import *
 from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
-from typing import Union, Dict, OrderedDict, Tuple, Optional
+from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
 from appfl.logger import ClientAgentFileLogger
 from appfl.misc import create_instance_from_file, \
     run_function_from_file, \
@@ -33,13 +33,13 @@ class ClientAgent:
     Users can overwrite any class method to add custom functionalities of the client agent.
     
     :param client_agent_config: configurations for the client agent
-    :param trainer: [Optional] a trainer for training the model. This is only useful
+    :param trainer: [Optional] a trainer class for training the model. This is only useful
         when user uses a custom trainer that is not available in the `appfl.algorithm.trainer` module.
     """
     def __init__(
         self, 
         client_agent_config: ClientAgentConfig = ClientAgentConfig(),
-        trainer: Optional[BaseTrainer] = None,
+        trainer: Optional[Any] = None,
         **kwargs
     ) -> None:
         self.client_agent_config = client_agent_config
@@ -233,12 +233,20 @@ class ClientAgent:
         else:
             self.metric = None
 
-    def _load_trainer(self, trainer: Optional[BaseTrainer] = None) -> None:
+    def _load_trainer(self, trainer: Optional[Any] = None) -> None:
         """Obtain a local trainer"""
         if hasattr(self, "trainer") and self.trainer is not None:
             return
         if trainer is not None:
-            self.trainer = trainer
+            self.trainer = trainer(
+                model=self.model, 
+                loss_fn=self.loss_fn,
+                metric=self.metric,
+                train_dataset=self.train_dataset, 
+                val_dataset=self.val_dataset,
+                train_configs=self.client_agent_config.train_configs,
+                logger=self.logger,
+            )
             return
         if not hasattr(self.client_agent_config, "train_configs"):
             self.trainer = None
