@@ -237,8 +237,9 @@ class ClientAgent:
         """Obtain a local trainer"""
         if hasattr(self, "trainer") and self.trainer is not None:
             return
-        if trainer is not None:
-            self.trainer = trainer(
+        if trainer is not None or (getattr(self, "trainer_type", None) is not None):
+            self.trainer_type = trainer if trainer is not None else self.trainer_type
+            self.trainer = self.trainer_type(
                 model=self.model, 
                 loss_fn=self.loss_fn,
                 metric=self.metric,
