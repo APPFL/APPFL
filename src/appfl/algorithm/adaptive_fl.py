@@ -121,44 +121,7 @@ class adaptive_fl_Client(BaseClient):
         gradient, func_val_diff = self.stochastic_oracle(self.model.state_dict())
         return self.model.state_dict(), gradient, func_val_diff
 
-    def _compute_gradient(self):
-        """
-        Compute the gradient of the client's model.
-        """
-        gradient = []
-        for param in self.model.parameters():
-            gradient.append(param.grad.data.clone())
-        return torch.cat([g.view(-1) for g in gradient])
-
-    def _compute_func_val_diff(self, global_model, data, target):
-        """
-        Compute the function value difference using stochastic oracles.
-
-        Args:
-            global_model (nn.Module): The global model sent by the server.
-            data (torch.Tensor): Input data batch.
-            target (torch.Tensor): Target labels batch.
-
-        Returns:
-            func_val_diff (float): The difference in function values before and after the update.
-        """
-        # Before update function value
-        with torch.no_grad():
-            output_before = global_model(data)
-            loss_before = self.loss_fn(output_before, target).item()
-
-        # After update function value
-        self.model.eval()
-        with torch.no_grad():
-            output_after = self.model(data)
-            loss_after = self.loss_fn(output_after, target).item()
-
-        # Difference in function values
-        func_val_diff = loss_after - loss_before
-        return func_val_diff
 
 
 
 
-
-        
