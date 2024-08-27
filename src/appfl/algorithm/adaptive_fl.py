@@ -1,105 +1,161 @@
-import torch
 from .fl_base import BaseServer, BaseClient
-
+from collections import OrderedDict
+import torch
 
 class adaptive_fl_Server(BaseServer):
-    def __init__(self, weights, model, loss_fn, num_clients, device, server_lr=1.0):
-        super().__init__(weights, model, loss_fn, num_clients, device)
-        self.server_lr = server_lr
+    def __init__(self, weights, model, num_clients, device, server_lr=1.0, gamma=1.1, **kwargs):
+        """
+        Initialize the AdaptiveFLServer class.
 
-    def aggregate_gradients(self, gradients):
-        """
-        Aggregate gradients from all clients and update the global model.
-        """
-        total_gradient = sum(gradients) / self.num_clients
-        with torch.no_grad():
-            for param in self.model.parameters():
-                param -= self.server_lr * total_gradient
-    def run(self, max_rounds, clients):
-        """
-        Run the adaptive federated learning algorithm.
-        
         Args:
-            max_rounds (int): Number of communication rounds
-            clients (list): List of AdaptiveFLClient objects
+            weights (OrderedDict): Aggregation weights for each client.
+            model (nn.Module): The global model to be trained.
+            num_clients (int): The number of clients.
+            device (str): The device for computation (e.g., 'cpu' or 'cuda').
+            server_lr (float): Learning rate for the server's update.
+            gamma (float): Multiplicative factor for adapting learning rates.
+            **kwargs: Additional keyword arguments.
         """
-        for round_idx in range(max_rounds):
-            global_model = self.get_model()
+        super(adaptive_fl_Server, self).__init__(weights, model, num_clients, device)
+        self.server_lr = server_lr
+        self.gamma = gamma
+        self.__dict__.update(kwargs)
+        # Any additional initialization
 
-            gradients = []
-            for client in clients:
-                gradient, func_val_diff = client.local_train(global_model)
-                client.update_learning_rate(gradient, func_val_diff)
-                gradients.append(gradient)
+    def update(self, local_states: OrderedDict, gradients: OrderedDict, func_val_diffs: OrderedDict):
+        """
+        Update the global model by averaging the gradients from selected clients.
 
-            # Aggregate gradients and update the global model
-            self.aggregate_gradients(gradients)
+        Args:
+            local_states (OrderedDict): A dictionary containing the local model states from clients.
+            gradients (OrderedDict): A dictionary containing the gradients from clients.
+            func_val_diffs (OrderedDict): A dictionary containing the function value differences from clients.
+        """
+        selected_clients = []
+        global_state = OrderedDict()
 
-            # Optionally log progress
-            print(f"Round {round_idx+1}/{max_rounds} completed.")            
+        # Accumulated change in objective function across all clients
+        total_func_val_diff = sum(func_val_diffs.values())
+
+        # Select clients whose updates meet the condition
+        for client_id in range(self.num_clients):
+            if total_func_val_diff <= -self.server_lr * torch.norm(gradients[client_id]) ** 2:
+                selected_clients.append(client_id)
+
+        # Update the global model using only the selected clients
+        for key in self.model.state_dict().keys():
+            global_state[key] = torch.zeros_like(self.model.state_dict()[key])
+            for client_id in selected_clients:
+                global_state[key] += local_states[client_id][key] * self.weights[client_id]
+
+        if selected_clients:
+            global_state = {k: v / len(selected_clients) for k, v in global_state.items()}
+            self.model.load_state_dict(global_state)
+
+        # Update learning rates for clients
+        for client_id in range(self.num_clients):
+            if client_id in selected_clients:
+                self.weights[client_id] *= self.gamma  # Increase learning rate for selected clients
+            else:
+                self.weights[client_id] /= self.gamma  # Decrease learning rate for non-selected clients
 
 
+class adaptive_fl_Client(BaseClient):
+    def __init__(self, id, weight, model, dataloader, device, initial_lr=0.1, gamma=1.1, **kwargs):
+        """
+        Initialize the AdaptiveFLClient class.
 
-class adaptive_fl_client(BaseClient):
-    def __init__(self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader=None, metric=None, initial_lr=0.1, gamma=1.1):
-        super().__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
+        Args:
+            id (int): Unique ID for each client.
+            weight (Dict): Aggregation weight for the client.
+            model (nn.Module): The local model to be trained.
+            dataloader (DataLoader): The client's data loader.
+            device (str): The device for computation (e.g., 'cpu' or 'cuda').
+            initial_lr (float): Initial learning rate for the client.
+            gamma (float): Multiplicative factor for adapting learning rates.
+            **kwargs: Additional keyword arguments.
+        """
+        super(adaptive_fl_Client, self).__init__(id, weight, model, dataloader, device)
         self.lr = initial_lr
         self.gamma = gamma
+        self.__dict__.update(kwargs)
+        # Any additional initialization
 
-    def local_train(self, global_model):
+    def stochastic_oracle(self, global_model):
         """
-        Perform local training and return the gradient and function value difference.
+        Compute the gradient and function value difference using stochastic oracles.
+        Args:
+            global_model (nn.Module): The global model sent by the server.
+
+        Returns:
+            gradient (torch.Tensor): Estimated gradient.
+            func_val_diff (float): Estimated function value difference.
         """
+        # Initialize model with global weights
         self.model.load_state_dict(global_model)
         optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
 
-        self.model.train()
-        total_loss = 0.0
-        for data, target in self.dataloader:
-            data, target = data.to(self.cfg.device), target.to(self.cfg.device)
-            optimizer.zero_grad()
-            output = self.model(data)
-            loss = self.loss_fn(output, target)
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-        gradient = self._compute_gradient(global_model)
-        func_val_diff = total_loss - self._compute_global_func_val(global_model)
+        # Mini-batch sampling
+        data, target = next(iter(self.dataloader))
+        data, target = data.to(self.device), target.to(self.device)
+
+        # Forward pass
+        optimizer.zero_grad()
+        output = self.model(data)
+        loss = self.loss_fn(output, target)
+
+        # Backward pass and gradient computation
+        loss.backward()
+        optimizer.step()
+
+        # Compute gradient and function value difference
+        gradient = self._compute_gradient()
+        func_val_diff = self._compute_func_val_diff(global_model, data, target)
+        
         return gradient, func_val_diff
 
-    def _compute_gradient(self, global_model):
+    def update(self):
         """
-        Compute the gradient of the client's model compared to the global model.
+        Perform local training using stochastic oracles and return the resulting model parameters, gradient, and function value difference.
+        """
+        gradient, func_val_diff = self.stochastic_oracle(self.model.state_dict())
+        return self.model.state_dict(), gradient, func_val_diff
+
+    def _compute_gradient(self):
+        """
+        Compute the gradient of the client's model.
         """
         gradient = []
-        for param, global_param in zip(self.model.parameters(), global_model.values()):
-            gradient.append(param.data - global_param)
+        for param in self.model.parameters():
+            gradient.append(param.grad.data.clone())
         return torch.cat([g.view(-1) for g in gradient])
 
-    def _compute_global_func_val(self, global_model):
+    def _compute_func_val_diff(self, global_model, data, target):
         """
-        Compute the objective function value for the global model.
+        Compute the function value difference using stochastic oracles.
+
+        Args:
+            global_model (nn.Module): The global model sent by the server.
+            data (torch.Tensor): Input data batch.
+            target (torch.Tensor): Target labels batch.
+
+        Returns:
+            func_val_diff (float): The difference in function values before and after the update.
         """
-        total_loss = 0.0
+        # Before update function value
+        with torch.no_grad():
+            output_before = global_model(data)
+            loss_before = self.loss_fn(output_before, target).item()
+
+        # After update function value
         self.model.eval()
         with torch.no_grad():
-            for data, target in self.dataloader:
-                data, target = data.to(self.cfg.device), target.to(self.cfg.device)
-                output = global_model(data)
-                loss = self.loss_fn(output, target)
-                total_loss += loss.item()
-        return total_loss
+            output_after = self.model(data)
+            loss_after = self.loss_fn(output_after, target).item()
 
-    def update_learning_rate(self, gradient, func_val_diff):
-        """
-        Adaptive step search to update the learning rate.
-        """
-        if func_val_diff <= -self.lr * torch.norm(gradient) ** 2:
-            # Successful step: increase learning rate
-            self.lr *= self.gamma
-        else:
-            # Unsuccessful step: decrease learning rate
-            self.lr /= self.gamma    
+        # Difference in function values
+        func_val_diff = loss_after - loss_before
+        return func_val_diff
 
 
 
