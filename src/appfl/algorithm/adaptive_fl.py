@@ -93,7 +93,8 @@ class adaptive_fl_Client(BaseClient):
         """
         # Initialize model with global weights
         self.model.load_state_dict(global_model)
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
+        
+        optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr) 
 
         # Mini-batch sampling
         data, target = next(iter(self.dataloader))

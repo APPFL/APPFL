@@ -26,14 +26,16 @@ parser.add_argument("--model", type=str, default="resnet18-legacy")
 
 ## algorithm
 parser.add_argument("--federation_type", type=str, default="Federated")  ## Federated, ICEADMM, IIADMM
+
 ## clients
+parser.add_argument("--client_name", type=str, default="ClientAdaptOptim")  ## ClientOptim  
 parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
 parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
-parser.add_argument("--server", type=str, default="ServerFedAvg")
+parser.add_argument("--server", type=str, default="ServerFedAvg")  
 parser.add_argument("--num_epochs", type=int, default=10)
 
 parser.add_argument("--server_lr", type=float, required=False)
@@ -42,6 +44,7 @@ parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
 
 parser.add_argument("--pretrained", type=int, default=0)
+ 
 
 ## privacy preserving
 parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
@@ -77,6 +80,9 @@ def main():
         )
 
     args.num_clients = len(train_datasets)
+    cfg.fed.clientname = args.client_name
+ 
+
     model = get_model(args)
     loss_fn = torch.nn.CrossEntropyLoss()
     print(

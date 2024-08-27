@@ -6,14 +6,14 @@ import numpy as np
 from torch.optim import *
 from .fl_base import BaseClient
 
-class ClientOptim(BaseClient):
+class ClientAdaptOptim(BaseClient):
     """This client optimizer which perform updates for certain number of epochs in each training round."""
     def __init__(
         self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs
-    ):
-        super(ClientOptim, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
+    ):      
+        super(ClientAdaptOptim, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
         self.__dict__.update(kwargs)
-        super(ClientOptim, self).client_log_title()
+        super(ClientAdaptOptim, self).client_log_title()
 
     def update(self):
         self.model.to(self.cfg.device)
@@ -22,9 +22,9 @@ class ClientOptim(BaseClient):
         ## Initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
             start_time=time.time()
-            test_loss, test_accuracy = super(ClientOptim, self).client_validation()
+            test_loss, test_accuracy = super(ClientAdaptOptim, self).client_validation()
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)    
+            super(ClientAdaptOptim, self).client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)    
 
         ## Local training 
         for t in range(self.num_local_epochs):
@@ -54,11 +54,11 @@ class ClientOptim(BaseClient):
             
             ## Validation
             if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, test_accuracy = super(ClientOptim, self).client_validation()
+                test_loss, test_accuracy = super(ClientAdaptOptim, self).client_validation()
             else:
                 test_loss, test_accuracy = 0, 0
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(t+1, per_iter_time, train_loss, train_accuracy, 0, 0)
+            super(ClientAdaptOptim, self).client_log_content(t+1, per_iter_time, train_loss, train_accuracy, 0, 0)
 
             ## save model.state_dict()
             if self.cfg.save_model_state_dict == True:
@@ -74,7 +74,7 @@ class ClientOptim(BaseClient):
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            super(ClientAdaptOptim, self).laplace_mechanism_output_perturb(scale_value)
 
         ## Move the model parameter to CPU (if not) for communication
         if (self.cfg.device == "cuda"):            
