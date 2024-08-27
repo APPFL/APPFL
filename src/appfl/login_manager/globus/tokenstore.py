@@ -11,7 +11,7 @@ def ensure_appfl_dir() -> pathlib.Path:
     """
     Ensure that the appfl storage directory exists and is a directory.
     """
-    dirname = _home() / '.appfl'
+    dirname = _home() / '.appfl' / "globus_auth"
     user_dirname = os.getenv('APPFL_USER_DIR')
     if user_dirname:
         dirname = pathlib.Path(user_dirname)

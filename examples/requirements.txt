@@ -1,0 +1,1 @@
+appfl[examples] @ git+https://github.com/APPFL/APPFL.git@63810d2350dc51c1f3f64a031f3f1a915e7c13f8#egg=appfl

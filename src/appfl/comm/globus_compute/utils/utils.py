@@ -1,4 +1,3 @@
-"""General utilities for globus compute-based federated learning."""
 import torch
 from torch.utils.data import DataLoader
 

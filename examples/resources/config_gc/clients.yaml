@@ -1,0 +1,38 @@
+clients:
+  - endpoint_id: "6c87988d-d067-43c9-a73f-063b51e1b33a"
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cpu"
+      # Logging and outputs [Optional]
+      logging_id: "Client1"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/mnist_dataset.py"
+      dataset_name: "get_mnist"
+      dataset_kwargs:
+        num_clients: 2
+        client_id: 0
+        partition_strategy: "class_noniid"
+        visualization: False
+
+  - endpoint_id: "4d34697f-f2e0-41dc-87b4-9821a02c0c0a"
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cpu"
+      # Logging and outputs [Optional]
+      logging_id: "Client2"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/mnist_dataset.py"
+      dataset_name: "get_mnist"
+      dataset_kwargs:
+        num_clients: 2
+        client_id: 1
+        partition_strategy: "class_noniid"
+        visualization: False

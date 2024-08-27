@@ -1,4 +1,5 @@
 """
+[Deprecated] This module is deprecated and will be removed in the future.
 Loggers for supporting Globus Compute-based federated learning experiments.
 """
 import os

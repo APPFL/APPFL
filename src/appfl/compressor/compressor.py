@@ -1,26 +1,31 @@
-from collections import OrderedDict
-from copy import deepcopy
+import os
+import sys
+import gzip
+import lzma
 import zlib
-from . import pysz
-from ..config import Config
-from typing import Tuple, Union, List
-import numpy as np
+import zstd
+import blosc
+import torch
 import pickle
+import pathlib
+import numpy as np
+from . import pysz
 from . import pyszx
+from copy import deepcopy
+from appfl.misc import deprecated
+from omegaconf import DictConfig
+from collections import OrderedDict
+from typing import Tuple, Union, List
 try:
     import zfpy
     _ZFP_COMPATIBLE = True
 except:
     _ZFP_COMPATIBLE = False
-import zstd
-import torch
-import gzip
-import blosc
-import lzma
 
+@deprecated("Compressor class is deprecated and will be removed in the future. Please use the name of the compressor directly, e.g., SZ2Compressor.")
 class Compressor:
-    def __init__(self, cfg: Config):
-        self.cfg = cfg
+    def __init__(self, compressor_config: DictConfig):
+        self.cfg = compressor_config
         self.sz_error_mode_dict = {
             "ABS": 0,
             "REL": 1,
@@ -30,23 +35,27 @@ class Compressor:
             "NORM": 5,
             "PW_REL": 10,
         }
-        self.lossless_compressor = cfg.lossless_compressor
-        self.compression_layers = []
+        self.lossless_compressor = compressor_config.lossless_compressor
         self.compressor_lib_path = ""
-        self.param_count_threshold = cfg.param_cutoff
-        if self.cfg.lossy_compressor == "SZ3":
-            self.compressor_lib_path = self.cfg.compressor_sz3_path
-        elif self.cfg.lossy_compressor == "SZ2":
-            self.compressor_lib_path = self.cfg.compressor_sz2_path
+        self.param_count_threshold = compressor_config.param_cutoff
+        ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
+        if self.cfg.lossy_compressor == "SZ2":
+            self.compressor_lib_path = os.path.join(pathlib.Path.home(), ".appfl/.compressor/SZ/build/sz/libSZ") + ext
+        elif self.cfg.lossy_compressor == "SZ3":
+            self.compressor_lib_path = os.path.join(pathlib.Path.home(), ".appfl/.compressor/SZ3/build/tools/sz3c/libSZ3c") + ext
         elif self.cfg.lossy_compressor == "SZx":
-            self.compressor_lib_path = self.cfg.compressor_szx_path
+            self.compressor_lib_path = os.path.join(pathlib.Path.home(), ".appfl/.compressor/SZx-main/build/lib/libSZx") + ext
 
-    def compress_model(self, model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]], batched: bool=False) -> Tuple[bytes, int]:
+    def compress_model(
+        self, 
+        model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]], 
+        batched: bool=False
+    ) -> bytes:
         """
         Compress all the parameters of local model(s) for efficient communication. The local model can be batched as a list.
         :param model: local model parameters (can be nested)
         :param batched: whether the input is a batch of models
-        :return: compressed model parameters as bytes and the number of lossy elements
+        :return: compressed model parameters as bytes
         """
         # Deal with batched models
         if batched:
@@ -54,18 +63,18 @@ class Compressor:
                 compressed_models = []
                 num_lossy_elements = 0
                 for model_sample in model:
-                    compressed_model, lossy_elements = self.compress_model(model_sample)
+                    compressed_model = self.compress_model(model_sample)
                     compressed_models.append(compressed_model)
                     num_lossy_elements += lossy_elements
-                return pickle.dumps(compressed_models), num_lossy_elements
+                return pickle.dumps(compressed_models)
             if isinstance(model, dict) or isinstance(model, OrderedDict):
                 compressed_models = OrderedDict()
                 num_lossy_elements = 0
                 for key, model_sample in model.items():
-                    compressed_model, lossy_elements = self.compress_model(model_sample)
+                    compressed_model = self.compress_model(model_sample)
                     compressed_models[key] = compressed_model
                     num_lossy_elements += lossy_elements
-                return pickle.dumps(compressed_models), num_lossy_elements
+                return pickle.dumps(compressed_models)
 
         for _, value in model.items():
             is_nested = not isinstance(value, torch.Tensor)
@@ -75,14 +84,64 @@ class Compressor:
             num_lossy_elements = 0
             compressed_models = OrderedDict()
             for key, weights in model.items():
-                comprsessed_weights, lossy_elements = self._compress_weights(weights)
-                compressed_models[key] = comprsessed_weights
-                lossy_elements += lossy_elements
+                if isinstance(weights, dict) or isinstance(weights, OrderedDict):
+                    comprsessed_weights, lossy_elements = self._compress_weights(weights)
+                    compressed_models[key] = comprsessed_weights
+                    lossy_elements += lossy_elements
+                else:
+                    compressed_models[key] = weights
         else:
             compressed_models, num_lossy_elements = self._compress_weights(model)
-        return pickle.dumps(compressed_models), num_lossy_elements
-    
-    def _compress_weights(self, weights: Union[OrderedDict, dict]) -> Tuple[Union[OrderedDict, dict], int]:
+        return pickle.dumps(compressed_models)
+
+    def decompress_model(
+        self, 
+        compressed_model: bytes, 
+        model: Union[dict, OrderedDict], 
+        batched: bool=False
+    )-> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
+        """
+        Decompress all the communicated model parameters. The local model can be batched as a list.
+        :param compressed_model: compressed model parameters as bytes
+        :param model: a model sample for de-compression reference
+        :param batched: whether the input is a batch of models
+        :return decompressed_model: decompressed model parameters
+        """
+        compressed_model = pickle.loads(compressed_model)
+        
+        # Deal with batched models
+        if batched:
+            if isinstance(compressed_model, list):
+                decompressed_models = []
+                for compressed_model_sample in compressed_model:
+                    decompressed_model_sample = self.decompress_model(compressed_model_sample, model)
+                    decompressed_models.append(decompressed_model_sample)
+                return decompressed_models
+            if isinstance(compressed_model, dict) or isinstance(compressed_model, OrderedDict):
+                decompressed_models = OrderedDict()
+                for key, compressed_model_sample in compressed_model.items():
+                    decompressed_model_sample = self.decompress_model(compressed_model_sample, model)
+                    decompressed_models[key] = decompressed_model_sample
+                return decompressed_models
+
+        for _, value in compressed_model.items():
+            is_nested = not isinstance(value, bytes)
+            break
+        if is_nested:
+            decompressed_model = OrderedDict()
+            for key, value in compressed_model.items():
+                if isinstance(value, dict) or isinstance(value, OrderedDict):
+                    decompressed_model[key] = self._decompress_model(value, model)
+                else:    
+                    decompressed_model[key] = value
+        else:
+            decompressed_model = self._decompress_model(compressed_model, model)
+        return decompressed_model
+
+    def _compress_weights(
+        self, 
+        weights: Union[OrderedDict, dict]
+    ) -> Tuple[Union[OrderedDict, dict], int]:
         """
         Compress ONE set of weights of the model.
         :param weights: the model weights to be compressed
@@ -182,43 +241,11 @@ class Compressor:
         else:
             raise NotImplementedError
 
-    def decompress_model(self, compressed_model: bytes, model: Union[dict, OrderedDict], batched: bool=False)-> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
-        """
-        Decompress all the communicated model parameters. The local model can be batched as a list.
-        :param compressed_model: compressed model parameters as bytes
-        :param model: a model sample for de-compression reference
-        :param batched: whether the input is a batch of models
-        :return decompressed_model: decompressed model parameters
-        """
-        compressed_model = pickle.loads(compressed_model)
-        
-        # Deal with batched models
-        if batched:
-            if isinstance(compressed_model, list):
-                decompressed_models = []
-                for compressed_model_sample in compressed_model:
-                    decompressed_model_sample = self.decompress_model(compressed_model_sample, model)
-                    decompressed_models.append(decompressed_model_sample)
-                return decompressed_models
-            if isinstance(compressed_model, dict) or isinstance(compressed_model, OrderedDict):
-                decompressed_models = OrderedDict()
-                for key, compressed_model_sample in compressed_model.items():
-                    decompressed_model_sample = self.decompress_model(compressed_model_sample, model)
-                    decompressed_models[key] = decompressed_model_sample
-                return decompressed_models
-
-        for _, value in compressed_model.items():
-            is_nested = not isinstance(value, bytes)
-            break
-        if is_nested:
-            decompressed_model = OrderedDict()
-            for key, value in compressed_model.items():
-                decompressed_model[key] = self._decompress_model(value, model)
-        else:
-            decompressed_model = self._decompress_model(compressed_model, model)
-        return decompressed_model
-
-    def _decompress_model(self, compressed_weights: Union[dict, OrderedDict], model: Union[dict, OrderedDict]) -> Union[OrderedDict, dict]:
+    def _decompress_model(
+        self, 
+        compressed_weights: Union[dict, OrderedDict], 
+        model: Union[dict, OrderedDict]
+    ) -> Union[OrderedDict, dict]:
         """
         Decompress ONE set of weights of the model.
         :param compressed_weights: the compressed model weights
@@ -268,7 +295,10 @@ class Compressor:
         return decompressed_weights
 
     def _decompress(
-        self, cmp_data, ori_shape: Tuple[int, ...], ori_dtype: np.dtype
+        self, 
+        cmp_data, 
+        ori_shape: Tuple[int, ...], 
+        ori_dtype: np.dtype
     ) -> np.ndarray:
         """
         Decompress data with chosen compressor

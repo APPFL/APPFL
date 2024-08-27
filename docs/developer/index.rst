@@ -1,19 +1,20 @@
-==========
-Developers
-==========
+Developer Guide
+===============
 
 .. toctree::
    :maxdepth: 2
    :titlesonly:
 
    algorithms
-   how_to_test
+   schedulers
+   trainers
+   server_agent
    ../README
    release_guide
 
 
 How to contribute
-=================
+-----------------
 
 APPFL is an open-source software project. Code/idea contributions from communities are welcome!
 
@@ -23,7 +24,7 @@ APPFL is an open-source software project. Code/idea contributions from communiti
 
 
 Core contributors
------------------
+~~~~~~~~~~~~~~~~~
 
 Core contributors are our project team members and those who are closely collaborating with our team.
 These contributors are highly recommended to have direct access to the APPFL Github repository and be able to create new branches.
@@ -32,6 +33,6 @@ We recommend to create new branches (e.g., ``myid/newalgo``, ``myid/issue99``) f
 
 
 External contributors
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 External contributors are recommended to create a ``folk`` of the repository and make ``pull request`` once the contributions are ready for merge.

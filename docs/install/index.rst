@@ -10,7 +10,7 @@ We highly recommend to create new conda environment and install the required pac
 
 .. code-block:: console
 
-    conda create -n APPFL python=3.8
+    conda create -n APPFL python=3.10
     conda activate APPFL
 
 User installation
@@ -21,7 +21,7 @@ For most users, including data scientists, this simple installation is sufficien
 .. code-block:: console
 
     pip install pip --upgrade
-    pip install "appfl[analytics,examples]"
+    pip install "appfl[examples]"
 
 If you want to even minimize the installation of package dependencies, you can use:
 
@@ -43,7 +43,7 @@ To set up the development environment,
 
     git clone https://github.com/APPFL/APPFL.git
     cd APPFL
-    pip install -e ".[dev,examples,analytics]"
+    pip install -e ".[dev,examples]"
 
 On Ubuntu, if the installation process failed, you can try:
 

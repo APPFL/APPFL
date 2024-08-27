@@ -4,9 +4,10 @@ Tutorials
 We present a collection of tutorials for APPFL framework.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     firstrun
     ../notebooks/index
     gpuclusterrun
-    gcloud
+    aws
+    deprecated_tutorial

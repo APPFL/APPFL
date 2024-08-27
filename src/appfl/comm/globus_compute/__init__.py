@@ -1,2 +1,3 @@
-from .globus_compute_communicator import *
-from .globus_compute_client_function import *
+from .globus_compute_server_communicator import GlobusComputeServerCommunicator
+from .globus_compute_client_communicator import globus_compute_client_entry_point
+from ..globus_compute_legacy import *

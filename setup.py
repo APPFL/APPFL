@@ -23,6 +23,11 @@ for i, (k, v) in enumerate(authors.items()):
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
+    
+if sys.version_info >= (3, 9):
+    numpy_version = 'numpy==1.26.4'
+else:
+    numpy_version = 'numpy'  # Default numpy version for Python < 3.9
 
 if sys.version_info >= (3, 9):
     numpy_version = 'numpy==1.26.4'
@@ -31,7 +36,7 @@ else:
 
 setuptools.setup(
     name="appfl",
-    version="0.4.2",
+    version="1.0.0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -47,23 +52,29 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
-    python_requires=">=3.6",
+    include_package_data=True, 
+    package_data={
+        "": ["*.sh", "*.crt", "*.key"], 
+    },
+    python_requires=">=3.8",
     install_requires=[
         numpy_version,
         "torch",
         "grpcio",
         "grpcio-tools",
         "omegaconf",
+        "globus-sdk",
         "mpi4py",
+        "globus-compute-sdk",
+        "globus-compute-endpoint",
         "boto3",
         "botocore",
-        "globus-compute-sdk",
-        "zfpy",
-        "blosc",
-        "zstd",
-        "scipy",
         "lz4",
+        "zfpy",
+        "zstd",
+        "blosc",
         "python-xz",
+        "matplotlib",
     ],
     extras_require={
         "dev": [
@@ -80,21 +91,17 @@ setuptools.setup(
             "black",
             "pytest",
             "pytest-mpi",
-            "torchvision",
-        ],
-        "analytics": [
-            "jupyter",
-            "tensorboard",
-            "matplotlib",
         ],
         "examples": [
             "opencv-python",
-            "torchvision",
             "pandas",
             "pyarrow",
             "fastparquet",
             "tqdm",
+            "jupyter",
             "wget",
+            "torchvision",
+            "tensorboard",
         ],
     },
     entry_points={
