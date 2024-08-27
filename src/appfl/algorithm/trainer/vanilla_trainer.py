@@ -177,7 +177,8 @@ class VanillaTrainer(BaseTrainer):
             self._compute_gradient()
 
     def get_parameters(self) -> Dict:
-        hasattr(self, "model_state"), "Please make sure the model has been trained before getting its parameters"
+        if not hasattr(self, "model_state"):
+            self.model_state = copy.deepcopy(self.model.state_dict())
         return self.model_state
 
     def _sanity_check(self):
@@ -228,7 +229,7 @@ class VanillaTrainer(BaseTrainer):
         loss = self.loss_fn(output, target)
         loss.backward()
         optimizer.step()
-        if self.train_configs.get("clip_grad", False) or self.train_configs.get("use_dp", False):
+        if getattr(self.train_configs, "clip_grad", False) or getattr(self.train_configs, "use_dp", False):
             assert hasattr(self.train_configs, "clip_value"), "Gradient clipping value must be specified"
             assert hasattr(self.train_configs, "clip_norm"), "Gradient clipping norm must be specified"
             torch.nn.utils.clip_grad_norm_(
