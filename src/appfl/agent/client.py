@@ -31,10 +31,16 @@ class ClientAgent:
     and use Fork + Pull Request to contribute to the project.
 
     Users can overwrite any class method to add custom functionalities of the client agent.
+    
+    :param client_agent_config: configurations for the client agent
+    :param trainer: [Optional] a trainer for training the model. This is only useful
+        when user uses a custom trainer that is not available in the `appfl.algorithm.trainer` module.
     """
     def __init__(
         self, 
-        client_agent_config: ClientAgentConfig = ClientAgentConfig()
+        client_agent_config: ClientAgentConfig = ClientAgentConfig(),
+        trainer: Optional[BaseTrainer] = None,
+        **kwargs
     ) -> None:
         self.client_agent_config = client_agent_config
         self._create_logger()
@@ -42,7 +48,7 @@ class ClientAgent:
         self._load_loss()
         self._load_metric()
         self._load_data()
-        self._load_trainer()
+        self._load_trainer(trainer)
         self._load_compressor()
 
     def load_config(self, config: DictConfig) -> None:
@@ -227,8 +233,13 @@ class ClientAgent:
         else:
             self.metric = None
 
-    def _load_trainer(self) -> None:
+    def _load_trainer(self, trainer: Optional[BaseTrainer] = None) -> None:
         """Obtain a local trainer"""
+        if hasattr(self, "trainer") and self.trainer is not None:
+            return
+        if trainer is not None:
+            self.trainer = trainer
+            return
         if not hasattr(self.client_agent_config, "train_configs"):
             self.trainer = None
             return
