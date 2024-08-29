@@ -7,7 +7,11 @@ from typing import Tuple, Union, List
 import numpy as np
 import pickle
 from . import pyszx
-import zfpy
+try:
+    import zfpy
+    _ZFP_COMPATIBLE = True
+except:
+    _ZFP_COMPATIBLE = False
 import zstd
 import torch
 import gzip
@@ -163,6 +167,9 @@ class Compressor:
             )
             return compressed_arr.tobytes()
         elif self.cfg.lossy_compressor == "ZFP":
+            if not _ZFP_COMPATIBLE:
+                err_msg = f"ZFP compressor is not compatible with your current numpy version: {np.__version__}, please use numpy<2.0.0"
+                raise ImportError(err_msg)
             if self.cfg.error_bounding_mode == "ABS":
                 return zfpy.compress_numpy(ori_data, tolerance=self.cfg.error_bound)
             elif self.cfg.error_bounding_mode == "REL":
@@ -289,6 +296,8 @@ class Compressor:
             )
             return decompressed_arr
         elif self.cfg.lossy_compressor == "ZFP":
+            if not _ZFP_COMPATIBLE:
+                raise ImportError(f"ZFP is not compatible with your current numpy version: {np.__version__}, please use numpy<2.0.0")
             return zfpy.decompress_numpy(cmp_data)
         else:
             raise NotImplementedError

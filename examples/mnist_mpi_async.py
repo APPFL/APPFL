@@ -66,7 +66,8 @@ parser.add_argument("--server_lr", type=float, default=0.01)
 parser.add_argument("--mparam_1", type=float, default=0.9)
 parser.add_argument("--mparam_2", type=float, default=0.99)
 parser.add_argument("--adapt_param", type=float, default=0.001)
-
+parser.add_argument("--validation", action="store_true")
+                    
 ## loss function
 parser.add_argument("--loss_fn", type=str, required=False, help="path to the custom loss function definition file, use cross-entropy loss by default if no path is specified")
 parser.add_argument("--loss_fn_name", type=str, required=False, help="class name for the custom loss in the loss function definition file, choose the first class by default if no name is specified")
@@ -147,6 +148,7 @@ def main():
     ## server
     cfg.fed.servername = args.server
     cfg.num_epochs = args.num_epochs
+    cfg.validation = args.validation
 
     ## outputs
     cfg.use_tensorboard = False
