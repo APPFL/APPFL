@@ -1,8 +1,8 @@
 import copy
 import torch
 from omegaconf import DictConfig
-from typing import Union, Dict, OrderedDict, Any
 from appfl.algorithm.aggregator import BaseAggregator
+from typing import Union, Dict, OrderedDict, Any, Optional
 
 class FedAsyncAggregator(BaseAggregator):
     """
@@ -11,18 +11,24 @@ class FedAsyncAggregator(BaseAggregator):
     """
     def __init__(
         self,
-        model: torch.nn.Module,
-        aggregator_config: DictConfig,
-        logger: Any
+        model: Optional[torch.nn.Module] = None,
+        aggregator_config: DictConfig = DictConfig({}),
+        logger: Optional[Any] = None
     ):
         self.model = model
-        self.client_weights_mode = aggregator_config.get("client_weights_mode", "equal")
-        self.aggregator_config = aggregator_config
         self.logger = logger
-
-        self.named_parameters = set()
-        for name, _ in self.model.named_parameters():
-            self.named_parameters.add(name)
+        self.aggregator_config = aggregator_config
+        self.client_weights_mode = aggregator_config.get("client_weights_mode", "equal")
+        
+        if model is not None:
+            self.named_parameters = set()
+            for name, _ in self.model.named_parameters():
+                self.named_parameters.add(name)
+        else:
+            self.named_parameters = None
+            
+        self.global_state = None # Models parameters that are used for aggregation, this is unknown at the beginning
+            
         self.staleness_fn = self.__staleness_fn_factory(
             staleness_fn_name= self.aggregator_config.get("staleness_fn", "constant"),
             **self.aggregator_config.get("staleness_fn_kwargs", {})
@@ -33,27 +39,53 @@ class FedAsyncAggregator(BaseAggregator):
         self.step = {}
 
     def get_parameters(self, **kwargs) -> Dict:
-        return copy.deepcopy(self.model.state_dict())
+        """
+        The aggregator can deal with three general aggregation cases:
+        
+        - The model is provided to the aggregator and it has the same state as the global state 
+        [**Note**: By global state, it means the state of the model that is used for aggregation]:
+            In this case, the aggregator will always return the global state of the model.
+        - The model is provided to the aggregator, but it has a different global state (e.g., part of the model is shared for aggregation):
+            In this case, the aggregator will return the whole state of the model at the beginning (i.e., when it does not have the global state),
+            and return the global state afterward.
+        - The model is not provided to the aggregator:
+            In this case, the aggregator will raise an error when it does not have the global state (i.e., at the beginning), and return the global state afterward.
+        """
+        if self.global_state is None:
+            if self.model is not None:
+                return copy.deepcopy(self.model.state_dict())
+            else:
+                raise ValueError("Model is not provided to the aggregator.")
+        return copy.deepcopy(self.global_state)
 
     def aggregate(self, client_id: Union[str, int], local_model: Union[Dict, OrderedDict], **kwargs) -> Dict:
-        global_state = copy.deepcopy(self.model.state_dict())
-        
+        if self.global_state is None:
+            if self.model is not None:
+                self.global_state = {
+                    name: self.model.state_dict()[name] for name in local_model
+                }
+            else:
+                self.global_state = copy.deepcopy(local_model)
+
         self.compute_steps(client_id, local_model)
         
-        for name in self.model.state_dict():
-            if name not in self.named_parameters:
-                global_state[name] = local_model[name]
+        for name in self.global_state:
+            if name in self.step:
+                self.global_state[name] += self.step[name]
             else:
-                global_state[name] += self.step[name]
-        self.model.load_state_dict(global_state)
+                self.global_state[name] = local_model[name]
+                
+        if self.model is not None:
+            self.model.load_state_dict(self.global_state, strict=False)
+        
         self.global_step += 1
         self.client_step[client_id] = self.global_step
-        return global_state
+        return copy.deepcopy(self.global_state)
     
     def compute_steps(self, client_id: Union[str, int], local_model: Union[Dict, OrderedDict],):
         """
         Compute changes to the global model after the aggregation.
-        """
+        """        
         if client_id not in self.client_step:
             self.client_step[client_id] = 0
         gradient_based = self.aggregator_config.get("gradient_based", False)
@@ -66,10 +98,13 @@ class FedAsyncAggregator(BaseAggregator):
         else:
             weight = 1.0 / self.aggregator_config.get("num_clients", 1)
         alpha_t = self.alpha * self.staleness_fn(self.global_step - self.client_step[client_id]) * weight
-        for name in self.named_parameters:
+        
+        for name in self.global_state:
+            if self.named_parameters is not None and name not in self.named_parameters:
+                continue
             self.step[name] = (
                 alpha_t * (-local_model[name]) if gradient_based
-                else alpha_t * (local_model[name] - self.model.state_dict()[name])
+                else alpha_t * (local_model[name] - self.global_state[name])
             )
 
     def __staleness_fn_factory(self, staleness_fn_name, **kwargs):

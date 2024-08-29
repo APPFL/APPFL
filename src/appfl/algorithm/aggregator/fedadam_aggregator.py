@@ -1,7 +1,7 @@
 import torch
 from omegaconf import DictConfig
-from typing import Union, Dict, OrderedDict, Any
 from appfl.algorithm.aggregator import FedAvgAggregator
+from typing import Union, Dict, OrderedDict, Any, Optional
 
 class FedAdamAggregator(FedAvgAggregator):
     """
@@ -17,23 +17,25 @@ class FedAdamAggregator(FedAvgAggregator):
     """
     def __init__(
         self,
-        model: torch.nn.Module,
-        aggregator_config: DictConfig,
-        logger: Any
+        model: Optional[torch.nn.Module] = None,
+        aggregator_config: DictConfig = DictConfig({}),
+        logger: Optional[Any] = None
     ):
         super().__init__(model, aggregator_config, logger)
         self.m_vector = {}
         self.v_vector = {}
-        for name in self.named_parameters:
-            self.m_vector[name] = torch.zeros_like(self.model.state_dict()[name])
-            self.v_vector[name] = torch.zeros_like(self.model.state_dict()[name]) + self.aggregator_config.server_adapt_param**2
     
     def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]):
         """
         Compute the changes to the global model after the aggregation.
         """
         super().compute_steps(local_models)
-        for name in self.named_parameters:
+        if len(self.m_vector) == 0:
+            for name in self.step:
+                self.m_vector[name] = torch.zeros_like(self.step[name])
+                self.v_vector[name] = torch.zeros_like(self.step[name]) + self.aggregator_config.server_adapt_param**2
+        
+        for name in self.step:
             self.m_vector[name] = (
                 self.aggregator_config.server_momentum_param_1 * self.m_vector[name] + 
                 (1-self.aggregator_config.server_momentum_param_1) * self.step[name]
