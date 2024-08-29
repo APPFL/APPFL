@@ -94,7 +94,7 @@ def run_server(
         local_update_time = time.time() - client_start_time[client_idx]
         global_update_start = time.time()
 
-        server.update(local_model, client_model_step[client_idx], client_idx)
+        server.update(local_model, init_step=client_model_step[client_idx], client_idx=client_idx)
         global_update_time = time.time() - global_update_start
         if iter < cfg.num_epochs:
             client_model_step[client_idx] = server.global_step
