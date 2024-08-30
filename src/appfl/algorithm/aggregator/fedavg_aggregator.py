@@ -10,20 +10,20 @@ class FedAvgAggregator(BaseAggregator):
         This can be useful for aggregating parameters that does requires gradient, such as the batch
         normalization layers. If not provided, the aggregator will only aggregate the parameters 
         sent by the clients.
-    :param `aggregator_config`: Configuration for the aggregator. It should be specified in the YAML
+    :param `aggregator_configs`: Configuration for the aggregator. It should be specified in the YAML
         configuration file under `aggregator_kwargs`.
     :param `logger`: An optional instance of the logger to be used for logging.
     """
     def __init__(
         self,
         model: Optional[torch.nn.Module] = None,
-        aggregator_config: DictConfig = DictConfig({}),
+        aggregator_configs: DictConfig = DictConfig({}),
         logger: Optional[Any] = None
     ):
         self.model = model
         self.logger = logger
-        self.aggregator_config = aggregator_config
-        self.client_weights_mode = aggregator_config.get("client_weights_mode", "equal")
+        self.aggregator_configs = aggregator_configs
+        self.client_weights_mode = aggregator_configs.get("client_weights_mode", "equal")
 
         if self.model is not None:
             self.named_parameters = set()

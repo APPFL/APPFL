@@ -12,13 +12,13 @@ class FedAsyncAggregator(BaseAggregator):
     def __init__(
         self,
         model: Optional[torch.nn.Module] = None,
-        aggregator_config: DictConfig = DictConfig({}),
+        aggregator_configs: DictConfig = DictConfig({}),
         logger: Optional[Any] = None
     ):
         self.model = model
         self.logger = logger
-        self.aggregator_config = aggregator_config
-        self.client_weights_mode = aggregator_config.get("client_weights_mode", "equal")
+        self.aggregator_configs = aggregator_configs
+        self.client_weights_mode = aggregator_configs.get("client_weights_mode", "equal")
         
         if model is not None:
             self.named_parameters = set()
@@ -30,10 +30,10 @@ class FedAsyncAggregator(BaseAggregator):
         self.global_state = None # Models parameters that are used for aggregation, this is unknown at the beginning
             
         self.staleness_fn = self.__staleness_fn_factory(
-            staleness_fn_name= self.aggregator_config.get("staleness_fn", "constant"),
-            **self.aggregator_config.get("staleness_fn_kwargs", {})
+            staleness_fn_name= self.aggregator_configs.get("staleness_fn", "constant"),
+            **self.aggregator_configs.get("staleness_fn_kwargs", {})
         )
-        self.alpha = self.aggregator_config.get("alpha", 0.9)
+        self.alpha = self.aggregator_configs.get("alpha", 0.9)
         self.global_step = 0
         self.client_step = {}
         self.step = {}
@@ -88,7 +88,7 @@ class FedAsyncAggregator(BaseAggregator):
         """        
         if client_id not in self.client_step:
             self.client_step[client_id] = 0
-        gradient_based = self.aggregator_config.get("gradient_based", False)
+        gradient_based = self.aggregator_configs.get("gradient_based", False)
         if (
             self.client_weights_mode == "sample_size" and
             hasattr(self, "client_sample_size") and
@@ -96,7 +96,7 @@ class FedAsyncAggregator(BaseAggregator):
         ):
             weight = self.client_sample_size[client_id] / sum(self.client_sample_size.values())
         else:
-            weight = 1.0 / self.aggregator_config.get("num_clients", 1)
+            weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
         alpha_t = self.alpha * self.staleness_fn(self.global_step - self.client_step[client_id]) * weight
         
         for name in self.global_state:

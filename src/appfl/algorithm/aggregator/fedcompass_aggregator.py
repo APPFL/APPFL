@@ -12,17 +12,17 @@ class FedCompassAggregator(BaseAggregator):
     def __init__(
         self,
         model: Optional[torch.nn.Module] = None,
-        aggregator_config: DictConfig = DictConfig({}),
+        aggregator_configs: DictConfig = DictConfig({}),
         logger: Optional[Any] = None
     ):
         self.model = model
         self.logger = logger
-        self.aggregator_config = aggregator_config
+        self.aggregator_configs = aggregator_configs
         self.staleness_fn = self.__staleness_fn_factory(
-            staleness_fn_name= self.aggregator_config.get("staleness_fn", "constant"),
-            **self.aggregator_config.get("staleness_fn_kwargs", {})
+            staleness_fn_name= self.aggregator_configs.get("staleness_fn", "constant"),
+            **self.aggregator_configs.get("staleness_fn_kwargs", {})
         )
-        self.alpha = self.aggregator_config.get("alpha", 0.9)
+        self.alpha = self.aggregator_configs.get("alpha", 0.9)
         
         self.global_state = None # Models parameters that are used for aggregation, this is unknown at the beginning
 
@@ -57,9 +57,9 @@ class FedCompassAggregator(BaseAggregator):
                 else:
                     self.global_state = copy.deepcopy(list(local_models.values())[0])
 
-        gradient_based = self.aggregator_config.get("gradient_based", False)
+        gradient_based = self.aggregator_configs.get("gradient_based", False)
         if client_id is not None and local_model is not None:
-            weight = 1.0 / self.aggregator_config.get("num_clients", 1)
+            weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
             alpha_t = self.alpha * self.staleness_fn(staleness) * weight
             
             for name in self.global_state:
@@ -74,7 +74,7 @@ class FedCompassAggregator(BaseAggregator):
         else:
             for i, client_id in enumerate(local_models):
                 local_model = local_models[client_id]
-                weight = 1.0 / self.aggregator_config.get("num_clients", 1)
+                weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
                 alpha_t = self.alpha * self.staleness_fn(staleness[client_id]) * weight
                 for name in self.global_state:
                     if self.named_parameters is not None and name not in self.named_parameters:

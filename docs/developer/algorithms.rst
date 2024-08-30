@@ -16,11 +16,11 @@ To add new aggregators to ``APPFL``,  you can create your own aggregator class b
         def __init__(
             self,
             model: torch.nn.Module,
-            aggregator_config: DictConfig,
+            aggregator_configs: DictConfig,
             logger: Any
         ):
             self.model = model
-            self.aggregator_config = aggregator_config
+            self.aggregator_configs = aggregator_configs
             self.logger = logger
             ...
         
@@ -34,7 +34,7 @@ To add new aggregators to ``APPFL``,  you can create your own aggregator class b
             """Return global model parameters"""
             pass
 
-You may add any configuration parameters into your aggregator and access them using ``self.aggregator_config.your_config_param``. When you start the FL experiment, you can specify the aggregator configuration parameter values in the server configuration file in the following way:
+You may add any configuration parameters into your aggregator and access them using ``self.aggregator_configs.your_config_param``. When you start the FL experiment, you can specify the aggregator configuration parameter values in the server configuration file in the following way:
 
 .. code-block:: yaml
 

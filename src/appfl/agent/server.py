@@ -288,7 +288,7 @@ class ServerAgent:
             self.aggregator = create_instance_from_file(
                 self.server_agent_config.server_configs.aggregator_path,
                 self.server_agent_config.server_configs.aggregator,
-                aggregator_config=OmegaConf.create(
+                aggregator_configs=OmegaConf.create(
                     self.server_agent_config.server_configs.aggregator_kwargs if
                     hasattr(self.server_agent_config.server_configs, "aggregator_kwargs") else {}
                 ),

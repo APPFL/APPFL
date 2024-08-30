@@ -15,12 +15,12 @@ class ICEADMMAggregator(BaseAggregator):
     def __init__(
         self,
         model: nn.Module,
-        aggregator_config: DictConfig,
+        aggregator_configs: DictConfig,
         logger: Any,
     ):
         self.model = model
         self.logger = logger
-        self.aggregator_config = aggregator_config
+        self.aggregator_configs = aggregator_configs
         self.named_parameters = set()
         for name, _ in self.model.named_parameters():
             self.named_parameters.add(name)
@@ -33,7 +33,7 @@ class ICEADMMAggregator(BaseAggregator):
         self.dual_states = OrderedDict()
         self.primal_states_curr = OrderedDict()
         self.primal_states_prev = OrderedDict()
-        self.device = self.aggregator_config.device if "device" in self.aggregator_config else "cpu"
+        self.device = self.aggregator_configs.device if "device" in self.aggregator_configs else "cpu"
 
     def aggregate(
         self,

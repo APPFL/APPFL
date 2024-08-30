@@ -9,7 +9,7 @@ class FedAdamAggregator(FedAvgAggregator):
     For more details, check paper `Adaptive Federated Optimization`
     at https://arxiv.org/pdf/2003.00295.pdf
 
-    Required aggregator_config fields:
+    Required aggregator_configs fields:
         - server_learning_rate: `eta` in the paper
         - server_adapt_param: `tau` in the paper
         - server_momentum_param_1: `beta_1` in the paper
@@ -18,10 +18,10 @@ class FedAdamAggregator(FedAvgAggregator):
     def __init__(
         self,
         model: Optional[torch.nn.Module] = None,
-        aggregator_config: DictConfig = DictConfig({}),
+        aggregator_configs: DictConfig = DictConfig({}),
         logger: Optional[Any] = None
     ):
-        super().__init__(model, aggregator_config, logger)
+        super().__init__(model, aggregator_configs, logger)
         self.m_vector = {}
         self.v_vector = {}
     
@@ -33,18 +33,18 @@ class FedAdamAggregator(FedAvgAggregator):
         if len(self.m_vector) == 0:
             for name in self.step:
                 self.m_vector[name] = torch.zeros_like(self.step[name])
-                self.v_vector[name] = torch.zeros_like(self.step[name]) + self.aggregator_config.server_adapt_param**2
+                self.v_vector[name] = torch.zeros_like(self.step[name]) + self.aggregator_configs.server_adapt_param**2
         
         for name in self.step:
             self.m_vector[name] = (
-                self.aggregator_config.server_momentum_param_1 * self.m_vector[name] + 
-                (1-self.aggregator_config.server_momentum_param_1) * self.step[name]
+                self.aggregator_configs.server_momentum_param_1 * self.m_vector[name] + 
+                (1-self.aggregator_configs.server_momentum_param_1) * self.step[name]
             )
             self.v_vector[name] = (
-                self.aggregator_config.server_momentum_param_2 * self.v_vector[name] + 
-                (1-self.aggregator_config.server_momentum_param_2) * torch.square(self.step[name])
+                self.aggregator_configs.server_momentum_param_2 * self.v_vector[name] + 
+                (1-self.aggregator_configs.server_momentum_param_2) * torch.square(self.step[name])
             )
             self.step[name] = torch.div(
-                self.aggregator_config.server_learning_rate * self.m_vector[name],
-                torch.sqrt(self.v_vector[name]) + self.aggregator_config.server_adapt_param
+                self.aggregator_configs.server_learning_rate * self.m_vector[name],
+                torch.sqrt(self.v_vector[name]) + self.aggregator_configs.server_adapt_param
             )
