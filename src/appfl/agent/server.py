@@ -38,6 +38,7 @@ class ServerAgent:
         self._load_model()
         self._load_loss()
         self._load_metric()
+        self._load_trainer()
         self._load_scheduler()
         self._load_compressor()
         self._load_val_data()
@@ -282,22 +283,57 @@ class ServerAgent:
 
     def _load_scheduler(self) -> None:
         """Obtain the scheduler."""
-        self.aggregator: BaseAggregator = eval(self.server_agent_config.server_configs.aggregator)(
-            self.model,
-            OmegaConf.create(
-                self.server_agent_config.server_configs.aggregator_kwargs if
-                hasattr(self.server_agent_config.server_configs, "aggregator_kwargs") else {}
-            ),
-            self.logger,
-        )
-        self.scheduler: BaseScheduler = eval(self.server_agent_config.server_configs.scheduler)(
-            OmegaConf.create(
-                self.server_agent_config.server_configs.scheduler_kwargs if 
-                hasattr(self.server_agent_config.server_configs, "scheduler_kwargs") else {}
-            ),
-            self.aggregator,
-            self.logger,
-        )
+        if hasattr(self.server_agent_config.server_configs, "aggregator_path"):
+            # Load the user-defined aggregator from the file
+            self.aggregator = create_instance_from_file(
+                self.server_agent_config.server_configs.aggregator_path,
+                self.server_agent_config.server_configs.aggregator,
+                aggregator_config=OmegaConf.create(
+                    self.server_agent_config.server_configs.aggregator_kwargs if
+                    hasattr(self.server_agent_config.server_configs, "aggregator_kwargs") else {}
+                ),
+                logger=self.logger,
+            )
+        else:
+            self.aggregator: BaseAggregator = eval(self.server_agent_config.server_configs.aggregator)(
+                self.model,
+                OmegaConf.create(
+                    self.server_agent_config.server_configs.aggregator_kwargs if
+                    hasattr(self.server_agent_config.server_configs, "aggregator_kwargs") else {}
+                ),
+                self.logger,
+            )
+        
+        if hasattr(self.server_agent_config.server_configs, "scheduler_path"):
+            # Load the user-defined scheduler from the file
+            self.scheduler = create_instance_from_file(
+                self.server_agent_config.server_configs.scheduler_path,
+                self.server_agent_config.server_configs.scheduler,
+                scheduler_configs=OmegaConf.create(
+                    self.server_agent_config.server_configs.scheduler_kwargs if 
+                    hasattr(self.server_agent_config.server_configs, "scheduler_kwargs") else {}
+                ),
+                aggregator=self.aggregator,
+                logger=self.logger,
+            )
+        else:
+            self.scheduler: BaseScheduler = eval(self.server_agent_config.server_configs.scheduler)(
+                OmegaConf.create(
+                    self.server_agent_config.server_configs.scheduler_kwargs if 
+                    hasattr(self.server_agent_config.server_configs, "scheduler_kwargs") else {}
+                ),
+                self.aggregator,
+                self.logger,
+            )
+            
+    def _load_trainer(self) -> None:
+        """
+        Process the trainer configurations if the trainer is provided locally as a user-defined class.
+        """
+        if hasattr(self.server_agent_config.client_configs.train_configs, "trainer_path"):
+            with open(self.server_agent_config.client_configs.train_configs.trainer_path, 'r') as f:
+                self.server_agent_config.client_configs.train_configs.trainer_source = f.read()
+            del self.server_agent_config.client_configs.train_configs.trainer_path
 
     def _load_compressor(self) -> None:
         """Obtain the compressor."""
