@@ -153,6 +153,8 @@ class ClientAgent:
         - `model_source` and `model_name`: load model from a raw file source string (usually sent from the server)
         - Users can define their own way to load the model from other sources
         """
+        if hasattr(self, "model") and self.model is not None:
+            return
         if not hasattr(self.client_agent_config, "model_configs"):
             self.model = None
             return
@@ -181,6 +183,8 @@ class ClientAgent:
         - `loss_fn`: load commonly-used loss function from `torch.nn` module
         - Users can define their own way to load the loss function from other sources
         """
+        if hasattr(self, "loss_fn") and self.loss_fn is not None:
+            return
         if not hasattr(self.client_agent_config, "train_configs"):
             self.loss_fn = None
             return
@@ -214,6 +218,8 @@ class ClientAgent:
         - `metric_source` and `metric_name`: load metric function from a raw file source string (usually sent from the server)
         - Users can define their own way to load the metric function from other sources
         """
+        if hasattr(self, "metric") and self.metric is not None:
+            return
         if not hasattr(self.client_agent_config, "train_configs"):
             self.metric = None
             return
