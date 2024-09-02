@@ -1,6 +1,16 @@
 Changelog
 =========
 
+appfl v1.0.1
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- For the aggregators, the model architecture is set to be an optional initialization parameter, and the aggregators only aggregate the parameters sent by the clients instead of the whole set of model parameters. This is useful when doing federated fine-tuning or federated transfer learning where only part of model parameters are updated / the model architecture is unknown to the aggregator.
+- Support easy integration of custom trainer/aggregator: user only needs to provide the custom trainer/aggregator class name and the path to the definition file in the configuration file to use it, instead of modifying the source code.
+- Add a detailed step-by-step tutorial on how to use ``APPFL`` to fine-tune a ViT model with a custom trainer.
+
 appfl v1.0.0
 ------------
 
