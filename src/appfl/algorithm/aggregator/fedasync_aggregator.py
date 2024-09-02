@@ -56,7 +56,7 @@ class FedAsyncAggregator(BaseAggregator):
                 return copy.deepcopy(self.model.state_dict())
             else:
                 raise ValueError("Model is not provided to the aggregator.")
-        return copy.deepcopy(self.global_state)
+        return {k: v.clone() for k, v in self.global_state.items()}
 
     def aggregate(self, client_id: Union[str, int], local_model: Union[Dict, OrderedDict], **kwargs) -> Dict:
         if self.global_state is None:
@@ -65,7 +65,9 @@ class FedAsyncAggregator(BaseAggregator):
                     name: self.model.state_dict()[name] for name in local_model
                 }
             else:
-                self.global_state = copy.deepcopy(local_model)
+                self.global_state = {
+                    name: tensor.detach().clone() for name, tensor in local_model.items()
+                }
 
         self.compute_steps(client_id, local_model)
         
@@ -80,7 +82,7 @@ class FedAsyncAggregator(BaseAggregator):
         
         self.global_step += 1
         self.client_step[client_id] = self.global_step
-        return copy.deepcopy(self.global_state)
+        return {k: v.clone() for k, v in self.global_state.items()}
     
     def compute_steps(self, client_id: Union[str, int], local_model: Union[Dict, OrderedDict],):
         """

@@ -48,14 +48,18 @@ class FedCompassAggregator(BaseAggregator):
                         name: self.model.state_dict()[name] for name in local_model
                     }
                 else:
-                    self.global_state = copy.deepcopy(local_model)
+                    self.global_state = self.global_state = {
+                        name: tensor.detach().clone() for name, tensor in local_model.items()
+                    }
             else:
                 if self.model is not None:
                     self.global_state = {
                         name: self.model.state_dict()[name] for name in list(local_models.values())[0]
                     }
                 else:
-                    self.global_state = copy.deepcopy(list(local_models.values())[0])
+                    self.global_state = {
+                        name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()
+                    }
 
         gradient_based = self.aggregator_configs.get("gradient_based", False)
         if client_id is not None and local_model is not None:
@@ -67,9 +71,9 @@ class FedCompassAggregator(BaseAggregator):
                     self.global_state[name] = local_model[name]
                 else:
                     if gradient_based:
-                        self.global_state[name] -= local_model[name] * alpha_t
+                        self.global_state[name] = self.global_state[name] - local_model[name] * alpha_t
                     else:
-                        self.global_state[name] -= (self.global_state[name] - local_model[name]) * alpha_t
+                        self.global_state[name] = (1 - alpha_t) * self.global_state[name] + local_model[name] * alpha_t
                         
         else:
             for i, client_id in enumerate(local_models):
@@ -80,18 +84,18 @@ class FedCompassAggregator(BaseAggregator):
                     if self.named_parameters is not None and name not in self.named_parameters:
                         if i == 0:
                             self.global_state[name] = torch.zeros_like(local_model[name])
-                        self.global_state[name] += local_model[name]
+                        self.global_state[name] = self.global_state[name] + local_model[name]
                         if i == len(local_models) - 1:
                             self.global_state[name] = torch.div(self.global_state[name], len(local_models))
                     else:
                         if gradient_based:
-                            self.global_state[name] -= local_model[name] * alpha_t
+                            self.global_state[name] = self.global_state[name] - local_model[name] * alpha_t
                         else:
-                            self.global_state[name] -= (self.global_state[name] - local_model[name]) * alpha_t
+                            self.global_state[name] = (1 - alpha_t) * self.global_state[name] + local_model[name] * alpha_t
                     
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)
-        return copy.deepcopy(self.global_state)
+        return {k: v.clone() for k, v in self.global_state.items()}
 
     def get_parameters(self, **kwargs) -> Dict:
         """
@@ -111,7 +115,7 @@ class FedCompassAggregator(BaseAggregator):
                 return copy.deepcopy(self.model.state_dict())
             else:
                 raise ValueError("Model is not provided to the aggregator.")
-        return copy.deepcopy(self.global_state)
+        return {k: v.clone() for k, v in self.global_state.items()}
 
     def __staleness_fn_factory(self, staleness_fn_name, **kwargs):
         if staleness_fn_name   == "constant":

@@ -54,20 +54,27 @@ class FedAvgAggregator(BaseAggregator):
                 return copy.deepcopy(self.model.state_dict())
             else:
                 raise ValueError("Model is not provided to the aggregator.")
-        return copy.deepcopy(self.global_state)
+        return {k: v.clone() for k, v in self.global_state.items()}
 
     def aggregate(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs) -> Dict:
         """
         Take the weighted average of local models from clients and return the global model.
         """
         if self.global_state is None:
-            self.global_state = copy.deepcopy(list(local_models.values())[0]) # Set the global state to the same state as the first client
+            if self.model is not None:
+                self.global_state = {
+                    name: self.model.state_dict()[name] for name in list(local_models.values())[0]
+                }
+            else:
+                self.global_state = {
+                    name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()
+                }
         
         self.compute_steps(local_models)
         
         for name in self.global_state:
             if name in self.step:
-                self.global_state[name] += self.step[name]
+                self.global_state[name] = self.global_state[name] + self.step[name]
             else:
                 param_sum = torch.zeros_like(self.global_state[name])
                 for _, model in local_models.items():
@@ -75,7 +82,7 @@ class FedAvgAggregator(BaseAggregator):
                 self.global_state[name] = torch.div(param_sum, len(local_models))
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)
-        return copy.deepcopy(self.global_state)
+        return {k: v.clone() for k, v in self.global_state.items()}
     
     def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]):
         """

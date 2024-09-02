@@ -26,7 +26,9 @@ class FedBuffAggregator(FedAsyncAggregator):
                     name: self.model.state_dict()[name] for name in local_model
                 }
             else:
-                self.global_state = copy.deepcopy(local_model)
+                self.global_state = self.global_state = {
+                    name: tensor.detach().clone() for name, tensor in local_model.items()
+                }
         
         self.compute_steps(client_id, local_model)
         self.buff_size += 1
@@ -35,7 +37,7 @@ class FedBuffAggregator(FedAsyncAggregator):
                 if self.named_parameters is not None and name not in self.named_parameters:
                     self.global_state[name] = torch.div(self.step[name], self.K)
                 else:
-                    self.global_state[name] += self.step[name]
+                    self.global_state[name] = self.global_state[name] + self.step[name]
             
             self.global_step += 1
             self.buff_size = 0
@@ -44,7 +46,7 @@ class FedBuffAggregator(FedAsyncAggregator):
                 self.model.load_state_dict(self.global_state, strict=False)
                 
         self.client_step[client_id] = self.global_step
-        return copy.deepcopy(self.global_state)
+        return {k: v.clone() for k, v in self.global_state.items()}
     
     def compute_steps(self, client_id: Union[str, int], local_model: Union[Dict, OrderedDict],):
         """
