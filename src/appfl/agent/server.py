@@ -42,6 +42,25 @@ class ServerAgent:
         self._load_scheduler()
         self._load_compressor()
         self._load_val_data()
+        
+    def get_num_clients(self) -> int:
+        """
+        Get the number of clients.
+        """
+        if not hasattr(self, "num_clients"):
+            assert (
+                hasattr(self.server_agent_config.server_configs, "num_clients") or
+                hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") or
+                hasattr(self.server_agent_config.server_configs.aggregator_kwargs, "num_clients")
+            ), "The number of clients should be set in the server configurations."
+            self.num_clients = (
+                self.server_agent_config.server_configs.num_clients if
+                hasattr(self.server_agent_config.server_configs, "num_clients") else
+                self.server_agent_config.server_configs.scheduler_kwargs.num_clients if
+                hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") else
+                self.server_agent_config.server_configs.aggregator_kwargs.num_clients
+            )
+        return self.num_clients
 
     def get_client_configs(self, **kwargs) -> DictConfig:
         """Return the FL configurations that are shared among all clients."""
@@ -118,19 +137,6 @@ class ServerAgent:
             Otherwise, the method may return a `Future` object of the relative weight, which will be resolved 
             when the sample size of all clients is synchronized.
         """
-        if sync:
-            assert (
-                hasattr(self.server_agent_config.server_configs, "num_clients") or
-                hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") or
-                hasattr(self.server_agent_config.server_configs.aggregator_kwargs, "num_clients")
-            ), "The number of clients should be set in the server configurations."
-            num_clients = (
-                self.server_agent_config.server_configs.num_clients if
-                hasattr(self.server_agent_config.server_configs, "num_clients") else
-                self.server_agent_config.server_configs.scheduler_kwargs.num_clients if
-                hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") else
-                self.server_agent_config.server_configs.aggregator_kwargs.num_clients
-            )
         self.aggregator.set_client_sample_size(client_id, sample_size)
         if sync:
             if not hasattr(self, "_client_sample_size"):
@@ -141,7 +147,7 @@ class ServerAgent:
                 self._client_sample_size[client_id] = sample_size
                 future = Future()
                 self._client_sample_size_future[client_id] = future
-                if len(self._client_sample_size) == num_clients:
+                if len(self._client_sample_size) == self.get_num_clients():
                     total_sample_size = sum(self._client_sample_size.values())
                     for client_id in self._client_sample_size_future:
                         self._client_sample_size_future[client_id].set_result(
@@ -181,15 +187,8 @@ class ServerAgent:
         """Indicate whether the server can be terminated from listening to the clients."""
         if not hasattr(self, "closed_clients"):
             return False
-        num_clients = (
-            self.server_agent_config.server_configs.num_clients if 
-            hasattr(self.server_agent_config.server_configs, "num_clients") else
-            self.server_agent_config.server_configs.scheduler_kwargs.num_clients if
-            hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") else
-            self.server_agent_config.server_configs.aggregator_kwargs.num_clients
-        )
         with self._close_connection_lock:
-            terminated = len(self.closed_clients) >= num_clients
+            terminated = len(self.closed_clients) >= self.get_num_clients()
         if terminated:
             self.clean_up()
         return terminated
