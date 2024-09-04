@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from torch.optim import *
 from .fl_base import BaseClient
+from collections import OrderedDict
 
 class ClientAdaptOptim(BaseClient):
     """This client optimizer which perform updates for certain number of epochs in each training round."""
@@ -16,6 +17,7 @@ class ClientAdaptOptim(BaseClient):
         super(ClientAdaptOptim, self).client_log_title()
 
     def update(self):
+         
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 

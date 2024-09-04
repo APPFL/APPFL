@@ -81,9 +81,9 @@ def main():
         )
 
     args.num_clients = len(train_datasets)
-    cfg.fed.clientname = args.client_name
- 
-
+    
+    
+    
     model = get_model(args)
     loss_fn = torch.nn.CrossEntropyLoss()
     print(
@@ -95,15 +95,17 @@ def main():
     cfg.device = args.device
     cfg.num_clients = args.num_clients
     cfg.num_epochs = args.num_epochs
-    cfg.fed = eval(args.federation_type+"()")
  
+    cfg.fed = eval(args.federation_type+"()")    
+    cfg.fed.clientname = args.client_name
+    
 
     if args.federation_type == "Federated":
         cfg.fed.args.optim = args.client_optimizer
         cfg.fed.args.optim_args.lr = args.client_lr
         cfg.fed.servername = args.server
         cfg.fed.args.num_local_epochs = args.num_local_epochs
-
+      
     ## privacy preserving
     cfg.fed.args.use_dp = args.use_dp
     cfg.fed.args.epsilon = args.epsilon
@@ -119,7 +121,7 @@ def main():
             rm.run_server(
                 cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
             )
-        else:
+        else:            
             rm.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets)
         print("------DONE------", comm_rank)
     else:
@@ -148,4 +150,4 @@ if __name__ == "__main__":
 # mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerAdaptiveFL --use_dp --epsilon=1.0
 
 
-# mpiexec -np 5 python ./femnist_adapt.py --client_optimizer=ClientAdaptOptim --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=AdaptiveFLServer
+# mpiexec -np 5 python ./femnist_adapt.py --client_name=ClientAdaptOptim --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=AdaptiveFLServer
