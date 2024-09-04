@@ -33,6 +33,7 @@ class CompassScheduler(BaseScheduler):
         self._num_global_epochs = 0
         self._access_lock = threading.Lock() # handle client requests as a queue
         self._timer_record = {}
+        self.start_time = time.time() 
         super().__init__(scheduler_configs, aggregator, logger)
 
     def get_parameters(self, **kwargs) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:

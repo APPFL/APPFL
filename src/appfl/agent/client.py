@@ -8,7 +8,7 @@ from appfl.compressor import *
 from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
-from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
+from typing import Union, Dict, OrderedDict, Tuple, Optional
 from appfl.logger import ClientAgentFileLogger
 from appfl.misc import create_instance_from_file, \
     run_function_from_file, \
@@ -33,13 +33,10 @@ class ClientAgent:
     Users can overwrite any class method to add custom functionalities of the client agent.
     
     :param client_agent_config: configurations for the client agent
-    :param trainer: [Optional] a trainer class for training the model. This is only useful
-        when user uses a custom trainer that is not available in the `appfl.algorithm.trainer` module.
     """
     def __init__(
         self, 
         client_agent_config: ClientAgentConfig = ClientAgentConfig(),
-        trainer: Optional[Any] = None,
         **kwargs
     ) -> None:
         self.client_agent_config = client_agent_config
@@ -48,7 +45,7 @@ class ClientAgent:
         self._load_loss()
         self._load_metric()
         self._load_data()
-        self._load_trainer(trainer)
+        self._load_trainer()
         self._load_compressor()
 
     def load_config(self, config: DictConfig) -> None:
@@ -156,6 +153,8 @@ class ClientAgent:
         - `model_source` and `model_name`: load model from a raw file source string (usually sent from the server)
         - Users can define their own way to load the model from other sources
         """
+        if hasattr(self, "model") and self.model is not None:
+            return
         if not hasattr(self.client_agent_config, "model_configs"):
             self.model = None
             return
@@ -184,6 +183,8 @@ class ClientAgent:
         - `loss_fn`: load commonly-used loss function from `torch.nn` module
         - Users can define their own way to load the loss function from other sources
         """
+        if hasattr(self, "loss_fn") and self.loss_fn is not None:
+            return
         if not hasattr(self.client_agent_config, "train_configs"):
             self.loss_fn = None
             return
@@ -217,6 +218,8 @@ class ClientAgent:
         - `metric_source` and `metric_name`: load metric function from a raw file source string (usually sent from the server)
         - Users can define their own way to load the metric function from other sources
         """
+        if hasattr(self, "metric") and self.metric is not None:
+            return
         if not hasattr(self.client_agent_config, "train_configs"):
             self.metric = None
             return
@@ -233,13 +236,51 @@ class ClientAgent:
         else:
             self.metric = None
 
-    def _load_trainer(self, trainer: Optional[Any] = None) -> None:
+    def _load_trainer(self) -> None:
         """Obtain a local trainer"""
         if hasattr(self, "trainer") and self.trainer is not None:
             return
-        if trainer is not None or (getattr(self, "trainer_type", None) is not None):
-            self.trainer_type = trainer if trainer is not None else self.trainer_type
-            self.trainer = self.trainer_type(
+        if not hasattr(self.client_agent_config, "train_configs"):
+            self.trainer = None
+            return
+        if (
+            not hasattr(self.client_agent_config.train_configs, "trainer")
+            and
+            not hasattr(self.client_agent_config.train_configs, "trainer_path")
+            and
+            not hasattr(self.client_agent_config.train_configs, "trainer_source")
+        ):
+            self.trainer = None
+            return
+        if hasattr(self.client_agent_config.train_configs, "trainer_path"):
+            self.trainer = create_instance_from_file(
+                self.client_agent_config.train_configs.trainer_path,
+                self.client_agent_config.train_configs.trainer,
+                model=self.model,
+                loss_fn=self.loss_fn,
+                metric=self.metric,
+                train_dataset=self.train_dataset,
+                val_dataset=self.val_dataset,
+                train_configs=self.client_agent_config.train_configs,
+                logger=self.logger,
+            )
+        elif hasattr(self.client_agent_config.train_configs, "trainer_source"):
+            self.trainer = create_instance_from_file_source(
+                self.client_agent_config.train_configs.trainer_source,
+                self.client_agent_config.train_configs.trainer,
+                model=self.model,
+                loss_fn=self.loss_fn,
+                metric=self.metric,
+                train_dataset=self.train_dataset,
+                val_dataset=self.val_dataset,
+                train_configs=self.client_agent_config.train_configs,
+                logger=self.logger,
+            )
+        else:
+            trainer_module = importlib.import_module('appfl.algorithm.trainer')
+            if not hasattr(trainer_module, self.client_agent_config.train_configs.trainer):
+                raise ValueError(f'Invalid trainer name: {self.client_agent_config.train_configs.trainer}')
+            self.trainer: BaseTrainer = getattr(trainer_module, self.client_agent_config.train_configs.trainer)(
                 model=self.model, 
                 loss_fn=self.loss_fn,
                 metric=self.metric,
@@ -248,25 +289,6 @@ class ClientAgent:
                 train_configs=self.client_agent_config.train_configs,
                 logger=self.logger,
             )
-            return
-        if not hasattr(self.client_agent_config, "train_configs"):
-            self.trainer = None
-            return
-        if not hasattr(self.client_agent_config.train_configs, "trainer"):
-            self.trainer = None
-            return
-        trainer_module = importlib.import_module('appfl.algorithm.trainer')
-        if not hasattr(trainer_module, self.client_agent_config.train_configs.trainer):
-            raise ValueError(f'Invalid trainer name: {self.client_agent_config.train_configs.trainer}')
-        self.trainer: BaseTrainer = getattr(trainer_module, self.client_agent_config.train_configs.trainer)(
-            model=self.model, 
-            loss_fn=self.loss_fn,
-            metric=self.metric,
-            train_dataset=self.train_dataset, 
-            val_dataset=self.val_dataset,
-            train_configs=self.client_agent_config.train_configs,
-            logger=self.logger,
-        )
 
     def _load_compressor(self) -> None:
         """
