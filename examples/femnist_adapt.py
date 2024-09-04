@@ -35,7 +35,9 @@ parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server
-parser.add_argument("--server", type=str, default="ServerFedAvg")  
+# parser.add_argument("--server", type=str, default="ServerFedAvg")  
+# changed to AdaptiveFLServer
+parser.add_argument("--server", type=str, default="AdaptiveFLServer")  
 parser.add_argument("--num_epochs", type=int, default=10)
 
 parser.add_argument("--server_lr", type=float, required=False)
@@ -44,7 +46,6 @@ parser.add_argument("--mparam_2", type=float, required=False)
 parser.add_argument("--adapt_param", type=float, required=False)
 
 parser.add_argument("--pretrained", type=int, default=0)
- 
 
 ## privacy preserving
 parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
@@ -142,6 +143,9 @@ if __name__ == "__main__":
 # mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerFedAvg 
 # mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerAdaptiveFL 
 
+
 # mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerFedAvg --use_dp --epsilon=1.0
 # mpiexec -np 5 python ./femnist_mpi.py --client_optimizer=Adam --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=ServerAdaptiveFL --use_dp --epsilon=1.0
 
+
+# mpiexec -np 5 python ./femnist_adapt.py --client_optimizer=ClientAdaptOptim --client_lr=1e-3 --num_local_epochs=5 --num_epochs=10 --server=AdaptiveFLServer

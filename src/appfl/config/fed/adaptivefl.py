@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from omegaconf import DictConfig, OmegaConf
 
 @dataclass
-class NewAlgo:
+class adaptive_fl:
     type: str = "adaptive_fl"
-    servername: str = "adaptive_fl_Server"
-    clientname: str = "adaptive_fl_Client"
+    servername: str = "AdaptiveFLServer"
+    clientname: str = "ClientAdaptOptim"
     args: DictConfig = OmegaConf.create(
         {
             # add new arguments

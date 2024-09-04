@@ -19,16 +19,18 @@ class ClientAdaptOptim(BaseClient):
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
 
-        ## Initial evaluation
+        initial_model_state = copy.deepcopy(self.model.state_dict())  # Save initial state for gradient estimate
+
+        # Initial evaluation
         if self.cfg.validation == True and self.test_dataloader != None:
-            start_time=time.time()
+            start_time = time.time()
             test_loss, test_accuracy = super(ClientAdaptOptim, self).client_validation()
             per_iter_time = time.time() - start_time
             super(ClientAdaptOptim, self).client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)    
 
-        ## Local training 
+        # Local training 
         for t in range(self.num_local_epochs):
-            start_time=time.time()
+            start_time = time.time()
             train_loss, target_true, target_pred = 0, [], []
             for data, target in self.dataloader:                
                 data = data.to(self.cfg.device)
@@ -52,7 +54,7 @@ class ClientAdaptOptim(BaseClient):
             target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
             train_accuracy = float(self.metric(target_true, target_pred))
             
-            ## Validation
+            # Validation
             if self.cfg.validation == True and self.test_dataloader != None:
                 test_loss, test_accuracy = super(ClientAdaptOptim, self).client_validation()
             else:
@@ -60,7 +62,7 @@ class ClientAdaptOptim(BaseClient):
             per_iter_time = time.time() - start_time
             super(ClientAdaptOptim, self).client_log_content(t+1, per_iter_time, train_loss, train_accuracy, 0, 0)
 
-            ## save model.state_dict()
+            # Save model.state_dict()
             if self.cfg.save_model_state_dict == True:
                 path = self.cfg.output_dirname + "/client_%s" % (self.id)
                 if not os.path.exists(path):
@@ -69,20 +71,30 @@ class ClientAdaptOptim(BaseClient):
  
         self.round += 1
 
-        ## Differential Privacy
+        # Compute gradient estimate using stochastic oracle
+        grad_estimate = OrderedDict()
+        for name, param in self.model.named_parameters():
+            grad_estimate[name] = (initial_model_state[name] - param.data) / self.optim_args['lr']
+
+        # Compute function value difference using stochastic oracle
+        func_value_diff = OrderedDict()
+        for name, param in self.model.named_parameters():
+            func_value_diff[name] = self.loss_fn(self.model, param) - self.loss_fn(self.model, initial_model_state[name])
+
+        # Differential Privacy
         self.primal_state = copy.deepcopy(self.model.state_dict())
         if self.use_dp:
-            sensitivity = 2.0 * self.clip_value * self.optim_args.lr
+            sensitivity = 2.0 * self.clip_value * self.optim_args['lr']
             scale_value = sensitivity / self.epsilon
             super(ClientAdaptOptim, self).laplace_mechanism_output_perturb(scale_value)
 
-        ## Move the model parameter to CPU (if not) for communication
-        if (self.cfg.device == "cuda"):            
+        # Move the model parameter to CPU (if not) for communication
+        if self.cfg.device == "cuda":            
             for k in self.primal_state:
                 self.primal_state[k] = self.primal_state[k].cpu()
 
-        return self.primal_state
- 
-
-
- 
+        return {
+            "primal_state": self.primal_state,
+            "grad_estimate": grad_estimate,
+            "func_value_diff": func_value_diff
+        }

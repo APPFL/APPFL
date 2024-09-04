@@ -3,8 +3,9 @@ This module provides a base class to define the functions required to implement 
 """
 from .fl_base import *
 from .ppfl_base import *
-from .client_adaptive_optimizer import *
-from .client_optimizer import *
+from .client_adaptive_optimizer import * # Adaptive client
+from .client_optimizer import * 
+from .adaptive_fl import *       #Adaptive server
 from .client_step_optimizer import *
 from .globus_compute_client_optimizer import *
 from .globus_compute_client_step_optimizer import *
