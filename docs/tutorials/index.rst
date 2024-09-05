@@ -11,4 +11,5 @@ We present a collection of tutorials for APPFL framework.
     gpuclusterrun
     aws
     examples_vit_finetuning
+    examples_custom_action
     deprecated_tutorial
