@@ -20,7 +20,7 @@ In centralized learning, to train a machine learning model, we need a "trainer" 
 From centralized to federated learning
 --------------------------------------
 
-To move from centralized learning to fedearated learning, the following additional components are needed
+To move from centralized learning to federated learning, the following additional components are needed
 
 - Exchanged parameters: What parameters are exchanged between the server and clients for aggregation purposes.
 - Aggregation algorithms: How the parameters are aggregated.
@@ -175,7 +175,7 @@ The ``config.yaml`` is the client YAML configuration file, which contains client
 Client launch script
 ~~~~~~~~~~~~~~~~~~~~
 
-Below is the client launch script. It reads the client configuration file to initialize a client agent and a gRPC client communicator. It then employs the client communicator sends various types of requests to the launched server to do fedearated learning:
+Below is the client launch script. It reads the client configuration file to initialize a client agent and a gRPC client communicator. It then employs the client communicator sends various types of requests to the launched server to do federated learning:
 
 (1) The client first uses the communicator to request general client configurations from the server and loads them.
 (2) It then gets the initial global model parameters from the server.
