@@ -296,7 +296,6 @@ class IIADMMTrainer(BaseTrainer):
         output = self.model(data)            
         loss = self.loss_fn(output, target)
         loss.backward()
-        optimizer.step()
 
         """Gradient Clipping"""
         if getattr(self.train_configs, "clip_grad", False) or getattr(self.train_configs, "use_dp", False):
@@ -305,6 +304,8 @@ class IIADMMTrainer(BaseTrainer):
                 self.train_configs.clip_value,
                 norm_type=self.train_configs.clip_norm,
             )
+            
+        optimizer.step()
     
         """Update primal and dual states"""
         coefficient = 1

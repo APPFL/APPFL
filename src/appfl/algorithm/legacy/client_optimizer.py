@@ -39,7 +39,6 @@ class ClientOptim(BaseClient):
                 output = self.model(data)
                 loss = self.loss_fn(output, target)
                 loss.backward()
-                optimizer.step()
                 target_true.append(target.detach().cpu().numpy())
                 target_pred.append(output.detach().cpu().numpy())
                 train_loss += loss.item()
@@ -49,6 +48,7 @@ class ClientOptim(BaseClient):
                         self.clip_value,
                         norm_type=self.clip_norm,
                     )
+                optimizer.step()
 
             train_loss /= len(self.dataloader)
             target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
