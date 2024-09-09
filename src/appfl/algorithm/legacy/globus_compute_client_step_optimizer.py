@@ -50,9 +50,9 @@ class GlobusComputeClientStepOptim(BaseClient):
             output = self.model(data)
             loss = self.loss_fn(output, target)
             loss.backward()
-            optimizer.step()
             if self.clip_grad or self.use_dp:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_value, norm_type=self.clip_norm)
+            optimizer.step()
         cli_logger.stop_timer("Train")
 
         ## client evaluation
