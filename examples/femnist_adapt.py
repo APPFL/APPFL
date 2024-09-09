@@ -98,6 +98,8 @@ def main():
  
     cfg.fed = eval(args.federation_type+"()")    
     cfg.fed.clientname = args.client_name
+    cfg.fed.servername = args.server     # updates
+
     
 
     if args.federation_type == "Federated":
