@@ -189,7 +189,6 @@ class ClientAdaptOptim(BaseClient):
         for name, param in self.model.named_parameters():
             grad_estimate[name] = param.grad.data.clone()
             
-        print(grad_estimate)  #TEST
         
         # Forward pass after the local update to calculate the function value difference
         updated_output = self.model(data)  # Get the updated model's output (logits)
@@ -210,9 +209,10 @@ class ClientAdaptOptim(BaseClient):
             for k in self.primal_state:
                 self.primal_state[k] = self.primal_state[k].cpu()
 
-        return {
-            "primal_state": self.primal_state,
-            "grad_estimate": grad_estimate,
-            "func_value_diff": func_value_diff
-        }
+        # return {
+        #     "primal_state": self.primal_state,
+        #     "grad_estimate": grad_estimate,
+        #     "func_value_diff": func_value_diff
+        # }
+        return self.primal_state,grad_estimate,func_val_diff
     
