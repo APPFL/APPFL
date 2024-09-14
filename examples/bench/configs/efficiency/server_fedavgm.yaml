@@ -46,7 +46,7 @@ server_configs:
     client_weights_mode: "equal"
     server_momentum_param_1: 0.9
   device: "cpu"
-  num_global_epochs: 20
+  num_global_epochs: 30
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:

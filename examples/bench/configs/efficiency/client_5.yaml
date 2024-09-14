@@ -1,18 +1,20 @@
+client_id: Client5
 train_configs:
   # Device
-  device: "cuda"
+  device: "cuda:1"
   # Logging and outputs
   logging_id: "Client5"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   # Simulation
   time_per_step: 0.72741991
-  time_per_step_std: 0.072741991
+  # time_per_step_std: 0.072741991
+  time_per_step_std: 0
 
 # Local dataset
 data_configs:
   dataset_path: "../dataset/cifar10_dataset.py"
-  dataset_name: "get_cifar"
+  dataset_name: "get_cifar10"
   dataset_kwargs:
     num_clients: 10
     client_id: 5

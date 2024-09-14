@@ -54,7 +54,7 @@ server_configs:
     gradient_based: True
     K: 3
   device: "cpu"
-  num_global_epochs: 200
+  num_global_epochs: 500
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
