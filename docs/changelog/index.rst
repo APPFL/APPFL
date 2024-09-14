@@ -1,6 +1,15 @@
 Changelog
 =========
 
+appfl v1.0.2
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add a new command line interface (CLI), `appfl-setup-cli` to create necessary certificates for creating SSL-secured gRPC connections between the server and clients.
+- Add a detailed step-by-step tutorial on how to define custom action with an example to generate a data readiness report on all client data at `here <https://appfl.ai/en/latest/tutorials/examples_custom_action.html>`_.
+
 appfl v1.0.1
 ------------
 
