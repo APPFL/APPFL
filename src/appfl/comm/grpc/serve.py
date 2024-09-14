@@ -20,6 +20,7 @@ def serve(
     use_authenticator: bool = False,
     server_certificate_key: Optional[Union[bytes, str]] = None,
     server_certificate: Optional[Union[bytes, str]] = None,
+    ca_certificate: Optional[Union[bytes, str]] = None,
     authenticator: Optional[str] = None,
     authenticator_args: Dict[str, Any] = {},
     max_message_size: int = 2 * 1024 * 1024,
@@ -34,6 +35,7 @@ def serve(
     :param use_authenticator: Whether to use an authenticator to authenticate the client in each RPC. Must have `use_ssl=True` if `True`.
     :param server_certificate_key: The PEM-encoded server certificate key as a byte string, or `None` to use an insecure server.
     :param server_certificate: The PEM-encoded server certificate as a byte string, or `None` to use an insecure server.
+    :param ca_certificate: The PEM-encoded CA certificate as a byte string, or `None` to use an insecure server.
     :param authenticator: The name of the authenticator to use for authenticating the client in each RPC.
     :param authenticator_args: The arguments to pass to the authenticator.
     :param max_message_size: The maximum message size in bytes.
@@ -62,13 +64,16 @@ def serve(
             server_certificate_key = load_credential_from_file(server_certificate_key)
         if isinstance(server_certificate, str):
             server_certificate = load_credential_from_file(server_certificate)
+        if isinstance(ca_certificate, str):
+            ca_certificate = load_credential_from_file(ca_certificate)
         credentials = grpc.ssl_server_credentials(
             (
                 (
                     server_certificate_key,
                     server_certificate,
                 ),
-            )
+            ),
+            root_certificates=ca_certificate,
         )
         server.add_secure_port(server_uri, credentials)
     else:

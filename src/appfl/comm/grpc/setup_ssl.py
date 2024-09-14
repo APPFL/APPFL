@@ -68,7 +68,6 @@ IP.1 = {IP}
     
     # Write the configuration file
     conf_file = os.path.join(ssl_dir, "certificate.conf")
-    print(conf_file)
     with open(conf_file, "w") as f:
         f.write(conf_content)
 
@@ -123,9 +122,11 @@ openssl x509 \\
     os.system(f"chmod +x {script_file}")
     try:
         subprocess.run([script_file], check=True)
-        print(f"SSL certificates generated and stored in {ssl_dir}")
         print_str = f"Please copy the CA certificate {os.path.join(ssl_dir, 'ca.crt')} to the client machines"
         print("=" * len(print_str))
+        print(f"SSL certificate stored in {os.path.join(ssl_dir, 'server.pem')}")
+        print(f"SSL private key stored in {os.path.join(ssl_dir, 'server.key')}")
+        print(f"CA certificate stored in  {os.path.join(ssl_dir, 'ca.crt')}")
         print(print_str)
         print("=" * len(print_str))
     except subprocess.CalledProcessError as e:
