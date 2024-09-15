@@ -101,7 +101,12 @@ html_theme_options = {
             "name": "Discord",
             "url": "https://discord.gg/bBW56EYGUS",
             "icon": "fab fa-discord",
-        }
+        },
+        {
+            "name": "YouTube",
+            "url": "https://www.youtube.com/channel/UCzwiJboiJW3dLI0UndnDy5g",
+            "icon": "fab fa-youtube",
+        },
     ],
 }
 

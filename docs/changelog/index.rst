@@ -8,7 +8,14 @@ New Features
 ~~~~~~~~~~~~
 
 - Add a new command line interface (CLI), `appfl-setup-cli` to create necessary certificates for creating SSL-secured gRPC connections between the server and clients.
+- Add a tutorial on how to use the CLI, `appfl-setup-cli`, to create certificates for the server and clients, and enable SSL-secured gRPC connections between the server and clients.
 - Add a detailed step-by-step tutorial on how to define custom action with an example to generate a data readiness report on all client data at `here <https://appfl.ai/en/latest/tutorials/examples_custom_action.html>`_.
+- Add a APPFL `YouTube channel <https://www.youtube.com/channel/UCzwiJboiJW3dLI0UndnDy5g>`_ to provide video tutorials on how to use APPFL for federated learning research in the future.
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix the `issue <https://github.com/APPFL/APPFL/issues/197>`_ regarding client gradient clipping. The clipping is now applied before weights update.
 
 appfl v1.0.1
 ------------
