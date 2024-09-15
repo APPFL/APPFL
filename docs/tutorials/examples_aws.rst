@@ -61,7 +61,7 @@ After successfully connecting to the EC2 instance, install conda.
 
     wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     chmod +x Miniconda3-latest-Linux-x86_64.sh
-    ./Miniconda3-latest-Linux-x86_64.sh
+    ./Miniconda3-latest-Linux-x86_64.sh -b -p ~/miniconda3
     source ~/miniconda3/bin/activate
 
 Installation
@@ -75,6 +75,7 @@ Install APPFL from source in a conda environment:
     cd APPFL
     conda create -n appfl python=3.10 --y
     conda activate appfl
+    conda install mpi4py --y
     pip install -e ".[examples]"
 
 Launching a server

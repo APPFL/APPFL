@@ -61,9 +61,14 @@ class FedAsyncAggregator(BaseAggregator):
     def aggregate(self, client_id: Union[str, int], local_model: Union[Dict, OrderedDict], **kwargs) -> Dict:
         if self.global_state is None:
             if self.model is not None:
-                self.global_state = {
-                    name: self.model.state_dict()[name] for name in local_model
-                }
+                try: 
+                    self.global_state = {
+                        name: self.model.state_dict()[name] for name in local_model
+                    }
+                except:
+                    self.global_state = {
+                        name: tensor.detach().clone() for name, tensor in local_model.items()
+                    }
             else:
                 self.global_state = {
                     name: tensor.detach().clone() for name, tensor in local_model.items()

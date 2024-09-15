@@ -62,9 +62,14 @@ class FedAvgAggregator(BaseAggregator):
         """
         if self.global_state is None:
             if self.model is not None:
-                self.global_state = {
-                    name: self.model.state_dict()[name] for name in list(local_models.values())[0]
-                }
+                try: 
+                    self.global_state = {
+                        name: self.model.state_dict()[name] for name in list(local_models.values())[0]
+                    }
+                except:
+                    self.global_state = {
+                        name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()
+                    }
             else:
                 self.global_state = {
                     name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()

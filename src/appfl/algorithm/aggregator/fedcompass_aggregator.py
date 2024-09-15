@@ -44,18 +44,28 @@ class FedCompassAggregator(BaseAggregator):
         if self.global_state is None:
             if client_id is not None and local_model is not None:
                 if self.model is not None:
-                    self.global_state = {
-                        name: self.model.state_dict()[name] for name in local_model
-                    }
+                    try:
+                        self.global_state = {
+                            name: self.model.state_dict()[name] for name in local_model
+                        }
+                    except:
+                        self.global_state = {
+                            name: tensor.detach().clone() for name, tensor in local_model.items()
+                        }
                 else:
                     self.global_state = self.global_state = {
                         name: tensor.detach().clone() for name, tensor in local_model.items()
                     }
             else:
                 if self.model is not None:
-                    self.global_state = {
-                        name: self.model.state_dict()[name] for name in list(local_models.values())[0]
-                    }
+                    try:
+                        self.global_state = {
+                            name: self.model.state_dict()[name] for name in list(local_models.values())[0]
+                        }
+                    except:
+                        self.global_state = {
+                            name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()
+                        }
                 else:
                     self.global_state = {
                         name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()

@@ -28,19 +28,27 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :return `response.header.status`: Server status
         :return `response.configuration`: JSON serialized FL configurations
         """
-        self.logger.info(f"Received GetConfiguration request from client {request.header.client_id}")
-        if len(request.meta_data) == 0: 
-            meta_data = {}
-        else:
-            meta_data = json.loads(request.meta_data)
-        client_configs = self.server_agent.get_client_configs(**meta_data)
-        client_configs = OmegaConf.to_container(client_configs, resolve=True)
-        client_configs_serialized = json.dumps(client_configs)
-        response = ConfigurationResponse(
-            header=ServerHeader(status=ServerStatus.RUN),
-            configuration=client_configs_serialized,
-        )
-        return response
+        try:
+            self.logger.info(f"Received GetConfiguration request from client {request.header.client_id}")
+            if len(request.meta_data) == 0: 
+                meta_data = {}
+            else:
+                meta_data = json.loads(request.meta_data)
+            client_configs = self.server_agent.get_client_configs(**meta_data)
+            client_configs = OmegaConf.to_container(client_configs, resolve=True)
+            client_configs_serialized = json.dumps(client_configs)
+            response = ConfigurationResponse(
+                header=ServerHeader(status=ServerStatus.RUN),
+                configuration=client_configs_serialized,
+            )
+            return response
+        except Exception as e:
+            logging.error("An error occurred", exc_info=True)
+            # Handle the exception in a way that's appropriate for your application
+            # For example, you might want to set a gRPC error status
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details('Server error occurred!')
+            raise e
     
     def GetGlobalModel(self, request, context):
         """
@@ -50,25 +58,33 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :return `response.header.status`: Server status
         :return `response.global_model`: Serialized global model
         """
-        self.logger.info(f"Received GetGlobalModel request from client {request.header.client_id}")
-        if len(request.meta_data) == 0: 
-            meta_data = {}
-        else:
-            meta_data = json.loads(request.meta_data)
-        model = self.server_agent.get_parameters(**meta_data, blocking=True)
-        if isinstance(model, tuple):
-            meta_data = json.dumps(model[1])
-            model = model[0]
-        else:
-            meta_data = json.dumps({})
-        model_serialized = serialize_model(model)
-        response_proto = GetGlobalModelRespone(
-            header=ServerHeader(status=ServerStatus.RUN),
-            global_model=model_serialized,
-            meta_data=meta_data,
-        )
-        for bytes in proto_to_databuffer(response_proto, max_message_size=self.max_message_size):
-            yield bytes
+        try:
+            self.logger.info(f"Received GetGlobalModel request from client {request.header.client_id}")
+            if len(request.meta_data) == 0: 
+                meta_data = {}
+            else:
+                meta_data = json.loads(request.meta_data)
+            model = self.server_agent.get_parameters(**meta_data, blocking=True)
+            if isinstance(model, tuple):
+                meta_data = json.dumps(model[1])
+                model = model[0]
+            else:
+                meta_data = json.dumps({})
+            model_serialized = serialize_model(model)
+            response_proto = GetGlobalModelRespone(
+                header=ServerHeader(status=ServerStatus.RUN),
+                global_model=model_serialized,
+                meta_data=meta_data,
+            )
+            for bytes in proto_to_databuffer(response_proto, max_message_size=self.max_message_size):
+                yield bytes
+        except Exception as e:
+            logging.error("An error occurred", exc_info=True)
+            # Handle the exception in a way that's appropriate for your application
+            # For example, you might want to set a gRPC error status
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details('Server error occurred!')
+            raise e
 
     def UpdateGlobalModel(self, request_iterator, context):
         """
@@ -80,34 +96,42 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :param: request.local_model: Serialized local model
         :param: request.meta_data: JSON serialized metadata dictionary (if needed)
         """
-        request = UpdateGlobalModelRequest()
-        bytes_received = b""
-        for bytes in request_iterator:
-            bytes_received += bytes.data_bytes
-        request.ParseFromString(bytes_received)
-        self.logger.info(f"Received UpdateGlobalModel request from client {request.header.client_id}")
-        client_id = request.header.client_id
-        local_model = request.local_model
-        if len(request.meta_data) == 0: 
-            meta_data = {}
-        else:
-            meta_data = json.loads(request.meta_data)
-        global_model = self.server_agent.global_update(client_id, local_model, blocking=True, **meta_data)
-        if isinstance(global_model, tuple):
-            meta_data = json.dumps(global_model[1])
-            global_model = global_model[0]
-        else:
-            meta_data = json.dumps({})
-        global_model_serialized = serialize_model(global_model)
-        status = ServerStatus.DONE if self.server_agent.training_finished() else ServerStatus.RUN
-        response = UpdateGlobalModelResponse(
-            header=ServerHeader(status=status),
-            global_model=global_model_serialized,
-            meta_data=meta_data,
-        )
-        for bytes in proto_to_databuffer(response, max_message_size=self.max_message_size):
-            yield bytes
-    
+        try:
+            request = UpdateGlobalModelRequest()
+            bytes_received = b""
+            for bytes in request_iterator:
+                bytes_received += bytes.data_bytes
+            request.ParseFromString(bytes_received)
+            self.logger.info(f"Received UpdateGlobalModel request from client {request.header.client_id}")
+            client_id = request.header.client_id
+            local_model = request.local_model
+            if len(request.meta_data) == 0: 
+                meta_data = {}
+            else:
+                meta_data = json.loads(request.meta_data)
+            global_model = self.server_agent.global_update(client_id, local_model, blocking=True, **meta_data)
+            if isinstance(global_model, tuple):
+                meta_data = json.dumps(global_model[1])
+                global_model = global_model[0]
+            else:
+                meta_data = json.dumps({})
+            global_model_serialized = serialize_model(global_model)
+            status = ServerStatus.DONE if self.server_agent.training_finished() else ServerStatus.RUN
+            response = UpdateGlobalModelResponse(
+                header=ServerHeader(status=status),
+                global_model=global_model_serialized,
+                meta_data=meta_data,
+            )
+            for bytes in proto_to_databuffer(response, max_message_size=self.max_message_size):
+                yield bytes
+        except Exception as e:
+            logging.error("An error occurred", exc_info=True)
+            # Handle the exception in a way that's appropriate for your application
+            # For example, you might want to set a gRPC error status
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details('Server error occurred!')
+            raise e
+        
     def InvokeCustomAction(self, request, context):
         """
         This function is the entry point for any custom action that the server agent can perform. The server agent should implement the custom action and call this function to perform the action.
@@ -117,37 +141,45 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :return `response.header.status`: Server status
         :return `response.meta_data`: JSON serialized metadata dictionary for return values (if needed)
         """
-        self.logger.info(f"Received InvokeCustomAction {request.action} request from client {request.header.client_id}")
-        client_id = request.header.client_id
-        action = request.action
-        if len(request.meta_data) == 0: 
-            meta_data = {}
-        else:
-            meta_data = json.loads(request.meta_data)
-        if action == "set_sample_size":
-            assert "sample_size" in meta_data, "The metadata should contain parameter `sample_size`."
-            ret_val = self.server_agent.set_sample_size(client_id, **meta_data)
-            if ret_val is None:
-                response = CustomActionResponse(
-                    header=ServerHeader(status=ServerStatus.RUN),
-                )
+        try:
+            self.logger.info(f"Received InvokeCustomAction {request.action} request from client {request.header.client_id}")
+            client_id = request.header.client_id
+            action = request.action
+            if len(request.meta_data) == 0: 
+                meta_data = {}
             else:
-                if isinstance(ret_val, Future):
-                    ret_val = ret_val.result()
-                results = json.dumps(ret_val)
+                meta_data = json.loads(request.meta_data)
+            if action == "set_sample_size":
+                assert "sample_size" in meta_data, "The metadata should contain parameter `sample_size`."
+                ret_val = self.server_agent.set_sample_size(client_id, **meta_data)
+                if ret_val is None:
+                    response = CustomActionResponse(
+                        header=ServerHeader(status=ServerStatus.RUN),
+                    )
+                else:
+                    if isinstance(ret_val, Future):
+                        ret_val = ret_val.result()
+                    results = json.dumps(ret_val)
+                    response = CustomActionResponse(
+                        header=ServerHeader(status=ServerStatus.RUN),
+                        results=results,
+                    )
+                return response
+            elif action == "close_connection":
+                self.server_agent.close_connection(client_id)
                 response = CustomActionResponse(
-                    header=ServerHeader(status=ServerStatus.RUN),
-                    results=results,
+                    header=ServerHeader(status=ServerStatus.DONE),
                 )
-            return response
-        elif action == "close_connection":
-            self.server_agent.close_connection(client_id)
-            response = CustomActionResponse(
-                header=ServerHeader(status=ServerStatus.DONE),
-            )
-            return response
-        else:
-            raise NotImplementedError(f"Custom action {action} is not implemented.")
+                return response
+            else:
+                raise NotImplementedError(f"Custom action {action} is not implemented.")
+        except Exception as e:
+            logging.error("An error occurred", exc_info=True)
+            # Handle the exception in a way that's appropriate for your application
+            # For example, you might want to set a gRPC error status
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details('Server error occurred!')
+            raise e
     
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
