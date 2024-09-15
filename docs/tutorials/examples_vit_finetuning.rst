@@ -118,8 +118,7 @@ Here comes the line-by-line explanation of ``server_configs`` part:
 
 .. note::
 
-    To enable SSL communication, you need to provide the server and client with the necessary SSL certificates. Specifically, the server needs a certificate and a certificate key, and set the path to these files in the ``server_configs.comm_configs.grpc_configs.server_certificate`` and ``server_configs.comm_configs.grpc_configs.server_certificate_key`` fields, respectively. The client needs a certificate authority (CA) certificate, and set the path to this file in the ``client_configs.comm_configs.grpc_configs.root_certificate`` field.
-
+    To enable SSL communication, please check this `tutorial <https://appfl.ai/en/latest/tutorials/examples_ssl.html>`_ for more details on how to generate SSL certificates for securing the gRPC connections.
 
 Server launch script
 ~~~~~~~~~~~~~~~~~~~~

@@ -36,7 +36,7 @@ else:
 
 setuptools.setup(
     name="appfl",
-    version="1.0.1",
+    version="1.0.2",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -107,7 +107,8 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "appfl-auth=appfl.login_manager.globus.cli:auth",
-            "appfl-install-compressor=appfl.compressor.install:install_compressor"
+            "appfl-install-compressor=appfl.compressor.install:install_compressor",
+            "appfl-setup-ssl=appfl.comm.grpc.setup_ssl:setup_ssl",
         ],
     },
 )

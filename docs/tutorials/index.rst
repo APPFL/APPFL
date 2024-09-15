@@ -8,8 +8,9 @@ We present a collection of tutorials for APPFL framework.
 
     firstrun
     ../notebooks/index
-    gpuclusterrun
-    aws
+    examples_gpuclusterrun
+    examples_aws
     examples_vit_finetuning
     examples_custom_action
+    examples_ssl
     deprecated_tutorial

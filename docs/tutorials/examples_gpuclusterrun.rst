@@ -1,5 +1,5 @@
-Simulation on GPU cluster
-=========================
+Example: Simulation on GPU cluster
+==================================
 
 This describes how to set up the environment to run APPFL using MPI in a GPU cluster for simulation, which is useful for benchmarking the performance of different FL algoirthms on various datasets. In this example, we partition the CIFAR10 in an non-independent and identically distributed (non-IID) manner into five client splits and train a Resnet-18 model using the FedAvg algorithm.
 
