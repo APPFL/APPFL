@@ -73,7 +73,7 @@ Code developers and contributors may want to work on the local repositofy.
 To set up the development environment, 
 
 ```bash
-git clone https://github.com/APPFL/APPFL.git
+git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
 cd APPFL
 pip install -e ".[dev,examples]"
 ```
