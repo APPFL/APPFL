@@ -10,7 +10,7 @@ We first make sure that the APPFL package and its dependencies are installed and
 
 .. code-block:: console
 
-    git clone https://github.com/APPFL/APPFL.git
+    git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
     pip install -e ".[examples]"
     cd examples/examples_legacy

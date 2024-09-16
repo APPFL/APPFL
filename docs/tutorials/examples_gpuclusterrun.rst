@@ -32,7 +32,7 @@ Now, we can create a conda environment and install APPFL.
 
     conda create -n appfl python=3.10
     conda activate appfl
-    git clone https://github.com/APPFL/APPFL.git
+    git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
     pip install -e ".[examples]"
     cd examples

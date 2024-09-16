@@ -11,7 +11,7 @@ To setup a **real-world** federated learning client on a **distributed** computi
 
 2. Install APPFL package.
     ```
-    git clone https://github.com/APPFL/APPFL.git appfl && cd appfl
+    git clone --single-branch --branch main https://github.com/APPFL/APPFL.git appfl && cd appfl
     pip install -e ".[dev,examples]"
     ```
 

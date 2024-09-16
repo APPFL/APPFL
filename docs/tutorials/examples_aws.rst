@@ -1,6 +1,10 @@
 Example: Launch server on AWS EC2
 =================================
 
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/ihPofoQwUMs?si=GQ_plzyxv58FkLAZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 In this page, we describe the processes to set up a gRPC server for FL on an `AWS EC2 <https://aws.amazon.com/ec2/>`_ instance, which waits for clients to connect and participate in FL experiments.
 
 Create an EC2 instance
@@ -61,7 +65,7 @@ After successfully connecting to the EC2 instance, install conda.
 
     wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     chmod +x Miniconda3-latest-Linux-x86_64.sh
-    ./Miniconda3-latest-Linux-x86_64.sh
+    ./Miniconda3-latest-Linux-x86_64.sh -b -p ~/miniconda3
     source ~/miniconda3/bin/activate
 
 Installation
@@ -71,10 +75,11 @@ Install APPFL from source in a conda environment:
 
 .. code-block:: console
 
-    git clone https://github.com/APPFL/APPFL.git
+    git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
     conda create -n appfl python=3.10 --y
     conda activate appfl
+    conda install mpi4py --y
     pip install -e ".[examples]"
 
 Launching a server

@@ -1,6 +1,10 @@
 Example: Finetune a Vision Transformer model
 ============================================
 
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/m4rdOub2Y_o?si=HvMnsPyTfQGyx7TQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ``APPFL`` aims to make the transition from centralized to federated learning (FL) as seamless as possible, and this tutorial will demonstrate how to finetune a Vision Transformer (ViT) model in federated settings using the ``APPFL`` package.
 
 Centralized learning
