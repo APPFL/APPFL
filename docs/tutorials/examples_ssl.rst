@@ -1,6 +1,10 @@
 Example: SSL Encrypted gRPC Communication
 =========================================
 
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/3n8a026VqdQ?si=07WxkRgQp5bzmZZq" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 Generate SSL Certificates and Keys
 -----------------------------------
 
@@ -93,6 +97,6 @@ After modifying the server and client configuration files, we can run the server
 .. code-block:: bash
 
     $ cd examples
-    $ python grpc/run_server.py --config examples/resources/configs/mnist/server_fedavg.yaml # [Terminal 1]
-    $ python grpc/run_client.py --config examples/resources/configs/mnist/client_1.yaml      # [Terminal 2]
-    $ python grpc/run_client.py --config examples/resources/configs/mnist/client_2.yaml      # [Terminal 3]
+    $ python grpc/run_server.py --config resources/configs/mnist/server_fedavg.yaml # [Terminal 1]
+    $ python grpc/run_client.py --config resources/configs/mnist/client_1.yaml      # [Terminal 2]
+    $ python grpc/run_client.py --config resources/configs/mnist/client_2.yaml      # [Terminal 3]

@@ -1,6 +1,20 @@
 Changelog
 =========
 
+appfl v1.0.3
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add trackback information to the gRPC server to help debug the server-side errors.
+- Add a video tutorials for `installing APPFL on AWS <https://youtu.be/ihPofoQwUMs>`_, `creating SSL-encrypted gRPC server <https://youtu.be/3n8a026VqdQ>`_, and `using APPFL to finetune a ViT <https://youtu.be/m4rdOub2Y_o>`_.
+
+Bug Fixes
+~~~~~~~~~
+
+- Handle corner cases for server aggregators when the keys in client local models are not consistent with the global model keys.
+
 appfl v1.0.2
 ------------
 
