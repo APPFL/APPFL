@@ -27,34 +27,48 @@ class AdaptiveFLServer(BaseServer):
         self.__dict__.update(kwargs)
         # Additional initialization if needed
 
-    def update(self, local_states: OrderedDict, gradients: OrderedDict, func_val_diffs: OrderedDict):
+    def update(self, local_states):
         """
-        Update the global model by averaging the gradients from selected clients.
+        Update the global model by selecting clients based on their contributions and adjusting learning rates.
 
         Args:
-            local_states (OrderedDict): A dictionary containing the local model states from clients.
-            gradients (OrderedDict): A dictionary containing the gradients from clients.
-            func_val_diffs (OrderedDict): A dictionary containing the function value differences from clients.
+            local_states (list): A list of dictionaries, where each dictionary contains:
+                - 'primal_state': Local model parameters from the client.
+                - 'gradient_state': Local gradients from the client.
+                - 'function_value_difference': The change in the objective function value from the client.
         """
-        selected_clients = []
-        global_state = OrderedDict()
+        # Initialize storage for gradients and function value differences
+        gradients = OrderedDict()
+        func_val_diffs = OrderedDict()
+
+        # Gather gradients and function value differences from clients
+        for client_id, state in enumerate(local_states):
+            gradients[client_id] = state['gradient_state']
+            func_val_diffs[client_id] = state['function_value_difference']
 
         # Accumulated change in objective function across all clients
         total_func_val_diff = sum(func_val_diffs.values())
 
         # Select clients whose updates meet the condition
-        for client_id in range(self.num_clients):
-            if total_func_val_diff <= -self.server_lr * torch.norm(gradients[client_id]) ** 2:
-                selected_clients.append(client_id)
+        selected_clients = [
+            client_id for client_id in range(self.num_clients)
+            if func_val_diffs[client_id] <= -self.server_lr * torch.norm(torch.cat([gradients[client_id][k].view(-1) for k in gradients[client_id]])).item() ** 2
+        ]
 
-        # Update the global model using only the selected clients
-        for key in self.model.state_dict().keys():
-            global_state[key] = torch.zeros_like(self.model.state_dict()[key])
-            for client_id in selected_clients:
-                global_state[key] += local_states[client_id][key] * self.weights[client_id]
-
+        # Initialize global state for aggregation
+        global_state = copy.deepcopy(self.model.state_dict())
+        
         if selected_clients:
-            global_state = {k: v / len(selected_clients) for k, v in global_state.items()}
+            # Update the global model using only the selected clients
+            for key in self.model.state_dict().keys():
+                if key in global_state:  # Ensure key exists in global model
+                    global_state[key] = torch.zeros_like(self.model.state_dict()[key], device=self.device)
+                    for client_id in selected_clients:
+                        global_state[key] += local_states[client_id]['primal_state'][key] * self.weights[client_id]
+                    # Normalize by the number of selected clients
+                    global_state[key] /= len(selected_clients)
+        
+            # Load the updated global state into the model
             self.model.load_state_dict(global_state)
 
         # Update learning rates for clients
@@ -64,83 +78,10 @@ class AdaptiveFLServer(BaseServer):
             else:
                 self.weights[client_id] /= self.gamma  # Decrease learning rate for non-selected clients
 
-        
-        def logging_iteration(self, cfg, logger, t):
-            if t == 0:
-                title = super(FedServer, self).log_title()
-                logger.info(title)
-            contents = super(FedServer, self).log_contents(cfg, t)
-            logger.info(contents)
-
-
-class AdaptiveFLClient(BaseClient):
-    def __init__(
-        self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader=None, metric=None, initial_lr=0.1, gamma=1.1, **kwargs
-    ):
-        """
-        Initialize the AdaptiveFLClient class.
-
-        Args:
-            id (int): Unique ID for each client.
-            weight (Dict): Aggregation weight for the client.
-            model (nn.Module): The local model to be trained.
-            loss_fn (nn.Module): Loss function used for training.
-            dataloader (DataLoader): The client's data loader.
-            cfg (DictConfig): Configuration settings.
-            outfile (str): Log file for output.
-            test_dataloader (DataLoader, optional): Test data loader for validation.
-            metric (callable, optional): Metric for performance evaluation.
-            initial_lr (float): Initial learning rate for the client.
-            gamma (float): Multiplicative factor for adapting learning rates.
-            **kwargs: Additional keyword arguments.
-        """
-        super(AdaptiveFLClient, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
-        self.lr = initial_lr
-        self.gamma = gamma
-        self.__dict__.update(kwargs)
-        # Additional initialization if needed
-
-    def stochastic_oracle(self, global_model):
-        """
-        Compute the gradient and function value difference using stochastic oracles.
-        """
-        # Load the global model weights
-        self.model.load_state_dict(global_model)
-
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr) 
-
-        # Mini-batch sampling
-        data, target = next(iter(self.dataloader))
-        data, target = data.to(self.cfg.device), target.to(self.cfg.device)
-
-        # Forward pass
-        optimizer.zero_grad()
-        output = self.model(data)
-        loss = self.loss_fn(output, target)
-
-        # Backward pass and gradient computation
-        loss.backward()
-        optimizer.step()
-
-        # Compute the gradient estimate
-        gradient = OrderedDict()
-        for name, param in self.model.named_parameters():
-            gradient[name] = param.grad.data.clone()
-
-        # Compute the function value difference
-        func_val_diff = OrderedDict()
-        with torch.no_grad():
-            for name, param in self.model.named_parameters():
-                func_val_diff[name] = self.loss_fn(self.model(data), target).item() - loss.item()
-
-        return gradient, func_val_diff
-
-    def update(self):
-        """
-        Perform local training using stochastic oracles and return the resulting model parameters, gradient, and function value difference.
-        """
-        # Use the model state as the initial point for the stochastic oracle
-        gradient, func_val_diff = self.stochastic_oracle(self.model.state_dict())
-        return self.model.state_dict(), gradient, func_val_diff
-
+    def logging_iteration(self, cfg, logger, t):
+        if t == 0:
+            title = super(AdaptiveFLServer, self).log_title()
+            logger.info(title)
+        contents = super(AdaptiveFLServer, self).log_contents(cfg, t)
+        logger.info(contents)
 
