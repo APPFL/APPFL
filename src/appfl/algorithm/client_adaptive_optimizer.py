@@ -16,12 +16,40 @@ class ClientAdaptOptim(BaseClient):
         self.__dict__.update(kwargs)
         super(ClientAdaptOptim, self).client_log_title()
 
+        self.clip_grad = cfg.get('clip_grad',False)
+        self.clip_value = cfg.get('clip_value',1.0)
+        self.clip_norm = self.cfg.get('clip_norm', 2)
+
+    def clip_gradient_estimate(self, grad_estimate, max_norm, norm_type=2):
+        """
+        Clips the gradient estimate to ensure its norm is within the specified limit.
+
+        Args:
+            grad_estimate: The gradient estimate (difference in weights divided by lr).
+            max_norm: The maximum allowable norm for the gradient estimate.
+            norm_type: The type of norm (default is L2 norm).
+        """
+        total_norm = 0.0
+        # Calculate the total norm of the gradient estimate
+        for name, grad in grad_estimate.items():
+            param_norm = grad.norm(norm_type)
+            total_norm += param_norm.item() ** norm_type
+        # if norm type =2, calculate L2 norm, if norm type =1, takes L1 norm.
+        total_norm = total_norm ** (1. / norm_type)
+
+        # If the total norm exceeds the max norm, scale the gradients
+        clip_coef = max_norm / (total_norm + 1e-6)
+        if clip_coef < 1:
+            for name, grad in grad_estimate.items():
+                grad_estimate[name].mul_(clip_coef)  # Scale the gradient estimate
+        return grad_estimate
 
     def update(self):
         # Load the global model weights
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
-        
+        initial_model_state = copy.deepcopy(self.model.state_dict())  # Save initial state for gradient estimate
+
         initial_loss = 0
         with torch.no_grad():
             for data, target in self.dataloader:
@@ -31,11 +59,6 @@ class ClientAdaptOptim(BaseClient):
                 loss = self.loss_fn(output, target)
                 initial_loss += loss.item()
         initial_loss /= len(self.dataloader)
-
-        # gradients
-        self.gradient_state = OrderedDict()
-        for name, param in self.model.named_parameters():
-            self.gradient_state[name] = torch.zeros_like(param, device='cpu')
 
         # Initial evaluation
         if self.cfg.validation and self.test_dataloader is not None:
@@ -56,32 +79,24 @@ class ClientAdaptOptim(BaseClient):
                 loss = self.loss_fn(output, target)  # Calculate the loss using the output (logits)
                 loss.backward()
 
-                for name, param in self.model.named_parameters():
-                    if param.grad is not None:
-                        self.gradient_state[name] += param.grad.clone().detach().cpu()
                 optimizer.step()
 
                 # Log results
                 target_true.append(target.detach().cpu().numpy())
                 target_pred.append(output.detach().cpu().numpy())
                 train_loss += loss.item()
-
-                # Apply gradient clipping if necessary
                 if self.clip_grad or self.use_dp:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
                         self.clip_value,
                         norm_type=self.clip_norm,
                     )
-            # averaging gradients over number of mini-batches
-            num_batches = len(self.dataloader) * self.num_local_epochs
-            for name in self.gradient_state:
-                self.gradient_state[name] /= num_batches
 
 
             train_loss /= len(self.dataloader)
             target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
             train_accuracy = float(self.metric(target_true, target_pred))
+
 
             # Validation
             if self.cfg.validation and self.test_dataloader is not None:
@@ -101,6 +116,12 @@ class ClientAdaptOptim(BaseClient):
 
         self.round += 1
 
+        # Compute gradient estimate using stochastic oracle
+        self.grad_estimate = OrderedDict()
+        for name, param in self.model.named_parameters():
+            self.grad_estimate[name] = (initial_model_state[name] - param.data) / self.optim_args['lr']
+
+        self.clip_gradient_estimate(self.grad_estimate, max_norm=self.clip_value, norm_type=self.clip_norm)
        # loss after training
         final_loss = 0
         with torch.no_grad():
@@ -128,6 +149,6 @@ class ClientAdaptOptim(BaseClient):
 
         return {
             "primal_state": self.primal_state,
-            "gradient_state": self.gradient_state,
+            "grad_estimate": self.grad_estimate,  # Corrected this line to use grad_estimate
             "function_value_difference": self.function_value_difference
         }

@@ -43,26 +43,24 @@ class AdaptiveFLServer(BaseServer):
         # Gather gradients and function value differences from clients
         for client_id, state in enumerate(local_states):
             # Move gradients and function value differences to GPU
-            gradients[client_id] = {k: v.to(self.device) for k, v in state['gradient_state'].items()}
+            gradients[client_id] = {k: v.to(self.device) for k, v in state['grad_estimate'].items()}
             func_val_diffs[client_id] = torch.tensor(state['function_value_difference'], device=self.device)
 
-        # Accumulated change in objective function across all clients
+        # change in objective function across all clients
         total_func_val_diff = sum(func_val_diffs.values())
 
-        # Select clients whose updates meet the condition
-        # selected_clients = [
-        #     client_id for client_id in range(self.num_clients)
-        #     if func_val_diffs[client_id] <= -self.server_lr * torch.norm(
-        #         torch.cat([gradients[client_id][k].view(-1) for k in gradients[client_id]])
-        #     ).item() ** 2
-        # ]
+
         selected_clients = []
         for client_id in range(self.num_clients):
             # Compute the norm of the client's gradient
             gradient_norm = torch.norm(torch.cat([gradients[client_id][k].view(-1) for k in gradients[client_id]])).item()
-
+            print("func_val_diffs: ",func_val_diffs[client_id])
+            print("learning rate: ",self.server_lr)
+            print("gradient_norm: ", gradient_norm)
+            print("second term : ", -self.server_lr * gradient_norm ** 2)
+            stop
             # Apply the selection condition
-            if total_func_val_diff <= -self.server_lr * gradient_norm ** 2:
+            if func_val_diffs[client_id] <= -self.server_lr * gradient_norm ** 2:
                 selected_clients.append(client_id)
 
 
