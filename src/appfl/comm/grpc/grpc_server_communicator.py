@@ -8,6 +8,7 @@ from .grpc_communicator_pb2_grpc import *
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from .utils import proto_to_databuffer, serialize_model
+import threading
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
     def __init__(
@@ -167,6 +168,26 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 return response
             elif action == "close_connection":
                 self.server_agent.close_connection(client_id)
+                response = CustomActionResponse(
+                    header=ServerHeader(status=ServerStatus.DONE),
+                )
+                return response
+            elif action == "data_readiness_report":
+
+                num_clients = self.server_agent.get_num_clients()
+                if not hasattr(self, "_dr_metrics_lock"):
+                    self._dr_metrics_lock = threading.Lock()
+                    self._dr_metrics_req_count = 0
+                    self._dr_metrics = {}
+                with self._dr_metrics_lock:
+                    self._dr_metrics_req_count += 1
+                    for k, v in meta_data.items():
+                        if k not in self._dr_metrics:
+                            self._dr_metrics[k] = {}
+                        self._dr_metrics[k][client_id] = v
+                    if self._dr_metrics_req_count == num_clients:
+                        self.server_agent.data_readiness_report(self._dr_metrics)
+
                 response = CustomActionResponse(
                     header=ServerHeader(status=ServerStatus.DONE),
                 )

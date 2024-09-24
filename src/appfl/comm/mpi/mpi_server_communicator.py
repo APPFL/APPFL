@@ -9,6 +9,8 @@ from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from .serializer import byte_to_request, response_to_byte, model_to_byte
 from .config import MPITask, MPITaskRequest, MPITaskResponse, MPIServerStatus
+import threading
+
 
 class MPIServerCommunicator:
     def __init__(
@@ -193,6 +195,22 @@ class MPIServerCommunicator:
         elif action == "close_connection":
             self.server_agent.close_connection(client_id)
             return MPITaskResponse(status=MPIServerStatus.DONE.value)
+        elif action == "get_data_readiness_report":
+            
+            num_clients = self.server_agent.get_num_clients()
+            if not hasattr(self, "_dr_metrics_lock"):
+                self._dr_metrics_lock = threading.Lock()
+                self._dr_metrics_req_count = 0
+                self._dr_metrics = {}
+            with self._dr_metrics_lock:
+                self._dr_metrics_req_count += 1
+                for k, v in meta_data.items():
+                    if k not in self._dr_metrics:
+                        self._dr_metrics[k] = {}
+                    self._dr_metrics[k][client_id] = v
+                if self._dr_metrics_req_count == num_clients:
+                    self.server_agent.data_readiness_report(self._dr_metrics)
+            return MPITaskResponse(status=MPIServerStatus.RUN.value)
         else:
             raise NotImplementedError(f"Custom action {action} is not implemented.")
         

@@ -59,7 +59,7 @@ class GlobusComputeServerCommunicator:
             if not hasattr(client_config.train_configs, "logging_id"):
                 client_config.train_configs.logging_id = client_id
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
-                client_id=client_id,
+                # client_id=client_id,
                 client_endpoint_id=client_endpoint_id,
                 client_config=OmegaConf.merge(client_config_from_server, client_config),
             )
