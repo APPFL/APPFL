@@ -9,6 +9,16 @@ import random
 import seaborn as sns
 
 class DRAgent(ClientAgent):
+    """
+    
+    Developed by Kaveen Hiniduma(hiniduma.1@osu.edu) and Suren Byna(byna.1@osu.edu) from The Ohio State University.
+
+    This class is used to generate data readiness reports for a client agent.
+    The data readiness report includes standard metrics and plots that provide insights into the data distribution and quality.
+    The class inherits from the ClientAgent class and extends it with data readiness functionality.
+
+    """
+
     def generate_readiness_report(self):
         if hasattr(self.client_agent_config, "dr_metrics"):
             

@@ -14,8 +14,6 @@ from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional
 import json
 
-from fpdf import FPDF
-
 class ServerAgent:
     """
     `ServerAgent` should act on behalf of the FL server to:

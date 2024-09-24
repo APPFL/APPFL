@@ -102,6 +102,8 @@ setuptools.setup(
             "wget",
             "torchvision",
             "tensorboard",
+            "seaborn",
+            "piq"
         ],
     },
     entry_points={
