@@ -52,8 +52,8 @@ clients:
 
     # Local dataset
     data_configs:
-      dataset_path: "./resources/dataset/cifar10_dataset.py"
-      dataset_name: "get_cifar10"
+      dataset_path: "./resources/dataset/mnist_dataset.py"
+      dataset_name: "get_mnist"
       dataset_kwargs:
         num_clients: 2
         client_id: 1
