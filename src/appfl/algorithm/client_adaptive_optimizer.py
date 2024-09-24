@@ -44,7 +44,7 @@ class ClientAdaptOptim(BaseClient):
                 grad_estimate[name].mul_(clip_coef)  # Scale the gradient estimate
         return grad_estimate
 
-    def update(self):
+    def dupdate(self):
         # Load the global model weights
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
