@@ -26,7 +26,7 @@ class AdaptiveFLServer(BaseServer):
         self.gamma = gamma
         self.__dict__.update(kwargs)
 
-    def update(self, local_states):
+    def update(self, local_states, lr_clients):
         """
         Update the global model by selecting clients based on their contributions and adjusting learning rates.
 
@@ -39,12 +39,13 @@ class AdaptiveFLServer(BaseServer):
         # Initialize storage for gradients and function value differences
         gradients = OrderedDict()
         func_val_diffs = OrderedDict()
-
+        sq_norm_grad = OrderedDict() 
         # Gather gradients and function value differences from clients
         for client_id, state in enumerate(local_states):
             # Move gradients and function value differences to GPU
             gradients[client_id] = {k: v.to(self.device) for k, v in state['grad_estimate'].items()}
             func_val_diffs[client_id] = torch.tensor(state['function_value_difference'], device=self.device)
+  
 
         # change in objective function across all clients
         total_func_val_diff = sum(func_val_diffs.values())
@@ -55,14 +56,14 @@ class AdaptiveFLServer(BaseServer):
             # Compute the norm of the client's gradient
             gradient_norm = torch.norm(torch.cat([gradients[client_id][k].view(-1) for k in gradients[client_id]])).item()
             print("func_val_diffs: ",func_val_diffs[client_id])
-            print("learning rate: ",self.server_lr)
+            print("learning rate: ",lr_clients[client_id])
             print("gradient_norm: ", gradient_norm)
-            print("second term : ", -self.server_lr * gradient_norm ** 2)
-            stop
+            print("second term : ", -self.server_lr * gradient_norm ** 2)            
             # Apply the selection condition
-            if func_val_diffs[client_id] <= -self.server_lr * gradient_norm ** 2:
+            if func_val_diffs[client_id] <= - lr_clients[client_id] * gradient_norm ** 2:
                 selected_clients.append(client_id)
-
+        print(selected_clients)
+        stop
 
 
         # Initialize global state for aggregation on GPU

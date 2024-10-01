@@ -18,6 +18,7 @@ __author__ = 'Argonne National Laboratory'
 __all__ = [
     'run_serial', 
     'run_mpi', 
+    'run_mpi_adapt', 
     'run_mpi_async', 
     'run_mpi_sync', 
     'run_mpi_compass', 

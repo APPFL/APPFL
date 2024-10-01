@@ -5,8 +5,8 @@ from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
 from models.cnn import *
-import appfl.run_serial as rs
-import appfl.run_mpi as rm
+import appfl.run_serial_adapt as rs
+import appfl.run_mpi_adapt as rm
 from mpi4py import MPI
 from models.utils import get_model
 from dataloader.femnist_dataloader import get_femnist
@@ -31,7 +31,7 @@ parser.add_argument("--federation_type", type=str, default="Federated")  ## Fede
 parser.add_argument("--client_name", type=str, default="ClientAdaptOptim")  ## ClientOptim  
 parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
-parser.add_argument("--client_lr", type=float, default=1e-3)
+parser.add_argument("--client_lr", type=float, default=1.0)
 parser.add_argument("--num_local_epochs", type=int, default=1)
 
 ## server

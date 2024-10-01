@@ -44,7 +44,10 @@ class ClientAdaptOptim(BaseClient):
                 grad_estimate[name].mul_(clip_coef)  # Scale the gradient estimate
         return grad_estimate
 
-    def update(self):
+    def update(self, lr):
+        
+        self.optim_args["lr"] = lr        
+        
         # Load the global model weights
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
@@ -120,8 +123,10 @@ class ClientAdaptOptim(BaseClient):
         self.grad_estimate = OrderedDict()
         for name, param in self.model.named_parameters():
             self.grad_estimate[name] = (initial_model_state[name] - param.data) / self.optim_args['lr']
+ 
 
-        self.clip_gradient_estimate(self.grad_estimate, max_norm=self.clip_value, norm_type=self.clip_norm)
+        # self.clip_gradient_estimate(self.grad_estimate, max_norm=self.clip_value, norm_type=self.clip_norm)
+
        # loss after training
         final_loss = 0
         with torch.no_grad():
@@ -146,7 +151,11 @@ class ClientAdaptOptim(BaseClient):
         if self.cfg.device == "cuda":
             for k in self.primal_state:
                 self.primal_state[k] = self.primal_state[k].cpu()
-
+                
+        if self.id == 0:
+            print( self.grad_estimate["fc.weight"] )
+            print( self.function_value_difference )
+                
         return {
             "primal_state": self.primal_state,
             "grad_estimate": self.grad_estimate,  # Corrected this line to use grad_estimate
