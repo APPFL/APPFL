@@ -31,8 +31,8 @@ parser.add_argument("--federation_type", type=str, default="Federated")  ## Fede
 parser.add_argument("--client_name", type=str, default="ClientAdaptOptim")  ## ClientOptim  
 parser.add_argument("--num_clients", type=int, default=1)
 parser.add_argument("--client_optimizer", type=str, default="Adam")
-parser.add_argument("--client_lr", type=float, default=1.0)
-parser.add_argument("--num_local_epochs", type=int, default=1)
+parser.add_argument("--client_lr", type=float, default=0.001)
+parser.add_argument("--num_local_epochs", type=int, default=3)
 
 ## server
 # parser.add_argument("--server", type=str, default="ServerFedAvg")  

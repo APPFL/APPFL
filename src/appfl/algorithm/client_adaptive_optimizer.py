@@ -80,8 +80,7 @@ class ClientAdaptOptim(BaseClient):
                 optimizer.zero_grad()
                 output = self.model(data)  # Forward pass to get the model's output
                 loss = self.loss_fn(output, target)  # Calculate the loss using the output (logits)
-                loss.backward()
-
+                loss.backward()            
                 optimizer.step()
 
                 # Log results
@@ -139,6 +138,7 @@ class ClientAdaptOptim(BaseClient):
         final_loss /= len(self.dataloader)
 
         self.function_value_difference = final_loss - initial_loss
+ 
 
         # Differential Privacy
         self.primal_state = copy.deepcopy(self.model.state_dict())
@@ -155,6 +155,7 @@ class ClientAdaptOptim(BaseClient):
         if self.id == 0:
             print( self.grad_estimate["fc.weight"] )
             print( self.function_value_difference )
+            stiop
                 
         return {
             "primal_state": self.primal_state,
