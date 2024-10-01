@@ -151,12 +151,7 @@ class ClientAdaptOptim(BaseClient):
         if self.cfg.device == "cuda":
             for k in self.primal_state:
                 self.primal_state[k] = self.primal_state[k].cpu()
-                
-        if self.id == 0:
-            print( self.grad_estimate["fc.weight"] )
-            print( self.function_value_difference )
-            stiop
-                
+                                
         return {
             "primal_state": self.primal_state,
             "grad_estimate": self.grad_estimate,  # Corrected this line to use grad_estimate
