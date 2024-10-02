@@ -7,10 +7,13 @@ This page presents the publications using the APPFL framework. You may also find
 ----
 
 - **[ICLR 2024]** Z. Li, P. Chaturvedi, S. He, H. Chen, G. Singh, V. Kindratenko, E. A. Huerta, K. Kim, and R. Madduri, "Fedcompass: Efficient cross-silo federated learning on heterogeneous client devices using a computing power-aware scheduler," in *The Twelfth International Conference on Learning Representations*, 2024. `[Paper] <https://openreview.net/forum?id=msXxrttLOi>`_
-- **[ICDCS 2024]** G. Wilkins, S. Di, J. C. Calhoun, Z. Li, K. Kim, R. Underwood, and F. Cappello, "Efficient communication in federated learning using floating-point lossy compression," to appear in *International Conference on Distributed Computing Systems*, 2024. `[Paper] <https://arxiv.org/pdf/2312.13461.pdf>`_
+- **[ICDCS 2024]** G. Wilkins, S. Di, J. C. Calhoun, Z. Li, K. Kim, R. Underwood, and F. Cappello, "Efficient communication in federated learning using floating-point lossy compression," in *International Conference on Distributed Computing Systems*, 2024. `[Paper] <https://arxiv.org/pdf/2312.13461.pdf>`_
 - **[CiSE 2024]** Z. Li, S. He, P. Chaturvedi, V. Kindratenko, E. A. Huerta, K. Kim, and R. Madduri, "Secure federated learning across heterogeneous cloud and high-performance computing resources - a case study on federated fine-tuning of llama 2," in *Computing in Science & Engineering*, 2024. `[Paper] <https://arxiv.org/pdf/2402.12271.pdf>`_
-- **[IEEE PES 2024]** S. Bose, Y. Zhang, and K. Kim, "Privacy-preserving load forecasting via personalized model obfuscation," to appear in *2024 IEEE PES General Meeting*, 2024. `[Paper] <https://arxiv.org/pdf/2312.00036.pdf>`_
-- **[IISE 2024]** S. Bose, Y. Zhang, and K. Kim, "Addressing heterogeneity in federated load forecasting with personalization layers," to appear in *The Institute of Industrial and Systems Engineers (IISE) Annual Conference & Expo*, 2024. `[Paper] <https://arxiv.org/pdf/2404.01517.pdf>`_
+- **[IEEE PES 2024]** S. Bose, Y. Zhang, and K. Kim, "Privacy-preserving load forecasting via personalized model obfuscation," in *2024 IEEE PES General Meeting*, 2024. `[Paper] <https://arxiv.org/pdf/2312.00036.pdf>`_
+- **[IISE 2024]** S. Bose, Y. Zhang, and K. Kim, "Addressing heterogeneity in federated load forecasting with personalization layers," in *The Institute of Industrial and Systems Engineers (IISE) Annual Conference & Expo*, 2024. `[Paper] <https://arxiv.org/pdf/2404.01517.pdf>`_
+- **[Preprint]** Z. Li, S. He, Z. Yang, M. Ryu, K. Kim, R. Madduri, "Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework," *arXiv preprint arXiv:2409.11585.*, 2024. `[Paper] <https://arxiv.org/pdf/2409.11585>`_
+- **[Preprint]** C. Iakovidou, K. Kim, "Asynchronous Federated Stochastic Optimization with Exact Averaging for Heterogeneous Local Objectives," *arXiv preprint arXiv:2405.10123*, 2024. `[Paper] <https://arxiv.org/pdf/2405.10123>`_
+- **[Preprint]** R. Madduri, Z. Li, T. Nandi, K. Kim, M. Ryu, A. Rodriguez, "Advances in Privacy Preserving Federated Learning to Realize a Truly Learning Healthcare System," *arXiv preprint arXiv:2409.19756.*, 2024. `[Paper] <https://arxiv.org/pdf/2409.19756>`_
 
 2023
 ----

@@ -74,6 +74,30 @@ Main Topics
    community/index
    changelog/index
 
+
+Citation
+========
+
+If you find APPFL useful for your research or development, please cite the following paper:
+
+.. code-block:: latex
+
+   @article{li2024advances,
+      title={Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework},
+      author={Li, Zilinghan and He, Shilan and Yang, Ze and Ryu, Minseok and Kim, Kibaek and Madduri, Ravi},
+      journal={arXiv preprint arXiv:2409.11585},
+      year={2024}
+   }
+
+   @inproceedings{ryu2022appfl,
+      title={APPFL: open-source software framework for privacy-preserving federated learning},
+      author={Ryu, Minseok and Kim, Youngdae and Kim, Kibaek and Madduri, Ravi K},
+      booktitle={2022 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)},
+      pages={1074--1083},
+      year={2022},
+      organization={IEEE}
+   }
+
 Acknowledgement
 ===============
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357.
