@@ -50,7 +50,7 @@ client_configs:
     #   s3_creds_file: "../resources/config_gc/creds/credential.csv"
   
   data_readiness_configs:
-    generate_dr_report: False
+    generate_dr_report: True
     output_dirname: "./output"
     output_filename: "data_readiness_report"
     dr_metrics: 
