@@ -1,6 +1,19 @@
 Changelog
 =========
 
+appfl v1.0.4
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add documentation for using APPFL with Globus Compute for secure distributed training at `here <https://appfl.ai/en/latest/tutorials/examples_globus_compute.html>`_.
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix an issue with Globus Compute at this `commit <https://github.com/APPFL/APPFL/commit/705b5af64389c77e1c0f9f21d1d86c0cc33cd067>`_.
+
 appfl v1.0.3
 ------------
 

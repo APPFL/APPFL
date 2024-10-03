@@ -105,21 +105,19 @@ In the design of the APPFL framework, we essentially create the server agent and
 ## :page_facing_up: Citation
 If you find APPFL useful for your research or development, please consider citing the following papers:
 ```
+@article{li2024advances,
+  title={Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework},
+  author={Li, Zilinghan and He, Shilan and Yang, Ze and Ryu, Minseok and Kim, Kibaek and Madduri, Ravi},
+  journal={arXiv preprint arXiv:2409.11585},
+  year={2024}
+}
+
 @inproceedings{ryu2022appfl,
   title={APPFL: open-source software framework for privacy-preserving federated learning},
   author={Ryu, Minseok and Kim, Youngdae and Kim, Kibaek and Madduri, Ravi K},
   booktitle={2022 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)},
   pages={1074--1083},
   year={2022},
-  organization={IEEE}
-}
-
-@inproceedings{li2023appflx,
-  title={APPFLx: Providing Privacy-Preserving Cross-Silo Federated Learning as a Service},
-  author={Li, Zilinghan and He, Shilan and Chaturvedi, Pranshu and Hoang, Trung-Hieu and Ryu, Minseok and Huerta, EA and Kindratenko, Volodymyr and Fuhrman, Jordan and Giger, Maryellen and Chard, Ryan and others},
-  booktitle={2023 IEEE 19th International Conference on e-Science (e-Science)},
-  pages={1--4},
-  year={2023},
   organization={IEEE}
 }
 ```

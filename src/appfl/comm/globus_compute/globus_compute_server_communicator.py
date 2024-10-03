@@ -39,6 +39,15 @@ class GlobusComputeServerCommunicator:
         gcc = Client()
         self.gce = Executor(client=gcc) # Globus Compute Executor
         self.logger = logger if logger is not None else self._default_logger()
+        # Sanity check for configurations: Check for the number of clients
+        num_clients = (
+            server_agent_config.server_configs.num_clients if
+            hasattr(server_agent_config.server_configs, "num_clients") else
+            server_agent_config.server_configs.scheduler_kwargs.num_clients if
+            hasattr(server_agent_config.server_configs.scheduler_kwargs, "num_clients") else
+            server_agent_config.server_configs.aggregator_kwargs.num_clients
+        )
+        assert num_clients == len(client_agent_configs), "Number of clients in the server configuration does not match the number of client configurations."
         client_config_from_server = server_agent_config.client_configs
         # Create a unique experiment ID for this federated learning experiment
         experiment_id = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")

@@ -16,14 +16,18 @@ class GlobusComputeClientEndpoint:
     Represents a Globus Compute client endpoint, which can be 
     used to submit tasks to the Globus Compute client endpoint.
     """
-    def __init__(self, 
+    def __init__(
+        self, 
+        client_id: str,
         client_endpoint_id: str, 
         client_config: DictConfig,
     ):
         """
-        :param `client_endpoint_id`: The Globus Compute client endpoint id.
+        :param `client_id`: Client ID, must be unique.
+        :param `client_endpoint_id`: The Globus Compute client endpoint id. (Different clients may have the same endpoint id.)
         :param `client_config`: The client configuration for local training and communication.
         """
+        self.client_id = client_id
         self.client_endpoint_id = client_endpoint_id
         self.client_config = client_config
         self._set_no_runing_task()

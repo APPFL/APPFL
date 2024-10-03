@@ -13,4 +13,5 @@ We present a collection of tutorials for APPFL framework.
     examples_vit_finetuning
     examples_custom_action
     examples_ssl
+    examples_globus_compute
     deprecated_tutorial
