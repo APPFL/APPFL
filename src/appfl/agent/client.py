@@ -4,14 +4,7 @@ import pathlib
 import importlib
 import torch.nn as nn
 from datetime import datetime
-import numpy as np
 import torch
-import piq
-import matplotlib.pyplot as plt
-import base64
-import io
-import random
-import seaborn as sns
 from appfl.compressor import *
 from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
