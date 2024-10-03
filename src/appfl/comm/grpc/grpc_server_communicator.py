@@ -172,7 +172,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     header=ServerHeader(status=ServerStatus.DONE),
                 )
                 return response
-            elif action == "data_readiness_report":
+            elif action == "get_data_readiness_report":
 
                 num_clients = self.server_agent.get_num_clients()
                 if not hasattr(self, "_dr_metrics_lock"):

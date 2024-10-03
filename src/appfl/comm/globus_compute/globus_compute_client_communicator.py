@@ -3,6 +3,7 @@ def globus_compute_client_entry_point(
     client_agent_config=None,
     model=None,
     meta_data=None,
+    client_config=None,
 ):
     """
     Entry point for the Globus Compute client endpoint for federated learning.
@@ -13,7 +14,7 @@ def globus_compute_client_entry_point(
     :return `model_local`: The local model after the task is executed. [Return `None` if the task does not return a model.]
     :return `meta_data_local`: The local metadata after the task is executed. [Return `{}` if the task does not return metadata.]
     """
-    from appfl.agent import ClientAgent,DRAgent
+    from appfl.agent import ClientAgent
     from appfl.comm.globus_compute.utils.client_utils import load_global_model, send_local_model
     
     client_agent = ClientAgent(client_agent_config=client_agent_config)
@@ -27,9 +28,8 @@ def globus_compute_client_entry_point(
         }
     
     elif task_name == "data_readiness_report":
-        dr_agent = DRAgent(client_agent.client_agent_config)
         return None,{
-            "data_readiness": dr_agent.generate_readiness_report()
+            "data_readiness": client_agent.generate_readiness_report(client_config)
         }
     
     elif task_name == "train":
