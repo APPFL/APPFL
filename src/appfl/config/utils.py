@@ -1,8 +1,12 @@
+"""
+[Deprecated] This file contains utility functions to load configurations from yaml files.
+"""
 import yaml
 import inspect
 import importlib.util
 import os.path as osp
 from .config import *
+from .config_deperacated import *
 from ..misc.utils import *
 from datetime import datetime
 from omegaconf import OmegaConf
@@ -316,4 +320,3 @@ def load_appfl_server_config_funcx_web_v2(cfg: GlobusComputeConfig, server_confi
     cfg.dataset  = data['dataset']['name']
   
     
-

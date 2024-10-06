@@ -1,11 +1,14 @@
+"""
+[DEPRECATED] This run script is deprecated and will be removed in the future.
+"""
+
 import logging
 import torch.nn as nn
 from typing import Any
 from .misc.data import Dataset
 from omegaconf import DictConfig
 from appfl.login_manager import *
-from .comm.grpc.serve import serve 
-from .comm.grpc import GRPCCommunicator, APPFLgRPCServer
+from .comm.grpc import GRPCCommunicator, APPFLgRPCServer, grpc_serve
 
 def run_server(
     cfg: DictConfig,
@@ -32,7 +35,7 @@ def run_server(
     logger = logging.getLogger(__name__)
     logger.info("Starting the server to listen to requests from clients . . .")
     
-    serve(
+    grpc_serve(
         server_uri=cfg.uri,
         servicer=communicator,
         use_ssl=cfg.use_ssl,

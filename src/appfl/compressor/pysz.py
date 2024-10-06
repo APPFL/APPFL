@@ -1,12 +1,10 @@
-import sys
-import ctypes
-from ctypes.util import find_library
-import numpy as np
-
 """
 Python API for SZ2/SZ3
 """
-
+import sys
+import ctypes
+import numpy as np
+from ctypes.util import find_library
 
 class SZ:
     def __init__(self, szpath=None):
@@ -14,7 +12,6 @@ class SZ:
         init SZ
         :param szpath: the path to SZ dynamic library
         """
-
         if szpath is None:
             szpath = {
                 "darwin": "libSZ3c.dylib",

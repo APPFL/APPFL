@@ -1,56 +1,95 @@
-First run: MNIST
-================
+Quickstart
+==========
 
-We present how to run an example federated learning script on the MNIST dataset using APPFL. 
-We first make sure that the APPFL package and its dependencies are installed and change the directory to `examples` directory.
+In this page, we present how to run an example federated learning script on the MNIST dataset using the APPFL package. 
+
+Installation
+------------
+
+First, we need to make sure that the APPFL package and its dependencies are installed.Then, change to ``examples`` directory.
 
 .. code-block:: console
 
-    git clone https://github.com/APPFL/APPFL.git
+    git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
     pip install -e ".[examples]"
     cd examples
+
+
+Serial simulation
+-----------------
 
 The first example can be simply run using the following command, which launchs a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
 
 .. code-block:: console
 
-    python ./mnist_serial.py --num_clients 5
+    python ./serial/run_serial.py --num_clients 5 \
+        --server_config ./resources/configs/mnist/server_fedavg.yaml \
+        --client_config ./resources/configs/mnist/client_1.yaml 
 
-If we want to run **synchronous** FL experiment in parallel using MPI, we can run the example using the following command. 
+.. note::
+
+    1. ``--server_config`` specifies the path to the configuration file for the FL server. In this example, we use the FedAvg algorithm as the server algorithm. It should be noted that we can only use synchronous FL algorithms for serial experiments, as it does not make sense to run asynchronous algorithms serially.
+    2. ``--client_config`` specifies the path to the base configuration file for all FL clients.
+    3. ``--num_clients`` specifies the number of federated learning clients.
+
+MPI simulation
+--------------
+
+If we want to run FL experiment in parallel using MPI, we can run the example using the following command, which runs the `FedCompass <https://arxiv.org/pdf/2309.14675.pdf>`_ algorithm with five clients.
 
 .. code-block:: console
 
-    mpiexec -np 6 python ./mnist_mpi_sync.py
+    mpiexec -n 6 python ./mpi/run_mpi.py --server_config ./resources/configs/mnist/server_fedcompass.yaml \
+        --client_config ./resources/configs/mnist/client_1.yaml
 
 .. note::
 
-    `-np 6` in the above command means that we are launching 6 MPI processes. If you do not explicitly specify `--num_clients`, then the number of clients is equal to the number of processes minus one (one MPI process is used as an FL server), which is 5 in this case. You can also explicitly specify the number of clients, e.g., `--num_clients 10` will launch ten FL clients with two clients running serially on one MPI process (also, one MPI process is used as an FL server).
+    1. ``-np 6`` in the above command means that we are launching 6 MPI processes. As a result, the number of clients is equal to the number of processes minus one (one MPI process is used as an FL server), which is 5 in this case.
+    2. You can easily run different FL algorithms (synchronous and asynchronous) simply by changing the server configuration file accordingly. For example, you can run the `FedAsync <https://arxiv.org/pdf/1903.03934.pdf>`_ algorithm by changing the server configuration file to `./resources/configs/mnist/server_fedasync.yaml`.
 
-.. note::
-
-    ``mpiexec`` may need to specify additional argument to use CUDA: ``--mca opal_cuda_support 1``
-
-If we want to run **asynchronous** FL experiment in parallel using MPI, we can run the example using the following command. 
-
-.. code-block:: console
-
-    mpiexec -np 6 python ./mnist_mpi_async.py 
-
-.. note::
-
-    For asynchronous communication, the number of clients is exactly equal to the number of MPI processes minus one, so we are launching 5 clients running FL asynchronously for the above command. We do not allow more than one client to run serially on one MPI process for asynchronous cases as it does not make sense.
+MPI simulation with privacy
+---------------------------
 
 As the package name suggests, in addition to general differential privacy techniques, APPFL also provides two special synchronous privacy-preserving algorithms, `IIADMM <https://arxiv.org/pdf/2202.03672.pdf>`_ and `ICEADMM <https://arxiv.org/pdf/2110.15318.pdf>`_. We can run the privacy-preserving federated learning (PPFL) algorithms by running the following command.
 
 .. code-block:: console
 
-    mpiexec -np 6 python ./mnist_mpi_privacy.py --server IIADMM
-    mpiexec -np 6 python ./mnist_mpi_privacy.py --server ICEADMM
+    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./resources/configs/mnist/server_iiadmm.yaml
+    # OR
+    mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./resources/configs/mnist/server_iceadmm.yaml
+
+.. note::
+
+    Compared with ``mpi/run_mpi.py``, ``mpi/run_mpi_admm.py`` has the following additional lines for the client to know its relative sample size and provide to the client agent, which is needed in local training.
+
+    .. code-block:: python
+
+        # (Specific to ICEADMM and IIADMM) Send the sample size to the server and set the client weight
+        sample_size = client_agent.get_sample_size()
+        client_weight = client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size, sync=True)
+        client_agent.trainer.set_weight(client_weight["client_weight"])
 
 
-We can also simulate PPFL using the gRPC communication protocol. The following command launchs five MPI processes, with one running the gRPC-based FL server and four running the gRPC-based FL clients.
+gRPC deployment
+---------------
+
+To show how to deploy the APPFL package on a real distributed system, we provide an example of running the federated learning experiment on the MNIST dataset using gRPC as the communication protocol. 
+
+First, we need to run the following command to start a federated learning server using ``FedCompass`` algorithm.
 
 .. code-block:: console
 
-    mpiexec -np 5 python ./mnist_grpc.py 
+    python ./grpc/run_server.py --config ./resources/configs/mnist/server_fedcompass.yaml
+
+Open a second terminal to start a client using the following command to talk to the server.
+
+.. code-block:: console
+
+    python ./grpc/run_client.py --config ./resources/configs/mnist/client_1.yaml
+
+Open a third terminal to start another client using the following command to talk to the server.
+    
+.. code-block:: console
+    
+    python ./grpc/run_client.py --config ./resources/configs/mnist/client_2.yaml

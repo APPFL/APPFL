@@ -1,3 +1,7 @@
+"""
+[DEPRECATED] This run script is deprecated and will be removed in the future.
+"""
+
 import copy
 import time
 import torch
@@ -10,8 +14,7 @@ from torch.optim import *
 from omegaconf import DictConfig
 from collections import OrderedDict
 from torch.utils.data import DataLoader
-from .comm.grpc.grpc_communicator_pb2 import Job
-from .comm.grpc.grpc_client import APPFLgRPCClient
+from appfl.comm.grpc import APPFLgRPCClient, Job
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -41,6 +44,7 @@ def run_client(
         train_data (Dataset): training data
         gpu_id (int): GPU ID
     """
+    time.sleep(5) # Make sure the server is ready.
 
     logger = logging.getLogger(__name__)
 

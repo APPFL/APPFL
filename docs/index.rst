@@ -7,66 +7,59 @@
 APPFL
 =====
 
-APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source software framework that allows research communities to implement, test, and validate various ideas for privacy-preserving federated learning (FL). 
-With this framework, developers and/or users can 
+APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source software framework that allows research communities to implement, test, and validate various ideas related to privacy-preserving federated learning (FL), and deploy real FL experiments safely and easily among distributed clients to train ML models.
+With this framework, developers and/or users can easily
 
-* Train a user-defined neural network model on decentralized data with differential privacy, 
-* Simulate various PPFL algorithms on high-performance computing (HPC) architecture with MPI, 
-* Implement user-defined PPFL algorithms in a plug-and-play manner. 
+* Train any user-defined machine learning model on decentralized data with optional differential privacy and client authentication,
+* Simulate various synchronous, asynchronous and PPFL algorihtms on high-performance computing (HPC) architecture with MPI, 
+* Implement customizations in a plug-and-play manner for all aspects of FL, including aggregation algorithms, server scheduling strategies, and client local trainers.
 
 Technical Components
 ====================
 
-The core technical components of APPFL include algorithms, privacy-preserving techniques, communication protocols, compression techniques, FL model to train, and data.
+APPFL is primarily composed of the following six technical components: *Aggregator*, *Scheduler*, *Trainer*, *Privacy*, *Communicator*, and *Compressor*, all with easy interface for user customizations.
 
-.. grid:: 4
+.. grid:: 3
 
    .. grid-item-card:: 
       
-      Algorithm
+      Aggregator
+      ^^^^^^^^^^
+      Supports several popular algorithms to aggregate one or several client local models.
+
+   .. grid-item-card:: 
+      
+      Scheduler
       ^^^^^^^^^
-      Supports several synchronous/asynchronous algorihtms with privacy schemes
+      Supports several synchronous and asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models. 
+
+   .. grid-item-card:: 
+      
+      Trainer
+      ^^^^^^^
+      Supports several client local trainers for various training tasks.
+
+.. grid:: 3
 
    .. grid-item-card:: 
       
       Privacy
       ^^^^^^^
-      Supports several global/local differential privacy schemes
+      Supports several global/local differential privacy schemes.
 
    .. grid-item-card:: 
       
-      Communication
-      ^^^^^^^^^^^^^
-      Supports MPI, gRPC, and Globus Compute
+      Communicator
+      ^^^^^^^^^^^^
+      Supports MPI for single-machine/cluster simulation, and gRPC and Globus Compute with authenticator for secure distributed training.
 
    .. grid-item-card:: 
       
-      Compression
-      ^^^^^^^^^^^
-      Supports several lossy compressors, including SZ2, SZ3, SZx, and ZFP
+      Compressor
+      ^^^^^^^^^^
+      Supports several lossy compressors, including `SZ2 <https://github.com/szcompressor/SZ>`_, `SZ3 <https://github.com/szcompressor/SZ3>`_, `ZFP <https://pypi.org/project/zfpy/>`_, and `SZx <https://github.com/szcompressor/SZx>`_.
 
-APPFL aims to maintain a composable design of the package, where each technical component is indepent each other. Any combination of the components can ideally run without any modiciation of the package. For example, an FL experiment that run with FedAvg with SZ2 compression can run with FedAsync with SZx. The package's composability provides a number of combinations of algorithmic choices for PPFL experiments.
-
-APPFL Framework Overview
-========================
-
-.. image:: _static/design.jpg
-   :width: 50%
-   :align: center
-
-In the design of APPFL framework, we decompose an execution of federated learning experiment into three main components, *APPFL Server*, *APPFL Communicator*, and *APPFL Client*. The details and sub-components of these three are detailed as follows:
-
-* APPFL Server: The server orchestrates the whole FL experiment run by providing the model architecture, loss and metric, and configurations used in the training, and aggregating the client trained models synchronously or asynchronously using certain federated learning algorithms.
-
-* APPFL Communicator: The communicator is used for exchanging metadata as well as the model weights between the server and clients. We currently support the following three communication protocols for different use cases.
-    
-  * MPI - Used for simulating FL experiment on one machine or HPC. MPI communicator now also supports model compression for efficient communication.
-  * gRPC - Used for both simulating FL experiments on one machine or HPC, and running FL experiments on distributed machines.
-  * `Globus Compute <https://funcx.readthedocs.io/en/latest/index.html>`_ - Used for easily running FL experiments on distributed and heterogeneous machines.
-  * Compression - Several lossy compressors are available: `SZ2 <https://github.com/szcompressor/SZ>`_, `SZ3 <https://github.com/szcompressor/SZ3>`_, `ZFP <https://pypi.org/project/zfpy/>`_, and `SZx <https://github.com/szcompressor/SZx>`_. Please refer to their official project/GitHub pages if you want more detailed information of them. Here, we only provide the installation instructions. Note: SZx need particular permission to access because collaboration with a third-party, so we omit its installation here.
-
-* APPFL Client: APPFL clients have local dataset on disk and and use dataloader to load them for the local trainer to train local models.
-
+APPFL aims to maintain a composable design of the package, where each technical component is extendible and independent from each other. Users can use the configuration files to specify the desired item from each component to launch FL experiments according their needs.
 
 Main Topics
 ===========
@@ -77,9 +70,33 @@ Main Topics
    install/index
    tutorials/index
    users/index
-   developer/index
    publication/index
    community/index
+   changelog/index
+
+
+Citation
+========
+
+If you find APPFL useful for your research or development, please cite the following paper:
+
+.. code-block:: latex
+
+   @article{li2024advances,
+      title={Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework},
+      author={Li, Zilinghan and He, Shilan and Yang, Ze and Ryu, Minseok and Kim, Kibaek and Madduri, Ravi},
+      journal={arXiv preprint arXiv:2409.11585},
+      year={2024}
+   }
+
+   @inproceedings{ryu2022appfl,
+      title={APPFL: open-source software framework for privacy-preserving federated learning},
+      author={Ryu, Minseok and Kim, Youngdae and Kim, Kibaek and Madduri, Ravi K},
+      booktitle={2022 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)},
+      pages={1074--1083},
+      year={2022},
+      organization={IEEE}
+   }
 
 Acknowledgement
 ===============

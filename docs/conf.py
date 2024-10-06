@@ -82,7 +82,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_data']
 # a list of builtin themes.
 #
 html_theme = 'pydata_sphinx_theme'
-
+html_favicon = '_static/favicon.ico'
 html_logo = '_static/logo_yellow_with_name.png'
 html_last_updated_fmt = r'%Y-%m-%dT%H:%M:%S%z (' + git_describe_version + ')'
 
@@ -101,7 +101,12 @@ html_theme_options = {
             "name": "Discord",
             "url": "https://discord.gg/bBW56EYGUS",
             "icon": "fab fa-discord",
-        }
+        },
+        {
+            "name": "YouTube",
+            "url": "https://www.youtube.com/channel/UCzwiJboiJW3dLI0UndnDy5g",
+            "icon": "fab fa-youtube",
+        },
     ],
 }
 

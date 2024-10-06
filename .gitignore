@@ -1,3 +1,5 @@
+credential.csv
+local_tests/
 .vscode
 .gitignore
 .DS_Store

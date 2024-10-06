@@ -1,5 +1,3 @@
-"""
-"""
-from .config import *
 from .utils import *
-from .fed import *
+from .config import *
+from .config_deperacated import *

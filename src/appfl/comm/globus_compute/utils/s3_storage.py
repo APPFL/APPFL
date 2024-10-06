@@ -3,13 +3,15 @@ import csv
 import sys
 import time
 import boto3
+import pathlib
 import requests
 import os.path as osp
+from typing import Optional
 from botocore.exceptions import ClientError
 from appfl.misc.utils import dump_data_to_file, load_data_from_file, id_generator
 
 class LargeObjectWrapper(object):
-    MAX_SIZE_LIMIT = 1 * 1      # anything using this wrapper is sent via S3
+    MAX_SIZE_LIMIT = 1 * 1      # Anything using this wrapper is sent via S3
     def __init__(self, data, name: str):
         self.data = data
         self.name= name
@@ -35,25 +37,28 @@ class CloudStorage(object):
             raise RuntimeError("Please call CloudStorage.init(cfg) first")
     
     @classmethod
-    def init(cls, cfg, temp_dir="./tmp", logger = None):
+    def init(
+        cls, 
+        s3_bucket: Optional[str]=None,
+        s3_creds_file: Optional[str]=None,
+        s3_tmp_dir: str = str(pathlib.Path.home() / ".appfl" / "s3_tmp_dir"),
+        logger = None
+    ):
         if cls.instc is None:
             new_inst = cls.__new__(cls)
-            new_inst.bucket = cfg.server.s3_bucket
-            kwargs = {}
-            if cfg.server.s3_creds != "":
-                with open(cfg.server.s3_creds) as file:
+            new_inst.bucket = s3_bucket
+            s3_kwargs = {}
+            if s3_creds_file is not None:
+                with open(s3_creds_file) as file:
                     reader = csv.reader(file)
                     keys = next(reader)
-                    kwargs = {
+                    s3_kwargs = {
                         'region_name': keys[0],
                         'aws_access_key_id': keys[1],
                         'aws_secret_access_key': keys[2]
                     }     
-            new_inst.client = boto3.client(
-                service_name='s3',
-                **kwargs
-            )
-            new_inst.temp_dir= temp_dir
+            new_inst.client = boto3.client(service_name='s3', **s3_kwargs)
+            new_inst.temp_dir= s3_tmp_dir
             new_inst.logger = logger
             new_inst.session_id = id_generator() + str(time.time())
             new_inst.registered_obj = set()
@@ -80,11 +85,19 @@ class CloudStorage(object):
         return file_name, object_name, object_url
 
         
-    def upload_file(self, file_path: str, object_url: str = None, object_name: str = None, expiration: int = 3600, delete_local: bool = True):
+    def upload_file(
+        self, 
+        file_path: str, 
+        object_url: Optional[str] = None, 
+        object_name: Optional[str] = None, 
+        expiration: int = 3600, 
+        delete_local: bool = True
+    ) -> dict:
         """
         Upload a local file to S3 directly via object_name or using the presigned url
         Inputs:
             file_path: path to local file
+            object_url: presigned url for uploading the file to S3 bucket
             object_name: object key for the file on S3 bucket
             expiration: expiration second for the returned presigned url
             delete_local: whether to delete the local file
@@ -101,7 +114,7 @@ class CloudStorage(object):
                 if delete_local:
                     os.remove(file_path)
             except:
-                raise
+                raise Exception("Error in uploading file using presigned url")
             s3_obj = {
                 's3': {
                     'file_name': osp.basename(file_path),
@@ -120,7 +133,7 @@ class CloudStorage(object):
                 self.logger.info(f"Error occurs in uploading file {e}")
             else:
                 print(f"Error occurs in uploading file {e}")
-            raise
+            raise Exception(f"Error in uploading file {file_path} to S3")
         try: 
             response = self.client.generate_presigned_url(
                 'get_object',

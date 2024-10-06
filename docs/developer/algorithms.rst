@@ -1,94 +1,47 @@
-Adding new algorithms
-=====================
+Adding new aggregators
+======================
 
-Suppose that we are adding the configuration for our new algorithm.
-New algorithm should be implemented as two classes for server and client.
+.. note::
 
-Base classes
-------------
+    We always welcome you to contribute your increments to ``APPFL`` by creating a pull request.
 
+To add new aggregators to ``APPFL``,  you can create your own aggregator class by inheriting the ``appfl.algorithm.aggregator.BaseAggregator`` and defining the following functions:
 
-Implementation of the new classes should be derived from the following two base classes:
-
-.. autoclass:: appfl.algorithm.BaseServer
-
-.. autoclass:: appfl.algorithm.BaseClient
-
-Example: NewAlgo
-----------------
-
-Here we give some simple example.
-
-Core algorithm class
-++++++++++++++++++++
-
-We first create classes for the global and local updates in ``appfl/algorithm``:
-
-- Create two classes ``NewAlgoServer`` and ``NewAlgoClient`` in ``newalgo.py``
-- In ``NewAlgoServer``, the ``update`` function conducts a global update by averaging the local model parameters sent from multiple clients
-- In ``NewAlgoClient``, the ``update`` function conducts a local update and send the resulting local model parameters to the server
-
-This is an example code:
-
-.. code-block:: python
-    :caption: Example code for ``src/appfl/algorithm/newalgo.py``
-
-    from .algorithm import BaseServer, BaseClient
-
-    class NewAlgoServer(BaseServer):
-        def __init__(self, weights, model, num_clients, device, **kwargs):
-            super(NewAlgoServer, self).__init__(weights, model, num_clients, device)
-            self.__dict__.update(kwargs)
-            # Any additional initialization
-
-        def update(self, local_states: OrderedDict):
-            # Implement new server update function
-
-    class NewAlgoClient(BaseClient):
-        def __init__(self, id, weight, model, dataloader, device, **kwargs):
-            super(NewAlgoClient, self).__init__(id, weight, model, dataloader, device)
-            self.__dict__.update(kwargs)
-            # Any additional initialization
-
-        def update(self):
-            # Implement new client update function
-
-
-Configuration dataclass
-+++++++++++++++++++++++
-
-The new algorithm also needs to set up some configurations. This can be done by adding new dataclass under ``appfl.config.fed``.
-Let's say we add ``src/appfl/config/fed/newalgo.py`` file to implement the dataclass as follows:
-
-.. code-block:: python
-    :caption: Example code for ``src/appfl/config/fed/newalgo.py``
-
-    from dataclasses import dataclass
-    from omegaconf import DictConfig, OmegaConf
-
-    @dataclass
-    class NewAlgo:
-        type: str = "newalgo"
-        servername: str = "NewAlgoServer"
-        clientname: str = "NewAlgoClient"
-        args: DictConfig = OmegaConf.create(
-            {
-                # add new arguments
-            }
-        )
-
-
-Then, we need to add the following line to the main configuration file ``config.py``.
+- ``aggregate``: Take a list of local models (for synchronous FL) or one local model (for asynchronous FL) or both (for asynchronous FL) as the input and return the updated global model parameters.
+- ``get_parameters``: Directly return the current global model parameters.
 
 .. code-block:: python
 
-    from .fed.new_algorithm import *
+    class YourOwnAggregator(BaseAggregator):
+        def __init__(
+            self,
+            model: torch.nn.Module,
+            aggregator_configs: DictConfig,
+            logger: Any
+        ):
+            self.model = model
+            self.aggregator_configs = aggregator_configs
+            self.logger = logger
+            ...
+        
+        def aggregate(self, *args, **kwargs) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+            """
+            Aggregate local model(s) from clients and return the global model
+            """
+            pass
 
+        def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+            """Return global model parameters"""
+            pass
 
-This is the main configuration class in ``src/appfl/config/config.py``.
-Each algorithm, specified in ``Config.fed``, can be configured in the dataclasses at ``appfl.config.fed.*``.
+You may add any configuration parameters into your aggregator and access them using ``self.aggregator_configs.your_config_param``. When you start the FL experiment, you can specify the aggregator configuration parameter values in the server configuration file in the following way:
 
-.. literalinclude:: /../src/appfl/config/config.py
-    :language: python
-    :linenos:
-    :caption: The main configuration class
+.. code-block:: yaml
+
+    server_configs:
+        ...
+        aggregator: "YourOwnAggregator"
+        aggregator_kwargs:
+            your_config_param_1: ...
+            your_config_param_2: ...
+        ...

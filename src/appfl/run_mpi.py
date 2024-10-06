@@ -1,3 +1,7 @@
+"""
+[DEPRECATED] This run script is deprecated and will be removed in the future.
+"""
+
 import copy
 import math
 import time
