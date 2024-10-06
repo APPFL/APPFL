@@ -75,6 +75,8 @@ setuptools.setup(
         "blosc",
         "python-xz",
         "matplotlib",
+        "seaborn",
+        "piq",
     ],
     extras_require={
         "dev": [
@@ -102,8 +104,6 @@ setuptools.setup(
             "wget",
             "torchvision",
             "tensorboard",
-            "seaborn",
-            "piq"
         ],
     },
     entry_points={

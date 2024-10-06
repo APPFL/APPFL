@@ -78,7 +78,6 @@ class GlobusComputeClientEndpoint:
             client_agent_config=self.client_config,
             model=model,
             meta_data=meta_data,
-            client_config=self.client_config,
         )
         self._status = ClientEndpointStatus.RUNNING
         self.task_name = task_name

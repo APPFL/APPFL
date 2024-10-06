@@ -11,12 +11,12 @@ mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config ./resources/configs/mni
 import argparse
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from appfl.agent import ClientAgent, ServerAgent, DRAgent
+from appfl.agent import ClientAgent, ServerAgent
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 
 argparse = argparse.ArgumentParser()
-argparse.add_argument("--server_config", type=str, default="../resources/configs/mnist/server_iceadmm.yaml")
-argparse.add_argument("--client_config", type=str, default="../resources/configs/mnist/client_1.yaml")
+argparse.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_iceadmm.yaml")
+argparse.add_argument("--client_config", type=str, default="./resources/configs/mnist/client_1.yaml")
 args = argparse.parse_args()
 
 comm = MPI.COMM_WORLD
@@ -57,12 +57,11 @@ else:
     sample_size = client_agent.get_sample_size()
     client_weight = client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size, sync=True)
     client_agent.trainer.set_weight(client_weight["client_weight"])
-
-    if hasattr(server_agent_config.data_readiness_configs, 'generate_dr_report') and server_agent_config.data_readiness_configs.generate_dr_report:
-        data_readiness_client = DRAgent(server_agent_config=server_agent_config, client_agent_config=client_agent_config)
-        data_readiness = data_readiness_client.generate_readiness_report()
+    # Generate data readiness report
+    # Generate data readiness report
+    if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
+        data_readiness = client_agent.generate_readiness_report(client_config)
         client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)
-
     # Local training and global model update iterations
     while True:
         client_agent.train()

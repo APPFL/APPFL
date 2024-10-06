@@ -8,12 +8,12 @@ client_configs:
     optim_args:
       lr: 0.001
     # Loss function
-    loss_fn_path: "../resources/loss/celoss.py"
+    loss_fn_path: "./resources/loss/celoss.py"
     loss_fn_name: "CELoss"
     # Client validation
     do_validation: True
     do_pre_validation: True
-    metric_path: "../resources/metric/acc.py"
+    metric_path: "./resources/metric/acc.py"
     metric_name: "accuracy"
     # Differential privacy
     use_dp: False
@@ -28,7 +28,7 @@ client_configs:
     val_data_shuffle: False
     
   model_configs:
-    model_path: "../resources/model/cnn.py"
+    model_path: "./resources/model/cnn.py"
     model_name: "CNN"
     model_kwargs:
       num_channel: 1
@@ -47,7 +47,7 @@ client_configs:
       param_cutoff: 1024
     # globus_compute_configs:
     #   s3_bucket: "appflx-models"
-    #   s3_creds_file: "../resources/config_gc/creds/credential.csv"
+    #   s3_creds_file: "./resources/config_gc/creds/credential.csv"
   
   data_readiness_configs:
     generate_dr_report: True

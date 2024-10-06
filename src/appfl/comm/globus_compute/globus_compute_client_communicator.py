@@ -3,7 +3,6 @@ def globus_compute_client_entry_point(
     client_agent_config=None,
     model=None,
     meta_data=None,
-    client_config=None,
 ):
     """
     Entry point for the Globus Compute client endpoint for federated learning.
@@ -29,7 +28,7 @@ def globus_compute_client_entry_point(
     
     elif task_name == "data_readiness_report":
         return None,{
-            "data_readiness": client_agent.generate_readiness_report(client_config)
+            "data_readiness": client_agent.generate_readiness_report(client_agent_config)
         }
     
     elif task_name == "train":

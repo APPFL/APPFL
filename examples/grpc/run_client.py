@@ -7,7 +7,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--config", 
     type=str, 
-    default="../resources/configs/mnist/client_1.yaml",
+    default="./resources/configs/mnist/client_1.yaml",
     help="Path to the configuration file."
 )
 args = argparser.parse_args()
@@ -30,6 +30,7 @@ client_agent.load_parameters(init_global_model)
 sample_size = client_agent.get_sample_size()
 client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size)
 
+# Generate data readiness report
 if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
     data_readiness = client_agent.generate_readiness_report(client_config)
     client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)

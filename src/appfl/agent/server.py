@@ -1,5 +1,6 @@
 import io
 import torch
+import pathlib
 import threading
 import torch.nn as nn
 from appfl.compressor import *
@@ -66,17 +67,7 @@ class ServerAgent:
     def get_client_configs(self, **kwargs) -> DictConfig:
         """Return the FL configurations that are shared among all clients."""
         return self.server_agent_config.client_configs
-    
-    def get_num_clients(self) -> int:
-        """Return the number of clients."""
-        return (
-            self.server_agent_config.server_configs.num_clients if
-            hasattr(self.server_agent_config.server_configs, "num_clients") else
-            self.server_agent_config.server_configs.scheduler_kwargs.num_clients if
-            hasattr(self.server_agent_config.server_configs.scheduler_kwargs, "num_clients") else
-            self.server_agent_config.server_configs.aggregator_kwargs.num_clients
-        )
-    
+
     def global_update(
         self, 
         client_id: Union[int, str],
@@ -199,7 +190,7 @@ class ServerAgent:
         output_filename = self.server_agent_config.client_configs.data_readiness_configs.get("output_filename", "data_readiness_report")
 
         if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+            pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         # Save JSON report
         json_file_path = get_unique_file_path(output_dir, output_filename, "json")

@@ -1,15 +1,16 @@
 import os
 import uuid
+import torch
 import pathlib
 import importlib
 import torch.nn as nn
 from datetime import datetime
-import torch
 from appfl.compressor import *
 from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
 from typing import Union, Dict, OrderedDict, Tuple, Optional
+from appfl.misc.data_readiness import *
 from appfl.logger import ClientAgentFileLogger
 from appfl.misc import create_instance_from_file, \
     run_function_from_file, \
@@ -17,9 +18,6 @@ from appfl.misc import create_instance_from_file, \
     create_instance_from_file_source, \
     get_function_from_file_source, \
     run_function_from_file_source
-
-from appfl.misc.data_readiness.metrics import *
-from appfl.misc.data_readiness.plots import *
 
 class ClientAgent:
     """
@@ -107,12 +105,13 @@ class ClientAgent:
             
         torch.save(self.model.state_dict(), checkpoint_path)
 
-    def generate_readiness_report(self,client_config):
+    def generate_readiness_report(self, client_config):
+        """
+        Generate data readiness report based on the configuration provided by the server.
+        """
         if hasattr(client_config.data_readiness_configs, "dr_metrics"):
-            
             results = {}
             plot_results = {"plots": {}}
-
             # Define metrics with corresponding computation functions
             standard_metrics = {
                 "class_imbalance": lambda: round(imbalance_degree(self.train_dataset.data_label.tolist()), 2),
@@ -163,9 +162,7 @@ class ClientAgent:
 
             # Combine results with plot results
             results.update(plot_results)
-
             return results
-        
         else:
             return "Data readiness metrics not available in configuration"
         

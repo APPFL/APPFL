@@ -1,6 +1,7 @@
 import time
 import json
 import logging
+import threading
 from mpi4py import MPI
 from omegaconf import OmegaConf
 from typing import Optional, Dict
@@ -9,8 +10,6 @@ from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from .serializer import byte_to_request, response_to_byte, model_to_byte
 from .config import MPITask, MPITaskRequest, MPITaskResponse, MPIServerStatus
-import threading
-
 
 class MPIServerCommunicator:
     def __init__(
@@ -178,9 +177,9 @@ class MPIServerCommunicator:
         :return `response.status`: Server status
         :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
         """
-        self.logger.info(f"Received InvokeCustomAction request from client {client_id}")
         meta_data = json.loads(request.meta_data) if len(request.meta_data) > 0 else {}
         assert "action" in meta_data, "The action is not specified in the metadata"
+        self.logger.info(f"Received InvokeCustomAction: {meta_data['action']} request from client {client_id}")
         action = meta_data["action"]
         del meta_data["action"]
         if action == "set_sample_size":
@@ -196,21 +195,28 @@ class MPIServerCommunicator:
             self.server_agent.close_connection(client_id)
             return MPITaskResponse(status=MPIServerStatus.DONE.value)
         elif action == "get_data_readiness_report":
-            
             num_clients = self.server_agent.get_num_clients()
             if not hasattr(self, "_dr_metrics_lock"):
-                self._dr_metrics_lock = threading.Lock()
-                self._dr_metrics_req_count = 0
                 self._dr_metrics = {}
+                self._dr_metrics_client_ids = set()
+                self._dr_metrics_lock = threading.Lock()                
             with self._dr_metrics_lock:
-                self._dr_metrics_req_count += 1
+                self._dr_metrics_client_ids.add(client_id)
                 for k, v in meta_data.items():
                     if k not in self._dr_metrics:
                         self._dr_metrics[k] = {}
                     self._dr_metrics[k][client_id] = v
-                if self._dr_metrics_req_count == num_clients:
+                if len(self._dr_metrics_client_ids) == num_clients:
                     self.server_agent.data_readiness_report(self._dr_metrics)
-            return MPITaskResponse(status=MPIServerStatus.RUN.value)
+                    response = MPITaskResponse(
+                        status=MPIServerStatus.RUN.value,
+                    )
+                    response_bytes = response_to_byte(response)
+                    for client_id in self._dr_metrics_client_ids:
+                        self.comm.Send(response_bytes, dest=client_id, tag=client_id)
+                    self._dr_metrics = {}
+                    self._dr_metrics_client_ids = set()
+            return None
         else:
             raise NotImplementedError(f"Custom action {action} is not implemented.")
         
