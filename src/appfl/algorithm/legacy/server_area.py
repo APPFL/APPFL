@@ -1,10 +1,11 @@
 import logging
 import copy
 from .server_federated import FedServer
-from ..misc import *
+from appfl.misc import *
 
 logger = logging.getLogger(__name__)
 
+@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead.")
 class ServerAREA(FedServer):
     """ 
     ServerAREA

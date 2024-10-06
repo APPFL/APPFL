@@ -9,3 +9,5 @@ from .fedbuff_aggregator import FedBuffAggregator
 from .fedcompass_aggregator import FedCompassAggregator
 from .iiadmm_aggregator import IIADMMAggregator
 from .iceadmm_aggregator import ICEADMMAggregator
+from .area_aggregator import AREAAggregator
+from .mifa_aggregator import MIFAAggregator
