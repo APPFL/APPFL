@@ -135,14 +135,19 @@ def run_serial(
                 client.model.load_state_dict(global_state,strict=False)
             else:
                 client.model.load_state_dict(global_state)            
-            ################            
-            local_states.append(client.update(lr_clients[k]))
+            ################    
+            #print(f"Server sent learning rate to client {k}: {lr_clients[k]}")
+            updated_state = client.update(global_state, lr_clients[k])         
+            local_states.append(updated_state)
 
         cfg.logginginfo.LocalUpdate_time = time.time() - local_update_start
 
         ## Global update
         global_update_start = time.time()
-        server.update(local_states, lr_clients)
+        #server.update(local_states)
+
+        # Ensure lr updated in each round
+        global_state, lr_clients = server.update(local_states)
         cfg["logginginfo"]["GlobalUpdate_time"] = time.time() - global_update_start
 
         ## Global validation

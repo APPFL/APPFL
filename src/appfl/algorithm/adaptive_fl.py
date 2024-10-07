@@ -1,98 +1,69 @@
 from .fl_base import BaseServer, BaseClient
+from .server_federated import FedServer
 from collections import OrderedDict
 from torch.optim import *
 import torch
 import copy
 import logging
 
-
-class AdaptiveFLServer(BaseServer):
-    def __init__(self, weights, model, loss_fn, num_clients, device, server_lr=1.0, gamma=1.1, **kwargs):
-        """
-        Initialize the AdaptiveFLServer class.
-
-        Args:
-            weights (OrderedDict): Aggregation weights for each client.
-            model (nn.Module): The global model to be trained.
-            loss_fn (nn.Module): Loss function used for training.
-            num_clients (int): The number of clients.
-            device (str): The device for computation (e.g., 'cpu' or 'cuda').
-            server_lr (float): Learning rate for the server's update.
-            gamma (float): Multiplicative factor for adapting learning rates.
-            **kwargs: Additional keyword arguments.
-        """
+class AdaptiveFLServer(FedServer):
+    def __init__(self, weights, model, loss_fn, num_clients, device, server_lr=1e-7, gamma=10, **kwargs):
         super(AdaptiveFLServer, self).__init__(weights, model, loss_fn, num_clients, device)
         self.server_lr = server_lr
         self.gamma = gamma
+        self.lr_clients = {client_id: server_lr for client_id in range(num_clients)}  # Initialize learning rates for all clients
         self.__dict__.update(kwargs)
 
-    def update(self, local_states, lr_clients):
-        """
-        Update the global model by selecting clients based on their contributions and adjusting learning rates.
-
-        Args:
-            local_states (list): A list of dictionaries, where each dictionary contains:
-                - 'primal_state': Local model parameters from the client.
-                - 'gradient_state': Local gradients from the client.
-                - 'function_value_difference': The change in the objective function value from the client.
-        """
-        # Initialize storage for gradients and function value differences
+    def update(self, local_states):
         gradients = OrderedDict()
         func_val_diffs = OrderedDict()
-        sq_norm_grad = OrderedDict() 
-        # Gather gradients and function value differences from clients
+        # for k in range(self.num_clients):
+        #     print(f"Server updated learning rate for client {k}: {self.lr_clients[k]}")
+
         for client_id, state in enumerate(local_states):
-            # Move gradients and function value differences to GPU
             gradients[client_id] = {k: v.to(self.device) for k, v in state['grad_estimate'].items()}
             func_val_diffs[client_id] = torch.tensor(state['function_value_difference'], device=self.device)
-  
 
-        # change in objective function across all clients
         total_func_val_diff = sum(func_val_diffs.values())
-
-
         selected_clients = []
+
         for client_id in range(self.num_clients):
-            # Compute the norm of the client's gradient
             gradient_norm = torch.norm(torch.cat([gradients[client_id][k].view(-1) for k in gradients[client_id]])).item()
-            print("func_val_diffs: ",func_val_diffs[client_id])
-            print("learning rate: ",lr_clients[client_id])
-            print("gradient_norm: ", gradient_norm)
-            print("second term : ", -self.server_lr * gradient_norm ** 2)            
-            # Apply the selection condition
-            if func_val_diffs[client_id] <= - lr_clients[client_id] * gradient_norm ** 2:
+            if func_val_diffs[client_id] <= -self.lr_clients[client_id] * gradient_norm ** 2:
                 selected_clients.append(client_id)
-        print(selected_clients)
-        stop
+            print("func_val_diffs: ",func_val_diffs[client_id])
+            print("learning rate: ", self.lr_clients[client_id])
+            print("gradient norm: ",gradient_norm)
+            print("LHS value: ",func_val_diffs[client_id])
+            print("RHS value: ",-self.lr_clients[client_id] * gradient_norm ** 2)
+        print(f"Selected Clients for Global Update: {selected_clients}")
 
-
-        # Initialize global state for aggregation on GPU
         global_state = copy.deepcopy(self.model.state_dict())
         global_state = {k: v.to(self.device) for k, v in global_state.items()}
 
         if selected_clients:
-            # Update the global model using only the selected clients
             for key in global_state.keys():
                 global_state[key] = torch.zeros_like(global_state[key], device=self.device)
                 for client_id in selected_clients:
-
-                    # Move the client's local state to the server's device before aggregation
                     local_param = local_states[client_id]['primal_state'][key].to(self.device)
-                    global_state[key] = global_state[key].float()
                     global_state[key] += local_param * self.weights[client_id]
 
-                # Normalize by the number of selected clients
                 global_state[key] /= len(selected_clients)
-
-            # Load the updated global state into the model
+   
             self.model.load_state_dict(global_state)
 
         # Update learning rates for clients
-        for client_id in range(self.num_clients):
-            if client_id in selected_clients:
-                self.weights[client_id] *= self.gamma  # Increase learning rate for selected clients
+        for k in range(self.num_clients):
+            if k in selected_clients:
+                self.lr_clients[k] *= self.gamma
             else:
-                self.weights[client_id] /= self.gamma  # Decrease learning rate for non-selected clients
+                self.lr_clients[k] /= self.gamma
+
+        # Return both global state and learning rates separately
+        # print(f"Server sending learning rate to client {k}: {self.lr_clients[k]}")
+        # stop
+        return global_state, self.lr_clients
+
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:

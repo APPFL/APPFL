@@ -8,51 +8,32 @@ from .fl_base import BaseClient
 from collections import OrderedDict
 
 class ClientAdaptOptim(BaseClient):
-    """This client optimizer which perform updates for certain number of epochs in each training round."""
-    def __init__(
-        self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs
-    ):      
+    """This client optimizer performs updates for a certain number of epochs in each training round."""
+    def __init__(self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs):
         super(ClientAdaptOptim, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
         self.__dict__.update(kwargs)
         super(ClientAdaptOptim, self).client_log_title()
 
-        self.clip_grad = cfg.get('clip_grad',False)
-        self.clip_value = cfg.get('clip_value',1.0)
-        self.clip_norm = self.cfg.get('clip_norm', 2)
 
-    def clip_gradient_estimate(self, grad_estimate, max_norm, norm_type=2):
+    def update(self, global_model, learning_rate):
+
+        #print(f"Client {self.id} received learning rate: {learning_rate}")
         """
-        Clips the gradient estimate to ensure its norm is within the specified limit.
-
+        Perform local updates using the provided global model and learning rate.
         Args:
-            grad_estimate: The gradient estimate (difference in weights divided by lr).
-            max_norm: The maximum allowable norm for the gradient estimate.
-            norm_type: The type of norm (default is L2 norm).
+            global_model: The global model parameters received from the server.
+            learning_rate: The learning rate provided by the server.
         """
-        total_norm = 0.0
-        # Calculate the total norm of the gradient estimate
-        for name, grad in grad_estimate.items():
-            param_norm = grad.norm(norm_type)
-            total_norm += param_norm.item() ** norm_type
-        # if norm type =2, calculate L2 norm, if norm type =1, takes L1 norm.
-        total_norm = total_norm ** (1. / norm_type)
-
-        # If the total norm exceeds the max norm, scale the gradients
-        clip_coef = max_norm / (total_norm + 1e-6)
-        if clip_coef < 1:
-            for name, grad in grad_estimate.items():
-                grad_estimate[name].mul_(clip_coef)  # Scale the gradient estimate
-        return grad_estimate
-
-    def update(self, lr):
-        
-        self.optim_args["lr"] = lr        
-        
         # Load the global model weights
+        self.model.load_state_dict(global_model)
+        # learning rate from server
+        self.optim_args["lr"] = learning_rate
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        print(f"Client {self.id} optimizer learning rate: {optimizer.param_groups[0]['lr']}")  # Print optimizer LR for verification
         initial_model_state = copy.deepcopy(self.model.state_dict())  # Save initial state for gradient estimate
 
+        # Compute the initial loss
         initial_loss = 0
         with torch.no_grad():
             for data, target in self.dataloader:
@@ -78,15 +59,15 @@ class ClientAdaptOptim(BaseClient):
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
                 optimizer.zero_grad()
-                output = self.model(data)  # Forward pass to get the model's output
-                loss = self.loss_fn(output, target)  # Calculate the loss using the output (logits)
-                loss.backward()            
+                output = self.model(data)  # Forward pass
+                loss = self.loss_fn(output, target)  # Compute loss
+                loss.backward()
                 optimizer.step()
 
-                # Log results
                 target_true.append(target.detach().cpu().numpy())
                 target_pred.append(output.detach().cpu().numpy())
                 train_loss += loss.item()
+
                 if self.clip_grad or self.use_dp:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
@@ -94,11 +75,10 @@ class ClientAdaptOptim(BaseClient):
                         norm_type=self.clip_norm,
                     )
 
-
             train_loss /= len(self.dataloader)
+            print(f"Client {self.id} Epoch {t} Average Loss: {train_loss}")  # Print average loss for each epoch
             target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
             train_accuracy = float(self.metric(target_true, target_pred))
-
 
             # Validation
             if self.cfg.validation and self.test_dataloader is not None:
@@ -118,15 +98,12 @@ class ClientAdaptOptim(BaseClient):
 
         self.round += 1
 
-        # Compute gradient estimate using stochastic oracle
+        # Compute gradient estimate
         self.grad_estimate = OrderedDict()
         for name, param in self.model.named_parameters():
-            self.grad_estimate[name] = (initial_model_state[name] - param.data) / self.optim_args['lr']
- 
+            self.grad_estimate[name] = (initial_model_state[name] - param.data) / learning_rate
 
-        # self.clip_gradient_estimate(self.grad_estimate, max_norm=self.clip_value, norm_type=self.clip_norm)
-
-       # loss after training
+        # Final loss computation
         final_loss = 0
         with torch.no_grad():
             for data, target in self.dataloader:
@@ -138,7 +115,6 @@ class ClientAdaptOptim(BaseClient):
         final_loss /= len(self.dataloader)
 
         self.function_value_difference = final_loss - initial_loss
- 
 
         # Differential Privacy
         self.primal_state = copy.deepcopy(self.model.state_dict())
@@ -147,13 +123,13 @@ class ClientAdaptOptim(BaseClient):
             scale_value = sensitivity / self.epsilon
             super(ClientAdaptOptim, self).laplace_mechanism_output_perturb(scale_value)
 
-        # Move the model parameters to CPU for communication (if necessary)
+        # Move model parameters to CPU for communication
         if self.cfg.device == "cuda":
             for k in self.primal_state:
                 self.primal_state[k] = self.primal_state[k].cpu()
-                                
+
         return {
             "primal_state": self.primal_state,
-            "grad_estimate": self.grad_estimate,  # Corrected this line to use grad_estimate
+            "grad_estimate": self.grad_estimate,
             "function_value_difference": self.function_value_difference
         }
