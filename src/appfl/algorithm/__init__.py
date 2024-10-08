@@ -29,5 +29,7 @@ from .legacy.server_fed_buffer import *
 from .legacy.server_fed_compass import *
 from .legacy.server_fed_compass_mom import *
 from .legacy.server_fed_compass_nova import *
+from .legacy.server_area import *
+from .legacy.server_mifa import *
 from .legacy.scheduler_compass import *
 from .legacy.scheduler_dummy import *
