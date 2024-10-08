@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 from typing import Optional
 from omegaconf import OmegaConf
 from concurrent.futures import Future
@@ -167,6 +168,31 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 return response
             elif action == "close_connection":
                 self.server_agent.close_connection(client_id)
+                response = CustomActionResponse(
+                    header=ServerHeader(status=ServerStatus.DONE),
+                )
+                return response
+            elif action == "get_data_readiness_report":
+                num_clients = self.server_agent.get_num_clients()
+                if not hasattr(self, "_dr_metrics_lock"):
+                    self._dr_metrics = {}
+                    self._dr_metrics_futures = {}
+                    self._dr_metrics_lock = threading.Lock()
+                with self._dr_metrics_lock:
+                    for k, v in meta_data.items():
+                        if k not in self._dr_metrics:
+                            self._dr_metrics[k] = {}
+                        self._dr_metrics[k][client_id] = v
+                    _dr_metric_future = Future()
+                    self._dr_metrics_futures[client_id] = _dr_metric_future
+                    if len(self._dr_metrics_futures) == num_clients:
+                        self.server_agent.data_readiness_report(self._dr_metrics)
+                        for client_id, future in self._dr_metrics_futures.items():
+                            future.set_result(None)
+                        self._dr_metrics = {}
+                        self._dr_metrics_futures = {}
+                # waiting for the data readiness report to be generated for synchronization
+                _dr_metric_future.result()
                 response = CustomActionResponse(
                     header=ServerHeader(status=ServerStatus.DONE),
                 )

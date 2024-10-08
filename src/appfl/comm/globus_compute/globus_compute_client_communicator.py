@@ -26,6 +26,11 @@ def globus_compute_client_entry_point(
             "sample_size": client_agent.get_sample_size()
         }
     
+    elif task_name == "data_readiness_report":
+        return None,{
+            "data_readiness": client_agent.generate_readiness_report(client_agent_config)
+        }
+    
     elif task_name == "train":
         client_agent.train()
         local_model = client_agent.get_parameters()

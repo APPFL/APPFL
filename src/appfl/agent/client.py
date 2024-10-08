@@ -1,5 +1,6 @@
 import os
 import uuid
+import torch
 import pathlib
 import importlib
 import torch.nn as nn
@@ -9,6 +10,7 @@ from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
 from typing import Union, Dict, OrderedDict, Tuple, Optional
+from appfl.misc.data_readiness import *
 from appfl.logger import ClientAgentFileLogger
 from appfl.misc import create_instance_from_file, \
     run_function_from_file, \
@@ -103,6 +105,67 @@ class ClientAgent:
             
         torch.save(self.model.state_dict(), checkpoint_path)
 
+    def generate_readiness_report(self, client_config):
+        """
+        Generate data readiness report based on the configuration provided by the server.
+        """
+        if hasattr(client_config.data_readiness_configs, "dr_metrics"):
+            results = {}
+            plot_results = {"plots": {}}
+            # Define metrics with corresponding computation functions
+            standard_metrics = {
+                "class_imbalance": lambda: round(imbalance_degree(self.train_dataset.data_label.tolist()), 2),
+                "sample_size": lambda: len(self.train_dataset.data_label.tolist()),
+                "num_classes": lambda: len(self.train_dataset.data_label.unique()),
+                "data_shape": lambda: list(self.train_dataset.data_input.shape),
+                "completeness": lambda: completeness(self.train_dataset.data_input),
+                "data_range": lambda: get_data_range(self.train_dataset.data_input),
+                "sparsity": lambda: sparsity(self.train_dataset.data_input),
+                "variance": lambda: variance(self.train_dataset.data_input),
+                "skewness": lambda: skewness(self.train_dataset.data_input),
+                "entropy": lambda: entropy(self.train_dataset.data_input),
+                "kurtosis": lambda: kurtosis(self.train_dataset.data_input),
+                "class_distribution": lambda: class_distribution(self.train_dataset.data_label.tolist()),
+                "brisque": lambda: brisque(self.train_dataset.data_input),
+                "sharpness": lambda: dataset_sharpness(self.train_dataset),
+                "total_variation": lambda: total_variation(self.train_dataset.data_input),
+                "sharpness": lambda: dataset_sharpness(self.train_dataset.data_input),
+
+            }
+
+            plots = {
+            "class_distribution_plot": lambda: plot_class_distribution(self.train_dataset),
+            "data_sample_plot": lambda: plot_data_sample(self.train_dataset),
+            "data_distribution_plot": lambda: plot_data_distribution(self.train_dataset),
+            "class_variance_plot": lambda: plot_class_variance(self.train_dataset),
+        }
+
+            # Handle standard metrics
+            for metric_name, compute_function in standard_metrics.items():
+                if metric_name in client_config.data_readiness_configs.dr_metrics:
+                    if getattr(client_config.data_readiness_configs.dr_metrics, metric_name):
+                        results[metric_name] = compute_function()
+                    else:
+                        results[metric_name] = "Metric set to False during configuration"
+                else:
+                    results[metric_name] = "Metric not available in configuration"
+
+            # Handle plot-specific metrics
+            for metric_name, compute_function in plots.items():
+                if metric_name in client_config.data_readiness_configs.dr_metrics.plot:
+                    if getattr(client_config.data_readiness_configs.dr_metrics.plot, metric_name):
+                        plot_results['plots'][metric_name] = compute_function()
+                    else:
+                        plot_results['plots'][metric_name] = "Plot metric set to False during configuration"
+                else:
+                    plot_results['plots'][metric_name] = "Plot metric not available in configuration"
+
+            # Combine results with plot results
+            results.update(plot_results)
+            return results
+        else:
+            return "Data readiness metrics not available in configuration"
+        
     def _create_logger(self):
         """
         Create logger for the client agent to log local training process.

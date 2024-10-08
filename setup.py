@@ -75,6 +75,8 @@ setuptools.setup(
         "blosc",
         "python-xz",
         "matplotlib",
+        "seaborn",
+        "piq",
     ],
     extras_require={
         "dev": [

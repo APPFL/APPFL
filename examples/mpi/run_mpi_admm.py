@@ -24,9 +24,12 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 num_clients = size - 1
 
+# Load the server configurations
+server_agent_config = OmegaConf.load(args.server_config)
+
 if rank == 0:
-    # Load and set the server configurations
-    server_agent_config = OmegaConf.load(args.server_config)
+    # set the server configurations
+    
     server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
     if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
         server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
@@ -54,6 +57,12 @@ else:
     sample_size = client_agent.get_sample_size()
     client_weight = client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size, sync=True)
     client_agent.trainer.set_weight(client_weight["client_weight"])
+
+    # Generate data readiness report
+    if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
+        data_readiness = client_agent.generate_readiness_report(client_config)
+        client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)
+        
     # Local training and global model update iterations
     while True:
         client_agent.train()

@@ -1,5 +1,6 @@
 import io
 import torch
+import pathlib
 import threading
 import torch.nn as nn
 from appfl.compressor import *
@@ -12,6 +13,7 @@ from concurrent.futures import Future
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional
+from appfl.misc.data_readiness.report import *
 
 class ServerAgent:
     """
@@ -65,7 +67,7 @@ class ServerAgent:
     def get_client_configs(self, **kwargs) -> DictConfig:
         """Return the FL configurations that are shared among all clients."""
         return self.server_agent_config.client_configs
-    
+
     def global_update(
         self, 
         client_id: Union[int, str],
@@ -182,6 +184,27 @@ class ServerAgent:
             self._close_connection_lock = threading.Lock()
         with self._close_connection_lock:
             self.closed_clients.add(client_id)
+
+    def data_readiness_report(self, readiness_report: Dict) -> None:
+        """
+        Generate the data readiness report and save it to the output directory.
+        """
+        output_dir = self.server_agent_config.client_configs.data_readiness_configs.get("output_dirname", "./output")
+        output_filename = self.server_agent_config.client_configs.data_readiness_configs.get("output_filename", "data_readiness_report")
+
+        if not os.path.exists(output_dir):
+            pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+        # Save JSON report
+        json_file_path = get_unique_file_path(output_dir, output_filename, "json")
+        save_json_report(json_file_path, readiness_report, self.logger)
+
+        # Generate and save HTML report
+        html_file_path = get_unique_file_path(output_dir, output_filename, "html")
+        html_content = generate_html_content(readiness_report)
+        save_html_report(html_file_path, html_content, self.logger)
+
+        self._data_readiness_reports = {}
 
     def server_terminated(self):
         """Indicate whether the server can be terminated from listening to the clients."""
