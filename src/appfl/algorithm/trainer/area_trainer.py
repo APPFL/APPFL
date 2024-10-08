@@ -33,7 +33,6 @@ class AREATrainer(VanillaTrainer):
         self.memory = copy.deepcopy(self.model)
         
     def train(self):
-        new_memory = copy.deepcopy(self.model)
         self.train_configs.send_gradient = False
         super().train()
         # Compute the model state (model parameters to be sent) 
@@ -45,4 +44,4 @@ class AREATrainer(VanillaTrainer):
         for name in self.named_parameters:
             self.model_state[name] = self.model_state[name] - self.memory.state_dict()[name].cpu()   
         # Update the memory
-        self.memory = new_memory
+        self.memory.load_state_dict(self.model.state_dict())

@@ -228,7 +228,7 @@ def run_client(
         if client.cfg.fed.servername in ['ServerAREA', 'ServerMIFA']:
             if client.cfg.fed.servername == 'ServerAREA':
                 local_model = compute_gradient(client.model.state_dict(), client.memory)
-                client.memory.load_state_dict(model)
+                client.memory.load_state_dict(client.model.state_dict())
             else:
                 pseudo_grad = compute_gradient(model, client.model)
                 local_model = compute_gradient(pseudo_grad, client.memory)
