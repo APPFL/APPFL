@@ -140,7 +140,7 @@ class ClientAgent:
             "class_variance_plot": lambda: plot_class_variance(self.train_dataset),
         }
 
-            # First loop: Handle standard metrics
+            # Handle standard metrics
             for metric_name, compute_function in standard_metrics.items():
                 if metric_name in client_config.data_readiness_configs.dr_metrics:
                     if getattr(client_config.data_readiness_configs.dr_metrics, metric_name):
@@ -150,7 +150,7 @@ class ClientAgent:
                 else:
                     results[metric_name] = "Metric not available in configuration"
 
-            # Second loop: Handle plot-specific metrics
+            # Handle plot-specific metrics
             for metric_name, compute_function in plots.items():
                 if metric_name in client_config.data_readiness_configs.dr_metrics.plot:
                     if getattr(client_config.data_readiness_configs.dr_metrics.plot, metric_name):

@@ -186,6 +186,9 @@ class ServerAgent:
             self.closed_clients.add(client_id)
 
     def data_readiness_report(self, readiness_report: Dict) -> None:
+        """
+        Generate the data readiness report and save it to the output directory.
+        """
         output_dir = self.server_agent_config.client_configs.data_readiness_configs.get("output_dirname", "./output")
         output_filename = self.server_agent_config.client_configs.data_readiness_configs.get("output_filename", "data_readiness_report")
 
