@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import base64
 import io
+
+from sklearn.decomposition import PCA
 def plot_class_distribution(train_dataset):
     plt.figure()
 
@@ -156,3 +158,44 @@ def plot_class_variance(train_dataset):
     buffer.close()
 
     return encoded_image
+
+def get_feature_space_distribution(train_dataset, sample_size=100, max_samples=500):
+    """
+    Get feature space distribution for PCA visualization.
+    
+    Parameters:
+    - sample_size: Desired number of samples to use for PCA.
+    - max_samples: Maximum number of samples to draw from the dataset.
+    
+    Returns:
+    - A dictionary containing PCA components, explained variance, and labels.
+    """
+    # Determine the actual number of samples to draw
+    total_samples = min(len(train_dataset.data_input), max_samples)
+    sampled_indices = random.sample(range(total_samples), min(sample_size, total_samples))
+    
+    # Sample random data points from the feature space
+    data = [train_dataset.data_input[i] for i in sampled_indices]
+    feature_values = np.array(data)  # Assuming this is of shape (batch_size, 1, 28, 28)
+
+    # Reshape the 4D data (batch_size, 1, 28, 28) to 2D (batch_size, 28 * 28)
+    batch_size = feature_values.shape[0]
+    feature_values_flat = feature_values.reshape(batch_size, -1)  # Reshapes to (batch_size, 784)
+
+    # Apply PCA to the flattened feature values (reduce to 2 components for visualization)
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(feature_values_flat)
+
+    # Calculate the explained variance ratio for the PCA components
+    explained_variance = pca.explained_variance_ratio_
+
+    # Return the values needed to create the PCA plot on the frontend
+    return {
+        'pca_components': pca_result.tolist(),  # Convert PCA result to list for serialization
+        'explained_variance': explained_variance.tolist(),  # Variance ratio for the components
+        'labels': {
+            'x_label': 'PCA Component 1',
+            'y_label': 'PCA Component 2',
+            'explained_variance_label': 'Explained Variance'
+        }
+    }

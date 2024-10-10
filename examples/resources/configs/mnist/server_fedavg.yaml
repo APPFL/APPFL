@@ -51,6 +51,8 @@ client_configs:
         data_sample_plot: True
         data_distribution_plot: True
         class_variance_plot: True
+      combine:
+        feature_space_distribution: True
     
   model_configs:
     model_path: "./resources/model/cnn.py"

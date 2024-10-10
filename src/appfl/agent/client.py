@@ -112,6 +112,8 @@ class ClientAgent:
         if hasattr(client_config.data_readiness_configs, "dr_metrics"):
             results = {}
             plot_results = {"plots": {}}
+            to_combine_results = {"to_combine":{}}
+
             # Define metrics with corresponding computation functions
             standard_metrics = {
                 "class_imbalance": lambda: round(imbalance_degree(self.train_dataset.data_label.tolist()), 2),
@@ -139,6 +141,9 @@ class ClientAgent:
             "data_distribution_plot": lambda: plot_data_distribution(self.train_dataset),
             "class_variance_plot": lambda: plot_class_variance(self.train_dataset),
         }
+            combine= {
+                "feature_space_distribution": lambda: get_feature_space_distribution(self.train_dataset),
+            }
 
             # Handle standard metrics
             for metric_name, compute_function in standard_metrics.items():
@@ -162,6 +167,19 @@ class ClientAgent:
 
             # Combine results with plot results
             results.update(plot_results)
+
+            # Handle combined metrics
+            for metric_name, compute_function in combine.items():
+                if metric_name in client_config.data_readiness_configs.dr_metrics.combine:
+                    if getattr(client_config.data_readiness_configs.dr_metrics.combine, metric_name):
+                        to_combine_results['to_combine'][metric_name] = compute_function()
+                    else:
+                        to_combine_results['to_combine'][metric_name] = "Combined metric set to False during configuration"
+                else:
+                    to_combine_results['to_combine'][metric_name] = "Combined metric not available in configuration"
+            
+            results.update(to_combine_results)
+
             return results
         else:
             return "Data readiness metrics not available in configuration"
