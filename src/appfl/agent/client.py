@@ -150,20 +150,12 @@ class ClientAgent:
                 if metric_name in client_config.data_readiness_configs.dr_metrics:
                     if getattr(client_config.data_readiness_configs.dr_metrics, metric_name):
                         results[metric_name] = compute_function()
-                    else:
-                        results[metric_name] = "Metric set to False during configuration"
-                else:
-                    results[metric_name] = "Metric not available in configuration"
 
             # Handle plot-specific metrics
             for metric_name, compute_function in plots.items():
                 if metric_name in client_config.data_readiness_configs.dr_metrics.plot:
                     if getattr(client_config.data_readiness_configs.dr_metrics.plot, metric_name):
                         plot_results['plots'][metric_name] = compute_function()
-                    else:
-                        plot_results['plots'][metric_name] = "Plot metric set to False during configuration"
-                else:
-                    plot_results['plots'][metric_name] = "Plot metric not available in configuration"
 
             # Combine results with plot results
             results.update(plot_results)
@@ -173,10 +165,6 @@ class ClientAgent:
                 if metric_name in client_config.data_readiness_configs.dr_metrics.combine:
                     if getattr(client_config.data_readiness_configs.dr_metrics.combine, metric_name):
                         to_combine_results['to_combine'][metric_name] = compute_function()
-                    else:
-                        to_combine_results['to_combine'][metric_name] = "Combined metric set to False during configuration"
-                else:
-                    to_combine_results['to_combine'][metric_name] = "Combined metric not available in configuration"
             
             results.update(to_combine_results)
 

@@ -159,22 +159,24 @@ def plot_class_variance(train_dataset):
 
     return encoded_image
 
-def get_feature_space_distribution(train_dataset, sample_size=100, max_samples=500):
+def get_feature_space_distribution(train_dataset):
     """
     Get feature space distribution for PCA visualization.
     
     Parameters:
-    - sample_size: Desired number of samples to use for PCA.
-    - max_samples: Maximum number of samples to draw from the dataset.
-    
+    - train_dataset: The dataset from which to sample and calculate the PCA.
+
     Returns:
     - A dictionary containing PCA components, explained variance, and labels.
     """
-    # Determine the actual number of samples to draw
-    total_samples = min(len(train_dataset.data_input), max_samples)
-    sampled_indices = random.sample(range(total_samples), min(sample_size, total_samples))
+    # Calculate 10% of the total dataset size for sampling
+    total_samples = len(train_dataset.data_input)
+    sample_size = max(1, int(total_samples * 0.1))  # Ensure at least one sample is taken
     
-    # Sample random data points from the feature space
+    # Randomly sample 10% of the data points from the feature space
+    sampled_indices = random.sample(range(total_samples), sample_size)
+    
+    # Extract the sampled data
     data = [train_dataset.data_input[i] for i in sampled_indices]
     feature_values = np.array(data)  # Assuming this is of shape (batch_size, 1, 28, 28)
 
@@ -199,3 +201,51 @@ def get_feature_space_distribution(train_dataset, sample_size=100, max_samples=5
             'explained_variance_label': 'Explained Variance'
         }
     }
+
+
+def generate_combined_feature_space_plot(client_feature_space_dict, client_ids):
+    # Define a color palette for different clients
+    colors = sns.color_palette("husl", len(client_ids))
+    
+    # Create a combined PCA plot for all clients' feature space
+    plt.figure()
+
+    for idx, (client_id, client_data) in enumerate(client_feature_space_dict.items()):
+        pca_components = np.array(client_data['pca_components'])  # Get PCA components for each client
+
+        # Ensure PCA components have the correct shape (2D: n_samples, 2)
+        if pca_components.shape[1] != 2:
+            raise ValueError(f"Expected PCA components with 2 dimensions, but got {pca_components.shape[1]} dimensions")
+        
+        # Apply jittering by adding small random noise to the points
+        jitter_strength = 0.02
+        jittered_components = pca_components + np.random.normal(scale=jitter_strength, size=pca_components.shape)
+        
+        # Plot the jittered PCA components for each client with reduced point size
+        plt.scatter(jittered_components[:, 0], jittered_components[:, 1], 
+                    color=colors[idx], label=client_id, alpha=0.4, s=20)
+
+        # Optionally, display the explained variance for each client
+        explained_variance = client_data['explained_variance']
+        # plt.text(np.mean(jittered_components[:, 0]), np.mean(jittered_components[:, 1]),
+        #         f'Var: {explained_variance[0]:.2f}, {explained_variance[1]:.2f}',
+        #         color=colors[idx])
+
+    # Set labels for the PCA components
+    plt.xlabel("PCA Component 1")
+    plt.ylabel("PCA Component 2")
+
+    # Add legend to differentiate between clients
+    plt.legend()
+
+    # Save the plot to a BytesIO object and encode it as base64
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    plt.close()
+    buffer.seek(0)
+
+    # Encode the plot as a base64 image to be returned
+    encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    buffer.close()
+
+    return encoded_image

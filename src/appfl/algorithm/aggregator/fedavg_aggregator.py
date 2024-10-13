@@ -3,6 +3,7 @@ import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
+from appfl.misc.data_readiness.metrics import ned_squared
 
 class FedAvgAggregator(BaseAggregator):
     """
@@ -56,39 +57,74 @@ class FedAvgAggregator(BaseAggregator):
                 raise ValueError("Model is not provided to the aggregator.")
         return {k: v.clone() for k, v in self.global_state.items()}
 
-    def aggregate(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs) -> Dict:
+    # def aggregate(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs) -> Dict:
+    #     """
+    #     Take the weighted average of local models from clients and return the global model.
+    #     """
+    #     if self.global_state is None:
+    #         if self.model is not None:
+    #             try: 
+    #                 self.global_state = {
+    #                     name: self.model.state_dict()[name] for name in list(local_models.values())[0]
+    #                 }
+    #             except:
+    #                 self.global_state = {
+    #                     name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()
+    #                 }
+    #         else:
+    #             self.global_state = {
+    #                 name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()
+    #             }
+        
+    #     self.compute_steps(local_models)
+        
+    #     for name in self.global_state:
+    #         if name in self.step:
+    #             self.global_state[name] = self.global_state[name] + self.step[name]
+    #         else:
+    #             param_sum = torch.zeros_like(self.global_state[name])
+    #             for _, model in local_models.items():
+    #                 param_sum += model[name]
+    #             self.global_state[name] = torch.div(param_sum, len(local_models))
+    #     if self.model is not None:
+    #         self.model.load_state_dict(self.global_state, strict=False)
+    #     return {k: v.clone() for k, v in self.global_state.items()}
+
+
+    def aggregate(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs):
         """
-        Take the weighted average of local models from clients and return the global model.
+        Aggregate models with a focus on clients with more balanced class distributions.
         """
+        class_distributions = kwargs['class_distribution']
+        
         if self.global_state is None:
-            if self.model is not None:
-                try: 
-                    self.global_state = {
-                        name: self.model.state_dict()[name] for name in list(local_models.values())[0]
-                    }
-                except:
-                    self.global_state = {
-                        name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()
-                    }
-            else:
-                self.global_state = {
-                    name: tensor.detach().clone() for name, tensor in list(local_models.values())[0].items()
-                }
+            first_model_params = local_models[next(iter(local_models))]
+            self.global_state = {name: tensor.clone() for name, tensor in first_model_params.items()}
+
+        # Compute NED for each client compared to a balanced distribution
+        num_classes = len(next(iter(class_distributions.values())))
+        balanced_distribution = {i: 1 for i in range(num_classes)}
+        ned_degrees = {client_id: ned_squared(distr, balanced_distribution) for client_id, distr in class_distributions.items()}
         
-        self.compute_steps(local_models)
+        # Normalize NED degrees
+        max_ned = max(ned_degrees.values())
+        normalized_ned = {client_id: ned / max_ned if max_ned > 0 else 1 for client_id, ned in ned_degrees.items()}
         
+        # Calculate weights inversely proportional to normalized NED
+        total_inverse_ned = sum(1 / (1 + ned) for ned in normalized_ned.values())
+
         for name in self.global_state:
-            if name in self.step:
-                self.global_state[name] = self.global_state[name] + self.step[name]
-            else:
-                param_sum = torch.zeros_like(self.global_state[name])
-                for _, model in local_models.items():
-                    param_sum += model[name]
-                self.global_state[name] = torch.div(param_sum, len(local_models))
+            param_sum = torch.zeros_like(self.global_state[name])
+            for client_id, model in local_models.items():
+                client_weight = (1 / (1 + normalized_ned[client_id])) / total_inverse_ned
+                param_sum += client_weight * model[name]
+            self.global_state[name] = param_sum
+
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)
+
         return {k: v.clone() for k, v in self.global_state.items()}
-    
+
     def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]):
         """
         Compute the changes to the global model after the aggregation.

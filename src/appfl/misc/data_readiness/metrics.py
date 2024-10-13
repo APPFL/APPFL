@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import piq
+from typing import Dict, Union, OrderedDict
 
 def imbalance_degree(lst):
     counts = {}
@@ -104,5 +105,24 @@ def dataset_sharpness(dataset):
     sharpness_scores = [image_sharpness(img) for img in dataset]
     avg_sharpness = np.mean(sharpness_scores)
     return round(avg_sharpness, 2)
+
+def ned_squared(class_distribution1: Dict[int, int], class_distribution2: Dict[int, int]) -> float:
+    # Convert distributions to arrays
+    u = np.array(list(class_distribution1.values()))
+    v = np.array(list(class_distribution2.values()))
+    
+    # Calculate variances
+    var_u = np.var(u)
+    var_v = np.var(v)
+    
+    # Calculate the variance of the difference
+    var_diff = np.var(u - v)
+    
+    # Handle division by zero
+    if (var_u + var_v) == 0:
+        return 0
+    
+    # Return the normalized squared Euclidean distance
+    return 0.5 * var_diff / (var_u + var_v)
 
 

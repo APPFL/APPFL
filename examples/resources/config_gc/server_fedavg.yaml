@@ -13,8 +13,8 @@ client_configs:
     # Client validation
     do_validation: True
     do_pre_validation: True
-    metric_path: "./resources/metric/acc.py"
-    metric_name: "accuracy"
+    metric_path: "./resources/metric/f1score.py"
+    metric_name: "f1score"
     # Differential privacy
     use_dp: False
     epsilon: 1
@@ -55,29 +55,31 @@ client_configs:
     output_filename: "data_readiness_report"
     dr_metrics: 
       class_imbalance: True
-      sample_size: True
-      num_classes: True
-      data_shape: True
+      sample_size: False
+      num_classes: False
+      data_shape: False
       completeness: True
-      data_range: True
-      sparsity: True
-      variance: True
-      skewness: True
-      entropy: True
-      kurtosis: True
+      data_range: False
+      sparsity: False
+      variance: False
+      skewness: False
+      entropy: False
+      kurtosis: False
       class_distribution: True
-      brisque: True
+      brisque: False
       sharpness: False
       plot:
-        class_distribution_plot: True
-        data_sample_plot: True
-        data_distribution_plot: True
-        class_variance_plot: True
+        class_distribution_plot: False
+        data_sample_plot: False
+        data_distribution_plot: False
+        class_variance_plot: False
+      combine:
+        feature_space_distribution: False
 
 server_configs:
   scheduler: "SyncScheduler"
   scheduler_kwargs:
-    num_clients: 2
+    num_clients: 3
     same_init_model: True
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:
