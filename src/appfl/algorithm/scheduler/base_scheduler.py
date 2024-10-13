@@ -49,7 +49,8 @@ class BaseScheduler:
             if not hasattr(self, "init_model_requests"):
                 self.init_model_requests = 0
                 self.init_model_futures = []
-            self.init_model_requests += 1
+            self.init_model_requests += kwargs.get("num_batched_clients", 1)
+            
             future = Future()
             self.init_model_futures.append(future)
             if self.init_model_requests == self.scheduler_configs.num_clients:
