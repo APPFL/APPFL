@@ -93,6 +93,7 @@ setuptools.setup(
             "black",
             "pytest",
             "pytest-mpi",
+            "furo",
         ],
         "examples": [
             "opencv-python",
