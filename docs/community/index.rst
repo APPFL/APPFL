@@ -5,9 +5,28 @@ APPFL is developed as an open-source package. Requests, questions, and contribut
 
 Join us with the following ways:
 
-* `Discord server <https://discord.gg/bBW56EYGUS>`_
-* `GitHub issues <https://github.com/APPFL/APPFL/issues>`_
+.. raw:: html
 
+    <div class="social-links" style="text-align: center;">
+        <div style="display: inline-block; margin: 0 20px;">
+            <a href="https://github.com/APPFL/APPFL" target="_blank" style="cursor: pointer;">
+                <img src="../_static/github.png" alt="GitHub">
+            </a>
+            <div>GitHub</div>
+        </div>
+        <div style="display: inline-block; margin: 0 20px;">
+            <a href="https://discord.gg/bBW56EYGUS" target="_blank" style="cursor: pointer;">
+                <img src="../_static/discord.png" alt="Discord">
+            </a>
+            <div>Discord</div>
+        </div>
+        <div style="display: inline-block; margin: 0 20px;">
+            <a href="https://www.youtube.com/channel/UCzwiJboiJW3dLI0UndnDy5g" target="_blank" style="cursor: pointer;">
+                <img src="../_static/youtube.png" alt="YouTube">
+            </a>
+            <div>YouTube</div>
+        </div>
+    </div>
 
 Code Contributors
 -----------------
@@ -17,7 +36,7 @@ Code Contributors
     :order: ASC
 
 Collaboration Institutions
-==========================
+--------------------------
 
 .. raw:: html
 

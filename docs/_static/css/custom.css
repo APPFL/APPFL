@@ -18,3 +18,18 @@
     color: #B22222 !important;              /* Darker red text */
     font-weight: bold;
 }
+
+.social-links {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.social-links a {
+    margin: 0 15px;
+}
+
+.social-links img {
+    width: 75px;
+    height: 75px;
+}
