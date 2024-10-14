@@ -10,7 +10,7 @@ Join us with the following ways:
 
 
 Code Contributors
-=================
+-----------------
 
 .. contributors:: APPFL/APPFL
     :avatars:
