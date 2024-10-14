@@ -128,6 +128,7 @@ class ServerAgent:
             sample_size: int,
             sync: bool = False,
             blocking: bool = False,
+            **kwargs
         ) -> Optional[Union[Dict, Future]]:
         """
         Set the size of the local dataset of a client.
