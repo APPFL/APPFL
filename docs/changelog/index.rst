@@ -1,6 +1,15 @@
 Changelog
 =========
 
+appfl v1.0.5
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add the feature to generate data readiness reports on all client data.
+- Update the documentation for adding custom action at `here <https://appfl.ai/en/latest/tutorials/examples_custom_action.html>`_.
+
 appfl v1.0.4
 ------------
 
