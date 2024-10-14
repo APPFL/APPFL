@@ -326,7 +326,6 @@ class MPIServerCommunicator:
             else MPIServerStatus.RUN.value
         )
         for client_id, future in self._update_global_model_futures.items():
-            print(f"client_id: {client_id} type: {type(client_id)}")
             if future.done():
                 global_model = future.result()
                 if isinstance(global_model, tuple):

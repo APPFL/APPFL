@@ -71,7 +71,6 @@ else:
     # Local training and global model update iterations
     finish_flag = False
     while True:
-        client_local_model_futures = {}
         for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
             client_agent.train()
             client_local_model = client_agent.get_parameters()
