@@ -1,8 +1,13 @@
+import argparse
 from omegaconf import OmegaConf
 from concurrent.futures import Future
-from globus_compute_sdk import Client
 from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument("--compute_token", required=False)
+argparser.add_argument("--openid_token", required=False)
+args = argparser.parse_args()
 
 # Load server and client agents configurations
 server_agent_config = OmegaConf.load("./resources/config_gc/server_fedavg.yaml")
@@ -12,11 +17,14 @@ client_agent_configs = OmegaConf.load("./resources/config_gc/clients.yaml")
 server_agent = ServerAgent(server_agent_config=server_agent_config)
 
 # Create server communicator
-gcc = Client()
 server_communicator = GlobusComputeServerCommunicator(
     server_agent_config=server_agent.server_agent_config,
     client_agent_configs=client_agent_configs['clients'],
     logger=server_agent.logger,
+    **({
+        "compute_token": args.compute_token,
+        "openid_token": args.openid_token,
+    } if args.compute_token is not None and args.openid_token is not None else {})
 )
 
 # Get sample size from clients
