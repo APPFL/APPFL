@@ -30,7 +30,7 @@ class ClientAdaptOptim(BaseClient):
         self.optim_args["lr"] = learning_rate
         self.model.to(self.cfg.device)
         optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
-        print(f"Client {self.id} optimizer learning rate: {optimizer.param_groups[0]['lr']}")  # Print optimizer LR for verification
+        #print(f"Client {self.id} optimizer learning rate: {optimizer.param_groups[0]['lr']}")  # Print optimizer LR for verification
         initial_model_state = copy.deepcopy(self.model.state_dict())  # Save initial state for gradient estimate
 
         # Compute the initial loss
@@ -68,6 +68,17 @@ class ClientAdaptOptim(BaseClient):
                 target_pred.append(output.detach().cpu().numpy())
                 train_loss += loss.item()
 
+                # Compute the real gradient norm for this batch
+                # total_grad_norm = 0.0
+                # batch_grad_norm = 0.0
+                # for param in self.model.parameters():
+                #     if param.grad is not None:
+                #         batch_grad_norm += param.grad.norm(2).item() ** 2  # L2 norm squared for each parameter
+                # batch_grad_norm = batch_grad_norm ** 0.5  # Take the square root to get the final gradient norm
+                
+                # total_grad_norm += batch_grad_norm
+                # print("the real gradient values: ",total_grad_norm )
+
                 if self.clip_grad or self.use_dp:
                     torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(),
@@ -76,7 +87,7 @@ class ClientAdaptOptim(BaseClient):
                     )
 
             train_loss /= len(self.dataloader)
-            print(f"Client {self.id} Epoch {t} Average Loss: {train_loss}")  # Print average loss for each epoch
+            #print(f"Client {self.id} Epoch {t} Average Loss: {train_loss}")  # Print average loss for each epoch
             target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
             train_accuracy = float(self.metric(target_true, target_pred))
 
@@ -101,7 +112,10 @@ class ClientAdaptOptim(BaseClient):
         # Compute gradient estimate
         self.grad_estimate = OrderedDict()
         for name, param in self.model.named_parameters():
-            self.grad_estimate[name] = (initial_model_state[name] - param.data) / learning_rate
+            # gradient for each parameter
+            # self.grad_estimate[name] = (initial_model_state[name] - param.data) / learning_rate
+            self.grad_estimate[name] = param.grad
+
 
         # Final loss computation
         final_loss = 0

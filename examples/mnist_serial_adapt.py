@@ -12,8 +12,38 @@ from dataloader.mnist_dataloader import get_mnist
 
 """
 To run serially with 5 clients:
-python ./mnist_serial_adapt.py --num_clients 5 --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
+python ./mnist_serial_adapt.py --num_clients 10 --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
 """
+
+
+# iid
+# python ./mnist_serial_adapt.py --num_clients 5 --partition iid --num_epochs 10 --num_local_epochs 2 --client_optimizer Adam
+# python ./mnist_serial_adapt.py --num_clients 10 --partition iid --num_epochs 10 --num_local_epochs 3
+# python ./mnist_serial_adapt.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 5
+# python ./mnist_serial_adapt.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 2
+# python ./mnist_serial_adapt.py --num_clients 5 --partition iid --num_epochs 10 --num_local_epochs 5
+
+
+# non- iid
+# python ./mnist_serial_adapt.py --num_clients 3 --partition class_noiid --num_epochs 10 --num_local_epochs 2
+# python ./mnist_serial_adapt.py --num_clients 3 --partition class_noiid --num_epochs 10 --num_local_epochs 5
+# python ./mnist_serial_adapt.py --num_clients 5 --partition class_noiid --num_epochs 10 --num_local_epochs 2
+# python ./mnist_serial_adapt.py --num_clients 5 --partition class_noiid --num_epochs 10 --num_local_epochs 5
+
+# non- iid
+# python ./mnist_serial_adapt.py --num_clients 3 --partition class_noiid --num_epochs 10 --num_local_epochs 2 --client_optimizer Adam
+# python ./mnist_serial_adapt.py --num_clients 3 --partition class_noiid --num_epochs 10 --num_local_epochs 5 --client_optimizer Adam
+# python ./mnist_serial_adapt.py --num_clients 5 --partition class_noiid --num_epochs 10 --num_local_epochs 2 --client_optimizer Adam
+# python ./mnist_serial_adapt.py --num_clients 5 --partition class_noiid --num_epochs 10 --num_local_epochs 5 --client_optimizer Adam
+
+# dirichlet_noiid
+# python ./mnist_serial_adapt.py --num_clients 3 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 2 --client_optimizer Adam
+# python ./mnist_serial_adapt.py --num_clients 3 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 5 --client_optimizer Adam
+# python ./mnist_serial_adapt.py --num_clients 3 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 8
+# python ./mnist_serial_adapt.py --num_clients 5 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 2
+# python ./mnist_serial_adapt.py --num_clients 5 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 5
+# python ./mnist_serial_adapt.py --num_clients 10 --partition dirichlet_noiid --num_epochs 10 
+
 
 ## read arguments 
 parser = argparse.ArgumentParser()
@@ -30,17 +60,17 @@ parser.add_argument("--seed", type=int, default=42)
 
 ## clients
 parser.add_argument("--client_name", type=str, default="ClientAdaptOptim") 
-parser.add_argument("--num_clients", type=int, default=3)
-parser.add_argument("--client_optimizer", type=str, default="Adam")
-parser.add_argument("--client_lr", type=float, default=1e-5)
+parser.add_argument("--num_clients", type=int, default=5)
+parser.add_argument("--client_optimizer", type=str, default="SGD")
+parser.add_argument("--client_lr", type=float, default=1e-3)
 parser.add_argument("--local_train_pattern", type=str, default="steps", choices=["steps", "epochs"], help="For local optimizer, what counter to use, number of steps or number of epochs")
 parser.add_argument("--num_local_steps", type=int, default=100)
 parser.add_argument("--num_local_epochs", type=int, default=3)
 
 ## server
 parser.add_argument("--server", type=str, default="AdaptiveFLServer")
-parser.add_argument("--num_epochs", type=int, default=5)
-parser.add_argument("--server_lr", type=float, default=1e-5)
+parser.add_argument("--num_epochs", type=int, default=8)
+parser.add_argument("--server_lr", type=float, default=1e-3)
 parser.add_argument("--mparam_1", type=float, default=0.9)
 parser.add_argument("--mparam_2", type=float, default=0.99)
 parser.add_argument("--adapt_param", type=float, default=0.001)

@@ -7,7 +7,7 @@ import copy
 import logging
 
 class AdaptiveFLServer(FedServer):
-    def __init__(self, weights, model, loss_fn, num_clients, device, server_lr=1e-7, gamma=10, **kwargs):
+    def __init__(self, weights, model, loss_fn, num_clients, device, server_lr=1e-2, gamma=5, **kwargs):
         super(AdaptiveFLServer, self).__init__(weights, model, loss_fn, num_clients, device)
         self.server_lr = server_lr
         self.gamma = gamma
@@ -31,12 +31,12 @@ class AdaptiveFLServer(FedServer):
             gradient_norm = torch.norm(torch.cat([gradients[client_id][k].view(-1) for k in gradients[client_id]])).item()
             if func_val_diffs[client_id] <= -self.lr_clients[client_id] * gradient_norm ** 2:
                 selected_clients.append(client_id)
-            print("func_val_diffs: ",func_val_diffs[client_id])
-            print("learning rate: ", self.lr_clients[client_id])
-            print("gradient norm: ",gradient_norm)
-            print("LHS value: ",func_val_diffs[client_id])
-            print("RHS value: ",-self.lr_clients[client_id] * gradient_norm ** 2)
-        print(f"Selected Clients for Global Update: {selected_clients}")
+        #     print("func_val_diffs: ",func_val_diffs[client_id])
+        #     print("learning rate: ", self.lr_clients[client_id])
+        #     print("gradient norm: ",gradient_norm)
+        #     print("LHS value: ",func_val_diffs[client_id])
+        #     print("RHS value: ",-self.lr_clients[client_id] * gradient_norm ** 2)
+        # print(f"Selected Clients for Global Update: {selected_clients}")
 
         global_state = copy.deepcopy(self.model.state_dict())
         global_state = {k: v.to(self.device) for k, v in global_state.items()}
