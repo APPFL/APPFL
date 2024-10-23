@@ -44,7 +44,11 @@ else:
     sample_size = client_agent.get_sample_size()
     client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size)
     # Generate data readiness report
-    if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
+    if (
+        hasattr(client_config, 'data_readiness_configs')
+        and hasattr(client_config.data_readiness_configs, 'generate_dr_report') 
+        and client_config.data_readiness_configs.generate_dr_report
+    ):
         data_readiness = client_agent.generate_readiness_report(client_config)
         client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)
     # Local training and global model update iterations

@@ -249,11 +249,18 @@ class ServerAgent:
                 if hasattr(self.server_agent_config.client_configs, "model_configs") 
                 else self.server_agent_config.server_configs.model_configs
             )
-            self.model = create_instance_from_file(
-                model_configs.model_path,
-                model_configs.model_name,
-                **(model_configs.model_kwargs if hasattr(model_configs, "model_kwargs") else {})
-            )
+            if hasattr(model_configs, "model_name"):
+                self.model = create_instance_from_file(
+                    model_configs.model_path,
+                    model_configs.model_name,
+                    **(model_configs.model_kwargs if hasattr(model_configs, "model_kwargs") else {})
+                )
+            else:
+                self.model = run_function_from_file(
+                    model_configs.model_path,
+                    None,
+                    **(model_configs.model_kwargs if hasattr(model_configs, "model_kwargs") else {})
+                )
             # load the model source file and delete model path
             if hasattr(self.server_agent_config.client_configs, "model_configs"):
                 with open(model_configs.model_path, 'r') as f:
@@ -269,11 +276,11 @@ class ServerAgent:
         - `loss_fn`: load the loss function from `torch.nn` module.
         - Users can define their own way to load the loss function from other sources.
         """
-        if hasattr(self.server_agent_config.client_configs.train_configs, "loss_fn_path") and hasattr(self.server_agent_config.client_configs.train_configs, "loss_fn_name"):
+        if hasattr(self.server_agent_config.client_configs.train_configs, "loss_fn_path"):
             kwargs = self.server_agent_config.client_configs.train_configs.get("loss_fn_kwargs", {})
             self.loss_fn = create_instance_from_file(
                 self.server_agent_config.client_configs.train_configs.loss_fn_path,
-                self.server_agent_config.client_configs.train_configs.loss_fn_name,
+                self.server_agent_config.client_configs.train_configs.loss_fn_name if hasattr(self.server_agent_config.client_configs.train_configs, "loss_fn_name") else None,
                 **kwargs
             )
             with open(self.server_agent_config.client_configs.train_configs.loss_fn_path, 'r') as f:
@@ -293,10 +300,10 @@ class ServerAgent:
         Load metric function from a file.
         User can define their own way to load the metric function from other sources.
         """
-        if hasattr(self.server_agent_config.client_configs.train_configs, "metric_path") and hasattr(self.server_agent_config.client_configs.train_configs, "metric_name"):
+        if hasattr(self.server_agent_config.client_configs.train_configs, "metric_path"):
             self.metric = get_function_from_file(
                 self.server_agent_config.client_configs.train_configs.metric_path,
-                self.server_agent_config.client_configs.train_configs.metric_name,
+                self.server_agent_config.client_configs.train_configs.metric_name if hasattr(self.server_agent_config.client_configs.train_configs, "metric_name") else None
             )
             with open(self.server_agent_config.client_configs.train_configs.metric_path, 'r') as f:
                 self.server_agent_config.client_configs.train_configs.metric_source = f.read()
