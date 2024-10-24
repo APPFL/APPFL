@@ -72,9 +72,9 @@ class ClientAgent:
         """Return the size of the local dataset."""
         return len(self.train_dataset)
 
-    def train(self) -> None:
+    def train(self, **kwargs) -> None:
         """Train the model locally."""
-        self.trainer.train()
+        self.trainer.train(**kwargs)
 
     def get_parameters(self) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
         """Return parameters for communication"""

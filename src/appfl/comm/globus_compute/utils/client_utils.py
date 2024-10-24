@@ -27,6 +27,7 @@ def send_local_model(
     local_model_url: Optional[str],
 ):
     if (
+        hasattr(client_agent_config, "comm_configs") and
         hasattr(client_agent_config.comm_configs, "globus_compute_configs") and
         client_agent_config.comm_configs.globus_compute_configs.get("s3_bucket", None) is not None
     ):

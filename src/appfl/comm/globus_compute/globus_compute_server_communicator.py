@@ -89,7 +89,10 @@ class GlobusComputeServerCommunicator:
                 client_config=OmegaConf.merge(client_config_from_server, client_config),
             )
         # Initilize the S3 bucket for large model transfer if necessary.
-        if hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs"):
+        if (
+            hasattr(server_agent_config.server_configs, "comm_configs") and
+            hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs")
+        ):
             s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_bucket", None)
         else:
             s3_bucket = None
