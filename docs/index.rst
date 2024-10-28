@@ -73,6 +73,8 @@ Main Topics
    publication/index
    community/index
    changelog/index
+   news/index
+   news/projects
 
 
 Citation

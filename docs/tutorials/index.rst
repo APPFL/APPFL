@@ -7,6 +7,9 @@ We present a collection of tutorials for APPFL framework.
     :maxdepth: 1
 
     firstrun
+    installation/index
+    installation/index_win
+    ui_tutorials/index
     ../notebooks/index
     examples_gpuclusterrun
     examples_aws
