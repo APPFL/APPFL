@@ -7,7 +7,7 @@ import copy
 import logging
 
 class AdaptiveFLServer(FedServer):
-    def __init__(self, weights, model, loss_fn, num_clients, device, server_lr =1e-3, gamma=1.4, **kwargs):
+    def __init__(self, weights, model, loss_fn, num_clients, device, server_lr =1e-4, gamma=1.5, **kwargs):
         super(AdaptiveFLServer, self).__init__(weights, model, loss_fn, num_clients, device)
         self.server_lr = server_lr
         self.gamma = gamma
@@ -34,9 +34,9 @@ class AdaptiveFLServer(FedServer):
         #     print("func_val_diffs: ",func_val_diffs[client_id])
         #     print("learning rate: ", self.lr_clients[client_id])
         #     print("gradient norm: ",gradient_norm)
-            print("LHS : ", round(func_val_diffs[client_id].item(), 4)," VS ","RHS: ",round(-self.lr_clients[client_id] * gradient_norm ** 2,4),"lr_c_k: ",self.lr_clients[client_id],"grad_norm: ",  gradient_norm)
+            #print("LHS : ", round(func_val_diffs[client_id].item(), 4)," VS ","RHS: ",round(-self.lr_clients[client_id] * gradient_norm ** 2,4),"lr_c_k: ",self.lr_clients[client_id],"grad_norm: ",  gradient_norm)
             # print("RHS value (lr * grad_norm): ",round(-self.lr_clients[client_id] * gradient_norm ** 2,2))
-        print(f"Selected Clients for Global Update: {selected_clients}")
+        #print(f"Selected Clients for Global Update: {selected_clients}")
 
         global_state = copy.deepcopy(self.model.state_dict())
         global_state = {k: v.to(self.device) for k, v in global_state.items()}

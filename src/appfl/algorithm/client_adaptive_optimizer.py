@@ -12,11 +12,47 @@ class ClientAdaptOptim(BaseClient):
     def __init__(self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs):
         super(ClientAdaptOptim, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
         self.__dict__.update(kwargs)
-        super(ClientAdaptOptim, self).client_log_title()
+        
+        if hasattr(self, 'outfile') and self.outfile:
+            self.client_log_title()
 
+    def client_log_title(self):
+        # 扩展标题以包括 LearningRate 和 GradNorm
+        title = "%10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n" % (
+            "Round",
+            "LocalEpoch",
+            "PerIter[s]",
+            "TrainLoss",
+            "TrainAccu",
+            "TestLoss",
+            "TestAccu",
+            "LearningRate",
+            "GradNorm",
+            "ValueCheck"
+        )
+        self.outfile.write(title)
+        self.outfile.flush()
+
+    def client_log_content(
+        self, t, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy, learning_rate, grad_norm, value_check
+    ):
+        # 扩展内容格式，以记录 LearningRate 和 GradNorm
+        contents = "%10s %10s %10.2f %10.4f %10.4f %10.4f %10.4f %10.6f %10.4f %10.4f\n" % (
+            self.round,
+            t,
+            per_iter_time,
+            train_loss,
+            train_accuracy,
+            test_loss,
+            test_accuracy,
+            learning_rate,
+            grad_norm,
+            value_check
+        )
+        self.outfile.write(contents)
+        self.outfile.flush()
 
     def update(self, global_model, learning_rate):
-
         #print(f"Client {self.id} received learning rate: {learning_rate}")
         """
         Perform local updates using the provided global model and learning rate.
@@ -44,12 +80,26 @@ class ClientAdaptOptim(BaseClient):
                 initial_loss += loss.item()
         initial_loss /= len(self.dataloader)
 
-        # Initial evaluation
-        if self.cfg.validation and self.test_dataloader is not None:
-            start_time = time.time()
-            test_loss, test_accuracy = super(ClientAdaptOptim, self).client_validation()
-            per_iter_time = time.time() - start_time
-            super(ClientAdaptOptim, self).client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)
+        # Calculate initial gradient norm
+        gradient_norm = 0
+        for data, target in self.dataloader:
+            data = data.to(self.cfg.device)
+            target = target.to(self.cfg.device)
+            optimizer.zero_grad()
+            output = self.model(data)
+            loss = self.loss_fn(output, target)
+            loss.backward()
+            gradient_norm += torch.norm(
+                torch.cat([param.grad.view(-1) for param in self.model.parameters() if param.grad is not None])
+            ).item()
+        gradient_norm /= len(self.dataloader)  # Compute average gradient norm
+
+        # Initial evaluation with value_check calculation
+        function_value_difference = initial_loss
+        value_check = function_value_difference + learning_rate * (gradient_norm ** 2)
+
+        # Log initial values
+        self.client_log_content(0, 0, initial_loss, 0, 0, 0, learning_rate, gradient_norm, value_check)
 
         # Local training
         for t in range(self.num_local_epochs):
@@ -62,6 +112,12 @@ class ClientAdaptOptim(BaseClient):
                 output = self.model(data)  # Forward pass
                 loss = self.loss_fn(output, target)  # Compute loss
                 loss.backward()
+
+                # 计算梯度范数
+                gradient_norm = torch.norm(
+                    torch.cat([param.grad.view(-1) for param in self.model.parameters() if param.grad is not None])
+                ).item()
+
                 optimizer.step()
 
                 target_true.append(target.detach().cpu().numpy())
@@ -98,7 +154,13 @@ class ClientAdaptOptim(BaseClient):
                 test_loss, test_accuracy = 0, 0
 
             per_iter_time = time.time() - start_time
-            super(ClientAdaptOptim, self).client_log_content(t+1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy)
+
+            # Calculate value_check based on current epoch's data
+            function_value_difference = train_loss - initial_loss
+            value_check = function_value_difference + learning_rate * (gradient_norm ** 2)
+
+            # Log values for each epoch
+            self.client_log_content(t + 1, per_iter_time, train_loss, train_accuracy, test_loss, test_accuracy, learning_rate, gradient_norm, value_check)
 
             # Save model.state_dict()
             if self.cfg.save_model_state_dict:
@@ -116,7 +178,6 @@ class ClientAdaptOptim(BaseClient):
             # self.grad_estimate[name] = (initial_model_state[name] - param.data) / learning_rate
             self.grad_estimate[name] = param.grad
 
-
         # Final loss computation
         final_loss = 0
         with torch.no_grad():
@@ -129,6 +190,9 @@ class ClientAdaptOptim(BaseClient):
         final_loss /= len(self.dataloader)
 
         self.function_value_difference = final_loss - initial_loss
+
+        # client selection criteria check: 
+        value_check = self.function_value_difference + learning_rate* (gradient_norm**2)
 
         # Differential Privacy
         self.primal_state = copy.deepcopy(self.model.state_dict())
