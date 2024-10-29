@@ -118,7 +118,7 @@ def run_serial(
     for t in range(cfg.num_epochs):
         per_iter_start = time.time()
         local_states = []
-        server.model.to("cpu")
+        server.model.to("cuda")
  
         global_state = server.model.state_dict()
         if cfg.personalization:

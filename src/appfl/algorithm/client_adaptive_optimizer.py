@@ -87,7 +87,7 @@ class ClientAdaptOptim(BaseClient):
                     )
 
             train_loss /= len(self.dataloader)
-            #print(f"Client {self.id} Epoch {t} Average Loss: {train_loss}")  # Print average loss for each epoch
+            # print(f"Client {self.id} Epoch {t} Average Training Loss: {train_loss}")  # Print average loss for each epoch
             target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
             train_accuracy = float(self.metric(target_true, target_pred))
 
@@ -138,9 +138,9 @@ class ClientAdaptOptim(BaseClient):
             super(ClientAdaptOptim, self).laplace_mechanism_output_perturb(scale_value)
 
         # Move model parameters to CPU for communication
-        if self.cfg.device == "cuda":
-            for k in self.primal_state:
-                self.primal_state[k] = self.primal_state[k].cpu()
+        # if self.cfg.device == "cuda":
+        #     for k in self.primal_state:
+        #         self.primal_state[k] = self.primal_state[k].cpu()
 
         return {
             "primal_state": self.primal_state,

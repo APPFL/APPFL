@@ -138,7 +138,7 @@ def class_noiid_partition(train_data_raw, num_clients, visualization, output=Non
         )
     return train_datasets
 
-def dirichlet_noiid_partition(train_data_raw, num_clients, visualization, output=None, seed=42, alpha1=8, alpha2=0.5, **kwargs):
+def dirichlet_noiid_partition(train_data_raw, num_clients, visualization, output=None, seed=42, alpha1=8, alpha2=0.1, **kwargs):
     np.random.seed(seed)
     # Split the dataset by label
     labels = []
