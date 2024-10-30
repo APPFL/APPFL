@@ -31,14 +31,20 @@ sample_size = client_agent.get_sample_size()
 client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size)
 
 # Generate data readiness report
-if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
+if (
+    hasattr(client_config, "data_readiness_configs")
+    and hasattr(client_config.data_readiness_configs, 'generate_dr_report')
+    and client_config.data_readiness_configs.generate_dr_report
+):
     data_readiness = client_agent.generate_readiness_report(client_config)
     client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)
 
 while True:
     client_agent.train()
     local_model = client_agent.get_parameters()
-    new_global_model, metadata = client_communicator.update_global_model(local_model)
+    if isinstance(local_model, tuple):
+        local_model, metadata = local_model[0], local_model[1]
+    new_global_model, metadata = client_communicator.update_global_model(local_model, **metadata)
     if metadata['status'] == 'DONE':
         break
     if 'local_steps' in metadata:

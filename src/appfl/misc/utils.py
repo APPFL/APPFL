@@ -145,7 +145,6 @@ def run_function_from_file(file_path, function_name = None, *args, **kwargs):
         # Read the last function name if not provided
         if function_name is None:
             function_name = get_last_function_name(file_path)
-        print(function_name)
 
         # Normalize the file path
         file_path = os.path.abspath(file_path)

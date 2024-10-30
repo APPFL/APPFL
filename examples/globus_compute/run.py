@@ -1,3 +1,4 @@
+import pprint
 import argparse
 from omegaconf import OmegaConf
 from concurrent.futures import Future
@@ -33,7 +34,11 @@ sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
 for client_endpoint_id, sample_size in sample_size_ret.items():
     server_agent.set_sample_size(client_endpoint_id, sample_size['sample_size'])
 
-if hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_dr_report') and server_agent_config.client_configs.data_readiness_configs.generate_dr_report:
+if (
+    hasattr(server_agent_config.client_configs, "data_readiness_configs")
+    and hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_dr_report') 
+    and server_agent_config.client_configs.data_readiness_configs.generate_dr_report
+):
     readiness_reports_dict = {}
     server_communicator.send_task_to_all_clients(task_name="data_readiness_report")
     readiness_reports = server_communicator.recv_result_from_all_clients()[1]
@@ -61,8 +66,10 @@ server_communicator.send_task_to_all_clients(
 )
 
 model_futures = {}
+client_rounds = {}
 while not server_agent.training_finished():
     client_endpoint_id, client_model, client_metadata = server_communicator.recv_result_from_one_client()
+    server_agent.logger.info(f"Received model from client {client_endpoint_id}, with metadata:\n{pprint.pformat(client_metadata)}")
     global_model = server_agent.global_update(
         client_endpoint_id,
         client_model,
@@ -75,6 +82,10 @@ while not server_agent.training_finished():
             global_model, metadata = global_model
         else:
             metadata = {}
+        if client_endpoint_id not in client_rounds:
+            client_rounds[client_endpoint_id] = 0
+        client_rounds[client_endpoint_id] += 1
+        metadata['round'] = client_rounds[client_endpoint_id]
         if not server_agent.training_finished():
             server_communicator.send_task_to_one_client(
                 client_endpoint_id,
@@ -92,6 +103,10 @@ while not server_agent.training_finished():
                 global_model, metadata = global_model
             else:
                 metadata = {}
+            if client_endpoint_id not in client_rounds:
+                client_rounds[client_endpoint_id] = 0
+            client_rounds[client_endpoint_id] += 1
+            metadata['round'] = client_rounds[client_endpoint_id]
             if not server_agent.training_finished():
                 server_communicator.send_task_to_one_client(
                     client_endpoint_id,

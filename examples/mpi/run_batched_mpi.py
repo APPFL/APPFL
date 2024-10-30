@@ -61,7 +61,11 @@ else:
     client_communicator.invoke_custom_action(action='set_sample_size', kwargs=client_sample_sizes)
     
     # Generate data readiness report
-    if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
+    if (
+        hasattr(client_config, 'data_readiness_configs')
+        and hasattr(client_config.data_readiness_configs, 'generate_dr_report')
+        and client_config.data_readiness_configs.generate_dr_report
+    ):
         data_readiness = {
             client_id: client_agent.generate_readiness_report(client_config)
             for client_id, client_agent in zip(client_batch[rank - 1], client_agents)
@@ -71,10 +75,15 @@ else:
     # Local training and global model update iterations
     while True:
         client_local_models = {}
+        client_metadata = {}
         for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
             client_agent.train()
-            client_local_models[client_id] = client_agent.get_parameters()
-        new_global_model, metadata = client_communicator.update_global_model(client_local_models)
+            local_model = client_agent.get_parameters()
+            if isinstance(local_model, tuple):
+                local_model, metadata = local_model[0], local_model[1]
+                client_metadata[client_id] = metadata
+            client_local_models[client_id] = local_model
+        new_global_model, metadata = client_communicator.update_global_model(client_local_models, kwargs=client_metadata)
         if all(metadata[client_id]['status'] == 'DONE' for client_id in metadata):
             break
         for client_id, client_agent in zip(client_batch[rank - 1], client_agents):

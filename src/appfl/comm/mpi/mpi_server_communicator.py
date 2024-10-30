@@ -1,5 +1,6 @@
 import time
 import json
+import pprint
 import logging
 import threading
 from mpi4py import MPI
@@ -170,6 +171,11 @@ class MPIServerCommunicator:
             
         for client_id in client_ids:
             client_metadata = meta_data[client_id] if client_id in meta_data else meta_data
+            # client_metadata_copy = client_metadata.copy()
+            # if '_client_ids' in client_metadata_copy:
+            #     del client_metadata_copy['_client_ids']
+            # if len(client_metadata_copy) > 0:
+            #     self.logger.info(f"Received Metadata from {client_id}:\n{pprint.pformat(client_metadata_copy)}")
             client_local_model = local_model[client_id] if client_id in local_model else local_model
             global_model = self.server_agent.global_update(client_id, client_local_model, blocking=False, **client_metadata)
             if not isinstance(global_model, Future):

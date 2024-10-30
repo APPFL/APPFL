@@ -55,11 +55,15 @@ class VanillaTrainer(BaseTrainer):
         ) if self.val_dataset is not None else None
         self._sanity_check()
         
-    def train(self):
+    def train(self, **kwargs):
         """
         Train the model for a certain number of local epochs or steps and store the mode state
         (probably with perturbation for differential privacy) in `self.model_state`.
         """
+        if 'round' in kwargs:
+            self.round = kwargs['round']    
+        self.val_results = {'round': self.round+1}
+        
         # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
         if send_gradient:
@@ -68,25 +72,29 @@ class VanillaTrainer(BaseTrainer):
         self.model.to(self.train_configs.device)
 
         do_validation = self.train_configs.get("do_validation", False) and self.val_dataloader is not None
-        do_pre_validation = self.train_configs.get("do_pre_validation", False) and do_validation
+        do_pre_validation = self.train_configs.get("do_pre_validation", False) and self.val_dataloader is not None
         
         # Set up logging title
-        if self.round == 0:
-            title = (
-                ["Round", "Time", "Train Loss", "Train Accuracy"] 
-                if not do_validation
-                else (
-                    ["Round", "Pre Val?", "Time", "Train Loss", "Train Accuracy", "Val Loss", "Val Accuracy"] 
-                    if do_pre_validation 
-                    else ["Round", "Time", "Train Loss", "Train Accuracy", "Val Loss", "Val Accuracy"]
-                )
+        title = (
+            ["Round", "Time", "Train Loss", "Train Accuracy"] 
+            if (not do_validation) and (not do_pre_validation)
+            else (
+                ["Round", "Pre Val?", "Time", "Train Loss", "Train Accuracy", "Val Loss", "Val Accuracy"] 
+                if do_pre_validation 
+                else ["Round", "Time", "Train Loss", "Train Accuracy", "Val Loss", "Val Accuracy"]
             )
-            if self.train_configs.mode == "epoch":
-                title.insert(1, "Epoch")
+        )
+        if self.train_configs.mode == "epoch":
+            title.insert(1, "Epoch")
+
+        if self.round == 0:
             self.logger.log_title(title)
+        self.logger.set_title(title)
 
         if do_pre_validation:
             val_loss, val_accuracy = self._validate()
+            self.val_results['pre_val_loss'] = val_loss
+            self.val_results['pre_val_accuracy'] = val_accuracy
             content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]  
             if self.train_configs.mode == "epoch":
                 content.insert(1, 0)
@@ -110,10 +118,15 @@ class VanillaTrainer(BaseTrainer):
                 train_accuracy = float(self.metric(target_true, target_pred))
                 if do_validation:
                     val_loss, val_accuracy = self._validate()
+                    if 'val_loss' not in self.val_results:
+                        self.val_results['val_loss'] = []
+                        self.val_results['val_accuracy'] = []
+                    self.val_results['val_loss'].append(val_loss)
+                    self.val_results['val_accuracy'].append(val_accuracy)
                 per_epoch_time = time.time() - start_time
                 self.logger.log_content(
                     [self.round, epoch, per_epoch_time, train_loss, train_accuracy] 
-                    if not do_validation
+                    if (not do_validation) and (not do_pre_validation)
                     else (
                         [self.round, epoch, per_epoch_time, train_loss, train_accuracy, val_loss, val_accuracy] 
                         if not do_pre_validation 
@@ -140,10 +153,12 @@ class VanillaTrainer(BaseTrainer):
             train_accuracy = float(self.metric(target_true, target_pred))
             if do_validation:
                 val_loss, val_accuracy = self._validate()
+                self.val_results['val_loss'] = val_loss
+                self.val_results['val_accuracy'] = val_accuracy
             per_step_time = time.time() - start_time
             self.logger.log_content(
                 [self.round, per_step_time, train_loss, train_accuracy] 
-                if not do_validation
+                if (not do_validation) and (not do_pre_validation)
                 else (
                     [self.round, per_step_time, train_loss, train_accuracy, val_loss, val_accuracy]
                     if not do_pre_validation 
@@ -179,7 +194,7 @@ class VanillaTrainer(BaseTrainer):
     def get_parameters(self) -> Dict:
         if not hasattr(self, "model_state"):
             self.model_state = copy.deepcopy(self.model.state_dict())
-        return self.model_state
+        return (self.model_state, self.val_results) if hasattr(self, 'val_results') else self.model_state
 
     def _sanity_check(self):
         """
