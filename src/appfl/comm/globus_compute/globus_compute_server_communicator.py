@@ -50,7 +50,6 @@ class GlobusComputeServerCommunicator:
             )
             compute_login_manager.ensure_logged_in()
             gcc = Client(login_manager=compute_login_manager)
-            print("Client login manager created.")
         else:
             gcc = Client()
         self.gce = Executor(client=gcc) # Globus Compute Executor
