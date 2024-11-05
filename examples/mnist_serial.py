@@ -12,7 +12,7 @@ from dataloader.mnist_dataloader import get_mnist
 
 """
 To run serially with 5 clients:
-python ./mnist_serial.py --num_clients 10 --partition dirichlet_noiid --num_epochs 10
+python ./mnist_serial.py --num_clients 5 --partition dirichlet_noiid --num_epochs 300
 """
 # python ./mnist_serial.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 2
 # python ./mnist_serial.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 5
@@ -46,8 +46,8 @@ parser.add_argument("--seed", type=int, default=42)
 
 ## clients
 parser.add_argument("--num_clients", type=int, default=5)
-parser.add_argument("--client_optimizer", type=str, default="Adam")
-parser.add_argument("--client_lr", type=float, default=1e-3)
+parser.add_argument("--client_optimizer", type=str, default="SGD")
+parser.add_argument("--client_lr", type=float, default=1e-4)
 parser.add_argument("--local_train_pattern", type=str, default="steps", choices=["steps", "epochs"], help="For local optimizer, what counter to use, number of steps or number of epochs")
 parser.add_argument("--num_local_steps", type=int, default=100)
 parser.add_argument("--num_local_epochs", type=int, default=3)
@@ -116,8 +116,8 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = f"./outputs_{args.dataset}_{args.partition}_{args.num_clients}clients_{args.server}_{args.num_epochs}epochs_serial"
-
+    # cfg.output_dirname = f"./outputs_{args.dataset}_{args.partition}_{args.num_clients}clients_{args.server}_{args.num_epochs}epochs_serial"
+    cfg.output_dirname = f"./FedAvg_{args.dataset}_{args.partition}_{args.num_clients}clients_{args.num_epochs}epochs_serial"
     ## adaptive server
     cfg.fed.args.server_learning_rate = args.server_lr          # FedAdam
     cfg.fed.args.server_adapt_param = args.adapt_param          # FedAdam
@@ -166,3 +166,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

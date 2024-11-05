@@ -1,8 +1,7 @@
 import time
 import torch
 import argparse
-import appfl.run_serial_adapt as rs
-import matplotlib.pyplot as plt
+import appfl.run_serial as rs
 from appfl.config import *
 from appfl.misc.data import *
 from appfl.misc.utils import *
@@ -10,34 +9,22 @@ from losses.utils import get_loss
 from models.utils import get_model
 from metric.utils import get_metric
 from dataloader.mnist_dataloader import get_mnist
+from appfl.algorithm.server_scaffold import SCAFFOLDServer
+
 
 """
 To run serially with 5 clients:
-python ./mnist_serial_adapt.py --num_clients 5 --partition dirichlet_noiid --num_epochs 100
+python ./mnist_scaffold.py --num_clients 5 --partition dirichlet_noiid --num_epochs 10
 """
+# python ./mnist_serial.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 2
+# python ./mnist_serial.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 5
+# python ./mnist_serial.py --num_clients 5 --partition iid --num_epochs 10 --num_local_epochs 5 done
+# python ./mnist_serial.py --num_clients 5 --partition iid --num_epochs 10 --num_local_epochs 3
+# python ./mnist_serial.py --num_clients 10 --partition iid --num_epochs 10 --num_local_epochs 3
 
-
-# iid
-# python ./mnist_serial_adapt.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 2 --client_optimizer Adam
-# python ./mnist_serial_adapt.py --num_clients 10 --partition iid --num_epochs 10 --num_local_epochs 3
-# python ./mnist_serial_adapt.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 3
-# python ./mnist_serial_adapt.py --num_clients 3 --partition iid --num_epochs 10 --num_local_epochs 2
-# python ./mnist_serial_adapt.py --num_clients 5 --partition iid --num_epochs 10 --num_local_epochs 3
-
-
-# dirichlet_noiid
-# python ./mnist_serial_adapt.py --num_clients 3 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 3 --client_optimizer Adam
-# python ./mnist_serial_adapt.py --num_clients 10 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 3 --client_optimizer Adam
-# python ./mnist_serial_adapt.py --num_clients 3 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 5 --client_optimizer Adam
-# python ./mnist_serial_adapt.py --num_clients 3 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 8
-# python ./mnist_serial_adapt.py --num_clients 5 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 2
-# python ./mnist_serial_adapt.py --num_clients 5 --partition dirichlet_noiid --num_epochs 10 --num_local_epochs 5
-# python ./mnist_serial_adapt.py --num_clients 10 --partition dirichlet_noiid --num_epochs 10 
-
-
-## read arguments 
+# python ./mnist_serial.py --num_clients 7 --partition dirichlet_noiid --num_epochs 10
 parser = argparse.ArgumentParser()
-parser.add_argument("--device", type=str, default="cuda")
+parser.add_argument("--device", type=str, default="cpu")
 
 ## dataset
 parser.add_argument("--dataset", type=str, default="MNIST")
@@ -49,22 +36,20 @@ parser.add_argument("--partition", type=str, default="iid", choices=["iid", "cla
 parser.add_argument("--seed", type=int, default=42)
 
 ## clients
-parser.add_argument("--client_name", type=str, default="ClientAdaptOptim") 
 parser.add_argument("--num_clients", type=int, default=5)
 parser.add_argument("--client_optimizer", type=str, default="SGD")
-parser.add_argument("--client_lr", type=float, default=1e-1)
+parser.add_argument("--client_lr", type=float, default=1e-4)
 parser.add_argument("--local_train_pattern", type=str, default="steps", choices=["steps", "epochs"], help="For local optimizer, what counter to use, number of steps or number of epochs")
 parser.add_argument("--num_local_steps", type=int, default=100)
 parser.add_argument("--num_local_epochs", type=int, default=3)
 
 ## server
-parser.add_argument("--server", type=str, default="AdaptiveFLServer")
-parser.add_argument("--num_epochs", type=int, default=5)
-parser.add_argument("--server_lr", type=float, default=1e-1)
+parser.add_argument("--server", type=str, default="SCAFFOLDServer")
+parser.add_argument("--num_epochs", type=int, default=10)
+parser.add_argument("--server_lr", type=float, default=0.01)
 parser.add_argument("--mparam_1", type=float, default=0.9)
 parser.add_argument("--mparam_2", type=float, default=0.99)
 parser.add_argument("--adapt_param", type=float, default=0.001)
-
 
 ## privacy preserving
 parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
@@ -98,8 +83,6 @@ args = parser.parse_args()
 if torch.cuda.is_available():
     args.device = "cuda"
 
-
-
 ## Run
 def main():
     ## Configuration
@@ -111,22 +94,21 @@ def main():
 
     ## clients
     cfg.num_clients = args.num_clients
-    #cfg.fed.clientname = "ClientOptim" if args.local_train_pattern == "epochs" else "ClientStepOptim"
-    cfg.fed.clientname = "ClientAdaptOptim"
+    cfg.fed.clientname = "SCAFFOLDClient"
     cfg.fed.args.optim = args.client_optimizer
     cfg.fed.args.optim_args.lr = args.client_lr
     cfg.fed.args.num_local_steps = args.num_local_steps
     cfg.fed.args.num_local_epochs = args.num_local_epochs
 
     ## server
-    cfg.fed.servername = args.server
+    cfg.fed.servername = "SCAFFOLDServer"
     cfg.num_epochs = args.num_epochs
 
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = f"./outputs_plot_{args.partition}_{args.num_clients}clients_{args.num_epochs}epochs_serial_SGD_1e-1_gamma1.3"
-
+    # cfg.output_dirname = f"./outputs_{args.dataset}_{args.partition}_{args.num_clients}clients_{args.server}_{args.num_epochs}epochs_serial"
+    cfg.output_dirname = f"./Scaffold_{args.dataset}_{args.partition}_{args.num_clients}clients_{args.num_epochs}epochs_serial"
     ## adaptive server
     cfg.fed.args.server_learning_rate = args.server_lr          # FedAdam
     cfg.fed.args.server_adapt_param = args.adapt_param          # FedAdam
@@ -175,3 +157,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
