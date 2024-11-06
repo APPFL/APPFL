@@ -11,8 +11,8 @@ data_configs:
   dataset_path: "./resources/dataset/flamby_dataset.py"
   dataset_name: "get_flamby"
   dataset_kwargs:
-    dataset: "TcgaBrca"
-    num_clients: 2
+    dataset: "HeartDisease"
+    num_clients: 4
     client_id: 0
 
 comm_configs:

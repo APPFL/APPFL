@@ -48,7 +48,7 @@ if hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_
     server_agent.data_readiness_report(restructured_report)
 
 # Get class distribution from clients
-class_distribution = get_class_distribution(restructured_report)
+# class_distribution = get_class_distribution(restructured_report)
 # Train the model
 server_communicator.send_task_to_all_clients(
     task_name="train",
@@ -59,7 +59,7 @@ server_communicator.send_task_to_all_clients(
 model_futures = {}
 while not server_agent.training_finished():
     client_endpoint_id, client_model, client_metadata = server_communicator.recv_result_from_one_client()
-    client_metadata.update({"class_distribution": class_distribution[client_endpoint_id]})
+    # client_metadata.update({"class_distribution": class_distribution[client_endpoint_id]})
     
     global_model = server_agent.global_update(
         client_endpoint_id,
