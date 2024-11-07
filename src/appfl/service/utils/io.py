@@ -98,9 +98,72 @@ class APPFLxDataExchanger:
         self.data_dir = os.path.join(_home, ".appfl", "appflx", self.task_id)
         if not os.path.exists(self.data_dir):
             pathlib.Path(self.data_dir).mkdir(parents=True, exist_ok=True)
+            
+    def _download_aidr_configurations(self):
+        """Download the configuration file for the AI data readiness inspection."""
+        configuration_s3_key = f'{self.base_dir}/{self.task_id}/data_readiness_config.yaml'
+        self._prepare_data_dir()
+        if not self._s3_download(
+            bucket_name=self.S3_BUCKET_NAME,
+            key_name=configuration_s3_key,
+            file_folder=self.data_dir,
+            file_name='data_readiness_config.yaml'
+        ):
+            raise Exception(f"Failed to download configuration file from {configuration_s3_key}")
+        server_config = OmegaConf.load(os.path.join(self.data_dir, 'data_readiness_config.yaml'))
+        # Download and process the client configuration files
+        group_id = server_config.appflx_configs.group_id
+        group_members = server_config.appflx_configs.group_members.split(',')
+        compute_token = server_config.appflx_configs.compute_token
+        openid_token = server_config.appflx_configs.openid_token
+        gcc = self._get_gcc(compute_token, openid_token)
+        test_function_id = gcc.register_function(endpoint_test)
+        
+        client_configs = []
+        for member_id in group_members:
+            client_config_key = f'{group_id}/{member_id}/client.yaml'
+            dataloader_key = f'{group_id}/{member_id}/dataloader.py'
+            if (
+                self._s3_download(
+                    bucket_name=self.S3_BUCKET_NAME,
+                    key_name=client_config_key,
+                    file_folder=os.path.join(self.data_dir, member_id),
+                    file_name='client.yaml'
+                ) and
+                self._s3_download(
+                    bucket_name=self.S3_BUCKET_NAME,
+                    key_name=dataloader_key,
+                    file_folder=os.path.join(self.data_dir, member_id),
+                    file_name='dataloader.py'
+                )
+            ):
+                client_config = OmegaConf.load(os.path.join(self.data_dir, member_id, 'client.yaml'))
+                client_config.data_configs.dataset_path = os.path.join(self.data_dir, member_id, 'dataloader.py')
+                client_config.data_configs.dataset_name = get_last_function_name(client_config.data_configs.dataset_path)
+                client_endpoint_id = client_config.endpoint_id
+                task_id = gcc.run(endpoint_id=client_endpoint_id, function_id=test_function_id)
+                for _ in range(self.STATUS_CHECK_TIMES):
+                    try:
+                        time.sleep(1)
+                        gcc.get_result(task_id)
+                        print(f"Client {client_endpoint_id} is started")
+                        client_configs.append(client_config)
+                        break
+                    except TaskPending: 
+                        continue
+                    except Exception as e:
+                        print(e)
+                        break
+        if len(client_configs) == 0:
+            raise Exception("All client endpoints are not started")
+        
+        server_config.server_configs.scheduler_kwargs = {'num_clients': len(client_configs)}
+        return server_config, client_configs
 
-    def download_configurations(self):
+    def download_configurations(self, run_aidr_only=False):
         """Download the configuration file from S3 bucket."""
+        if run_aidr_only:
+            return self._download_aidr_configurations()
         # Download and process the server configuration file
         configuration_s3_key = f'{self.base_dir}/{self.task_id}/appfl_config.yaml'
         model_s3_key = f'{self.base_dir}/{self.task_id}/model.py'
