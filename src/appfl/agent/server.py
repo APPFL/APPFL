@@ -276,6 +276,9 @@ class ServerAgent:
         - `loss_fn`: load the loss function from `torch.nn` module.
         - Users can define their own way to load the loss function from other sources.
         """
+        if not hasattr(self.server_agent_config, "client_configs") or not hasattr(self.server_agent_config.client_configs, "train_configs"):
+            self.loss_fn = None
+            return
         if hasattr(self.server_agent_config.client_configs.train_configs, "loss_fn_path"):
             kwargs = self.server_agent_config.client_configs.train_configs.get("loss_fn_kwargs", {})
             self.loss_fn = create_instance_from_file(
@@ -300,6 +303,9 @@ class ServerAgent:
         Load metric function from a file.
         User can define their own way to load the metric function from other sources.
         """
+        if not hasattr(self.server_agent_config, "client_configs") or not hasattr(self.server_agent_config.client_configs, "train_configs"):
+            self.loss_fn = None
+            return
         if hasattr(self.server_agent_config.client_configs.train_configs, "metric_path"):
             self.metric = get_function_from_file(
                 self.server_agent_config.client_configs.train_configs.metric_path,
@@ -325,14 +331,17 @@ class ServerAgent:
                 logger=self.logger,
             )
         else:
-            self.aggregator: BaseAggregator = eval(self.server_agent_config.server_configs.aggregator)(
-                self.model,
-                OmegaConf.create(
-                    self.server_agent_config.server_configs.aggregator_kwargs if
-                    hasattr(self.server_agent_config.server_configs, "aggregator_kwargs") else {}
-                ),
-                self.logger,
-            )
+            if hasattr(self.server_agent_config.server_configs, "aggregator"):
+                self.aggregator: BaseAggregator = eval(self.server_agent_config.server_configs.aggregator)(
+                    self.model,
+                    OmegaConf.create(
+                        self.server_agent_config.server_configs.aggregator_kwargs if
+                        hasattr(self.server_agent_config.server_configs, "aggregator_kwargs") else {}
+                    ),
+                    self.logger,
+                )
+            else:
+                self.aggregator = None
         
         if hasattr(self.server_agent_config.server_configs, "scheduler_path"):
             # Load the user-defined scheduler from the file
@@ -347,19 +356,25 @@ class ServerAgent:
                 logger=self.logger,
             )
         else:
-            self.scheduler: BaseScheduler = eval(self.server_agent_config.server_configs.scheduler)(
-                OmegaConf.create(
-                    self.server_agent_config.server_configs.scheduler_kwargs if 
-                    hasattr(self.server_agent_config.server_configs, "scheduler_kwargs") else {}
-                ),
-                self.aggregator,
-                self.logger,
-            )
+            if hasattr(self.server_agent_config.server_configs, "scheduler"):
+                self.scheduler: BaseScheduler = eval(self.server_agent_config.server_configs.scheduler)(
+                    OmegaConf.create(
+                        self.server_agent_config.server_configs.scheduler_kwargs if 
+                        hasattr(self.server_agent_config.server_configs, "scheduler_kwargs") else {}
+                    ),
+                    self.aggregator,
+                    self.logger,
+                )
+            else:
+                self.scheduler = None
             
     def _load_trainer(self) -> None:
         """
         Process the trainer configurations if the trainer is provided locally as a user-defined class.
         """
+        if not hasattr(self.server_agent_config, "client_configs") or not hasattr(self.server_agent_config.client_configs, "train_configs"):
+            self.loss_fn = None
+            return
         if hasattr(self.server_agent_config.client_configs.train_configs, "trainer_path"):
             with open(self.server_agent_config.client_configs.train_configs.trainer_path, 'r') as f:
                 self.server_agent_config.client_configs.train_configs.trainer_source = f.read()
