@@ -9,14 +9,23 @@ from sklearn.preprocessing import StandardScaler
 
 
 def imbalance_degree(lst):
+    # Count occurrences of each class
     counts = {}
     for elem in lst:
         counts[elem] = counts.get(elem, 0) + 1
+    
+    # Check if only one class exists
+    num_classes = len(counts)
+    if num_classes == 1:
+        # Handle the case where there's only one class
+        return float('inf')  # Or return a specific value like 0, or None, or raise an error
+    
+    # Calculate imbalance degree
     total_elements = len(lst)
     actual_proportions = np.array([counts[elem] / total_elements for elem in sorted(counts.keys())])
-    num_classes = len(counts)
     balanced_proportions = np.array([1 / num_classes] * num_classes)
     euclidean_distance = np.linalg.norm(actual_proportions - balanced_proportions)
+    
     return euclidean_distance
 
 def completeness(data):
@@ -84,7 +93,7 @@ def get_data_range(data):
     if np.isnan(data_min) or np.isnan(data_max):
         print("Warning: Min or Max is NaN after calculation.")
         return {"min": None, "max": None}
-    return {"min": data_min, "max": data_max}
+    return {"min": round(data_min,2), "max": round(data_max,2)}
 
 def brisque(data):
     brisque_score = piq.brisque(data)

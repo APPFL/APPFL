@@ -7,7 +7,7 @@ from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 from appfl.misc.data_readiness.report import get_class_distribution
 
 # Load server and client agents configurations
-server_agent_config = OmegaConf.load("./resources/config_gc/server_fedavg.yaml")
+server_agent_config = OmegaConf.load("./resources/config_gc/server_fedcompass.yaml")
 client_agent_configs = OmegaConf.load("./resources/config_gc/clients.yaml")
 
 # Create server agent

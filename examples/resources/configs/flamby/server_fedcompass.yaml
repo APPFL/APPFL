@@ -8,12 +8,12 @@ client_configs:
     optim_args:
       lr: 0.01
     # Loss function
-    loss_fn_path: "./resources/loss/bceloss.py"
+    loss_fn_path: "./resources/loss/flamby_heart_disease.py"
     loss_fn_name: "BaselineLoss"
     # Client validation
     do_validation: True
     do_pre_validation: True
-    metric_path: "./resources/metric/acc.py"
+    metric_path: "./resources/metric/flamby_heart_disease.py"
     metric_name: "metric"
     # Differential privacy
     use_dp: False
@@ -28,7 +28,7 @@ client_configs:
     val_data_shuffle: False
 
   model_configs:
-    model_path: "./resources/model/mlp.py"
+    model_path: "./resources/model/flamby_heart_disease.py"
     model_name: "Baseline"
     # model_kwargs:
     #   input_size: 13
@@ -53,17 +53,17 @@ client_configs:
       sample_size: True
       num_classes: True
       data_shape: True
-      completeness: True
+      completeness: False
       data_range: True
-      sparsity: True
-      variance: True
-      skewness: True
-      entropy: True
-      kurtosis: True
+      overall_sparsity: True
+      variance: False
+      skewness: False
+      entropy: False
+      kurtosis: False
       class_distribution: True
       brisque: False
       sharpness: False
-      outlier_propotion: True
+      outlier_proportion: True
       time_to_event_imbalance: False
       plot:
         class_distribution_plot: True

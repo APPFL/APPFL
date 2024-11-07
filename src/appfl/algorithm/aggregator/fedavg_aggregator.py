@@ -90,41 +90,6 @@ class FedAvgAggregator(BaseAggregator):
             self.model.load_state_dict(self.global_state, strict=False)
         return {k: v.clone() for k, v in self.global_state.items()}
 
-
-    # def aggregate(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs):
-    #     """
-    #     Aggregate models with a focus on clients with more balanced class distributions.
-    #     """
-    #     class_distributions = kwargs['class_distribution']
-        
-    #     if self.global_state is None:
-    #         first_model_params = local_models[next(iter(local_models))]
-    #         self.global_state = {name: tensor.clone() for name, tensor in first_model_params.items()}
-
-    #     # Compute NED for each client compared to a balanced distribution
-    #     num_classes = len(next(iter(class_distributions.values())))
-    #     balanced_distribution = {i: 1 for i in range(num_classes)}
-    #     ned_degrees = {client_id: ned_squared(distr, balanced_distribution) for client_id, distr in class_distributions.items()}
-        
-    #     # Normalize NED degrees
-    #     max_ned = max(ned_degrees.values())
-    #     normalized_ned = {client_id: ned / max_ned if max_ned > 0 else 1 for client_id, ned in ned_degrees.items()}
-        
-    #     # Calculate weights inversely proportional to normalized NED
-    #     total_inverse_ned = sum(1 / (1 + ned) for ned in normalized_ned.values())
-
-    #     for name in self.global_state:
-    #         param_sum = torch.zeros_like(self.global_state[name])
-    #         for client_id, model in local_models.items():
-    #             client_weight = (1 / (1 + normalized_ned[client_id])) / total_inverse_ned
-    #             param_sum += client_weight * model[name]
-    #         self.global_state[name] = param_sum
-
-    #     if self.model is not None:
-    #         self.model.load_state_dict(self.global_state, strict=False)
-
-    #     return {k: v.clone() for k, v in self.global_state.items()}
-
     def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]):
         """
         Compute the changes to the global model after the aggregation.

@@ -139,7 +139,7 @@ class ClientAgent:
                 "data_shape": lambda: (len(data_input), *data_input[0].size()),
                 "completeness": lambda: completeness(data_input),
                 "data_range": lambda: get_data_range(data_input),
-                "sparsity": lambda: sparsity(data_input),
+                "overall_sparsity": lambda: sparsity(data_input),
                 "variance": lambda: variance(data_input),
                 "skewness": lambda: skewness(data_input),
                 "entropy": lambda: entropy(data_input),
@@ -148,7 +148,7 @@ class ClientAgent:
                 "brisque": lambda: brisque(data_input),
                 "total_variation": lambda: total_variation(data_input),
                 "sharpness": lambda: dataset_sharpness(data_input),
-                "outlier_propotion": lambda: calculate_outlier_proportion(data_input),
+                "outlier_proportion": lambda: calculate_outlier_proportion(data_input),
                 "time_to_event_imbalance": lambda: quantify_time_to_event_imbalance(data_labels)
 
             }

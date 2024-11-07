@@ -280,8 +280,16 @@ def plot_feature_correlations(data_input):
 
     # Plot the correlation matrix
     plt.figure(figsize=(10, 10))
-    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap='coolwarm')
-    plt.title('Feature Correlation Matrix')
+
+    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap='coolwarm',
+                annot_kws={"size": 12},  # Annotation font size (inside cells)
+                xticklabels=16,  # x-axis tick label font size
+                yticklabels=16  # y-axis tick label font size
+                )
+
+    plt.xticks(fontsize=16)  # Font size of x-axis ticks
+    plt.yticks(fontsize=16)  # Font size of y-axis ticks
+
 
     # Save to buffer and encode
     buffer = io.BytesIO()
@@ -409,12 +417,11 @@ def plot_feature_statistics(data_input):
 
     ax.set_yticklabels([])
     ax.set_xticks(angles)
-    ax.set_xticklabels(categories)
+    ax.set_xticklabels(categories, fontsize=12)
 
     # Add a legend outside the plot
-    ax.legend(loc='upper right', bbox_to_anchor=(1.1, 1.1))
+    ax.legend(loc='upper right', bbox_to_anchor=(1.1, 1.1), fontsize=12)
 
-    plt.title('Feature Analysis: Comprehensive Statistical Overview')
 
     # Save plot to a buffer and encode as base64
     buffer = io.BytesIO()
