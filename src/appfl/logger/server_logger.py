@@ -1,6 +1,7 @@
 import os
 import pathlib
 import logging
+from typing import Optional
 from datetime import datetime
 
 class ServerAgentFileLogger:
@@ -36,6 +37,7 @@ class ServerAgentFileLogger:
                 pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
             real_file_name = f"{file_dir}/{file_name}.txt"
             f_handler = logging.FileHandler(real_file_name)
+            self.log_filepath = real_file_name
             f_handler.setLevel(logging.INFO)
             f_handler.setFormatter(fmt)
             self.logger.addHandler(f_handler)
@@ -49,3 +51,7 @@ class ServerAgentFileLogger:
 
     def error(self, error: str) -> None:
         self.logger.error(error)
+        
+    def get_log_filepath(self) -> Optional[str]:
+        if hasattr(self, 'log_filepath'):
+            return self.log_filepath

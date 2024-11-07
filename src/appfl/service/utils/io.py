@@ -77,7 +77,7 @@ class APPFLxDataExchanger:
                 os.remove(file_name)
             return True
         except Exception as e:
-            print(f'Error in downloading {key_name} from {bucket_name}: {e}')
+            print(f'Error in uploading {key_name} from {bucket_name}: {e}')
             return False
     
     def _get_ecs_taskid(self):
@@ -159,6 +159,16 @@ class APPFLxDataExchanger:
         
         server_config.server_configs.scheduler_kwargs = {'num_clients': len(client_configs)}
         return server_config, client_configs
+
+    def upload_results(self, files):
+        for file_name, file_path in files.items():
+            file_key = f'{self.base_dir}/{self.task_id}/{file_name}'
+            self._s3_upload(
+                bucket_name=self.S3_BUCKET_NAME,
+                key_name=file_key,
+                file_name=file_path,
+                delete_local=False,
+            )
 
     def download_configurations(self, run_aidr_only=False):
         """Download the configuration file from S3 bucket."""

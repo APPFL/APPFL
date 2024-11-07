@@ -1,3 +1,5 @@
+import os
+import json
 import pprint
 import argparse
 from concurrent.futures import Future
@@ -44,6 +46,16 @@ if args.run_aidr_only:
         restructured_report['plots'] = {client_id: plot_data.get(client_id, {}) for client_id in readiness_reports.keys()}
     # Call the data_readiness_report function
     server_agent.data_readiness_report(restructured_report)
+    # Upload the reports and logs
+    log_file = server_agent.logger.get_log_filepath()
+    report_file = os.path.join(
+        server_agent_config.client_configs.data_readiness_configs.output_dirname, 
+        f'{server_agent_config.client_configs.data_readiness_configs.output_filename}.html'
+    )
+    data_exchanger.upload_results({
+        'log.txt': log_file,
+        'report.html': report_file,
+    })    
 
 else: 
     # Get sample size from clients
@@ -60,9 +72,14 @@ else:
     )
 
     model_futures = {}
+    client_rounds = {}
+    training_metadata = {}
     while not server_agent.training_finished():
         client_endpoint_id, client_model, client_metadata = server_communicator.recv_result_from_one_client()
         server_agent.logger.info(f"Received the following meta data from client {client_endpoint_id}:\n{pprint.pformat(client_metadata)}")
+        if client_endpoint_id not in training_metadata:
+            training_metadata[client_endpoint_id] = []
+        training_metadata[client_endpoint_id].append(client_metadata)
         global_model = server_agent.global_update(
             client_endpoint_id,
             client_model,
@@ -75,6 +92,10 @@ else:
                 global_model, metadata = global_model
             else:
                 metadata = {}
+            if client_endpoint_id not in client_rounds:
+                client_rounds[client_endpoint_id] = 0
+            client_rounds[client_endpoint_id] += 1
+            metadata['round'] = client_rounds[client_endpoint_id]
             if not server_agent.training_finished():
                 server_communicator.send_task_to_one_client(
                     client_endpoint_id,
@@ -92,6 +113,10 @@ else:
                     global_model, metadata = global_model
                 else:
                     metadata = {}
+                if client_endpoint_id not in client_rounds:
+                    client_rounds[client_endpoint_id] = 0
+                client_rounds[client_endpoint_id] += 1
+                metadata['round'] = client_rounds[client_endpoint_id]
                 if not server_agent.training_finished():
                     server_communicator.send_task_to_one_client(
                         client_endpoint_id,
@@ -103,6 +128,16 @@ else:
                 del_keys.append(client_endpoint_id)
         for key in del_keys:
             model_futures.pop(key)
+    # Upload the reports and logs
+    log_file = server_agent.logger.get_log_filepath()
+    # save the training metadata into a json file
+    result_file = os.path.join(server_agent_config.server_configs.logging_output_dirname, "training_metadata.json")
+    with open(result_file, "w") as f:
+        json.dump(training_metadata, f)
+    data_exchanger.upload_results({
+        'log.txt': log_file,
+        'training_metadata.json': result_file,
+    })
 
 server_communicator.cancel_all_tasks()
 server_communicator.shutdown_all_clients()
