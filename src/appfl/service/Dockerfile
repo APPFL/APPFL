@@ -18,7 +18,7 @@ RUN pip install globus-compute-sdk==2.26.0
 RUN pip install globus-compute-endpoint==2.26.0
 
 # Change directory to examples
-WORKDIR /app/examples
+WORKDIR /app/src/appfl/service
 
 # Run the app
-ENTRYPOINT ["python", "globus_compute/run.py"]
+ENTRYPOINT ["python", "appflx_entry_point.py"]

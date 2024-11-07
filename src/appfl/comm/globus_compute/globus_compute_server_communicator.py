@@ -16,6 +16,7 @@ from appfl.config import ClientAgentConfig, ServerAgentConfig
 from .utils.config import ClientTask
 from .utils.endpoint import GlobusComputeClientEndpoint
 from .utils.s3_storage import CloudStorage, LargeObjectWrapper
+from globus_compute_sdk.serialize import CombinedCode
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
 
@@ -49,7 +50,10 @@ class GlobusComputeServerCommunicator:
                 }
             )
             compute_login_manager.ensure_logged_in()
-            gcc = Client(login_manager=compute_login_manager)
+            gcc = Client(
+                login_manager=compute_login_manager, 
+                code_serialization_strategy=CombinedCode()
+            )
         else:
             gcc = Client()
         self.gce = Executor(client=gcc) # Globus Compute Executor
