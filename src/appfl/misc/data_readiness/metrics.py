@@ -2,9 +2,6 @@ import numpy as np
 import torch
 import piq
 from typing import Dict
-from lifelines import CoxPHFitter
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
 
 
 

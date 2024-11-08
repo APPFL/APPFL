@@ -6,7 +6,6 @@ import seaborn as sns
 import base64
 import io
 from sklearn.decomposition import PCA
-from lifelines import KaplanMeierFitter
 
 matplotlib.use('Agg')
 
@@ -237,37 +236,6 @@ def plot_outliers(data_input):
     encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
     buffer.close()
     
-    return encoded_image
-
-def plot_time_to_event_distribution(data_label):
-    # Convert list of tensors to numpy array
-    data_array = np.array([tensor.numpy() for tensor in data_label])
-
-    # Split data into event indicator and time
-    E = data_array[:, 0]  # Event occurred
-    T = data_array[:, 1]  # Time to event or censoring
-
-    # Instantiate KaplanMeierFitter
-    kmf = KaplanMeierFitter()
-
-    # Fit the data
-    kmf.fit(durations=T, event_observed=E)
-
-    # Plot the survival function
-    plt.figure(figsize=(10, 5))
-    kmf.plot_survival_function()
-    plt.title('Kaplan-Meier Survival Estimate')
-    plt.xlabel('Time')
-    plt.ylabel('Survival Probability')
-
-    # Save to buffer and encode
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    plt.close()
-    
-    encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
-    buffer.close()
-
     return encoded_image
 
 def plot_feature_correlations(data_input):
