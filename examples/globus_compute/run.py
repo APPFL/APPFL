@@ -47,8 +47,6 @@ if hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_
     # Call the data_readiness_report function
     server_agent.data_readiness_report(restructured_report)
 
-# Get class distribution from clients
-# class_distribution = get_class_distribution(restructured_report)
 # Train the model
 server_communicator.send_task_to_all_clients(
     task_name="train",
