@@ -1,4 +1,5 @@
 local_tests
+uploads*
 .vscode
 .gitignore
 creds
