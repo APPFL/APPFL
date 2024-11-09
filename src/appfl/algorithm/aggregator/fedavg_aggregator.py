@@ -3,7 +3,6 @@ import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
-from appfl.misc.data_readiness.metrics import ned_squared
 
 class FedAvgAggregator(BaseAggregator):
     """

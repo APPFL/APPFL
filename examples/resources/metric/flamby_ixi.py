@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def metric(y_true, y_pred):
     """
     Soft Dice coefficient
@@ -12,7 +11,6 @@ def metric(y_true, y_pred):
     # If both inputs are empty the dice coefficient should be equal 1
     dice[union == 0] = 1
     return np.mean(dice)
-
 
 if __name__ == "__main__":
     print(metric(np.ones((10, 1, 10, 10, 10)), np.ones((10, 1, 10, 10, 10))))

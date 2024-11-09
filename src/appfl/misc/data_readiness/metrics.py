@@ -3,8 +3,6 @@ import torch
 import piq
 from typing import Dict
 
-
-
 def imbalance_degree(lst):
     # Count occurrences of each class
     counts = {}

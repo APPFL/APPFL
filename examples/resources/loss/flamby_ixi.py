@@ -1,32 +1,6 @@
 import torch
 from torch.nn.modules.loss import _Loss
 
-
-class BaselineLoss(_Loss):
-    def __init__(self):
-        super(BaselineLoss, self).__init__()
-
-    def forward(self, output: torch.Tensor, target: torch.Tensor):
-        """Get dice loss to evaluate the semantic segmentation model.
-        Its value lies between 0 and 1. The more the loss is close to 0,
-        the more the performance is good.
-
-        Parameters
-        ----------
-        output : torch.Tensor
-            Predicted values
-
-        target : torch.Tensor
-            Ground truth.
-
-        Returns
-        -------
-        torch.Tensor
-            A torch tensor containing the respective dice losses.
-        """
-        return torch.mean(1 - get_dice_score(output, target))
-
-
 def get_dice_score(output, target, epsilon=1e-9):
     """Get dice score to evaluate the semantic segmentation model.
     Its value lies between 0 and 1. The more the score is close to 1,
@@ -60,6 +34,30 @@ def get_dice_score(output, target, epsilon=1e-9):
     denom = 2 * tp + fp + fn + epsilon
     dice_score = num / denom
     return dice_score
+
+class BaselineLoss(_Loss):
+    def __init__(self):
+        super(BaselineLoss, self).__init__()
+
+    def forward(self, output: torch.Tensor, target: torch.Tensor):
+        """Get dice loss to evaluate the semantic segmentation model.
+        Its value lies between 0 and 1. The more the loss is close to 0,
+        the more the performance is good.
+
+        Parameters
+        ----------
+        output : torch.Tensor
+            Predicted values
+
+        target : torch.Tensor
+            Ground truth.
+
+        Returns
+        -------
+        torch.Tensor
+            A torch tensor containing the respective dice losses.
+        """
+        return torch.mean(1 - get_dice_score(output, target))
 
 
 if __name__ == "__main__":

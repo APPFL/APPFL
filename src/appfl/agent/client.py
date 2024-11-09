@@ -159,7 +159,7 @@ class ClientAgent:
             "data_distribution_plot": lambda: plot_data_distribution(data_input),
             "class_variance_plot": lambda: plot_class_variance(data_input, data_labels),
             "outlier_detection_plot": lambda: plot_outliers(data_input),
-            "time_to_event_plot": lambda: plot_time_to_event_distribution(data_labels),
+            # "time_to_event_plot": lambda: plot_time_to_event_distribution(data_labels), # TODO: Add time to event plot
             "feature_correlation_plot": lambda: plot_feature_correlations(data_input),
             "feature_statistics_plot": lambda: plot_feature_statistics(data_input),
         }
@@ -169,25 +169,27 @@ class ClientAgent:
 
             # Handle standard metrics
             for metric_name, compute_function in standard_metrics.items():
-
-                if metric_name in client_config.data_readiness_configs.dr_metrics:
-                    if getattr(client_config.data_readiness_configs.dr_metrics, metric_name):
-                        results[metric_name] = compute_function()
+                if hasattr (client_config.data_readiness_configs, "dr_metrics"):
+                    if metric_name in client_config.data_readiness_configs.dr_metrics:
+                        if getattr(client_config.data_readiness_configs.dr_metrics, metric_name):
+                            results[metric_name] = compute_function()
 
             # Handle plot-specific metrics
             for metric_name, compute_function in plots.items():
-                if metric_name in client_config.data_readiness_configs.dr_metrics.plot:
-                    if getattr(client_config.data_readiness_configs.dr_metrics.plot, metric_name):
-                        plot_results['plots'][metric_name] = compute_function()
+                if hasattr(client_config.data_readiness_configs.dr_metrics, "plot"):
+                    if metric_name in client_config.data_readiness_configs.dr_metrics.plot:
+                        if getattr(client_config.data_readiness_configs.dr_metrics.plot, metric_name):
+                            plot_results['plots'][metric_name] = compute_function()
 
             # Combine results with plot results
             results.update(plot_results)
 
             # Handle combined metrics
             for metric_name, compute_function in combine.items():
-                if metric_name in client_config.data_readiness_configs.dr_metrics.combine:
-                    if getattr(client_config.data_readiness_configs.dr_metrics.combine, metric_name):
-                        to_combine_results['to_combine'][metric_name] = compute_function()
+                if hasattr(client_config.data_readiness_configs.dr_metrics, "combine"):
+                    if metric_name in client_config.data_readiness_configs.dr_metrics.combine:
+                        if getattr(client_config.data_readiness_configs.dr_metrics.combine, metric_name):
+                            to_combine_results['to_combine'][metric_name] = compute_function()
             
             results.update(to_combine_results)
 

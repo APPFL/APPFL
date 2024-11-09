@@ -1,14 +1,14 @@
+import warnings
 from omegaconf import OmegaConf
 from concurrent.futures import Future
 from globus_compute_sdk import Client
 from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
-
-from appfl.misc.data_readiness.report import get_class_distribution
+warnings.filterwarnings("ignore", category=DeprecationWarning)   # Ignore deprecation warnings
 
 # Load server and client agents configurations
-server_agent_config = OmegaConf.load("./resources/config_gc/server_fedcompass.yaml")
-client_agent_configs = OmegaConf.load("./resources/config_gc/clients.yaml")
+server_agent_config = OmegaConf.load("./resources/config_gc/mnist/server_fedcompass.yaml")
+client_agent_configs = OmegaConf.load("./resources/config_gc/mnist/clients.yaml")
 
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)
@@ -27,7 +27,11 @@ sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
 for client_endpoint_id, sample_size in sample_size_ret.items():
     server_agent.set_sample_size(client_endpoint_id, sample_size['sample_size'])
 
-if hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_dr_report') and server_agent_config.client_configs.data_readiness_configs.generate_dr_report:
+if (
+    hasattr(server_agent_config.client_configs, 'data_readiness_configs') and
+    hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_dr_report') and 
+    server_agent_config.client_configs.data_readiness_configs.generate_dr_report
+):
     readiness_reports_dict = {}
     server_communicator.send_task_to_all_clients(task_name="data_readiness_report")
     readiness_reports = server_communicator.recv_result_from_all_clients()[1]
@@ -57,8 +61,6 @@ server_communicator.send_task_to_all_clients(
 model_futures = {}
 while not server_agent.training_finished():
     client_endpoint_id, client_model, client_metadata = server_communicator.recv_result_from_one_client()
-    # client_metadata.update({"class_distribution": class_distribution[client_endpoint_id]})
-    
     global_model = server_agent.global_update(
         client_endpoint_id,
         client_model,

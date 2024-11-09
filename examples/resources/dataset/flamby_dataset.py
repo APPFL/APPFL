@@ -1,4 +1,3 @@
-from appfl.misc.data_readiness import *
 try:
     from flamby.datasets.fed_tcga_brca import FedTcgaBrca
     from flamby.datasets.fed_heart_disease import FedHeartDisease
@@ -41,5 +40,3 @@ def get_flamby(
         return train_dataset, test_dataset
     else:
         raise NotImplementedError    
-
-
