@@ -1,8 +1,9 @@
+client_id: Client1
 train_configs:
   # Device
   device: "cpu"
   # Logging and outputs
-  logging_id: "Client2"
+  logging_id: "Client1"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 
@@ -11,9 +12,9 @@ data_configs:
   dataset_path: "./resources/dataset/flamby_dataset.py"
   dataset_name: "get_flamby"
   dataset_kwargs:
-    dataset: "TcgaBrca"
-    num_clients: 2
-    client_id: 1
+    dataset: "HeartDisease"
+    num_clients: 4
+    client_id: 0
 
 comm_configs:
   grpc_configs:

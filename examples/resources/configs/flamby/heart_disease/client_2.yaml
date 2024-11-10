@@ -1,3 +1,4 @@
+client_id: Client2
 train_configs:
   # Device
   device: "cpu"
@@ -13,7 +14,7 @@ data_configs:
   dataset_kwargs:
     dataset: "HeartDisease"
     num_clients: 4
-    client_id: 0
+    client_id: 1
 
 comm_configs:
   grpc_configs:
