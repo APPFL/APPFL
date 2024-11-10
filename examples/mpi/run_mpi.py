@@ -7,8 +7,8 @@ from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 argparse = argparse.ArgumentParser()
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)    
-argparse.add_argument("--server_config", type=str, default="./resources/configs/flamby/server_fedcompass.yaml")
-argparse.add_argument("--client_config", type=str, default="./resources/configs/flamby/client_1.yaml")
+argparse.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_fedcompass.yaml")
+argparse.add_argument("--client_config", type=str, default="./resources/configs/mnist/client_1.yaml")
 args = argparse.parse_args()
 
 comm = MPI.COMM_WORLD
