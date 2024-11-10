@@ -47,31 +47,6 @@ client_configs:
       error_bound: 1e-3
       param_cutoff: 1024
 
-  data_readiness_configs:
-    generate_dr_report: True
-    output_dirname: "./output"
-    output_filename: "data_readiness_report"
-    dr_metrics: 
-      class_imbalance: True
-      sample_size: True
-      num_classes: True
-      data_shape: True
-      completeness: True
-      data_range: True
-      sparsity: True
-      variance: True
-      skewness: True
-      entropy: True
-      kurtosis: True
-      class_distribution: True
-      brisque: True
-      sharpness: False
-      plot:
-        class_distribution_plot: True
-        data_sample_plot: True
-        data_distribution_plot: True
-        class_variance_plot: True
-
 server_configs:
   scheduler: "CompassScheduler"
   scheduler_kwargs:
