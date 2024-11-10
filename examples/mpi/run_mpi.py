@@ -1,11 +1,13 @@
 import argparse
+import warnings
 from mpi4py import MPI
 from omegaconf import OmegaConf
 from appfl.agent import ClientAgent, ServerAgent
-from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
-
+from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator 
 argparse = argparse.ArgumentParser()
-argparse.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_fedavg.yaml")
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)    
+argparse.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_fedcompass.yaml")
 argparse.add_argument("--client_config", type=str, default="./resources/configs/mnist/client_1.yaml")
 args = argparse.parse_args()
 
@@ -44,9 +46,14 @@ else:
     sample_size = client_agent.get_sample_size()
     client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size)
     # Generate data readiness report
-    if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
+    if (
+        hasattr(client_config, 'data_readiness_configs') and
+        hasattr(client_config.data_readiness_configs, 'generate_dr_report') and 
+        client_config.data_readiness_configs.generate_dr_report
+    ):
         data_readiness = client_agent.generate_readiness_report(client_config)
         client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)
+        
     # Local training and global model update iterations
     while True:
         client_agent.train()
