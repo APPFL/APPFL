@@ -1,3 +1,4 @@
+import argparse
 import warnings
 from omegaconf import OmegaConf
 from concurrent.futures import Future
@@ -6,9 +7,14 @@ from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 warnings.filterwarnings("ignore", category=DeprecationWarning)   # Ignore deprecation warnings
 
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--server_config', type=str, default="./resources/config_gc/mnist/server_fedcompass.yaml")
+argparser.add_argument('--client_config', type=str, default="./resources/config_gc/mnist/clients.yaml")
+args = argparser.parse_args()
+
 # Load server and client agents configurations
-server_agent_config = OmegaConf.load("./resources/config_gc/mnist/server_fedcompass.yaml")
-client_agent_configs = OmegaConf.load("./resources/config_gc/mnist/clients.yaml")
+server_agent_config = OmegaConf.load(args.server_config)
+client_agent_configs = OmegaConf.load(args.client_config)
 
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)
