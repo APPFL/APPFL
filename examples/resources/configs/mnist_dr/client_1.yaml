@@ -8,15 +8,18 @@ train_configs:
 
 # Local dataset
 data_configs:
-  dataset_path: "./resources/dataset/flamby_dataset.py"
-  dataset_name: "get_flamby"
+  dataset_path: "./resources/dataset/mnist_dataset.py"
+  dataset_name: "get_mnist"
   dataset_kwargs:
-    dataset: "TcgaBrca"
     num_clients: 2
     client_id: 0
+    partition_strategy: "class_noniid"
+    visualization: True
+    output_dirname: "./output"
+    output_filename: "visualization.pdf"
 
 comm_configs:
   grpc_configs:
     server_uri: localhost:50051
-    max_message_size: 1048576
+    max_message_size: 10485760
     use_ssl: False

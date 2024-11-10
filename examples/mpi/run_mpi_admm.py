@@ -9,10 +9,12 @@ mpiexec -n 6 python  mpi/run_mpi_admm.py --server_config ./resources/configs/mni
 """
 
 import argparse
+import warnings
 from mpi4py import MPI
 from omegaconf import OmegaConf
 from appfl.agent import ClientAgent, ServerAgent
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 argparse = argparse.ArgumentParser()
 argparse.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_iceadmm.yaml")
@@ -59,7 +61,11 @@ else:
     client_agent.trainer.set_weight(client_weight["client_weight"])
 
     # Generate data readiness report
-    if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
+    if (
+        hasattr(client_config, 'data_readiness_configs') and
+        hasattr(client_config.data_readiness_configs, 'generate_dr_report') and 
+        client_config.data_readiness_configs.generate_dr_report
+    ):
         data_readiness = client_agent.generate_readiness_report(client_config)
         client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)
         

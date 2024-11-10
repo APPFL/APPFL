@@ -1,9 +1,16 @@
 import pprint
 import argparse
+import warnings
 from omegaconf import OmegaConf
 from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
+warnings.filterwarnings("ignore", category=DeprecationWarning)   # Ignore deprecation warnings
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--server_config', type=str, default="./resources/config_gc/mnist/server_fedcompass.yaml")
+argparser.add_argument('--client_config', type=str, default="./resources/config_gc/mnist/clients.yaml")
+args = argparser.parse_args()
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--compute_token", required=False)
@@ -11,8 +18,8 @@ argparser.add_argument("--openid_token", required=False)
 args = argparser.parse_args()
 
 # Load server and client agents configurations
-server_agent_config = OmegaConf.load("./resources/config_gc/server_fedavg.yaml")
-client_agent_configs = OmegaConf.load("./resources/config_gc/clients.yaml")
+server_agent_config = OmegaConf.load(args.server_config)
+client_agent_configs = OmegaConf.load(args.client_config)
 
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)
@@ -35,9 +42,9 @@ for client_endpoint_id, sample_size in sample_size_ret.items():
     server_agent.set_sample_size(client_endpoint_id, sample_size['sample_size'])
 
 if (
-    hasattr(server_agent_config.client_configs, "data_readiness_configs")
-    and hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_dr_report') 
-    and server_agent_config.client_configs.data_readiness_configs.generate_dr_report
+    hasattr(server_agent_config.client_configs, 'data_readiness_configs') and
+    hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_dr_report') and 
+    server_agent_config.client_configs.data_readiness_configs.generate_dr_report
 ):
     readiness_reports_dict = {}
     server_communicator.send_task_to_all_clients(task_name="data_readiness_report")

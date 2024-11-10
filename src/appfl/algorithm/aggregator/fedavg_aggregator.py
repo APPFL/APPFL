@@ -88,7 +88,7 @@ class FedAvgAggregator(BaseAggregator):
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)
         return {k: v.clone() for k, v in self.global_state.items()}
-    
+
     def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]):
         """
         Compute the changes to the global model after the aggregation.

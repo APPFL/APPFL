@@ -1,3 +1,4 @@
+client_id: Client2
 train_configs:
   # Device
   device: "cpu"
@@ -12,7 +13,7 @@ data_configs:
   dataset_name: "get_flamby"
   dataset_kwargs:
     dataset: "TcgaBrca"
-    num_clients: 2
+    num_clients: 6
     client_id: 1
 
 comm_configs:

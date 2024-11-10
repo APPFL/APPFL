@@ -197,8 +197,8 @@ class ServerAgent:
             pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         # Save JSON report
-        json_file_path = get_unique_file_path(output_dir, output_filename, "json")
-        save_json_report(json_file_path, readiness_report, self.logger)
+        # json_file_path = get_unique_file_path(output_dir, output_filename, "json")
+        # save_json_report(json_file_path, readiness_report, self.logger)
 
         # Generate and save HTML report
         html_file_path = get_unique_file_path(output_dir, output_filename, "html")

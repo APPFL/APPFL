@@ -77,6 +77,7 @@ setuptools.setup(
         "matplotlib",
         "seaborn",
         "piq",
+        "scikit-learn"
     ],
     extras_require={
         "dev": [

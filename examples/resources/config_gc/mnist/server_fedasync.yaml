@@ -21,6 +21,8 @@ client_configs:
     clip_grad: False
     clip_value: 1
     clip_norm: 1
+    # Data format
+    send_gradient: True
     # Data loader
     train_batch_size: 64
     val_batch_size: 64
@@ -45,45 +47,25 @@ client_configs:
       error_bounding_mode: "REL"
       error_bound: 1e-3
       param_cutoff: 1024
-    # globus_compute_configs:
-    #   s3_bucket: "appflx-models"
-    #   s3_creds_file: "./resources/config_gc/creds/credential.csv"
-  
-  data_readiness_configs:
-    generate_dr_report: True
-    output_dirname: "./output"
-    output_filename: "data_readiness_report"
-    dr_metrics: 
-      class_imbalance: True
-      sample_size: True
-      num_classes: True
-      data_shape: True
-      completeness: True
-      data_range: True
-      sparsity: True
-      variance: True
-      skewness: True
-      entropy: True
-      kurtosis: True
-      class_distribution: True
-      brisque: True
-      sharpness: False
-      plot:
-        class_distribution_plot: True
-        data_sample_plot: True
-        data_distribution_plot: True
-        class_variance_plot: True
+    globus_compute_configs:
+      s3_bucket: "appflx-models"
+      s3_creds_file: "./resources/config_gc/creds/credential.csv"
 
 server_configs:
-  scheduler: "SyncScheduler"
+  scheduler: "AsyncScheduler"
   scheduler_kwargs:
     num_clients: 2
     same_init_model: True
-  aggregator: "FedAvgAggregator"
+  aggregator: "FedAsyncAggregator"
   aggregator_kwargs:
     client_weights_mode: "equal"
+    num_clients: 2
+    staleness_fn: "polynomial"
+    staleness_fn_kwargs:
+      a: 0.5
+    alpha: 0.9
+    gradient_based: True
   device: "cpu"
-  num_global_epochs: 2
-  server_validation: False
+  num_global_epochs: 20
   logging_output_dirname: "./output"
   logging_output_filename: "result"
