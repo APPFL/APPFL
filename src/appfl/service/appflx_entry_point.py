@@ -9,6 +9,7 @@ from appfl.service.utils import APPFLxDataExchanger
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--run_aidr_only", action="store_true")
