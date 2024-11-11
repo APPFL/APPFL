@@ -11,7 +11,8 @@ from botocore.exceptions import ClientError
 from appfl.misc.utils import dump_data_to_file, load_data_from_file, id_generator
 
 class LargeObjectWrapper(object):
-    MAX_SIZE_LIMIT = 1 * 1      # Anything using this wrapper is sent via S3
+    # 3 MB maximum size limit for direct upload
+    MAX_SIZE_LIMIT = 3 * 1024 * 1024
     def __init__(self, data, name: str):
         self.data = data
         self.name= name
