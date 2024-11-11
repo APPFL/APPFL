@@ -2,10 +2,13 @@ import os
 import json
 import pprint
 import argparse
+import warnings
 from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.service.utils import APPFLxDataExchanger
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--run_aidr_only", action="store_true")
@@ -76,7 +79,7 @@ else:
     training_metadata = {}
     while not server_agent.training_finished():
         client_endpoint_id, client_model, client_metadata = server_communicator.recv_result_from_one_client()
-        server_agent.logger.info(f"Received the following meta data from client {client_endpoint_id}:\n{pprint.pformat(client_metadata)}")
+        server_agent.logger.info(f"Received the following meta data from {client_endpoint_id}:\n{pprint.pformat(client_metadata)}")
         if client_endpoint_id not in training_metadata:
             training_metadata[client_endpoint_id] = []
         training_metadata[client_endpoint_id].append(client_metadata)

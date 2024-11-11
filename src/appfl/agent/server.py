@@ -450,7 +450,6 @@ class ServerAgent:
         This function makes sure that all clients have the same initial model parameters.
         """
         seed_value = self.server_agent_config.client_configs.model_configs.get("seed", 42)
-        self.logger.info(f"Setting seed value to {seed_value}")
         torch.manual_seed(seed_value)  # Set PyTorch seed
         torch.cuda.manual_seed_all(seed_value)  # Set seed for all GPUs
         torch.backends.cudnn.deterministic = True  # Use deterministic algorithms

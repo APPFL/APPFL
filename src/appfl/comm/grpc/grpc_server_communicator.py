@@ -112,7 +112,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             else:
                 meta_data = json.loads(request.meta_data)
             if len(meta_data) > 0:
-                self.logger.info(f"Received the following meta data from client {request.header.client_id}:\n{pprint.pformat(meta_data)}")
+                self.logger.info(f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}")
             global_model = self.server_agent.global_update(client_id, local_model, blocking=True, **meta_data)
             if isinstance(global_model, tuple):
                 meta_data = json.dumps(global_model[1])

@@ -63,7 +63,7 @@ class APPFLxDataExchanger:
             self.s3.download_file(Bucket=bucket_name, Key=key_name, Filename=os.path.join(file_folder, file_name))
             return True
         except Exception as e:
-            print(f'Error in downloading {key_name} from {bucket_name}: {e}')
+            # print(f'Error in downloading {key_name} from {bucket_name}: {e}')
             return False
     
     def _s3_upload(self, bucket_name, key_name, file_name, delete_local=True):
@@ -77,7 +77,7 @@ class APPFLxDataExchanger:
                 os.remove(file_name)
             return True
         except Exception as e:
-            print(f'Error in uploading {key_name} from {bucket_name}: {e}')
+            # print(f'Error in uploading {key_name} from {bucket_name}: {e}')
             return False
     
     def _get_ecs_taskid(self):
@@ -146,13 +146,13 @@ class APPFLxDataExchanger:
                     try:
                         time.sleep(1)
                         gcc.get_result(task_id)
-                        print(f"Client {client_endpoint_id} is started")
+                        # print(f"Client {client_endpoint_id} is started")
                         client_configs.append(client_config)
                         break
                     except TaskPending: 
                         continue
                     except Exception as e:
-                        print(e)
+                        # print(e)
                         break
         if len(client_configs) == 0:
             raise Exception("All client endpoints are not started")
@@ -252,13 +252,13 @@ class APPFLxDataExchanger:
                     try:
                         time.sleep(1)
                         gcc.get_result(task_id)
-                        print(f"Client {client_endpoint_id} is started")
+                        # print(f"Client {client_endpoint_id} is started")
                         client_configs.append(client_config)
                         break
                     except TaskPending: 
                         continue
                     except Exception as e:
-                        print(e)
+                        # print(e)
                         break
         if len(client_configs) == 0:
             raise Exception("All client endpoints are not started")

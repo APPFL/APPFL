@@ -1,4 +1,5 @@
 local_tests
+src/appfl/service/resources
 uploads*
 .vscode
 .gitignore
