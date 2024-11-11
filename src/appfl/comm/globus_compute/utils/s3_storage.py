@@ -165,41 +165,57 @@ class CloudStorage(object):
             object_url: presigned url for downloading the file
             delete_cloud: delete the cloud object after downloading using object name (only possible with credentials)
         """
+        REPEAT_TIMES = 5
         if object_url is not None:
-            try:
-                response = requests.get(object_url)
-                if response.status_code == 200:
-                    with open(file_path, "wb") as file:
-                        file.write(response.content)
-                    if self.logger is not None:
-                        self.logger.info(f"Successfully donwload object using presigned url")
-                    else:
-                        print(f"Successfully donwload object using presigned url")
-                return
-            except:
-                if self.logger is not None:
-                    self.logger.info(f"Error in downloading object using presigned url")
-                else:
-                    print(f"Error in downloading object using presigned url")
-                raise
+            for i in range(REPEAT_TIMES):
+                try:
+                    response = requests.get(object_url)
+                    if response.status_code == 200:
+                        with open(file_path, "wb") as file:
+                            file.write(response.content)
+                        if self.logger is not None:
+                            self.logger.info(f"Successfully donwload object using presigned url")
+                        else:
+                            print(f"Successfully donwload object using presigned url")
+                    return
+                except:
+                    time.sleep(i+1)
+            if self.logger is not None:
+                self.logger.info(f"Error in downloading object using presigned url")
+            else:
+                print(f"Error in downloading object using presigned url")
+            raise
         if object_name is not None:
-            try:
-                self.client.download_file(self.bucket, object_name, file_path)
-            except:
+            download_success = False
+            for i in range(REPEAT_TIMES):
+                try:
+                    self.client.download_file(self.bucket, object_name, file_path)
+                    download_success = True
+                    break
+                except:
+                    time.sleep(i+1)
+            if not download_success:
                 if self.logger is not None:
                     self.logger.info(f"Error in downloading object {object_name} from S3")
                 else:
                     print(f"Error in downloading object {object_name} from S3")
                 raise
-            try:
-                if delete_cloud:
-                    self.client.delete_object(Bucket=self.bucket, Key=object_name)
-                return
-            except:
+            
+            delete_success = False
+            for i in range(REPEAT_TIMES):
+                try:
+                    if delete_cloud:
+                        self.client.delete_object(Bucket=self.bucket, Key=object_name)
+                    delete_success = True
+                    break
+                except:
+                    time.sleep(i+1)
+            if not delete_success:
                 if self.logger is not None:
                     self.logger.info(f"Error in deleteing object {object_name} from S3")
                 else:
                     print(f"Error in deleteing object {object_name} from S3")
+                raise
 
     @classmethod
     def upload_object(cls, data, object_name = None, object_url = None, ext = 'pt', temp_dir = None, register_for_clean = False):
