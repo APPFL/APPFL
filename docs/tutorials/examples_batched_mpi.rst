@@ -98,10 +98,15 @@ Below shows the difference between the non-batched and batched MPI examples.
     -       local_model = client_agent.get_parameters()
     -       new_global_model, metadata = client_communicator.update_global_model(local_model)
     +       client_local_models = {}
+    +       client_metadata = {}
     +       for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
     +           client_agent.train()
-    +           client_local_models[client_id] = client_agent.get_parameters()
-    +       new_global_model, metadata = client_communicator.update_global_model(client_local_models)
+    +           local_model = client_agent.get_parameters()
+    +           if isinstance(local_model, tuple):
+    +               local_model, metadata = local_model[0], local_model[1]
+    +               client_metadata[client_id] = metadata
+    +           client_local_models[client_id] = local_model
+    +       new_global_model, metadata = client_communicator.update_global_model(client_local_models, kwargs=client_metadata)
     -       if metadata['status'] == 'DONE':
     +       if all(metadata[client_id]['status'] == 'DONE' for client_id in metadata):
                 break
