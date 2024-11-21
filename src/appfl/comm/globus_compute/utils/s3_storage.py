@@ -175,9 +175,9 @@ class CloudStorage(object):
                         with open(file_path, "wb") as file:
                             file.write(response.content)
                         if self.logger is not None:
-                            self.logger.info(f"Successfully donwload object using presigned url")
+                            self.logger.info(f"Successfully download object using presigned url")
                         else:
-                            print(f"Successfully donwload object using presigned url")
+                            print(f"Successfully download object using presigned url")
                     return
                 except:
                     time.sleep(i+1)

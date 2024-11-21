@@ -41,6 +41,12 @@ class GlobusComputeServerCommunicator:
         logger: Optional[ServerAgentFileLogger] = None,
         **kwargs,
     ):
+        # Assert compute_token and openid_token are both provided if necessary
+        assert (
+            ("compute_token" in kwargs and "openid_token" in kwargs) or 
+            ("compute_token" not in kwargs and "openid_token" not in kwargs)
+        ), "Both compute_token and openid_token must be provided if one of them is provided."
+        
         if "compute_token" in kwargs and "openid_token" in kwargs:
             ComputeScopes = ComputeScopeBuilder()
             compute_login_manager = AuthorizerLoginManager(
