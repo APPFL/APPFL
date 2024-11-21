@@ -78,6 +78,8 @@ def test_mpi_fedavg():
             local_model = client_agent.get_parameters()
             if isinstance(local_model, tuple):
                 local_model, metadata = local_model[0], local_model[1]
+            else:
+                metadata = {}
             new_global_model, metadata = client_communicator.update_global_model(local_model, **metadata)
             if metadata['status'] == 'DONE':
                 break
@@ -133,6 +135,8 @@ def test_mpi_fedcompass():
             local_model = client_agent.get_parameters()
             if isinstance(local_model, tuple):
                 local_model, metadata = local_model[0], local_model[1]
+            else:
+                metadata = {}
             new_global_model, metadata = client_communicator.update_global_model(local_model, **metadata)
             if metadata['status'] == 'DONE':
                 break
@@ -187,6 +191,8 @@ def test_mpi_fedasync():
             local_model = client_agent.get_parameters()
             if isinstance(local_model, tuple):
                 local_model, metadata = local_model[0], local_model[1]
+            else:
+                metadata = {}
             new_global_model, metadata = client_communicator.update_global_model(local_model, **metadata)
             if metadata['status'] == 'DONE':
                 break
