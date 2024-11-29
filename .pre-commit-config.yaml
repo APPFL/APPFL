@@ -1,5 +1,3 @@
-ci:
-  autofix_prs: false
 exclude: ^.*_pb2(_grpc)?\.py$  # Global exclude for all hooks
 repos:
   - repo: 'https://github.com/pre-commit/pre-commit-hooks'
