@@ -5,7 +5,7 @@ First run: MNIST
 
     This tutorial is for the deprecated version 0 of APPFL, and you may see many deprecation warnings when running the code. We highly recommend using the latest version of APPFL.
 
-We present how to run an example federated learning script on the MNIST dataset using APPFL. 
+We present how to run an example federated learning script on the MNIST dataset using APPFL.
 We first make sure that the APPFL package and its dependencies are installed and change the directory to ``examples/examples_legacy`` directory.
 
 .. code-block:: console
@@ -15,13 +15,13 @@ We first make sure that the APPFL package and its dependencies are installed and
     pip install -e ".[examples]"
     cd examples/examples_legacy
 
-The first example can be simply run using the following command, which launchs a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
+The first example can be simply run using the following command, which launches a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
 
 .. code-block:: console
 
     python ./mnist_serial.py --num_clients 5
 
-If we want to run **synchronous** FL experiment in parallel using MPI, we can run the example using the following command. 
+If we want to run **synchronous** FL experiment in parallel using MPI, we can run the example using the following command.
 
 .. code-block:: console
 
@@ -35,11 +35,11 @@ If we want to run **synchronous** FL experiment in parallel using MPI, we can ru
 
     ``mpiexec`` may need to specify additional argument to use CUDA: ``--mca opal_cuda_support 1``
 
-If we want to run **asynchronous** FL experiment in parallel using MPI, we can run the example using the following command. 
+If we want to run **asynchronous** FL experiment in parallel using MPI, we can run the example using the following command.
 
 .. code-block:: console
 
-    mpiexec -np 6 python ./mnist_mpi_async.py 
+    mpiexec -np 6 python ./mnist_mpi_async.py
 
 .. note::
 
@@ -53,8 +53,8 @@ As the package name suggests, in addition to general differential privacy techni
     mpiexec -np 6 python ./mnist_mpi_privacy.py --server ICEADMM
 
 
-We can also simulate PPFL using the gRPC communication protocol. The following command launchs five MPI processes, with one running the gRPC-based FL server and four running the gRPC-based FL clients.
+We can also simulate PPFL using the gRPC communication protocol. The following command launches five MPI processes, with one running the gRPC-based FL server and four running the gRPC-based FL clients.
 
 .. code-block:: console
 
-    mpiexec -np 5 python ./mnist_grpc.py 
+    mpiexec -np 5 python ./mnist_grpc.py

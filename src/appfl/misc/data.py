@@ -7,10 +7,10 @@ import torch
 import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
-from appfl.config import *
 from torch.utils import data
 from typing import List, Optional
 from .deprecation import deprecated
+
 
 class Dataset(data.Dataset):
     """
@@ -21,7 +21,7 @@ class Dataset(data.Dataset):
     An empty ``Dataset`` class is created if no argument is given (i.e., ``Dataset()``).
 
     :param data_input (`torch.FloatTensor`): optional data inputs
-    :param data_label (`torch.Tensor`): optional data ouputs (or labels)
+    :param data_label (`torch.Tensor`): optional data outputs (or labels)
     """
 
     def __init__(
@@ -40,12 +40,13 @@ class Dataset(data.Dataset):
         """This returns a sample point for given ``idx``."""
         return self.data_input[idx], self.data_label[idx]
 
+
 def plot_distribution(
-    num_clients: int, 
-    classes_samples: List[int], 
-    sample_matrix: np.ndarray, 
+    num_clients: int,
+    classes_samples: List[int],
+    sample_matrix: np.ndarray,
     output_dirname: Optional[str],
-    output_filename: Optional[str]
+    output_filename: Optional[str],
 ):
     """
     Visualize the data distribution among clients for different classes.
@@ -54,18 +55,34 @@ def plot_distribution(
     :param sample_matrix: the number of samples for each class for each client with shape (num_classes, num_clients)
     :param file_name: the filename to save the plot
     """
-    _, ax = plt.subplots(figsize=(20, num_clients/2+3))
+    _, ax = plt.subplots(figsize=(20, num_clients / 2 + 3))
 
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_visible(False)
+    ax.spines["left"].set_visible(False)
 
     colors = [
-        '#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c', 
-        '#98df8a', '#d62728', '#ff9896', '#9467bd', '#c5b0d5', 
-        '#8c564b', '#c49c94', '#e377c2', '#f7b6d2', '#7f7f7f', 
-        '#c7c7c7', '#bcbd22', '#dbdb8d', '#17becf', '#9edae5'
+        "#1f77b4",
+        "#aec7e8",
+        "#ff7f0e",
+        "#ffbb78",
+        "#2ca02c",
+        "#98df8a",
+        "#d62728",
+        "#ff9896",
+        "#9467bd",
+        "#c5b0d5",
+        "#8c564b",
+        "#c49c94",
+        "#e377c2",
+        "#f7b6d2",
+        "#7f7f7f",
+        "#c7c7c7",
+        "#bcbd22",
+        "#dbdb8d",
+        "#17becf",
+        "#9edae5",
     ]
 
     for i in range(len(classes_samples)):
@@ -81,8 +98,14 @@ def plot_distribution(
     ax.set_xticks([])
     ax.set_yticks([])
     output_dirname = "output" if output_dirname is None else output_dirname
-    output_filename = "data_distribution.pdf" if output_filename is None else output_filename
-    output_filename = f"{output_filename}.pdf" if not output_filename.endswith(".pdf") else output_filename
+    output_filename = (
+        "data_distribution.pdf" if output_filename is None else output_filename
+    )
+    output_filename = (
+        f"{output_filename}.pdf"
+        if not output_filename.endswith(".pdf")
+        else output_filename
+    )
     if not os.path.exists(output_dirname):
         pathlib.Path(output_dirname).mkdir(parents=True, exist_ok=True)
     unique = 1
@@ -93,8 +116,9 @@ def plot_distribution(
         unique += 1
     plt.savefig(os.path.join(output_dirname, unique_filename))
 
+
 def iid_partition(
-    train_dataset: data.Dataset, 
+    train_dataset: data.Dataset,
     num_clients: int,
 ) -> List[data.Dataset]:
     """
@@ -119,17 +143,18 @@ def iid_partition(
         )
     return train_dataset_partitioned
 
+
 def class_noniid_partition(
-    train_dataset: data.Dataset, 
-    num_clients: int, 
-    visualization: bool=False, 
-    output_dirname: Optional[str]=None, 
-    output_filename: Optional[str]=None,
-    seed: int=42, 
-    **kwargs
+    train_dataset: data.Dataset,
+    num_clients: int,
+    visualization: bool = False,
+    output_dirname: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    seed: int = 42,
+    **kwargs,
 ):
     """
-    Partition a `torch.utils.data.Dataset` into `num_clients` clients chunks in a 
+    Partition a `torch.utils.data.Dataset` into `num_clients` clients chunks in a
     non-IID manner by letting each client only have a subset of all classes.
     :param train_dataset: the training dataset
     :param num_clients: number of clients
@@ -141,8 +166,26 @@ def class_noniid_partition(
     """
     np.random.seed(seed)
     # training data for multiple clients
-    Cmin = {1: 10, 2: 7, 3: 6, 4: 5, 5: 5, 6: 4, 7: 4, 'none': 3}       # minimum sample classes for each client
-    Cmax = {1: 10, 2: 8, 3: 8, 4: 7, 5: 6, 6: 6, 7: 5, 'none': 5}       # maximum sample classes for each client
+    Cmin = {
+        1: 10,
+        2: 7,
+        3: 6,
+        4: 5,
+        5: 5,
+        6: 4,
+        7: 4,
+        "none": 3,
+    }  # minimum sample classes for each client
+    Cmax = {
+        1: 10,
+        2: 8,
+        3: 8,
+        4: 7,
+        5: 6,
+        6: 6,
+        7: 5,
+        "none": 5,
+    }  # maximum sample classes for each client
 
     # Split the dataset by label
     labels = []
@@ -156,27 +199,28 @@ def class_noniid_partition(
 
     # Obtain the way to partition the dataset
     while True:
-        class_partition = {}    # number of partitions for each class of CIFAR10
-        client_classes  = {}    # sample classes for different clients
+        class_partition = {}  # number of partitions for each class of CIFAR10
+        client_classes = {}  # sample classes for different clients
         for i in range(num_clients):
-            cmin = Cmin[num_clients] if num_clients in Cmin else Cmin['none']
-            cmax = Cmax[num_clients] if num_clients in Cmax else Cmax['none']
-            cnum = np.random.randint(cmin, cmax+1)
+            cmin = Cmin[num_clients] if num_clients in Cmin else Cmin["none"]
+            cmax = Cmax[num_clients] if num_clients in Cmax else Cmax["none"]
+            cnum = np.random.randint(cmin, cmax + 1)
             classes = np.random.permutation(range(10))[:cnum]
-            client_classes[i] = classes 
-            for cls in classes: 
+            client_classes[i] = classes
+            for cls in classes:
                 if cls in class_partition:
                     class_partition[cls] += 1
                 else:
                     class_partition[cls] = 1
-        if len(class_partition) == 10: break
-            
+        if len(class_partition) == 10:
+            break
+
     # Calculate how to partition the dataset
     partition_endpoints = {}
     for label in labels:
         total_size = len(label_indices[label])
 
-        # Partiton the samples from the same class to different lengths
+        # Partition the samples from the same class to different lengths
         partitions = class_partition[label]
         partition_lengths = np.abs(np.random.normal(10, 3, size=partitions))
 
@@ -188,7 +232,7 @@ def class_noniid_partition(
         endpoints = np.array(endpoints, dtype=np.int32)
         endpoints[-1] = total_size
         partition_endpoints[label] = endpoints
-    
+
     # Start dataset partition
     partition_pointer = {}
     for label in labels:
@@ -200,21 +244,29 @@ def class_noniid_partition(
         sample_indices = []
         client_class = client_classes[i]
         for cls in client_class:
-            start_idx = 0 if partition_pointer[cls] == 0 else partition_endpoints[cls][partition_pointer[cls]-1] # included
-            end_idx = partition_endpoints[cls][partition_pointer[cls]] # excluded
+            start_idx = (
+                0
+                if partition_pointer[cls] == 0
+                else partition_endpoints[cls][partition_pointer[cls] - 1]
+            )  # included
+            end_idx = partition_endpoints[cls][partition_pointer[cls]]  # excluded
             sample_indices.extend(label_indices[cls][start_idx:end_idx])
             partition_pointer[cls] += 1
-            client_dataset_info[i][cls] = end_idx - start_idx # record the number for different classes
+            client_dataset_info[i][cls] = (
+                end_idx - start_idx
+            )  # record the number for different classes
         client_datasets.append(sample_indices)
 
-    # Visualize the data distirbution among clients
+    # Visualize the data distribution among clients
     if visualization:
         classes_samples = [len(label_indices[label]) for label in labels]
         sample_matrix = np.zeros((len(classes_samples), num_clients))
         for i in range(num_clients):
             for cls in client_dataset_info[i]:
                 sample_matrix[cls][i] = client_dataset_info[i][cls]
-        plot_distribution(num_clients, classes_samples, sample_matrix, output_dirname, output_filename)
+        plot_distribution(
+            num_clients, classes_samples, sample_matrix, output_dirname, output_filename
+        )
 
     train_datasets = []
     for i in range(num_clients):
@@ -232,16 +284,17 @@ def class_noniid_partition(
         )
     return train_datasets
 
+
 def dirichlet_noniid_partition(
-    train_dataset: data.Dataset, 
-    num_clients: int, 
-    visualization: bool=False, 
-    output_dirname: Optional[str]=None,
-    output_filename: Optional[str]=None,
-    alpha1: int=8, 
-    alpha2: int=0.5, 
-    seed: int=42, 
-    **kwargs
+    train_dataset: data.Dataset,
+    num_clients: int,
+    visualization: bool = False,
+    output_dirname: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    alpha1: int = 8,
+    alpha2: int = 0.5,
+    seed: int = 42,
+    **kwargs,
 ):
     """
     Partition a `torch.utils.data.Dataset` into `num_clients` clients chunks
@@ -271,24 +324,36 @@ def dirichlet_noniid_partition(
     for label in labels:
         np.random.shuffle(label_indices[label])
 
-    p1 = [1 / num_clients for _ in range(num_clients)]      # prior distribution for each client's number of elements
+    p1 = [
+        1 / num_clients for _ in range(num_clients)
+    ]  # prior distribution for each client's number of elements
     p2 = [len(label_indices[label]) for label in labels]
-    p2 = [p / sum(p2) for p in p2]                          # prior distribution for each class's number of elements
+    p2 = [
+        p / sum(p2) for p in p2
+    ]  # prior distribution for each class's number of elements
 
     q1 = [alpha1 * i for i in p1]
     q2 = [alpha2 * i for i in p2]
 
-    weights = np.random.dirichlet(q1) # the total number of elements for each client
-    individuals = np.random.dirichlet(q2, num_clients) # the number of elements from each class for each client
+    weights = np.random.dirichlet(q1)  # the total number of elements for each client
+    individuals = np.random.dirichlet(
+        q2, num_clients
+    )  # the number of elements from each class for each client
 
     classes_samples = [len(label_indices[label]) for label in labels]
 
     normalized_portions = np.zeros(individuals.shape)
     for i in range(num_clients):
         for j in range(len(classes_samples)):
-            normalized_portions[i][j] = weights[i] * individuals[i][j] / np.dot(weights, individuals.transpose()[j])
+            normalized_portions[i][j] = (
+                weights[i]
+                * individuals[i][j]
+                / np.dot(weights, individuals.transpose()[j])
+            )
 
-    sample_matrix = np.multiply(np.array([classes_samples] * num_clients), normalized_portions).transpose()
+    sample_matrix = np.multiply(
+        np.array([classes_samples] * num_clients), normalized_portions
+    ).transpose()
 
     for i in range(len(classes_samples)):
         total = 0
@@ -298,7 +363,9 @@ def dirichlet_noniid_partition(
         sample_matrix[i][num_clients - 1] = classes_samples[i] - total
 
     if visualization:
-        plot_distribution(num_clients, classes_samples, sample_matrix, output_dirname, output_filename)
+        plot_distribution(
+            num_clients, classes_samples, sample_matrix, output_dirname, output_filename
+        )
 
     # number of elements from each class for each client
     num_elements = np.array(sample_matrix.transpose(), dtype=np.int32)
@@ -309,7 +376,7 @@ def dirichlet_noniid_partition(
         train_data_input = []
         train_data_label = []
         for j, label in enumerate(labels):
-            start = 0 if i == 0 else sum_elements[i-1][j]
+            start = 0 if i == 0 else sum_elements[i - 1][j]
             end = sum_elements[i][j]
             for idx in label_indices[label][start:end]:
                 train_data_input.append(train_dataset[idx][0].tolist())
@@ -322,14 +389,13 @@ def dirichlet_noniid_partition(
         )
     return train_datasets
 
+
 @deprecated(silent=True)
 def data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel):
-
     ## Check if "DataLoader" from PyTorch works.
     train_dataloader = data.DataLoader(train_datasets[0], batch_size=64, shuffle=False)
 
     for input, label in train_dataloader:
-
         assert input.shape[0] == label.shape[0]
         assert input.shape[1] == num_channel
         assert input.shape[2] == num_pixel
@@ -338,7 +404,6 @@ def data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel):
     test_dataloader = data.DataLoader(test_dataset, batch_size=64, shuffle=False)
 
     for input, label in test_dataloader:
-
         assert input.shape[0] == label.shape[0]
         assert input.shape[1] == num_channel
         assert input.shape[2] == num_pixel

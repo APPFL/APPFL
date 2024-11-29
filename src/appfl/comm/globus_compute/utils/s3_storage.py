@@ -10,40 +10,44 @@ from typing import Optional
 from botocore.exceptions import ClientError
 from appfl.misc.utils import dump_data_to_file, load_data_from_file, id_generator
 
+
 class LargeObjectWrapper(object):
     # 3 MB maximum size limit for direct upload
     MAX_SIZE_LIMIT = 3 * 1024 * 1024
+
     def __init__(self, data, name: str):
         self.data = data
-        self.name= name
-    
+        self.name = name
+
     @property
     def size(self):
         return sys.getsizeof(self.data)
-    
+
     @property
     def can_send_directly(self):
         return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
 
+
 class CloudStorage(object):
-    instc  = None
+    instc = None
+
     def __init__(self):
         raise RuntimeError("Call get_instance() instead")
-    
+
     @classmethod
     def get_instance(cls):
         if cls.instc is not None:
             return cls.instc
         else:
             raise RuntimeError("Please call CloudStorage.init(cfg) first")
-    
+
     @classmethod
     def init(
-        cls, 
-        s3_bucket: Optional[str]=None,
-        s3_creds_file: Optional[str]=None,
+        cls,
+        s3_bucket: Optional[str] = None,
+        s3_creds_file: Optional[str] = None,
         s3_tmp_dir: str = str(pathlib.Path.home() / ".appfl" / "s3_tmp_dir"),
-        logger = None
+        logger=None,
     ):
         if cls.instc is None:
             new_inst = cls.__new__(cls)
@@ -54,45 +58,44 @@ class CloudStorage(object):
                     reader = csv.reader(file)
                     keys = next(reader)
                     s3_kwargs = {
-                        'region_name': keys[0],
-                        'aws_access_key_id': keys[1],
-                        'aws_secret_access_key': keys[2]
-                    }     
-            new_inst.client = boto3.client(service_name='s3', **s3_kwargs)
-            new_inst.temp_dir= s3_tmp_dir
+                        "region_name": keys[0],
+                        "aws_access_key_id": keys[1],
+                        "aws_secret_access_key": keys[2],
+                    }
+            new_inst.client = boto3.client(service_name="s3", **s3_kwargs)
+            new_inst.temp_dir = s3_tmp_dir
             new_inst.logger = logger
             new_inst.session_id = id_generator() + str(time.time())
             new_inst.registered_obj = set()
             new_inst.uploaded_obj = {}
             cls.instc = new_inst
         return cls.instc
-    
+
     @staticmethod
     def is_cloud_storage_object(obj):
         """Check if the object corresponds to an object stored on the cloud (S3 bucket)"""
-        if type(obj) != dict:
+        if type(obj) is not dict:
             return False
-        if 's3' in obj:
+        if "s3" in obj:
             return True
         else:
             return False
-        
+
     @staticmethod
     def get_cloud_object_info(obj):
         """Obtain the storage information for an object stored on S3 bucket"""
-        file_name = obj['s3']['file_name']
-        object_name = obj['s3']['object_name'] if 'object_name' in obj['s3'] else None
-        object_url = obj['s3']['object_url'] if 'object_url' in obj['s3'] else None
+        file_name = obj["s3"]["file_name"]
+        object_name = obj["s3"]["object_name"] if "object_name" in obj["s3"] else None
+        object_url = obj["s3"]["object_url"] if "object_url" in obj["s3"] else None
         return file_name, object_name, object_url
 
-        
     def upload_file(
-        self, 
-        file_path: str, 
-        object_url: Optional[str] = None, 
-        object_name: Optional[str] = None, 
-        expiration: int = 3600, 
-        delete_local: bool = True
+        self,
+        file_path: str,
+        object_url: Optional[str] = None,
+        object_name: Optional[str] = None,
+        expiration: int = 3600,
+        delete_local: bool = True,
     ) -> dict:
         """
         Upload a local file to S3 directly via object_name or using the presigned url
@@ -103,24 +106,21 @@ class CloudStorage(object):
             expiration: expiration second for the returned presigned url
             delete_local: whether to delete the local file
         Output:
-            s3_obj: an object containing the following informaiton
+            s3_obj: an object containing the following information
                 - if uploaded directly: file name, presigned download url
                 - if uploaded via presigned url: file name, object name
         """
         # Upload the object using presigned url
         if object_url is not None:
             try:
-                with open(file_path, 'rb') as f:
+                with open(file_path, "rb") as f:
                     response = requests.put(object_url, data=f)
                 if delete_local:
                     os.remove(file_path)
-            except:
+            except:  # noqa E722
                 raise Exception("Error in uploading file using presigned url")
             s3_obj = {
-                's3': {
-                    'file_name': osp.basename(file_path),
-                    'object_name': object_name
-                }
+                "s3": {"file_name": osp.basename(file_path), "object_name": object_name}
             }
             self.uploaded_obj[object_name] = s3_obj
             return s3_obj
@@ -135,17 +135,14 @@ class CloudStorage(object):
             else:
                 print(f"Error occurs in uploading file {e}")
             raise Exception(f"Error in uploading file {file_path} to S3")
-        try: 
+        try:
             response = self.client.generate_presigned_url(
-                'get_object',
-                Params = {'Bucket': self.bucket, 'Key': object_name},
-                ExpiresIn = expiration
+                "get_object",
+                Params={"Bucket": self.bucket, "Key": object_name},
+                ExpiresIn=expiration,
             )
             s3_obj = {
-                's3': {
-                    'file_name': osp.basename(file_path),
-                    'object_url': response
-                }
+                "s3": {"file_name": osp.basename(file_path), "object_url": response}
             }
             self.uploaded_obj[object_name] = s3_obj
             return s3_obj
@@ -156,7 +153,9 @@ class CloudStorage(object):
                 print(f"Error occurs in generating presigned url {e}")
             raise
 
-    def download_file(self, file_path, object_name = None, object_url = None, delete_cloud = False):
+    def download_file(
+        self, file_path, object_name=None, object_url=None, delete_cloud=False
+    ):
         """
         Download an object from S3 bucket either using the object name (only possible with credentials)
         or using a presigned object url.
@@ -175,16 +174,18 @@ class CloudStorage(object):
                         with open(file_path, "wb") as file:
                             file.write(response.content)
                         if self.logger is not None:
-                            self.logger.info(f"Successfully download object using presigned url")
+                            self.logger.info(
+                                "Successfully download object using presigned url"
+                            )
                         else:
-                            print(f"Successfully download object using presigned url")
+                            print("Successfully download object using presigned url")
                     return
-                except:
-                    time.sleep(i+1)
+                except:  # noqa E722
+                    time.sleep(i + 1)
             if self.logger is not None:
-                self.logger.info(f"Error in downloading object using presigned url")
+                self.logger.info("Error in downloading object using presigned url")
             else:
-                print(f"Error in downloading object using presigned url")
+                print("Error in downloading object using presigned url")
             raise
         if object_name is not None:
             download_success = False
@@ -193,15 +194,17 @@ class CloudStorage(object):
                     self.client.download_file(self.bucket, object_name, file_path)
                     download_success = True
                     break
-                except:
-                    time.sleep(i+1)
+                except:  # noqa E722
+                    time.sleep(i + 1)
             if not download_success:
                 if self.logger is not None:
-                    self.logger.info(f"Error in downloading object {object_name} from S3")
+                    self.logger.info(
+                        f"Error in downloading object {object_name} from S3"
+                    )
                 else:
                     print(f"Error in downloading object {object_name} from S3")
                 raise
-            
+
             delete_success = False
             for i in range(REPEAT_TIMES):
                 try:
@@ -209,17 +212,25 @@ class CloudStorage(object):
                         self.client.delete_object(Bucket=self.bucket, Key=object_name)
                     delete_success = True
                     break
-                except:
-                    time.sleep(i+1)
+                except:  # noqa E722
+                    time.sleep(i + 1)
             if not delete_success:
                 if self.logger is not None:
-                    self.logger.info(f"Error in deleteing object {object_name} from S3")
+                    self.logger.info(f"Error in deleting object {object_name} from S3")
                 else:
-                    print(f"Error in deleteing object {object_name} from S3")
+                    print(f"Error in deleting object {object_name} from S3")
                 raise
 
     @classmethod
-    def upload_object(cls, data, object_name = None, object_url = None, ext = 'pt', temp_dir = None, register_for_clean = False):
+    def upload_object(
+        cls,
+        data,
+        object_name=None,
+        object_url=None,
+        ext="pt",
+        temp_dir=None,
+        register_for_clean=False,
+    ):
         """
         Upload a python object to S3 bucket by first saving the object into a file in the temp directory,
         and then uploading to S3 directly via object name (only with credentials) or via presigned url.
@@ -232,12 +243,12 @@ class CloudStorage(object):
             temp_dir: temporary directory for storing the saved object
             register_for_clean: if True, record the name of the object which will be cleaned in the cleanup function
         Outputs:
-            s3_obj: an object containing the following informaiton
+            s3_obj: an object containing the following information
                 - if uploaded directly: file name, presigned download url
                 - if uploaded via presigned url: file name, object name
         """
         if object_name is None:
-            assert type(data) == LargeObjectWrapper
+            assert type(data) is LargeObjectWrapper
             object_name = data.name
             data = data.data
         cs = cls.get_instance()
@@ -252,10 +263,10 @@ class CloudStorage(object):
         dump_data_to_file(data, file_path)
 
         file_size = osp.getsize(file_path)
-        size_metric = ['KB', 'MB', 'GB']
+        size_metric = ["KB", "MB", "GB"]
         for metric in size_metric:
             file_size *= 1e-3
-            if file_size < 1000 or metric == 'GB':
+            if file_size < 1000 or metric == "GB":
                 if cs.logger is not None:
                     cs.logger.info(f"Uploading model ({file_size:.2f} {metric}) to S3")
                 else:
@@ -266,9 +277,16 @@ class CloudStorage(object):
             cs.registered_obj.add(object_name)
 
         return cs.upload_file(file_path, object_url, object_name)
-    
+
     @classmethod
-    def download_object(cls, data_info: dict, temp_dir: str = None, to_device: str = "cpu", delete_cloud: bool = False, delete_local: bool = True):
+    def download_object(
+        cls,
+        data_info: dict,
+        temp_dir: str = None,
+        to_device: str = "cpu",
+        delete_cloud: bool = False,
+        delete_local: bool = True,
+    ):
         """
         Download a python object from S3 either using the object_name (only possible with credentials)
         or using the presigned url, save the object into the temporary directory, and load into python object.
@@ -292,39 +310,43 @@ class CloudStorage(object):
         cs.download_file(file_path, object_name, object_url, delete_cloud)
 
         file_size = osp.getsize(file_path)
-        size_metric = ['KB', 'MB', 'GB']
+        size_metric = ["KB", "MB", "GB"]
         for metric in size_metric:
             file_size *= 1e-3
-            if file_size < 1000 or metric == 'GB':
+            if file_size < 1000 or metric == "GB":
                 if cs.logger is not None:
-                    cs.logger.info(f"Downloaded model ({file_size:.2f} {metric}) from S3")
+                    cs.logger.info(
+                        f"Downloaded model ({file_size:.2f} {metric}) from S3"
+                    )
                 else:
                     print(f"Downloaded model ({file_size:.2f} {metric}) from S3")
                 break
 
         data = load_data_from_file(file_path, to_device)
-        
+
         if delete_local:
             try:
                 os.remove(file_path)
-            except:
+            except:  # noqa E722
                 pass
-        
+
         return data
-    
+
     @classmethod
     def presign_upload_object(cls, object_name: str, expiration: int = 3600):
         """Presign a url for uploading an object to S3 bucket"""
         cs = cls.get_instance()
         try:
             response = cs.client.generate_presigned_url(
-                'put_object',
-                Params={'Bucket': cs.bucket, 'Key': object_name},
-                ExpiresIn=expiration
+                "put_object",
+                Params={"Bucket": cs.bucket, "Key": object_name},
+                ExpiresIn=expiration,
             )
         except Exception as e:
             if cs.logger is not None:
-                cs.logger.info(f"Error in generating presigned url for uploading object {e}")
+                cs.logger.info(
+                    f"Error in generating presigned url for uploading object {e}"
+                )
             else:
                 print(f"Error in generating presigned url for uploading object {e}")
             raise

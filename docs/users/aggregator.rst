@@ -46,7 +46,7 @@ Available Aggregators
 
 All available aggregators are defined in the ``appfl.algorithm.aggregator`` module, including:
 
-- ``FedAvgAggregator``: [Synchronous] Federated Averaging (FedAvg) aggregator 
+- ``FedAvgAggregator``: [Synchronous] Federated Averaging (FedAvg) aggregator
 - ``FedAvgMAggregator``: [Synchronous] Federated Averaging with Momentum (FedAvgM) aggregator
 - ``FedYogiAggregator``: [Synchronous] Federated Yogi (FedYogi) aggregator
 - ``FedAdamAggregator``: [Synchronous] Federated Adam (FedAdam) aggregator

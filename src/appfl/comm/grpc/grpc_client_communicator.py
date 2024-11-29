@@ -1,17 +1,33 @@
 import grpc
 import json
-from .grpc_communicator_pb2 import *
-from .grpc_communicator_pb2_grpc import *
+from .grpc_communicator_pb2 import (
+    ClientHeader,
+    ConfigurationRequest,
+    GetGlobalModelRequest,
+    GetGlobalModelRespone,
+    UpdateGlobalModelRequest,
+    UpdateGlobalModelResponse,
+    CustomActionRequest,
+    ServerStatus,
+)
+from .grpc_communicator_pb2_grpc import GRPCCommunicatorStub
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
-from appfl.comm.grpc import proto_to_databuffer, serialize_model, deserialize_model, create_grpc_channel
+from appfl.comm.grpc import (
+    proto_to_databuffer,
+    serialize_model,
+    deserialize_model,
+    create_grpc_channel,
+)
+
 
 class GRPCClientCommunicator:
     """
     gRPC communicator for federated learning clients.
     """
+
     def __init__(
-        self, 
+        self,
         client_id: Union[str, int],
         *,
         server_uri: str,
@@ -25,7 +41,7 @@ class GRPCClientCommunicator:
     ):
         """
         Create a channel to the server and initialize the gRPC client stub.
-        
+
         :param client_id: A unique client ID.
         :param server_uri: The URI of the server to connect to.
         :param use_ssl: Whether to use SSL/TLS to authenticate the server and encrypt communicated data.
@@ -55,7 +71,7 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the federated learning configurations
         """
-        if '_client_id' in kwargs:
+        if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
             del kwargs["_client_id"]
         else:
@@ -70,14 +86,16 @@ class GRPCClientCommunicator:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
         return configuration
-        
-    def get_global_model(self, **kwargs) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
+
+    def get_global_model(
+        self, **kwargs
+    ) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
         """
         Get the global model from the server.
         :param kwargs: additional metadata to be sent to the server
         :return: the global model with additional metadata (if any)
         """
-        if '_client_id' in kwargs:
+        if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
             del kwargs["_client_id"]
         else:
@@ -87,7 +105,7 @@ class GRPCClientCommunicator:
             header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
         )
-        byte_received = b''
+        byte_received = b""
         for byte in self.stub.GetGlobalModel(request, timeout=3600):
             byte_received += byte.data_bytes
         response = GetGlobalModelRespone()
@@ -101,14 +119,16 @@ class GRPCClientCommunicator:
         else:
             return model, meta_data
 
-    def update_global_model(self, local_model: Union[Dict, OrderedDict, bytes], **kwargs) -> Tuple[Union[Dict, OrderedDict], Dict]:
+    def update_global_model(
+        self, local_model: Union[Dict, OrderedDict, bytes], **kwargs
+    ) -> Tuple[Union[Dict, OrderedDict], Dict]:
         """
         Send local model to FL server for global update, and return the new global model.
-        :param local_model: the local model to be sent to the server for gloabl aggregation
+        :param local_model: the local model to be sent to the server for global aggregation
         :param kwargs: additional metadata to be sent to the server
         :return: the updated global model with additional metadata. Specifically, `meta_data["status"]` is either "RUNNING" or "DONE".
         """
-        if '_client_id' in kwargs:
+        if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
             del kwargs["_client_id"]
         else:
@@ -117,14 +137,17 @@ class GRPCClientCommunicator:
         request = UpdateGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
             local_model=(
-                serialize_model(local_model) 
-                if not isinstance(local_model, bytes) 
+                serialize_model(local_model)
+                if not isinstance(local_model, bytes)
                 else local_model
             ),
             meta_data=meta_data,
         )
-        byte_received = b''
-        for byte in self.stub.UpdateGlobalModel(proto_to_databuffer(request, max_message_size=self.max_message_size), timeout=3600):
+        byte_received = b""
+        for byte in self.stub.UpdateGlobalModel(
+            proto_to_databuffer(request, max_message_size=self.max_message_size),
+            timeout=3600,
+        ):
             byte_received += byte.data_bytes
         response = UpdateGlobalModelResponse()
         response.ParseFromString(byte_received)
@@ -132,9 +155,11 @@ class GRPCClientCommunicator:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
         meta_data = json.loads(response.meta_data)
-        meta_data["status"] = "DONE" if response.header.status == ServerStatus.DONE else "RUNNING"
+        meta_data["status"] = (
+            "DONE" if response.header.status == ServerStatus.DONE else "RUNNING"
+        )
         return model, meta_data
-        
+
     def invoke_custom_action(self, action: str, **kwargs) -> Dict:
         """
         Invoke a custom action on the server.
@@ -142,7 +167,7 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the response from the server
         """
-        if '_client_id' in kwargs:
+        if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
             del kwargs["_client_id"]
         else:
@@ -161,5 +186,5 @@ class GRPCClientCommunicator:
         else:
             try:
                 return json.loads(response.results)
-            except:
+            except:  # noqa E722
                 return {}

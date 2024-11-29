@@ -22,7 +22,7 @@ Specifically, the current client agent has the following functionalities.
 
     class ClientAgent:
         def __init__(
-            self, 
+            self,
             client_agent_config: ClientAgentConfig = ClientAgentConfig()
         ) -> None:
             """
@@ -38,7 +38,7 @@ Specifically, the current client agent has the following functionalities.
             """
             Return a unique client id for server to distinguish clients.
             """
-        
+
         def get_sample_size(self) -> int:
             """
             Return the size of the local dataset.
@@ -52,12 +52,12 @@ Specifically, the current client agent has the following functionalities.
         def get_parameters(self) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
             """
             Return parameters for communication.
-            :return parameters: The parameters to be sent to the server, 
-                can be of type Dict, OrderedDict, bytes (if compressed), or 
-                Tuple[Union[Dict, OrderedDict, bytes], Dict] with optional 
+            :return parameters: The parameters to be sent to the server,
+                can be of type Dict, OrderedDict, bytes (if compressed), or
+                Tuple[Union[Dict, OrderedDict, bytes], Dict] with optional
                 metadata in Dict type.
             """
-        
+
         def load_parameters(self, params) -> None:
             """
             Load parameters from the server.
@@ -66,7 +66,7 @@ Specifically, the current client agent has the following functionalities.
 Configurations
 --------------
 
-As shown above, to create a client agent, you need to provide the configurations for the client agent. The configurations for the client agent are defined in the ``appfl.config.ClientAgentConfig`` class, which can be loaded from a YAML file. The following shows an example configuration YAML file for the client agent, 
+As shown above, to create a client agent, you need to provide the configurations for the client agent. The configurations for the client agent are defined in the ``appfl.config.ClientAgentConfig`` class, which can be loaded from a YAML file. The following shows an example configuration YAML file for the client agent,
 
 .. note::
 
@@ -77,8 +77,8 @@ As shown above, to create a client agent, you need to provide the configurations
     :caption: Client agent configuration YAML file for a specific client.
 
 
-The above configuration file contains serveral client-**specific** cnofigurations, such as the device to use and the way to load the private local dataset:
+The above configuration file contains several client-**specific** cnofigurations, such as the device to use and the way to load the private local dataset:
 
 - ``data_configs``: This is the most important component in the client configuration file. It contains the path in client's local machine to the file which defines how to load the local dataset (``dataset_path``), the name of the function in the file to load the dataset (``dataset_name``), and any keyword arguments if needed (``dataset_kwargs``).
 - ``train_configs``: This contains the device to use in training and some logging configurations.
-- ``comm_configs``: The client may also need to specify some comminucation settings in order to connect to the server. For example, if the experiment uses gRPC as the communication method, then the client needs to specify the ``server_uri``, ``max_message_size``, and ``use_ssl`` to establish the connection to the server.
+- ``comm_configs``: The client may also need to specify some communication settings in order to connect to the server. For example, if the experiment uses gRPC as the communication method, then the client needs to specify the ``server_uri``, ``max_message_size``, and ``use_ssl`` to establish the connection to the server.

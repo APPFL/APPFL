@@ -11,7 +11,7 @@ APPFL server agent acts on behalf of the federated learning server to fulfill va
 - Update the global model using the model parameters/gradients trained locally from the clients
 - Other tasks that the server agent needs to do to manage the federated learning process (e.g., record the sample size of each client)
 
-Specifically, the current server agent has the following functionalities. 
+Specifically, the current server agent has the following functionalities.
 
 .. note::
 
@@ -32,9 +32,9 @@ Specifically, the current server agent has the following functionalities.
             """
             Return the FL configurations that are shared among all clients.
             """
-        
+
         def global_update(
-            self, 
+            self,
             client_id: Union[int, str],
             local_model: Union[Dict, OrderedDict, bytes],
             blocking: bool = False,
@@ -43,32 +43,32 @@ Specifically, the current server agent has the following functionalities.
             """
             Update the global model using the local model from a client and return the updated global model.
             :param: `client_id`: A unique client id for server to distinguish clients, which can be obtained via `ClientAgent.get_id()`.
-            :param: `local_model`: The local model from a client, can be serailzed bytes.
+            :param: `local_model`: The local model from a client, can be serialized bytes.
             :param: `blocking`: The global model may not be immediately available for certain aggregation methods (e.g. any synchronous method).
-                Setting `blocking` to `True` will block the client until the global model is available. 
+                Setting `blocking` to `True` will block the client until the global model is available.
                 Otherwise, the method may return a `Future` object if the most up-to-date global model is not yet available.
             :return: The updated global model (as a Dict or OrderedDict), and optional metadata (as a Dict) if `blocking` is `True`.
                 Otherwise, return the `Future` object of the updated global model and optional metadata.
             """
 
         def get_parameters(
-            self, 
+            self,
             blocking: bool = False,
             **kwargs
         ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
             Return the global model to the clients.
             :param: `blocking`: The global model may not be immediately available (e.g. if the server wants to wait for all client
-                to send the `get_parameters` request before returning the global model for same model initialization). 
-                Setting `blocking` to `True` will block the client until the global model is available. 
+                to send the `get_parameters` request before returning the global model for same model initialization).
+                Setting `blocking` to `True` will block the client until the global model is available.
             :param: `kwargs`: Additional arguments for the method. Specifically,
                 - `init_model`: whether getting the initial model (which should be same among all clients, thus blocking)
                 - `serial_run`: set `True` if for serial simulation run, thus no blocking is needed.
                 - `globus_compute_run`: set `True` if for globus compute run, thus no blocking is needed.
             """
-            
+
         def set_sample_size(
-                self, 
+                self,
                 client_id: Union[int, str],
                 sample_size: int,
                 sync: bool = False,
@@ -79,9 +79,9 @@ Specifically, the current server agent has the following functionalities.
             :param: client_id: A unique client id for server to distinguish clients, which can be obtained via `ClientAgent.get_id()`.
             :param: sample_size: The size of the local dataset of a client.
             :param: sync: Whether to synchronize the sample size among all clients. If `True`, the method can return the relative weight of the client.
-            :param: blocking: Whether to block the client until the sample size of all clients is synchronized. 
+            :param: blocking: Whether to block the client until the sample size of all clients is synchronized.
                 If `True`, the method will return the relative weight of the client.
-                Otherwise, the method may return a `Future` object of the relative weight, which will be resolved 
+                Otherwise, the method may return a `Future` object of the relative weight, which will be resolved
                 when the sample size of all clients is synchronized.
             """
 
@@ -90,7 +90,7 @@ Specifically, the current server agent has the following functionalities.
             Indicate whether the training is finished.
             :param: Whether this is an internal check (e.g., for the server to check if the training is finished) or it is requested by the client.
             """
-        
+
         def server_terminated(self):
             """
             Indicate whether the server can be terminated from listening to the clients.
@@ -130,10 +130,10 @@ For client configurations that are shared among all clients, it is composed of t
         - ``use_dp``: Whether to use differential privacy.
         - ``epsilon``, ``clip_grad``, ``clip_value``, ``clip_norm``: Parameters used if differential privacy is enabled.
     - *Loss function*: To specify the loss function to use during local training, we provide two options:
-  
+
         - Loss function from ``torch``: By providing the name of the loss function available in `torch.nn` (e.g., ``CrossEntropyLoss``) in ``loss_fn`` and corresponding arguments in ``loss_fn_kwargs``, user can employ loss function available in PyTorch.
-        - Loss function defined in local file: User can define their own loss function by inheriting ``nn.Module`` and defining its ``forward()`` function. Then the user needs to privide the path to the defined loss function file in ``loss_fn_path``, and the class name of the defined loss function in ``loss_fn_name``.
-    - *Metric function*: To specify the metric function used during validation, user need to provide path to the file containing the metric function in ``metric_path`` and the name of the metric function in ``metric_name``. 
+        - Loss function defined in local file: User can define their own loss function by inheriting ``nn.Module`` and defining its ``forward()`` function. Then the user needs to provide the path to the defined loss function file in ``loss_fn_path``, and the class name of the defined loss function in ``loss_fn_name``.
+    - *Metric function*: To specify the metric function used during validation, user need to provide path to the file containing the metric function in ``metric_path`` and the name of the metric function in ``metric_name``.
     - *Dataloader settings*: While the server-side configuration does not contain any information about each client's local dataset, it can specify the configurations when converting the dataset to dataloader, such as the batch size and whether to shuffle.
 - ``model_configs``: This component contains the definition of the machine learning model used in the FL experiment. The model architecture should be defined as a ``torch.nn.Module`` in a local file on the server-side and then provides the following information:
 

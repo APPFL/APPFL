@@ -2,15 +2,21 @@ import copy
 import torch
 import logging
 import numpy as np
-from appfl.algorithm import *
-from appfl.misc.utils import *
+from appfl.algorithm import BaseServer
 from collections import OrderedDict
 from .grpc_communicator_old_pb2 import Job
 from torch.utils.data import DataLoader
+from appfl.misc.utils import (
+    create_custom_logger,
+    load_model,
+    validation,
+    save_model_iteration,
+    get_appfl_algorithm,
+)
+
 
 class APPFLgRPCServer:
     def __init__(self, cfg, model, loss_fn, test_dataset, num_clients, metric):
-
         self.logger1 = create_custom_logger(logging.getLogger(__name__), cfg)
         cfg["logginginfo"]["comm_size"] = 1
 
@@ -26,7 +32,7 @@ class APPFLgRPCServer:
         self.loss_fn = loss_fn
         self.metric = metric
         """ Loading Model """
-        if cfg.load_model == True:
+        if cfg.load_model:
             self.model = load_model(cfg)
         self.client_training_size = OrderedDict()
         self.client_training_size_received = OrderedDict()
@@ -38,7 +44,7 @@ class APPFLgRPCServer:
         self.client_learning_status = OrderedDict()
 
         self.dataloader = None
-        if self.cfg.validation == True and len(test_dataset) > 0:
+        if self.cfg.validation and len(test_dataset) > 0:
             self.dataloader = DataLoader(
                 test_dataset,
                 num_workers=0,
@@ -48,13 +54,16 @@ class APPFLgRPCServer:
         else:
             self.cfg.validation = False
 
-        self.fed_server: BaseServer = eval(self.cfg.fed.servername)(
-            self.client_weights,
-            self.model,
-            self.loss_fn,
-            self.num_clients,
-            self.device,
-            **self.cfg.fed.args,
+        self.fed_server: BaseServer = get_appfl_algorithm(
+            algorithm_name=self.cfg.fed.servername,
+            args=(
+                self.client_weights,
+                self.model,
+                self.loss_fn,
+                self.num_clients,
+                self.device,
+            ),
+            kwargs=self.cfg.fed.args,
         )
 
     """
@@ -134,14 +143,16 @@ class APPFLgRPCServer:
         )
         client_states_list = []
         for i in self.client_states:
-            if len(self.client_states[i]['dual']) == 0:
-                client_states_list.append(self.client_states[i]['primal'])
+            if len(self.client_states[i]["dual"]) == 0:
+                client_states_list.append(self.client_states[i]["primal"])
             else:
                 client_states_list.append(self.client_states[i])
         self.fed_server.update(client_states_list)
 
-        if self.cfg.validation == True:
-            test_loss, accuracy = validation(self.fed_server, self.dataloader, self.metric)
+        if self.cfg.validation:
+            test_loss, accuracy = validation(
+                self.fed_server, self.dataloader, self.metric
+            )
 
             if accuracy > self.best_accuracy:
                 self.best_accuracy = accuracy
@@ -155,7 +166,7 @@ class APPFLgRPCServer:
             or self.round_number == self.cfg.num_epochs
         ):
             """Saving model"""
-            if self.cfg.save_model == True:
+            if self.cfg.save_model:
                 save_model_iteration(self.round_number, self.model, self.cfg)
 
         self.round_number += 1

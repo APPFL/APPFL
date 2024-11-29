@@ -1,10 +1,11 @@
 """
 Python API for SZx
 """
+
 import sys
 import ctypes
 import numpy as np
-from ctypes.util import find_library
+
 
 class SZx:
     def __init__(self, szxpath=None):

@@ -20,7 +20,7 @@ class BaseAuthenticator:
 ```
 
 ## Naive Authenticator
-Currently, we provide the two authenticators, 
+Currently, we provide the two authenticators,
 - [`NaiveAuthenticator`](naive)
 - [`GlobusAuthenticator`](globus)
 
@@ -36,31 +36,31 @@ class NaiveAuthenticator(BaseAuthenticator):
         return {
             "auth_token": "appfl-naive-auth-token"
         }
-    
+
     def validate_auth_token(self, token: dict) -> bool:
         return token.get("auth_token") == "appfl-naive-auth-token"
 ```
 
 ## Globus Authenticator
-`GlobusAuthenticator` employs the Globus authentication service to use a certain Globus group as the secure federation. Namely, only clients within a server-specified Globus group can join the federated learning experiment s(server must be the admin/manager of the specified Globus group). 
+`GlobusAuthenticator` employs the Globus authentication service to use a certain Globus group as the secure federation. Namely, only clients within a server-specified Globus group can join the federated learning experiment s(server must be the admin/manager of the specified Globus group).
 
 ### Create Globus Group
 To create a secure Globus group for federated learning experiment:
-- The server needs to 
+- The server needs to
     - Login/Create a [Globus](https://www.globus.org/) account. (Highly recommended to use institutional login to associate yourself with your institutional email. If you do not find your institution in Globus, create a Globus ID using your institutional email.)
     - Go to the [Globus Group](https://app.globus.org/groups) service and click **Creat new group** button on the upper right. Fill out the group name and other information according to your preferences.
-    - Click the created group, click the **Members** tab, and click **Invite Others**. Then invite any client you want to include in the FL experiment by entering their institutional email. 
+    - Click the created group, click the **Members** tab, and click **Invite Others**. Then invite any client you want to include in the FL experiment by entering their institutional email.
     - Go back to the created group, and copy the **Group UUID**.
 - The client needs to
     - Login/Create a [Globus](https://www.globus.org/) account. (Again, better to use institutional login or institutional email.)
     - Accept the Globus group invitation.
 
 ### APPFL Globus Login
-To use the created Globus group as a secure federated, the FL server and all FL clients are required to do a *one-time* login to Globus for APPFL. The login is through a command `appfl-auth`, as shown in the following example. 
+To use the created Globus group as a secure federated, the FL server and all FL clients are required to do a *one-time* login to Globus for APPFL. The login is through a command `appfl-auth`, as shown in the following example.
 
-`appfl-auth` will first prompt to ask whether you want to login for FL server or FL client. Select 1 if you will take the server role for the FL experiment, and 2 if you will be one of the clients. You can login to different Globus accounts for FL server and FL client, if you need so. 
+`appfl-auth` will first prompt to ask whether you want to login for FL server or FL client. Select 1 if you will take the server role for the FL experiment, and 2 if you will be one of the clients. You can login to different Globus accounts for FL server and FL client, if you need so.
 
-When you need to login to your Globus account, you will be provided a web link where you can login to Globus and get an authentication code. Copy the code and enter it in the command line. 
+When you need to login to your Globus account, you will be provided a web link where you can login to Globus and get an authentication code. Copy the code and enter it in the command line.
 
 If you have already logged in as an FL server/client, you can either logout (Option 1), change to another account (Option 2), or do nothing (Option 3).
 
@@ -140,7 +140,7 @@ Note: Above contains all the information you need to know to secure you FL exper
 - How does the client obtain auth tokens for server validation (i.e. how does `get_auth_token()` work)?
 - How does the server validation client auth tokens (i.e. how does `validate_auth_token()` work)?
 
-The figure below shows the auth flow during the user login process. When a user wants to login as an FL server, then APPFL requires for the access to user's Globus Group Service and obtain the tokens if user logs in and allows the access. When a user wants to login as an FL client, then APPFL requires for the access to user's Identity Information and obtain tokens if use logs in and allows the access. All tokens are savely saved in a local SQLite token storage at the `~/.appfl` directory
+The figure below shows the auth flow during the user login process. When a user wants to login as an FL server, then APPFL requires for the access to user's Globus Group Service and obtain the tokens if user logs in and allows the access. When a user wants to login as an FL client, then APPFL requires for the access to user's Identity Information and obtain tokens if use logs in and allows the access. All tokens are safely saved in a local SQLite token storage at the `~/.appfl` directory
 
 <p align="center">
   <img src='../../../docs/_static/auth_flow.jpg' style="width: 60%; height: auto;"/>
@@ -149,6 +149,6 @@ The figure below shows the auth flow during the user login process. When a user 
 For the logged in FL client, `get_auth_token()` simply returns the token obtained tokens for user identity information. [It is save to transmit those access tokens as the usage of `GlobusAuthenticator` in gRPC communication requires a secure SSL channel, so all transmitted data are safely encrypted.]
 
 For the logged in FL server, `valiate_auth_token()` function takes three steps to validation the client identity:
-- Use the retrived Globus Group Service access token to get all the client IDs for all clients in the specified Globus group
+- Use the retrieved Globus Group Service access token to get all the client IDs for all clients in the specified Globus group
 - Take the Globus Identity access token provided by clients to get the client ID for that client
 - Check if the client ID belongs to the specified Globus group

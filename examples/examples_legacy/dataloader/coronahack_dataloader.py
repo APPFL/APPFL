@@ -6,20 +6,26 @@ import torch
 import numpy as np
 from appfl.misc.data import Dataset, data_sanity_check
 
+
 class Coronahack:
     def __init__(self, dir, pixel, is_train):
-
-        if is_train == True:
-            self.imgs_path = (dir + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/")
+        if is_train:
+            self.imgs_path = (
+                dir
+                + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"
+            )
         else:
-            self.imgs_path = (dir + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/")
+            self.imgs_path = (
+                dir
+                + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
+            )
 
         self.data = []
         with open(dir + "/Chest_xray_Corona_Metadata.csv", "r") as file:
             csvreader = csv.reader(file)
-            header = next(csvreader)
+            next(csvreader)
             for row in csvreader:
-                if is_train == True:
+                if is_train:
                     if row[3] == "TRAIN":
                         img_path = self.imgs_path + row[1]
                         class_name = row[2] + row[4] + row[5]
@@ -56,14 +62,20 @@ class Coronahack:
 
         return img_tensor, class_id
 
+
 def get_corona(args):
     if not args.non_processed:
-        dir = os.getcwd() + f"/datasets/PreprocessedData/Coronahack_Clients_{args.num_clients}"
+        dir = (
+            os.getcwd()
+            + f"/datasets/PreprocessedData/Coronahack_Clients_{args.num_clients}"
+        )
 
         # test data for a server
         with open("%s/all_test_data.json" % (dir)) as f:
             test_data_raw = json.load(f)
-        test_dataset = Dataset(torch.FloatTensor(test_data_raw["x"]), torch.tensor(test_data_raw["y"]))
+        test_dataset = Dataset(
+            torch.FloatTensor(test_data_raw["x"]), torch.tensor(test_data_raw["y"])
+        )
 
         # training data for multiple clients
         train_datasets = []
@@ -94,7 +106,9 @@ def get_corona(args):
 
         # training data for multiple clients
         train_data_raw = Coronahack(dir, args.num_pixel, is_train=True)
-        split_train_data_raw = np.array_split(range(len(train_data_raw)), args.num_clients)
+        split_train_data_raw = np.array_split(
+            range(len(train_data_raw)), args.num_clients
+        )
         train_datasets = []
         for i in range(args.num_clients):
             train_data_input = []
@@ -111,4 +125,3 @@ def get_corona(args):
             )
     data_sanity_check(train_datasets, test_dataset, args.num_channel, args.num_pixel)
     return train_datasets, test_dataset
-

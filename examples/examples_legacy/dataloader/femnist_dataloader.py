@@ -5,7 +5,8 @@ import torch
 from appfl.misc.data import Dataset
 
 # Please download and preprocess the FEMNIST data before calling this dataloader
-# Reference: https://github.com/APPFL/APPFL/tree/main/examples/datasets/RawData 
+# Reference: https://github.com/APPFL/APPFL/tree/main/examples/datasets/RawData
+
 
 def get_femnist(num_pixel, num_channel, pretrained):
     # test data for a server

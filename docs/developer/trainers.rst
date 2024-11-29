@@ -13,7 +13,7 @@ To add new trainers to ``APPFL``, you can create you own trainer class by inheri
 
 .. note::
 
-    - If you find certain input parameters for ``BaseTrainer`` for your own trainer is not needed (e.g., you want to hardcode the loss function), then simply leave it as it is with a ``None`` default value. 
+    - If you find certain input parameters for ``BaseTrainer`` for your own trainer is not needed (e.g., you want to hardcode the loss function), then simply leave it as it is with a ``None`` default value.
     - If you need to add any other input parameters to the trainer, simply provide them in the ``**kwargs``.
 
 .. code-block:: python
@@ -56,7 +56,7 @@ To add new trainers to ``APPFL``, you can create you own trainer class by inheri
 
         def train(self):
             pass
-        
+
         def load_parameters(self, params: Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Any]):
         """Load model parameters. You can define your own way to load the parameters by overriding this function."""
             self.model.load_state_dict(params)
@@ -66,7 +66,7 @@ You may add any configuration parameters into your trainer and access them using
 .. code-block:: yaml
 
     client_configs:
-        train_configs: 
+        train_configs:
             trainer: "YourOwnTrainer"
             your_config_param_1: ...
             your_config_param_2: ...

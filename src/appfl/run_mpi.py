@@ -10,14 +10,22 @@ import logging
 import numpy as np
 import torch.nn as nn
 from mpi4py import MPI
-from appfl.algorithm import *
 from omegaconf import DictConfig
 from typing import Any, Union, List
 from collections import OrderedDict
 from torch.utils.data import DataLoader
 from appfl.compressor import Compressor
 from appfl.comm.mpi import MpiSyncCommunicator
-from appfl.misc import validation, save_model_iteration, save_partial_model_iteration
+from appfl.misc.data import Dataset
+from appfl.misc.utils import (
+    validation,
+    save_model_iteration,
+    save_partial_model_iteration,
+    client_log,
+    create_custom_logger,
+    get_appfl_algorithm,
+)
+
 
 def run_server(
     cfg: DictConfig,
@@ -27,7 +35,7 @@ def run_server(
     num_clients: int,
     test_dataset: Dataset = Dataset(),
     dataset_name: str = "MNIST",
-    metric: Any = None
+    metric: Any = None,
 ):
     """
     run_server:
@@ -37,16 +45,18 @@ def run_server(
         cfg: the configuration for the FL experiment
         comm: MPI communicator
         model: neural network model to train
-        loss_fn: loss function 
+        loss_fn: loss function
         num_clients: the number of clients used in PPFL simulation
         test_dataset: optional testing data. If given, validation will run based on this data
         dataset_name: optional dataset name
         metric: evaluation metric function
     """
     device = "cpu"
-    communicator = MpiSyncCommunicator(comm, Compressor(cfg) if cfg.enable_compression else None)
+    communicator = MpiSyncCommunicator(
+        comm, Compressor(cfg) if cfg.enable_compression else None
+    )
 
-    ## log for a server 
+    ## log for a server
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
     cfg.logginginfo.comm_size = comm.Get_size()
@@ -55,10 +65,13 @@ def run_server(
     ## Using tensorboard to visualize the test loss
     if cfg.use_tensorboard:
         from tensorboardX import SummaryWriter
-        writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))
+
+        writer = SummaryWriter(
+            comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients)
+        )
 
     ## Run validation if test data is given or the configuration is enabled.
-    if cfg.validation == True and len(test_dataset) > 0:
+    if cfg.validation and len(test_dataset) > 0:
         test_dataloader = DataLoader(
             test_dataset,
             num_workers=cfg.num_workers,
@@ -80,12 +93,22 @@ def run_server(
         temp = {}
         for cid, num in num_data[rank].items():
             weights.append(num / total_num_data)
-            temp[cid] = num/total_num_data
+            temp[cid] = num / total_num_data
         client_weight.append(temp)
     communicator.scatter(client_weight, 0)
 
     ## Synchronous federated learning server
-    server = eval(cfg.fed.servername)(weights, copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args)
+    server = get_appfl_algorithm(
+        algorithm_name=cfg.fed.servername,
+        args=(
+            weights,
+            copy.deepcopy(model),
+            loss_fn,
+            num_clients,
+            device,
+        ),
+        kwargs=cfg.fed.args,
+    )
 
     start_time = time.time()
     test_loss, test_accuracy, best_accuracy = 0.0, 0.0, 0.0
@@ -96,15 +119,17 @@ def run_server(
         server.model.to("cpu")
         global_model = server.model.state_dict()
         communicator.broadcast_global_model(global_model)
-        local_models = communicator.recv_all_local_models_from_clients(num_clients, model_copy)
+        local_models = communicator.recv_all_local_models_from_clients(
+            num_clients, model_copy
+        )
         cfg.logginginfo.LocalUpdate_time = time.time() - per_iter_start
         ## Global update
         global_update_start = time.time()
         server.update(local_models)
         cfg.logginginfo.GlobalUpdate_time = time.time() - global_update_start
-        ## Valiation
+        ## Validation
         validation_start = time.time()
-        if cfg.validation == True:
+        if cfg.validation:
             test_loss, test_accuracy = validation(server, test_dataloader, metric)
             if cfg.use_tensorboard:
                 writer.add_scalar("server_test_accuracy", test_accuracy, t)
@@ -120,30 +145,30 @@ def run_server(
         server.logging_iteration(cfg, logger, t)
         ## Saving model
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
-            if cfg.save_model == True:
-                if cfg.personalization == True:
+            if cfg.save_model:
+                if cfg.personalization:
                     save_partial_model_iteration(t + 1, server.model, cfg)
                 else:
                     save_model_iteration(t + 1, server.model, cfg)
-        if np.isnan(test_loss) == True:
+        if np.isnan(test_loss):
             break
 
     ## Notify the clients about the end of the learning
-    communicator.broadcast_global_model(args={'done': True})
+    communicator.broadcast_global_model(args={"done": True})
 
-    ## Summary 
+    ## Summary
     server.logging_summary(cfg, logger)
 
 
 def run_client(
     cfg: DictConfig,
     comm: MPI.Comm,
-    model: Union[nn.Module,List],
+    model: Union[nn.Module, List],
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
-    metric: Any = None
+    metric: Any = None,
 ):
     """
     run_client:
@@ -153,12 +178,14 @@ def run_client(
         cfg: the configuration for the FL experiment
         comm: MPI communicator
         model: neural network model to train
-        loss_fn: loss function 
+        loss_fn: loss function
         train_data: training data
         test_data: validation data
         metric: evaluation metric function
     """
-    communicator = MpiSyncCommunicator(comm, Compressor(cfg) if cfg.enable_compression else None)
+    communicator = MpiSyncCommunicator(
+        comm, Compressor(cfg) if cfg.enable_compression else None
+    )
     comm_size = comm.Get_size()
     comm_rank = comm.Get_rank()
     num_client_groups = np.array_split(range(num_clients), comm_size - 1)
@@ -179,11 +206,11 @@ def run_client(
     batchsize = {}
     for cid in num_client_groups[comm_rank - 1]:
         batchsize[cid] = cfg.train_data_batch_size
-        if cfg.batch_training == False:
+        if not cfg.batch_training:
             batchsize[cid] = len(train_data[cid])
 
     ## Run validation if test data is given or the configuration is enabled.
-    if cfg.validation == True and len(test_data) > 0:
+    if cfg.validation and len(test_data) > 0:
         test_dataloader = DataLoader(
             test_data,
             num_workers=cfg.num_workers,
@@ -197,47 +224,51 @@ def run_client(
     if "cuda" in cfg.device:
         ## Check available GPUs if CUDA is used
         num_gpu = torch.cuda.device_count()
-        client_per_gpu = math.ceil(num_clients/num_gpu)
+        client_per_gpu = math.ceil(num_clients / num_gpu)
 
     clients = []
     for cid in num_client_groups[comm_rank - 1]:
         if "cuda" in cfg.device:
-            gpuindex = int(math.floor(cid/client_per_gpu))
+            gpuindex = int(math.floor(cid / client_per_gpu))
             cfg.device = f"cuda:{gpuindex}"
-        clients.append(eval(cfg.fed.clientname)(
-            cid,
-            weights[cid],
-            # deepcopy the common model if there is no personalization, else use the the clients' own model
-            copy.deepcopy(model) if not cfg.personalization else model[cid],
-            loss_fn,
-            DataLoader(
-                train_data[cid],
-                num_workers=cfg.num_workers,
-                batch_size=batchsize[cid],
-                shuffle=cfg.train_data_shuffle,
-                pin_memory=True,
-            ),
-            copy.deepcopy(cfg),
-            outfile[cid],
-            test_dataloader,
-            metric,
-            **cfg.fed.args,
+        clients.append(
+            get_appfl_algorithm(
+                algorithm_name=cfg.fed.clientname,
+                args=(
+                    cid,
+                    weights[cid],
+                    copy.deepcopy(model) if not cfg.personalization else model[cid],
+                    loss_fn,
+                    DataLoader(
+                        train_data[cid],
+                        num_workers=cfg.num_workers,
+                        batch_size=batchsize[cid],
+                        shuffle=cfg.train_data_shuffle,
+                        pin_memory=True,
+                    ),
+                    cfg,
+                    outfile[cid],
+                    test_dataloader,
+                    metric,
+                ),
+                kwargs=cfg.fed.args,
+            )
         )
-    )
 
-    while True: 
+    while True:
         ## Receive global model
         model = communicator.recv_global_model_from_server(source=0)
         if isinstance(model, tuple):
-            model, done = model[0], model[1]['done']
+            model, done = model[0], model[1]["done"]
         else:
             done = False
-        if done: break
+        if done:
+            break
         ## Delete personalized layers
         if cfg.personalization:
             for key in cfg.p_layers:
                 del model[key]
-        ## Start local update   
+        ## Start local update
         local_models = OrderedDict()
         for client in clients:
             cid = client.id

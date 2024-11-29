@@ -1,14 +1,17 @@
 import copy
 import torch
 import logging
-from torch.optim import *
-from appfl.misc import deprecated
 from collections import OrderedDict
 from .ppfl_base import PPFLServer, PPFLClient
+from appfl.misc.deprecation import deprecated
+from appfl.misc.utils import get_torch_optimizer
 
 log = logging.getLogger(__name__)
 
-@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead.")
+
+@deprecated(
+    "Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead."
+)
 class IIADMMServer(PPFLServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         super(IIADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
@@ -23,7 +26,6 @@ class IIADMMServer(PPFLServer):
                 self.dual_states[i][name] = torch.zeros_like(param.data)
 
     def update(self, local_states: OrderedDict):
-
         """Inputs for the global model update"""
         for name, param in self.model.named_parameters():
             self.global_state[name] = param.data.cpu()
@@ -39,7 +41,6 @@ class IIADMMServer(PPFLServer):
         for name, param in self.model.named_parameters():
             tmp = 0.0
             for i in range(self.num_clients):
-
                 ## change device
                 self.primal_states[i][name] = self.primal_states[i][name]
 
@@ -84,7 +85,10 @@ class IIADMMServer(PPFLServer):
     def logging_summary(self, cfg, logger):
         super(IIADMMServer, self).log_summary(cfg, logger)
 
-@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.trainer instead.")
+
+@deprecated(
+    "Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.trainer instead."
+)
 class IIADMMClient(PPFLClient):
     def __init__(
         self,
@@ -97,9 +101,19 @@ class IIADMMClient(PPFLClient):
         outfile,
         test_dataloader,
         metric,
-        **kwargs
+        **kwargs,
     ):
-        super(IIADMMClient, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
+        super(IIADMMClient, self).__init__(
+            id,
+            weight,
+            model,
+            loss_fn,
+            dataloader,
+            cfg,
+            outfile,
+            test_dataloader,
+            metric,
+        )
         self.__dict__.update(kwargs)
 
         """
@@ -114,17 +128,20 @@ class IIADMMClient(PPFLClient):
         self.is_first_iter = 1
 
     def update(self):
-
         self.model.train()
         self.model.to(self.cfg.device)
 
-        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        optimizer = get_torch_optimizer(
+            optimizer_name=self.optim,
+            model_parameters=self.model.parameters(),
+            **self.optim_args,
+        )
 
         """ Inputs for the local model update """
         global_state = copy.deepcopy(self.model.state_dict())
 
         """ Adaptive Penalty (Residual Balancing) """
-        if self.residual_balancing.res_on == True:
+        if self.residual_balancing.res_on:
             prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
             dual_res = super(IIADMMClient, self).dual_residual_at_client()
             super(IIADMMClient, self).residual_balancing(prim_res, dual_res)
@@ -132,13 +149,12 @@ class IIADMMClient(PPFLClient):
         """ Multiple local update """
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
-
                 for name, param in self.model.named_parameters():
                     param.data = self.primal_state[name].to(self.cfg.device)
 
                 if (
-                    self.residual_balancing.res_on == True
-                    and self.residual_balancing.res_on_every_update == True
+                    self.residual_balancing.res_on
+                    and self.residual_balancing.res_on_every_update
                 ):
                     prim_res = super(IIADMMClient, self).primal_residual_at_client(
                         global_state
@@ -149,7 +165,7 @@ class IIADMMClient(PPFLClient):
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
 
-                if self.accum_grad == False:
+                if not self.accum_grad:
                     optimizer.zero_grad()
 
                 output = self.model(data)
@@ -166,8 +182,7 @@ class IIADMMClient(PPFLClient):
 
                 ## STEP: Update primal
                 coefficient = 1
-                if self.coeff_grad == True:
-
+                if self.coeff_grad:
                     coefficient = (
                         self.weight * len(target) / len(self.dataloader.dataset)
                     )
@@ -201,7 +216,6 @@ class IIADMMClient(PPFLClient):
         return self.local_state
 
     def iiadmm_step(self, coefficient, global_state, optimizer):
-
         momentum = 0
         if "momentum" in self.optim_args.keys():
             momentum = self.optim_args.momentum
@@ -214,7 +228,6 @@ class IIADMMClient(PPFLClient):
         nesterov = False
 
         for name, param in self.model.named_parameters():
-
             grad = copy.deepcopy(param.grad * coefficient)
 
             if weight_decay != 0:

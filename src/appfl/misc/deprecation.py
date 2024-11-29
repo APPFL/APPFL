@@ -1,12 +1,14 @@
 import warnings
 import functools
 from packaging import version
-appfl_version = '1.0.5'
+
+appfl_version = "1.0.5"
 
 # A set to keep track of warnings that have already been shown
 _emitted_warnings = set()
 
-def deprecated(reason='', silent=False, removal_version='2.0.0'):
+
+def deprecated(reason="", silent=False, removal_version="2.0.0"):
     """
     This is a decorator which can be used to mark functions and classes
     as deprecated. It will result in a warning being emitted the first time
@@ -14,6 +16,7 @@ def deprecated(reason='', silent=False, removal_version='2.0.0'):
     appfl version is greater than or equal to the removal_version, an
     error will be raised.
     """
+
     def decorator(obj):
         current_version = version.parse(appfl_version)
         removal_ver = version.parse(removal_version)
@@ -34,7 +37,7 @@ def deprecated(reason='', silent=False, removal_version='2.0.0'):
                     warnings.warn(
                         f"{obj.__name__} is deprecated and will be removed in {removal_version}: {reason}",
                         category=DeprecationWarning,
-                        stacklevel=2
+                        stacklevel=2,
                     )
                     _emitted_warnings.add(obj.__name__)
                 orig_init(self, *args, **kwargs)
@@ -49,11 +52,14 @@ def deprecated(reason='', silent=False, removal_version='2.0.0'):
                     warnings.warn(
                         f"{obj.__name__} is deprecated: {reason}",
                         category=DeprecationWarning,
-                        stacklevel=2
+                        stacklevel=2,
                     )
                     _emitted_warnings.add(obj.__name__)
                 return obj(*args, **kwargs)
+
             return wrapper
+
     return decorator
 
-warnings.simplefilter('always', DeprecationWarning)
+
+warnings.simplefilter("always", DeprecationWarning)

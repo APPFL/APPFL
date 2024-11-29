@@ -1,8 +1,8 @@
 import time
 import torch
-from appfl.config import *
-from appfl.misc.data import *
-from models.cnn import *
+from omegaconf import OmegaConf
+from appfl.config import Config
+from models.cnn import CNN
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
 from mpi4py import MPI
@@ -44,7 +44,14 @@ def main():
         else:
             # Give server some time to launch.
             time.sleep(5)
-            grpc_client.run_client(cfg, comm_rank-1, model, loss_fn, train_datasets[comm_rank - 1], comm_rank)
+            grpc_client.run_client(
+                cfg,
+                comm_rank - 1,
+                model,
+                loss_fn,
+                train_datasets[comm_rank - 1],
+                comm_rank,
+            )
         print("------DONE------", comm_rank)
     else:
         # Just launch a server.

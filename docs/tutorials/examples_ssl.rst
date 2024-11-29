@@ -21,12 +21,12 @@ In this example, we show how to enable SSL encrypted gRPC communication between 
 
     $ appfl-setup-ssl
 
-    Enter the absolute path of the directory where the SSL certificate and private key will be stored, press Enter to use the default directory /home/.appfl/ssl: 
-    Enter Country Code, press Enter to use default 'US': 
-    Enter State, press Enter to use default 'Illinois': 
-    Enter Organization (O), press Enter to use default 'APPFL': 
-    Enter DNS (DNS.1), press Enter to use default 'localhost': 
-    Enter IP, press Enter to use default '127.0.0.1': 
+    Enter the absolute path of the directory where the SSL certificate and private key will be stored, press Enter to use the default directory /home/.appfl/ssl:
+    Enter Country Code, press Enter to use default 'US':
+    Enter State, press Enter to use default 'Illinois':
+    Enter Organization (O), press Enter to use default 'APPFL':
+    Enter DNS (DNS.1), press Enter to use default 'localhost':
+    Enter IP, press Enter to use default '127.0.0.1':
     Certificate request self-signature ok
     subject=C=US, ST=Illinois, O=APPFL, CN=localhost
     =============================================================================

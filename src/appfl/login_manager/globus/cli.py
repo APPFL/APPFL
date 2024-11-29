@@ -1,5 +1,6 @@
 from appfl.login_manager.globus import GlobusLoginManager
 
+
 def auth():
     """Command line interface for authenticating with Globus Auth."""
     prompt = "Please select whether you are authenticating for the federated learning server or client (Enter 1 or 2)"
@@ -15,10 +16,7 @@ def auth():
             f"{'-'*len(prompt)}\n"
             break
         else:
-            print(
-                "Invalid input, please try again\n"
-                f"{'-'*len(prompt)}\n"
-            )
+            print("Invalid input, please try again\n" f"{'-'*len(prompt)}\n")
     is_fl_server = mode == "1"
     login_manager = GlobusLoginManager(is_fl_server=is_fl_server)
     if login_manager.ensure_logged_in():
@@ -31,7 +29,7 @@ def auth():
             "3. Exit\n"
             f"{'-'*len(prompt)}\n"
         )
-        if not action in ["1", "2", "3"]:
+        if action not in ["1", "2", "3"]:
             print("Invalid input, exiting...")
             return
         if action == "1":

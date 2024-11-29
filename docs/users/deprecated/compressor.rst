@@ -36,7 +36,7 @@ User can create a compressor instance by providing a `Config` object and setting
     config.lossless_compressor = "blosc"    # ["blosc", "zstd", "gzip", "zlib", "lzma"]
     config.error_bounding_mode = "REL"      # ["ABS", "REL"]
     config.error_bound = 1e-3
-    
+
     # create the compressor instance
     compressor = Compressor(config)
 

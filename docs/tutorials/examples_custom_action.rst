@@ -1,7 +1,7 @@
 Example: Add a Custom Action
 ============================
 
-In ``APPFL``, the server supports several actions such as getting general client configurations, getting the global model parameters, and updating the global model parameters (i.e., federated training). However, in some cases, you may want to add a custom action to the server, such as fedearated evaluation. In this example, we show how to add a custom action to the server to generate a data readiness report for all the clients local datasets.    
+In ``APPFL``, the server supports several actions such as getting general client configurations, getting the global model parameters, and updating the global model parameters (i.e., federated training). However, in some cases, you may want to add a custom action to the server, such as fedearated evaluation. In this example, we show how to add a custom action to the server to generate a data readiness report for all the clients local datasets.
 
 .. _client-side-implementation:
 
@@ -10,7 +10,7 @@ Client Side Implementation
 
 In this example, we focus on the client-driven communication pattern (MPI and gRPC), where the clients sends requests to the server for any actions they want to perform. In this case, the client-side can simply define a function to generate the data readiness report for its local dataset, and then send a request to the server to generate the report for all the clients. The server handles the action synchronously, meaning it waits to receive requests from all clients before proceeding with the generation of the aggregated readiness report.
 
-However, as the ``APPFL`` defines client agent ``appfl.agent.ClientAgent`` to act on behalf of the client, we highly recommend to define the custom action within the client agent either by extending the ``appfl.agent.ClientAgent`` or by adding a new method to the existing ``appfl.agent.ClientAgent``. In this example, we create a new method for the existing client to generate the data readiness report. 
+However, as the ``APPFL`` defines client agent ``appfl.agent.ClientAgent`` to act on behalf of the client, we highly recommend to define the custom action within the client agent either by extending the ``appfl.agent.ClientAgent`` or by adding a new method to the existing ``appfl.agent.ClientAgent``. In this example, we create a new method for the existing client to generate the data readiness report.
 
 .. note::
     If you think your custom action is useful for the community, please consider define it within the ``appfl.client.ClientAgent`` directly and contribute it to the ``APPFL`` framework by creating a pull request.
@@ -79,7 +79,7 @@ User needs to update the ``APPFL`` source code's MPI server communicator at ``ap
             if not hasattr(self, "_dr_metrics_lock"):
                 self._dr_metrics = {}
                 self._dr_metrics_client_ids = set()
-                self._dr_metrics_lock = threading.Lock()                
+                self._dr_metrics_lock = threading.Lock()
             with self._dr_metrics_lock:
                 self._dr_metrics_client_ids.add(client_id)
                 for k, v in meta_data.items():

@@ -1,8 +1,11 @@
 import torch
-from appfl.misc import deprecated
+from appfl.misc.deprecation import deprecated
 from .server_federated import FedServer
 
-@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead.")
+
+@deprecated(
+    "Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead."
+)
 class ServerFedYogi(FedServer):
     def compute_step(self):
         super(ServerFedYogi, self).compute_pseudo_gradient()
@@ -24,8 +27,12 @@ class ServerFedYogi(FedServer):
         logger.info("client_learning_rate = %s " % (cfg.fed.args.optim_args.lr))
         logger.info("server_learning_rate = %s " % (cfg.fed.args.server_learning_rate))
         logger.info("server_adapt_param = %s " % (cfg.fed.args.server_adapt_param))
-        logger.info("server_momentum_param_1 = %s " % (cfg.fed.args.server_momentum_param_1))
-        logger.info("server_momentum_param_2 = %s " % (cfg.fed.args.server_momentum_param_2))
+        logger.info(
+            "server_momentum_param_1 = %s " % (cfg.fed.args.server_momentum_param_1)
+        )
+        logger.info(
+            "server_momentum_param_2 = %s " % (cfg.fed.args.server_momentum_param_2)
+        )
         if cfg.summary_file != "":
             with open(cfg.summary_file, "a") as f:
                 f.write(

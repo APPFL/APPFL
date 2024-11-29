@@ -45,7 +45,7 @@ client_configs:
       num_channel: 1
       num_classes: 10
       num_pixel: 28
-  
+
   comm_configs:
     compressor_configs:
       enable_compression: False

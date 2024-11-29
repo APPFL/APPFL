@@ -1,14 +1,17 @@
 import copy
 import torch
 import logging
-from torch.optim import *
-from appfl.misc import deprecated
 from collections import OrderedDict
 from .ppfl_base import PPFLServer, PPFLClient
+from appfl.misc.deprecation import deprecated
+from appfl.misc.utils import get_torch_optimizer
 
 log = logging.getLogger(__name__)
 
-@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead.")
+
+@deprecated(
+    "Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead."
+)
 class ICEADMMServer(PPFLServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
         super(ICEADMMServer, self).__init__(
@@ -18,7 +21,6 @@ class ICEADMMServer(PPFLServer):
         self.is_first_iter = 1
 
     def update(self, local_states: OrderedDict):
-
         """Inputs for the global model update"""
         self.global_state = copy.deepcopy(self.model.state_dict())
         super(ICEADMMServer, self).primal_recover_from_local_states(local_states)
@@ -75,7 +77,10 @@ class ICEADMMServer(PPFLServer):
     def logging_summary(self, cfg, logger):
         super(ICEADMMServer, self).log_summary(cfg, logger)
 
-@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.trainer instead.")
+
+@deprecated(
+    "Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.trainer instead."
+)
 class ICEADMMClient(PPFLClient):
     def __init__(
         self,
@@ -88,12 +93,22 @@ class ICEADMMClient(PPFLClient):
         outfile,
         test_dataloader,
         metric,
-        **kwargs
+        **kwargs,
     ):
-        super(ICEADMMClient, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
+        super(ICEADMMClient, self).__init__(
+            id,
+            weight,
+            model,
+            loss_fn,
+            dataloader,
+            cfg,
+            outfile,
+            test_dataloader,
+            metric,
+        )
         self.__dict__.update(kwargs)
 
-        """ 
+        """
         At initial, (1) primal_state = global_state, (2) dual_state = 0
         """
         self.model.to(self.cfg.device)
@@ -106,17 +121,20 @@ class ICEADMMClient(PPFLClient):
         self.is_first_iter = 1
 
     def update(self):
-
         self.model.train()
         self.model.to(self.cfg.device)
 
-        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        optimizer = get_torch_optimizer(
+            optimizer_name=self.optim,
+            model_parameters=self.model.parameters(),
+            **self.optim_args,
+        )
 
         """ Inputs for the local model update """
         global_state = copy.deepcopy(self.model.state_dict())
 
         """ Adaptive Penalty (Residual Balancing) """
-        if self.residual_balancing.res_on == True:
+        if self.residual_balancing.res_on:
             prim_res = super(ICEADMMClient, self).primal_residual_at_client(
                 global_state
             )
@@ -126,13 +144,12 @@ class ICEADMMClient(PPFLClient):
         """ Multiple local update """
         for i in range(self.num_local_epochs):
             for data, target in self.dataloader:
-
                 for name, param in self.model.named_parameters():
                     param.data = self.primal_state[name].to(self.cfg.device)
 
                 if (
-                    self.residual_balancing.res_on == True
-                    and self.residual_balancing.res_on_every_update == True
+                    self.residual_balancing.res_on
+                    and self.residual_balancing.res_on_every_update
                 ):
                     prim_res = super(ICEADMMClient, self).primal_residual_at_client(
                         global_state
@@ -143,7 +160,7 @@ class ICEADMMClient(PPFLClient):
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
 
-                if self.accum_grad == False:
+                if not self.accum_grad:
                     optimizer.zero_grad()
 
                 output = self.model(data)
@@ -159,7 +176,7 @@ class ICEADMMClient(PPFLClient):
 
                 ## STEP: Update primal and dual
                 coefficient = 1
-                if self.coeff_grad == True:
+                if self.coeff_grad:
                     coefficient = (
                         self.weight * len(target) / len(self.dataloader.dataset)
                     )

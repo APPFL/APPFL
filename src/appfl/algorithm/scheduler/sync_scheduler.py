@@ -5,12 +5,10 @@ from omegaconf import DictConfig
 from appfl.algorithm.scheduler import BaseScheduler
 from appfl.algorithm.aggregator import BaseAggregator
 
+
 class SyncScheduler(BaseScheduler):
     def __init__(
-        self, 
-        scheduler_configs: DictConfig, 
-        aggregator: BaseAggregator,
-        logger: Any
+        self, scheduler_configs: DictConfig, aggregator: BaseAggregator, logger: Any
     ):
         super().__init__(scheduler_configs, aggregator, logger)
         self.local_models = {}
@@ -20,7 +18,12 @@ class SyncScheduler(BaseScheduler):
         self._num_global_epochs = 0
         self._access_lock = threading.Lock()
 
-    def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Future:
+    def schedule(
+        self,
+        client_id: Union[int, str],
+        local_model: Union[Dict, OrderedDict],
+        **kwargs,
+    ) -> Future:
         """
         Schedule a synchronous global aggregation for the local model from a client.
         The method will return a future object for the aggregated model, which will
@@ -40,16 +43,17 @@ class SyncScheduler(BaseScheduler):
             self.future[client_id] = future
             if len(self.local_models) == self.num_clients:
                 aggregated_model = self.aggregator.aggregate(
-                    self.local_models,
-                    **self.aggregation_kwargs
+                    self.local_models, **self.aggregation_kwargs
                 )
                 while self.future:
                     client_id, future = self.future.popitem()
-                    future.set_result(self._parse_aggregated_model(aggregated_model, client_id))
+                    future.set_result(
+                        self._parse_aggregated_model(aggregated_model, client_id)
+                    )
                 self.local_models.clear()
                 self._num_global_epochs += 1
             return future
-    
+
     def get_num_global_epochs(self) -> int:
         """
         Get the number of global epochs.
@@ -57,8 +61,10 @@ class SyncScheduler(BaseScheduler):
         """
         with self._access_lock:
             return self._num_global_epochs
-        
-    def _parse_aggregated_model(self, aggregated_model: Dict, client_id: Union[int, str]) -> Dict:
+
+    def _parse_aggregated_model(
+        self, aggregated_model: Dict, client_id: Union[int, str]
+    ) -> Dict:
         """
         Parse the aggregated model. Currently, this method is used to
         parse different client gradients for the vertical federated learning.
@@ -67,11 +73,16 @@ class SyncScheduler(BaseScheduler):
         """
         if isinstance(aggregated_model, tuple):
             if client_id in aggregated_model[0]:
-                return (aggregated_model[0][client_id], aggregated_model[1]) # this is for vertical federated learning
+                return (
+                    aggregated_model[0][client_id],
+                    aggregated_model[1],
+                )  # this is for vertical federated learning
             else:
                 return aggregated_model
         else:
             if client_id in aggregated_model:
-                return aggregated_model[client_id] # this is for vertical federated learning
+                return aggregated_model[
+                    client_id
+                ]  # this is for vertical federated learning
             else:
                 return aggregated_model

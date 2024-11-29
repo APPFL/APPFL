@@ -7,15 +7,84 @@ import random
 import string
 import logging
 import pathlib
+import importlib
 import numpy as np
 import pickle as pkl
 import os.path as osp
 import importlib.util
 from omegaconf import DictConfig
 from .deprecation import deprecated
+from typing import Any, Optional, Union, Tuple, List, Dict
+
+
+@deprecated(silent=True)
+def get_appfl_algorithm(
+    algorithm_name: str,
+    args: Union[Tuple, List],
+    kwargs: Dict,
+):
+    try:
+        appfl_module = importlib.import_module("appfl.algorithm")
+        AlgorithmClass = getattr(appfl_module, algorithm_name)
+        algorithm = AlgorithmClass(*args, **kwargs)
+        return algorithm
+    except AttributeError:
+        raise ValueError(f"Invalid algorithm name: {algorithm_name}")
+
+
+def get_appfl_aggregator(
+    aggregator_name: str,
+    model: Optional[Any],
+    aggregator_config: DictConfig,
+    logger: Optional[Any] = None,
+):
+    try:
+        appfl_module = importlib.import_module("appfl.aggregator")
+        AggregatorClass = getattr(appfl_module, aggregator_name)
+        aggregator = AggregatorClass(model, aggregator_config, logger)
+        return aggregator
+    except AttributeError:
+        raise ValueError(f"Invalid aggregator name: {aggregator_name}")
+
+
+def get_appfl_scheduler(
+    scheduler_name: str,
+    scheduler_config: DictConfig,
+    aggregator: Optional[Any] = None,
+    logger: Optional[Any] = None,
+):
+    try:
+        appfl_module = importlib.import_module("appfl.scheduler")
+        SchedulerClass = getattr(appfl_module, scheduler_name)
+        scheduler = SchedulerClass(scheduler_config, aggregator, logger)
+        return scheduler
+    except AttributeError:
+        raise ValueError(f"Invalid scheduler name: {scheduler_name}")
+
+
+def get_appfl_compressor(compressor_name: str, compressor_config: DictConfig):
+    try:
+        appfl_module = importlib.import_module("appfl.compressor")
+        CompressorClass = getattr(appfl_module, compressor_name)
+        compressor = CompressorClass(compressor_config)
+        return compressor
+    except AttributeError:
+        raise ValueError(f"Invalid compressor name: {compressor_name}")
+
+
+def get_torch_optimizer(optimizer_name, model_parameters, **kwargs):
+    try:
+        optim_module = importlib.import_module("torch.optim")
+        OptimizerClass = getattr(optim_module, optimizer_name)
+        optimizer = OptimizerClass(model_parameters, **kwargs)
+        return optimizer
+    except AttributeError:
+        raise ValueError(f"Invalid optimizer name: {optimizer_name}")
+
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
+    return "".join(random.choice(chars) for _ in range(size))
+
 
 def get_last_class_name(file_path):
     with open(file_path, "r") as file:
@@ -33,6 +102,7 @@ def get_last_class_name(file_path):
     else:
         return None
 
+
 def get_last_function_name(file_path):
     with open(file_path, "r") as file:
         file_content = file.read()
@@ -49,7 +119,8 @@ def get_last_function_name(file_path):
     else:
         return None
 
-def create_instance_from_file(file_path, class_name = None, *args, **kwargs):
+
+def create_instance_from_file(file_path, class_name=None, *args, **kwargs):
     """
     Creates an instance of a class from a given file path.
 
@@ -89,7 +160,8 @@ def create_instance_from_file(file_path, class_name = None, *args, **kwargs):
 
     return instance
 
-def get_function_from_file(file_path, function_name = None):
+
+def get_function_from_file(file_path, function_name=None):
     """
     Gets a function from a given file path.
 
@@ -101,7 +173,7 @@ def get_function_from_file(file_path, function_name = None):
         # Read the last function name if not provided
         if function_name is None:
             function_name = get_last_function_name(file_path)
-        
+
         # Normalize the file path
         file_path = os.path.abspath(file_path)
 
@@ -130,8 +202,9 @@ def get_function_from_file(file_path, function_name = None):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
-    
-def run_function_from_file(file_path, function_name = None, *args, **kwargs):
+
+
+def run_function_from_file(file_path, function_name=None, *args, **kwargs):
     """
     Runs a function from a given file path.
 
@@ -175,8 +248,9 @@ def run_function_from_file(file_path, function_name = None, *args, **kwargs):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
-    
-def create_instance_from_file_source(source, class_name = None, *args, **kwargs):
+
+
+def create_instance_from_file_source(source, class_name=None, *args, **kwargs):
     """
     Creates an instance of a class from a given source code.
 
@@ -201,7 +275,8 @@ def create_instance_from_file_source(source, class_name = None, *args, **kwargs)
 
     return instance
 
-def get_function_from_file_source(source, function_name = None):
+
+def get_function_from_file_source(source, function_name=None):
     """
     Gets a function from a given source code.
 
@@ -226,7 +301,8 @@ def get_function_from_file_source(source, function_name = None):
 
     return function
 
-def run_function_from_file_source(source, function_name = None, *args, **kwargs):
+
+def run_function_from_file_source(source, function_name=None, *args, **kwargs):
     """
     Runs a function from a given source code.
 
@@ -241,6 +317,7 @@ def run_function_from_file_source(source, function_name = None, *args, **kwargs)
         return None
     result = function(*args, **kwargs)
     return result
+
 
 def get_unique_filename(
     dirname: str,
@@ -262,19 +339,17 @@ def get_unique_filename(
         unique += 1
     return dirname, unique_filename
 
-def load_data_from_file(
-    file_path: str, 
-    to_device=None
-):
+
+def load_data_from_file(file_path: str, to_device=None):
     """
     Read data from file using the corresponding readers.
     For uncompressed model weights of PyTorch models, the weights are stored in a dictionary in the `pt` or `pth` file.
     For compressed model weights of PyTorch models, the weights are stored as bytes in the `pkl` file.
     """
-    TORCH_EXT = ['.pt', '.pth']
-    PICKLE_EXT= ['.pkl']
+    TORCH_EXT = [".pt", ".pth"]
+    PICKLE_EXT = [".pkl"]
     file_ext = osp.splitext(osp.basename(file_path))[-1]
-    if  file_ext in TORCH_EXT:
+    if file_ext in TORCH_EXT:
         results = torch.load(file_path, map_location=to_device)
     elif file_ext in PICKLE_EXT:
         with open(file_path, "rb") as fi:
@@ -283,54 +358,61 @@ def load_data_from_file(
         raise RuntimeError("File extension %s is not supported" % file_ext)
     return results
 
+
 def dump_data_to_file(obj, file_path: str):
     """
     Write data to file using the corresponding readers
     """
-    TORCH_EXT = ['.pt', '.pth']
-    PICKLE_EXT= ['.pkl']
+    TORCH_EXT = [".pt", ".pth"]
+    PICKLE_EXT = [".pkl"]
     file_ext = osp.splitext(osp.basename(file_path))[-1]
     if file_ext in TORCH_EXT:
         torch.save(obj, file_path)
     elif file_ext in PICKLE_EXT:
-        with open(file_path, "wb") as fo:
-            pkl.dump(obj, fo)
+        with open(file_path, "wb") as f:
+            pkl.dump(obj, f)
     else:
         raise RuntimeError("File extension %s is not supported" % file_ext)
     return True
 
-def save_partial_model_iteration(t, model, cfg: DictConfig, client_id = None):
+
+def save_partial_model_iteration(t, model, cfg: DictConfig, client_id=None):
     # This function saves the model weights (instead of the entire model).
     # If personalization is enabled, only the shared layer weights will be saved for the server.
     dir = cfg.save_model_dirname
-    if os.path.isdir(dir) == False:
+    if not os.path.isdir(dir):
         os.mkdir(dir)
-    if client_id != None:
-        if os.path.isdir(dir+'/client_%d'%client_id) == False:
+    if client_id is not None:
+        if not os.path.isdir(dir + "/client_%d" % client_id):
             try:
-                os.mkdir(dir+'/client_%d'%client_id)
-            except:
+                os.mkdir(dir + "/client_%d" % client_id)
+            except:  # noqa: E722
                 pass
 
     file_ext = ".pt"
-    if client_id == None:
+    if client_id is None:
         file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
     else:
-        file = dir + "/client_%d"%client_id + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
+        file = (
+            dir
+            + "/client_%d" % client_id
+            + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
+        )
     uniq = 1
     while os.path.exists(file):
         file = dir + "/%s_Round_%s_%d%s" % (cfg.save_model_filename, t, uniq, file_ext)
         uniq += 1
-        
+
     state_dict = copy.deepcopy(model.state_dict())
-    if client_id == None:
-        if cfg.personalization == True:
-            keys = [key for key,_ in enumerate(model.named_parameters())]
+    if client_id is None:
+        if cfg.personalization:
+            keys = [key for key, _ in enumerate(model.named_parameters())]
             for key in keys:
                 if key in cfg.p_layers:
                     _ = state_dict.pop(key)
 
     torch.save(state_dict, file)
+
 
 def model_parameters_clip_factor(model, pre_update_params, C, norm_type=1):
     """
@@ -341,21 +423,23 @@ def model_parameters_clip_factor(model, pre_update_params, C, norm_type=1):
     :param norm_type: The type of norm to compute (default is 2, which is the L2 norm)
     """
     total_norm = 0.0
-    for param_old, param_new in zip(pre_update_params,list(model.parameters())):
-        param_norm = torch.norm(param_old-param_new,p=norm_type)
+    for param_old, param_new in zip(pre_update_params, list(model.parameters())):
+        param_norm = torch.norm(param_old - param_new, p=norm_type)
         total_norm += param_norm.item() ** norm_type
-    total_norm = total_norm ** (1. / norm_type)
-    return ( C / total_norm ) if total_norm > C else 1
+    total_norm = total_norm ** (1.0 / norm_type)
+    return (C / total_norm) if total_norm > C else 1
 
-def scale_update(model, pre_update_params, scale = 1.0):
+
+def scale_update(model, pre_update_params, scale=1.0):
     """
     Scale update of <<updated>> model.
     :model: <<updated>> model
     :pre_update_params: list of <<pre-update>> model parameters
     :scale: Scaling factor
     """
-    for param_old, param_new in zip(pre_update_params,list(model.parameters())):
+    for param_old, param_new in zip(pre_update_params, list(model.parameters())):
         param_new = param_old + scale * (param_new - param_old)
+
 
 @deprecated(silent=True)
 def set_seed(seed=233):
@@ -366,11 +450,13 @@ def set_seed(seed=233):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+
 @deprecated(silent=True)
 def load_source_file(file_path):
     with open(file_path) as fi:
         source = fi.read()
     return source
+
 
 @deprecated(silent=True)
 def compute_gradient(original_model, trained_model):
@@ -385,7 +471,8 @@ def compute_gradient(original_model, trained_model):
             local_gradient[name] = original_model[name] - trained_model_state_dict[name]
         else:
             local_gradient[name] = trained_model_state_dict[name]
-    return local_gradient    
+    return local_gradient
+
 
 @deprecated(silent=True)
 def validation(self, dataloader, metric):
@@ -409,6 +496,7 @@ def validation(self, dataloader, metric):
     accuracy = _evaluate_model_on_tests(validation_model, dataloader, metric)
     return loss, accuracy
 
+
 @deprecated(silent=True)
 def _evaluate_model_on_tests(model, test_dataloader, metric):
     if metric is None:
@@ -418,7 +506,7 @@ def _evaluate_model_on_tests(model, test_dataloader, metric):
         test_dataloader_iterator = iter(test_dataloader)
         y_pred_final = []
         y_true_final = []
-        for (X, y) in test_dataloader_iterator:
+        for X, y in test_dataloader_iterator:
             if torch.cuda.is_available():
                 X = X.cuda()
                 y = y.cuda()
@@ -432,19 +520,20 @@ def _evaluate_model_on_tests(model, test_dataloader, metric):
         accuracy = float(metric(y_true_final, y_pred_final))
     return accuracy
 
+
 @deprecated(silent=True)
 def _default_metric(y_true, y_pred):
     if len(y_pred.shape) == 1:
         y_pred = np.round(y_pred)
     else:
         y_pred = y_pred.argmax(axis=1)
-    return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
+    return 100 * np.sum(y_pred == y_true) / y_pred.shape[0]
+
 
 @deprecated(silent=True)
 def create_custom_logger(logger, cfg: DictConfig):
-
     dir = cfg.output_dirname
-    if os.path.isdir(dir) == False:
+    if not os.path.isdir(dir):
         os.makedirs(dir, exist_ok=True)
     output_filename = cfg.output_filename + "_server"
 
@@ -468,10 +557,10 @@ def create_custom_logger(logger, cfg: DictConfig):
 
     return logger
 
+
 @deprecated(silent=True)
 def client_log(dir, output_filename):
-
-    if os.path.isdir(dir) == False:
+    if not os.path.isdir(dir):
         os.makedirs(dir, exist_ok=True)
 
     file_ext = ".txt"
@@ -485,19 +574,19 @@ def client_log(dir, output_filename):
 
     return outfile
 
+
 @deprecated(silent=True)
 def load_model(cfg: DictConfig):
-    
     file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
     model = torch.load(file)
     model.eval()
     return model
 
+
 @deprecated(silent=True)
 def save_model_iteration(t, model, cfg: DictConfig):
-    
     dir = cfg.save_model_dirname
-    if os.path.isdir(dir) == False:
+    if not os.path.isdir(dir):
         os.mkdir(dir)
 
     file_ext = ".pt"
@@ -509,16 +598,20 @@ def save_model_iteration(t, model, cfg: DictConfig):
 
     torch.save(model, file)
 
+
 @deprecated(silent=True)
-def load_model_state(cfg: DictConfig, model, client_id = None):
-    
+def load_model_state(cfg: DictConfig, model, client_id=None):
     # This function allows to use partial model weights into a model.
     # Useful since server model will only have shared layer weights when personalization is enabled.
-    if client_id == None:
+    if client_id is None:
         file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
     else:
-        file = cfg.load_model_dirname + "/client_%d"%client_id + "/%s%s" % (cfg.load_model_filename, ".pt")
+        file = (
+            cfg.load_model_dirname
+            + "/client_%d" % client_id
+            + "/%s%s" % (cfg.load_model_filename, ".pt")
+        )
 
-    model.load_state_dict(torch.load(file),strict=False)
-        
+    model.load_state_dict(torch.load(file), strict=False)
+
     return model

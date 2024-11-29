@@ -1,5 +1,6 @@
 import lifelines
 
+
 def metric(y_true, pred):
     """Calculates the concordance index (c-index) between a series of event
     times and a predicted score.

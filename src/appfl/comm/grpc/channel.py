@@ -3,10 +3,10 @@ Auxiliary function to create a secure/insecure gRPC channel.
 """
 
 import grpc
-from appfl.login_manager import *
 from .auth import APPFLAuthMetadataProvider
 from .utils import load_credential_from_file
 from typing import Optional, Union, Dict, Any
+
 
 def create_grpc_channel(
     server_uri: str,
@@ -31,29 +31,37 @@ def create_grpc_channel(
     :param max_message_size: The maximum message size in bytes.
     :return: The created gRPC channel.
     """
-    assert not (use_authenticator and not use_ssl), "Authenticator can only be used with SSL/TLS"
+    assert not (
+        use_authenticator and not use_ssl
+    ), "Authenticator can only be used with SSL/TLS"
     channel_options = [
         ("grpc.max_send_message_length", max_message_size),
         ("grpc.max_receive_message_length", max_message_size),
-        ('grpc.keepalive_time_ms', 7200000),
-        ('grpc.keepalive_timeout_ms', 7200000),
-        ('grpc.http2.min_time_between_pings_ms', 7200000),
-        ('grpc.http2.timeout_ms', 7200000),
+        ("grpc.keepalive_time_ms", 7200000),
+        ("grpc.keepalive_timeout_ms", 7200000),
+        ("grpc.http2.min_time_between_pings_ms", 7200000),
+        ("grpc.http2.timeout_ms", 7200000),
     ]
     if use_ssl:
         if root_certificate is not None:
             if isinstance(root_certificate, str):
                 root_certificate = load_credential_from_file(root_certificate)
-            credentials = grpc.ssl_channel_credentials(root_certificates=root_certificate)
+            credentials = grpc.ssl_channel_credentials(
+                root_certificates=root_certificate
+            )
         else:
             credentials = grpc.ssl_channel_credentials()
         if use_authenticator:
-            assert authenticator is not None, "Authenticator must be provided if use_authenticator is True"
+            assert (
+                authenticator is not None
+            ), "Authenticator must be provided if use_authenticator is True"
             authenticator = eval(authenticator)(**authenticator_args)
             call_credentials = grpc.metadata_call_credentials(
                 APPFLAuthMetadataProvider(authenticator)
             )
-            credentials = grpc.composite_channel_credentials(credentials, call_credentials)
+            credentials = grpc.composite_channel_credentials(
+                credentials, call_credentials
+            )
         channel = grpc.secure_channel(server_uri, credentials, options=channel_options)
     else:
         channel = grpc.insecure_channel(server_uri, options=channel_options)

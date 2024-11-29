@@ -15,15 +15,15 @@ To setup a **real-world** federated learning client on a **distributed** computi
     pip install -e ".[dev,examples]"
     ```
 
-3. Creat a Globus account at https://app.globus.org. If you can find your organization in Globus, it is highly recommeneded to use your organization account to log in to Globus as that makes it easier for your collaborators to verify your identity (which is very import for building trust in FL). Otherwise, you can register a Globus account using your commonly-used email address.
+3. Creat a Globus account at https://app.globus.org. If you can find your organization in Globus, it is highly recommended to use your organization account to log in to Globus as that makes it easier for your collaborators to verify your identity (which is very import for building trust in FL). Otherwise, you can register a Globus account using your commonly-used email address.
 
-4. Set up a Globus Compute endpoint using the following command, where `<YOUR_ENDPOINT_NAME>` is a name of your choice. You might be required to login with Globus for the first time, follow the url and complete all steps to get credential token. 
+4. Set up a Globus Compute endpoint using the following command, where `<YOUR_ENDPOINT_NAME>` is a name of your choice. You might be required to login with Globus for the first time, follow the url and complete all steps to get credential token.
     ```
     globus-compute-endpoint configure <YOUR_ENDPOINT_NAME>
     ```
 
 5. Configure the endpoint. The command above will create a configuration file at `$HOME/.globus_compute/<YOUR_ENDPOINT_NAME>/config.yaml`. This file should be updated with the appropriate configurations for the computational system you are targeting before you start the endpoint. Globus Compute document shows some of the example setups [here](https://funcx.readthedocs.io/en/latest/endpoints.html#example-configurations). We also provide two example configuration yaml files here for [CPU](./endpoint_config/delta_ncsa_cpu.yaml) or [GPU](./endpoint_config/delta_ncsa_gpu.yaml) usage on the [Delta supercomputer @ NCSA](https://ncsa-delta-doc.readthedocs-hosted.com/en/latest/). Here comes the detailed explanation for the GPU configuration yaml file:
-    - partition: The partition is a logical grouping of computing nodes for different usage, and you can obtain all partition informations of your HPC by running `sinfo -s`
+    - partition: The partition is a logical grouping of computing nodes for different usage, and you can obtain all partition information of your HPC by running `sinfo -s`
     - account: The account name for the SLURM scheduler to charge CPU/GPU hours. In Delta, if your group name is bbvf, then the account should be bbvf-delta-cpu or bbvf-delta-gpu for CPU/GPU usage.
     - exclusive: Whether to request nodes which are not shared with other running jobs. **(Note: In most cases, set it to False, otherwise, it is very very hard to get GPU resources.)**
     - worker_init: You need to specify the commands to be run before starting a worker, such as loading a module `module load` (or module collection `module restore`) and activating a conda environment. Separate commands by semicolon (`;`).
@@ -81,7 +81,7 @@ To set up a federated learning server using Globus Compute for real-world FL exp
 
 1. Creat a Globus account at https://app.globus.org. Same as above, try to find your institution first, or create an account using your commonly-used email address.
 
-2. As Globus Compute has maximum size for the transfered data (10 MB for arguments and 5 MB for results), APPFL employs AWS S3 bucket to transfer (the relatively large) models. Therefore, you need to have an AWS account and create an S3 bucket. Please refer to the official AWS S3 documentation [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) and follow the steps under **Using the S3 console** to create a bucket. Note down the **bucket name** for your bucket, and set it as the bucket name (`s3_bucket`) in the [server configuration file](./configs_server/mnist_fedavg.yaml).
+2. As Globus Compute has maximum size for the transferred data (10 MB for arguments and 5 MB for results), APPFL employs AWS S3 bucket to transfer (the relatively large) models. Therefore, you need to have an AWS account and create an S3 bucket. Please refer to the official AWS S3 documentation [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) and follow the steps under **Using the S3 console** to create a bucket. Note down the **bucket name** for your bucket, and set it as the bucket name (`s3_bucket`) in the [server configuration file](./configs_server/mnist_fedavg.yaml).
 
 3. After creating the bucket, you also need to provide a credential file so that the FL server as well as the FL clients can access the created bucket through the python scripts to upload/download models. Here are the detailed steps to do so:
     - Sign in to the AWS Console and navigate to the **IAM** console.
@@ -114,13 +114,13 @@ To set up a federated learning server using Globus Compute for real-world FL exp
         ```
 
 4. Now you already have the Access key ID and the Secret access key for the S3 bucket access, you have the following two ways to provide them to the scripts to use them.
-    - **[Recommended]** Install `awscli` by running `pip install awscli`. Then run `aws configure` and enter the following informaiton accordingly. The Default region name is the aws region where you create your bucket. You can just hit enter for Default output format. If you use this method, you do not need to set the `s3_creds` field in the [server configuration file](./configs_server/mnist_fedavg.yaml)
+    - **[Recommended]** Install `awscli` by running `pip install awscli`. Then run `aws configure` and enter the following information accordingly. The Default region name is the aws region where you create your bucket. You can just hit enter for Default output format. If you use this method, you do not need to set the `s3_creds` field in the [server configuration file](./configs_server/mnist_fedavg.yaml)
         ```
         $ aws configure
-        AWS Access Key ID [****************ABCD]: 
-        AWS Secret Access Key [****************EFGH]: 
-        Default region name [us-east-1]: 
-        Default output format [None]: 
+        AWS Access Key ID [****************ABCD]:
+        AWS Secret Access Key [****************EFGH]:
+        Default region name [us-east-1]:
+        Default output format [None]:
         ```
     - Create a credential `.csv` file, and enter the region name, access key ID, and secret access key in a row. For example:
         ```

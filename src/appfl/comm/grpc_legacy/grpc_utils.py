@@ -1,6 +1,7 @@
 from .grpc_communicator_old_pb2 import DataBufferV0
 from .grpc_communicator_old_pb2 import TensorRecord
 
+
 def construct_tensor_record(name, nparray):
     return TensorRecord(
         name=name,
@@ -9,8 +10,9 @@ def construct_tensor_record(name, nparray):
         data_dtype="np." + str(nparray.dtype),
     )
 
+
 def proto_to_databuffer(proto, max_message_size=(2 * 1024 * 1024)):
-    max_message_size = max_message_size - 16 # 16 bytes for the message size field
+    max_message_size = max_message_size - 16  # 16 bytes for the message size field
     data_bytes = proto.SerializeToString()
     data_bytes_size = len(data_bytes)
     message_size = (

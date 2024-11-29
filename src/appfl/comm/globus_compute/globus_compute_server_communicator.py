@@ -20,13 +20,14 @@ from globus_compute_sdk.serialize import CombinedCode
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
 
+
 class GlobusComputeServerCommunicator:
     """
     Communicator used by the federated learning server which plans to use Globus Compute
     for orchestrating the federated learning experiments.
 
     Globus Compute is a distributed function-as-a-service platform that allows users to run
-    functions on specified remote endpoints. For more details, check the Globus Compute SDK 
+    functions on specified remote endpoints. For more details, check the Globus Compute SDK
     documentation at https://globus-compute.readthedocs.io/en/latest/endpoints.html.
 
     :param `gcc`: Globus Compute client object
@@ -34,6 +35,7 @@ class GlobusComputeServerCommunicator:
     :param `client_agent_configs`: A list of client agent configurations.
     :param [Optional] `logger`: Optional logger object.
     """
+
     def __init__(
         self,
         server_agent_config: ServerAgentConfig,
@@ -43,36 +45,44 @@ class GlobusComputeServerCommunicator:
     ):
         # Assert compute_token and openid_token are both provided if necessary
         assert (
-            ("compute_token" in kwargs and "openid_token" in kwargs) or 
-            ("compute_token" not in kwargs and "openid_token" not in kwargs)
+            ("compute_token" in kwargs and "openid_token" in kwargs)
+            or ("compute_token" not in kwargs and "openid_token" not in kwargs)
         ), "Both compute_token and openid_token must be provided if one of them is provided."
-        
+
         if "compute_token" in kwargs and "openid_token" in kwargs:
             ComputeScopes = ComputeScopeBuilder()
             compute_login_manager = AuthorizerLoginManager(
                 authorizers={
-                    ComputeScopes.resource_server: AccessTokenAuthorizer(kwargs["compute_token"]),
-                    AuthScopes.resource_server: AccessTokenAuthorizer(kwargs["openid_token"]),
+                    ComputeScopes.resource_server: AccessTokenAuthorizer(
+                        kwargs["compute_token"]
+                    ),
+                    AuthScopes.resource_server: AccessTokenAuthorizer(
+                        kwargs["openid_token"]
+                    ),
                 }
             )
             compute_login_manager.ensure_logged_in()
             gcc = Client(
-                login_manager=compute_login_manager, 
-                code_serialization_strategy=CombinedCode()
+                login_manager=compute_login_manager,
+                code_serialization_strategy=CombinedCode(),
             )
         else:
             gcc = Client()
-        self.gce = Executor(client=gcc) # Globus Compute Executor
+        self.gce = Executor(client=gcc)  # Globus Compute Executor
         self.logger = logger if logger is not None else self._default_logger()
         # Sanity check for configurations: Check for the number of clients
         num_clients = (
-            server_agent_config.server_configs.num_clients if
-            hasattr(server_agent_config.server_configs, "num_clients") else
-            server_agent_config.server_configs.scheduler_kwargs.num_clients if
-            hasattr(server_agent_config.server_configs.scheduler_kwargs, "num_clients") else
-            server_agent_config.server_configs.aggregator_kwargs.num_clients
+            server_agent_config.server_configs.num_clients
+            if hasattr(server_agent_config.server_configs, "num_clients")
+            else server_agent_config.server_configs.scheduler_kwargs.num_clients
+            if hasattr(
+                server_agent_config.server_configs.scheduler_kwargs, "num_clients"
+            )
+            else server_agent_config.server_configs.aggregator_kwargs.num_clients
         )
-        assert num_clients == len(client_agent_configs), "Number of clients in the server configuration does not match the number of client configurations."
+        assert (
+            num_clients == len(client_agent_configs)
+        ), "Number of clients in the server configuration does not match the number of client configurations."
         client_config_from_server = server_agent_config.client_configs
         # Create a unique experiment ID for this federated learning experiment
         experiment_id = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
@@ -80,14 +90,22 @@ class GlobusComputeServerCommunicator:
         self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
         _client_id_check_set = set()
         for client_config in client_agent_configs:
-            assert hasattr(client_config, "endpoint_id"), "Client configuration must have an endpoint_id."
+            assert hasattr(
+                client_config, "endpoint_id"
+            ), "Client configuration must have an endpoint_id."
             # Read the client dataloader source file
             with open(client_config.data_configs.dataset_path, "r") as file:
                 client_config.data_configs.dataset_source = file.read()
             del client_config.data_configs.dataset_path
-            client_id = str(client_config.client_id if hasattr(client_config, "client_id") else client_config.endpoint_id)
-            assert client_id not in _client_id_check_set, f"Client ID {client_id} is not unique for this client configuration.\n{client_config}"
-            _client_id_check_set.add(client_id)            
+            client_id = str(
+                client_config.client_id
+                if hasattr(client_config, "client_id")
+                else client_config.endpoint_id
+            )
+            assert (
+                client_id not in _client_id_check_set
+            ), f"Client ID {client_id} is not unique for this client configuration.\n{client_config}"
+            _client_id_check_set.add(client_id)
             client_endpoint_id = client_config.endpoint_id
             client_config.experiment_id = experiment_id
             if not hasattr(client_config.train_configs, "logging_id"):
@@ -97,23 +115,35 @@ class GlobusComputeServerCommunicator:
                 client_endpoint_id=client_endpoint_id,
                 client_config=OmegaConf.merge(client_config_from_server, client_config),
             )
-        # Initilize the S3 bucket for large model transfer if necessary.
-        if (
-            hasattr(server_agent_config.server_configs, "comm_configs") and
-            hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs")
+        # Initialize the S3 bucket for large model transfer if necessary.
+        if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
+            server_agent_config.server_configs.comm_configs, "globus_compute_configs"
         ):
-            s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_bucket", None)
+            s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
+                "s3_bucket", None
+            )
         else:
             s3_bucket = None
         self.use_s3bucket = s3_bucket is not None
         if self.use_s3bucket:
-            self.logger.info(f'Using S3 bucket {s3_bucket} for model transfer.')
-            s3_creds_file = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_creds_file", None)
-            s3_temp_dir = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_temp_dir", str(pathlib.Path.home() / ".appfl" / "globus_compute" / "server" / experiment_id))
+            self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
+            s3_creds_file = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
+                "s3_creds_file", None
+            )
+            s3_temp_dir = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
+                "s3_temp_dir",
+                str(
+                    pathlib.Path.home()
+                    / ".appfl"
+                    / "globus_compute"
+                    / "server"
+                    / experiment_id
+                ),
+            )
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
-        
+
         self.executing_tasks: Dict[str, ClientTask] = {}
         self.executing_task_futs: Dict[Future, str] = {}
 
@@ -139,11 +169,11 @@ class GlobusComputeServerCommunicator:
                 name=str(uuid.uuid4()) + "_server_state",
             )
             if not model_wrapper.can_send_directly:
-                model = CloudStorage.upload_object(model_wrapper, register_for_clean=True)
+                model = CloudStorage.upload_object(
+                    model_wrapper, register_for_clean=True
+                )
         for i, client_id in enumerate(self.client_endpoints):
-            client_metadata = (
-                metadata[i] if isinstance(metadata, list) else metadata
-            )
+            client_metadata = metadata[i] if isinstance(metadata, list) else metadata
             if need_model_response and self.use_s3bucket:
                 local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
@@ -182,7 +212,9 @@ class GlobusComputeServerCommunicator:
                 name=str(uuid.uuid4()) + "_server_state",
             )
             if not model_wrapper.can_send_directly:
-                model = CloudStorage.upload_object(model_wrapper, register_for_clean=True)
+                model = CloudStorage.upload_object(
+                    model_wrapper, register_for_clean=True
+                )
         if need_model_response and self.use_s3bucket:
             local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
@@ -210,24 +242,30 @@ class GlobusComputeServerCommunicator:
             client_id = self.executing_tasks[task_id].client_id
             try:
                 result = fut.result()
-                client_model, client_metadata_local = self.__parse_globus_compute_result(result)
+                client_model, client_metadata_local = (
+                    self.__parse_globus_compute_result(result)
+                )
                 client_results[client_id] = client_model
                 client_metadata[client_id] = client_metadata_local
                 # Set the status of the finished task
                 client_log = client_metadata_local.get("log", {})
                 self.executing_tasks[task_id].end_time = time.time()
                 self.executing_tasks[task_id].success = True
-                self.executing_tasks[task_id].log = client_log # TODO: Check this line
+                self.executing_tasks[task_id].log = client_log  # TODO: Check this line
                 # Clean up the task
-                self.logger.info(f"Recieved results of task '{self.executing_tasks[task_id].task_name}' from {client_id}.")
+                self.logger.info(
+                    f"Received results of task '{self.executing_tasks[task_id].task_name}' from {client_id}."
+                )
                 self.client_endpoints[client_id].status
                 self.executing_tasks.pop(task_id)
                 self.executing_task_futs.pop(fut)
             except Exception as e:
-                self.logger.info(f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error.")
+                self.logger.info(
+                    f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
+                )
                 raise e
         return client_results, client_metadata
-    
+
     def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
         """
         Receive task results from the first client that finishes the task.
@@ -235,7 +273,9 @@ class GlobusComputeServerCommunicator:
         :return `client_model`: The model returned from the client
         :return `client_metadata`: The metadata returned from the client
         """
-        assert len(self.executing_task_futs), "There is no active client endpoint running tasks."
+        assert len(
+            self.executing_task_futs
+        ), "There is no active client endpoint running tasks."
         try:
             fut = next(as_completed(list(self.executing_task_futs)))
             task_id = self.executing_task_futs[fut]
@@ -246,15 +286,19 @@ class GlobusComputeServerCommunicator:
             client_log = client_metadata.get("log", {})
             self.executing_tasks[task_id].end_time = time.time()
             self.executing_tasks[task_id].success = True
-            self.executing_tasks[task_id].log = client_log # TODO: Check this line
+            self.executing_tasks[task_id].log = client_log  # TODO: Check this line
             # Clean up the task
-            self.logger.info(f"Recieved results of task '{self.executing_tasks[task_id].task_name}' from {client_id}.")
+            self.logger.info(
+                f"Received results of task '{self.executing_tasks[task_id].task_name}' from {client_id}."
+            )
             self.client_endpoints[client_id].status
             self.executing_tasks.pop(task_id)
             self.executing_task_futs.pop(fut)
         except Exception as e:
             client_id = self.executing_tasks[task_id].client_id
-            self.logger.info(f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error.")
+            self.logger.info(
+                f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
+            )
             raise e
         return client_id, client_model, client_metadata
 
@@ -265,7 +309,9 @@ class GlobusComputeServerCommunicator:
         # Clean-up cloud storage
         if self.use_s3bucket:
             CloudStorage.clean_up()
-        self.logger.info("The server and all clients have been shutted down successfully.")
+        self.logger.info(
+            "The server and all clients have been shutted down successfully."
+        )
 
     def cancel_all_tasks(self):
         """Cancel all on-the-fly client tasks."""
@@ -294,7 +340,9 @@ class GlobusComputeServerCommunicator:
         # Download model from S3 bucket if necessary
         if self.use_s3bucket:
             if CloudStorage.is_cloud_storage_object(model):
-                model = CloudStorage.download_object(model, delete_cloud=True, delete_local=True)
+                model = CloudStorage.download_object(
+                    model, delete_cloud=True, delete_local=True
+                )
         return model, metadata
 
     def __register_task(self, task_id, task_fut, client_id, task_name):
@@ -303,10 +351,10 @@ class GlobusComputeServerCommunicator:
         """
         self.executing_tasks[task_id] = OmegaConf.structured(
             ClientTask(
-                task_id = task_id,
-                task_name = task_name,
-                client_id = client_id,
-                start_time = time.time()
+                task_id=task_id,
+                task_name=task_name,
+                client_id=client_id,
+                start_time=time.time(),
             )
         )
         self.executing_task_futs[task_fut] = task_id
@@ -315,7 +363,7 @@ class GlobusComputeServerCommunicator:
         """Create a default logger for the gRPC server if no logger provided."""
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
-        fmt = logging.Formatter('[%(asctime)s %(levelname)-4s server]: %(message)s')
+        fmt = logging.Formatter("[%(asctime)s %(levelname)-4s server]: %(message)s")
         s_handler = logging.StreamHandler()
         s_handler.setLevel(logging.INFO)
         s_handler.setFormatter(fmt)

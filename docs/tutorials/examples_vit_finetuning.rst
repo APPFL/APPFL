@@ -10,7 +10,7 @@ Example: Finetune a Vision Transformer model
 Centralized learning
 --------------------
 
-In centralized learning, to train a machine learning model, we need a "trainer" that trains the model on a training dataset and evalutes it using an evaluation dataset. The key components of this process are the following:
+In centralized learning, to train a machine learning model, we need a "trainer" that trains the model on a training dataset and evaluates it using an evaluation dataset. The key components of this process are the following:
 
 - Model: A machine learning model that we want to train.
 - Datasets: Datasets that contain the training and evaluation data.
@@ -40,7 +40,7 @@ FL server configurations
 Server directory structure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Below shows the directory structure for the FL server. 
+Below shows the directory structure for the FL server.
 
 .. code-block:: text
 
@@ -82,7 +82,7 @@ The ``resources/vit_ft_trainer.py`` file defines a trainer class for fine-tuning
 Server configuration file
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``config.yaml`` is the server YAML configuration file, which contains both general client configurations (``client_configs``) and server-specific configurations (``server_configs``). 
+The ``config.yaml`` is the server YAML configuration file, which contains both general client configurations (``client_configs``) and server-specific configurations (``server_configs``).
 
 .. literalinclude:: ./examples/vit_ft/appfl_vit_finetuning_server/config.yaml
     :language: yaml
@@ -100,7 +100,7 @@ Here comes the line-by-line explanation of ``client_configs`` part:
 - ``train_configs.loss_fn``: The loss function name available in the ``torch.nn`` module to use for training. [Note: You can also use a custom loss function, refer `here <../users/user_loss.html>`_ for instructions].
 - ``train_configs.do_validation``: Whether the clients should perform validation after each local training round.
 - ``train_configs.do_pre_validation``: Whether the clients should perform validation before each local training round (i.e., evaluate the received model parameters from the server).
-- ``train_configs.metric_path``: The path to the file that defines the metric function [Note: see `here <../users/user_metric.html>`_ for insturctions on defining metric functions].
+- ``train_configs.metric_path``: The path to the file that defines the metric function [Note: see `here <../users/user_metric.html>`_ for instructions on defining metric functions].
 - ``train_configs.metric_name``: The name of the metric function you want to use.
 - ``train_configs.train_batch_size``: The batch size for training.
 - ``train_configs.val_batch_size``: The batch size for validation.
@@ -114,7 +114,7 @@ Here comes the line-by-line explanation of ``server_configs`` part:
 - ``server_configs.aggregator_kwargs``: The hyperparameters of the aggregation algorithm. In this example, ``client_weights_mode='equal'`` means that all clients have equal weights in the aggregation process, while ``client_weights_mode='sample_size'`` means that the weights of the clients are proportional to the number of samples they have.
 - ``server_configs.scheduler``: The name of the scheduling algorithm provided by ``APPFL`` you want to use. As FedAvg is a synchronous algorithm we set it to be ``SyncScheduler`` here [Please refer to `here <../users/scheduler.html>`_ for the list of provided schedulers].
 - ``server_configs.scheduler_kwargs``: The hyperparameters of the scheduling algorithm.  ``num_clients`` tells the scheduler the total number of clients in the training process, and ``same_init_model=True`` ensures that all clients start with the same initial model parameters.
-- ``server_configs.device``: The device on which the server should run. 
+- ``server_configs.device``: The device on which the server should run.
 - ``server_configs.num_global_epochs``: The number of FL global communication epochs.
 - ``server_configs.logging_output_dirname``: The directory name where the server logs will be saved.
 - ``server_configs.logging_output_filename``: The filename where the server logs will be saved.

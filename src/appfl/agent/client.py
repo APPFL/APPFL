@@ -5,19 +5,47 @@ import pathlib
 import importlib
 import torch.nn as nn
 from datetime import datetime
-from appfl.compressor import *
 from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
 from typing import Union, Dict, OrderedDict, Tuple, Optional
-from appfl.misc.data_readiness import *
 from appfl.logger import ClientAgentFileLogger
-from appfl.misc import create_instance_from_file, \
-    run_function_from_file, \
-    get_function_from_file, \
-    create_instance_from_file_source, \
-    get_function_from_file_source, \
-    run_function_from_file_source
+from appfl.misc.utils import (
+    create_instance_from_file,
+    run_function_from_file,
+    get_function_from_file,
+    create_instance_from_file_source,
+    get_function_from_file_source,
+    run_function_from_file_source,
+    get_appfl_compressor,
+)
+from appfl.misc.data_readiness.metrics import (
+    imbalance_degree,
+    completeness,
+    get_data_range,
+    sparsity,
+    variance,
+    skewness,
+    entropy,
+    kurtosis,
+    class_distribution,
+    brisque,
+    total_variation,
+    dataset_sharpness,
+    calculate_outlier_proportion,
+    quantify_time_to_event_imbalance,
+)
+from appfl.misc.data_readiness.plots import (
+    plot_class_distribution,
+    plot_data_sample,
+    plot_data_distribution,
+    plot_class_variance,
+    plot_outliers,
+    plot_feature_correlations,
+    plot_feature_statistics,
+    get_feature_space_distribution,
+)
+
 
 class ClientAgent:
     """
@@ -33,13 +61,12 @@ class ClientAgent:
     and use Fork + Pull Request to contribute to the project.
 
     Users can overwrite any class method to add custom functionalities of the client agent.
-    
+
     :param client_agent_config: configurations for the client agent
     """
+
     def __init__(
-        self, 
-        client_agent_config: ClientAgentConfig = ClientAgentConfig(),
-        **kwargs
+        self, client_agent_config: ClientAgentConfig = ClientAgentConfig(), **kwargs
     ) -> None:
         self.client_agent_config = client_agent_config
         self._create_logger()
@@ -61,13 +88,13 @@ class ClientAgent:
 
     def get_id(self) -> str:
         """Return a unique client id for server to distinguish clients."""
-        if not hasattr(self, 'client_id'):
+        if not hasattr(self, "client_id"):
             if hasattr(self.client_agent_config, "client_id"):
                 self.client_id = self.client_agent_config.client_id
             else:
                 self.client_id = str(uuid.uuid4())
         return self.client_id
-    
+
     def get_sample_size(self) -> int:
         """Return the size of the local dataset."""
         return len(self.train_dataset)
@@ -76,7 +103,9 @@ class ClientAgent:
         """Train the model locally."""
         self.trainer.train(**kwargs)
 
-    def get_parameters(self) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
+    def get_parameters(
+        self,
+    ) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
         """Return parameters for communication"""
         params = self.trainer.get_parameters()
         if isinstance(params, tuple):
@@ -86,46 +115,55 @@ class ClientAgent:
         if self.enable_compression:
             params = self.compressor.compress_model(params)
         return params if metadata is None else (params, metadata)
-    
+
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
         self.trainer.load_parameters(params)
-        
-    def save_checkpoint(self, checkpoint_path: Optional[str]=None) -> None:
+
+    def save_checkpoint(self, checkpoint_path: Optional[str] = None) -> None:
         """Save the model to a checkpoint file."""
         if checkpoint_path is None:
-            output_dir = self.client_agent_config.train_configs.get("checkpoint_dirname", "./output")
-            output_filename = self.client_agent_config.train_configs.get("checkpoint_filename", "checkpoint")
-            curr_time_str = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
-            checkpoint_path = f"{output_dir}/{output_filename}_{self.get_id()}_{curr_time_str}.pth"
-            
+            output_dir = self.client_agent_config.train_configs.get(
+                "checkpoint_dirname", "./output"
+            )
+            output_filename = self.client_agent_config.train_configs.get(
+                "checkpoint_filename", "checkpoint"
+            )
+            curr_time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+            checkpoint_path = (
+                f"{output_dir}/{output_filename}_{self.get_id()}_{curr_time_str}.pth"
+            )
+
         # Make sure the directory exists
         if not os.path.exists(os.path.dirname(checkpoint_path)):
-            pathlib.Path(os.path.dirname(checkpoint_path)).mkdir(parents=True, exist_ok=True)
-            
+            pathlib.Path(os.path.dirname(checkpoint_path)).mkdir(
+                parents=True, exist_ok=True
+            )
+
         torch.save(self.model.state_dict(), checkpoint_path)
 
     def generate_readiness_report(self, client_config):
-        
         """
         Generate data readiness report based on the configuration provided by the server.
         """
         if hasattr(client_config.data_readiness_configs, "dr_metrics"):
             results = {}
             plot_results = {"plots": {}}
-            to_combine_results = {"to_combine":{}}
+            to_combine_results = {"to_combine": {}}
 
             # Determine how to retrieve data input and labels based on dataset attributes
-            if hasattr(self.train_dataset, 'data_label'):
+            if hasattr(self.train_dataset, "data_label"):
                 data_labels = self.train_dataset.data_label.tolist()
             else:
                 data_labels = [label.item() for _, label in self.train_dataset]
                 # data_labels = [label for _, label in self.train_dataset]
 
-            if hasattr(self.train_dataset, 'data_input'):
+            if hasattr(self.train_dataset, "data_input"):
                 data_input = self.train_dataset.data_input
             else:
-                data_input = torch.stack([input_data for input_data, _ in self.train_dataset])
+                data_input = torch.stack(
+                    [input_data for input_data, _ in self.train_dataset]
+                )
 
             # data_input, data_labels = balance_data(data_input, data_labels)
             # data_input, explained_variance = apply_pca(data_input)
@@ -149,37 +187,52 @@ class ClientAgent:
                 "total_variation": lambda: total_variation(data_input),
                 "sharpness": lambda: dataset_sharpness(data_input),
                 "outlier_proportion": lambda: calculate_outlier_proportion(data_input),
-                "time_to_event_imbalance": lambda: quantify_time_to_event_imbalance(data_labels)
-
+                "time_to_event_imbalance": lambda: quantify_time_to_event_imbalance(
+                    data_labels
+                ),
             }
 
             plots = {
-            "class_distribution_plot": lambda: plot_class_distribution(data_labels),
-            "data_sample_plot": lambda: plot_data_sample(data_input),
-            "data_distribution_plot": lambda: plot_data_distribution(data_input),
-            "class_variance_plot": lambda: plot_class_variance(data_input, data_labels),
-            "outlier_detection_plot": lambda: plot_outliers(data_input),
-            # "time_to_event_plot": lambda: plot_time_to_event_distribution(data_labels), # TODO: Add time to event plot
-            "feature_correlation_plot": lambda: plot_feature_correlations(data_input),
-            "feature_statistics_plot": lambda: plot_feature_statistics(data_input),
-        }
-            combine= {
-                "feature_space_distribution": lambda: get_feature_space_distribution(data_input),
+                "class_distribution_plot": lambda: plot_class_distribution(data_labels),
+                "data_sample_plot": lambda: plot_data_sample(data_input),
+                "data_distribution_plot": lambda: plot_data_distribution(data_input),
+                "class_variance_plot": lambda: plot_class_variance(
+                    data_input, data_labels
+                ),
+                "outlier_detection_plot": lambda: plot_outliers(data_input),
+                # "time_to_event_plot": lambda: plot_time_to_event_distribution(data_labels), # TODO: Add time to event plot
+                "feature_correlation_plot": lambda: plot_feature_correlations(
+                    data_input
+                ),
+                "feature_statistics_plot": lambda: plot_feature_statistics(data_input),
+            }
+            combine = {
+                "feature_space_distribution": lambda: get_feature_space_distribution(
+                    data_input
+                ),
             }
 
             # Handle standard metrics
             for metric_name, compute_function in standard_metrics.items():
-                if hasattr (client_config.data_readiness_configs, "dr_metrics"):
+                if hasattr(client_config.data_readiness_configs, "dr_metrics"):
                     if metric_name in client_config.data_readiness_configs.dr_metrics:
-                        if getattr(client_config.data_readiness_configs.dr_metrics, metric_name):
+                        if getattr(
+                            client_config.data_readiness_configs.dr_metrics, metric_name
+                        ):
                             results[metric_name] = compute_function()
 
             # Handle plot-specific metrics
             for metric_name, compute_function in plots.items():
                 if hasattr(client_config.data_readiness_configs.dr_metrics, "plot"):
-                    if metric_name in client_config.data_readiness_configs.dr_metrics.plot:
-                        if getattr(client_config.data_readiness_configs.dr_metrics.plot, metric_name):
-                            plot_results['plots'][metric_name] = compute_function()
+                    if (
+                        metric_name
+                        in client_config.data_readiness_configs.dr_metrics.plot
+                    ):
+                        if getattr(
+                            client_config.data_readiness_configs.dr_metrics.plot,
+                            metric_name,
+                        ):
+                            plot_results["plots"][metric_name] = compute_function()
 
             # Combine results with plot results
             results.update(plot_results)
@@ -187,16 +240,24 @@ class ClientAgent:
             # Handle combined metrics
             for metric_name, compute_function in combine.items():
                 if hasattr(client_config.data_readiness_configs.dr_metrics, "combine"):
-                    if metric_name in client_config.data_readiness_configs.dr_metrics.combine:
-                        if getattr(client_config.data_readiness_configs.dr_metrics.combine, metric_name):
-                            to_combine_results['to_combine'][metric_name] = compute_function()
-            
+                    if (
+                        metric_name
+                        in client_config.data_readiness_configs.dr_metrics.combine
+                    ):
+                        if getattr(
+                            client_config.data_readiness_configs.dr_metrics.combine,
+                            metric_name,
+                        ):
+                            to_combine_results["to_combine"][metric_name] = (
+                                compute_function()
+                            )
+
             results.update(to_combine_results)
 
             return results
         else:
             return "Data readiness metrics not available in configuration"
-        
+
     def _create_logger(self):
         """
         Create logger for the client agent to log local training process.
@@ -210,9 +271,15 @@ class ClientAgent:
             kwargs["file_dir"] = "./output"
             kwargs["file_name"] = "result"
         else:
-            kwargs["logging_id"] = self.client_agent_config.train_configs.get("logging_id", self.get_id())
-            kwargs["file_dir"] = self.client_agent_config.train_configs.get("logging_output_dirname", "./output")
-            kwargs["file_name"] = self.client_agent_config.train_configs.get("logging_output_filename", "result")
+            kwargs["logging_id"] = self.client_agent_config.train_configs.get(
+                "logging_id", self.get_id()
+            )
+            kwargs["file_dir"] = self.client_agent_config.train_configs.get(
+                "logging_output_dirname", "./output"
+            )
+            kwargs["file_name"] = self.client_agent_config.train_configs.get(
+                "logging_output_filename", "result"
+            )
         if hasattr(self.client_agent_config, "experiment_id"):
             kwargs["experiment_id"] = self.client_agent_config.experiment_id
         self.logger = ClientAgentFileLogger(**kwargs)
@@ -224,10 +291,10 @@ class ClientAgent:
                 self.client_agent_config.data_configs.dataset_source,
                 self.client_agent_config.data_configs.dataset_name,
                 **(
-                    self.client_agent_config.data_configs.dataset_kwargs 
-                    if hasattr(self.client_agent_config.data_configs, "dataset_kwargs") 
+                    self.client_agent_config.data_configs.dataset_kwargs
+                    if hasattr(self.client_agent_config.data_configs, "dataset_kwargs")
                     else {}
-                )
+                ),
             )
         else:
             self.train_dataset, self.val_dataset = run_function_from_file(
@@ -237,10 +304,10 @@ class ClientAgent:
                     self.client_agent_config.data_configs.dataset_kwargs
                     if hasattr(self.client_agent_config.data_configs, "dataset_kwargs")
                     else {}
-                )
-            )                
+                ),
+            )
 
-                # Convert target to Long if it is not already
+            # Convert target to Long if it is not already
             # self.train_dataset = apply_pca_to_dataset(self.train_dataset)
             # self.val_dataset = apply_pca_to_dataset(self.val_dataset)
 
@@ -267,13 +334,11 @@ class ClientAgent:
                 self.model = create_instance_from_file(
                     self.client_agent_config.model_configs.model_path,
                     self.client_agent_config.model_configs.model_name,
-                    **kwargs
+                    **kwargs,
                 )
             else:
                 self.model = run_function_from_file(
-                    self.client_agent_config.model_configs.model_path,
-                    None,
-                    **kwargs
+                    self.client_agent_config.model_configs.model_path, None, **kwargs
                 )
         elif hasattr(self.client_agent_config.model_configs, "model_source"):
             kwargs = self.client_agent_config.model_configs.get("model_kwargs", {})
@@ -281,13 +346,11 @@ class ClientAgent:
                 self.model = create_instance_from_file_source(
                     self.client_agent_config.model_configs.model_source,
                     self.client_agent_config.model_configs.model_name,
-                    **kwargs
+                    **kwargs,
                 )
             else:
                 self.model = run_function_from_file_source(
-                    self.client_agent_config.model_configs.model_source,
-                    None,
-                    **kwargs
+                    self.client_agent_config.model_configs.model_source, None, **kwargs
                 )
         else:
             self.model = None
@@ -309,21 +372,27 @@ class ClientAgent:
             kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
             self.loss_fn = create_instance_from_file(
                 self.client_agent_config.train_configs.loss_fn_path,
-                self.client_agent_config.train_configs.loss_fn_name if hasattr(self.client_agent_config.train_configs, "loss_fn_name") else None,
-                **kwargs
+                self.client_agent_config.train_configs.loss_fn_name
+                if hasattr(self.client_agent_config.train_configs, "loss_fn_name")
+                else None,
+                **kwargs,
             )
         elif hasattr(self.client_agent_config.train_configs, "loss_fn"):
             kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
-            if hasattr(nn, self.client_agent_config.train_configs.loss_fn):                
-                self.loss_fn = getattr(nn, self.client_agent_config.train_configs.loss_fn)(**kwargs)
+            if hasattr(nn, self.client_agent_config.train_configs.loss_fn):
+                self.loss_fn = getattr(
+                    nn, self.client_agent_config.train_configs.loss_fn
+                )(**kwargs)
             else:
                 self.loss_fn = None
         elif hasattr(self.client_agent_config.train_configs, "loss_fn_source"):
             kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
             self.loss_fn = create_instance_from_file_source(
                 self.client_agent_config.train_configs.loss_fn_source,
-                self.client_agent_config.train_configs.loss_fn_name if hasattr(self.client_agent_config.train_configs, "loss_fn_name") else None,
-                **kwargs
+                self.client_agent_config.train_configs.loss_fn_name
+                if hasattr(self.client_agent_config.train_configs, "loss_fn_name")
+                else None,
+                **kwargs,
             )
         else:
             self.loss_fn = None
@@ -343,12 +412,16 @@ class ClientAgent:
         if hasattr(self.client_agent_config.train_configs, "metric_path"):
             self.metric = get_function_from_file(
                 self.client_agent_config.train_configs.metric_path,
-                self.client_agent_config.train_configs.metric_name if hasattr(self.client_agent_config.train_configs, "metric_name") else None
+                self.client_agent_config.train_configs.metric_name
+                if hasattr(self.client_agent_config.train_configs, "metric_name")
+                else None,
             )
         elif hasattr(self.client_agent_config.train_configs, "metric_source"):
             self.metric = get_function_from_file_source(
                 self.client_agent_config.train_configs.metric_source,
-                self.client_agent_config.train_configs.metric_name if hasattr(self.client_agent_config.train_configs, "metric_name") else None
+                self.client_agent_config.train_configs.metric_name
+                if hasattr(self.client_agent_config.train_configs, "metric_name")
+                else None,
             )
         else:
             self.metric = None
@@ -362,10 +435,8 @@ class ClientAgent:
             return
         if (
             not hasattr(self.client_agent_config.train_configs, "trainer")
-            and
-            not hasattr(self.client_agent_config.train_configs, "trainer_path")
-            and
-            not hasattr(self.client_agent_config.train_configs, "trainer_source")
+            and not hasattr(self.client_agent_config.train_configs, "trainer_path")
+            and not hasattr(self.client_agent_config.train_configs, "trainer_source")
         ):
             self.trainer = None
             return
@@ -394,14 +465,20 @@ class ClientAgent:
                 logger=self.logger,
             )
         else:
-            trainer_module = importlib.import_module('appfl.algorithm.trainer')
-            if not hasattr(trainer_module, self.client_agent_config.train_configs.trainer):
-                raise ValueError(f'Invalid trainer name: {self.client_agent_config.train_configs.trainer}')
-            self.trainer: BaseTrainer = getattr(trainer_module, self.client_agent_config.train_configs.trainer)(
-                model=self.model, 
+            trainer_module = importlib.import_module("appfl.algorithm.trainer")
+            if not hasattr(
+                trainer_module, self.client_agent_config.train_configs.trainer
+            ):
+                raise ValueError(
+                    f"Invalid trainer name: {self.client_agent_config.train_configs.trainer}"
+                )
+            self.trainer: BaseTrainer = getattr(
+                trainer_module, self.client_agent_config.train_configs.trainer
+            )(
+                model=self.model,
                 loss_fn=self.loss_fn,
                 metric=self.metric,
-                train_dataset=self.train_dataset, 
+                train_dataset=self.train_dataset,
                 val_dataset=self.val_dataset,
                 train_configs=self.client_agent_config.train_configs,
                 logger=self.logger,
@@ -419,8 +496,13 @@ class ClientAgent:
             return
         if not hasattr(self.client_agent_config.comm_configs, "compressor_configs"):
             return
-        if getattr(self.client_agent_config.comm_configs.compressor_configs, "enable_compression", False):
+        if getattr(
+            self.client_agent_config.comm_configs.compressor_configs,
+            "enable_compression",
+            False,
+        ):
             self.enable_compression = True
-            self.compressor = eval(self.client_agent_config.comm_configs.compressor_configs.lossy_compressor)(
-               self.client_agent_config.comm_configs.compressor_configs
+            self.compressor = get_appfl_compressor(
+                compressor_name=self.client_agent_config.comm_configs.compressor_configs.lossy_compressor,
+                compressor_config=self.client_agent_config.comm_configs.compressor_configs,
             )

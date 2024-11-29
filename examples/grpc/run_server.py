@@ -5,10 +5,10 @@ from appfl.comm.grpc import GRPCServerCommunicator, serve
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(
-    "--config", 
-    type=str, 
+    "--config",
+    type=str,
     default="./resources/configs/mnist/server_fedavg.yaml",
-    help="Path to the configuration file."
+    help="Path to the configuration file.",
 )
 args = argparser.parse_args()
 

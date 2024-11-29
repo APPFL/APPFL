@@ -20,7 +20,7 @@ This page presents the publications using the APPFL framework. You may also find
 
 - **[Preprint]** T.-H. Hoang, J. Fuhrman, R. Madduri, M. Li, P. Chaturvedi, Z. Li, K. Kim, M. Ryu, R. Chard, E. Huerta et al., "Enabling end-to-end secure federated learning in biomedical research on heterogeneous computing environments with appflx," *arXiv preprint arXiv:2312.08701*, 2023. `[Paper] <https://arxiv.org/pdf/2312.08701.pdf>`_
 - **[Preprint]** S. Bose and K. Kim, "Federated short-term load forecasting with personalization layers for heterogeneous clients," *arXiv preprint arXiv:2309.13194*, 2023. `[Paper] <https://arxiv.org/pdf/2309.13194.pdf>`_
-- **[e-Science 2023]** Z. Li, S. He, P. Chaturvedi, T.-H. Hoang, M. Ryu, E. Huerta, V. Kindratenko, J. Fuhrman, M. Giger, R. Chard et al., "APPFLx: Providing privacy-preserving cross-silo federated learning as a service,” in *2023 IEEE 19th International Conference on e-Science (e-Science)*. IEEE, 2023, pp. 1-4. `[Paper] <https://arxiv.org/pdf/2308.08786.pdf>`_  `[Web Service] <https://appflx.link/>`_ 
+- **[e-Science 2023]** Z. Li, S. He, P. Chaturvedi, T.-H. Hoang, M. Ryu, E. Huerta, V. Kindratenko, J. Fuhrman, M. Giger, R. Chard et al., "APPFLx: Providing privacy-preserving cross-silo federated learning as a service,” in *2023 IEEE 19th International Conference on e-Science (e-Science)*. IEEE, 2023, pp. 1-4. `[Paper] <https://arxiv.org/pdf/2308.08786.pdf>`_  `[Web Service] <https://appflx.link/>`_
 
 2022
 ----

@@ -1,7 +1,14 @@
 import logging
-from .grpc_communicator_old_pb2 import *
+from .grpc_communicator_old_pb2 import (
+    Acknowledgment,
+    JobResponse,
+    MessageStatus,
+    WeightResponse,
+    LearningResults,
+)
 from . import grpc_communicator_old_pb2_grpc
 from .grpc_utils import construct_tensor_record, proto_to_databuffer
+
 
 class GRPCCommunicator(grpc_communicator_old_pb2_grpc.GRPCCommunicatorV0Servicer):
     def __init__(self, servicer_id, operator):
@@ -72,4 +79,3 @@ class GRPCCommunicator(grpc_communicator_old_pb2_grpc.GRPCCommunicatorV0Servicer
 
         ack = Acknowledgment(header=proto.header, status=status)
         return ack
-

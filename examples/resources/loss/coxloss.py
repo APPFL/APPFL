@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class BaselineLoss(nn.Module):
     """Compute Cox loss given model output and ground truth (E, T)
     Parameters

@@ -6,12 +6,14 @@ from collections import OrderedDict
 from typing import Any, Dict, Union
 from appfl.algorithm.aggregator import BaseAggregator
 
+
 class IIADMMAggregator(BaseAggregator):
     """
     IIADMMAggregator Aggregator class for Federated Learning.
     It has to be used with the IIADMMTrainer.
     For more details, check paper: https://arxiv.org/pdf/2202.03672.pdf
     """
+
     def __init__(
         self,
         model: nn.Module,
@@ -33,12 +35,14 @@ class IIADMMAggregator(BaseAggregator):
         self.dual_states = OrderedDict()
         self.primal_states_curr = OrderedDict()
         self.primal_states_prev = OrderedDict()
-        self.device = self.aggregator_configs.device if "device" in self.aggregator_configs else "cpu"
+        self.device = (
+            self.aggregator_configs.device
+            if "device" in self.aggregator_configs
+            else "cpu"
+        )
 
     def aggregate(
-        self,
-        local_models: Dict[Union[str, int], Union[Dict, OrderedDict]],
-        **kwargs
+        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs
     ) -> Dict:
         if len(self.primal_states) == 0:
             self.num_clients = len(local_models)
@@ -49,7 +53,9 @@ class IIADMMAggregator(BaseAggregator):
                 self.primal_states_prev[i] = OrderedDict()
                 # dual_state = 0 at the beginning
                 for name in self.named_parameters:
-                    self.dual_states[i][name] = torch.zeros_like(self.model.state_dict()[name])
+                    self.dual_states[i][name] = torch.zeros_like(
+                        self.model.state_dict()[name]
+                    )
 
         global_state = copy.deepcopy(self.model.state_dict())
 
@@ -57,15 +63,17 @@ class IIADMMAggregator(BaseAggregator):
             if model is not None:
                 self.primal_states[client_id] = model["primal"]
                 self.penalty[client_id] = model["penalty"]
-        
+
         # Calculate the primal residual
         primal_res = 0
         for client_id in local_models:
             for name in self.named_parameters:
-                primal_res += torch.sum(torch.square(
-                    global_state[name].to(self.device)
-                    - self.primal_states[client_id][name].to(self.device)
-                ))
+                primal_res += torch.sum(
+                    torch.square(
+                        global_state[name].to(self.device)
+                        - self.primal_states[client_id][name].to(self.device)
+                    )
+                )
         self.prim_res = torch.sqrt(primal_res).item()
 
         # Calculate the dual residual
@@ -93,7 +101,7 @@ class IIADMMAggregator(BaseAggregator):
                     )
                 dual_res += torch.sum(torch.square(res))
             self.dual_res = torch.sqrt(dual_res).item()
-                
+
         for name, param in self.model.named_parameters():
             state_param = torch.zeros_like(param)
             for client_id in local_models:
@@ -102,12 +110,13 @@ class IIADMMAggregator(BaseAggregator):
                 )
                 state_param += (
                     self.primal_states[client_id][name]
-                    - (1.0 / self.penalty[client_id]) * self.dual_states[client_id][name]
+                    - (1.0 / self.penalty[client_id])
+                    * self.dual_states[client_id][name]
                 )
             global_state[name] = state_param / self.num_clients
-        
+
         self.model.load_state_dict(global_state)
         return global_state
-    
+
     def get_parameters(self, **kwargs) -> Dict:
         return copy.deepcopy(self.model.state_dict())

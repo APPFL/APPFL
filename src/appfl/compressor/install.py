@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+
 def install_compressor():
     """
     Install APPFL supported compressors into .compressor directory.

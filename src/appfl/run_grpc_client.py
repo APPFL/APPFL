@@ -7,14 +7,14 @@ import time
 import torch
 import logging
 import torch.nn as nn
-from .misc import *
 from typing import Any
-from .algorithm import *
-from torch.optim import *
 from omegaconf import DictConfig
 from collections import OrderedDict
 from torch.utils.data import DataLoader
 from appfl.comm.grpc import APPFLgRPCClient, Job
+from appfl.misc.data import Dataset
+from appfl.misc.utils import save_model_iteration, client_log, get_appfl_algorithm
+
 
 def update_model_state(comm, model, round_number):
     new_state = {}
@@ -32,7 +32,7 @@ def run_client(
     train_data: Dataset,
     gpu_id: int = 0,
     test_data: Dataset = Dataset(),
-    metric: Any = None
+    metric: Any = None,
 ) -> None:
     """Launch gRPC client to connect to the server specified in the configuration.
 
@@ -44,22 +44,16 @@ def run_client(
         train_data (Dataset): training data
         gpu_id (int): GPU ID
     """
-    time.sleep(5) # Make sure the server is ready.
+    time.sleep(5)  # Make sure the server is ready.
 
     logger = logging.getLogger(__name__)
-
-    ## We assume to have as many GPUs as the number of MPI processes.
-    if cfg.device == "cuda":
-        device = f"cuda:{gpu_id}"
-    else:
-        device = cfg.device
 
     """ log for clients"""
     output_filename = cfg.output_filename + "_client_%s" % (cid)
     outfile = client_log(cfg.output_dirname, output_filename)
 
     batch_size = cfg.train_data_batch_size
-    if cfg.batch_training == False:
+    if not cfg.batch_training:
         batch_size = len(train_data)
 
     comm = APPFLgRPCClient(cid, cfg)
@@ -86,7 +80,7 @@ def run_client(
         return
 
     "Run validation if test data is given or the configuration is enabled."
-    if cfg.validation == True and len(test_data) > 0:
+    if cfg.validation and len(test_data) > 0:
         test_dataloader = DataLoader(
             test_data,
             num_workers=cfg.num_workers,
@@ -97,23 +91,26 @@ def run_client(
         cfg.validation = False
         test_dataloader = None
 
-    fed_client = eval(cfg.fed.clientname)(
-        cid,
-        weight,
-        copy.deepcopy(model),
-        loss_fn,
-        DataLoader(
-            train_data,
-            num_workers=cfg.num_workers,
-            batch_size=batch_size,
-            shuffle=cfg.train_data_shuffle,
-            pin_memory=True,
+    fed_client = get_appfl_algorithm(
+        algorithm_name=cfg.fed.clientname,
+        args=(
+            cid,
+            weight,
+            copy.deepcopy(model),
+            loss_fn,
+            DataLoader(
+                train_data,
+                num_workers=cfg.num_workers,
+                batch_size=batch_size,
+                shuffle=cfg.train_data_shuffle,
+                pin_memory=True,
+            ),
+            cfg,
+            outfile,
+            test_dataloader,
+            metric,
         ),
-        cfg,
-        outfile,
-        test_dataloader,
-        metric,
-        **cfg.fed.args,
+        kwargs=cfg.fed.args,
     )
 
     # Start federated learning.
@@ -147,11 +144,11 @@ def run_client(
                     or cur_round_number == cfg.num_epochs
                 ):
                     """Saving model"""
-                    if cfg.save_model == True:
+                    if cfg.save_model:
                         save_model_iteration(cur_round_number, fed_client.model, cfg)
 
                 time_start = time.time()
-                if 'penalty' in local_state:
+                if "penalty" in local_state:
                     comm.send_learning_results(
                         local_state["penalty"],
                         local_state["primal"],

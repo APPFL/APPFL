@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from omegaconf import DictConfig, OmegaConf
 
+
 @dataclass
 class ICEADMM:
     type: str = "iceadmm"
@@ -9,7 +10,6 @@ class ICEADMM:
     args: DictConfig = OmegaConf.create(
         {
             "num_local_epochs": 1,
-            
             "accum_grad": True,
             "coeff_grad": False,
             ## Optimizer for a gradient calculation (esp., to use zero.grad)

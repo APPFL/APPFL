@@ -1,7 +1,7 @@
 Quickstart
 ==========
 
-In this page, we present how to run an example federated learning script on the MNIST dataset using the APPFL package. 
+In this page, we present how to run an example federated learning script on the MNIST dataset using the APPFL package.
 
 Installation
 ------------
@@ -19,13 +19,13 @@ First, we need to make sure that the APPFL package and its dependencies are inst
 Serial simulation
 -----------------
 
-The first example can be simply run using the following command, which launchs a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
+The first example can be simply run using the following command, which launches a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
 
 .. code-block:: console
 
     python ./serial/run_serial.py --num_clients 5 \
         --server_config ./resources/configs/mnist/server_fedavg.yaml \
-        --client_config ./resources/configs/mnist/client_1.yaml 
+        --client_config ./resources/configs/mnist/client_1.yaml
 
 .. note::
 
@@ -74,7 +74,7 @@ As the package name suggests, in addition to general differential privacy techni
 gRPC deployment
 ---------------
 
-To show how to deploy the APPFL package on a real distributed system, we provide an example of running the federated learning experiment on the MNIST dataset using gRPC as the communication protocol. 
+To show how to deploy the APPFL package on a real distributed system, we provide an example of running the federated learning experiment on the MNIST dataset using gRPC as the communication protocol.
 
 First, we need to run the following command to start a federated learning server using ``FedCompass`` algorithm.
 
@@ -89,7 +89,7 @@ Open a second terminal to start a client using the following command to talk to 
     python ./grpc/run_client.py --config ./resources/configs/mnist/client_1.yaml
 
 Open a third terminal to start another client using the following command to talk to the server.
-    
+
 .. code-block:: console
-    
+
     python ./grpc/run_client.py --config ./resources/configs/mnist/client_2.yaml

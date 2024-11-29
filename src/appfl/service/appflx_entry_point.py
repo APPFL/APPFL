@@ -7,6 +7,7 @@ from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.service.utils import APPFLxDataExchanger
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
+
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -17,7 +18,9 @@ argparser.add_argument("--base_dir", type=str, required=True)
 args = argparser.parse_args()
 
 data_exchanger = APPFLxDataExchanger(base_dir=args.base_dir)
-server_agent_config, client_agent_configs = data_exchanger.download_configurations(args.run_aidr_only)
+server_agent_config, client_agent_configs = data_exchanger.download_configurations(
+    args.run_aidr_only
+)
 
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)
@@ -39,34 +42,39 @@ if args.run_aidr_only:
     restructured_report = {}
     for client_endpoint_id, client_report in readiness_reports.items():
         # Assuming 'data_readiness' is the key containing the actual report
-        client_data = client_report.get('data_readiness', {})
+        client_data = client_report.get("data_readiness", {})
         for attribute, value in client_data.items():
             if attribute not in restructured_report:
                 restructured_report[attribute] = {}
             restructured_report[attribute][client_endpoint_id] = value
     # Handle 'plots' separately if they exist
-    if 'plots' in restructured_report:
-        plot_data = restructured_report.pop('plots')
-        restructured_report['plots'] = {client_id: plot_data.get(client_id, {}) for client_id in readiness_reports.keys()}
+    if "plots" in restructured_report:
+        plot_data = restructured_report.pop("plots")
+        restructured_report["plots"] = {
+            client_id: plot_data.get(client_id, {})
+            for client_id in readiness_reports.keys()
+        }
     # Call the data_readiness_report function
     server_agent.data_readiness_report(restructured_report)
     # Upload the reports and logs
     log_file = server_agent.logger.get_log_filepath()
     report_file = os.path.join(
-        server_agent_config.client_configs.data_readiness_configs.output_dirname, 
-        f'{server_agent_config.client_configs.data_readiness_configs.output_filename}.html'
+        server_agent_config.client_configs.data_readiness_configs.output_dirname,
+        f"{server_agent_config.client_configs.data_readiness_configs.output_filename}.html",
     )
-    data_exchanger.upload_results({
-        'log.txt': log_file,
-        'report.html': report_file,
-    })    
+    data_exchanger.upload_results(
+        {
+            "log.txt": log_file,
+            "report.html": report_file,
+        }
+    )
 
-else: 
+else:
     # Get sample size from clients
     server_communicator.send_task_to_all_clients(task_name="get_sample_size")
     sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
     for client_endpoint_id, sample_size in sample_size_ret.items():
-        server_agent.set_sample_size(client_endpoint_id, sample_size['sample_size'])
+        server_agent.set_sample_size(client_endpoint_id, sample_size["sample_size"])
 
     # Train the model
     server_communicator.send_task_to_all_clients(
@@ -79,8 +87,12 @@ else:
     client_rounds = {}
     training_metadata = {}
     while not server_agent.training_finished():
-        client_endpoint_id, client_model, client_metadata = server_communicator.recv_result_from_one_client()
-        server_agent.logger.info(f"Received the following meta data from {client_endpoint_id}:\n{pprint.pformat(client_metadata)}")
+        client_endpoint_id, client_model, client_metadata = (
+            server_communicator.recv_result_from_one_client()
+        )
+        server_agent.logger.info(
+            f"Received the following meta data from {client_endpoint_id}:\n{pprint.pformat(client_metadata)}"
+        )
         if client_endpoint_id not in training_metadata:
             training_metadata[client_endpoint_id] = []
         training_metadata[client_endpoint_id].append(client_metadata)
@@ -99,7 +111,7 @@ else:
             if client_endpoint_id not in client_rounds:
                 client_rounds[client_endpoint_id] = 0
             client_rounds[client_endpoint_id] += 1
-            metadata['round'] = client_rounds[client_endpoint_id]
+            metadata["round"] = client_rounds[client_endpoint_id]
             if not server_agent.training_finished():
                 server_communicator.send_task_to_one_client(
                     client_endpoint_id,
@@ -120,7 +132,7 @@ else:
                 if client_endpoint_id not in client_rounds:
                     client_rounds[client_endpoint_id] = 0
                 client_rounds[client_endpoint_id] += 1
-                metadata['round'] = client_rounds[client_endpoint_id]
+                metadata["round"] = client_rounds[client_endpoint_id]
                 if not server_agent.training_finished():
                     server_communicator.send_task_to_one_client(
                         client_endpoint_id,
@@ -135,13 +147,18 @@ else:
     # Upload the reports and logs
     log_file = server_agent.logger.get_log_filepath()
     # save the training metadata into a json file
-    result_file = os.path.join(server_agent_config.server_configs.logging_output_dirname, "training_metadata.json")
+    result_file = os.path.join(
+        server_agent_config.server_configs.logging_output_dirname,
+        "training_metadata.json",
+    )
     with open(result_file, "w") as f:
         json.dump(training_metadata, f)
-    data_exchanger.upload_results({
-        'log.txt': log_file,
-        'training_metadata.json': result_file,
-    })
+    data_exchanger.upload_results(
+        {
+            "log.txt": log_file,
+            "training_metadata.json": result_file,
+        }
+    )
 
 server_communicator.cancel_all_tasks()
 server_communicator.shutdown_all_clients()

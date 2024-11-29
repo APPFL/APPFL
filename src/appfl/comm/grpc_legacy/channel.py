@@ -7,6 +7,7 @@ from typing import Optional
 from appfl.comm.grpc.auth import APPFLAuthMetadataProvider
 from appfl.login_manager import BaseAuthenticator
 
+
 def create_grpc_channel(
     server_uri: str,
     *,
@@ -27,22 +28,30 @@ def create_grpc_channel(
     :param max_message_size: The maximum message size in bytes.
     :return: The created gRPC channel.
     """
-    assert not (use_authenticator and not use_ssl), "Authenticator can only be used with SSL/TLS"
+    assert not (
+        use_authenticator and not use_ssl
+    ), "Authenticator can only be used with SSL/TLS"
     channel_options = [
         ("grpc.max_send_message_length", max_message_size),
         ("grpc.max_receive_message_length", max_message_size),
     ]
     if use_ssl:
         if root_certificates is not None:
-            credentials = grpc.ssl_channel_credentials(root_certificates=root_certificates)
+            credentials = grpc.ssl_channel_credentials(
+                root_certificates=root_certificates
+            )
         else:
             credentials = grpc.ssl_channel_credentials()
         if use_authenticator:
-            assert authenticator is not None, "Authenticator must be provided if use_authenticator is True"
+            assert (
+                authenticator is not None
+            ), "Authenticator must be provided if use_authenticator is True"
             call_credentials = grpc.metadata_call_credentials(
                 APPFLAuthMetadataProvider(authenticator)
             )
-            credentials = grpc.composite_channel_credentials(credentials, call_credentials)
+            credentials = grpc.composite_channel_credentials(
+                credentials, call_credentials
+            )
         channel = grpc.secure_channel(server_uri, credentials, options=channel_options)
     else:
         channel = grpc.insecure_channel(server_uri, options=channel_options)

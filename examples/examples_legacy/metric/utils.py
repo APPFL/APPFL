@@ -1,8 +1,10 @@
 import importlib
+
+
 def get_metric(metric_path, metric_name=None):
     # Extract the module name from the file path (removing the ".py" extension)
     metric_path = metric_path.replace("/", ".")
-    module_name = metric_path[:-3] if metric_path.endswith('.py') else metric_path
+    module_name = metric_path[:-3] if metric_path.endswith(".py") else metric_path
 
     # Import the module dynamically
     module = importlib.import_module(module_name)

@@ -6,20 +6,26 @@ import torch
 import numpy as np
 from appfl.misc.data import Dataset
 
+
 class Coronahack:
     def __init__(self, dir, pixel, is_train):
-
-        if is_train == True:
-            self.imgs_path = (dir + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/")
+        if is_train:
+            self.imgs_path = (
+                dir
+                + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"
+            )
         else:
-            self.imgs_path = (dir + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/")
+            self.imgs_path = (
+                dir
+                + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
+            )
 
         self.data = []
         with open(dir + "/Chest_xray_Corona_Metadata.csv", "r") as file:
             csvreader = csv.reader(file)
             next(csvreader)
             for row in csvreader:
-                if is_train == True:
+                if is_train:
                     if row[3] == "TRAIN":
                         img_path = self.imgs_path + row[1]
                         class_name = row[2] + row[4] + row[5]
@@ -56,6 +62,7 @@ class Coronahack:
 
         return img_tensor, class_id
 
+
 def get_corona(
     num_clients: int,
     client_id: int,
@@ -73,11 +80,15 @@ def get_corona(
     cur_dir = os.path.dirname(os.path.abspath(__file__))
     if processed:
         """If you have already preprocessed the data, you can use the preprocessed data."""
-        dir = os.path.join(cur_dir, f"PreprocessedData/Coronahack_Clients_{num_clients}")
+        dir = os.path.join(
+            cur_dir, f"PreprocessedData/Coronahack_Clients_{num_clients}"
+        )
 
         with open(os.path.join(dir, "all_test_data.json")) as f:
             test_data_raw = json.load(f)
-        test_dataset = Dataset(torch.FloatTensor(test_data_raw["x"]), torch.tensor(test_data_raw["y"]))
+        test_dataset = Dataset(
+            torch.FloatTensor(test_data_raw["x"]), torch.tensor(test_data_raw["y"])
+        )
 
         with open("%s/all_train_data_client_%s.json" % (dir, client_id)) as f:
             train_data_raw = json.load(f)

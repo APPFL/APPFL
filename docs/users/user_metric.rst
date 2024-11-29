@@ -23,7 +23,7 @@ Users can define custom evaluation metric functions for their applications. The 
 To use the defined metric function during the FL experiment, you need to provide the absolute/relative path to the metric definition file and the name of the metric function. For example, to use the accuracy metric defined above, you can add the following lines to the server configuration file, where ``do_validation`` means to perform validation after each local training round, ``do_pre_validation`` means to perform validation before each local training round (i.e., validate the global model).
 
 .. code-block:: yaml
-    
+
     client_configs:
         train_configs:
             ...

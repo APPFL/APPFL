@@ -1,5 +1,6 @@
 import torch.nn as nn
 
+
 class FC(nn.Module):
     """
     A Fully connected layer.

@@ -2,11 +2,18 @@ import grpc
 import time
 import logging
 import numpy as np
-from .grpc_utils import *
-from appfl.login_manager import *
-from .grpc_communicator_old_pb2 import *
+from .grpc_utils import proto_to_databuffer, construct_tensor_record
+from .grpc_communicator_old_pb2 import (
+    Header,
+    JobRequest,
+    TensorRequest,
+    TensorRecord,
+    WeightRequest,
+    LearningResults,
+)
 from .channel import create_grpc_channel
 from .grpc_communicator_old_pb2_grpc import GRPCCommunicatorV0Stub
+
 
 class APPFLgRPCClient:
     def __init__(self, client_id, cfg):
@@ -18,7 +25,9 @@ class APPFLgRPCClient:
             use_ssl=cfg.use_ssl,
             use_authenticator=cfg.use_authenticator,
             root_certificates=cfg.client.root_certificates,
-            authenticator=eval(cfg.authenticator)(**cfg.client.authenticator_kwargs) if cfg.use_authenticator else None,
+            authenticator=eval(cfg.authenticator)(**cfg.client.authenticator_kwargs)
+            if cfg.use_authenticator
+            else None,
             max_message_size=self.max_message_size,
         )
         grpc.channel_ready_future(self.channel).result(timeout=60)
@@ -82,8 +91,7 @@ class APPFLgRPCClient:
 
     def send_learning_results(self, penalty, primal, dual, round_number):
         primal_tensors = [
-            construct_tensor_record(k, np.array(v.cpu()))
-            for k, v in primal.items()
+            construct_tensor_record(k, np.array(v.cpu())) for k, v in primal.items()
         ]
         dual_tensors = [
             construct_tensor_record(k, np.array(v.cpu())) for k, v in dual.items()
@@ -97,9 +105,7 @@ class APPFLgRPCClient:
         )
 
         databuffer = []
-        databuffer += proto_to_databuffer(
-            proto, max_message_size=self.max_message_size
-        )
+        databuffer += proto_to_databuffer(proto, max_message_size=self.max_message_size)
         start = time.time()
         self.stub.SendLearningResults(iter(databuffer))
         end = time.time()

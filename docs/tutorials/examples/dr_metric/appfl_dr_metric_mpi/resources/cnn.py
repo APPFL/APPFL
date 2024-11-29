@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import math
 
+
 class CNN(nn.Module):
     def __init__(self, num_channel, num_classes, num_pixel):
         super().__init__()

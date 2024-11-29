@@ -1,11 +1,17 @@
-from appfl.misc import deprecated
+from appfl.misc.deprecation import deprecated
 from .server_federated import FedServer
 
-@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead.")
+
+@deprecated(
+    "Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead."
+)
 class ServerFedAvgMomentum(FedServer):
     def update_m_vector(self):
         for name, _ in self.model.named_parameters():
-            self.m_vector[name] = self.server_momentum_param_1 * self.m_vector[name]+ self.pseudo_grad[name]
+            self.m_vector[name] = (
+                self.server_momentum_param_1 * self.m_vector[name]
+                + self.pseudo_grad[name]
+            )
 
     def compute_step(self):
         super(ServerFedAvgMomentum, self).compute_pseudo_gradient()
@@ -16,7 +22,9 @@ class ServerFedAvgMomentum(FedServer):
     def logging_summary(self, cfg, logger):
         super(FedServer, self).log_summary(cfg, logger)
         logger.info("client_learning_rate = %s " % (cfg.fed.args.optim_args.lr))
-        logger.info("server_momentum_param_1 = %s " % (cfg.fed.args.server_momentum_param_1))
+        logger.info(
+            "server_momentum_param_1 = %s " % (cfg.fed.args.server_momentum_param_1)
+        )
 
         if cfg.summary_file != "":
             with open(cfg.summary_file, "a") as f:

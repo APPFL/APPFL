@@ -66,5 +66,3 @@ Collaboration Institutions
         <img src="../_static/broad.png" alt="Broad Institute">
         <img src="../_static/uw.png" alt="University of Washington">
     </div>
-
-

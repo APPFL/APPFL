@@ -5,36 +5,45 @@ import pathlib
 from datetime import datetime
 from typing import List, Dict, Union
 
+
 class ClientAgentFileLogger:
     """
     ClientAgentFileLogger is a class that logs FL client-side messages to the console and to a file.
     :param logging_id: An optional string to identify the client.
     :param file_dir: The directory to save the log file.
     :param file_name: The name of the log file.
-    :param experiment_id: An optional string to identify the experiment. 
+    :param experiment_id: An optional string to identify the experiment.
         If not provided, the current date and time will be used.
     """
+
     def __init__(
-        self, 
-        logging_id: str="", 
-        file_dir: str="", 
-        file_name: str="", 
-        experiment_id: str=""
+        self,
+        logging_id: str = "",
+        file_dir: str = "",
+        file_name: str = "",
+        experiment_id: str = "",
     ) -> None:
-        
         if file_name != "":
             file_name += f"_{logging_id}" if logging_id != "" else ""
             file_name += f"_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
         fmt = (
-            logging.Formatter('[%(asctime)s %(levelname)-4s]: %(message)s') 
-            if logging_id == "" 
-            else logging.Formatter(f'[%(asctime)s %(levelname)-4s {logging_id}]: %(message)s')
+            logging.Formatter("[%(asctime)s %(levelname)-4s]: %(message)s")
+            if logging_id == ""
+            else logging.Formatter(
+                f"[%(asctime)s %(levelname)-4s {logging_id}]: %(message)s"
+            )
         )
-        self.logger = logging.getLogger(__name__+"_"+logging_id if logging_id != "" else str(uuid.uuid4()))
+        self.logger = logging.getLogger(
+            __name__ + "_" + logging_id if logging_id != "" else str(uuid.uuid4())
+        )
         self.logger.setLevel(logging.INFO)
 
-        num_s_handlers = len([h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)])
-        num_f_handlers = len([h for h in self.logger.handlers if isinstance(h, logging.FileHandler)])
+        num_s_handlers = len(
+            [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
+        )
+        num_f_handlers = len(
+            [h for h in self.logger.handlers if isinstance(h, logging.FileHandler)]
+        )
 
         if num_s_handlers == 0:
             s_handler = logging.StreamHandler()
@@ -58,11 +67,11 @@ class ClientAgentFileLogger:
         self.titles = titles
         title = " ".join(["%10s" % t for t in titles])
         self.logger.info(title)
-        
+
     def set_title(self, titles: List) -> None:
         if not hasattr(self, "titles"):
             self.titles = titles
-    
+
     def log_content(self, contents: Union[Dict, List]) -> None:
         if not isinstance(contents, dict) and not isinstance(contents, list):
             raise ValueError("Contents must be a dictionary or list")
@@ -75,7 +84,12 @@ class ClientAgentFileLogger:
             if len(contents) != len(self.titles):
                 raise ValueError("Contents and titles must have the same length")
         length = [max(len(str(t)), 10) for t in self.titles]
-        content = " ".join(["%*s" % (l, c) if not isinstance(c, float) else "%*.4f" % (l, c) for l, c in zip(length, contents)])
+        content = " ".join(
+            [
+                "%*s" % (ln, cnt) if not isinstance(cnt, float) else "%*.4f" % (ln, cnt)
+                for ln, cnt in zip(length, contents)
+            ]
+        )
         self.logger.info(content)
 
     def info(self, info: str) -> None:

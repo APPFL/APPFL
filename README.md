@@ -12,7 +12,7 @@
   </a>
   <a href="https://zenodo.org/badge/latestdoi/414722606" target="_blank">
       <img src="https://zenodo.org/badge/414722606.svg" alt="DOI">
-  </a> 
+  </a>
   <a href="https://appfl.readthedocs.io/en/latest/?badge=latest" target="_blank">
       <img src="https://readthedocs.org/projects/appfl/badge/?version=latest" alt="Doc">
   </a>
@@ -30,7 +30,7 @@
 APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source and highly extensible software framework that allows research communities to implement, test, and validate various ideas related to privacy-preserving federated learning (FL), and deploy real FL experiments easily and safely among distributed clients to train more robust ML models.With this framework, developers and users can easily
 
 * Train any user-defined machine learning model on decentralized data with optional differential privacy and client authentication.
-* Simulate various synchronous and asynchronous PPFL algorihtms on high-performance computing (HPC) architecture with MPI.
+* Simulate various synchronous and asynchronous PPFL algorithms on high-performance computing (HPC) architecture with MPI.
 * Implement customizations in a plug-and-play manner for all aspects of FL, including aggregation algorithms, server scheduling strategies, and client local trainers.
 
 [Documentation](http://appfl.rtfd.io/): please check out our documentation for tutorials, users guide, and developers guide.
@@ -61,7 +61,7 @@ pip install pip --upgrade
 pip install "appfl[examples]"
 ```
 
-If we want to even minimize the installation of package dependencies, we can skip the installation of a few pacakges (e.g., `matplotlib` and `jupyter`):
+If we want to even minimize the installation of package dependencies, we can skip the installation of a few packages (e.g., `matplotlib` and `jupyter`):
 
 ```bash
 pip install "appfl"
@@ -69,8 +69,8 @@ pip install "appfl"
 
 ### Developer installation
 
-Code developers and contributors may want to work on the local repositofy. 
-To set up the development environment, 
+Code developers and contributors may want to work on the local repositofy.
+To set up the development environment,
 
 ```bash
 git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
@@ -91,7 +91,7 @@ APPFL is primarily composed of the following six technical components
 * Aggregator: APPFL supports several popular algorithms to aggregate one or several client local models.
 * Scheduler: APPFL supports several synchronous and asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models.
 * Trianer: APPFL supports several client local trainers for various training tasks.
-* Privacy: APPFL supprots several global/local differential privacy schemes.
+* Privacy: APPFL supports several global/local differential privacy schemes.
 * Communicator: APPFL supports MPI for single-machine/cluster simulation, and gRPC and Globus Compute with authenticator for secure distributed training.
 * Compressor: APPFL supports several lossy compressors for model parameters, including [SZ2](https://github.com/szcompressor/SZ), [SZ3](https://github.com/szcompressor/SZ3), [ZFP](https://pypi.org/project/zfpy/), and [SZx](https://github.com/szcompressor/SZx).
 

@@ -6,7 +6,13 @@ import threading
 from typing import Iterator, Optional
 from .tokenstore import get_token_storage_adapter
 from globus_sdk.scopes import AuthScopes, GroupsScopes
-from globus_sdk import NativeAppAuthClient, RefreshTokenAuthorizer, AuthClient, GroupsClient
+from globus_sdk import (
+    NativeAppAuthClient,
+    RefreshTokenAuthorizer,
+    AuthClient,
+    GroupsClient,
+)
+
 
 class GlobusLoginManager:
     """
@@ -15,13 +21,10 @@ class GlobusLoginManager:
     - a helper method for ensuring that the user is logged in
     - a helper method to build Globus SDK client objects with correct RefreshTokenAuthorizer
     """
+
     SCOPES = {
-        'appfl_client': {
-            AuthScopes.resource_server: [AuthScopes.openid]
-        },
-        'appfl_server': {
-            GroupsScopes.resource_server: [GroupsScopes.all]
-        }
+        "appfl_client": {AuthScopes.resource_server: [AuthScopes.openid]},
+        "appfl_server": {GroupsScopes.resource_server: [GroupsScopes.all]},
     }
 
     APPFL_CLIENT_ID = "3de1d1a4-cd37-4d5f-a775-01d9c430330b"
@@ -33,26 +36,26 @@ class GlobusLoginManager:
 
     def _is_jupyter(self) -> bool:
         return "jupyter_core" in sys.modules
-    
+
     @property
     def login_requirements(self) -> Iterator[tuple[str, list[str]]]:
         if self._is_fl_server:
-            yield from self.SCOPES['appfl_server'].items()
+            yield from self.SCOPES["appfl_server"].items()
         else:
-            yield from self.SCOPES['appfl_client'].items()
+            yield from self.SCOPES["appfl_client"].items()
 
     def _get_auth_client(self) -> NativeAppAuthClient:
         return NativeAppAuthClient(
             client_id=self.APPFL_CLIENT_ID,
             app_name="APPFL",
         )
-    
+
     def _start_auth_flow(self, *, scopes: list[str]) -> None:
         auth_client = self._get_auth_client()
         auth_client.oauth2_start_flow(
             refresh_tokens=True,
             requested_scopes=scopes,
-            prefill_named_grant=platform.node()
+            prefill_named_grant=platform.node(),
         )
         print(
             "Please authenticate with Globus here\n"
@@ -61,10 +64,12 @@ class GlobusLoginManager:
             "------------------------------------\n"
         )
 
-        auth_code = input("Please enter the authorization code you get after login here: ").strip()
+        auth_code = input(
+            "Please enter the authorization code you get after login here: "
+        ).strip()
         token_response = auth_client.oauth2_exchange_code_for_tokens(auth_code)
         return token_response
-    
+
     def run_login_flow(self):
         """
         Run the globus login flow by having the user to manually enter the authorization code.
@@ -111,22 +116,32 @@ class GlobusLoginManager:
         return AuthClient(
             authorizer=self._get_authorizer(resource_server=AuthScopes.resource_server)
         )
-    
+
     def get_group_client(self) -> GroupsClient:
         return GroupsClient(
-            authorizer=self._get_authorizer(resource_server=GroupsScopes.resource_server)
+            authorizer=self._get_authorizer(
+                resource_server=GroupsScopes.resource_server
+            )
         )
 
     def get_auth_token(self) -> dict:
         """This function is used for FL client to get the auth token for the FL server validation."""
         assert not self._is_fl_server, "Server does not need auth tokens"
         return {
-            "access_token": self._token_storage.get_token_data(AuthScopes.resource_server)['access_token'],
-            "expires_at": self._token_storage.get_token_data(AuthScopes.resource_server)['expires_at_seconds'],
-            "refresh_token": self._token_storage.get_token_data(AuthScopes.resource_server)['refresh_token'],
+            "access_token": self._token_storage.get_token_data(
+                AuthScopes.resource_server
+            )["access_token"],
+            "expires_at": self._token_storage.get_token_data(
+                AuthScopes.resource_server
+            )["expires_at_seconds"],
+            "refresh_token": self._token_storage.get_token_data(
+                AuthScopes.resource_server
+            )["refresh_token"],
         }
 
-    def get_identity_client_with_tokens(self, access_token=None, refresh_token=None, expires_at=None) -> Optional[AuthClient]:
+    def get_identity_client_with_tokens(
+        self, access_token=None, refresh_token=None, expires_at=None
+    ) -> Optional[AuthClient]:
         """
         Return a client object with the correct authorizer for the Globus identity (auth) server using provided tokens.
         Return `None` for invalid token data. This function is intended to be invoked by FL server for validating
@@ -141,9 +156,9 @@ class GlobusLoginManager:
                 on_refresh=self._token_storage.on_refresh,
             )
             return AuthClient(authorizer=authorizer)
-        except Exception as e:
+        except Exception:
             return None
-        
+
     def _get_authorizer(self, *, resource_server: str) -> RefreshTokenAuthorizer:
         tokens = self._token_storage.get_token_data(resource_server)
         if tokens is None:
@@ -152,9 +167,9 @@ class GlobusLoginManager:
             )
         with self._access_lock:
             return RefreshTokenAuthorizer(
-                tokens['refresh_token'],
+                tokens["refresh_token"],
                 self._get_auth_client(),
-                access_token=tokens['access_token'],
-                expires_at=tokens['expires_at_seconds'],
+                access_token=tokens["access_token"],
+                expires_at=tokens["expires_at_seconds"],
                 on_refresh=self._token_storage.on_refresh,
             )

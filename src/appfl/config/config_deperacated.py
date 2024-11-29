@@ -3,10 +3,8 @@ from typing import Any, List, Dict, Optional
 from omegaconf import DictConfig, OmegaConf
 import os
 import sys
-from .fed.federated import *
-from .fed.fedasync import *
-from .fed.iceadmm import * 
-from .fed.iiadmm import *
+from .fed import Federated
+
 
 @dataclass
 class Config:
@@ -77,33 +75,37 @@ class Config:
     p_layers: List[str] = field(default_factory=lambda: [])
     config_name: str = ""
 
-    ## gRPC configutations ##
+    ## gRPC configurations ##
 
     # 100 MB for gRPC maximum message size
     max_message_size: int = 10485760
     use_ssl: bool = False
     use_authenticator: bool = False
-    authenticator: str = "Globus" # "Globus", "Naive"
+    authenticator: str = "Globus"  # "Globus", "Naive"
     uri: str = "localhost:50051"
 
     operator: DictConfig = OmegaConf.create({"id": 1})
-    server: DictConfig = OmegaConf.create({
-        "id": 1, 
-        "authenticator_kwargs": {
-            "is_fl_server": True,
-            "globus_group_id": "77c1c74b-a33b-11ed-8951-7b5a369c0a53",
-        },
-        "server_certificate_key": "default",
-        "server_certificate": "default",
-        "max_workers": 10,
-    })
-    client: DictConfig = OmegaConf.create({
-        "id": 1,
-        "root_certificates": "default",
-        "authenticator_kwargs": {
-            "is_fl_server": False,
-        },
-    })
+    server: DictConfig = OmegaConf.create(
+        {
+            "id": 1,
+            "authenticator_kwargs": {
+                "is_fl_server": True,
+                "globus_group_id": "77c1c74b-a33b-11ed-8951-7b5a369c0a53",
+            },
+            "server_certificate_key": "default",
+            "server_certificate": "default",
+            "max_workers": 10,
+        }
+    )
+    client: DictConfig = OmegaConf.create(
+        {
+            "id": 1,
+            "root_certificates": "default",
+            "authenticator_kwargs": {
+                "is_fl_server": False,
+            },
+        }
+    )
 
     # Lossy compression enabling
     enable_compression: bool = False
@@ -113,10 +115,18 @@ class Config:
     # Lossy compression path configuration
     ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
     current_dir = os.path.dirname(os.path.realpath(__file__))
-    base_dir = os.path.abspath(os.path.join(current_dir, os.pardir, os.pardir, os.pardir))
-    compressor_sz2_path: str = os.path.join(base_dir, ".compressor/SZ/build/sz/libSZ" + ext)
-    compressor_sz3_path: str = os.path.join(base_dir, ".compressor/SZ3/build/tools/sz3c/libSZ3c" + ext)
-    compressor_szx_path: str = os.path.join(base_dir, ".compressor/SZx-main/build/lib/libSZx" + ext)
+    base_dir = os.path.abspath(
+        os.path.join(current_dir, os.pardir, os.pardir, os.pardir)
+    )
+    compressor_sz2_path: str = os.path.join(
+        base_dir, ".compressor/SZ/build/sz/libSZ" + ext
+    )
+    compressor_sz3_path: str = os.path.join(
+        base_dir, ".compressor/SZ3/build/tools/sz3c/libSZ3c" + ext
+    )
+    compressor_szx_path: str = os.path.join(
+        base_dir, ".compressor/SZx-main/build/lib/libSZx" + ext
+    )
 
     # Compressor parameters
     error_bounding_mode: str = ""
@@ -141,12 +151,12 @@ class GlobusComputeServerConfig:
 
 @dataclass
 class GlobusComputeClientConfig:
-    name        : str = ""
-    endpoint_id : str = ""
-    device      : str = "cpu"
-    output_dir  : str = "./output"
-    data_dir    : str = "./datasets"
-    get_data    :  DictConfig = OmegaConf.create({})
+    name: str = ""
+    endpoint_id: str = ""
+    device: str = "cpu"
+    output_dir: str = "./output"
+    data_dir: str = "./datasets"
+    get_data: DictConfig = OmegaConf.create({})
     data_pipeline: DictConfig = OmegaConf.create({})
 
 

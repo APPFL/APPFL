@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class Baseline(nn.Module):
     def __init__(self, input_dim=13, output_dim=1):
         super(Baseline, self).__init__()
