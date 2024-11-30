@@ -1,10 +1,10 @@
-local_tests
+credential.csv
+local_tests/
 .vscode
 .gitignore
-creds
-log_globus_compute_appfl
 .DS_Store
 *.npz
+local_test/
 .compressor
 *.pptx
 src/appfl/.DS_Store
