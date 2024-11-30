@@ -11,6 +11,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument("--login", action="store_true")
 argparser.add_argument("--compute_token", required=False)
 argparser.add_argument("--openid_token", required=False)
+argparser.add_argument("--endpoint_id", required=False)
 args = argparser.parse_args()
 
 ComputeScopes = ComputeScopeBuilder()
@@ -38,7 +39,7 @@ if args.login:
 
     print(token_response)
 
-if (args.login) or (args.compute_token is not None and args.openid_token is not None):
+if ((args.login) or (args.compute_token is not None and args.openid_token is not None)) and args.endpoint_id is not None:
     compute_token = (
         args.compute_token
         if args.compute_token is not None
@@ -61,6 +62,6 @@ if (args.login) or (args.compute_token is not None and args.openid_token is not 
     gc = Client(login_manager=compute_login_manager)
     def double(x):
         return x * 2
-    with Executor(endpoint_id='ed4a1881-120e-4f67-88d7-876cd280feef', client=gc) as gce:
+    with Executor(endpoint_id=args.endpoint_id, client=gc) as gce:
         fut = gce.submit(double, 7)
         print(fut.result())
