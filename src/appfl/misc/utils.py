@@ -1,4 +1,5 @@
 import os
+import ast
 import sys
 import copy
 import torch
@@ -16,7 +17,39 @@ from .deprecation import deprecated
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
-def create_instance_from_file(file_path, class_name, *args, **kwargs):
+def get_last_class_name(file_path):
+    with open(file_path, "r") as file:
+        file_content = file.read()
+
+    # Parse the file content
+    tree = ast.parse(file_content)
+
+    # Get all class definitions
+    classes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
+
+    # Return the name of the last class if there are any
+    if classes:
+        return classes[-1].name
+    else:
+        return None
+
+def get_last_function_name(file_path):
+    with open(file_path, "r") as file:
+        file_content = file.read()
+
+    # Parse the file content
+    tree = ast.parse(file_content)
+
+    # Get all function definitions
+    functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
+
+    # Return the name of the last function if there are any
+    if functions:
+        return functions[-1].name
+    else:
+        return None
+
+def create_instance_from_file(file_path, class_name = None, *args, **kwargs):
     """
     Creates an instance of a class from a given file path.
 
@@ -26,6 +59,10 @@ def create_instance_from_file(file_path, class_name, *args, **kwargs):
     :param kwargs: Keyword arguments to be passed to the class constructor.
     :return: An instance of the specified class, or None if creation fails.
     """
+    # Read the last class name if not provided
+    if class_name is None:
+        class_name = get_last_class_name(file_path)
+
     # Normalize the file path
     file_path = os.path.abspath(file_path)
 
@@ -52,7 +89,7 @@ def create_instance_from_file(file_path, class_name, *args, **kwargs):
 
     return instance
 
-def get_function_from_file(file_path, function_name):
+def get_function_from_file(file_path, function_name = None):
     """
     Gets a function from a given file path.
 
@@ -61,6 +98,10 @@ def get_function_from_file(file_path, function_name):
     :return: The function object, or None if retrieval fails.
     """
     try:
+        # Read the last function name if not provided
+        if function_name is None:
+            function_name = get_last_function_name(file_path)
+        
         # Normalize the file path
         file_path = os.path.abspath(file_path)
 
@@ -90,7 +131,7 @@ def get_function_from_file(file_path, function_name):
         print(f"An error occurred: {e}")
         return None
     
-def run_function_from_file(file_path, function_name, *args, **kwargs):
+def run_function_from_file(file_path, function_name = None, *args, **kwargs):
     """
     Runs a function from a given file path.
 
@@ -101,6 +142,10 @@ def run_function_from_file(file_path, function_name, *args, **kwargs):
     :return: The result of the function execution, or None if execution fails.
     """
     try:
+        # Read the last function name if not provided
+        if function_name is None:
+            function_name = get_last_function_name(file_path)
+
         # Normalize the file path
         file_path = os.path.abspath(file_path)
 
@@ -131,7 +176,7 @@ def run_function_from_file(file_path, function_name, *args, **kwargs):
         print(f"An error occurred: {e}")
         return None
     
-def create_instance_from_file_source(source, class_name, *args, **kwargs):
+def create_instance_from_file_source(source, class_name = None, *args, **kwargs):
     """
     Creates an instance of a class from a given source code.
 
@@ -156,7 +201,7 @@ def create_instance_from_file_source(source, class_name, *args, **kwargs):
 
     return instance
 
-def get_function_from_file_source(source, function_name):
+def get_function_from_file_source(source, function_name = None):
     """
     Gets a function from a given source code.
 
@@ -181,7 +226,7 @@ def get_function_from_file_source(source, function_name):
 
     return function
 
-def run_function_from_file_source(source, function_name, *args, **kwargs):
+def run_function_from_file_source(source, function_name = None, *args, **kwargs):
     """
     Runs a function from a given source code.
 

@@ -1,8 +1,8 @@
+import pprint
 import argparse
 import warnings
 from omegaconf import OmegaConf
 from concurrent.futures import Future
-from globus_compute_sdk import Client
 from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 warnings.filterwarnings("ignore", category=DeprecationWarning)   # Ignore deprecation warnings
@@ -10,6 +10,11 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)   # Ignore deprec
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--server_config', type=str, default="./resources/config_gc/mnist/server_fedcompass.yaml")
 argparser.add_argument('--client_config', type=str, default="./resources/config_gc/mnist/clients.yaml")
+args = argparser.parse_args()
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument("--compute_token", required=False)
+argparser.add_argument("--openid_token", required=False)
 args = argparser.parse_args()
 
 # Load server and client agents configurations
@@ -20,11 +25,14 @@ client_agent_configs = OmegaConf.load(args.client_config)
 server_agent = ServerAgent(server_agent_config=server_agent_config)
 
 # Create server communicator
-gcc = Client()
 server_communicator = GlobusComputeServerCommunicator(
     server_agent_config=server_agent.server_agent_config,
     client_agent_configs=client_agent_configs['clients'],
     logger=server_agent.logger,
+    **({
+        "compute_token": args.compute_token,
+        "openid_token": args.openid_token,
+    } if args.compute_token is not None and args.openid_token is not None else {})
 )
 
 # Get sample size from clients
@@ -65,8 +73,10 @@ server_communicator.send_task_to_all_clients(
 )
 
 model_futures = {}
+client_rounds = {}
 while not server_agent.training_finished():
     client_endpoint_id, client_model, client_metadata = server_communicator.recv_result_from_one_client()
+    server_agent.logger.info(f"Received model from client {client_endpoint_id}, with metadata:\n{pprint.pformat(client_metadata)}")
     global_model = server_agent.global_update(
         client_endpoint_id,
         client_model,
@@ -79,6 +89,10 @@ while not server_agent.training_finished():
             global_model, metadata = global_model
         else:
             metadata = {}
+        if client_endpoint_id not in client_rounds:
+            client_rounds[client_endpoint_id] = 0
+        client_rounds[client_endpoint_id] += 1
+        metadata['round'] = client_rounds[client_endpoint_id]
         if not server_agent.training_finished():
             server_communicator.send_task_to_one_client(
                 client_endpoint_id,
@@ -96,6 +110,10 @@ while not server_agent.training_finished():
                 global_model, metadata = global_model
             else:
                 metadata = {}
+            if client_endpoint_id not in client_rounds:
+                client_rounds[client_endpoint_id] = 0
+            client_rounds[client_endpoint_id] += 1
+            metadata['round'] = client_rounds[client_endpoint_id]
             if not server_agent.training_finished():
                 server_communicator.send_task_to_one_client(
                     client_endpoint_id,

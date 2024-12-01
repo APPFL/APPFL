@@ -32,7 +32,7 @@ def globus_compute_client_entry_point(
         }
     
     elif task_name == "train":
-        client_agent.train()
+        client_agent.train(**meta_data)
         local_model = client_agent.get_parameters()
         if isinstance(local_model, tuple):
             local_model, meta_data_local = local_model

@@ -45,16 +45,23 @@ class ClientAgentFileLogger:
             if not os.path.exists(file_dir):
                 pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
             real_file_name = f"{file_dir}/{file_name}.txt"
+            # check if the file exists
+            file_exists = os.path.exists(real_file_name)
             f_handler = logging.FileHandler(real_file_name)
             f_handler.setLevel(logging.INFO)
             f_handler.setFormatter(fmt)
             self.logger.addHandler(f_handler)
-            self.logger.info(f"Logging to {real_file_name}")
+            if not file_exists:
+                self.logger.info(f"Logging to {real_file_name}")
 
     def log_title(self, titles: List) -> None:
         self.titles = titles
         title = " ".join(["%10s" % t for t in titles])
         self.logger.info(title)
+        
+    def set_title(self, titles: List) -> None:
+        if not hasattr(self, "titles"):
+            self.titles = titles
     
     def log_content(self, contents: Union[Dict, List]) -> None:
         if not isinstance(contents, dict) and not isinstance(contents, list):

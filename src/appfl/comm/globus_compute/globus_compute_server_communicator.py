@@ -6,6 +6,8 @@ import logging
 from datetime import datetime
 from omegaconf import OmegaConf
 from collections import OrderedDict
+from globus_sdk.scopes import AuthScopes
+from globus_sdk import AccessTokenAuthorizer
 from globus_compute_sdk import Executor, Client
 from concurrent.futures import Future, as_completed
 from typing import Optional, Dict, List, Union, Tuple, Any
@@ -14,6 +16,9 @@ from appfl.config import ClientAgentConfig, ServerAgentConfig
 from .utils.config import ClientTask
 from .utils.endpoint import GlobusComputeClientEndpoint
 from .utils.s3_storage import CloudStorage, LargeObjectWrapper
+from globus_compute_sdk.serialize import CombinedCode
+from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
+from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
 
 class GlobusComputeServerCommunicator:
     """
@@ -36,7 +41,27 @@ class GlobusComputeServerCommunicator:
         logger: Optional[ServerAgentFileLogger] = None,
         **kwargs,
     ):
-        gcc = Client()
+        # Assert compute_token and openid_token are both provided if necessary
+        assert (
+            ("compute_token" in kwargs and "openid_token" in kwargs) or 
+            ("compute_token" not in kwargs and "openid_token" not in kwargs)
+        ), "Both compute_token and openid_token must be provided if one of them is provided."
+        
+        if "compute_token" in kwargs and "openid_token" in kwargs:
+            ComputeScopes = ComputeScopeBuilder()
+            compute_login_manager = AuthorizerLoginManager(
+                authorizers={
+                    ComputeScopes.resource_server: AccessTokenAuthorizer(kwargs["compute_token"]),
+                    AuthScopes.resource_server: AccessTokenAuthorizer(kwargs["openid_token"]),
+                }
+            )
+            compute_login_manager.ensure_logged_in()
+            gcc = Client(
+                login_manager=compute_login_manager, 
+                code_serialization_strategy=CombinedCode()
+            )
+        else:
+            gcc = Client()
         self.gce = Executor(client=gcc) # Globus Compute Executor
         self.logger = logger if logger is not None else self._default_logger()
         # Sanity check for configurations: Check for the number of clients
@@ -73,7 +98,10 @@ class GlobusComputeServerCommunicator:
                 client_config=OmegaConf.merge(client_config_from_server, client_config),
             )
         # Initilize the S3 bucket for large model transfer if necessary.
-        if hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs"):
+        if (
+            hasattr(server_agent_config.server_configs, "comm_configs") and
+            hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs")
+        ):
             s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get("s3_bucket", None)
         else:
             s3_bucket = None

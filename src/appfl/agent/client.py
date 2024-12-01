@@ -72,9 +72,9 @@ class ClientAgent:
         """Return the size of the local dataset."""
         return len(self.train_dataset)
 
-    def train(self) -> None:
+    def train(self, **kwargs) -> None:
         """Train the model locally."""
-        self.trainer.train()
+        self.trainer.train(**kwargs)
 
     def get_parameters(self) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
         """Return parameters for communication"""
@@ -261,20 +261,34 @@ class ClientAgent:
         if not hasattr(self.client_agent_config, "model_configs"):
             self.model = None
             return
-        if hasattr(self.client_agent_config.model_configs, "model_path") and hasattr(self.client_agent_config.model_configs, "model_name"):
+        if hasattr(self.client_agent_config.model_configs, "model_path"):
             kwargs = self.client_agent_config.model_configs.get("model_kwargs", {})
-            self.model = create_instance_from_file(
-                self.client_agent_config.model_configs.model_path,
-                self.client_agent_config.model_configs.model_name,
-                **kwargs
-            )
-        elif hasattr(self.client_agent_config.model_configs, "model_source") and hasattr(self.client_agent_config.model_configs, "model_name"):
+            if hasattr(self.client_agent_config.model_configs, "model_name"):
+                self.model = create_instance_from_file(
+                    self.client_agent_config.model_configs.model_path,
+                    self.client_agent_config.model_configs.model_name,
+                    **kwargs
+                )
+            else:
+                self.model = run_function_from_file(
+                    self.client_agent_config.model_configs.model_path,
+                    None,
+                    **kwargs
+                )
+        elif hasattr(self.client_agent_config.model_configs, "model_source"):
             kwargs = self.client_agent_config.model_configs.get("model_kwargs", {})
-            self.model = create_instance_from_file_source(
-                self.client_agent_config.model_configs.model_source,
-                self.client_agent_config.model_configs.model_name,
-                **kwargs
-            )
+            if hasattr(self.client_agent_config.model_configs, "model_name"):
+                self.model = create_instance_from_file_source(
+                    self.client_agent_config.model_configs.model_source,
+                    self.client_agent_config.model_configs.model_name,
+                    **kwargs
+                )
+            else:
+                self.model = run_function_from_file_source(
+                    self.client_agent_config.model_configs.model_source,
+                    None,
+                    **kwargs
+                )
         else:
             self.model = None
 
@@ -291,11 +305,11 @@ class ClientAgent:
         if not hasattr(self.client_agent_config, "train_configs"):
             self.loss_fn = None
             return
-        if hasattr(self.client_agent_config.train_configs, "loss_fn_path") and hasattr(self.client_agent_config.train_configs, "loss_fn_name"):
+        if hasattr(self.client_agent_config.train_configs, "loss_fn_path"):
             kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
             self.loss_fn = create_instance_from_file(
                 self.client_agent_config.train_configs.loss_fn_path,
-                self.client_agent_config.train_configs.loss_fn_name,
+                self.client_agent_config.train_configs.loss_fn_name if hasattr(self.client_agent_config.train_configs, "loss_fn_name") else None,
                 **kwargs
             )
         elif hasattr(self.client_agent_config.train_configs, "loss_fn"):
@@ -304,11 +318,11 @@ class ClientAgent:
                 self.loss_fn = getattr(nn, self.client_agent_config.train_configs.loss_fn)(**kwargs)
             else:
                 self.loss_fn = None
-        elif hasattr(self.client_agent_config.train_configs, "loss_fn_source") and hasattr(self.client_agent_config.train_configs, "loss_fn_name"):
+        elif hasattr(self.client_agent_config.train_configs, "loss_fn_source"):
             kwargs = self.client_agent_config.train_configs.get("loss_fn_kwargs", {})
             self.loss_fn = create_instance_from_file_source(
                 self.client_agent_config.train_configs.loss_fn_source,
-                self.client_agent_config.train_configs.loss_fn_name,
+                self.client_agent_config.train_configs.loss_fn_name if hasattr(self.client_agent_config.train_configs, "loss_fn_name") else None,
                 **kwargs
             )
         else:
@@ -326,15 +340,15 @@ class ClientAgent:
         if not hasattr(self.client_agent_config, "train_configs"):
             self.metric = None
             return
-        if hasattr(self.client_agent_config.train_configs, "metric_path") and hasattr(self.client_agent_config.train_configs, "metric_name"):
+        if hasattr(self.client_agent_config.train_configs, "metric_path"):
             self.metric = get_function_from_file(
                 self.client_agent_config.train_configs.metric_path,
-                self.client_agent_config.train_configs.metric_name
+                self.client_agent_config.train_configs.metric_name if hasattr(self.client_agent_config.train_configs, "metric_name") else None
             )
-        elif hasattr(self.client_agent_config.train_configs, "metric_source") and hasattr(self.client_agent_config.train_configs, "metric_name"):
+        elif hasattr(self.client_agent_config.train_configs, "metric_source"):
             self.metric = get_function_from_file_source(
                 self.client_agent_config.train_configs.metric_source,
-                self.client_agent_config.train_configs.metric_name
+                self.client_agent_config.train_configs.metric_name if hasattr(self.client_agent_config.train_configs, "metric_name") else None
             )
         else:
             self.metric = None

@@ -44,7 +44,7 @@ class BaseTrainer:
         pass
 
     @abc.abstractmethod
-    def train(self):
+    def train(self, **kwargs):
         pass
 
     def load_parameters(self, params: Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Any]):

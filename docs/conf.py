@@ -58,8 +58,6 @@ autodoc_mock_imports = [
         "omegaconf",
         "grpc",
         "numpy",
-        # "google",
-        # "protobuf",
         "mpi4py",
         "zfpy",
 ]
@@ -81,33 +79,34 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_data']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'pydata_sphinx_theme'
+html_theme = 'furo'
 html_favicon = '_static/favicon.ico'
 html_logo = '_static/logo_yellow_with_name.png'
 html_last_updated_fmt = r'%Y-%m-%dT%H:%M:%S%z (' + git_describe_version + ')'
-
+pygments_style = "friendly"
+pygments_dark_style = "monokai"  # this is a furo-specific option
 html_theme_options = {
     # "content_footer_items": ["last-updated"],
     "footer_items": ["copyright", "sphinx-version", "last-updated"],
     "show_toc_level": 2,
     # "use_edit_page_button": True,
-    "icon_links": [
-        {
-            "name": "GitHub",
-            "url": "https://github.com/APPFL/APPFL",
-            "icon": "fab fa-github",
-        },
-        {
-            "name": "Discord",
-            "url": "https://discord.gg/bBW56EYGUS",
-            "icon": "fab fa-discord",
-        },
-        {
-            "name": "YouTube",
-            "url": "https://www.youtube.com/channel/UCzwiJboiJW3dLI0UndnDy5g",
-            "icon": "fab fa-youtube",
-        },
-    ],
+    # "icon_links": [
+    #     {
+    #         "name": "GitHub",
+    #         "url": "https://github.com/APPFL/APPFL",
+    #         "icon": "fab fa-github",
+    #     },
+    #     {
+    #         "name": "Discord",
+    #         "url": "https://discord.gg/bBW56EYGUS",
+    #         "icon": "fab fa-discord",
+    #     },
+    #     {
+    #         "name": "YouTube",
+    #         "url": "https://www.youtube.com/channel/UCzwiJboiJW3dLI0UndnDy5g",
+    #         "icon": "fab fa-youtube",
+    #     },
+    # ],
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
