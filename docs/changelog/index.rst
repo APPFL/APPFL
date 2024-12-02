@@ -1,6 +1,19 @@
 Changelog
 =========
 
+appfl v1.1.0
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Support batched MPI, with documentation available `here <https://appfl.ai/en/latest/tutorials/examples_batched_mpi.html>`_.
+- Add more data readiness metrics such as PCA plot in this `pull request <https://github.com/APPFL/APPFL/pull/208>`_.
+- Backend support for `service.appfl.ai <https://appflx.link/>`_.
+- Add documentation for service.appfl.ai at `here <https://appfl.ai/en/latest/tutorials/appflx/index.html>`_.
+- Add logging capabilities to the server side to log the training metadata such as the training and validation losses.
+- Change documentation theme to ``furo``.
+
 appfl v1.0.5
 ------------
 

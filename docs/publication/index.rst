@@ -1,7 +1,7 @@
 Publications
 ============
 
-This page presents the publications using the APPFL framework. You may also find an FL-as-a-service platform built on top of APPFL at `APPFLx.link <https://appflx.link/>`_.
+This page presents the publications using the APPFL framework. You may also find an FL-as-a-service platform built on top of APPFL at `service.appfl.ai <https://appflx.link/>`_.
 
 2024
 ----
@@ -14,6 +14,7 @@ This page presents the publications using the APPFL framework. You may also find
 - **[Preprint]** Z. Li, S. He, Z. Yang, M. Ryu, K. Kim, R. Madduri, "Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework," *arXiv preprint arXiv:2409.11585.*, 2024. `[Paper] <https://arxiv.org/pdf/2409.11585>`_
 - **[Preprint]** C. Iakovidou, K. Kim, "Asynchronous Federated Stochastic Optimization with Exact Averaging for Heterogeneous Local Objectives," *arXiv preprint arXiv:2405.10123*, 2024. `[Paper] <https://arxiv.org/pdf/2405.10123>`_
 - **[Preprint]** R. Madduri, Z. Li, T. Nandi, K. Kim, M. Ryu, A. Rodriguez, "Advances in Privacy Preserving Federated Learning to Realize a Truly Learning Healthcare System," *arXiv preprint arXiv:2409.19756.*, 2024. `[Paper] <https://arxiv.org/pdf/2409.19756>`_
+- **[Preprint]** G. Bai, Y. Li, Z. Li, L. Zhao, K. Kim, "FedSpaLLM: Federated Pruning of Large Language Models," *arXiv preprint arXiv:2410.14852.*, 2024. `[Paper] <https://arxiv.org/pdf/2410.14852>`_
 
 2023
 ----
