@@ -59,12 +59,17 @@ while not server_agent.training_finished():
         # Client local training
         client_agent.train()
         local_model = client_agent.get_parameters()
+        if isinstance(local_model, tuple):
+            local_model, metadata = local_model[0], local_model[1]
+        else:
+            metadata = {}
         # "Send" local model to server and get a Future object for the new global model
         # The Future object will be resolved when the server receives local models from all clients
         new_global_model_future = server_agent.global_update(
             client_id=client_agent.get_id(), 
             local_model=local_model,
             blocking=False,
+            **metadata
         )
         new_global_models.append(new_global_model_future)
     # Load the new global model from the server
