@@ -99,7 +99,7 @@ Run A Simple Test
 
 You can create a python script (e.g. ``test.py``) by copying the following codes to test if you have successfully set up a Globus Compute endpoint. You need to put your own endpoint id into the script, and you should see the printed result computed by your endpoint.
 
-.. literalinclude:: ./endpoint_test.py
+.. literalinclude:: ./endpoint.py
     :language: python
     :caption: Test script for testing Globus Compute endpoint setup.
 
