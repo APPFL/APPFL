@@ -74,6 +74,8 @@ Main Topics
    community/index
    contribution/index
    changelog/index
+   news/index
+   news/projects
 
 
 Citation
