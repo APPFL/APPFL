@@ -14,7 +14,7 @@ Most HPC clusters use `modules <https://hpc-wiki.info/hpc/Modules>`_ to manage t
 
 This tutorial uses `modules <https://hpc-wiki.info/hpc/Modules>`_ in SWING cluster. The module configuration may vary depending on the Clusters. 
 
-.. code-block:: console
+.. code-block:: bash
 
 	1) gcc/11.4.0   2) openmpi/4.1.6   3) cuda/11.8.0   4) cue-login-env/1.0   5) slurm-env/0.1   6) default-s11   7) anaconda3_gpu/23.9.0
 
@@ -64,18 +64,18 @@ The Delta supercomputer uses Slurm workload manager for job management.
 
 The script needs to be submitted to run.
 
-.. code-block:: console
+.. code-block:: bash
 
 	sbatch test.sh
 
 You may see the output.
 
-.. code-block:: console
+.. code-block:: bash
 
 	Submitted batch job {job_id}
 
 The output file `slurm-{job_id}.out` is generated when the script starts to run, and you can check the output in real-time by running the following command.
 
-.. code-block:: console
+.. code-block:: bash
 
 	tail -f -n 10 slurm-{job_id}.out

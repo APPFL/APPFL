@@ -42,6 +42,6 @@ By setting ``checkpoints_interval = 2``, trained model will be saved for every 2
 
     For example, if my container ID is ``aa90d20f96c0d143012d2e6ca7d7820ed9ed8a36b163cddf8bfd6dd0e6228dab`` then
 
-	.. code-block:: console
+	.. code-block:: bash
 
 		docker cp aa90d20f96c0d143012d2e6ca7d7820ed9ed8a36b163cddf8bfd6dd0e6228dab:/APPFL/save_models/ .

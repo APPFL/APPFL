@@ -72,13 +72,14 @@ Main Topics
    users/index
    publication/index
    community/index
+   contribution/index
    changelog/index
 
 
 Citation
 ========
 
-If you find APPFL useful for your research or development, please cite the following paper:
+If you find APPFL useful for your research or development, please cite the following papers:
 
 .. code-block:: latex
 
