@@ -34,6 +34,7 @@ Code Contributors
 .. contributors:: APPFL/APPFL
     :avatars:
     :order: ASC
+    :limit: 15
 
 Collaboration Institutions
 --------------------------
