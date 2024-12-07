@@ -1,11 +1,5 @@
 import crypten
-import copy
 crypten.init()
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
 
 # # Define the CNN
 # class TempCNN(nn.Module):
