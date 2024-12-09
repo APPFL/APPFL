@@ -62,8 +62,10 @@ while True:
         local_model, metadata = local_model[0], local_model[1]
     else:
         metadata = {}
-    new_global_model, metadata = client_communicator.update_global_model(local_model, **metadata)
-    if metadata['status'] == 'DONE':
+    new_global_model, metadata = client_communicator.update_global_model(
+        local_model, **metadata
+    )
+    if metadata["status"] == "DONE":
         break
     if "local_steps" in metadata:
         client_agent.trainer.train_configs.num_local_steps = metadata["local_steps"]

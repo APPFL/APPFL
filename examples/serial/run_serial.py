@@ -77,7 +77,7 @@ while not server_agent.training_finished():
             client_id=client_agent.get_id(),
             local_model=local_model,
             blocking=False,
-            **metadata
+            **metadata,
         )
         new_global_models.append(new_global_model_future)
     # Load the new global model from the server

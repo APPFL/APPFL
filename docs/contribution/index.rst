@@ -40,7 +40,7 @@ When you want to develop ``appfl`` locally to create a pull request, you can fol
     cd APPFL
     pip install -e ".[dev,examples]"
 
-3. Create a new branch for your changes from the ``main`` branch. 
+3. Create a new branch for your changes from the ``main`` branch.
 
 .. note::
 

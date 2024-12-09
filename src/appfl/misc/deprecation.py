@@ -1,7 +1,8 @@
 import warnings
 import functools
 from packaging import version
-appfl_version = '1.1.0'
+
+appfl_version = "1.1.0"
 
 # A set to keep track of warnings that have already been shown
 _emitted_warnings = set()

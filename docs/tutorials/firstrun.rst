@@ -89,7 +89,7 @@ Open a second terminal to start a client using the following command to talk to 
     python ./grpc/run_client.py --config ./resources/configs/mnist/client_1.yaml
 
 Open a third terminal to start another client using the following command to talk to the server.
-    
+
 .. code-block:: bash
-    
+
     python ./grpc/run_client.py --config ./resources/configs/mnist/client_2.yaml
