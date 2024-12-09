@@ -64,7 +64,7 @@ setuptools.setup(
         "grpcio-tools",
         "omegaconf",
         "globus-sdk",
-        "mpi4py",
+        # "mpi4py",
         "globus-compute-sdk",
         "globus-compute-endpoint",
         "boto3",
