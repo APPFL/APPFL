@@ -111,7 +111,9 @@ class GlobusComputeCommunicator:
         ].client_cfg.name
         client_task_name = self.executing_tasks[task_id].task_name
         self.logger.info(
-            "Received results of task '%s' from %s." % (client_task_name, client_name)
+            "Received results of task '{}' from {}.".format(
+                client_task_name, client_name
+            )
         )
         # Finalize the experiment if necessary
         if do_finalize:

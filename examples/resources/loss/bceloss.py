@@ -4,7 +4,7 @@ from torch.nn.modules.loss import _Loss
 
 class BaselineLoss(_Loss):
     def __init__(self):
-        super(BaselineLoss, self).__init__()
+        super().__init__()
         self.bce = torch.nn.BCELoss()
 
     def forward(self, input: torch.Tensor, target: torch.Tensor):

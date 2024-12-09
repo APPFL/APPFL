@@ -21,7 +21,7 @@ for i, (k, v) in enumerate(authors.items()):
         AUTHOR += ", "
     AUTHOR += f"{k} <{v}>"
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
 if sys.version_info >= (3, 9):

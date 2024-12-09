@@ -30,9 +30,7 @@ class ServerFedBuffer(FedServer):
             if weights is None
             else weights
         )
-        super(ServerFedBuffer, self).__init__(
-            weights, model, loss_fn, num_clients, device, **kwargs
-        )
+        super().__init__(weights, model, loss_fn, num_clients, device, **kwargs)
         self.staleness = self.__staleness_func_factory(
             stalness_func_name=self.staleness_func["name"],
             **self.staleness_func["args"],

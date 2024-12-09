@@ -8,8 +8,8 @@ from .server_federated import FedServer
 )
 class ServerFedAdam(FedServer):
     def compute_step(self):
-        super(ServerFedAdam, self).compute_pseudo_gradient()
-        super(ServerFedAdam, self).update_m_vector()
+        super().compute_pseudo_gradient()
+        super().update_m_vector()
         for name, _ in self.model.named_parameters():
             self.v_vector[name] = self.server_momentum_param_2 * self.v_vector[name] + (
                 1.0 - self.server_momentum_param_2

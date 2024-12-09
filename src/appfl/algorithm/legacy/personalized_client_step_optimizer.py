@@ -32,7 +32,7 @@ class PersonalizedClientStepOptim(BaseClient):
         metric,
         **kwargs,
     ):
-        super(PersonalizedClientStepOptim, self).__init__(
+        super().__init__(
             id,
             weight,
             model,
@@ -44,7 +44,7 @@ class PersonalizedClientStepOptim(BaseClient):
             metric,
         )
         self.__dict__.update(kwargs)
-        super(PersonalizedClientStepOptim, self).client_log_title()
+        super().client_log_title()
 
     def update(self):
         self.model.to(self.cfg.device)
@@ -57,13 +57,9 @@ class PersonalizedClientStepOptim(BaseClient):
         ## Initial evaluation
         if self.cfg.validation and self.test_dataloader is not None:
             start_time = time.time()
-            test_loss, test_accuracy = super(
-                PersonalizedClientStepOptim, self
-            ).client_validation()
+            test_loss, test_accuracy = super().client_validation()
             per_iter_time = time.time() - start_time
-            super(PersonalizedClientStepOptim, self).client_log_content(
-                0, per_iter_time, 0, 0, test_loss, test_accuracy
-            )
+            super().client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)
 
         ## Local training
         data_iter = iter(self.dataloader)
@@ -82,13 +78,11 @@ class PersonalizedClientStepOptim(BaseClient):
                 train_accuracy = float(self.metric(target_true, target_pred))
                 ## Validation
                 if self.cfg.validation and self.test_dataloader is not None:
-                    test_loss, test_accuracy = super(
-                        PersonalizedClientStepOptim, self
-                    ).client_validation()
+                    test_loss, test_accuracy = super().client_validation()
                 else:
                     test_loss, test_accuracy = 0, 0
                 per_iter_time = time.time() - start_time
-                super(PersonalizedClientStepOptim, self).client_log_content(
+                super().client_log_content(
                     epoch,
                     per_iter_time,
                     train_loss,
@@ -106,7 +100,7 @@ class PersonalizedClientStepOptim(BaseClient):
                         os.makedirs(path)
                     torch.save(
                         self.model.state_dict(),
-                        os.path.join(path, "%s_%s.pt" % (self.round, epoch)),
+                        os.path.join(path, f"{self.round}_{epoch}.pt"),
                     )
                 ## Reset the data iterator
                 data_iter = iter(self.dataloader)
@@ -148,9 +142,7 @@ class PersonalizedClientStepOptim(BaseClient):
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(
-                PersonalizedClientStepOptim, self
-            ).laplace_mechanism_output_perturb_personalized(scale_value)
+            super().laplace_mechanism_output_perturb_personalized(scale_value)
 
         ## Save each client model periodically
         if (

@@ -8,8 +8,8 @@ from .server_federated import FedServer
 )
 class ServerFedYogi(FedServer):
     def compute_step(self):
-        super(ServerFedYogi, self).compute_pseudo_gradient()
-        super(ServerFedYogi, self).update_m_vector()
+        super().compute_pseudo_gradient()
+        super().update_m_vector()
         for name, _ in self.model.named_parameters():
             self.v_vector[name] = self.v_vector[name] - (
                 1.0 - self.server_momentum_param_2

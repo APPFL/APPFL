@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 import platform
 import threading
-from typing import Iterator, Optional
+from typing import Iterator
 from .tokenstore import get_token_storage_adapter
 from globus_sdk.scopes import AuthScopes, GroupsScopes
 from globus_sdk import (
@@ -141,7 +141,7 @@ class GlobusLoginManager:
 
     def get_identity_client_with_tokens(
         self, access_token=None, refresh_token=None, expires_at=None
-    ) -> Optional[AuthClient]:
+    ) -> AuthClient | None:
         """
         Return a client object with the correct authorizer for the Globus identity (auth) server using provided tokens.
         Return `None` for invalid token data. This function is intended to be invoked by FL server for validating

@@ -7,7 +7,7 @@ class FC(nn.Module):
     """
 
     def __init__(self, input_size):
-        super(FC, self).__init__()
+        super().__init__()
         self.fc = nn.Linear(input_size, 1)
 
     def forward(self, x):

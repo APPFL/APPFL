@@ -28,7 +28,7 @@ class PersonalizedClientOptim(BaseClient):
         metric,
         **kwargs,
     ):
-        super(PersonalizedClientOptim, self).__init__(
+        super().__init__(
             id,
             weight,
             model,
@@ -40,7 +40,7 @@ class PersonalizedClientOptim(BaseClient):
             metric,
         )
         self.__dict__.update(kwargs)
-        super(PersonalizedClientOptim, self).client_log_title()
+        super().client_log_title()
 
     def update(self):
         self.model.to(self.cfg.device)
@@ -53,13 +53,9 @@ class PersonalizedClientOptim(BaseClient):
         ## initial evaluation
         if self.cfg.validation and self.test_dataloader is not None:
             start_time = time.time()
-            test_loss, test_accuracy = super(
-                PersonalizedClientOptim, self
-            ).client_validation()
+            test_loss, test_accuracy = super().client_validation()
             per_iter_time = time.time() - start_time
-            super(PersonalizedClientOptim, self).client_log_content(
-                0, per_iter_time, 0, 0, test_loss, test_accuracy
-            )
+            super().client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)
 
         ## local training
         for t in range(self.num_local_epochs):
@@ -100,13 +96,11 @@ class PersonalizedClientOptim(BaseClient):
 
             ## Validation
             if self.cfg.validation and self.test_dataloader is not None:
-                test_loss, test_accuracy = super(
-                    PersonalizedClientOptim, self
-                ).client_validation()
+                test_loss, test_accuracy = super().client_validation()
             else:
                 test_loss, test_accuracy = 0, 0
             per_iter_time = time.time() - start_time
-            super(PersonalizedClientOptim, self).client_log_content(
+            super().client_log_content(
                 t + 1,
                 per_iter_time,
                 train_loss,
@@ -122,9 +116,7 @@ class PersonalizedClientOptim(BaseClient):
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(
-                PersonalizedClientOptim, self
-            ).laplace_mechanism_output_perturb_personalized(scale_value)
+            super().laplace_mechanism_output_perturb_personalized(scale_value)
 
         ## Save each client model periodically
         if (

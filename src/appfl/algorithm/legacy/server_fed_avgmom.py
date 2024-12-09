@@ -14,7 +14,7 @@ class ServerFedAvgMomentum(FedServer):
             )
 
     def compute_step(self):
-        super(ServerFedAvgMomentum, self).compute_pseudo_gradient()
+        super().compute_pseudo_gradient()
         self.update_m_vector()
         for name, _ in self.model.named_parameters():
             self.step[name] = -self.m_vector[name]

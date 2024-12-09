@@ -6,7 +6,7 @@ class MASELoss(nn.Module):
     """Mean Absolute Scaled Error Loss"""
 
     def __init__(self):
-        super(MASELoss, self).__init__()
+        super().__init__()
         self.min_number = 1e-8  # floor for denominator to prevent inf losses
 
     def forward(self, prediction, target):

@@ -61,7 +61,7 @@ def get_mnist(
             os.makedirs(dir, exist_ok=True)
         output_filename = f"MNIST_{num_clients}clients_{partition}_distribution"
         file_ext = ".pdf"
-        filename = dir + "/%s%s" % (output_filename, file_ext)
+        filename = dir + f"/{output_filename}{file_ext}"
         uniq = 1
         while os.path.exists(filename):
             filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)

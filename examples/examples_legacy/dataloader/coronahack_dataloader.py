@@ -21,7 +21,7 @@ class Coronahack:
             )
 
         self.data = []
-        with open(dir + "/Chest_xray_Corona_Metadata.csv", "r") as file:
+        with open(dir + "/Chest_xray_Corona_Metadata.csv") as file:
             csvreader = csv.reader(file)
             next(csvreader)
             for row in csvreader:
@@ -80,7 +80,7 @@ def get_corona(args):
         # training data for multiple clients
         train_datasets = []
         for client in range(args.num_clients):
-            with open("%s/all_train_data_client_%s.json" % (dir, client)) as f:
+            with open(f"{dir}/all_train_data_client_{client}.json") as f:
                 train_data_raw = json.load(f)
             train_datasets.append(
                 Dataset(

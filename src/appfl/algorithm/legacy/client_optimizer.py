@@ -27,7 +27,7 @@ class ClientOptim(BaseClient):
         metric,
         **kwargs,
     ):
-        super(ClientOptim, self).__init__(
+        super().__init__(
             id,
             weight,
             model,
@@ -39,7 +39,7 @@ class ClientOptim(BaseClient):
             metric,
         )
         self.__dict__.update(kwargs)
-        super(ClientOptim, self).client_log_title()
+        super().client_log_title()
 
     def update(self):
         self.model.to(self.cfg.device)
@@ -52,11 +52,9 @@ class ClientOptim(BaseClient):
         ## Initial evaluation
         if self.cfg.validation and self.test_dataloader is not None:
             start_time = time.time()
-            test_loss, test_accuracy = super(ClientOptim, self).client_validation()
+            test_loss, test_accuracy = super().client_validation()
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(
-                0, per_iter_time, 0, 0, test_loss, test_accuracy
-            )
+            super().client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)
 
         ## Local training
         for t in range(self.num_local_epochs):
@@ -89,11 +87,11 @@ class ClientOptim(BaseClient):
 
             ## Validation
             if self.cfg.validation and self.test_dataloader is not None:
-                test_loss, test_accuracy = super(ClientOptim, self).client_validation()
+                test_loss, test_accuracy = super().client_validation()
             else:
                 test_loss, test_accuracy = 0, 0
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(
+            super().client_log_content(
                 t + 1, per_iter_time, train_loss, train_accuracy, 0, 0
             )
 
@@ -104,7 +102,7 @@ class ClientOptim(BaseClient):
                     os.makedirs(path, exist_ok=True)
                 torch.save(
                     self.model.state_dict(),
-                    os.path.join(path, "%s_%s.pt" % (self.round, t)),
+                    os.path.join(path, f"{self.round}_{t}.pt"),
                 )
 
         self.round += 1
@@ -114,7 +112,7 @@ class ClientOptim(BaseClient):
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            super().laplace_mechanism_output_perturb(scale_value)
 
         ## Move the model parameter to CPU (if not) for communication
         if self.cfg.device == "cuda":

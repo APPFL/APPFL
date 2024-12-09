@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 )
 class IIADMMServer(PPFLServer):
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
-        super(IIADMMServer, self).__init__(weights, model, loss_fn, num_clients, device)
+        super().__init__(weights, model, loss_fn, num_clients, device)
         self.__dict__.update(kwargs)
         self.is_first_iter = 1
 
@@ -30,12 +30,12 @@ class IIADMMServer(PPFLServer):
         for name, param in self.model.named_parameters():
             self.global_state[name] = param.data.cpu()
         # self.global_state = copy.deepcopy(self.model.state_dict())
-        super(IIADMMServer, self).primal_recover_from_local_states(local_states)
-        super(IIADMMServer, self).penalty_recover_from_local_states(local_states)
+        super().primal_recover_from_local_states(local_states)
+        super().penalty_recover_from_local_states(local_states)
 
         """ residual calculation """
-        super(IIADMMServer, self).primal_residual_at_server()
-        super(IIADMMServer, self).dual_residual_at_server()
+        super().primal_residual_at_server()
+        super().dual_residual_at_server()
 
         """ global_state calculation """
         for name, param in self.model.named_parameters():
@@ -64,7 +64,7 @@ class IIADMMServer(PPFLServer):
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:
-            title = super(IIADMMServer, self).log_title()
+            title = super().log_title()
             title = title + "%12s %12s %12s %12s" % (
                 "PrimRes",
                 "DualRes",
@@ -73,8 +73,8 @@ class IIADMMServer(PPFLServer):
             )
             logger.info(title)
 
-        contents = super(IIADMMServer, self).log_contents(cfg, t)
-        contents = contents + "%12.4e %12.4e %12.4e %12.4e" % (
+        contents = super().log_contents(cfg, t)
+        contents = contents + "{:12.4e} {:12.4e} {:12.4e} {:12.4e}".format(
             self.prim_res,
             self.dual_res,
             min(self.penalty.values()),
@@ -83,7 +83,7 @@ class IIADMMServer(PPFLServer):
         logger.info(contents)
 
     def logging_summary(self, cfg, logger):
-        super(IIADMMServer, self).log_summary(cfg, logger)
+        super().log_summary(cfg, logger)
 
 
 @deprecated(
@@ -103,7 +103,7 @@ class IIADMMClient(PPFLClient):
         metric,
         **kwargs,
     ):
-        super(IIADMMClient, self).__init__(
+        super().__init__(
             id,
             weight,
             model,
@@ -142,9 +142,9 @@ class IIADMMClient(PPFLClient):
 
         """ Adaptive Penalty (Residual Balancing) """
         if self.residual_balancing.res_on:
-            prim_res = super(IIADMMClient, self).primal_residual_at_client(global_state)
-            dual_res = super(IIADMMClient, self).dual_residual_at_client()
-            super(IIADMMClient, self).residual_balancing(prim_res, dual_res)
+            prim_res = super().primal_residual_at_client(global_state)
+            dual_res = super().dual_residual_at_client()
+            super().residual_balancing(prim_res, dual_res)
 
         """ Multiple local update """
         for i in range(self.num_local_epochs):
@@ -156,11 +156,9 @@ class IIADMMClient(PPFLClient):
                     self.residual_balancing.res_on
                     and self.residual_balancing.res_on_every_update
                 ):
-                    prim_res = super(IIADMMClient, self).primal_residual_at_client(
-                        global_state
-                    )
-                    dual_res = super(IIADMMClient, self).dual_residual_at_client()
-                    super(IIADMMClient, self).residual_balancing(prim_res, dual_res)
+                    prim_res = super().primal_residual_at_client(global_state)
+                    dual_res = super().dual_residual_at_client()
+                    super().residual_balancing(prim_res, dual_res)
 
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
@@ -199,7 +197,7 @@ class IIADMMClient(PPFLClient):
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value / self.penalty
             scale_value = sensitivity / self.epsilon
-            super(IIADMMClient, self).laplace_mechanism_output_perturb(scale_value)
+            super().laplace_mechanism_output_perturb(scale_value)
 
         ## store data in cpu before sending it to server
         if self.cfg.device == "cuda":

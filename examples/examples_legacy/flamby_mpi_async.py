@@ -182,7 +182,7 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_Flamby_%s_%sclients_%s_%sepochs_mpi" % (
+    cfg.output_dirname = "./outputs_Flamby_{}_{}clients_{}_{}epochs_mpi".format(
         args.dataset,
         args.num_clients,
         args.server,

@@ -87,7 +87,7 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 
 
 def get_last_class_name(file_path):
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         file_content = file.read()
 
     # Parse the file content
@@ -104,7 +104,7 @@ def get_last_class_name(file_path):
 
 
 def get_last_function_name(file_path):
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         file_content = file.read()
 
     # Parse the file content
@@ -391,12 +391,12 @@ def save_partial_model_iteration(t, model, cfg: DictConfig, client_id=None):
 
     file_ext = ".pt"
     if client_id is None:
-        file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
+        file = dir + f"/{cfg.save_model_filename}_Round_{t}{file_ext}"
     else:
         file = (
             dir
             + "/client_%d" % client_id
-            + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
+            + f"/{cfg.save_model_filename}_Round_{t}{file_ext}"
         )
     uniq = 1
     while os.path.exists(file):
@@ -538,7 +538,7 @@ def create_custom_logger(logger, cfg: DictConfig):
     output_filename = cfg.output_filename + "_server"
 
     file_ext = ".txt"
-    filename = dir + "/%s%s" % (output_filename, file_ext)
+    filename = dir + f"/{output_filename}{file_ext}"
     uniq = 1
     while os.path.exists(filename):
         filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
@@ -564,7 +564,7 @@ def client_log(dir, output_filename):
         os.makedirs(dir, exist_ok=True)
 
     file_ext = ".txt"
-    filename = dir + "/%s%s" % (output_filename, file_ext)
+    filename = dir + f"/{output_filename}{file_ext}"
     uniq = 1
     while os.path.exists(filename):
         filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)
@@ -577,7 +577,7 @@ def client_log(dir, output_filename):
 
 @deprecated(silent=True)
 def load_model(cfg: DictConfig):
-    file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
+    file = cfg.load_model_dirname + "/{}{}".format(cfg.load_model_filename, ".pt")
     model = torch.load(file)
     model.eval()
     return model
@@ -590,7 +590,7 @@ def save_model_iteration(t, model, cfg: DictConfig):
         os.mkdir(dir)
 
     file_ext = ".pt"
-    file = dir + "/%s_Round_%s%s" % (cfg.save_model_filename, t, file_ext)
+    file = dir + f"/{cfg.save_model_filename}_Round_{t}{file_ext}"
     uniq = 1
     while os.path.exists(file):
         file = dir + "/%s_Round_%s_%d%s" % (cfg.save_model_filename, t, uniq, file_ext)
@@ -604,12 +604,12 @@ def load_model_state(cfg: DictConfig, model, client_id=None):
     # This function allows to use partial model weights into a model.
     # Useful since server model will only have shared layer weights when personalization is enabled.
     if client_id is None:
-        file = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
+        file = cfg.load_model_dirname + "/{}{}".format(cfg.load_model_filename, ".pt")
     else:
         file = (
             cfg.load_model_dirname
             + "/client_%d" % client_id
-            + "/%s%s" % (cfg.load_model_filename, ".pt")
+            + "/{}{}".format(cfg.load_model_filename, ".pt")
         )
 
     model.load_state_dict(torch.load(file), strict=False)

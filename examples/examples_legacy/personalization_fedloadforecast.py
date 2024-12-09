@@ -31,10 +31,10 @@ def restricted_float(x):
     try:
         x = float(x)
     except ValueError:
-        raise argparse.ArgumentTypeError("%r not a floating-point literal" % (x,))
+        raise argparse.ArgumentTypeError(f"{x!r} not a floating-point literal")
 
     if x < 0.0 or x > 1.0:
-        raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]" % (x,))
+        raise argparse.ArgumentTypeError(f"{x!r} not in range [0.0, 1.0]")
     return x
 
 
@@ -205,7 +205,7 @@ def main():
     cfg.use_tensorboard = False
 
     ## save/load
-    cfg.output_dirname = args.model_dir + "/outputs_%s_%s_%s_%s" % (
+    cfg.output_dirname = args.model_dir + "/outputs_{}_{}_{}_{}".format(
         args.dataset,
         args.server,
         args.client_optimizer,
@@ -217,7 +217,7 @@ def main():
         cfg.save_model_dirname = (
             args.model_dir + "/save_models_NREL_%s" % args.personalization_config_name
         )
-        cfg.save_model_filename = "model_%s_%s_%s" % (
+        cfg.save_model_filename = "model_{}_{}_{}".format(
             args.dataset,
             args.client_optimizer,
             args.server,
@@ -231,7 +231,7 @@ def main():
                 args.model_dir
                 + "/save_models_NREL_%s" % args.personalization_config_name
             )
-            cfg.load_model_filename = "model_%s_%s_%s_%s" % (
+            cfg.load_model_filename = "model_{}_{}_{}_{}".format(
                 args.dataset,
                 args.client_optimizer,
                 args.server,
@@ -246,7 +246,7 @@ def main():
                 args.model_dir
                 + "/save_models_NREL_%s" % args.personalization_config_name
             )
-            cfg.load_model_filename = "model_%s_%s_%s_%s" % (
+            cfg.load_model_filename = "model_{}_{}_{}_{}".format(
                 args.dataset,
                 args.client_optimizer,
                 args.server,
@@ -260,7 +260,7 @@ def main():
                 args.model_dir
                 + "/save_models_NREL_%s" % args.personalization_config_name
             )
-            cfg.save_model_filename = "model_%s_%s_%s" % (
+            cfg.save_model_filename = "model_{}_{}_{}".format(
                 args.dataset,
                 args.client_optimizer,
                 args.server,

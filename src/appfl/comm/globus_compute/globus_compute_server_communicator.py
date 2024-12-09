@@ -94,7 +94,7 @@ class GlobusComputeServerCommunicator:
                 client_config, "endpoint_id"
             ), "Client configuration must have an endpoint_id."
             # Read the client dataloader source file
-            with open(client_config.data_configs.dataset_path, "r") as file:
+            with open(client_config.data_configs.dataset_path) as file:
                 client_config.data_configs.dataset_source = file.read()
             del client_config.data_configs.dataset_path
             client_id = str(

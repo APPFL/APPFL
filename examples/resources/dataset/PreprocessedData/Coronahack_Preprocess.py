@@ -27,7 +27,7 @@ class CoronahackTrain:
             dir + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/train/"
         )
         self.data = []
-        with open(dir + "/Chest_xray_Corona_Metadata.csv", "r") as file:
+        with open(dir + "/Chest_xray_Corona_Metadata.csv") as file:
             csvreader = csv.reader(file)
             next(csvreader)
             for row in csvreader:
@@ -70,7 +70,7 @@ class CoronahackTest:
             dir + "/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
         )
         self.data = []
-        with open(dir + "/Chest_xray_Corona_Metadata.csv", "r") as file:
+        with open(dir + "/Chest_xray_Corona_Metadata.csv") as file:
             csvreader = csv.reader(file)
             next(csvreader)
             for row in csvreader:
@@ -110,7 +110,7 @@ train_data_raw = CoronahackTrain(args.num_pixel)
 test_data_raw = CoronahackTest(args.num_pixel)
 
 ## Output Directories
-dir = "./Coronahack_Clients_{}".format(args.num_clients)
+dir = f"./Coronahack_Clients_{args.num_clients}"
 if not os.path.isdir(dir):
     os.mkdir(dir)
 
@@ -140,7 +140,7 @@ for i in range(args.num_clients):
     user_data["x"] = x
     user_data["y"] = y
 
-    out_train_file = dir + "/all_train_data_client_{}.json".format(i)
+    out_train_file = dir + f"/all_train_data_client_{i}.json"
 
     with open(out_train_file, "w") as outfile:
         json.dump(user_data, outfile)

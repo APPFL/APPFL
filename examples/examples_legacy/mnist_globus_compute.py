@@ -90,7 +90,7 @@ def main():
     val_metric = get_executable_func(cfg.val_metric)
 
     if cfg.load_model:
-        path = cfg.load_model_dirname + "/%s%s" % (cfg.load_model_filename, ".pt")
+        path = cfg.load_model_dirname + "/{}{}".format(cfg.load_model_filename, ".pt")
         model.load_state_dict(torch.load(path))
         model.eval()
 

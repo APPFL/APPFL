@@ -61,7 +61,7 @@ def get_cifar10(
             os.makedirs(dir, exist_ok=True)
         output_filename = f"CIFAR10_{num_clients}clients_{partition}_distribution"
         file_ext = ".pdf"
-        filename = dir + "/%s%s" % (output_filename, file_ext)
+        filename = dir + f"/{output_filename}{file_ext}"
         uniq = 1
         while os.path.exists(filename):
             filename = dir + "/%s_%d%s" % (output_filename, uniq, file_ext)

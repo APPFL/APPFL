@@ -28,7 +28,7 @@ class GlobusComputeClientStepOptim(BaseClient):
         send_gradient=False,
         **kwargs,
     ):
-        super(GlobusComputeClientStepOptim, self).__init__(
+        super().__init__(
             id,
             weight,
             model,
@@ -39,7 +39,7 @@ class GlobusComputeClientStepOptim(BaseClient):
             test_dataloader,
             metric,
         )
-        super(GlobusComputeClientStepOptim, self).client_log_title()
+        super().client_log_title()
         self.round = global_epoch
         self.send_gradient = send_gradient
         self.__dict__.update(kwargs)
@@ -71,7 +71,7 @@ class GlobusComputeClientStepOptim(BaseClient):
                         os.makedirs(path)
                     torch.save(
                         self.model.state_dict(),
-                        os.path.join(path, "%s_%s.pt" % (self.round, epoch)),
+                        os.path.join(path, f"{self.round}_{epoch}.pt"),
                     )
                 ## Reset the data iterator
                 data_iter = iter(self.dataloader)
@@ -98,18 +98,14 @@ class GlobusComputeClientStepOptim(BaseClient):
             )
             cli_logger.stop_timer("Validation")
             per_iter_time = time.time() - start_time
-            super(GlobusComputeClientStepOptim, self).client_log_content(
-                0, per_iter_time, 0, 0, test_loss, test_accuracy
-            )
+            super().client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)
 
         ## Differential Privacy
         self.primal_state = copy.deepcopy(self.model.state_dict())
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(GlobusComputeClientStepOptim, self).laplace_mechanism_output_perturb(
-                scale_value
-            )
+            super().laplace_mechanism_output_perturb(scale_value)
 
         ## Move the model parameter to CPU (if not) for communication
         if self.cfg.device == "cuda":

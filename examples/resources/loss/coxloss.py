@@ -16,7 +16,7 @@ class BaselineLoss(nn.Module):
     """
 
     def __init__(self):
-        super(BaselineLoss, self).__init__()
+        super().__init__()
 
     def forward(self, scores, truth):
         # The Cox loss calc expects events to be reverse sorted in time

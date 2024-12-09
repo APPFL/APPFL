@@ -309,7 +309,7 @@ class ServerAgent:
                 )
             # load the model source file and delete model path
             if hasattr(self.server_agent_config.client_configs, "model_configs"):
-                with open(model_configs.model_path, "r") as f:
+                with open(model_configs.model_path) as f:
                     self.server_agent_config.client_configs.model_configs.model_source = f.read()
                 del self.server_agent_config.client_configs.model_configs.model_path
         else:
@@ -344,7 +344,7 @@ class ServerAgent:
                 **kwargs,
             )
             with open(
-                self.server_agent_config.client_configs.train_configs.loss_fn_path, "r"
+                self.server_agent_config.client_configs.train_configs.loss_fn_path
             ) as f:
                 self.server_agent_config.client_configs.train_configs.loss_fn_source = (
                     f.read()
@@ -387,7 +387,7 @@ class ServerAgent:
                 else None,
             )
             with open(
-                self.server_agent_config.client_configs.train_configs.metric_path, "r"
+                self.server_agent_config.client_configs.train_configs.metric_path
             ) as f:
                 self.server_agent_config.client_configs.train_configs.metric_source = (
                     f.read()
@@ -474,7 +474,7 @@ class ServerAgent:
             self.server_agent_config.client_configs.train_configs, "trainer_path"
         ):
             with open(
-                self.server_agent_config.client_configs.train_configs.trainer_path, "r"
+                self.server_agent_config.client_configs.train_configs.trainer_path
             ) as f:
                 self.server_agent_config.client_configs.train_configs.trainer_source = (
                     f.read()

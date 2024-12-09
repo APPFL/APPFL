@@ -36,8 +36,7 @@ class GRPCCommunicator(grpc_communicator_old_pb2_grpc.GRPCCommunicatorV0Servicer
         )
         nparray = self.operator.get_tensor(request.name)
         proto = construct_tensor_record(request.name, nparray)
-        for data in proto_to_databuffer(proto, self.operator.cfg.max_message_size):
-            yield data
+        yield from proto_to_databuffer(proto, self.operator.cfg.max_message_size)
 
     def GetWeight(self, request, context):
         self.logger.debug(

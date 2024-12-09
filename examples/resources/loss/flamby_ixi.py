@@ -39,7 +39,7 @@ def get_dice_score(output, target, epsilon=1e-9):
 
 class BaselineLoss(_Loss):
     def __init__(self):
-        super(BaselineLoss, self).__init__()
+        super().__init__()
 
     def forward(self, output: torch.Tensor, target: torch.Tensor):
         """Get dice loss to evaluate the semantic segmentation model.

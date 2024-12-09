@@ -11,7 +11,7 @@ class ResNet(models.resnet.ResNet):
             in_dim = 1
         else:
             in_dim = 3
-        super(ResNet, self).__init__(block, layers)
+        super().__init__(block, layers)
         self.inplanes = 64
         self.conv1 = nn.Conv2d(
             in_dim, 64, kernel_size=7, stride=2, padding=3, bias=False

@@ -19,7 +19,7 @@ class FedServer(BaseServer):
     """
 
     def __init__(self, weights, model, loss_fn, num_clients, device, **kwargs):
-        super(FedServer, self).__init__(weights, model, loss_fn, num_clients, device)
+        super().__init__(weights, model, loss_fn, num_clients, device)
         self.__dict__.update(kwargs)
         self.logger = logging.getLogger(__name__)
         self.step = OrderedDict()
@@ -91,7 +91,7 @@ class FedServer(BaseServer):
 
     def logging_iteration(self, cfg, logger, t):
         if t == 0:
-            title = super(FedServer, self).log_title()
+            title = super().log_title()
             logger.info(title)
-        contents = super(FedServer, self).log_contents(cfg, t)
+        contents = super().log_contents(cfg, t)
         logger.info(contents)

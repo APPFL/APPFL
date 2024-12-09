@@ -15,7 +15,7 @@ def get_femnist(num_pixel, num_channel, pretrained):
     test_data_input = []
     test_data_label = []
     for idx in range(36):
-        with open("%s/test/all_data_%s_niid_05_keep_0_test_9.json" % (dir, idx)) as f:
+        with open(f"{dir}/test/all_data_{idx}_niid_05_keep_0_test_9.json") as f:
             test_data_raw[idx] = json.load(f)
         for client in test_data_raw[idx]["users"]:
             for data_input in test_data_raw[idx]["user_data"][client]["x"]:
@@ -37,7 +37,7 @@ def get_femnist(num_pixel, num_channel, pretrained):
     train_data_raw = {}
     train_datasets = []
     for idx in range(36):
-        with open("%s/train/all_data_%s_niid_05_keep_0_train_9.json" % (dir, idx)) as f:
+        with open(f"{dir}/train/all_data_{idx}_niid_05_keep_0_train_9.json") as f:
             train_data_raw[idx] = json.load(f)
 
         for client in train_data_raw[idx]["users"]:

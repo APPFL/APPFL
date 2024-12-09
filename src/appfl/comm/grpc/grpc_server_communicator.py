@@ -92,10 +92,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 global_model=model_serialized,
                 meta_data=meta_data,
             )
-            for bytes in proto_to_databuffer(
+            yield from proto_to_databuffer(
                 response_proto, max_message_size=self.max_message_size
-            ):
-                yield bytes
+            )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application

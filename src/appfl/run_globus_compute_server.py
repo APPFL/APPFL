@@ -165,7 +165,7 @@ class APPFLGlobusComputeServer(abc.ABC):
                     client_name = self.cfg.clients[client_idx].name
                     for val_k in validation_results[client_idx]:
                         self.writer.add_scalar(
-                            "%s-%s" % (client_name, val_k),
+                            f"{client_name}-{val_k}",
                             validation_results[client_idx][val_k],
                             step,
                         )
@@ -239,7 +239,7 @@ class APPFLGlobusComputeServer(abc.ABC):
 
 class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
     def __init__(self, cfg: DictConfig, gcc: Client):
-        super(APPFLGlobusComputeSyncServer, self).__init__(cfg, gcc)
+        super().__init__(cfg, gcc)
 
     def _do_training(self):
         start_time = time.time()
@@ -280,7 +280,7 @@ class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
 
 class APPFLGlobusComputeAsyncServer(APPFLGlobusComputeServer):
     def __init__(self, cfg: DictConfig, gcc: Client):
-        super(APPFLGlobusComputeAsyncServer, self).__init__(cfg, gcc)
+        super().__init__(cfg, gcc)
         self.global_epoch = 0
         self.client_model_timestamp = {i: 0 for i in range(self.cfg.num_clients)}
 
@@ -337,7 +337,7 @@ class APPFLGlobusComputeAsyncServer(APPFLGlobusComputeServer):
 
 class APPFLGlobusComputeCompassServer(APPFLGlobusComputeServer):
     def __init__(self, cfg: DictConfig, gcc: Client):
-        super(APPFLGlobusComputeCompassServer, self).__init__(cfg, gcc)
+        super().__init__(cfg, gcc)
         self.global_epoch = 0
         self.client_model_timestamp = {i: 0 for i in range(self.cfg.num_clients)}
 

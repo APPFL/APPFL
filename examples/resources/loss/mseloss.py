@@ -5,7 +5,7 @@ class MSELoss(nn.Module):
     """Mean Squared Error Loss"""
 
     def __init__(self):
-        super(MSELoss, self).__init__()
+        super().__init__()
         self.criterion = nn.MSELoss(reduction="mean")
 
     def forward(self, prediction, target):

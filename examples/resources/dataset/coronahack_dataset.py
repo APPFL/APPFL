@@ -21,7 +21,7 @@ class Coronahack:
             )
 
         self.data = []
-        with open(dir + "/Chest_xray_Corona_Metadata.csv", "r") as file:
+        with open(dir + "/Chest_xray_Corona_Metadata.csv") as file:
             csvreader = csv.reader(file)
             next(csvreader)
             for row in csvreader:
@@ -90,7 +90,7 @@ def get_corona(
             torch.FloatTensor(test_data_raw["x"]), torch.tensor(test_data_raw["y"])
         )
 
-        with open("%s/all_train_data_client_%s.json" % (dir, client_id)) as f:
+        with open(f"{dir}/all_train_data_client_{client_id}.json") as f:
             train_data_raw = json.load(f)
         train_dataset = Dataset(
             torch.FloatTensor(train_data_raw["x"]),

@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError
 from appfl.misc.utils import dump_data_to_file, load_data_from_file, id_generator
 
 
-class LargeObjectWrapper(object):
+class LargeObjectWrapper:
     # 3 MB maximum size limit for direct upload
     MAX_SIZE_LIMIT = 3 * 1024 * 1024
 
@@ -28,7 +28,7 @@ class LargeObjectWrapper(object):
         return self.size < LargeObjectWrapper.MAX_SIZE_LIMIT
 
 
-class CloudStorage(object):
+class CloudStorage:
     instc = None
 
     def __init__(self):
@@ -258,7 +258,7 @@ class CloudStorage(object):
 
         temp_dir = temp_dir if temp_dir is not None else cs.temp_dir
         os.makedirs(temp_dir, exist_ok=True)
-        file_path = osp.join(temp_dir, "%s.%s" % (object_name, ext))
+        file_path = osp.join(temp_dir, f"{object_name}.{ext}")
 
         dump_data_to_file(data, file_path)
 

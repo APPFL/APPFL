@@ -5,7 +5,7 @@ def get_loss():
         """Cross Entroy Loss"""
 
         def __init__(self):
-            super(CELoss, self).__init__()
+            super().__init__()
             self.criterion = nn.CrossEntropyLoss(reduction="mean")
 
         def forward(self, prediction, target):
