@@ -73,7 +73,7 @@ Installation
 
 Install APPFL from source in a conda environment:
 
-.. code-block:: console
+.. code-block:: bash
 
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
