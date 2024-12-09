@@ -19,9 +19,6 @@ argparser.add_argument(
 argparser.add_argument(
     "--client_config", type=str, default="./resources/config_gc/mnist/clients.yaml"
 )
-args = argparser.parse_args()
-
-argparser = argparse.ArgumentParser()
 argparser.add_argument("--compute_token", required=False)
 argparser.add_argument("--openid_token", required=False)
 args = argparser.parse_args()
