@@ -19,6 +19,9 @@
   <a href="https://github.com/APPFL/APPFL/actions/workflows/build.yml" target="_blank">
       <img src="https://github.com/APPFL/APPFL/actions/workflows/build.yml/badge.svg?branch=main&event=push" alt="Build">
   </a>
+  <a href="https://results.pre-commit.ci/latest/github/APPFL/APPFL/main">
+      <img src="https://results.pre-commit.ci/badge/github/APPFL/APPFL/main.svg" alt="pre-commit">
+  </a>
   <a href="https://arxiv.org/abs/2202.03672">
       <img src="https://img.shields.io/badge/arXiv-2202.03672-B31B1B.svg" alt="APPFL">
   </a>
