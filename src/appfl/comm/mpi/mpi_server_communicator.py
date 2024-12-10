@@ -1,11 +1,10 @@
 import time
 import json
-import pprint
 import logging
 import threading
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from typing import Optional, Dict
+from typing import Optional, Dict, OrderedDict
 from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
@@ -157,8 +156,9 @@ class MPIServerCommunicator:
         :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
         """
         local_model = request.payload
-        local_model = byte_to_model(local_model)
         meta_data = json.loads(request.meta_data) if len(request.meta_data) > 0 else {}        
+        if meta_data.get('_torch_serialized', True):
+            local_model = byte_to_model(local_model)
         # read the client ids from the metadata if any
         client_ids = meta_data.get("_client_ids", [client_rank])
         for client_id in client_ids:
@@ -176,7 +176,10 @@ class MPIServerCommunicator:
             #     del client_metadata_copy['_client_ids']
             # if len(client_metadata_copy) > 0:
             #     self.logger.info(f"Received Metadata from {client_id}:\n{pprint.pformat(client_metadata_copy)}")
-            client_local_model = local_model[client_id] if client_id in local_model else local_model
+            client_local_model = local_model[client_id] if (
+                (isinstance(local_model, dict) or isinstance(local_model, OrderedDict)) and
+                client_id in local_model
+            ) else local_model
             global_model = self.server_agent.global_update(client_id, client_local_model, blocking=False, **client_metadata)
             if not isinstance(global_model, Future):
                 meta_data = {}
