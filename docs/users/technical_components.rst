@@ -12,7 +12,7 @@ First, let's take a look at the server agent, client agent, and communicator on 
 .. toctree::
    :maxdepth: 1
    :titlesonly:
-   
+
    server_agent
    client_agent
    communicator
@@ -22,7 +22,7 @@ Now, let's take a look at the building blocks that make up the server agent and 
 .. toctree::
    :maxdepth: 1
    :titlesonly:
-   
+
    aggregator
    scheduler
    trainer

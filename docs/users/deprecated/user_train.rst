@@ -13,4 +13,3 @@ The API functions to run gRPC are defined as follows:
 .. autofunction:: appfl.run_grpc_server.run_server
 
 .. autofunction:: appfl.run_grpc_client.run_client
-

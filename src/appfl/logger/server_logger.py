@@ -4,28 +4,31 @@ import logging
 from typing import Optional
 from datetime import datetime
 
+
 class ServerAgentFileLogger:
     """
     ServerAgentFileLogger is a class that logs FL server-side messages to the console and to a file.
     :param file_dir: The directory to save the log file.
     :param file_name: The name of the log file.
-    :param experiment_id: An optional string to identify the experiment. 
+    :param experiment_id: An optional string to identify the experiment.
         If not provided, the current date and time will be used.
     """
+
     def __init__(
-        self, 
-        file_dir: str="", 
-        file_name: str="", 
-        experiment_id: str=""
+        self, file_dir: str = "", file_name: str = "", experiment_id: str = ""
     ) -> None:
         if file_name != "":
             file_name += f"_Server_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
-        fmt = logging.Formatter('[%(asctime)s %(levelname)-4s server]: %(message)s')
+        fmt = logging.Formatter("[%(asctime)s %(levelname)-4s server]: %(message)s")
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
 
-        num_s_handlers = len([h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)])
-        num_f_handlers = len([h for h in self.logger.handlers if isinstance(h, logging.FileHandler)])
+        num_s_handlers = len(
+            [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
+        )
+        num_f_handlers = len(
+            [h for h in self.logger.handlers if isinstance(h, logging.FileHandler)]
+        )
 
         if num_s_handlers == 0:
             s_handler = logging.StreamHandler()
@@ -51,7 +54,7 @@ class ServerAgentFileLogger:
 
     def error(self, error: str) -> None:
         self.logger.error(error)
-        
+
     def get_log_filepath(self) -> Optional[str]:
-        if hasattr(self, 'log_filepath'):
+        if hasattr(self, "log_filepath"):
             return self.log_filepath

@@ -1,16 +1,14 @@
 import time
 import torch
 import argparse
-from appfl.config import *
-from appfl.misc.data import *
-from models.cnn import *
-import appfl.run_serial as rs
 import appfl.run_mpi as rm
+import appfl.run_serial as rs
 from mpi4py import MPI
+from omegaconf import OmegaConf
+from appfl.config import Config
+from appfl.misc.data import data_sanity_check
 from models.utils import get_model
 from dataloader.celeba_dataloader import get_celeba
-
-""" read arguments """
 
 parser = argparse.ArgumentParser()
 
@@ -41,19 +39,41 @@ parser.add_argument("--adapt_param", type=float, required=False)
 parser.add_argument("--pretrained", type=int, default=0)
 
 ## privacy preserving
-parser.add_argument("--use_dp", action="store_true", default=False, help="Whether to enable differential privacy technique to preserve privacy")
-parser.add_argument("--epsilon", type=float, default=1, help="Privacy budget - stronger privacy as epsilon decreases")
-parser.add_argument("--clip_grad", action="store_true", default=False, help="Whether to clip the gradients")
-parser.add_argument("--clip_value", type=float, default=1.0, help="Max norm of the gradients")
-parser.add_argument("--clip_norm", type=float, default=1, help="Type of the used p-norm for gradient clipping")
+parser.add_argument(
+    "--use_dp",
+    action="store_true",
+    default=False,
+    help="Whether to enable differential privacy technique to preserve privacy",
+)
+parser.add_argument(
+    "--epsilon",
+    type=float,
+    default=1,
+    help="Privacy budget - stronger privacy as epsilon decreases",
+)
+parser.add_argument(
+    "--clip_grad",
+    action="store_true",
+    default=False,
+    help="Whether to clip the gradients",
+)
+parser.add_argument(
+    "--clip_value", type=float, default=1.0, help="Max norm of the gradients"
+)
+parser.add_argument(
+    "--clip_norm",
+    type=float,
+    default=1,
+    help="Type of the used p-norm for gradient clipping",
+)
 
 args = parser.parse_args()
 
 if torch.cuda.is_available():
     args.device = "cuda"
 
-def main():    
 
+def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
@@ -68,7 +88,7 @@ def main():
     start_time = time.time()
     train_datasets, test_dataset = get_celeba(args.num_pixel)
 
-    if cfg.data_sanity == True:
+    if cfg.data_sanity:
         data_sanity_check(
             train_datasets, test_dataset, args.num_channel, args.num_pixel
         )
@@ -76,13 +96,13 @@ def main():
     args.num_clients = len(train_datasets)
 
     model = get_model(args)
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = torch.nn.CrossEntropyLoss()
     print(
         "----------Loaded Datasets and Model----------Elapsed Time=",
         time.time() - start_time,
     )
-    
-    cfg.device = args.device  
+
+    cfg.device = args.device
 
     ## clients
     cfg.num_clients = args.num_clients
@@ -106,7 +126,9 @@ def main():
 
     if comm_size > 1:
         if comm_rank == 0:
-            rm.run_server(cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset)
+            rm.run_server(
+                cfg, comm, model, loss_fn, args.num_clients, test_dataset, args.dataset
+            )
         else:
             rm.run_client(cfg, comm, model, loss_fn, args.num_clients, train_datasets)
         print("------DONE------", comm_rank)
@@ -114,7 +136,7 @@ def main():
         rs.run_serial(cfg, model, loss_fn, train_datasets, test_dataset, args.dataset)
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()
 
 # To run CUDA-aware MPI:

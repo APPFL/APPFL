@@ -15,18 +15,23 @@ import sys
 import subprocess
 import datetime
 
-sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('../src'))
+sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.abspath("../src"))
 
 # import pydata_sphinx_theme
 
 # -- Project information -----------------------------------------------------
 
-project = 'APPFL'
-copyright = '2022-%d, UChicago Argonne, LLC and the APPFL Development Team' % datetime.date.today().year
-author = 'The APPFL Development Team'
+project = "APPFL"
+copyright = (
+    "2022-%d, UChicago Argonne, LLC and the APPFL Development Team"
+    % datetime.date.today().year
+)
+author = "The APPFL Development Team"
 
-git_describe_version = subprocess.check_output(['git', 'describe', '--always']).strip().decode('utf-8')
+git_describe_version = (
+    subprocess.check_output(["git", "describe", "--always"]).strip().decode("utf-8")
+)
 
 
 # -- General configuration ---------------------------------------------------
@@ -35,31 +40,31 @@ git_describe_version = subprocess.check_output(['git', 'describe', '--always']).
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-        'sphinx.ext.autodoc',
-        'sphinx.ext.napoleon',
-        'sphinx.ext.viewcode',
-        'sphinx.ext.autosummary',
-        'sphinx.ext.todo',
-        'sphinx.ext.doctest',
-        'sphinx.ext.intersphinx',
-        'sphinx.ext.coverage',
-        'sphinx.ext.mathjax',
-        'sphinx.ext.ifconfig',
-        'sphinx.ext.autosectionlabel',
-        'myst_parser',
-        'nbsphinx',
-        'sphinx_contributors',
-        'sphinx_copybutton',
-        'sphinx_design',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.todo",
+    "sphinx.ext.doctest",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.coverage",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.ifconfig",
+    "sphinx.ext.autosectionlabel",
+    "myst_parser",
+    "nbsphinx",
+    "sphinx_contributors",
+    "sphinx_copybutton",
+    "sphinx_design",
 ]
 
 autodoc_mock_imports = [
-        "torch",
-        "omegaconf",
-        "grpc",
-        "numpy",
-        "mpi4py",
-        "zfpy",
+    "torch",
+    "omegaconf",
+    "grpc",
+    "numpy",
+    "mpi4py",
+    "zfpy",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -71,7 +76,7 @@ autodoc_mock_imports = [
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_data']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "_data"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -79,10 +84,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_data']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'furo'
-html_favicon = '_static/favicon.ico'
-html_logo = '_static/logo_yellow_with_name.png'
-html_last_updated_fmt = r'%Y-%m-%dT%H:%M:%S%z (' + git_describe_version + ')'
+html_theme = "furo"
+html_favicon = "_static/favicon.ico"
+html_logo = "_static/logo_yellow_with_name.png"
+html_last_updated_fmt = r"%Y-%m-%dT%H:%M:%S%z (" + git_describe_version + ")"
 pygments_style = "friendly"
 pygments_dark_style = "monokai"  # this is a furo-specific option
 html_theme_options = {
@@ -112,11 +117,11 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 html_css_files = [
-    'css/custom.css',
+    "css/custom.css",
 ]
 
 # html_copy_source = False
 
-nbsphinx_execute = 'never'
+nbsphinx_execute = "never"

@@ -1,5 +1,6 @@
 from .drmetrics.imbalance_degree import imbalance_degree
 
+
 def generate_readiness_report(train_datasets, dr_metrics):
     print("------- Data Readiness Report - Begin --------")
     if "ci" in dr_metrics:
@@ -13,7 +14,7 @@ def generate_readiness_report(train_datasets, dr_metrics):
     if "ss" in dr_metrics:
         print("Sample Size:")
 
-        for i,dataset in  enumerate(train_datasets):
+        for i, dataset in enumerate(train_datasets):
             sample_size = len(dataset.data_label.tolist())
             print(f"  Client {i + 1}: {round(sample_size)}")
 
@@ -26,6 +27,8 @@ def generate_readiness_report(train_datasets, dr_metrics):
             total_samples = len(gender_list)
             representation_rate_1s = count_1s / total_samples
             representation_rate_0s = count_0s / total_samples
-            print(f"  Client {i + 1}: Representation Rate of Males: {round(representation_rate_1s, 4)}, Representation Rate of Females: {round(representation_rate_0s, 4)}")
-                            
+            print(
+                f"  Client {i + 1}: Representation Rate of Males: {round(representation_rate_1s, 4)}, Representation Rate of Females: {round(representation_rate_0s, 4)}"
+            )
+
     print("------- Data Readiness Report - End ----------")

@@ -16,7 +16,7 @@ message Header {
 message DataBufferV0 {
     uint32 size       = 1; // size of this buffer
     bytes  data_bytes = 2; // data
-} 
+}
 
 enum Job {
     INIT   = 0;

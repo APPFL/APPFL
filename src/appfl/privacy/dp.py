@@ -2,11 +2,14 @@ import copy
 import torch
 from typing import Dict, Any
 
-def laplace_mechanism_output_perturb(model: torch.nn.Module, sensitivity: float, epsilon: float) -> Dict[str, Any]:
+
+def laplace_mechanism_output_perturb(
+    model: torch.nn.Module, sensitivity: float, epsilon: float
+) -> Dict[str, Any]:
     """
-    Differential privacy for output perturbation based on Laplacian distribution. 
-    The output perturbation adds Laplacian noise with zero mean to ``model.named_parameters()``. 
-    Variance is euqal to `2*(scale_value)^2`, and `scale_value = sensitivty / epsilon`, 
+    Differential privacy for output perturbation based on Laplacian distribution.
+    The output perturbation adds Laplacian noise with zero mean to ``model.named_parameters()``.
+    Variance is equal to `2*(scale_value)^2`, and `scale_value = sensitivity / epsilon`,
     where `sensitivity` is determined by data and algorithm.
     :param model: torch.nn.Module
     :param sensitivity: sensitivity

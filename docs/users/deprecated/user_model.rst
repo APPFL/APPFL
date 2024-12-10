@@ -13,6 +13,6 @@ In the code, one can create the CNN model and the loss function instances as fol
 .. code-block:: python
 
     model = CNN()
-    loss_fn = torch.nn.CrossEntropyLoss()   
+    loss_fn = torch.nn.CrossEntropyLoss()
 
 Note that the ``loss_fn`` can be anything derived from ``torch.nn.Module`` as well.

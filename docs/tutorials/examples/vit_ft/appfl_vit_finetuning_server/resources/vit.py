@@ -1,6 +1,7 @@
 import torch
 from torchvision.models import vit_b_16, ViT_B_16_Weights
 
+
 def get_vit():
     """
     Return a pretrained ViT with all layers frozen except output head.

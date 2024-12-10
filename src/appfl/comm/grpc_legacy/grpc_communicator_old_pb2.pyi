@@ -2,7 +2,13 @@ from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from typing import (
+    ClassVar as _ClassVar,
+    Iterable as _Iterable,
+    Mapping as _Mapping,
+    Optional as _Optional,
+    Union as _Union,
+)
 
 DESCRIPTOR: _descriptor.FileDescriptor
 EMPTY: MessageStatus
@@ -18,7 +24,11 @@ class Acknowledgment(_message.Message):
     STATUS_FIELD_NUMBER: _ClassVar[int]
     header: Header
     status: MessageStatus
-    def __init__(self, header: _Optional[_Union[Header, _Mapping]] = ..., status: _Optional[_Union[MessageStatus, str]] = ...) -> None: ...
+    def __init__(
+        self,
+        header: _Optional[_Union[Header, _Mapping]] = ...,
+        status: _Optional[_Union[MessageStatus, str]] = ...,
+    ) -> None: ...
 
 class DataBufferV0(_message.Message):
     __slots__ = ["data_bytes", "size"]
@@ -26,7 +36,9 @@ class DataBufferV0(_message.Message):
     SIZE_FIELD_NUMBER: _ClassVar[int]
     data_bytes: bytes
     size: int
-    def __init__(self, size: _Optional[int] = ..., data_bytes: _Optional[bytes] = ...) -> None: ...
+    def __init__(
+        self, size: _Optional[int] = ..., data_bytes: _Optional[bytes] = ...
+    ) -> None: ...
 
 class Header(_message.Message):
     __slots__ = ["client_id", "server_id"]
@@ -34,7 +46,9 @@ class Header(_message.Message):
     SERVER_ID_FIELD_NUMBER: _ClassVar[int]
     client_id: int
     server_id: int
-    def __init__(self, server_id: _Optional[int] = ..., client_id: _Optional[int] = ...) -> None: ...
+    def __init__(
+        self, server_id: _Optional[int] = ..., client_id: _Optional[int] = ...
+    ) -> None: ...
 
 class JobRequest(_message.Message):
     __slots__ = ["header", "job_done"]
@@ -42,7 +56,11 @@ class JobRequest(_message.Message):
     JOB_DONE_FIELD_NUMBER: _ClassVar[int]
     header: Header
     job_done: Job
-    def __init__(self, header: _Optional[_Union[Header, _Mapping]] = ..., job_done: _Optional[_Union[Job, str]] = ...) -> None: ...
+    def __init__(
+        self,
+        header: _Optional[_Union[Header, _Mapping]] = ...,
+        job_done: _Optional[_Union[Job, str]] = ...,
+    ) -> None: ...
 
 class JobResponse(_message.Message):
     __slots__ = ["header", "job_todo", "round_number"]
@@ -52,7 +70,12 @@ class JobResponse(_message.Message):
     header: Header
     job_todo: Job
     round_number: int
-    def __init__(self, header: _Optional[_Union[Header, _Mapping]] = ..., round_number: _Optional[int] = ..., job_todo: _Optional[_Union[Job, str]] = ...) -> None: ...
+    def __init__(
+        self,
+        header: _Optional[_Union[Header, _Mapping]] = ...,
+        round_number: _Optional[int] = ...,
+        job_todo: _Optional[_Union[Job, str]] = ...,
+    ) -> None: ...
 
 class LearningResults(_message.Message):
     __slots__ = ["dual", "header", "penalty", "primal", "round_number"]
@@ -66,7 +89,14 @@ class LearningResults(_message.Message):
     penalty: float
     primal: _containers.RepeatedCompositeFieldContainer[TensorRecord]
     round_number: int
-    def __init__(self, header: _Optional[_Union[Header, _Mapping]] = ..., round_number: _Optional[int] = ..., penalty: _Optional[float] = ..., primal: _Optional[_Iterable[_Union[TensorRecord, _Mapping]]] = ..., dual: _Optional[_Iterable[_Union[TensorRecord, _Mapping]]] = ...) -> None: ...
+    def __init__(
+        self,
+        header: _Optional[_Union[Header, _Mapping]] = ...,
+        round_number: _Optional[int] = ...,
+        penalty: _Optional[float] = ...,
+        primal: _Optional[_Iterable[_Union[TensorRecord, _Mapping]]] = ...,
+        dual: _Optional[_Iterable[_Union[TensorRecord, _Mapping]]] = ...,
+    ) -> None: ...
 
 class TensorRecord(_message.Message):
     __slots__ = ["data_bytes", "data_dtype", "data_shape", "name"]
@@ -78,7 +108,13 @@ class TensorRecord(_message.Message):
     data_dtype: str
     data_shape: _containers.RepeatedScalarFieldContainer[int]
     name: str
-    def __init__(self, name: _Optional[str] = ..., data_shape: _Optional[_Iterable[int]] = ..., data_bytes: _Optional[bytes] = ..., data_dtype: _Optional[str] = ...) -> None: ...
+    def __init__(
+        self,
+        name: _Optional[str] = ...,
+        data_shape: _Optional[_Iterable[int]] = ...,
+        data_bytes: _Optional[bytes] = ...,
+        data_dtype: _Optional[str] = ...,
+    ) -> None: ...
 
 class TensorRequest(_message.Message):
     __slots__ = ["header", "name", "round_number"]
@@ -88,7 +124,12 @@ class TensorRequest(_message.Message):
     header: Header
     name: str
     round_number: int
-    def __init__(self, header: _Optional[_Union[Header, _Mapping]] = ..., name: _Optional[str] = ..., round_number: _Optional[int] = ...) -> None: ...
+    def __init__(
+        self,
+        header: _Optional[_Union[Header, _Mapping]] = ...,
+        name: _Optional[str] = ...,
+        round_number: _Optional[int] = ...,
+    ) -> None: ...
 
 class WeightRequest(_message.Message):
     __slots__ = ["header", "size"]
@@ -96,7 +137,11 @@ class WeightRequest(_message.Message):
     SIZE_FIELD_NUMBER: _ClassVar[int]
     header: Header
     size: int
-    def __init__(self, header: _Optional[_Union[Header, _Mapping]] = ..., size: _Optional[int] = ...) -> None: ...
+    def __init__(
+        self,
+        header: _Optional[_Union[Header, _Mapping]] = ...,
+        size: _Optional[int] = ...,
+    ) -> None: ...
 
 class WeightResponse(_message.Message):
     __slots__ = ["header", "weight"]
@@ -104,7 +149,11 @@ class WeightResponse(_message.Message):
     WEIGHT_FIELD_NUMBER: _ClassVar[int]
     header: Header
     weight: float
-    def __init__(self, header: _Optional[_Union[Header, _Mapping]] = ..., weight: _Optional[float] = ...) -> None: ...
+    def __init__(
+        self,
+        header: _Optional[_Union[Header, _Mapping]] = ...,
+        weight: _Optional[float] = ...,
+    ) -> None: ...
 
 class Job(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = []

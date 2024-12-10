@@ -79,7 +79,7 @@ mpiexec -np 6 python ./mnist_grpc.py --partition class_noiid --loss_fn losses/ce
 
 #### Globus Compute Communication
 
-[Globus Compute](https://funcx.readthedocs.io/en/latest/index.html) is a distributed function as a service platform. It is used to support federated learning among **real-world** distributed and **heterogeneous** computing facilities. The following command starts an FL server which interacts with Globus Compute Endpoints (FL clients) to perform FL experiments. ***Please see the detialed instructions about how to setup experiments using Globus Compute [here](globus_compute/README.md).***
+[Globus Compute](https://funcx.readthedocs.io/en/latest/index.html) is a distributed function as a service platform. It is used to support federated learning among **real-world** distributed and **heterogeneous** computing facilities. The following command starts an FL server which interacts with Globus Compute Endpoints (FL clients) to perform FL experiments. ***Please see the detailed instructions about how to setup experiments using Globus Compute [here](globus_compute/README.md).***
 
 ```bash
 python mnist_globus_compute.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml
@@ -124,7 +124,7 @@ FLamby is a cross-silo FL benchmark, and running experiments on it is similar to
 #### MPI Synchronous Communication
 
 ```bash
-mpiexec -np 7 python flamby_mpi_sync.py --num_epochs 5 --dataset TcgaBrca --num_local_steps 50 --server ServerFedAvg 
+mpiexec -np 7 python flamby_mpi_sync.py --num_epochs 5 --dataset TcgaBrca --num_local_steps 50 --server ServerFedAvg
 ```
 
 #### MPI Asynchronous Communication
@@ -136,10 +136,10 @@ mpiexec -np 7 python flamby_mpi_async.py --num_epochs 30 --dataset TcgaBrca --nu
 #### Serially Run
 
 ```bash
-python flamby_serial.py --num_clients 6 --num_epochs 5 --dataset TcgaBrca --num_local_steps 50 --server ServerFedAvg 
+python flamby_serial.py --num_clients 6 --num_epochs 5 --dataset TcgaBrca --num_local_steps 50 --server ServerFedAvg
 ```
 
-### Using Lossy Compresssion (Experimental)
+### Using Lossy Compression (Experimental)
 
 To use lossy compression for given examples, you need to follow the instructions in [Lossy Compression](../src/appfl/compressor/README.md) to install the required packages and run the experiments.
 

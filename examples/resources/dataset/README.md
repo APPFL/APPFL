@@ -1,5 +1,5 @@
 # ⚙️ Dataset
-This directory contains the necessary files to load different datasets for different clients in FL experiments. 
+This directory contains the necessary files to load different datasets for different clients in FL experiments.
 
 You can define your own loader files for your custom dataset by following the same manner.
 
@@ -29,7 +29,7 @@ For some of the datasets used in the `examples` folder, such as `MNIST` and `CIF
     ./preprocess.sh -s niid --sf 0.05 -k 0 -t sample
     ```
 - In the newly generated directory `leaf/data/femnist/data`, copy the two directories `train` and `test` and paste them in `examples/datasets/RawData/FEMNIST`.
- 
+
 
 ## CelebA
 - Make a subdirectory named `RawData/CELEBA` under this `examples/dataset` directory.

@@ -5,12 +5,13 @@ import numpy as np
 from appfl.misc.data import Dataset
 
 # Please download and preprocess the FEMNIST data before calling this dataloader
-# Reference: https://github.com/APPFL/APPFL/tree/main/examples/datasets/RawData 
+# Reference: https://github.com/APPFL/APPFL/tree/main/examples/datasets/RawData
+
 
 def get_femnist(
     client_id: int,
-    num_pixel: int, 
-    num_channel: int, 
+    num_pixel: int,
+    num_channel: int,
     pretrained: bool,
     **kwargs,
 ):
@@ -22,7 +23,7 @@ def get_femnist(
     test_data_input = []
     test_data_label = []
     for idx in range(36):
-        with open("%s/test/all_data_%s_niid_05_keep_0_test_9.json" % (dir, idx)) as f:
+        with open(f"{dir}/test/all_data_{idx}_niid_05_keep_0_test_9.json") as f:
             test_data_raw[idx] = json.load(f)
         for client in test_data_raw[idx]["users"]:
             for data_input in test_data_raw[idx]["user_data"][client]["x"]:
@@ -36,10 +37,12 @@ def get_femnist(
 
             for data_label in test_data_raw[idx]["user_data"][client]["y"]:
                 test_data_label.append(data_label)
-    test_dataset = Dataset(torch.FloatTensor(test_data_input), torch.tensor(test_data_label))
+    test_dataset = Dataset(
+        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
+    )
 
     # training data
-    with open("%s/train/all_data_%s_niid_05_keep_0_train_9.json" % (dir, client_id)) as f:
+    with open(f"{dir}/train/all_data_{client_id}_niid_05_keep_0_train_9.json") as f:
         train_data_raw = json.load(f)
 
     for client in train_data_raw["users"]:

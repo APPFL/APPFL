@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def imbalance_degree(lst):
     """
     Calculate the proportions of each class and the proportions for a balanced distribution and return the euclidean distance between the two distributions.
@@ -19,7 +20,9 @@ def imbalance_degree(lst):
     total_elements = len(lst)
 
     # Calculate the actual class proportions
-    actual_proportions = np.array([counts[elem] / total_elements for elem in sorted(counts.keys())])
+    actual_proportions = np.array(
+        [counts[elem] / total_elements for elem in sorted(counts.keys())]
+    )
 
     # Calculate the proportions for a balanced distribution
     num_classes = len(counts)
@@ -29,4 +32,3 @@ def imbalance_degree(lst):
     euclidean_distance = np.linalg.norm(actual_proportions - balanced_proportions)
 
     return euclidean_distance
-

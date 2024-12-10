@@ -12,7 +12,7 @@ algorithm:
     ## Clients optimizer
     optim: "Adam"
     num_local_epochs: 1
-    optim_args: 
+    optim_args:
       lr: 0.003
     ## Differential Privacy
     use_dp: False
@@ -23,7 +23,7 @@ algorithm:
     ## clip_value: False (no-clipping)
     ## clip_value: 10    (clipping)
     ## clip_value: 1
-    server_lr_decay_exp_gamma : 0.975 
+    server_lr_decay_exp_gamma : 0.975
     client_weights: "equal"
     clip_grad: False
     clip_value: 1
@@ -32,8 +32,8 @@ algorithm:
 model:
   num_channel: 1
   num_classes: 10
-  num_pixel:   28 
-  
+  num_pixel:   28
+
 training:
   num_epochs: 5
   save_model_filename: "MNIST_CNN_FedAvg"

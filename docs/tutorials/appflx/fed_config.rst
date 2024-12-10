@@ -3,9 +3,9 @@ Start Experiments
 
 This page describes how the FL group (federation) leader can start an FL experiment via the web application.
 
-1. Log in to the `web application <https://appflx.link>`_ by following the instructions. 
+1. Log in to the `web application <https://appflx.link>`_ by following the instructions.
 
-2. You will be directed to a dashboard page after signing in. The dashboard lists your **Federations** and your **Clients**. Specifically, federation refers to the FL group that you created, namely, you are the group leader who can start FL experiments and access the experiment results. Client refers to the FL group of which you are a member. The federation leader is also a clinet of his own federation by default.
+2. You will be directed to a dashboard page after signing in. The dashboard lists your **Federations** and your **Clients**. Specifically, federation refers to the FL group that you created, namely, you are the group leader who can start FL experiments and access the experiment results. Client refers to the FL group of which you are a member. The federation leader is also a client of his own federation by default.
 
 3. Click **New Experiment** button next to the federation for which you want to start the FL experiment. This will lead you to the **New Experiment** page.
 
@@ -50,7 +50,7 @@ This page describes how the FL group (federation) leader can start an FL experim
     :language: python
     :caption: An example for metric function definition.
 
-14. For **Client Optimizer**, choose either SGD or Adam, and specify the local learning rate of each client in **Client Learning Rate**. 
+14. For **Client Optimizer**, choose either SGD or Adam, and specify the local learning rate of each client in **Client Learning Rate**.
 
 15. For **Client Weights**, **Proportional to Sample Size** means applying different weights to different client local models during the global aggregation by calculating the weights proportional to the client sample size, and **Equal for All Clients** means applying the same weights to all client local models.
 

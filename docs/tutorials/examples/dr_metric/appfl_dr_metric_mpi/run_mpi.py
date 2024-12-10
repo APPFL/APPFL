@@ -23,16 +23,20 @@ if rank == 0:
         server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
     # Create the server agent and communicator
     server_agent = ServerAgent(server_agent_config=server_agent_config)
-    server_communicator = MPIServerCommunicator(comm, server_agent, logger=server_agent.logger)
+    server_communicator = MPIServerCommunicator(
+        comm, server_agent, logger=server_agent.logger
+    )
     # Start the server to serve the clients
     server_communicator.serve()
 else:
     # Set the client configurations
     client_agent_config = OmegaConf.load(args.client_config)
-    client_agent_config.train_configs.logging_id = f'Client{rank}'
+    client_agent_config.train_configs.logging_id = f"Client{rank}"
     client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
-    client_agent_config.data_configs.dataset_kwargs.visualization = True if rank == 1 else False
+    client_agent_config.data_configs.dataset_kwargs.visualization = (
+        True if rank == 1 else False
+    )
     # Create the client agent and communicator
     client_agent = DRAgent(client_agent_config=client_agent_config)
     client_communicator = MPIClientCommunicator(comm, server_rank=0)
@@ -41,7 +45,9 @@ else:
     client_agent.load_config(client_config)
     # Generate the readiness report
     data_readiness = client_agent.generate_mnist_readiness_report()
-    client_communicator.invoke_custom_action(action='get_mnist_readiness_report', **data_readiness)
+    client_communicator.invoke_custom_action(
+        action="get_mnist_readiness_report", **data_readiness
+    )
     # Load the initial global model
     init_global_model = client_communicator.get_global_model(init_model=True)
     client_agent.load_parameters(init_global_model)
@@ -53,8 +59,10 @@ else:
             local_model, meta_data_local = local_model[0], local_model[1]
         else:
             meta_data_local = {}
-        new_global_model, metadata = client_communicator.update_global_model(local_model, **meta_data_local)
-        if metadata['status'] == 'DONE':
+        new_global_model, metadata = client_communicator.update_global_model(
+            local_model, **meta_data_local
+        )
+        if metadata["status"] == "DONE":
             break
         client_agent.load_parameters(new_global_model)
-    client_communicator.invoke_custom_action(action='close_connection')
+    client_communicator.invoke_custom_action(action="close_connection")

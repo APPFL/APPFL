@@ -1,13 +1,13 @@
 Simulating PPFL (Serial)
 ========================
 
-In this section, we describe how to simulate PPFL on a single machine by having different FL clients running serially. 
+In this section, we describe how to simulate PPFL on a single machine by having different FL clients running serially.
 
 .. note::
 
     It should be noted that serial simulation can only be used for synchronous FL algorithms.
 
-First, user needs to load configuration files for the client and server agents and specifies the number of clients to simulate. 
+First, user needs to load configuration files for the client and server agents and specifies the number of clients to simulate.
 
 .. code-block:: python
 
@@ -18,7 +18,7 @@ First, user needs to load configuration files for the client and server agents a
         '<your_example_path>/configs/mnist/server_fedavg.yaml'
     )
     client_agent_configs = [
-        OmegaConf.load('<your_example_path>/configs/mnist/client_1.yaml') 
+        OmegaConf.load('<your_example_path>/configs/mnist/client_1.yaml')
         for _ in range(args.num_clients)
     ]
 
@@ -46,11 +46,11 @@ The user then creates server agent and client agents using the configurations.
 
     server_agent = ServerAgent(server_agent_config=server_agent_config)
     client_agents = [
-        ClientAgent(client_agent_config=client_agent_configs[i]) 
+        ClientAgent(client_agent_config=client_agent_configs[i])
         for i in range(args.num_clients)
     ]
 
-After creating the agents, the user can start the FL process by fisrt having the server to provide general client configurations to all the clients using ``server_agent.get_client_configs()`` function. The clients load the configurations using ``client_agent.load_config()`` function.
+After creating the agents, the user can start the FL process by first having the server to provide general client configurations to all the clients using ``server_agent.get_client_configs()`` function. The clients load the configurations using ``client_agent.load_config()`` function.
 
 Then, the clients get the initial global model from the server using ``server_agent.get_parameters()`` function. It should be noted that we set ``serial_run=True`` in the ``get_parameters()`` function to tell the server that the clients will run serially and it should not wait for all clients to the call this function before sending the global model, avoiding blocking the FL process. The clients load the global model using ``client_agent.load_parameters()`` function.
 
@@ -79,11 +79,11 @@ Optionally, the clients can send their number of local training data to the serv
     for i in range(args.num_clients):
         sample_size = client_agents[i].get_sample_size()
         server_agent.set_sample_size(
-            client_id=client_agents[i].get_id(), 
+            client_id=client_agents[i].get_id(),
             sample_size=sample_size
         )
 
-After the above initializations, the user can start the FL training loop. 
+After the above initializations, the user can start the FL training loop.
 
 - ``server_agent.training_finished()`` function returns ``True`` if the training is finished, i.e., meeting the stopping criteria.
 - ``client_agent.train()`` function is used to perform local training on the client side.
@@ -106,7 +106,7 @@ After the above initializations, the user can start the FL training loop.
             # "Send" local model to server and get a Future object for the new global model
             # The Future object will be resolved when the server receives local models from all clients
             new_global_model_future = server_agent.global_update(
-                client_id=client_agent.get_id(), 
+                client_id=client_agent.get_id(),
                 local_model=local_model,
                 blocking=False,
                 **metadata

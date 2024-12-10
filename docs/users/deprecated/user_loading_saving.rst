@@ -11,7 +11,7 @@ For example, suppose that we have a pretrained model stored as ``model_pretraine
 Then, one can revise the configurations as follows:
 
 .. code-block:: python
-    
+
     # Loading Configurations
     from OmegaConf import OmegaConf
     from appfl.config import Config
@@ -24,7 +24,7 @@ Then, one can revise the configurations as follows:
 Saving
 ------
 After federated learning, the resulting models can be stored via ``torch.save()``.
-To use this feature, one should revise the configuration accordingly as well. See the followings for an example:
+To use this feature, one should revise the configuration accordingly as well. See the following for an example:
 
 .. code-block:: python
 

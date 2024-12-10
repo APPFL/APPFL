@@ -23,7 +23,7 @@ To add new aggregators to ``APPFL``,  you can create your own aggregator class b
             self.aggregator_configs = aggregator_configs
             self.logger = logger
             ...
-        
+
         def aggregate(self, *args, **kwargs) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
             Aggregate local model(s) from clients and return the global model

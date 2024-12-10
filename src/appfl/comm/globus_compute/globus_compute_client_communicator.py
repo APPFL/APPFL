@@ -14,23 +14,26 @@ def globus_compute_client_entry_point(
     :return `meta_data_local`: The local metadata after the task is executed. [Return `{}` if the task does not return metadata.]
     """
     from appfl.agent import ClientAgent
-    from appfl.comm.globus_compute.utils.client_utils import load_global_model, send_local_model
-    
+    from appfl.comm.globus_compute.utils.client_utils import (
+        load_global_model,
+        send_local_model,
+    )
+
     client_agent = ClientAgent(client_agent_config=client_agent_config)
     if model is not None:
         model = load_global_model(client_agent.client_agent_config, model)
         client_agent.load_parameters(model)
 
     if task_name == "get_sample_size":
-        return None, {
-            "sample_size": client_agent.get_sample_size()
-        }
-    
+        return None, {"sample_size": client_agent.get_sample_size()}
+
     elif task_name == "data_readiness_report":
-        return None,{
-            "data_readiness": client_agent.generate_readiness_report(client_agent_config)
+        return None, {
+            "data_readiness": client_agent.generate_readiness_report(
+                client_agent_config
+            )
         }
-    
+
     elif task_name == "train":
         client_agent.train(**meta_data)
         local_model = client_agent.get_parameters()
@@ -39,11 +42,13 @@ def globus_compute_client_entry_point(
         else:
             meta_data_local = {}
         local_model = send_local_model(
-            client_agent.client_agent_config, 
+            client_agent.client_agent_config,
             local_model,
             meta_data["local_model_key"] if "local_model_key" in meta_data else None,
             meta_data["local_model_url"] if "local_model_url" in meta_data else None,
         )
         return local_model, meta_data_local
     else:
-        raise NotImplementedError(f"Task {task_name} is not implemented in the client endpoint.")
+        raise NotImplementedError(
+            f"Task {task_name} is not implemented in the client endpoint."
+        )

@@ -6,15 +6,23 @@ import copy
 import time
 import logging
 import torch.nn as nn
-from .misc import *
-from .algorithm import *
 from omegaconf import DictConfig
 from typing import Union, List, Any
 from torch.utils.data import DataLoader
+from appfl.misc.utils import (
+    save_model_iteration,
+    save_partial_model_iteration,
+    validation,
+    client_log,
+    create_custom_logger,
+    get_appfl_algorithm,
+)
+from appfl.misc.data import Dataset
+
 
 def run_serial(
     cfg: DictConfig,
-    model: Union[nn.Module,List],
+    model: Union[nn.Module, List],
     loss_fn: nn.Module,
     train_data: Dataset,
     test_data: Dataset = Dataset(),
@@ -43,7 +51,10 @@ def run_serial(
     ## Using tensorboard to visualize the test loss
     if cfg.use_tensorboard:
         from tensorboardX import SummaryWriter
-        writer = SummaryWriter(comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients))
+
+        writer = SummaryWriter(
+            comment=cfg.fed.args.optim + "_clients_nums_" + str(cfg.num_clients)
+        )
 
     ## Client logs
     outfile = {}
@@ -61,7 +72,7 @@ def run_serial(
 
     ## Run validation if test data is given or the configuration is enabled
     test_dataloader = None
-    if cfg.validation == True and len(test_data) > 0:
+    if cfg.validation and len(test_data) > 0:
         test_dataloader = DataLoader(
             test_data,
             num_workers=cfg.num_workers,
@@ -71,43 +82,44 @@ def run_serial(
     else:
         cfg.validation = False
 
-    server = eval(cfg.fed.servername)(
-        weights,
-        copy.deepcopy(model) if not (cfg.personalization) else model[0],
-        loss_fn,
-        cfg.num_clients,
-        cfg.device_server,
-        **cfg.fed.args,
+    server = get_appfl_algorithm(
+        algorithm_name=cfg.fed.servername,
+        args=(weights, model, loss_fn, cfg.num_clients, cfg.device_server),
+        kwargs=cfg.fed.args,
     )
+
     server.model.to(cfg.device_server)
 
     batchsize = {}
     for k in range(cfg.num_clients):
-        if cfg.batch_training == False:
+        if not cfg.batch_training:
             batchsize[k] = len(train_data[k])
         else:
             batchsize[k] = cfg.train_data_batch_size
 
     clients = [
-        eval(cfg.fed.clientname)(
-            k,
-            weights[k],
-            # deepcopy the common model if there is no personalization, else use the the clients' own model
-            # the index is k+1, because the first model belongs to the server
-            copy.deepcopy(model) if not cfg.personalization else model[k+1],
-            loss_fn,
-            DataLoader(
-                train_data[k],
-                num_workers=cfg.num_workers,
-                batch_size=batchsize[k],
-                shuffle=cfg.train_data_shuffle,
-                pin_memory=True,
+        get_appfl_algorithm(
+            algorithm_name=cfg.fed.clientname,
+            args=(
+                k,
+                weights[k],
+                # deepcopy the common model if there is no personalization, else use the the clients' own model
+                # the index is k+1, because the first model belongs to the server
+                copy.deepcopy(model) if not cfg.personalization else model[k + 1],
+                loss_fn,
+                DataLoader(
+                    train_data[k],
+                    num_workers=cfg.num_workers,
+                    batch_size=batchsize[k],
+                    shuffle=cfg.train_data_shuffle,
+                    pin_memory=True,
+                ),
+                cfg,
+                outfile[k],
+                test_dataloader,
+                metric,
             ),
-            cfg,
-            outfile[k],
-            test_dataloader,
-            metric,
-            **cfg.fed.args,
+            kwargs=cfg.fed.args,
         )
         for k in range(cfg.num_clients)
     ]
@@ -120,7 +132,7 @@ def run_serial(
         server.model.to("cpu")
         global_state = server.model.state_dict()
         if cfg.personalization:
-            keys = [key for key,_ in model[0].named_parameters()]
+            keys = [key for key, _ in model[0].named_parameters()]
             for key in keys:
                 if key in cfg.p_layers:
                     _ = global_state.pop(key)
@@ -129,7 +141,7 @@ def run_serial(
         local_update_start = time.time()
         for k, client in enumerate(clients):
             if cfg.personalization:
-                client.model.load_state_dict(global_state,strict=False)
+                client.model.load_state_dict(global_state, strict=False)
             else:
                 client.model.load_state_dict(global_state)
             local_states.append(client.update())
@@ -142,7 +154,7 @@ def run_serial(
 
         ## Global validation
         validation_start = time.time()
-        if cfg.validation == True:
+        if cfg.validation:
             test_loss, test_accuracy = validation(server, test_dataloader, metric)
             if cfg.use_tensorboard:
                 writer.add_scalar("server_test_accuracy", test_accuracy, t)
@@ -161,8 +173,8 @@ def run_serial(
 
         ## Saving model
         if (t + 1) % cfg.checkpoints_interval == 0 or t + 1 == cfg.num_epochs:
-            if cfg.save_model == True:
-                if cfg.personalization == True:
+            if cfg.save_model:
+                if cfg.personalization:
                     save_partial_model_iteration(t + 1, server.model, cfg)
                 else:
                     save_model_iteration(t + 1, server.model, cfg)

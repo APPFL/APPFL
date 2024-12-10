@@ -14,8 +14,8 @@ To add new schedulers to ``APPFL``, you can create you own scheduler class by in
 
     class YourOwnScheduler(BaseScheduler):
         def __init__(
-            self, 
-            scheduler_configs: DictConfig, 
+            self,
+            scheduler_configs: DictConfig,
             aggregator: BaseAggregator,
             logger: Any
         ):

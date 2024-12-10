@@ -1,16 +1,17 @@
 """
 Serve a gRPC server
 """
+
 import time
 import grpc
 import logging
 from concurrent import futures
-from appfl.login_manager import *
-from .grpc_communicator_pb2 import *
-from .grpc_communicator_pb2_grpc import *
+from .grpc_communicator_pb2_grpc import add_GRPCCommunicatorServicer_to_server
 from .utils import load_credential_from_file
 from .auth import APPFLAuthMetadataInterceptor
 from typing import Any, Optional, Union, Dict
+from appfl.misc.utils import get_appfl_authenticator
+
 
 def serve(
     servicer: Any,
@@ -41,14 +42,22 @@ def serve(
     :param max_message_size: The maximum message size in bytes.
     :param max_workers: The maximum number of workers to use for the server.
     """
-    assert not (use_authenticator and not use_ssl), "Authenticator can only be used with SSL/TLS"
+    assert not (
+        use_authenticator and not use_ssl
+    ), "Authenticator can only be used with SSL/TLS"
     if use_ssl:
-        assert server_certificate_key is not None, "Server certificate key must be provided if use_ssl is True"
-        assert server_certificate is not None, "Server certificate must be provided if use_ssl is True"
+        assert (
+            server_certificate_key is not None
+        ), "Server certificate key must be provided if use_ssl is True"
+        assert (
+            server_certificate is not None
+        ), "Server certificate must be provided if use_ssl is True"
     if use_authenticator:
         assert use_ssl, "Authenticator can only be used with SSL/TLS"
-        assert authenticator is not None, "Authenticator must be provided if use_authenticator is True"
-        authenticator = eval(authenticator)(**authenticator_args)
+        assert (
+            authenticator is not None
+        ), "Authenticator must be provided if use_authenticator is True"
+        authenticator = get_appfl_authenticator(authenticator, authenticator_args)
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
         options=[
@@ -56,7 +65,9 @@ def serve(
             ("grpc.max_send_message_length", max_message_size),
             ("grpc.max_receive_message_length", max_message_size),
         ],
-        interceptors=(APPFLAuthMetadataInterceptor(authenticator),) if use_authenticator else None,
+        interceptors=(APPFLAuthMetadataInterceptor(authenticator),)
+        if use_authenticator
+        else None,
     )
     add_GRPCCommunicatorServicer_to_server(servicer, server)
     if use_ssl:
@@ -84,7 +95,9 @@ def serve(
             time.sleep(1)
             if servicer.server_agent.server_terminated():
                 print("Terminating the server ...")
-                time.sleep(10) # sleep for 10 seconds to ensure clients receive the termination signal
+                time.sleep(
+                    10
+                )  # sleep for 10 seconds to ensure clients receive the termination signal
                 server.stop(0)
                 break
     except KeyboardInterrupt:

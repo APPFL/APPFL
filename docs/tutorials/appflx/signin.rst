@@ -1,7 +1,7 @@
 Log in/Sign up
 ==============
 
-We build a web application to provide privacy-preserving federated learning as a service. To login, 
+We build a web application to provide privacy-preserving federated learning as a service. To login,
 
 1. Go to the home page of the web application: `appflx.link <https://appflx.link>`_ or `service.appfl.ai <https://appflx.link>`_
 

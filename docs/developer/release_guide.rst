@@ -26,7 +26,7 @@ To this end, find the following lines in ``setup.py`` and change the project nam
 Generating distribution archives
 ++++++++++++++++++++++++++++++++
 
-Let's make sure that ``dist`` directory is empty or does not exsit at the root of the repository, where ``pyproject.toml`` is located. Then, running the following command should generate a build distribution ``.whl`` and source archive ``.tar.gz`` files in the ``dist`` directory.
+Let's make sure that ``dist`` directory is empty or does not exist at the root of the repository, where ``pyproject.toml`` is located. Then, running the following command should generate a build distribution ``.whl`` and source archive ``.tar.gz`` files in the ``dist`` directory.
 
 .. code-block:: shell
 
@@ -56,7 +56,7 @@ Once the distribution archives are uploaded, anyone can install the new test pac
 Release
 -------
 
-If the testing above is successfuly, we are ready to release the new package to the PyPI server.
+If the testing above is successfully, we are ready to release the new package to the PyPI server.
 These are key steps to follow:
 
 - Let's not forget to change the project name and set the version properly.

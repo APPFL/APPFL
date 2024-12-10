@@ -9,7 +9,7 @@ This page describes how to install a `Globus Compute <https://globus-compute.rea
 
 .. note::
 
-	Globus Compute uses port 443 for communication, so you need to make sure your firewall allows outbound traffic on port 443. 
+	Globus Compute uses port 443 for communication, so you need to make sure your firewall allows outbound traffic on port 443.
 
 Conda environment
 -----------------
@@ -42,7 +42,7 @@ If you do not have a globus account yet, please create a Globus account `here <h
 
 .. note::
 
-	If you can find your organization in Globus, it is highly recommeneded to use your organization account to log in to Globus as that makes it easier for your collaborators to verify your identity. Otherwise, you can register a Globus account using your commonly-used email address.
+	If you can find your organization in Globus, it is highly recommended to use your organization account to log in to Globus as that makes it easier for your collaborators to verify your identity. Otherwise, you can register a Globus account using your commonly-used email address.
 
 Setup a Globus Compute Endpoint
 ----------------------
@@ -64,7 +64,7 @@ The command above will create a configuration file ``$HOME/.globus_compute/<ENDP
 
 	- If you are using your own linux machine or some virtual machines provided by cloud service provider such as AWS EC2 or Azure virtual machine, you probably do not need change most part of the config.py file. You just need to specify the number of blocks you want to allocate to the endpoint.
 
-	- If you are using any supercomputer as your computing resources which uses some scheduler such as Slurm to allocate resources, you can find some example configurations for various supercomputers `here <https://globus-compute.readthedocs.io/en/stable/endpoints/endpoint_examples.html#>`_. 
+	- If you are using any supercomputer as your computing resources which uses some scheduler such as Slurm to allocate resources, you can find some example configurations for various supercomputers `here <https://globus-compute.readthedocs.io/en/stable/endpoints/endpoint_examples.html#>`_.
 
 .. note::
 

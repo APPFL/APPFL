@@ -5,11 +5,20 @@ from omegaconf import OmegaConf
 from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
-warnings.filterwarnings("ignore", category=DeprecationWarning)   # Ignore deprecation warnings
+
+warnings.filterwarnings(
+    "ignore", category=DeprecationWarning
+)  # Ignore deprecation warnings
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument('--server_config', type=str, default="./resources/config_gc/mnist/server_fedcompass.yaml")
-argparser.add_argument('--client_config', type=str, default="./resources/config_gc/mnist/clients.yaml")
+argparser.add_argument(
+    "--server_config",
+    type=str,
+    default="./resources/config_gc/mnist/server_fedcompass.yaml",
+)
+argparser.add_argument(
+    "--client_config", type=str, default="./resources/config_gc/mnist/clients.yaml"
+)
 argparser.add_argument("--compute_token", required=False)
 argparser.add_argument("--openid_token", required=False)
 args = argparser.parse_args()
@@ -24,24 +33,30 @@ server_agent = ServerAgent(server_agent_config=server_agent_config)
 # Create server communicator
 server_communicator = GlobusComputeServerCommunicator(
     server_agent_config=server_agent.server_agent_config,
-    client_agent_configs=client_agent_configs['clients'],
+    client_agent_configs=client_agent_configs["clients"],
     logger=server_agent.logger,
-    **({
-        "compute_token": args.compute_token,
-        "openid_token": args.openid_token,
-    } if args.compute_token is not None and args.openid_token is not None else {})
+    **(
+        {
+            "compute_token": args.compute_token,
+            "openid_token": args.openid_token,
+        }
+        if args.compute_token is not None and args.openid_token is not None
+        else {}
+    ),
 )
 
 # Get sample size from clients
 server_communicator.send_task_to_all_clients(task_name="get_sample_size")
 sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
 for client_endpoint_id, sample_size in sample_size_ret.items():
-    server_agent.set_sample_size(client_endpoint_id, sample_size['sample_size'])
+    server_agent.set_sample_size(client_endpoint_id, sample_size["sample_size"])
 
 if (
-    hasattr(server_agent_config.client_configs, 'data_readiness_configs') and
-    hasattr(server_agent_config.client_configs.data_readiness_configs, 'generate_dr_report') and 
-    server_agent_config.client_configs.data_readiness_configs.generate_dr_report
+    hasattr(server_agent_config.client_configs, "data_readiness_configs")
+    and hasattr(
+        server_agent_config.client_configs.data_readiness_configs, "generate_dr_report"
+    )
+    and server_agent_config.client_configs.data_readiness_configs.generate_dr_report
 ):
     readiness_reports_dict = {}
     server_communicator.send_task_to_all_clients(task_name="data_readiness_report")
@@ -50,15 +65,18 @@ if (
     restructured_report = {}
     for client_endpoint_id, client_report in readiness_reports.items():
         # Assuming 'data_readiness' is the key containing the actual report
-        client_data = client_report.get('data_readiness', {})   
+        client_data = client_report.get("data_readiness", {})
         for attribute, value in client_data.items():
             if attribute not in restructured_report:
                 restructured_report[attribute] = {}
             restructured_report[attribute][client_endpoint_id] = value
     # Handle 'plots' separately if they exist
-    if 'plots' in restructured_report:
-        plot_data = restructured_report.pop('plots')
-        restructured_report['plots'] = {client_id: plot_data.get(client_id, {}) for client_id in readiness_reports.keys()}
+    if "plots" in restructured_report:
+        plot_data = restructured_report.pop("plots")
+        restructured_report["plots"] = {
+            client_id: plot_data.get(client_id, {})
+            for client_id in readiness_reports.keys()
+        }
     # Call the data_readiness_report function
     server_agent.data_readiness_report(restructured_report)
 
@@ -72,8 +90,12 @@ server_communicator.send_task_to_all_clients(
 model_futures = {}
 client_rounds = {}
 while not server_agent.training_finished():
-    client_endpoint_id, client_model, client_metadata = server_communicator.recv_result_from_one_client()
-    server_agent.logger.info(f"Received model from client {client_endpoint_id}, with metadata:\n{pprint.pformat(client_metadata)}")
+    client_endpoint_id, client_model, client_metadata = (
+        server_communicator.recv_result_from_one_client()
+    )
+    server_agent.logger.info(
+        f"Received model from client {client_endpoint_id}, with metadata:\n{pprint.pformat(client_metadata)}"
+    )
     global_model = server_agent.global_update(
         client_endpoint_id,
         client_model,
@@ -89,7 +111,7 @@ while not server_agent.training_finished():
         if client_endpoint_id not in client_rounds:
             client_rounds[client_endpoint_id] = 0
         client_rounds[client_endpoint_id] += 1
-        metadata['round'] = client_rounds[client_endpoint_id]
+        metadata["round"] = client_rounds[client_endpoint_id]
         if not server_agent.training_finished():
             server_communicator.send_task_to_one_client(
                 client_endpoint_id,
@@ -110,7 +132,7 @@ while not server_agent.training_finished():
             if client_endpoint_id not in client_rounds:
                 client_rounds[client_endpoint_id] = 0
             client_rounds[client_endpoint_id] += 1
-            metadata['round'] = client_rounds[client_endpoint_id]
+            metadata["round"] = client_rounds[client_endpoint_id]
             if not server_agent.training_finished():
                 server_communicator.send_task_to_one_client(
                     client_endpoint_id,

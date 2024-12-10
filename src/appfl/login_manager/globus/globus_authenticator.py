@@ -2,26 +2,30 @@ from typing import Optional, Dict
 from appfl.login_manager import BaseAuthenticator
 from appfl.login_manager.globus import GlobusLoginManager
 
+
 class GlobusAuthenticator(BaseAuthenticator):
     """
     Authenticator for federated learning server and client using Globus Auth.
     :param is_fl_server: Whether the authenticator is for the FL server or client.
     :param globus_group_id: The Globus group ID for the federation. This is only required if `is_fl_server` is `True`.
     """
+
     def __init__(
-            self, *,
-            is_fl_server: bool = False,
-            globus_group_id: Optional[str] = None
+        self, *, is_fl_server: bool = False, globus_group_id: Optional[str] = None
     ) -> None:
         self.login_manager = GlobusLoginManager(is_fl_server=is_fl_server)
         self.login_manager.ensure_logged_in()
         self.group_id = globus_group_id
         self.is_fl_server = is_fl_server
         if self.is_fl_server:
-            assert self.group_id is not None, "FL server must be associated with a Globus group for authentication"
+            assert (
+                self.group_id is not None
+            ), "FL server must be associated with a Globus group for authentication"
             group_client = self.login_manager.get_group_client()
             try:
-                group_memberships = group_client.get_group(self.group_id, include="memberships")["memberships"]
+                group_memberships = group_client.get_group(
+                    self.group_id, include="memberships"
+                )["memberships"]
                 self.identities = [m["identity_id"] for m in group_memberships]
             except Exception as e:
                 raise RuntimeError(

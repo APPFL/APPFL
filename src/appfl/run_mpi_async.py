@@ -8,12 +8,19 @@ import logging
 import torch.nn as nn
 from mpi4py import MPI
 from typing import Any
-from appfl.algorithm import *
 from appfl.comm.mpi import MpiCommunicator
-from appfl.misc import validation, compute_gradient
+from appfl.misc.data import Dataset
+from appfl.misc.utils import (
+    validation,
+    compute_gradient,
+    client_log,
+    create_custom_logger,
+    get_appfl_algorithm,
+)
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 from appfl.compressor import Compressor
+
 
 def run_server(
     cfg: DictConfig,
@@ -39,7 +46,9 @@ def run_server(
         metric: evaluation metric function
     """
     device = "cpu"  # server aggregation happens on CPU
-    communicator = MpiCommunicator(comm, Compressor(cfg) if cfg.enable_compression else None)
+    communicator = MpiCommunicator(
+        comm, Compressor(cfg) if cfg.enable_compression else None
+    )
 
     logger = logging.getLogger(__name__)
     logger = create_custom_logger(logger, cfg)
@@ -55,7 +64,7 @@ def run_server(
         )
 
     ## Run validation if test data is given or the configuration is enabled.
-    if cfg.validation == True and len(test_dataset) > 0:
+    if cfg.validation and len(test_dataset) > 0:
         test_dataloader = DataLoader(
             test_dataset,
             num_workers=cfg.num_workers,
@@ -74,8 +83,10 @@ def run_server(
     communicator.scatter(weights, 0)
 
     ## Asynchronous federated learning server
-    server = eval(cfg.fed.servername)(
-        weights[1:], copy.deepcopy(model), loss_fn, num_clients, device, **cfg.fed.args
+    server = get_appfl_algorithm(
+        algorithm_name=cfg.fed.servername,
+        args=(weights, model, loss_fn, num_clients, device),
+        kwargs=cfg.fed.args,
     )
 
     start_time = time.time()
@@ -93,7 +104,9 @@ def run_server(
     test_loss, test_accuracy, best_accuracy = 0.0, 0.0, 0.0
     while True:
         iter += 1
-        client_idx, local_model = communicator.recv_local_model_from_client(copy.deepcopy(server.model))
+        client_idx, local_model = communicator.recv_local_model_from_client(
+            copy.deepcopy(server.model)
+        )
         local_update_start = client_start_time[client_idx]
         local_update_time = time.time() - client_start_time[client_idx]
         global_update_start = time.time()
@@ -108,7 +121,7 @@ def run_server(
             )
         ## Do server validation
         validation_start = time.time()
-        if cfg.validation == True:
+        if cfg.validation:
             test_loss, test_accuracy = validation(server, test_dataloader, metric)
             if test_accuracy > best_accuracy:
                 best_accuracy = test_accuracy
@@ -164,7 +177,9 @@ def run_client(
         metric: evaluation metric function
     """
     client_idx = comm.Get_rank() - 1
-    communicator = MpiCommunicator(comm, Compressor(cfg) if cfg.enable_compression else None)
+    communicator = MpiCommunicator(
+        comm, Compressor(cfg) if cfg.enable_compression else None
+    )
 
     ## log for clients
     output_filename = cfg.output_filename + "_client_%s" % (client_idx)
@@ -176,11 +191,11 @@ def run_client(
     weight = communicator.scatter(weight, source=0)
 
     batchsize = cfg.train_data_batch_size
-    if cfg.batch_training == False:
+    if not cfg.batch_training:
         batchsize = len(train_data[client_idx])
 
     ## Run validation if test data is given or the configuration is enabled
-    if cfg.validation == True and len(test_data) > 0:
+    if cfg.validation and len(test_data) > 0:
         test_dataloader = DataLoader(
             test_data,
             num_workers=cfg.num_workers,
@@ -191,23 +206,26 @@ def run_client(
         cfg.validation = False
         test_dataloader = None
 
-    client = eval(cfg.fed.clientname)(
-        client_idx,
-        None,
-        copy.deepcopy(model),
-        loss_fn,
-        DataLoader(
-            train_data[client_idx],
-            num_workers=cfg.num_workers,
-            batch_size=batchsize,
-            shuffle=True,
-            pin_memory=True,
+    client = get_appfl_algorithm(
+        algorithm_name=cfg.fed.clientname,
+        args=(
+            client_idx,
+            weight,
+            copy.deepcopy(model),
+            loss_fn,
+            DataLoader(
+                train_data[client_idx],
+                num_workers=cfg.num_workers,
+                batch_size=batchsize,
+                shuffle=True,
+                pin_memory=True,
+            ),
+            cfg,
+            outfile,
+            test_dataloader,
+            metric,
         ),
-        cfg,
-        outfile,
-        test_dataloader,
-        metric,
-        **cfg.fed.args,
+        kwargs=cfg.fed.args,
     )
 
     while True:

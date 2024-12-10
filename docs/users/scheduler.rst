@@ -17,8 +17,8 @@ All schedulers are inherited from the base class ``BaseScheduler``. If user want
 
     class BaseScheduler:
         def __init__(
-            self, 
-            scheduler_configs: DictConfig, 
+            self,
+            scheduler_configs: DictConfig,
             aggregator: BaseAggregator,
             logger: Any
         ):
@@ -49,7 +49,7 @@ All schedulers are inherited from the base class ``BaseScheduler``. If user want
             """
             Return the global model to the clients. For the initial global model, the method can
             block until all clients have requested the initial global model to make sure all clients
-            can get the same initial global model (if setting `same_init_model=True` in scheduler configs 
+            can get the same initial global model (if setting `same_init_model=True` in scheduler configs
             and `kwargs['init_model']=True`).
             :params `kwargs['init_model']` (default is `True`): whether to get the initial global model or not
             :return the global model or a `Future` object for the global model
@@ -64,8 +64,8 @@ Synchronous scheduler waits for all clients to submit their local models before 
 
     class SyncScheduler(BaseScheduler):
         def __init__(
-            self, 
-            scheduler_configs: DictConfig, 
+            self,
+            scheduler_configs: DictConfig,
             aggregator: Any,
             logger: Any
         ):
@@ -86,7 +86,7 @@ Synchronous scheduler waits for all clients to submit their local models before 
             :param kwargs: additional keyword arguments for the scheduler
             :return: the future object for the aggregated model
             """
-        
+
         def get_num_global_epochs(self) -> int:
             """
             Get the number of global epochs.
@@ -102,7 +102,7 @@ Vanilla asynchronous scheduler aggregates the local models from the clients as s
 
     class AsyncScheduler(BaseScheduler):
         def __init__(
-            self, 
+            self,
             scheduler_configs: DictConfig,
             aggregator: Any,
             logger: Any
@@ -123,7 +123,7 @@ Vanilla asynchronous scheduler aggregates the local models from the clients as s
             :param kwargs: additional keyword arguments for the scheduler
             :return: global_model: the aggregated model
             """
-        
+
         def get_num_global_epochs(self) -> int:
             """
             Return the total number of global epochs for federated learning.
@@ -132,7 +132,7 @@ Vanilla asynchronous scheduler aggregates the local models from the clients as s
 Compass Asynchronous Scheduler
 ------------------------------
 
-Compass is COMputing Power Aware Scheduler, which is an asynchronous scheduler, which 
+Compass is COMputing Power Aware Scheduler, which is an asynchronous scheduler, which
 
 - estimates and updates the computing power of each client on-the-fly;
 - synchronizes the arrival of a group of client models by assigning different number of tasks according to estimated computing power;
@@ -161,25 +161,25 @@ Compass is COMputing Power Aware Scheduler, which is an asynchronous scheduler, 
         def get_parameters(self, **kwargs) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
             Get the global model parameters for the clients.
-            The `Compass` scheduler requires all clients to get the initial model at the same 
-            time to record a consistent start time for the clients. So we add a warpper to the 
+            The `Compass` scheduler requires all clients to get the initial model at the same
+            time to record a consistent start time for the clients. So we add a wrapper to the
             `get_parameters` method of the `BaseScheduler` class to record the start time.
             """
 
         def schedule(
-                self, 
-                client_id: Union[int, str], 
-                local_model: Union[Dict, OrderedDict], 
+                self,
+                client_id: Union[int, str],
+                local_model: Union[Dict, OrderedDict],
                 **kwargs
             ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
             Schedule an asynchronous global aggregation for the local model from a client
-            using the `Compass` algorithm. The method will either return the current global model 
+            using the `Compass` algorithm. The method will either return the current global model
             directly, or a `Future` object for the global model.
             :param `client_id`: the id of the client
             :param `local_model`: the local model from the client
             :param `kwargs`: additional keyword arguments for the scheduler
-            :return: `global_model`: the global model and the number of local steps for the client 
+            :return: `global_model`: the global model and the number of local steps for the client
                 in next round or a `Future` object for the global model
             """
 

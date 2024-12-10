@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 
+
 class RandomImageDataset(Dataset):
     def __init__(self, num_images=100, height=224, width=224, channels=3):
         """
@@ -31,6 +32,7 @@ class RandomImageDataset(Dataset):
         :return: Image tensor.
         """
         return self.images[idx], self.labels[idx]
+
 
 def get_vit_fake_dataset():
     """
