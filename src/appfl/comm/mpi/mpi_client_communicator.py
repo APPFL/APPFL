@@ -137,10 +137,14 @@ class MPIClientCommunicator:
         for raw_client_id in self._raw_client_ids:
             if raw_client_id in kwargs:
                 kwargs[self._id_generator(raw_client_id)] = kwargs.pop(raw_client_id)
-            if raw_client_id in local_model:
-                local_model[self._id_generator(raw_client_id)] = local_model.pop(
-                    raw_client_id
-                )
+            if isinstance(local_model, dict) or isinstance(local_model, OrderedDict):
+                kwargs["_torch_serialized"] = True
+                if raw_client_id in local_model:
+                    local_model[self._id_generator(raw_client_id)] = local_model.pop(
+                        raw_client_id
+                    )
+            else:
+                kwargs["_torch_serialized"] = False
         kwargs["_client_ids"] = (
             self.client_ids if client_id is None else [self._id_generator(client_id)]
         )
