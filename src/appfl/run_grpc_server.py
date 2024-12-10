@@ -8,6 +8,7 @@ from typing import Any
 from .misc.data import Dataset
 from omegaconf import DictConfig
 from .comm.grpc import GRPCCommunicator, APPFLgRPCServer, grpc_serve
+from appfl.misc.utils import get_appfl_authenticator
 
 
 def run_server(
@@ -45,7 +46,10 @@ def run_server(
         use_authenticator=cfg.use_authenticator,
         server_certificate_key=cfg.server.server_certificate_key,
         server_certificate=cfg.server.server_certificate,
-        authenticator=eval(cfg.authenticator)(**cfg.server.authenticator_kwargs)
+        authenticator=get_appfl_authenticator(
+            authenticator_name=cfg.authenticator,
+            authenticator_args=cfg.server.authenticator_kwargs,
+        )
         if cfg.use_authenticator
         else None,
         max_message_size=cfg.max_message_size,

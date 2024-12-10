@@ -13,6 +13,7 @@ from .grpc_communicator_old_pb2 import (
 )
 from .channel import create_grpc_channel
 from .grpc_communicator_old_pb2_grpc import GRPCCommunicatorV0Stub
+from appfl.misc.utils import get_appfl_authenticator
 
 
 class APPFLgRPCClient:
@@ -25,7 +26,7 @@ class APPFLgRPCClient:
             use_ssl=cfg.use_ssl,
             use_authenticator=cfg.use_authenticator,
             root_certificates=cfg.client.root_certificates,
-            authenticator=eval(cfg.authenticator)(**cfg.client.authenticator_kwargs)
+            authenticator=get_appfl_authenticator(cfg.authenticator, cfg.client.authenticator_kwargs)
             if cfg.use_authenticator
             else None,
             max_message_size=self.max_message_size,

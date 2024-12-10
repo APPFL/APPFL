@@ -10,6 +10,7 @@ from .grpc_communicator_pb2_grpc import add_GRPCCommunicatorServicer_to_server
 from .utils import load_credential_from_file
 from .auth import APPFLAuthMetadataInterceptor
 from typing import Any, Optional, Union, Dict
+from appfl.misc.utils import get_appfl_authenticator
 
 
 def serve(
@@ -56,7 +57,7 @@ def serve(
         assert (
             authenticator is not None
         ), "Authenticator must be provided if use_authenticator is True"
-        authenticator = eval(authenticator)(**authenticator_args)
+        authenticator = get_appfl_authenticator(authenticator, authenticator_args)
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
         options=[

@@ -32,6 +32,18 @@ def get_appfl_algorithm(
         raise ValueError(f"Invalid algorithm name: {algorithm_name}")
 
 
+def get_appfl_authenticator(
+    authenticator_name: str,
+    authenticator_args: Dict[str, Any],
+):
+    try:
+        appfl_module = importlib.import_module("appfl.login_manager")
+        AuthenticatorClass = getattr(appfl_module, authenticator_name)
+        authenticator = AuthenticatorClass(**authenticator_args)
+        return authenticator
+    except AttributeError:
+        raise ValueError(f"Invalid authenticator name: {authenticator_name}")
+
 def get_appfl_aggregator(
     aggregator_name: str,
     model: Optional[Any],

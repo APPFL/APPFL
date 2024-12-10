@@ -6,6 +6,7 @@ import grpc
 from .auth import APPFLAuthMetadataProvider
 from .utils import load_credential_from_file
 from typing import Optional, Union, Dict, Any
+from appfl.misc.utils import get_appfl_authenticator
 
 
 def create_grpc_channel(
@@ -55,7 +56,7 @@ def create_grpc_channel(
             assert (
                 authenticator is not None
             ), "Authenticator must be provided if use_authenticator is True"
-            authenticator = eval(authenticator)(**authenticator_args)
+            authenticator = get_appfl_authenticator(authenticator, authenticator_args)
             call_credentials = grpc.metadata_call_credentials(
                 APPFLAuthMetadataProvider(authenticator)
             )
