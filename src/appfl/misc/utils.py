@@ -39,7 +39,7 @@ def get_appfl_aggregator(
     logger: Optional[Any] = None,
 ):
     try:
-        appfl_module = importlib.import_module("appfl.aggregator")
+        appfl_module = importlib.import_module("appfl.algorithm.aggregator")
         AggregatorClass = getattr(appfl_module, aggregator_name)
         aggregator = AggregatorClass(model, aggregator_config, logger)
         return aggregator
@@ -54,7 +54,7 @@ def get_appfl_scheduler(
     logger: Optional[Any] = None,
 ):
     try:
-        appfl_module = importlib.import_module("appfl.scheduler")
+        appfl_module = importlib.import_module("appfl.algorithm.scheduler")
         SchedulerClass = getattr(appfl_module, scheduler_name)
         scheduler = SchedulerClass(scheduler_config, aggregator, logger)
         return scheduler
