@@ -26,7 +26,9 @@ class APPFLgRPCClient:
             use_ssl=cfg.use_ssl,
             use_authenticator=cfg.use_authenticator,
             root_certificates=cfg.client.root_certificates,
-            authenticator=get_appfl_authenticator(cfg.authenticator, cfg.client.authenticator_kwargs)
+            authenticator=get_appfl_authenticator(
+                cfg.authenticator, cfg.client.authenticator_kwargs
+            )
             if cfg.use_authenticator
             else None,
             max_message_size=self.max_message_size,

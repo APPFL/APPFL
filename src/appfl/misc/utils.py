@@ -44,6 +44,7 @@ def get_appfl_authenticator(
     except AttributeError:
         raise ValueError(f"Invalid authenticator name: {authenticator_name}")
 
+
 def get_appfl_aggregator(
     aggregator_name: str,
     model: Optional[Any],

@@ -10,7 +10,7 @@ import appfl.run_mpi as rm
 from mpi4py import MPI
 from models.utils import get_model
 from dataloader.femnist_dataloader import get_femnist
-from appfl.config.fed import Federated, ICEADMM, IIADMM
+from appfl.config.fed import Federated, ICEADMM, IIADMM  # noqa
 
 parser = argparse.ArgumentParser()
 

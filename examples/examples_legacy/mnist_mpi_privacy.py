@@ -13,7 +13,7 @@ from appfl.misc.utils import set_seed
 from appfl.misc.data import data_sanity_check
 import appfl.run_mpi as rm
 import appfl.run_mpi_sync as rms
-from appfl.config.fed import ICEADMM, IIADMM
+from appfl.config.fed import ICEADMM, IIADMM  # noqa
 from losses.utils import get_loss
 from models.utils import get_model
 from metric.utils import get_metric
