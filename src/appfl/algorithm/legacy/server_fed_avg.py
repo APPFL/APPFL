@@ -1,10 +1,13 @@
-from appfl.misc import deprecated
+from appfl.misc.deprecation import deprecated
 from .server_federated import FedServer
 
-@deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead.")
+
+@deprecated(
+    "Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.aggregator instead."
+)
 class ServerFedAvg(FedServer):
     def compute_step(self):
-        super(ServerFedAvg, self).compute_pseudo_gradient()
+        super().compute_pseudo_gradient()
         for name, _ in self.model.named_parameters():
             self.step[name] = -self.pseudo_grad[name]
 

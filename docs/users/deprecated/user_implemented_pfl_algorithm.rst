@@ -32,7 +32,7 @@ A detailed example is available in our Github repository: `examples/personalizat
 .. |PersonalizedClientStepOptim| replace:: ``PersonalizedClientStepOptim``
 .. _PersonalizedClientStepOptim: https://arxiv.org/abs/2309.13194
 
-Implementation of `differential privacy <https://link.springer.com/chapter/10.1007/978-3-540-79228-4_1>`_ requires that client-to-server updates are clipped to a constant upper bound. This can be achieved by setting ``cfg.fed.args.clip_value`` and ``cfg.fed.args.clip_norm``, and specifying the norm-type by setting ``cfg.fed.args.clip_norm``. 
+Implementation of `differential privacy <https://link.springer.com/chapter/10.1007/978-3-540-79228-4_1>`_ requires that client-to-server updates are clipped to a constant upper bound. This can be achieved by setting ``cfg.fed.args.clip_value`` and ``cfg.fed.args.clip_norm``, and specifying the norm-type by setting ``cfg.fed.args.clip_norm``.
 Currently, APPFL supports `Laplace mechanism <https://link.springer.com/chapter/10.1007/978-3-540-79228-4_1>`_ for differential privacy, which requires usage of 1-norm for privacy guarantees to be meaningful.
 
 The final privacy budget is given as ``cfg.fed.args.clip_value`` / ``cfg.fed.args.clip_norm``.

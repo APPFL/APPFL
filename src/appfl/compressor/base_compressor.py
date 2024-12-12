@@ -3,15 +3,16 @@ from typing import Union, List
 from omegaconf import DictConfig
 from collections import OrderedDict
 
+
 class BaseCompressor:
     def __init__(self, compressor_config: DictConfig):
         pass
 
     @abc.abstractmethod
     def compress_model(
-        self, 
-        model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]], 
-        batched: bool=False
+        self,
+        model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]],
+        batched: bool = False,
     ) -> bytes:
         """
         Compress all the parameters of local model(s) for efficient communication. The local model can be batched as a list.
@@ -22,11 +23,11 @@ class BaseCompressor:
         pass
 
     def decompress_model(
-        self, 
-        compressed_model: bytes, 
-        model: Union[dict, OrderedDict], 
-        batched: bool=False
-    )-> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
+        self,
+        compressed_model: bytes,
+        model: Union[dict, OrderedDict],
+        batched: bool = False,
+    ) -> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
         """
         Decompress all the communicated model parameters. The local model can be batched as a list.
         :param compressed_model: compressed model parameters as bytes

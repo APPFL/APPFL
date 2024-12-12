@@ -8,6 +8,7 @@ from collections import OrderedDict
 from typing import Dict, Optional, Any
 from torch.utils.data import DataLoader
 
+
 class BaseServer:
     """
     BaseServer:
@@ -20,6 +21,7 @@ class BaseServer:
         num_clients (int): the number of clients
         device (str): device for computation
     """
+
     def __init__(
         self,
         weights: OrderedDict,
@@ -79,11 +81,21 @@ class BaseServer:
         logger.info("Clients=%s" % (cfg.fed.clientname))
         logger.info("Comm_Rounds=%s" % (cfg.num_epochs))
         logger.info("Local_Rounds=%s" % (cfg.fed.args.num_local_epochs))
-        logger.info("DP_Eps=%s" % (cfg.fed.args.epsilon if cfg.fed.args.use_dp else False))
-        logger.info("Clipping=%s" % (cfg.fed.args.clip_value if (cfg.fed.args.clip_grad or cfg.fed.args.use_dp) else False))
+        logger.info(
+            "DP_Eps=%s" % (cfg.fed.args.epsilon if cfg.fed.args.use_dp else False)
+        )
+        logger.info(
+            "Clipping=%s"
+            % (
+                cfg.fed.args.clip_value
+                if (cfg.fed.args.clip_grad or cfg.fed.args.use_dp)
+                else False
+            )
+        )
         logger.info("Elapsed_time=%s" % (round(cfg["logginginfo"]["Elapsed_time"], 2)))
         logger.info("BestAccuracy=%s" % (round(cfg["logginginfo"]["BestAccuracy"], 2)))
         logger.info("Data_Readiness_Metric=%s" % (cfg.dr_metrics))
+
 
 class BaseClient:
     """
@@ -101,6 +113,7 @@ class BaseClient:
         test_dataloader: test dataloader
         metric: performance evaluation metric
     """
+
     def __init__(
         self,
         id: int,
@@ -110,8 +123,8 @@ class BaseClient:
         dataloader: DataLoader,
         cfg: DictConfig,
         outfile: str,
-        test_dataloader: Optional[DataLoader]=None,
-        metric: Any=None,
+        test_dataloader: Optional[DataLoader] = None,
+        metric: Any = None,
     ):
         self.round = 0
         self.id = id
@@ -124,7 +137,7 @@ class BaseClient:
         self.metric = metric if metric is not None else self._default_metric
         self.primal_state = OrderedDict()
         self.outfile = outfile
-        if type(outfile) == str:
+        if type(outfile) is str:
             self.outfile = open(outfile, "a")
 
     @abc.abstractmethod
@@ -191,19 +204,19 @@ class BaseClient:
             accuracy = float(self.metric(target_true_final, target_pred_final))
         self.model.train()
         return loss, accuracy
-    
+
     def _default_metric(self, y_true, y_pred):
         if len(y_pred.shape) == 1:
             y_pred = np.round(y_pred)
         else:
             y_pred = y_pred.argmax(axis=1)
-        return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
+        return 100 * np.sum(y_pred == y_true) / y_pred.shape[0]
 
     def laplace_mechanism_output_perturb(self, scale_value):
         """
         laplace_mechanism_output_perturb:
-            Differential privacy for output perturbation based on Laplacian distribution.This output perturbation adds Laplace noise to ``primal_state``. Variance is euqal to `2*(scale_value)^2`, and `scale_value = sensitivty/epsilon`, where `sensitivity` is determined by data, algorithm.
-            
+            Differential privacy for output perturbation based on Laplacian distribution.This output perturbation adds Laplace noise to ``primal_state``. Variance is equal to `2*(scale_value)^2`, and `scale_value = sensitivity/epsilon`, where `sensitivity` is determined by data, algorithm.
+
         Args:
             scale_value: scaling vector to control the variance of Laplacian distribution
         """
@@ -212,12 +225,12 @@ class BaseClient:
             scale = torch.zeros_like(param.data) + scale_value
             m = torch.distributions.laplace.Laplace(mean, scale)
             self.primal_state[name] += m.sample()
-            
+
     def laplace_mechanism_output_perturb_personalized(self, scale_value):
         """
         laplace_mechanism_output_perturb:
-            Differential privacy for output perturbation based on Laplacian distribution.This output perturbation adds Laplace noise to ``primal_state``. Variance is euqal to `2*(scale_value)^2`, and `scale_value = sensitivty/epsilon`, where `sensitivity` is determined by data, algorithm.
-            
+            Differential privacy for output perturbation based on Laplacian distribution. This output perturbation adds Laplace noise to ``primal_state``. Variance is equal to `2*(scale_value)^2`, and `scale_value = sensitivity/epsilon`, where `sensitivity` is determined by data, algorithm.
+
         Args:
             scale_value: scaling vector to control the variance of Laplacian distribution
         """

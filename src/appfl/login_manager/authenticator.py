@@ -1,6 +1,7 @@
 import abc
 from typing import Dict
 
+
 class BaseAuthenticator:
     @abc.abstractmethod
     def get_auth_token(self) -> Dict[str, str]:
@@ -11,5 +12,3 @@ class BaseAuthenticator:
     def validate_auth_token(self, token: Dict) -> bool:
         """Validate the authentication token. Return `True` if the token is valid, `False` otherwise."""
         pass
-
-    

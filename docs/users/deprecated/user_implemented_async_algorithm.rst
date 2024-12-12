@@ -28,7 +28,7 @@ In asynchronous federated learning algorithms, as the server may update the glob
 
 ``global_model_parameters`` = (1 - ``staleness_factor``) * ``global_model_parameters`` + ``staleness_factor`` * ``local_model_parameters``
 
-where 
+where
 
 ``staleness_factor`` = ``alpha`` * ``staleness_function``(``t_global`` - ``t_local``)
 
@@ -42,7 +42,7 @@ where
     :lines: 42-53
     :caption: staleness functions
 
-The application of staleness factor may cause the global model to drift away from training data of slower clients (known as client drift). To mitigate this issue, 
+The application of staleness factor may cause the global model to drift away from training data of slower clients (known as client drift). To mitigate this issue,
 
 - |ServerFedBuffer|_ employs a size-K buffer to store the local model updates from clients. The server updates the global model once it receives a batch of local model updates from clients. The size of the buffer K can be set by ``cfg.fed.args.K``.
 

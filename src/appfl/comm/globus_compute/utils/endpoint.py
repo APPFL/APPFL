@@ -4,22 +4,27 @@ from omegaconf import DictConfig
 from concurrent.futures import Future
 from globus_compute_sdk import Executor
 from typing import Optional, Union, Dict, OrderedDict, Tuple
-from appfl.comm.globus_compute.globus_compute_client_communicator import globus_compute_client_entry_point
+from appfl.comm.globus_compute.globus_compute_client_communicator import (
+    globus_compute_client_entry_point,
+)
+
 
 class ClientEndpointStatus(Enum):
     UNAVAILABLE = 0
-    AVAILABLE   = 1
-    RUNNING     = 2
+    AVAILABLE = 1
+    RUNNING = 2
+
 
 class GlobusComputeClientEndpoint:
     """
-    Represents a Globus Compute client endpoint, which can be 
+    Represents a Globus Compute client endpoint, which can be
     used to submit tasks to the Globus Compute client endpoint.
     """
+
     def __init__(
-        self, 
+        self,
         client_id: str,
-        client_endpoint_id: str, 
+        client_endpoint_id: str,
         client_config: DictConfig,
     ):
         """
@@ -31,11 +36,11 @@ class GlobusComputeClientEndpoint:
         self.client_endpoint_id = client_endpoint_id
         self.client_config = client_config
         self._set_no_runing_task()
-    
+
     @property
     def status(self):
         """
-        Get the status of the globus compute client enpdoint, 
+        Get the status of the globus compute client enpdoint,
         and update the status if the client task is finished.
         """
         if self._status == ClientEndpointStatus.RUNNING:
@@ -53,8 +58,9 @@ class GlobusComputeClientEndpoint:
     def cancel_task(self):
         """Cancel the currently running task."""
         self._set_no_runing_task()
-        
-    def submit_task(self,
+
+    def submit_task(
+        self,
         gce: Executor,
         task_name: str,
         model: Optional[Union[Dict, OrderedDict, bytes]] = None,
@@ -62,14 +68,14 @@ class GlobusComputeClientEndpoint:
     ) -> Tuple[Optional[str], Optional[Future]]:
         """
         Submit a task to the client's Globus Compute endpoint.
-        :param `gce`: Globus Compute executor for sumbitting tasks to the Globus Compute client endpoint
+        :param `gce`: Globus Compute executor for submitting tasks to the Globus Compute client endpoint
         :param `task_name`: The name of the task to be submitted.
         :param `model`: [Optional] The model to be used for the task.
         :param `meta_data`: [Optional] The metadata for the task.
         :return `executing_task_id`: The ID of the task being executed.
         :return `future`: The future object for the task being executed.
         """
-        if self.status != ClientEndpointStatus.AVAILABLE: 
+        if self.status != ClientEndpointStatus.AVAILABLE:
             return None, None
         gce.endpoint_id = self.client_endpoint_id
         self.future = gce.submit(

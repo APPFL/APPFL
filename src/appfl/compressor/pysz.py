@@ -1,10 +1,11 @@
 """
 Python API for SZ2/SZ3
 """
+
 import sys
 import ctypes
 import numpy as np
-from ctypes.util import find_library
+
 
 class SZ:
     def __init__(self, szpath=None):

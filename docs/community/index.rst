@@ -34,6 +34,7 @@ Code Contributors
 .. contributors:: APPFL/APPFL
     :avatars:
     :order: ASC
+    :limit: 15
 
 Collaboration Institutions
 --------------------------
@@ -66,5 +67,3 @@ Collaboration Institutions
         <img src="../_static/broad.png" alt="Broad Institute">
         <img src="../_static/uw.png" alt="University of Washington">
     </div>
-
-

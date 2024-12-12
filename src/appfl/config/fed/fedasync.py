@@ -1,10 +1,11 @@
+"""Configuration for numerous asynchronous global update techniques:
+(1) ServerFedAsynchronous   : update the global model once receiving one local model with staleness factor applied
+(2) ServerFedBuffer:        : store gradients from clients in a buffer until K gradients are received
+"""
+
 from dataclasses import dataclass
 from omegaconf import DictConfig, OmegaConf
 
-""" Configuration for numerous asynchronous global update techniques:     
-    (1) ServerFedAsynchronous   : update the global model once receiving one local model with staleness factor applied
-    (2) ServerFedBuffer:        : store gradients from cliens in a buffer utill K gradients are received                
-"""
 
 @dataclass
 class FedAsync:
@@ -37,20 +38,16 @@ class FedAsync:
             "clip_grad": False,
             "clip_value": 1,
             "clip_norm": 1,
-
             ## Fed Asynchronous Parameters
             ### Staleness factor
             "alpha": 0.9,
-            "staleness_func": {
-                "name": "constant",
-                "args": {"a": 0.5, "b": 4}
-            },
+            "staleness_func": {"name": "constant", "args": {"a": 0.5, "b": 4}},
             ### FedBuf: Buffer size
             "K": 3,
             ### FedCompass
             "q_ratio": 0.2,
             "lambda_val": 1.5,
             ### whether the client sends the gradient or the model
-            "gradient_based": False, 
+            "gradient_based": False,
         }
     )

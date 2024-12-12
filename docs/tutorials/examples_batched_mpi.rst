@@ -79,7 +79,7 @@ Below shows the difference between the non-batched and batched MPI examples.
     -   sample_size = client_agent.get_sample_size()
     -   client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size)
     +   client_sample_sizes = {
-    +       client_id: {'sample_size': client_agent.get_sample_size()} 
+    +       client_id: {'sample_size': client_agent.get_sample_size()}
     +       for client_id, client_agent in zip(client_batch[rank - 1], client_agents)
     +   }
     +   client_communicator.invoke_custom_action(action='set_sample_size', kwargs=client_sample_sizes)
@@ -130,7 +130,7 @@ Below summarizes the main changes made to the script:
 Running Batched MPI Example
 ---------------------------
 
-You can run the batched MPI example with the following command to simulate 10 clients with 6 MPI processes, where one process is the server and the rest are clients, so each MPI client process represents two clients. 
+You can run the batched MPI example with the following command to simulate 10 clients with 6 MPI processes, where one process is the server and the rest are clients, so each MPI client process represents two clients.
 
 .. code-block:: bash
 

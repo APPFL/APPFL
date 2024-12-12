@@ -5,15 +5,17 @@ from typing import Dict, Union, Tuple, OrderedDict, Optional, List
 from .config import MPITaskRequest, MPITaskResponse, MPIServerStatus, MPITask
 from .serializer import request_to_byte, byte_to_response, byte_to_model, model_to_byte
 
+
 class MPIClientCommunicator:
     """
     MPI client communicator for federated learning.
-    
+
     :param comm: the MPI communicator from mpi4py
     :param server_rank: the rank of the server in the MPI communicator
     :param client_ids: [optional] a list of client IDs for a batched clients,
         this is only required when the MPI process represents multiple clients
     """
+
     def __init__(
         self,
         comm,
@@ -29,19 +31,23 @@ class MPIClientCommunicator:
             if client_ids is not None
             else [self.comm_rank]
         )
-        self._raw_client_ids = client_ids if client_ids is not None else [self.comm_rank]
-        self._client_ids_to_raw = {
-            client_id: raw_client_id for client_id, raw_client_id in zip(self.client_ids, client_ids)
-        } if client_ids is not None else {self.comm_rank: self.comm_rank}
+        self._raw_client_ids = (
+            client_ids if client_ids is not None else [self.comm_rank]
+        )
+        self._client_ids_to_raw = (
+            {
+                client_id: raw_client_id
+                for client_id, raw_client_id in zip(self.client_ids, client_ids)
+            }
+            if client_ids is not None
+            else {self.comm_rank: self.comm_rank}
+        )
         self._default_batching = client_ids is not None
 
-    def get_configuration(
-        self, 
-        **kwargs
-    ) -> DictConfig:
+    def get_configuration(self, **kwargs) -> DictConfig:
         """
         Get the federated learning configurations from the server.
-        
+
         :param kwargs: additional metadata to be sent to the server
         :return: the federated learning configurations
         """
@@ -57,14 +63,13 @@ class MPIClientCommunicator:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.meta_data)
         return configuration
-    
+
     def get_global_model(
-        self, 
-        **kwargs
+        self, **kwargs
     ) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
         """
         Get the global model from the server.
-        
+
         :param kwargs: additional metadata to be sent to the server
         :return: the global model with additional metadata (if any)
         """
@@ -85,22 +90,22 @@ class MPIClientCommunicator:
             return model
         else:
             return model, meta_data
-        
+
     def update_global_model(
-        self, 
-        local_model: Union[Dict, OrderedDict, bytes], 
+        self,
+        local_model: Union[Dict, OrderedDict, bytes],
         client_id: Optional[Union[str, int]] = None,
-        **kwargs
+        **kwargs,
     ) -> Tuple[Union[Dict, OrderedDict], Dict]:
         """
         Send local model(s) to the FL server for global update, and return the new global model.
-        
+
         :param local_model: the local model to be sent to the server for global aggregation
-        
-            - `local_model` can be a single model if one MPI process has only one client or one MPI process 
+
+            - `local_model` can be a single model if one MPI process has only one client or one MPI process
                 has multiple clients but the user wants to send one model at a time
-            - `local_model` can be a dictionary of multiple models as well if one MPI process has multiple clients 
-                and the user wants to send all models 
+            - `local_model` can be a dictionary of multiple models as well if one MPI process has multiple clients
+                and the user wants to send all models
         :param client_id (optional): the client ID for the local model. It is only required when the MPI process has multiple clients
             and the user only wants to send one model at a time.
         :param kwargs (optional): additional metadata to be sent to the server. When sending local models for multiple clients,
@@ -114,12 +119,12 @@ class MPIClientCommunicator:
             }
         )
         ```
-        :return model: the updated global model 
-        
-            - **Note**: the global model is only one model even if multiple local models are sent, which means that 
+        :return model: the updated global model
+
+            - **Note**: the global model is only one model even if multiple local models are sent, which means that
             the server should have synchronous aggregation. If asynchronous aggregation is needed, the user should
             pass the local models one by one.
-        :return meta_data: additional metadata from the server. When updating local models for multiple clients, the response will 
+        :return meta_data: additional metadata from the server. When updating local models for multiple clients, the response will
             be a dictionary with the client ID as the key and the response as the value, e.g.,
         ```
         {
@@ -127,19 +132,27 @@ class MPIClientCommunicator:
             client_id2: {ret1: value1, ret2: value2},
         }
         """
-        if 'kwargs' in kwargs:
-            kwargs = kwargs['kwargs']
+        if "kwargs" in kwargs:
+            kwargs = kwargs["kwargs"]
         for raw_client_id in self._raw_client_ids:
             if raw_client_id in kwargs:
                 kwargs[self._id_generator(raw_client_id)] = kwargs.pop(raw_client_id)
-            if raw_client_id in local_model:
-                local_model[self._id_generator(raw_client_id)] = local_model.pop(raw_client_id)
+            if isinstance(local_model, dict) or isinstance(local_model, OrderedDict):
+                kwargs["_torch_serialized"] = True
+                if raw_client_id in local_model:
+                    local_model[self._id_generator(raw_client_id)] = local_model.pop(
+                        raw_client_id
+                    )
+            else:
+                kwargs["_torch_serialized"] = False
         kwargs["_client_ids"] = (
             self.client_ids if client_id is None else [self._id_generator(client_id)]
         )
         meta_data = json.dumps(kwargs)
         request = MPITaskRequest(
-            payload=model_to_byte(local_model) if not isinstance(local_model, bytes) else local_model,
+            payload=model_to_byte(local_model)
+            if not isinstance(local_model, bytes)
+            else local_model,
             meta_data=meta_data,
         )
         request_bytes = request_to_byte(request)
@@ -163,14 +176,11 @@ class MPIClientCommunicator:
         return model, meta_data
 
     def invoke_custom_action(
-        self, 
-        action: str,
-        client_id: Optional[Union[str, int]] = None,
-        **kwargs
+        self, action: str, client_id: Optional[Union[str, int]] = None, **kwargs
     ) -> Dict:
         """
         Invoke a custom action on the server.
-        
+
         :param action: the action to be invoked
         :param client_id (optional): the client ID for the action. It is only required when the MPI process has multiple clients
             and the action is specific to a client instead of all clients.
@@ -185,7 +195,7 @@ class MPIClientCommunicator:
             }
         )
         ```
-        :return: the response from the server (if any). When invoking custom action for multiple clients, the response will 
+        :return: the response from the server (if any). When invoking custom action for multiple clients, the response will
             be a dictionary with the client ID as the key and the response as the value, e.g.,
         ```
         {
@@ -194,11 +204,11 @@ class MPIClientCommunicator:
         }
         """
         # Parse the kwargs if the user passes the kwargs as a dictionary
-        if 'kwargs' in kwargs:
-            kwargs = kwargs['kwargs']
+        if "kwargs" in kwargs:
+            kwargs = kwargs["kwargs"]
         for raw_client_id in self._raw_client_ids:
             if raw_client_id in kwargs:
-                kwargs[self._id_generator(raw_client_id)] = kwargs.pop(raw_client_id)        
+                kwargs[self._id_generator(raw_client_id)] = kwargs.pop(raw_client_id)
         kwargs["action"] = action
         kwargs["_client_ids"] = (
             self.client_ids if client_id is None else [self._id_generator(client_id)]
@@ -238,7 +248,7 @@ class MPIClientCommunicator:
         self.comm.Recv(response_buffer, source=self.server_rank, tag=self.comm_rank)
         response = byte_to_response(response_buffer)
         return response
-        
+
     def _id_generator(self, client_id) -> str:
         """
         Generate a unique client ID.

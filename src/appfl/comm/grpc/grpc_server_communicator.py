@@ -1,3 +1,4 @@
+import grpc
 import json
 import pprint
 import logging
@@ -5,11 +6,20 @@ import threading
 from typing import Optional
 from omegaconf import OmegaConf
 from concurrent.futures import Future
-from .grpc_communicator_pb2 import *
-from .grpc_communicator_pb2_grpc import *
+from .grpc_communicator_pb2 import (
+    UpdateGlobalModelRequest,
+    UpdateGlobalModelResponse,
+    ConfigurationResponse,
+    GetGlobalModelRespone,
+    CustomActionResponse,
+    ServerHeader,
+    ServerStatus,
+)
+from .grpc_communicator_pb2_grpc import GRPCCommunicatorServicer
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from .utils import proto_to_databuffer, serialize_model
+
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
     def __init__(
@@ -31,8 +41,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :return `response.configuration`: JSON serialized FL configurations
         """
         try:
-            self.logger.info(f"Received GetConfiguration request from client {request.header.client_id}")
-            if len(request.meta_data) == 0: 
+            self.logger.info(
+                f"Received GetConfiguration request from client {request.header.client_id}"
+            )
+            if len(request.meta_data) == 0:
                 meta_data = {}
             else:
                 meta_data = json.loads(request.meta_data)
@@ -49,9 +61,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             # Handle the exception in a way that's appropriate for your application
             # For example, you might want to set a gRPC error status
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details('Server error occurred!')
+            context.set_details("Server error occurred!")
             raise e
-    
+
     def GetGlobalModel(self, request, context):
         """
         Return the global model to clients. This method is supposed to be called by clients to get the initial and final global model. Returns are sent back as a stream of messages.
@@ -61,8 +73,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :return `response.global_model`: Serialized global model
         """
         try:
-            self.logger.info(f"Received GetGlobalModel request from client {request.header.client_id}")
-            if len(request.meta_data) == 0: 
+            self.logger.info(
+                f"Received GetGlobalModel request from client {request.header.client_id}"
+            )
+            if len(request.meta_data) == 0:
                 meta_data = {}
             else:
                 meta_data = json.loads(request.meta_data)
@@ -78,14 +92,15 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 global_model=model_serialized,
                 meta_data=meta_data,
             )
-            for bytes in proto_to_databuffer(response_proto, max_message_size=self.max_message_size):
-                yield bytes
+            yield from proto_to_databuffer(
+                response_proto, max_message_size=self.max_message_size
+            )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
             # For example, you might want to set a gRPC error status
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details('Server error occurred!')
+            context.set_details("Server error occurred!")
             raise e
 
     def UpdateGlobalModel(self, request_iterator, context):
@@ -104,38 +119,50 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             for bytes in request_iterator:
                 bytes_received += bytes.data_bytes
             request.ParseFromString(bytes_received)
-            self.logger.info(f"Received UpdateGlobalModel request from client {request.header.client_id}")
+            self.logger.info(
+                f"Received UpdateGlobalModel request from client {request.header.client_id}"
+            )
             client_id = request.header.client_id
             local_model = request.local_model
-            if len(request.meta_data) == 0: 
+            if len(request.meta_data) == 0:
                 meta_data = {}
             else:
                 meta_data = json.loads(request.meta_data)
             if len(meta_data) > 0:
-                self.logger.info(f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}")
-            global_model = self.server_agent.global_update(client_id, local_model, blocking=True, **meta_data)
+                self.logger.info(
+                    f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
+                )
+            global_model = self.server_agent.global_update(
+                client_id, local_model, blocking=True, **meta_data
+            )
             if isinstance(global_model, tuple):
                 meta_data = json.dumps(global_model[1])
                 global_model = global_model[0]
             else:
                 meta_data = json.dumps({})
             global_model_serialized = serialize_model(global_model)
-            status = ServerStatus.DONE if self.server_agent.training_finished() else ServerStatus.RUN
+            status = (
+                ServerStatus.DONE
+                if self.server_agent.training_finished()
+                else ServerStatus.RUN
+            )
             response = UpdateGlobalModelResponse(
                 header=ServerHeader(status=status),
                 global_model=global_model_serialized,
                 meta_data=meta_data,
             )
-            for bytes in proto_to_databuffer(response, max_message_size=self.max_message_size):
+            for bytes in proto_to_databuffer(
+                response, max_message_size=self.max_message_size
+            ):
                 yield bytes
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
             # For example, you might want to set a gRPC error status
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details('Server error occurred!')
+            context.set_details("Server error occurred!")
             raise e
-        
+
     def InvokeCustomAction(self, request, context):
         """
         This function is the entry point for any custom action that the server agent can perform. The server agent should implement the custom action and call this function to perform the action.
@@ -146,15 +173,19 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :return `response.meta_data`: JSON serialized metadata dictionary for return values (if needed)
         """
         try:
-            self.logger.info(f"Received InvokeCustomAction {request.action} request from client {request.header.client_id}")
+            self.logger.info(
+                f"Received InvokeCustomAction {request.action} request from client {request.header.client_id}"
+            )
             client_id = request.header.client_id
             action = request.action
-            if len(request.meta_data) == 0: 
+            if len(request.meta_data) == 0:
                 meta_data = {}
             else:
                 meta_data = json.loads(request.meta_data)
             if action == "set_sample_size":
-                assert "sample_size" in meta_data, "The metadata should contain parameter `sample_size`."
+                assert (
+                    "sample_size" in meta_data
+                ), "The metadata should contain parameter `sample_size`."
                 ret_val = self.server_agent.set_sample_size(client_id, **meta_data)
                 if ret_val is None:
                     response = CustomActionResponse(
@@ -207,14 +238,14 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             # Handle the exception in a way that's appropriate for your application
             # For example, you might want to set a gRPC error status
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details('Server error occurred!')
+            context.set_details("Server error occurred!")
             raise e
-    
+
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
-        fmt = logging.Formatter('[%(asctime)s %(levelname)-4s server]: %(message)s')
+        fmt = logging.Formatter("[%(asctime)s %(levelname)-4s server]: %(message)s")
         s_handler = logging.StreamHandler()
         s_handler.setLevel(logging.INFO)
         s_handler.setFormatter(fmt)

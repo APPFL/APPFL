@@ -23,7 +23,7 @@ User-defined loss can be anything derived from ``torch.nn.Module`` with defined 
 To use the loss function during the training, you need to provide the absolute/relative path to the loss definition file and the name of the loss class. For example, to use the MASE loss defined above, you can add the following lines to the server configuration file:
 
 .. code-block:: yaml
-    
+
     client_configs:
         train_configs:
             ...

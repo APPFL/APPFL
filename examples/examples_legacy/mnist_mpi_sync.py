@@ -1,10 +1,19 @@
+"""
+To run MPI with 5 clients:
+mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
+
+To run MPI with 5 clients with compression:
+mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --enable_compression
+"""
+
 import time
 import torch
 import argparse
 from mpi4py import MPI
-from appfl.config import *
-from appfl.misc.data import *
-from appfl.misc.utils import *
+from omegaconf import OmegaConf
+from appfl.config import Config
+from appfl.misc.utils import set_seed
+from appfl.misc.data import data_sanity_check
 import appfl.run_mpi as rm
 import appfl.run_mpi_sync as rms
 from losses.utils import get_loss
@@ -12,15 +21,6 @@ from models.utils import get_model
 from metric.utils import get_metric
 from dataloader.mnist_dataloader import get_mnist
 
-"""
-To run MPI with 5 clients:
-mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
-"""
-
-"""
-To run MPI with 5 clients with compression:
-mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --enable_compression
-"""
 
 ## read arguments
 parser = argparse.ArgumentParser()
@@ -120,10 +120,7 @@ parser.add_argument(
 )
 
 ## compression
-parser.add_argument(
-    "--enable_compression",
-    action="store_true"
-)
+parser.add_argument("--enable_compression", action="store_true")
 parser.add_argument(
     "--lossy_compressor",
     type=str,
@@ -165,7 +162,7 @@ def main():
     cfg = OmegaConf.structured(Config)
     cfg.device = args.device
     cfg.reproduce = True
-    if cfg.reproduce == True:
+    if cfg.reproduce:
         set_seed(1)
 
     ## clients
@@ -226,7 +223,7 @@ def main():
     )
 
     ## Sanity check for the user-defined data
-    if cfg.data_sanity == True:
+    if cfg.data_sanity:
         data_sanity_check(
             train_datasets, test_dataset, args.num_channel, args.num_pixel
         )
@@ -234,7 +231,7 @@ def main():
     print("-------Loading_Time=", time.time() - start_time)
 
     ## Running
-    if args.num_clients == comm_size - 1:   # One client per MPI process
+    if args.num_clients == comm_size - 1:  # One client per MPI process
         if comm_rank == 0:
             rms.run_server(
                 cfg,
@@ -250,7 +247,7 @@ def main():
             rms.run_client(
                 cfg, comm, model, loss_fn, train_datasets, test_dataset, metric
             )
-    else:   # Multiple clients per MPI process
+    else:  # Multiple clients per MPI process
         if comm_rank == 0:
             rm.run_server(
                 cfg,

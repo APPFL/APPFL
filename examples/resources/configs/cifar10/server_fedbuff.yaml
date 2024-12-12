@@ -32,7 +32,7 @@ client_configs:
   model_configs:
     model_path: "./resources/model/resnet.py"
     model_name: "ResNet18"
-  
+
   comm_configs:
     compressor_configs:
       enable_compression: False

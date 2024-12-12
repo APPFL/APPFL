@@ -6,3 +6,4 @@ sphinx-contributors
 nbsphinx
 google
 protobuf
+furo

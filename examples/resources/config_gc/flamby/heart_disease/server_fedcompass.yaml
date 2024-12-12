@@ -31,7 +31,7 @@ client_configs:
   model_configs:
     model_path: "./resources/model/flamby_heart_disease.py"
     model_name: "Baseline"
-  
+
   comm_configs:
     compressor_configs:
       enable_compression: False
@@ -46,7 +46,7 @@ client_configs:
     generate_dr_report: True
     output_dirname: "./output"
     output_filename: "data_readiness_report"
-    dr_metrics: 
+    dr_metrics:
       class_imbalance: True
       sample_size: True
       num_classes: True

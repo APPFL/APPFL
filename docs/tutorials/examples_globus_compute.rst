@@ -123,7 +123,7 @@ It should be noted that the client configuration file actually resides on the se
 
 - ``endpoint_id``: It is the Globus Compute Endpoint ID of the client machine.
 - ``train_configs``: It contains the training configurations for the client, including the device to run the training, logging configurations, etc.
-- ``data_configs``: It contains the information of a dataloader python file defined and shared by the clients to the server (located at ``dataset_path`` on the server machine). The dataloader file should contain a function (specified by ``dataset_name``) which can load the client's local private dataset when it is executing on the client's machine. 
+- ``data_configs``: It contains the information of a dataloader python file defined and shared by the clients to the server (located at ``dataset_path`` on the server machine). The dataloader file should contain a function (specified by ``dataset_name``) which can load the client's local private dataset when it is executing on the client's machine.
 
 .. note::
 
@@ -134,7 +134,7 @@ Server Configurations
 
 We have provide three sample server configuration files available at ``examples/resources/config_gc`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/>`_. The detailed description of the server configuration file can be found in the `APPFL documentation <https://appfl.ai/en/latest/users/server_agent.html#configurations>`_.
 
-It should be noted that ``client_configs.comm_configs.globus_compute_configs`` is optional and should be set only if the user wants to use AWS S3 for data transmission (Globus Compute limits data transmission size to 10 MB, so models larger than 10 MB should be transmitted using AWS S3). Specifcally, the ``s3_bucket`` field should be set to the name of the S3 bucket that the user wants to use, and ``s3_creds_file`` is a CSV file containing the AWS credentials. The CSV file should have the following format.
+It should be noted that ``client_configs.comm_configs.globus_compute_configs`` is optional and should be set only if the user wants to use AWS S3 for data transmission (Globus Compute limits data transmission size to 10 MB, so models larger than 10 MB should be transmitted using AWS S3). Specifically, the ``s3_bucket`` field should be set to the name of the S3 bucket that the user wants to use, and ``s3_creds_file`` is a CSV file containing the AWS credentials. The CSV file should have the following format.
 
 .. code-block:: csv
 
@@ -147,7 +147,7 @@ It should be noted that ``client_configs.comm_configs.globus_compute_configs`` i
 Running the Experiment
 ----------------------
 
-We provide a sample experiment launching script at ``examples/globus_compute/run.py``, and user can run the experiment by the following command. 
+We provide a sample experiment launching script at ``examples/globus_compute/run.py``, and user can run the experiment by the following command.
 
 .. code-block:: bash
 

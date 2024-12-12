@@ -2,10 +2,11 @@ import os
 import pathlib
 import subprocess
 
+
 def setup_ssl():
     """
     Command line interface for creating SSL certificate signed by a private
-    certificate authority (CA), and storing the certificate and private key 
+    certificate authority (CA), and storing the certificate and private key
     in the specified directory.
     """
     # Prompt user for the directory to store the SSL certificate and private key
@@ -23,11 +24,11 @@ def setup_ssl():
                 raise Exception
             for f in os.listdir(ssl_dir):
                 os.remove(os.path.join(ssl_dir, f))
-        except:
+        except:  # noqa E722
             print("Invalid directory, please try again")
             continue
         break
-    
+
     # Default values
     default_C = "US"
     default_ST = "Illinois"
@@ -36,13 +37,23 @@ def setup_ssl():
     default_IP = "127.0.0.1"
 
     # Prompt user for C, ST, O, CN, DNS, IP, with default values
-    C = input(f"Enter Country Code, press Enter to use default '{default_C}': ") or default_C
-    ST = input(f"Enter State, press Enter to use default '{default_ST}': ") or default_ST
-    O = input(f"Enter Organization (O), press Enter to use default '{default_O}': ") or default_O
-    DNS = input(f"Enter DNS (DNS.1), press Enter to use default '{default_DNS}': ") or default_DNS
+    C = (
+        input(f"Enter Country Code, press Enter to use default '{default_C}': ")
+        or default_C
+    )
+    ST = (
+        input(f"Enter State, press Enter to use default '{default_ST}': ") or default_ST
+    )
+    ORG = (
+        input(f"Enter Organization (O), press Enter to use default '{default_O}': ")
+        or default_O
+    )
+    DNS = (
+        input(f"Enter DNS (DNS.1), press Enter to use default '{default_DNS}': ")
+        or default_DNS
+    )
     IP = input(f"Enter IP, press Enter to use default '{default_IP}': ") or default_IP
 
-    
     # Create the configuration file content
     conf_content = f"""
 [req]
@@ -55,7 +66,7 @@ distinguished_name = dn
 [dn]
 C = {C}
 ST = {ST}
-O = {O}
+O = {ORG}
 CN = {DNS}
 
 [req_ext]
@@ -65,7 +76,7 @@ subjectAltName = @alt_names
 DNS.1 = {DNS}
 IP.1 = {IP}
     """
-    
+
     # Write the configuration file
     conf_file = os.path.join(ssl_dir, "certificate.conf")
     with open(conf_file, "w") as f:
@@ -87,7 +98,7 @@ openssl req \\
     -x509 \\
     -key $CERT_DIR/ca.key \\
     -sha256 \\
-    -subj "/C={C}/ST={ST}/O={O}" \\
+    -subj "/C={C}/ST={ST}/O={ORG}" \\
     -days 365 -out $CERT_DIR/ca.crt
 
 # Generate a new private key for the server
@@ -113,11 +124,11 @@ openssl x509 \\
     -extfile {conf_file} \\
     -extensions req_ext
     """
-    
+
     script_file = os.path.join(ssl_dir, "generate_ssl.sh")
     with open(script_file, "w") as f:
         f.write(script_content)
-        
+
     # Make the script executable
     os.system(f"chmod +x {script_file}")
     try:

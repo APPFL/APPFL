@@ -2,82 +2,98 @@ import json
 import os
 from .plots import generate_combined_feature_space_plot
 
+
 def get_unique_file_path(output_dir, output_filename, extension):
     file_path = os.path.join(output_dir, f"{output_filename}.{extension}")
     file_counter = 1
     while os.path.exists(file_path):
-        file_path = os.path.join(output_dir, f"{output_filename}_{file_counter}.{extension}")
+        file_path = os.path.join(
+            output_dir, f"{output_filename}_{file_counter}.{extension}"
+        )
         file_counter += 1
     return file_path
 
+
 def save_json_report(file_path, readiness_report, logger):
-    with open(file_path, 'w') as json_file:
+    with open(file_path, "w") as json_file:
         json.dump(readiness_report, json_file, indent=4)
     logger.info(f"Data readiness report saved as JSON to: {file_path}")
 
+
 def save_html_report(file_path, html_content, logger):
-    with open(file_path, 'w') as html_file:
+    with open(file_path, "w") as html_file:
         html_file.write(html_content)
     logger.info(f"Data readiness report saved as HTML: {file_path}")
+
 
 def generate_html_content(readiness_report):
     html_content = get_html_header()
 
-    attribute_keys = [key for key in readiness_report.keys() if key != 'to_combine']
+    attribute_keys = [key for key in readiness_report.keys() if key != "to_combine"]
     client_ids = list(readiness_report[attribute_keys[0]].keys())
 
     # Start creating the table
-    html_content += '<table><thead><tr><th>Client ID</th>'
+    html_content += "<table><thead><tr><th>Client ID</th>"
 
     # Add table headers for each metric
     for key in attribute_keys:
-        if key == 'plots':
+        if key == "plots":
             continue
-        html_content += f'<th>{key}</th>'
-    
-    html_content += '</tr></thead><tbody>'
+        html_content += f"<th>{key}</th>"
+
+    html_content += "</tr></thead><tbody>"
 
     # Add data for each client
     for client_id in client_ids:
-        html_content += f'<tr><td>{client_id}</td>'
+        html_content += f"<tr><td>{client_id}</td>"
         for key in attribute_keys:
-            if key == 'plots':
+            if key == "plots":
                 continue
             value = readiness_report[key][client_id]
-            value_str = str(value) if not isinstance(value, list) else ', '.join(map(str, value))
-            html_content += f'<td>{value_str}</td>'
-        html_content += '</tr>'
+            value_str = (
+                str(value)
+                if not isinstance(value, list)
+                else ", ".join(map(str, value))
+            )
+            html_content += f"<td>{value_str}</td>"
+        html_content += "</tr>"
 
-    html_content += '</tbody></table>'
+    html_content += "</tbody></table>"
 
     # Add plots for each client
     for client_id in client_ids:
-        plots = readiness_report.get('plots', {}).get(client_id, {})
+        plots = readiness_report.get("plots", {}).get(client_id, {})
         if plots:
             html_content += add_client_plots(client_id, plots)
 
     # Add the combined section at the bottom
-    if 'to_combine' in readiness_report:
-        to_combine = readiness_report['to_combine']
+    if "to_combine" in readiness_report:
+        to_combine = readiness_report["to_combine"]
         html_content += add_combined_section(to_combine)
 
     return html_content
 
+
 def add_client_plots(client_id, plots):
     """Adds per-client plots below the table and displays them side by side."""
-    client_plot_html = f'<div class="client-plots"><h3>Plots for Client ID: {client_id}</h3>'
-    client_plot_html += '<div class="plots-row">'  # Flexbox container for side-by-side plots
+    client_plot_html = (
+        f'<div class="client-plots"><h3>Plots for Client ID: {client_id}</h3>'
+    )
+    client_plot_html += (
+        '<div class="plots-row">'  # Flexbox container for side-by-side plots
+    )
 
     for plot_name, plot_base64 in plots.items():
-        client_plot_html += f'''
+        client_plot_html += f"""
             <div class="plot">
                 <h3>{plot_name.replace("_", " ").title()}</h3>
                 <img src="data:image/png;base64,{plot_base64}" alt="{plot_name.replace("_", " ").title()}">
             </div>
-        '''
-    
-    client_plot_html += '</div></div>'  # Close the flexbox container and client section
+        """
+
+    client_plot_html += "</div></div>"  # Close the flexbox container and client section
     return client_plot_html
+
 
 def add_combined_section(to_combine):
     html_combined_section = ""
@@ -85,23 +101,28 @@ def add_combined_section(to_combine):
     client_ids = list(to_combine.keys())
 
     for client_id in client_ids:
-        feature_space = to_combine.get(client_id, {}).get('feature_space_distribution', {})
-        if 'pca_components' in feature_space:
+        feature_space = to_combine.get(client_id, {}).get(
+            "feature_space_distribution", {}
+        )
+        if "pca_components" in feature_space:
             client_feature_space_dict[client_id] = {
-                'pca_components': feature_space['pca_components'],
-                'explained_variance': feature_space['explained_variance']
+                "pca_components": feature_space["pca_components"],
+                "explained_variance": feature_space["explained_variance"],
             }
 
     if client_feature_space_dict:
-        combined_plot_base64 = generate_combined_feature_space_plot(client_feature_space_dict, client_ids)
-        html_combined_section = f'''
+        combined_plot_base64 = generate_combined_feature_space_plot(
+            client_feature_space_dict, client_ids
+        )
+        html_combined_section = f"""
             <h3>Combined PCA Distribution</h3>
             <div class="combined-pca-plot">
-                
+
                 <img src="data:image/png;base64,{combined_plot_base64}" alt="Combined PCA Distribution">
             </div>
-        '''
+        """
     return html_combined_section
+
 
 def get_html_header():
     return """
@@ -186,8 +207,9 @@ def get_html_header():
         <h1>Data Readiness Report</h1>
     """
 
+
 def get_class_distribution(restructured_report, num_classes=10):
-    class_distribution = restructured_report.get('class_distribution', {})
+    class_distribution = restructured_report.get("class_distribution", {})
     complete_class_distribution = {}
 
     for client_id, distribution in class_distribution.items():

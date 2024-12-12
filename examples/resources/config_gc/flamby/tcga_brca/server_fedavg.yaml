@@ -26,13 +26,13 @@ client_configs:
     val_batch_size: 8
     train_data_shuffle: True
     val_data_shuffle: False
-   
+
   model_configs:
     model_path: "./resources/model/fc.py"
     model_name: "FC"
     model_kwargs:
       input_size: 39
-  
+
   comm_configs:
     compressor_configs:
       enable_compression: False

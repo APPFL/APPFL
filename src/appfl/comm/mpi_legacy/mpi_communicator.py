@@ -4,27 +4,31 @@ from mpi4py import MPI
 from collections import OrderedDict
 from appfl.compressor import Compressor
 from typing import Any, Optional, Union
-from appfl.misc import deprecated
+from appfl.misc.deprecation import deprecated
 
-@deprecated("MpiCommunicator is deprecated and will be removed in the future, please use appfl.comm.mpi.MPIServerCommunicator and appfl.comm.mpi.MPIClientCommunicator instead.")
+
+@deprecated(
+    "MpiCommunicator is deprecated and will be removed in the future, please use appfl.comm.mpi.MPIServerCommunicator and appfl.comm.mpi.MPIClientCommunicator instead."
+)
 class MpiCommunicator:
     """
-    A general MPI communicator for synchronous or asynchronous distributed/federated/decentralized 
+    A general MPI communicator for synchronous or asynchronous distributed/federated/decentralized
     learning experiments on multiple MPI processes, where each MPI process represents EXACTLY ONE learning client.
     """
-    def __init__(self, comm: MPI.Intracomm, compresser: Optional[Compressor]=None):
+
+    def __init__(self, comm: MPI.Intracomm, compressor: Optional[Compressor] = None):
         self.comm = comm
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
         self.dests = []
         self.recv_queue = []
-        self.recv_queue_idx = []    # corresponding client index for each request in recv_queue
-        self.compressor = compresser
+        self.recv_queue_idx = []  # corresponding client index for each request in recv_queue
+        self.compressor = compressor
 
     def _obj_to_bytes(self, obj: Any) -> bytes:
         """Convert an object to bytes."""
         return pickle.dumps(obj)
-    
+
     def _bytes_to_obj(self, bytes_obj: bytes) -> Any:
         """Convert bytes to an object."""
         return pickle.loads(bytes_obj)
@@ -53,9 +57,13 @@ class MpiCommunicator:
         contents = self.comm.gather(content, root=dest)
         return contents
 
-    def broadcast_global_model(self, model: Optional[Union[dict, OrderedDict]]=None, args: Optional[dict]=None):
+    def broadcast_global_model(
+        self,
+        model: Optional[Union[dict, OrderedDict]] = None,
+        args: Optional[dict] = None,
+    ):
         """
-        Broadcast the global model state dictionary and additional arguments from the server MPI process 
+        Broadcast the global model state dictionary and additional arguments from the server MPI process
         to all other client processes. The method is ONLY called by the server MPI process.
         :param `model`: the global model state dictionary to be broadcasted
         :param `args`: additional arguments to be broadcasted
@@ -72,7 +80,9 @@ class MpiCommunicator:
         else:
             model_bytes = self._obj_to_bytes(model)
             for i in self.dests:
-                payload = (len(model_bytes), args) if args is not None else len(model_bytes)
+                payload = (
+                    (len(model_bytes), args) if args is not None else len(model_bytes)
+                )
                 self.comm.send(payload, dest=i, tag=i)
             for i in self.dests:
                 self.comm.Send(
@@ -83,7 +93,12 @@ class MpiCommunicator:
             self.recv_queue = [self.comm.irecv(source=i, tag=i) for i in self.dests]
             self.recv_queue_idx = [i for i in range(self.comm_size - 1)]
 
-    def send_global_model_to_client(self, model: Optional[Union[dict, OrderedDict]]=None, args: Optional[dict]=None, client_idx: int=-1):
+    def send_global_model_to_client(
+        self,
+        model: Optional[Union[dict, OrderedDict]] = None,
+        args: Optional[dict] = None,
+        client_idx: int = -1,
+    ):
         """
         Send the global model state dict and additional arguments to a certain client
         :param `model`: the global model state dictionary to be sent
@@ -108,9 +123,7 @@ class MpiCommunicator:
             model_bytes = self._obj_to_bytes(model)
             payload = (len(model_bytes), args) if args is not None else len(model_bytes)
             self.comm.send(
-                payload, 
-                dest=self.dests[client_idx], 
-                tag=self.dests[client_idx]
+                payload, dest=self.dests[client_idx], tag=self.dests[client_idx]
             )
             self.comm.Send(
                 np.frombuffer(model_bytes, dtype=np.byte),

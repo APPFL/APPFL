@@ -1,14 +1,14 @@
 Quickstart
 ==========
 
-In this page, we present how to run an example federated learning script on the MNIST dataset using the APPFL package. 
+In this page, we present how to run an example federated learning script on the MNIST dataset using the APPFL package.
 
 Installation
 ------------
 
 First, we need to make sure that the APPFL package and its dependencies are installed.Then, change to ``examples`` directory.
 
-.. code-block:: console
+.. code-block:: bash
 
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
@@ -19,13 +19,13 @@ First, we need to make sure that the APPFL package and its dependencies are inst
 Serial simulation
 -----------------
 
-The first example can be simply run using the following command, which launchs a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
+The first example can be simply run using the following command, which launches a federated learning experiment with five clients. The federated learning server and five federated learning clients run serially on one machine for simulation.
 
-.. code-block:: console
+.. code-block:: bash
 
     python ./serial/run_serial.py --num_clients 5 \
         --server_config ./resources/configs/mnist/server_fedavg.yaml \
-        --client_config ./resources/configs/mnist/client_1.yaml 
+        --client_config ./resources/configs/mnist/client_1.yaml
 
 .. note::
 
@@ -38,7 +38,7 @@ MPI simulation
 
 If we want to run FL experiment in parallel using MPI, we can run the example using the following command, which runs the `FedCompass <https://arxiv.org/pdf/2309.14675.pdf>`_ algorithm with five clients.
 
-.. code-block:: console
+.. code-block:: bash
 
     mpiexec -n 6 python ./mpi/run_mpi.py --server_config ./resources/configs/mnist/server_fedcompass.yaml \
         --client_config ./resources/configs/mnist/client_1.yaml
@@ -53,7 +53,7 @@ MPI simulation with privacy
 
 As the package name suggests, in addition to general differential privacy techniques, APPFL also provides two special synchronous privacy-preserving algorithms, `IIADMM <https://arxiv.org/pdf/2202.03672.pdf>`_ and `ICEADMM <https://arxiv.org/pdf/2110.15318.pdf>`_. We can run the privacy-preserving federated learning (PPFL) algorithms by running the following command.
 
-.. code-block:: console
+.. code-block:: bash
 
     mpiexec -n 6 python ./mpi/run_mpi_admm.py --server_config ./resources/configs/mnist/server_iiadmm.yaml
     # OR
@@ -74,22 +74,22 @@ As the package name suggests, in addition to general differential privacy techni
 gRPC deployment
 ---------------
 
-To show how to deploy the APPFL package on a real distributed system, we provide an example of running the federated learning experiment on the MNIST dataset using gRPC as the communication protocol. 
+To show how to deploy the APPFL package on a real distributed system, we provide an example of running the federated learning experiment on the MNIST dataset using gRPC as the communication protocol.
 
 First, we need to run the following command to start a federated learning server using ``FedCompass`` algorithm.
 
-.. code-block:: console
+.. code-block:: bash
 
     python ./grpc/run_server.py --config ./resources/configs/mnist/server_fedcompass.yaml
 
 Open a second terminal to start a client using the following command to talk to the server.
 
-.. code-block:: console
+.. code-block:: bash
 
     python ./grpc/run_client.py --config ./resources/configs/mnist/client_1.yaml
 
 Open a third terminal to start another client using the following command to talk to the server.
-    
-.. code-block:: console
-    
+
+.. code-block:: bash
+
     python ./grpc/run_client.py --config ./resources/configs/mnist/client_2.yaml

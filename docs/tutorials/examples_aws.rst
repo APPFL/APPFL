@@ -15,14 +15,14 @@ Create an EC2 instance
 2. Select EC2 service: On the console home page, search for and select "EC2" in the "Services" menu.
 
 3. Start the instance:
-   
-    a. In the EC2 console, click "Instances" and select "Launch Instance".  
+
+    a. In the EC2 console, click "Instances" and select "Launch Instance".
 
     b. Name the instance.
 
-    c. In this example, we select `Ubuntu Server 22.04 LTS (HVM), SSD Volume Type` as the Amazon Machine Image (AMI); the AMI determines your instance's operating system and pre-installed software. 
+    c. In this example, we select `Ubuntu Server 22.04 LTS (HVM), SSD Volume Type` as the Amazon Machine Image (AMI); the AMI determines your instance's operating system and pre-installed software.
 
-    d. Select your instance type. The instance type determines the CPU, memory, storage, and network capacity of the virtual machine. We recommend choosing one that is at least as good as or better than `t2.medium`.  
+    d. Select your instance type. The instance type determines the CPU, memory, storage, and network capacity of the virtual machine. We recommend choosing one that is at least as good as or better than `t2.medium`.
 
     e. Generate key pair for connecting for your instance later.
 
@@ -56,8 +56,8 @@ There are several methods to connect EC2 instance. You can select EC2 instance a
     ssh -i "your_pem_name.pem" ubuntu@Public_DNS_of_your_instance
 
 .. note::
-    
-    In order to successfully ssh into the EC2 instance, you also need to allow the IP address of the machine you are using to connect to the EC2 instance for ssh connection. 
+
+    In order to successfully ssh into the EC2 instance, you also need to allow the IP address of the machine you are using to connect to the EC2 instance for ssh connection.
 
 After successfully connecting to the EC2 instance, install conda.
 
@@ -73,7 +73,7 @@ Installation
 
 Install APPFL from source in a conda environment:
 
-.. code-block:: console
+.. code-block:: bash
 
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
@@ -94,7 +94,7 @@ An FL server running the `FedCompass <https://arxiv.org/pdf/2309.14675.pdf>`_ al
 
 .. note::
 
-  You may need to change path of the configuration file of grpc server to select different FL algoirthms.
+  You may need to change path of the configuration file of grpc server to select different FL algorithms.
 
 Launching SSL Secured Server
 ----------------------------

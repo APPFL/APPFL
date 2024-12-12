@@ -33,7 +33,7 @@ APPFL local trainer is the main building blocking of the APPFL client agent for 
         @abc.abstractmethod
         def get_parameters(self) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
-            Return local model parameters and optional metadata to be send for 
+            Return local model parameters and optional metadata to be send for
             server and used by the server aggregator.
             """
 
@@ -43,7 +43,7 @@ APPFL local trainer is the main building blocking of the APPFL client agent for 
             Train the model.
             """
 
-For the input parameters of the trainer (e.g., model, loss_fn), they are loaded from the client-specific configuration file as well as the configurations sent by the server, and processed by the ``ClientAgent`` before initializing the trainer. 
+For the input parameters of the trainer (e.g., model, loss_fn), they are loaded from the client-specific configuration file as well as the configurations sent by the server, and processed by the ``ClientAgent`` before initializing the trainer.
 
 .. note::
 

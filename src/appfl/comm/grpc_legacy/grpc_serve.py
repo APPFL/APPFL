@@ -1,14 +1,15 @@
 """
 Serve a gRPC server
 """
+
 import grpc
 import logging
 from concurrent import futures
 from typing import Any, Optional
-from .grpc_communicator_old_pb2 import *
-from .grpc_communicator_old_pb2_grpc import *
 from appfl.login_manager import BaseAuthenticator
 from appfl.comm.grpc.auth import APPFLAuthMetadataInterceptor
+from .grpc_communicator_old_pb2_grpc import add_GRPCCommunicatorV0Servicer_to_server
+
 
 def grpc_serve(
     server_uri: str,
@@ -34,20 +35,30 @@ def grpc_serve(
     :param max_message_size: The maximum message size in bytes.
     :param max_workers: The maximum number of workers to use for the server.
     """
-    assert not (use_authenticator and not use_ssl), "Authenticator can only be used with SSL/TLS"
+    assert not (
+        use_authenticator and not use_ssl
+    ), "Authenticator can only be used with SSL/TLS"
     if use_ssl:
-        assert server_certificate_key is not None, "Server certificate key must be provided if use_ssl is True"
-        assert server_certificate is not None, "Server certificate must be provided if use_ssl is True"
+        assert (
+            server_certificate_key is not None
+        ), "Server certificate key must be provided if use_ssl is True"
+        assert (
+            server_certificate is not None
+        ), "Server certificate must be provided if use_ssl is True"
     if use_authenticator:
         assert use_ssl, "Authenticator can only be used with SSL/TLS"
-        assert authenticator is not None, "Authenticator must be provided if use_authenticator is True"
+        assert (
+            authenticator is not None
+        ), "Authenticator must be provided if use_authenticator is True"
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
         options=[
             ("grpc.max_send_message_length", max_message_size),
             ("grpc.max_receive_message_length", max_message_size),
         ],
-        interceptors=(APPFLAuthMetadataInterceptor(authenticator),) if use_authenticator else None,
+        interceptors=(APPFLAuthMetadataInterceptor(authenticator),)
+        if use_authenticator
+        else None,
     )
     add_GRPCCommunicatorV0Servicer_to_server(servicer, server)
     if use_ssl:

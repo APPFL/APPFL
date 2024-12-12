@@ -11,7 +11,7 @@ Currently, APPFL supports the following lossy compressors:
 Installation
 ------------
 
-Users need to first make sure that they have installed the required packages for the compressors when installling `appfl`.
+Users need to first make sure that they have installed the required packages for the compressors when installing `appfl`.
 
 .. code-block:: bash
 
@@ -40,8 +40,8 @@ The APPFL compressor can be used to compress and decompress the model parameters
             pass
 
         def compress_model(
-            self, 
-            model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]], 
+            self,
+            model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]],
             batched: bool=False
         ) -> bytes:
             """
@@ -53,9 +53,9 @@ The APPFL compressor can be used to compress and decompress the model parameters
             pass
 
         def decompress_model(
-            self, 
-            compressed_model: bytes, 
-            model: Union[dict, OrderedDict], 
+            self,
+            compressed_model: bytes,
+            model: Union[dict, OrderedDict],
             batched: bool=False
         )-> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
             """
@@ -114,7 +114,7 @@ In APPFL, the compressor is seamlessly integrated into the communication process
     from omegaconf import OmegaConf
     from appfl.compressor import SZ2Compressor
 
-    # Define a test model 
+    # Define a test model
     model = nn.Sequential(
         nn.Conv2d(1, 20, 5),
         nn.ReLU(),

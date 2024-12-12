@@ -38,8 +38,8 @@ examples/datasets/RawData/
 examples/gcloud/resulting_models
 examples/datasets/CovidDatasets
 examples/datasets/CovidProcessed
-examples/PostProcessing 
-examples/save_models 
+examples/PostProcessing
+examples/save_models
 examples/Trials
 examples/gcloud/generated_pb2
 examples/gcloud/*.sh

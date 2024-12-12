@@ -21,22 +21,22 @@ for i, (k, v) in enumerate(authors.items()):
         AUTHOR += ", "
     AUTHOR += f"{k} <{v}>"
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
-    
-if sys.version_info >= (3, 9):
-    numpy_version = 'numpy==1.26.4'
-else:
-    numpy_version = 'numpy'  # Default numpy version for Python < 3.9
 
 if sys.version_info >= (3, 9):
-    numpy_version = 'numpy==1.26.4'
+    numpy_version = "numpy==1.26.4"
 else:
-    numpy_version = 'numpy'  # Default numpy version for Python < 3.9
+    numpy_version = "numpy"  # Default numpy version for Python < 3.9
+
+if sys.version_info >= (3, 9):
+    numpy_version = "numpy==1.26.4"
+else:
+    numpy_version = "numpy"  # Default numpy version for Python < 3.9
 
 setuptools.setup(
     name="appfl",
-    version="1.0.5",
+    version="1.1.0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -52,9 +52,9 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
-    include_package_data=True, 
+    include_package_data=True,
     package_data={
-        "": ["*.sh", "*.crt", "*.key"], 
+        "": ["*.sh", "*.crt", "*.key"],
     },
     python_requires=">=3.8",
     install_requires=[
@@ -77,7 +77,7 @@ setuptools.setup(
         "matplotlib",
         "seaborn",
         "piq",
-        "scikit-learn"
+        "scikit-learn",
     ],
     extras_require={
         "dev": [

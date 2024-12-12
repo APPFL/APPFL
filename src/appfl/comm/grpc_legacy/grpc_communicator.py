@@ -1,7 +1,14 @@
 import logging
-from .grpc_communicator_old_pb2 import *
+from .grpc_communicator_old_pb2 import (
+    Acknowledgment,
+    JobResponse,
+    MessageStatus,
+    WeightResponse,
+    LearningResults,
+)
 from . import grpc_communicator_old_pb2_grpc
 from .grpc_utils import construct_tensor_record, proto_to_databuffer
+
 
 class GRPCCommunicator(grpc_communicator_old_pb2_grpc.GRPCCommunicatorV0Servicer):
     def __init__(self, servicer_id, operator):
@@ -29,8 +36,7 @@ class GRPCCommunicator(grpc_communicator_old_pb2_grpc.GRPCCommunicatorV0Servicer
         )
         nparray = self.operator.get_tensor(request.name)
         proto = construct_tensor_record(request.name, nparray)
-        for data in proto_to_databuffer(proto, self.operator.cfg.max_message_size):
-            yield data
+        yield from proto_to_databuffer(proto, self.operator.cfg.max_message_size)
 
     def GetWeight(self, request, context):
         self.logger.debug(
@@ -72,4 +78,3 @@ class GRPCCommunicator(grpc_communicator_old_pb2_grpc.GRPCCommunicatorV0Servicer
 
         ack = Acknowledgment(header=proto.header, status=status)
         return ack
-

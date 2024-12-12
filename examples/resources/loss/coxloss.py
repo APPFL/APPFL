@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class BaselineLoss(nn.Module):
     """Compute Cox loss given model output and ground truth (E, T)
     Parameters
@@ -15,7 +16,7 @@ class BaselineLoss(nn.Module):
     """
 
     def __init__(self):
-        super(BaselineLoss, self).__init__()
+        super().__init__()
 
     def forward(self, scores, truth):
         # The Cox loss calc expects events to be reverse sorted in time

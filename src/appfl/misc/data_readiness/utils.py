@@ -3,10 +3,9 @@ import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-import torch
-import numpy as np
 from collections import Counter
 import random
+
 
 def balance_classes_undersample(train_dataset):
     """
@@ -50,12 +49,18 @@ def balance_classes_undersample(train_dataset):
     balanced_data_labels = torch.tensor([item[1] for item in balanced_data]).view(-1, 1)
 
     # Print balanced dataset distribution
-    print(f"Balanced label distribution: {Counter(balanced_data_labels.view(-1).tolist())}")
+    print(
+        f"Balanced label distribution: {Counter(balanced_data_labels.view(-1).tolist())}"
+    )
 
     # Recreate the dataset with balanced data
-    balanced_train_dataset = [(balanced_data_input[i], balanced_data_labels[i]) for i in range(len(balanced_data_labels))]
+    balanced_train_dataset = [
+        (balanced_data_input[i], balanced_data_labels[i])
+        for i in range(len(balanced_data_labels))
+    ]
 
     return balanced_train_dataset
+
 
 def balance_data(data_input, data_label):
     # Ensure data_input and data_label are tensors
@@ -77,11 +82,15 @@ def balance_data(data_input, data_label):
 
     # Balancing logic: undersample the majority class
     if len(event_inputs) < len(censored_inputs):
-        indices = np.random.choice(len(censored_inputs), len(event_inputs), replace=False)
+        indices = np.random.choice(
+            len(censored_inputs), len(event_inputs), replace=False
+        )
         balanced_inputs = torch.cat((event_inputs, censored_inputs[indices]))
         balanced_labels = torch.cat((event_labels, censored_labels[indices]))
     else:
-        indices = np.random.choice(len(event_inputs), len(censored_inputs), replace=False)
+        indices = np.random.choice(
+            len(event_inputs), len(censored_inputs), replace=False
+        )
         balanced_inputs = torch.cat((event_inputs[indices], censored_inputs))
         balanced_labels = torch.cat((event_labels[indices], censored_labels))
 
@@ -101,7 +110,7 @@ def apply_pca_to_dataset(train_dataset, n_components=30):
     """
     # Stack the input data from the dataset
     data_input = torch.stack([input_data for input_data, _ in train_dataset])
-    
+
     # Convert data_input to numpy array
     data_input_np = data_input.numpy()
 
@@ -120,9 +129,12 @@ def apply_pca_to_dataset(train_dataset, n_components=30):
     data_input_pca_tensor = torch.tensor(data_input_pca)
 
     # Recreate the dataset with PCA-transformed data
-    pca_train_dataset = [(data_input_pca_tensor[i], label) for i, (_, label) in enumerate(train_dataset)]
+    pca_train_dataset = [
+        (data_input_pca_tensor[i], label) for i, (_, label) in enumerate(train_dataset)
+    ]
 
     return pca_train_dataset
+
 
 def normalize_dataset(train_dataset, feature_range=(0, 1)):
     """
@@ -142,17 +154,24 @@ def normalize_dataset(train_dataset, feature_range=(0, 1)):
     data_input_np = data_input.numpy()
 
     # Initialize the MinMaxScaler for each feature (column)
-    scalers = [MinMaxScaler(feature_range=feature_range) for _ in range(data_input_np.shape[1])]
+    scalers = [
+        MinMaxScaler(feature_range=feature_range) for _ in range(data_input_np.shape[1])
+    ]
 
     # Normalize each feature independently
     data_input_normalized_np = data_input_np.copy()
     for i in range(data_input_np.shape[1]):
-        data_input_normalized_np[:, i] = scalers[i].fit_transform(data_input_np[:, i].reshape(-1, 1)).flatten()
+        data_input_normalized_np[:, i] = (
+            scalers[i].fit_transform(data_input_np[:, i].reshape(-1, 1)).flatten()
+        )
 
     # Convert back to torch tensors
     data_input_normalized_tensor = torch.tensor(data_input_normalized_np)
 
     # Recreate the dataset with normalized data
-    normalized_train_dataset = [(data_input_normalized_tensor[i], label) for i, (_, label) in enumerate(train_dataset)]
+    normalized_train_dataset = [
+        (data_input_normalized_tensor[i], label)
+        for i, (_, label) in enumerate(train_dataset)
+    ]
 
     return normalized_train_dataset

@@ -1,6 +1,6 @@
 # 🗜 Model Parameter Compressor
 
-The `appfl.compressor` module can be used for compressing the model parameters or gradients in a lossy manner before the client sends them back to the server for more efficient communication. The server then will decompress the compressed model before the global aggregation. 
+The `appfl.compressor` module can be used for compressing the model parameters or gradients in a lossy manner before the client sends them back to the server for more efficient communication. The server then will decompress the compressed model before the global aggregation.
 
 The `appfl.compressor` currently supports the following lossy compressors. Please refer to their official project/GitHub pages if you want more detailed information of them. Here, we only provide the installation instructions. **Note: SZx need particular permission to access because of the collaboration with a third-party, so we omit its installation here.**
 
@@ -16,7 +16,7 @@ appfl-install-compressor
 ```
 
 ## Citation
-Please check the following paper for details about how the compressor plays a role in federated learning. 
+Please check the following paper for details about how the compressor plays a role in federated learning.
 
 ```
 @article{wilkins2023efficient,

@@ -1,7 +1,7 @@
 Simulating PPFL (MPI)
 =====================
 
-In this section, we describe how to simulate PPFL on a single machine or cluster by having the server and each client run on different MPI processes. It can be used for simulating both synchronous and asynchronous FL algorithms. 
+In this section, we describe how to simulate PPFL on a single machine or cluster by having the server and each client run on different MPI processes. It can be used for simulating both synchronous and asynchronous FL algorithms.
 
 .. note::
 
@@ -18,7 +18,7 @@ First, user needs to load configuration files for the client and server agents. 
     from mpi4py import MPI
     from omegaconf import OmegaConf
     from appfl.agent import ClientAgent, ServerAgent
-    
+
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -39,7 +39,7 @@ First, user needs to load configuration files for the client and server agents. 
         client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
         client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
         client_agent_config.data_configs.dataset_kwargs.visualization = True if rank == 1 else False
-        # Create the client agent 
+        # Create the client agent
         client_agent = ClientAgent(client_agent_config=client_agent_config)
 
 Then for the FL server, we can create an MPI communicator to serve the requests from the clients using the ``serve`` method.
@@ -49,8 +49,8 @@ Then for the FL server, we can create an MPI communicator to serve the requests 
     from appfl.comm.mpi import MPIServerCommunicator
     if rank == 0:
         server_communicator = MPIServerCommunicator(
-            comm, 
-            server_agent, 
+            comm,
+            server_agent,
             logger=server_agent.logger
         )
         server_communicator.serve()
@@ -79,7 +79,11 @@ For the clients, we can start the FL training process by doing the following pro
         while True:
             client_agent.train()
             local_model = client_agent.get_parameters()
-            new_global_model, metadata = client_communicator.update_global_model(local_model)
+            if isinstance(local_model, tuple):
+                local_model, meta_data_local = local_model[0], local_model[1]
+            else:
+                meta_data_local = {}
+            new_global_model, metadata = client_communicator.update_global_model(local_model, **meta_data_local)
             if metadata['status'] == 'DONE':
                 break
             if 'local_steps' in metadata:

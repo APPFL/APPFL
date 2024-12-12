@@ -3,36 +3,64 @@ import copy
 import time
 import torch
 import numpy as np
-from torch.optim import *
 from .fl_base import BaseClient
-from appfl.misc import deprecation
+from appfl.misc.deprecation import deprecated
+from appfl.misc.utils import get_torch_optimizer
 
-@deprecation.deprecated("Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.trainer instead.")
+
+@deprecated(
+    "Imports from appfl.algorithm is deprecated and will be removed in the future. Please use appfl.algorithm.trainer instead."
+)
 class ClientOptim(BaseClient):
     """This client optimizer which perform updates for certain number of epochs in each training round."""
+
     def __init__(
-        self, id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric, **kwargs
+        self,
+        id,
+        weight,
+        model,
+        loss_fn,
+        dataloader,
+        cfg,
+        outfile,
+        test_dataloader,
+        metric,
+        **kwargs,
     ):
-        super(ClientOptim, self).__init__(id, weight, model, loss_fn, dataloader, cfg, outfile, test_dataloader, metric)
+        super().__init__(
+            id,
+            weight,
+            model,
+            loss_fn,
+            dataloader,
+            cfg,
+            outfile,
+            test_dataloader,
+            metric,
+        )
         self.__dict__.update(kwargs)
-        super(ClientOptim, self).client_log_title()
+        super().client_log_title()
 
     def update(self):
         self.model.to(self.cfg.device)
-        optimizer = eval(self.optim)(self.model.parameters(), **self.optim_args)
+        optimizer = get_torch_optimizer(
+            optimizer_name=self.optim,
+            model_parameters=self.model.parameters(),
+            **self.optim_args,
+        )
 
         ## Initial evaluation
-        if self.cfg.validation == True and self.test_dataloader != None:
-            start_time=time.time()
-            test_loss, test_accuracy = super(ClientOptim, self).client_validation()
+        if self.cfg.validation and self.test_dataloader is not None:
+            start_time = time.time()
+            test_loss, test_accuracy = super().client_validation()
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)    
+            super().client_log_content(0, per_iter_time, 0, 0, test_loss, test_accuracy)
 
-        ## Local training 
+        ## Local training
         for t in range(self.num_local_epochs):
-            start_time=time.time()
+            start_time = time.time()
             train_loss, target_true, target_pred = 0, [], []
-            for data, target in self.dataloader:                
+            for data, target in self.dataloader:
                 data = data.to(self.cfg.device)
                 target = target.to(self.cfg.device)
                 optimizer.zero_grad()
@@ -51,24 +79,32 @@ class ClientOptim(BaseClient):
                 optimizer.step()
 
             train_loss /= len(self.dataloader)
-            target_true, target_pred = np.concatenate(target_true), np.concatenate(target_pred)
+            target_true, target_pred = (
+                np.concatenate(target_true),
+                np.concatenate(target_pred),
+            )
             train_accuracy = float(self.metric(target_true, target_pred))
-            
+
             ## Validation
-            if self.cfg.validation == True and self.test_dataloader != None:
-                test_loss, test_accuracy = super(ClientOptim, self).client_validation()
+            if self.cfg.validation and self.test_dataloader is not None:
+                test_loss, test_accuracy = super().client_validation()
             else:
                 test_loss, test_accuracy = 0, 0
             per_iter_time = time.time() - start_time
-            super(ClientOptim, self).client_log_content(t+1, per_iter_time, train_loss, train_accuracy, 0, 0)
+            super().client_log_content(
+                t + 1, per_iter_time, train_loss, train_accuracy, 0, 0
+            )
 
             ## save model.state_dict()
-            if self.cfg.save_model_state_dict == True:
+            if self.cfg.save_model_state_dict:
                 path = self.cfg.output_dirname + "/client_%s" % (self.id)
                 if not os.path.exists(path):
                     os.makedirs(path, exist_ok=True)
-                torch.save(self.model.state_dict(), os.path.join(path, "%s_%s.pt" % (self.round, t)))
- 
+                torch.save(
+                    self.model.state_dict(),
+                    os.path.join(path, f"{self.round}_{t}.pt"),
+                )
+
         self.round += 1
 
         ## Differential Privacy
@@ -76,12 +112,11 @@ class ClientOptim(BaseClient):
         if self.use_dp:
             sensitivity = 2.0 * self.clip_value * self.optim_args.lr
             scale_value = sensitivity / self.epsilon
-            super(ClientOptim, self).laplace_mechanism_output_perturb(scale_value)
+            super().laplace_mechanism_output_perturb(scale_value)
 
         ## Move the model parameter to CPU (if not) for communication
-        if (self.cfg.device == "cuda"):            
+        if self.cfg.device == "cuda":
             for k in self.primal_state:
                 self.primal_state[k] = self.primal_state[k].cpu()
 
         return self.primal_state
- 

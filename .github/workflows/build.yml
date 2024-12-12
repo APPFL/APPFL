@@ -21,9 +21,9 @@ jobs:
         mpi: ['openmpi']
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Set up MPI ${{ matrix.mpi }}
@@ -33,15 +33,15 @@ jobs:
     - name: Install package and dependencies
       run: |
         sudo apt install libopenmpi-dev
-        python -m pip install --upgrade pip   
-        python -m pip install flake8             
+        python -m pip install --upgrade pip
+        python -m pip install flake8
         python -m pip install -e ".[dev,examples,analytics]"
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors 
+        # stop the build if there are Python syntax errors
         flake8 . --count --select=E9,F63,F7 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test pytest with MPI
       run: |
-        mpirun -n 2 python3 -m pytest --with-mpi      
+        mpirun -n 2 python3 -m pytest --with-mpi

@@ -2,13 +2,18 @@
 Serial simulation of Federated learning.
 It should be noted that only synchronous FL can be simulated in this way.
 """
+
 import argparse
 from omegaconf import OmegaConf
 from appfl.agent import ClientAgent, ServerAgent
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument("--server_config", type=str, default="./resources/configs/mnist/server_fedavg.yaml")
-argparser.add_argument("--client_config", type=str, default="./resources/configs/mnist/client_1.yaml")
+argparser.add_argument(
+    "--server_config", type=str, default="./resources/configs/mnist/server_fedavg.yaml"
+)
+argparser.add_argument(
+    "--client_config", type=str, default="./resources/configs/mnist/client_1.yaml"
+)
 argparser.add_argument("--num_clients", type=int, default=10)
 args = argparser.parse_args()
 
@@ -22,16 +27,20 @@ if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
 server_agent = ServerAgent(server_agent_config=server_agent_config)
 
 # Load base client configurations and set corresponding fields for different clients
-client_agent_configs = [OmegaConf.load(args.client_config) for _ in range(args.num_clients)]
+client_agent_configs = [
+    OmegaConf.load(args.client_config) for _ in range(args.num_clients)
+]
 for i in range(args.num_clients):
-    client_agent_configs[i].train_configs.logging_id = f'Client{i+1}'
+    client_agent_configs[i].train_configs.logging_id = f"Client{i+1}"
     client_agent_configs[i].data_configs.dataset_kwargs.num_clients = args.num_clients
     client_agent_configs[i].data_configs.dataset_kwargs.client_id = i
-    client_agent_configs[i].data_configs.dataset_kwargs.visualization = True if i == 0 else False
+    client_agent_configs[i].data_configs.dataset_kwargs.visualization = (
+        True if i == 0 else False
+    )
 
 # Load client agents
 client_agents = [
-    ClientAgent(client_agent_config=client_agent_configs[i]) 
+    ClientAgent(client_agent_config=client_agent_configs[i])
     for i in range(args.num_clients)
 ]
 
@@ -49,8 +58,7 @@ for client_agent in client_agents:
 for i in range(args.num_clients):
     sample_size = client_agents[i].get_sample_size()
     server_agent.set_sample_size(
-        client_id=client_agents[i].get_id(), 
-        sample_size=sample_size
+        client_id=client_agents[i].get_id(), sample_size=sample_size
     )
 
 while not server_agent.training_finished():
@@ -59,12 +67,17 @@ while not server_agent.training_finished():
         # Client local training
         client_agent.train()
         local_model = client_agent.get_parameters()
+        if isinstance(local_model, tuple):
+            local_model, metadata = local_model[0], local_model[1]
+        else:
+            metadata = {}
         # "Send" local model to server and get a Future object for the new global model
         # The Future object will be resolved when the server receives local models from all clients
         new_global_model_future = server_agent.global_update(
-            client_id=client_agent.get_id(), 
+            client_id=client_agent.get_id(),
             local_model=local_model,
             blocking=False,
+            **metadata,
         )
         new_global_models.append(new_global_model_future)
     # Load the new global model from the server

@@ -1,10 +1,12 @@
 import grpc
 from appfl.login_manager import BaseAuthenticator
 
+
 class APPFLAuthMetadataProvider(grpc.AuthMetadataPlugin):
     """
     `APPFLAuthMetadataProvider` is used to attach authentication tokens to the metadata of each RPC.
     """
+
     def __init__(self, authenticator: BaseAuthenticator):
         self.authenticator = authenticator
 
@@ -19,14 +21,19 @@ class APPFLAuthMetadataProvider(grpc.AuthMetadataPlugin):
         metadata = tuple(metadata)
         callback(metadata, None)
 
+
 class APPFLAuthMetadataInterceptor(grpc.ServerInterceptor):
     """
     `APPFLAuthMetadataInterceptor` is used to intercept the metadata of each RPC and validate the authentication tokens.
     """
+
     def __init__(self, authenticator: BaseAuthenticator):
         self.authenticator = authenticator
+
         def abort(ignored_request, context):
-            context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid Authentication Tokens.")
+            context.abort(
+                grpc.StatusCode.UNAUTHENTICATED, "Invalid Authentication Tokens."
+            )
 
         self._abortion = grpc.unary_unary_rpc_method_handler(abort)
 

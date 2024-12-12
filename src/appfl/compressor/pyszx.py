@@ -1,10 +1,11 @@
 """
 Python API for SZx
 """
+
 import sys
 import ctypes
 import numpy as np
-from ctypes.util import find_library
+
 
 class SZx:
     def __init__(self, szxpath=None):
@@ -80,7 +81,7 @@ class SZx:
         data_range = np.max(src_data) - np.min(src_data)
         diff = src_data - dec_data
         max_diff = np.max(abs(diff))
-        print("abs err={:.8G}".format(max_diff))
+        print(f"abs err={max_diff:.8G}")
         mse = np.mean(diff**2)
         nrmse = np.sqrt(mse) / data_range
         psnr = 20 * np.log10(data_range) - 10 * np.log10(mse)

@@ -1,6 +1,7 @@
 import torch
 from torch.nn.modules.loss import _Loss
 
+
 def get_dice_score(output, target, epsilon=1e-9):
     """Get dice score to evaluate the semantic segmentation model.
     Its value lies between 0 and 1. The more the score is close to 1,
@@ -35,9 +36,10 @@ def get_dice_score(output, target, epsilon=1e-9):
     dice_score = num / denom
     return dice_score
 
+
 class BaselineLoss(_Loss):
     def __init__(self):
-        super(BaselineLoss, self).__init__()
+        super().__init__()
 
     def forward(self, output: torch.Tensor, target: torch.Tensor):
         """Get dice loss to evaluate the semantic segmentation model.

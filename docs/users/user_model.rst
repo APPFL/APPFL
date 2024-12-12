@@ -24,12 +24,12 @@ User-defined model can be any class derived from ``torch.nn.Module`` with any ke
 
         def forward(self, x):
             out = self.fc(x)
-            return out 
+            return out
 
 To use the model, users need to provide the absolute/relative path to the model definition file, the name of the model class, and the keyword arguments to the model class if needed. For example, to use the FC layer defined above, users can add the following lines to the server configuration file:
 
 .. code-block:: yaml
-    
+
     client_configs:
         ...
         model_configs:
@@ -42,7 +42,7 @@ To use the model, users need to provide the absolute/relative path to the model 
 Load model from a function
 --------------------------
 
-Sometimes, it could be more convenient to define the model from a function that returns the model, allowing users to easily perform actions such as loading pretrained weigths, freezing certain layers, changing the output head, etc. For example, we define a function that returns a pretrained Vision Transformer (ViT) model with certain frozen layers for binary classification as follows:
+Sometimes, it could be more convenient to define the model from a function that returns the model, allowing users to easily perform actions such as loading pretrained weights, freezing certain layers, changing the output head, etc. For example, we define a function that returns a pretrained Vision Transformer (ViT) model with certain frozen layers for binary classification as follows:
 
 .. code-block:: python
 
@@ -70,7 +70,7 @@ Sometimes, it could be more convenient to define the model from a function that 
 To use the model, users need to provide the absolute/relative path to the model definition file, the name of the function, and the keyword arguments to the model function if necessary. For example, to use the ViT model defined above, users should add the following lines to the server configuration file:
 
 .. code-block:: yaml
-    
+
     client_configs:
         ...
         model_configs:

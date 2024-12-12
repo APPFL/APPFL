@@ -11,7 +11,7 @@ For example, suppose that we have a pretrained model stored as ``model_pretraine
 Then, one can revise the configurations as follows:
 
 .. code-block:: python
-    
+
     # Loading Configurations
     from OmegaConf import OmegaConf
     from appfl.config import Config
@@ -24,7 +24,7 @@ Then, one can revise the configurations as follows:
 Saving
 ------
 After federated learning, the resulting models can be stored via ``torch.save()``.
-To use this feature, one should revise the configuration accordingly as well. See the followings for an example:
+To use this feature, one should revise the configuration accordingly as well. See the following for an example:
 
 .. code-block:: python
 
@@ -42,6 +42,6 @@ By setting ``checkpoints_interval = 2``, trained model will be saved for every 2
 
     For example, if my container ID is ``aa90d20f96c0d143012d2e6ca7d7820ed9ed8a36b163cddf8bfd6dd0e6228dab`` then
 
-	.. code-block:: console
+	.. code-block:: bash
 
 		docker cp aa90d20f96c0d143012d2e6ca7d7820ed9ed8a36b163cddf8bfd6dd0e6228dab:/APPFL/save_models/ .

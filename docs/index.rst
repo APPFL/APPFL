@@ -11,7 +11,7 @@ APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source softwar
 With this framework, developers and/or users can easily
 
 * Train any user-defined machine learning model on decentralized data with optional differential privacy and client authentication,
-* Simulate various synchronous, asynchronous and PPFL algorihtms on high-performance computing (HPC) architecture with MPI, 
+* Simulate various synchronous, asynchronous and PPFL algorithms on high-performance computing (HPC) architecture with MPI,
 * Implement customizations in a plug-and-play manner for all aspects of FL, including aggregation algorithms, server scheduling strategies, and client local trainers.
 
 Technical Components
@@ -21,40 +21,40 @@ APPFL is primarily composed of the following six technical components: *Aggregat
 
 .. grid:: 3
 
-   .. grid-item-card:: 
-      
+   .. grid-item-card::
+
       Aggregator
       ^^^^^^^^^^
       Supports several popular algorithms to aggregate one or several client local models.
 
-   .. grid-item-card:: 
-      
+   .. grid-item-card::
+
       Scheduler
       ^^^^^^^^^
-      Supports several synchronous and asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models. 
+      Supports several synchronous and asynchronous scheduling algorithms at the server-side to deal with different arrival times of client local models.
 
-   .. grid-item-card:: 
-      
+   .. grid-item-card::
+
       Trainer
       ^^^^^^^
       Supports several client local trainers for various training tasks.
 
 .. grid:: 3
 
-   .. grid-item-card:: 
-      
+   .. grid-item-card::
+
       Privacy
       ^^^^^^^
       Supports several global/local differential privacy schemes.
 
-   .. grid-item-card:: 
-      
+   .. grid-item-card::
+
       Communicator
       ^^^^^^^^^^^^
       Supports MPI for single-machine/cluster simulation, and gRPC and Globus Compute with authenticator for secure distributed training.
 
-   .. grid-item-card:: 
-      
+   .. grid-item-card::
+
       Compressor
       ^^^^^^^^^^
       Supports several lossy compressors, including `SZ2 <https://github.com/szcompressor/SZ>`_, `SZ3 <https://github.com/szcompressor/SZ3>`_, `ZFP <https://pypi.org/project/zfpy/>`_, and `SZx <https://github.com/szcompressor/SZx>`_.
@@ -70,15 +70,16 @@ Main Topics
    install/index
    tutorials/index
    users/index
-   publication/index
    community/index
+   contribution/index
+   publication/index
    changelog/index
 
 
 Citation
 ========
 
-If you find APPFL useful for your research or development, please cite the following paper:
+If you find APPFL useful for your research or development, please cite the following papers:
 
 .. code-block:: latex
 
