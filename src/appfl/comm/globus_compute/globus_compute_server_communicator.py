@@ -101,7 +101,11 @@ class GlobusComputeServerCommunicator:
             client_id = str(
                 client_config.client_id
                 if hasattr(client_config, "client_id")
-                else client_config.endpoint_id
+                else (
+                    client_config.train_configs.logging_id
+                    if (hasattr(client_config, "train_configs") and hasattr(client_config.train_configs, "logging_id"))
+                    else client_config.endpoint_id
+                )
             )
             assert (
                 client_id not in _client_id_check_set
@@ -109,13 +113,12 @@ class GlobusComputeServerCommunicator:
             _client_id_check_set.add(client_id)
             client_endpoint_id = client_config.endpoint_id
             client_config.experiment_id = experiment_id
-            # Remove deprecated logging_id from the client configuration if exists
+            # Raise deprecation warning for logging_id
             if hasattr(client_config.train_configs, "logging_id"):
                 warnings.warn(
                     "client_agent_config.train_configs.logging_id is deprecated. Please use client_id instead.",
                     DeprecationWarning,
                 )
-                del client_config.train_configs.logging_id
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
                 client_endpoint_id=client_endpoint_id,
