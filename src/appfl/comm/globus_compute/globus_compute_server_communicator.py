@@ -3,6 +3,7 @@ import time
 import uuid
 import pathlib
 import logging
+import warnings
 from datetime import datetime
 from omegaconf import OmegaConf
 from collections import OrderedDict
@@ -108,8 +109,13 @@ class GlobusComputeServerCommunicator:
             _client_id_check_set.add(client_id)
             client_endpoint_id = client_config.endpoint_id
             client_config.experiment_id = experiment_id
-            if not hasattr(client_config.train_configs, "logging_id"):
-                client_config.train_configs.logging_id = client_id
+            # Remove deprecated logging_id from the client configuration if exists
+            if hasattr(client_config.train_configs, "logging_id"):
+                warnings.warn(
+                    "client_agent_config.train_configs.logging_id is deprecated. Please use client_id instead.",
+                    DeprecationWarning,
+                )
+                del client_config.train_configs.logging_id
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
                 client_endpoint_id=client_endpoint_id,
