@@ -129,7 +129,7 @@ class ClientAgent:
             output_filename = self.client_agent_config.train_configs.get(
                 "checkpoint_filename", "checkpoint"
             )
-            curr_time_str = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+            curr_time_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             checkpoint_path = (
                 f"{output_dir}/{output_filename}_{self.get_id()}_{curr_time_str}.pth"
             )
