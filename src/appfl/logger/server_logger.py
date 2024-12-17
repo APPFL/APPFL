@@ -18,7 +18,7 @@ class ServerAgentFileLogger:
         self, file_dir: str = "", file_name: str = "", experiment_id: str = ""
     ) -> None:
         if file_name != "":
-            file_name += f"_Server_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
+            file_name += f"_Server_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         fmt = logging.Formatter("[%(asctime)s %(levelname)-4s server]: %(message)s")
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
@@ -39,6 +39,7 @@ class ServerAgentFileLogger:
             if not os.path.exists(file_dir):
                 pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
             real_file_name = f"{file_dir}/{file_name}.txt"
+            print(real_file_name)
             f_handler = logging.FileHandler(real_file_name)
             self.log_filepath = real_file_name
             f_handler.setLevel(logging.INFO)

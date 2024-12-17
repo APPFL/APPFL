@@ -25,7 +25,7 @@ class ClientAgentFileLogger:
     ) -> None:
         if file_name != "":
             file_name += f"_{logging_id}" if logging_id != "" else ""
-            file_name += f"_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
+            file_name += f"_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         fmt = (
             logging.Formatter("[%(asctime)s %(levelname)-4s]: %(message)s")
             if logging_id == ""
