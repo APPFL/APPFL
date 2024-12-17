@@ -86,7 +86,7 @@ class GlobusComputeServerCommunicator:
         ), "Number of clients in the server configuration does not match the number of client configurations."
         client_config_from_server = server_agent_config.client_configs
         # Create a unique experiment ID for this federated learning experiment
-        experiment_id = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+        experiment_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         # Initiate the Globus Compute client endpoints.
         self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
         _client_id_check_set = set()
