@@ -39,7 +39,6 @@ class ServerAgentFileLogger:
             if not os.path.exists(file_dir):
                 pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
             real_file_name = f"{file_dir}/{file_name}.txt"
-            print(real_file_name)
             f_handler = logging.FileHandler(real_file_name)
             self.log_filepath = real_file_name
             f_handler.setLevel(logging.INFO)
