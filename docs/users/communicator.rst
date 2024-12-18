@@ -59,9 +59,9 @@ The server can handle the following tasks:
             """
             Client requests the FL configurations that are shared among all clients from the server.
             :param: `request.header.client_id`: A unique client ID
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.header.status`: Server status
-            :return `response.configuration`: JSON serialized FL configurations
+            :return `response.configuration`: YAML serialized FL configurations
             """
 
         def GetGlobalModel(self, request, context):
@@ -70,7 +70,7 @@ The server can handle the following tasks:
             clients to get the initial and final global model. Returns are sent back as a
             stream of messages.
             :param: `request.header.client_id`: A unique client ID
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.header.status`: Server status
             :return `response.global_model`: Serialized global model
             """
@@ -85,7 +85,7 @@ The server can handle the following tasks:
             If concatenating all messages in `request_iterator` to get a `request`, then
             :param: request.header.client_id: A unique client ID
             :param: request.local_model: Serialized local model
-            :param: request.meta_data: JSON serialized metadata dictionary (if needed)
+            :param: request.meta_data: YAML serialized metadata dictionary (if needed)
             """
 
         def InvokeCustomAction(self, request, context):
@@ -95,9 +95,9 @@ The server can handle the following tasks:
             function to perform the action.
             :param: `request.header.client_id`: A unique client ID
             :param: `request.action`: A string tag representing the custom action
-            :param: `request.meta_data`: JSON serialized metadata dictionary for the custom action (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary for the custom action (if needed)
             :return `response.header.status`: Server status
-            :return `response.meta_data`: JSON serialized metadata dictionary for return values (if needed)
+            :return `response.meta_data`: YAML serialized metadata dictionary for return values (if needed)
             """
 
 gRPC Client Communicator
@@ -241,9 +241,9 @@ The server can handle the following tasks:
             """
             Client requests the FL configurations that are shared among all clients from the server.
             :param: `client_id`: A unique client ID (only for logging purpose now)
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.status`: Server status
-            :return `response.meta_data`: JSON serialized FL configurations
+            :return `response.meta_data`: YAML serialized FL configurations
             """
 
         def _get_global_model(
@@ -256,10 +256,10 @@ The server can handle the following tasks:
                 clients to get the initial and final global model.
             :param: `client_id`: A unique client ID, which is the rank of the client in
                 MPI (only for logging purpose now)
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.status`: Server status
             :return `response.payload`: Serialized global model
-            :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+            :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
             """
 
         def _update_global_model(
@@ -272,10 +272,10 @@ The server can handle the following tasks:
             and return the updated global model to the client.
             :param: `client_id`: A unique client ID, which is the rank of the client in MPI.
             :param: `request.payload`: Serialized local model
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.status`: Server status
             :return `response.payload`: Serialized updated global model
-            :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+            :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
             """
 
         def _invoke_custom_action(
@@ -287,9 +287,9 @@ The server can handle the following tasks:
             Invoke custom action on the server.
             :param: `client_id`: A unique client ID, which is the rank of the client in
                 MPI (only for logging purpose now)
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.status`: Server status
-            :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+            :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
             """
 
 MPI Client Communicator

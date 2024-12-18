@@ -91,12 +91,12 @@ class ClientAgent:
         """Return a unique client id for server to distinguish clients."""
         if not hasattr(self, "client_id"):
             if hasattr(self.client_agent_config, "client_id"):
-                self.client_id = self.client_agent_config.client_id
+                self.client_id = str(self.client_agent_config.client_id)
             elif (
                 hasattr(self.client_agent_config, "train_configs") and
                 hasattr(self.client_agent_config.train_configs, "logging_id")
             ):
-                self.client_id = self.client_agent_config.train_configs.logging_id
+                self.client_id = str(self.client_agent_config.train_configs.logging_id)
                 # Emit a deprecated warning
                 warnings.warn(
                     message="client_agent_config.train_configs.logging_id is deprecated. Please use client_id instead.",
