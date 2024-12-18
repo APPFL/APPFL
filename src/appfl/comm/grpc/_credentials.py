@@ -8,11 +8,11 @@ from .utils import load_credential_from_file
 
 current_path = os.path.dirname(__file__)
 SERVER_CERTIFICATE = load_credential_from_file(
-    os.path.join(current_path, "credentials/localhost.crt")
+    os.path.join(current_path, "credentials", "localhost.crt")
 )
 SERVER_CERTIFICATE_KEY = load_credential_from_file(
-    os.path.join(current_path, "credentials/localhost.key")
+    os.path.join(current_path, "credentials", "localhost.key")
 )
 ROOT_CERTIFICATE = load_credential_from_file(
-    os.path.join(current_path, "credentials/root.crt")
+    os.path.join(current_path, "credentials", "root.crt")
 )
