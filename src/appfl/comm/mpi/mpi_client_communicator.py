@@ -106,6 +106,7 @@ class MPIClientCommunicator:
             and the user only wants to send one model at a time.
         :param kwargs (optional): additional metadata to be sent to the server. When sending local models for multiple clients,
             use the client ID as the key and the metadata as the value, e.g.,
+            
         ```
         update_global_model(
             local_model=...,
@@ -117,9 +118,10 @@ class MPIClientCommunicator:
         ```
         :return model: the updated global model
 
-            - **Note**: the global model is only one model even if multiple local models are sent, which means that
+            - Note: the global model is only one model even if multiple local models are sent, which means that
             the server should have synchronous aggregation. If asynchronous aggregation is needed, the user should
             pass the local models one by one.
+            
         :return meta_data: additional metadata from the server. When updating local models for multiple clients, the response will
             be a dictionary with the client ID as the key and the response as the value, e.g.,
         ```
@@ -127,6 +129,7 @@ class MPIClientCommunicator:
             client_id1: {ret1: value1, ret2: value2},
             client_id2: {ret1: value1, ret2: value2},
         }
+        ```
         """
         if "kwargs" in kwargs:
             kwargs = kwargs["kwargs"]
@@ -190,6 +193,7 @@ class MPIClientCommunicator:
             client_id1: {ret1: value1, ret2: value2},
             client_id2: {ret1: value1, ret2: value2},
         }
+        ```
         """
         # Parse the kwargs if the user passes the kwargs as a dictionary
         if "kwargs" in kwargs:

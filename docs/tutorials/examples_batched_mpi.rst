@@ -50,14 +50,14 @@ Below shows the difference between the non-batched and batched MPI examples.
     else:
         # Set client configurations and create client agent
     -   client_agent_config = OmegaConf.load(args.client_config)
-    -   client_agent_config.train_configs.logging_id = f'Client{rank}'
+    -   client_agent_config.client_id = f'Client{rank}'
     -   client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     -   client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
     -   client_agent_config.data_configs.dataset_kwargs.visualization = True if rank == 1 else False
     -   client_agent = ClientAgent(client_agent_config=client_agent_config)
     +   client_agents = []
     +   for client_id in client_batch[rank - 1]:
-    +       client_agent_config.train_configs.logging_id = f'Client{client_id}'
+    +       client_agent_config.client_id = f'Client{client_id}'
     +       client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     +       client_agent_config.data_configs.dataset_kwargs.client_id = client_id
     +       client_agent_config.data_configs.dataset_kwargs.visualization = True if client_id == 0 else False
