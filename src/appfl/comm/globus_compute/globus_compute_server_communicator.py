@@ -103,7 +103,10 @@ class GlobusComputeServerCommunicator:
                 if hasattr(client_config, "client_id")
                 else (
                     client_config.train_configs.logging_id
-                    if (hasattr(client_config, "train_configs") and hasattr(client_config.train_configs, "logging_id"))
+                    if (
+                        hasattr(client_config, "train_configs")
+                        and hasattr(client_config.train_configs, "logging_id")
+                    )
                     else client_config.endpoint_id
                 )
             )

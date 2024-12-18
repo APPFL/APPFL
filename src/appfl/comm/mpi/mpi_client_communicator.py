@@ -28,9 +28,9 @@ class MPIClientCommunicator:
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
         self.server_rank = server_rank
-        assert not (client_id is not None and client_ids is not None), (
-            "client_id and client_ids are mutually exclusive. Use client_id for one client and client_ids for multiple clients."
-        )
+        assert not (
+            client_id is not None and client_ids is not None
+        ), "client_id and client_ids are mutually exclusive. Use client_id for one client and client_ids for multiple clients."
         if client_ids is not None:
             self.client_ids = [client_id for client_id in client_ids]
         elif client_id is not None:
@@ -106,7 +106,7 @@ class MPIClientCommunicator:
             and the user only wants to send one model at a time.
         :param kwargs (optional): additional metadata to be sent to the server. When sending local models for multiple clients,
             use the client ID as the key and the metadata as the value, e.g.,
-            
+
         ```
         update_global_model(
             local_model=...,
@@ -121,7 +121,7 @@ class MPIClientCommunicator:
             - Note: the global model is only one model even if multiple local models are sent, which means that
             the server should have synchronous aggregation. If asynchronous aggregation is needed, the user should
             pass the local models one by one.
-            
+
         :return meta_data: additional metadata from the server. When updating local models for multiple clients, the response will
             be a dictionary with the client ID as the key and the response as the value, e.g.,
         ```
@@ -137,9 +137,7 @@ class MPIClientCommunicator:
             kwargs["_torch_serialized"] = True
         else:
             kwargs["_torch_serialized"] = False
-        kwargs["_client_ids"] = (
-            self.client_ids if client_id is None else [client_id]
-        )
+        kwargs["_client_ids"] = self.client_ids if client_id is None else [client_id]
         meta_data = yaml.dump(kwargs)
         request = MPITaskRequest(
             payload=model_to_byte(local_model)
@@ -199,9 +197,7 @@ class MPIClientCommunicator:
         if "kwargs" in kwargs:
             kwargs = kwargs["kwargs"]
         kwargs["action"] = action
-        kwargs["_client_ids"] = (
-            self.client_ids if client_id is None else [client_id]
-        )
+        kwargs["_client_ids"] = self.client_ids if client_id is None else [client_id]
         meta_data = yaml.dump(kwargs)
         request = MPITaskRequest(
             meta_data=meta_data,

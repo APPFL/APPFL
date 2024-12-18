@@ -90,7 +90,9 @@ class MPIServerCommunicator:
         :return `response.status`: Server status
         :return `response.meta_data`: YAML serialized FL configurations
         """
-        meta_data = yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        meta_data = (
+            yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        )
         client_ids = meta_data.get("_client_ids", [client_rank])
         if len(client_ids) > 1:
             self.logger.info(
@@ -125,7 +127,9 @@ class MPIServerCommunicator:
         :return `response.payload`: Serialized global model
         :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
         """
-        meta_data = yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        meta_data = (
+            yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        )
         client_ids = meta_data.get("_client_ids", [client_rank])
         if len(client_ids) > 1:
             self.logger.info(
@@ -170,7 +174,9 @@ class MPIServerCommunicator:
         :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
         """
         local_model = request.payload
-        meta_data = yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        meta_data = (
+            yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        )
         if meta_data.get("_torch_serialized", True):
             local_model = byte_to_model(local_model)
         # read the client ids from the metadata if any
@@ -242,7 +248,9 @@ class MPIServerCommunicator:
         :return `response.status`: Server status
         :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
         """
-        meta_data = yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        meta_data = (
+            yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        )
         assert "action" in meta_data, "The action is not specified in the metadata"
         action = meta_data["action"]
         client_ids = meta_data.get("_client_ids", [client_rank])
@@ -254,7 +262,7 @@ class MPIServerCommunicator:
             self.logger.info(
                 f"Received InvokeCustomAction ({meta_data['action']}) request from {client_ids[0]} [MPI rank {client_rank}]"
             )
-        
+
         del meta_data["action"]
         if action == "set_sample_size":
             sync = True
