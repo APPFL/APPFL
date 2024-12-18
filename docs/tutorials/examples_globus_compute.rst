@@ -76,17 +76,17 @@ After the configuration, you can start the endpoint by the following command:
 Client Configurations
 ---------------------
 
-The server needs to collect certain information from the client to run the federated learning experiment. Below is an example of a client configuration file. It is available at ``examples/resources/configs_gc/clients.yaml`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/clients.yaml>`_.
+The server needs to collect certain information from the client to run the federated learning experiment. Below is an example of a client configuration file. It is available at ``examples/resources/configs_gc/clients.yaml`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/clients.yaml>`_.
 
 .. code-block:: yaml
 
   clients:
     - endpoint_id: "ed4a1881-120e-4f67-88d7-876cd280feef"
+      client_id: "Client1"
       train_configs:
         # Device [Optional]: default is "cpu"
         device: "cpu"
         # Logging and outputs [Optional]
-        logging_id: "Client1"
         logging_output_dirname: "./output"
         logging_output_filename: "result"
 
@@ -101,11 +101,11 @@ The server needs to collect certain information from the client to run the feder
           visualization: False
 
     - endpoint_id: "762629a0-f3b3-44b5-9acf-2f9b0ab9310f"
+      client_id: "Client2"
       train_configs:
         # Device [Optional]: default is "cpu"
         device: "cpu"
         # Logging and outputs [Optional]
-        logging_id: "Client2"
         logging_output_dirname: "./output"
         logging_output_filename: "result"
 

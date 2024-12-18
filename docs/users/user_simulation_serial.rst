@@ -33,7 +33,7 @@ Then, user needs to change certain fields in the server agent configuration to m
 
     # Update client agent configurations
     for i in range(args.num_clients):
-        client_agent_configs[i].train_configs.logging_id = f'Client{i+1}'
+        client_agent_configs[i].client_id = f'Client{i+1}'
         client_agent_configs[i].data_configs.dataset_kwargs.num_clients = args.num_clients
         client_agent_configs[i].data_configs.dataset_kwargs.client_id = i
         client_agent_configs[i].data_configs.dataset_kwargs.visualization = True if i == 0 else False

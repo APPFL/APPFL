@@ -31,7 +31,7 @@ client_agent_configs = [
     OmegaConf.load(args.client_config) for _ in range(args.num_clients)
 ]
 for i in range(args.num_clients):
-    client_agent_configs[i].train_configs.logging_id = f"Client{i+1}"
+    client_agent_configs[i].client_id = f"Client{i+1}"
     client_agent_configs[i].data_configs.dataset_kwargs.num_clients = args.num_clients
     client_agent_configs[i].data_configs.dataset_kwargs.client_id = i
     client_agent_configs[i].data_configs.dataset_kwargs.visualization = (

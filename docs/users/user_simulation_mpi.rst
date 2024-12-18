@@ -35,7 +35,7 @@ First, user needs to load configuration files for the client and server agents. 
     else:
         # Load and set client configuration
         client_agent_config = OmegaConf.load("<path_to_client_config>.yaml")
-        client_agent_config.train_configs.logging_id = f'Client{rank}'
+        client_agent_config.client_id = f'Client{rank}'
         client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
         client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
         client_agent_config.data_configs.dataset_kwargs.visualization = True if rank == 1 else False

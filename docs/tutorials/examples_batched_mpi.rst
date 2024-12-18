@@ -50,21 +50,21 @@ Below shows the difference between the non-batched and batched MPI examples.
     else:
         # Set client configurations and create client agent
     -   client_agent_config = OmegaConf.load(args.client_config)
-    -   client_agent_config.train_configs.logging_id = f'Client{rank}'
+    -   client_agent_config.client_id = f'Client{rank}'
     -   client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     -   client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
     -   client_agent_config.data_configs.dataset_kwargs.visualization = True if rank == 1 else False
     -   client_agent = ClientAgent(client_agent_config=client_agent_config)
     +   client_agents = []
     +   for client_id in client_batch[rank - 1]:
-    +       client_agent_config.train_configs.logging_id = f'Client{client_id}'
+    +       client_agent_config.client_id = f'Client{client_id}'
     +       client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     +       client_agent_config.data_configs.dataset_kwargs.client_id = client_id
     +       client_agent_config.data_configs.dataset_kwargs.visualization = True if client_id == 0 else False
     +       client_agents.append(ClientAgent(client_agent_config=client_agent_config))
         # Create the client communicator
-    -   client_communicator = MPIClientCommunicator(comm, server_rank=0)
-    +   client_communicator = MPIClientCommunicator(comm, server_rank=0, client_ids=client_batch[rank - 1])
+    -   client_communicator = MPIClientCommunicator(comm, server_rank=0, client_id=client_agent_config.client_id)
+    +   client_communicator = MPIClientCommunicator(comm, server_rank=0, client_ids=[f"Client{client_id}" for client_id in client_batch[rank - 1]])
         # Get and load the general client configurations
         client_config = client_communicator.get_configuration()
     -   client_agent.load_config(client_config)
@@ -80,7 +80,7 @@ Below shows the difference between the non-batched and batched MPI examples.
     -   client_communicator.invoke_custom_action(action='set_sample_size', sample_size=sample_size)
     +   client_sample_sizes = {
     +       client_id: {'sample_size': client_agent.get_sample_size()}
-    +       for client_id, client_agent in zip(client_batch[rank - 1], client_agents)
+    +       for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents)
     +   }
     +   client_communicator.invoke_custom_action(action='set_sample_size', kwargs=client_sample_sizes)
         # Generate data readiness report
@@ -89,7 +89,7 @@ Below shows the difference between the non-batched and batched MPI examples.
     -       client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)
     +       data_readiness = {
     +           client_id: client_agent.generate_readiness_report(client_config)
-    +           for client_id, client_agent in zip(client_batch[rank - 1], client_agents)
+    +           for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents)
     +       }
     +       client_communicator.invoke_custom_action(action='get_data_readiness_report', kwargs=data_readiness)
         # Local training and global model update iterations
@@ -103,7 +103,7 @@ Below shows the difference between the non-batched and batched MPI examples.
     -       new_global_model, metadata = client_communicator.update_global_model(local_model, **metadata)
     +       client_local_models = {}
     +       client_metadata = {}
-    +       for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
+    +       for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
     +           client_agent.train()
     +           local_model = client_agent.get_parameters()
     +           if isinstance(local_model, tuple):
@@ -115,7 +115,7 @@ Below shows the difference between the non-batched and batched MPI examples.
     +       if all(metadata[client_id]['status'] == 'DONE' for client_id in metadata):
                 break
     -       client_agent.load_parameters(new_global_model)
-    +       for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
+    +       for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
     +           client_agent.load_parameters(new_global_model)
         client_communicator.invoke_custom_action(action='close_connection')
 
@@ -159,7 +159,7 @@ Below shows the changes needed in local training part to run the batched MPI exa
     while True:
     -   client_local_models = {}
     -   client_metadata = {}
-    -   for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
+    -   for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
     -       client_agent.train()
     -       local_model = client_agent.get_parameters()
     -       if isinstance(local_model, tuple):
@@ -169,9 +169,9 @@ Below shows the changes needed in local training part to run the batched MPI exa
     -   new_global_model, metadata = client_communicator.update_global_model(client_local_models, kwargs=client_metadata)
     -   if all(metadata[client_id]['status'] == 'DONE' for client_id in metadata):
     -       break
-    -   for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
+    -   for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
     -       client_agent.load_parameters(new_global_model)
-    +   for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
+    +   for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
     +       client_agent.train()
     +       local_model = client_agent.get_parameters()
     +       if isinstance(local_model, tuple):

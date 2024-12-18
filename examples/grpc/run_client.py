@@ -1,10 +1,8 @@
 import argparse
-import warnings
 from omegaconf import OmegaConf
 from appfl.agent import ClientAgent
 from appfl.comm.grpc import GRPCClientCommunicator
 
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(

@@ -111,7 +111,7 @@ Similar to the MPI communicator, user needs to update the ``APPFL`` source code'
 
     def InvokeCustomAction(self, request, context):
         action = request.action
-        meta_data = json.loads(request.meta_data) if len(request.meta_data) > 0 else {}
+        meta_data = yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
         if action == "set_sample_size":
             ...
         elif action == "close_connection":
