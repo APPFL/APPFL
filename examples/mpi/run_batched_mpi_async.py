@@ -46,7 +46,7 @@ else:
     client_agents: List[ClientAgent] = []
     client_agent_config = OmegaConf.load(args.client_config)
     for client_id in client_batch[rank - 1]:
-        client_agent_config.train_configs.logging_id = f"Client{client_id}"
+        client_agent_config.client_id = f"Client{client_id}"
         client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
         client_agent_config.data_configs.dataset_kwargs.client_id = client_id
         client_agent_config.data_configs.dataset_kwargs.visualization = (
@@ -55,7 +55,9 @@ else:
         client_agents.append(ClientAgent(client_agent_config=client_agent_config))
     # Create the client communicator for batched clients
     client_communicator = MPIClientCommunicator(
-        comm, server_rank=0, client_ids=client_batch[rank - 1]
+        comm, 
+        server_rank=0, 
+        client_ids=[f"Client{client_id}" for client_id in client_batch[rank - 1]],
     )
     # Get and load the general client configurations
     client_config = client_communicator.get_configuration()
@@ -68,7 +70,8 @@ else:
     # Send the sample size to the server
     client_sample_sizes = {
         client_id: {"sample_size": client_agent.get_sample_size(), "sync": True}
-        for client_id, client_agent in zip(client_batch[rank - 1], client_agents)
+        for client_id, client_agent in 
+        zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents)
     }
     client_communicator.invoke_custom_action(
         action="set_sample_size", kwargs=client_sample_sizes
@@ -82,7 +85,8 @@ else:
     ):
         data_readiness = {
             client_id: client_agent.generate_readiness_report(client_config)
-            for client_id, client_agent in zip(client_batch[rank - 1], client_agents)
+            for client_id, client_agent in 
+            zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents)
         }
         client_communicator.invoke_custom_action(
             action="get_data_readiness_report", kwargs=data_readiness
@@ -91,7 +95,7 @@ else:
     # Local training and global model update iterations
     finish_flag = False
     while True:
-        for client_id, client_agent in zip(client_batch[rank - 1], client_agents):
+        for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
             client_agent.train()
             local_model = client_agent.get_parameters()
             if isinstance(local_model, tuple):
