@@ -44,4 +44,3 @@ pkgs.mkShellNoCC {
     fi
   '';
 }
-
