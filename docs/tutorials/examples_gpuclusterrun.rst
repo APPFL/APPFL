@@ -69,7 +69,7 @@ The Polaris supercomputer uses PBS workload manager for job management. Below is
 	python ./grpc/run_server.py --config ./resources/configs/cifar10/server_fedavg.yaml &
 	sleep 20
 	echo "Server is ready"
-	
+
 	# Launch the clients
 	python ./grpc/run_client.py --config ./resources/configs/cifar10/client_1.yaml &
 	python ./grpc/run_client.py --config ./resources/configs/cifar10/client_2.yaml &
