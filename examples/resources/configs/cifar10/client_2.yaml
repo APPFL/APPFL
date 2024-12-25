@@ -14,7 +14,7 @@ data_configs:
     num_clients: 2
     client_id: 1
     partition_strategy: "class_noniid"
-    visualization: True
+    visualization: False
     output_dirname: "./output"
     output_filename: "visualization.pdf"
 
