@@ -16,8 +16,8 @@ server_agent = ServerAgent(server_agent_config=server_agent_config)
 # Create a GRPC communicator using the server agent
 communicator = GRPCServerCommunicator(
     server_agent,
-    max_message_size=server_agent_config.server_configs.comm_configs.grpc_configs.max_message_size,
     logger=server_agent.logger,
+    **server_agent_config.server_configs.comm_configs.grpc_configs
 )
 
 # Start serving

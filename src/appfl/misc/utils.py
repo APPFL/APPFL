@@ -2,6 +2,7 @@ import os
 import ast
 import sys
 import copy
+import yaml
 import torch
 import random
 import string
@@ -370,6 +371,30 @@ def load_data_from_file(file_path: str, to_device=None):
     else:
         raise RuntimeError("File extension %s is not supported" % file_ext)
     return results
+
+
+def deserialize_yaml(
+    stream, 
+    trusted: bool = False,
+    warning_message: str = None,
+):
+    """
+    Deserialize a YAML object to a string.
+    :param stream: The YAML object to be serialized.
+    :param trusted: Whether the YAML object is trusted.
+    :param warning_message: The warning message to be displayed if the YAML object is not trusted.
+    :return: The serialized YAML object as a string.
+    """
+    try:
+        return yaml.safe_load(stream)
+    except yaml.YAMLError as e:
+        if trusted:
+            return yaml.load(stream, Loader=yaml.UnsafeLoader)
+        else:
+            if warning_message is not None:
+                raise ValueError(warning_message)
+            else:
+                raise ValueError(f"An error occurred: {e}, you may need to use the `trusted` flag to load the YAML object")
 
 
 def dump_data_to_file(obj, file_path: str):

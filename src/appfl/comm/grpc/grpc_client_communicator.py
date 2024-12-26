@@ -8,6 +8,7 @@ from .grpc_communicator_pb2 import (
     UpdateGlobalModelRequest,
     UpdateGlobalModelResponse,
     CustomActionRequest,
+    CustomActionResponse,
     ServerStatus,
 )
 from .grpc_communicator_pb2_grpc import GRPCCommunicatorStub
@@ -19,6 +20,7 @@ from appfl.comm.grpc import (
     deserialize_model,
     create_grpc_channel,
 )
+from appfl.misc.utils import deserialize_yaml
 
 
 class GRPCClientCommunicator:
@@ -64,6 +66,8 @@ class GRPCClientCommunicator:
         )
         grpc.channel_ready_future(channel).result(timeout=3600)
         self.stub = GRPCCommunicatorStub(channel)
+        self._use_authenticator = use_authenticator
+        self.kwargs = kwargs
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -113,7 +117,11 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
-        meta_data = yaml.safe_load(response.meta_data)
+        meta_data = deserialize_yaml(
+            response.meta_data,
+            trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
+            warning_message="Loading metadata fails due to untrusted data, you can fix this by setting `trusted=True` in grpc_configs or use an authenticator.",
+        )
         if len(meta_data) == 0:
             return model
         else:
@@ -154,7 +162,11 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
-        meta_data = yaml.safe_load(response.meta_data)
+        meta_data = deserialize_yaml(
+            response.meta_data,
+            trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
+            warning_message="Loading metadata fails due to untrusted data, you can fix this by setting `trusted=True` in grpc_configs or use an authenticator.",
+        )
         meta_data["status"] = (
             "DONE" if response.header.status == ServerStatus.DONE else "RUNNING"
         )
@@ -178,13 +190,24 @@ class GRPCClientCommunicator:
             action=action,
             meta_data=meta_data,
         )
-        response = self.stub.InvokeCustomAction(request, timeout=3600)
+        byte_received = b""
+        for byte in self.stub.InvokeCustomAction(
+            proto_to_databuffer(request, max_message_size=self.max_message_size),
+            timeout=3600,
+        ):
+            byte_received += byte.data_bytes
+        response = CustomActionResponse()
+        response.ParseFromString(byte_received)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         if len(response.results) == 0:
             return {}
         else:
             try:
-                return yaml.safe_load(response.results)
+                return deserialize_yaml(
+                    response.results,
+                    trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
+                    warning_message="Loading metadata fails due to untrusted data, you can fix this by setting `trusted=True` in grpc_configs or use an authenticator.",
+                )
             except:  # noqa E722
                 return {}
