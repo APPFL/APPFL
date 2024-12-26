@@ -1,5 +1,5 @@
 import grpc
-import json
+import yaml
 from .grpc_communicator_pb2 import (
     ClientHeader,
     ConfigurationRequest,
@@ -76,7 +76,7 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
-        meta_data = json.dumps(kwargs)
+        meta_data = yaml.dump(kwargs)
         request = ConfigurationRequest(
             header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
@@ -100,7 +100,7 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
-        meta_data = json.dumps(kwargs)
+        meta_data = yaml.dump(kwargs)
         request = GetGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
@@ -113,7 +113,7 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
-        meta_data = json.loads(response.meta_data)
+        meta_data = yaml.safe_load(response.meta_data)
         if len(meta_data) == 0:
             return model
         else:
@@ -133,7 +133,7 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
-        meta_data = json.dumps(kwargs)
+        meta_data = yaml.dump(kwargs)
         request = UpdateGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
             local_model=(
@@ -154,7 +154,7 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
-        meta_data = json.loads(response.meta_data)
+        meta_data = yaml.safe_load(response.meta_data)
         meta_data["status"] = (
             "DONE" if response.header.status == ServerStatus.DONE else "RUNNING"
         )
@@ -172,7 +172,7 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
-        meta_data = json.dumps(kwargs)
+        meta_data = yaml.dump(kwargs)
         request = CustomActionRequest(
             header=ClientHeader(client_id=client_id),
             action=action,
@@ -185,6 +185,6 @@ class GRPCClientCommunicator:
             return {}
         else:
             try:
-                return json.loads(response.results)
+                return yaml.safe_load(response.results)
             except:  # noqa E722
                 return {}

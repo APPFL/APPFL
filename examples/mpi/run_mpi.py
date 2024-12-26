@@ -1,5 +1,4 @@
 import argparse
-import warnings
 from mpi4py import MPI
 from omegaconf import OmegaConf
 from appfl.agent import ClientAgent, ServerAgent
@@ -7,7 +6,6 @@ from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 
 argparse = argparse.ArgumentParser()
 
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 argparse.add_argument(
     "--server_config",
     type=str,
@@ -39,7 +37,7 @@ if rank == 0:
 else:
     # Set the client configurations
     client_agent_config = OmegaConf.load(args.client_config)
-    client_agent_config.train_configs.logging_id = f"Client{rank}"
+    client_agent_config.client_id = f"Client{rank}"
     client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
     client_agent_config.data_configs.dataset_kwargs.visualization = (
@@ -47,7 +45,11 @@ else:
     )
     # Create the client agent and communicator
     client_agent = ClientAgent(client_agent_config=client_agent_config)
-    client_communicator = MPIClientCommunicator(comm, server_rank=0)
+    client_communicator = MPIClientCommunicator(
+        comm, 
+        server_rank=0, 
+        client_id=client_agent_config.client_id
+    )
     # Load the configurations and initial global model
     client_config = client_communicator.get_configuration()
     client_agent.load_config(client_config)
