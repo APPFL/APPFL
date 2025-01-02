@@ -254,7 +254,7 @@ class MPIServerCommunicator:
             self.logger.info(
                 f"Received InvokeCustomAction ({meta_data['action']}) request from {client_ids[0]} [MPI rank {client_rank}]"
             )
-        
+
         del meta_data["action"]
         if action == "set_sample_size":
             sync = True

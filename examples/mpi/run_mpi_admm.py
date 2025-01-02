@@ -56,9 +56,7 @@ else:
     # Create the client agent and communicator
     client_agent = ClientAgent(client_agent_config=client_agent_config)
     client_communicator = MPIClientCommunicator(
-        comm, 
-        server_rank=0, 
-        client_id=client_agent_config.client_id
+        comm, server_rank=0, client_id=client_agent_config.client_id
     )
     # Load the configurations and initial global model
     client_config = client_communicator.get_configuration()
