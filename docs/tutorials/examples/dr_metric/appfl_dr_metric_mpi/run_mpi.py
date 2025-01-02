@@ -31,7 +31,7 @@ if rank == 0:
 else:
     # Set the client configurations
     client_agent_config = OmegaConf.load(args.client_config)
-    client_agent_config.train_configs.logging_id = f"Client{rank}"
+    client_agent_config.client_id = f"Client{rank}"
     client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
     client_agent_config.data_configs.dataset_kwargs.visualization = (

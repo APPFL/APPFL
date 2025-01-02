@@ -79,6 +79,7 @@ As shown above, to create a client agent, you need to provide the configurations
 
 The above configuration file contains several client-**specific** cnofigurations, such as the device to use and the way to load the private local dataset:
 
+- ``client_id``: This is a unique identifier (among all clients in the current FL experiment) for the client. The server uses this identifier to distinguish between different clients and for logging purposes.
 - ``data_configs``: This is the most important component in the client configuration file. It contains the path in client's local machine to the file which defines how to load the local dataset (``dataset_path``), the name of the function in the file to load the dataset (``dataset_name``), and any keyword arguments if needed (``dataset_kwargs``).
 - ``train_configs``: This contains the device to use in training and some logging configurations.
 - ``comm_configs``: The client may also need to specify some communication settings in order to connect to the server. For example, if the experiment uses gRPC as the communication method, then the client needs to specify the ``server_uri``, ``max_message_size``, and ``use_ssl`` to establish the connection to the server.

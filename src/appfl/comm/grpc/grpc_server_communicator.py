@@ -1,5 +1,5 @@
 import grpc
-import json
+import yaml
 import pprint
 import logging
 import threading
@@ -36,9 +36,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         """
         Client requests the FL configurations that are shared among all clients from the server.
         :param: `request.header.client_id`: A unique client ID
-        :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+        :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
         :return `response.header.status`: Server status
-        :return `response.configuration`: JSON serialized FL configurations
+        :return `response.configuration`: YAML serialized FL configurations
         """
         try:
             self.logger.info(
@@ -47,10 +47,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if len(request.meta_data) == 0:
                 meta_data = {}
             else:
-                meta_data = json.loads(request.meta_data)
+                meta_data = yaml.safe_load(request.meta_data)
             client_configs = self.server_agent.get_client_configs(**meta_data)
             client_configs = OmegaConf.to_container(client_configs, resolve=True)
-            client_configs_serialized = json.dumps(client_configs)
+            client_configs_serialized = yaml.dump(client_configs)
             response = ConfigurationResponse(
                 header=ServerHeader(status=ServerStatus.RUN),
                 configuration=client_configs_serialized,
@@ -68,7 +68,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         """
         Return the global model to clients. This method is supposed to be called by clients to get the initial and final global model. Returns are sent back as a stream of messages.
         :param: `request.header.client_id`: A unique client ID
-        :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+        :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
         :return `response.header.status`: Server status
         :return `response.global_model`: Serialized global model
         """
@@ -79,13 +79,13 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if len(request.meta_data) == 0:
                 meta_data = {}
             else:
-                meta_data = json.loads(request.meta_data)
+                meta_data = yaml.safe_load(request.meta_data)
             model = self.server_agent.get_parameters(**meta_data, blocking=True)
             if isinstance(model, tuple):
-                meta_data = json.dumps(model[1])
+                meta_data = yaml.dump(model[1])
                 model = model[0]
             else:
-                meta_data = json.dumps({})
+                meta_data = yaml.dump({})
             model_serialized = serialize_model(model)
             response_proto = GetGlobalModelRespone(
                 header=ServerHeader(status=ServerStatus.RUN),
@@ -111,7 +111,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         If concatenating all messages in `request_iterator` to get a `request`, then
         :param: request.header.client_id: A unique client ID
         :param: request.local_model: Serialized local model
-        :param: request.meta_data: JSON serialized metadata dictionary (if needed)
+        :param: request.meta_data: YAML serialized metadata dictionary (if needed)
         """
         try:
             request = UpdateGlobalModelRequest()
@@ -127,7 +127,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if len(request.meta_data) == 0:
                 meta_data = {}
             else:
-                meta_data = json.loads(request.meta_data)
+                meta_data = yaml.safe_load(request.meta_data)
             if len(meta_data) > 0:
                 self.logger.info(
                     f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
@@ -136,10 +136,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 client_id, local_model, blocking=True, **meta_data
             )
             if isinstance(global_model, tuple):
-                meta_data = json.dumps(global_model[1])
+                meta_data = yaml.dump(global_model[1])
                 global_model = global_model[0]
             else:
-                meta_data = json.dumps({})
+                meta_data = yaml.dump({})
             global_model_serialized = serialize_model(global_model)
             status = (
                 ServerStatus.DONE
@@ -168,9 +168,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         This function is the entry point for any custom action that the server agent can perform. The server agent should implement the custom action and call this function to perform the action.
         :param: `request.header.client_id`: A unique client ID
         :param: `request.action`: A string tag representing the custom action
-        :param: `request.meta_data`: JSON serialized metadata dictionary for the custom action (if needed)
+        :param: `request.meta_data`: YAML serialized metadata dictionary for the custom action (if needed)
         :return `response.header.status`: Server status
-        :return `response.meta_data`: JSON serialized metadata dictionary for return values (if needed)
+        :return `response.meta_data`: YAML serialized metadata dictionary for return values (if needed)
         """
         try:
             self.logger.info(
@@ -181,7 +181,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if len(request.meta_data) == 0:
                 meta_data = {}
             else:
-                meta_data = json.loads(request.meta_data)
+                meta_data = yaml.safe_load(request.meta_data)
             if action == "set_sample_size":
                 assert (
                     "sample_size" in meta_data
@@ -194,7 +194,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 else:
                     if isinstance(ret_val, Future):
                         ret_val = ret_val.result()
-                    results = json.dumps(ret_val)
+                    results = yaml.dump(ret_val)
                     response = CustomActionResponse(
                         header=ServerHeader(status=ServerStatus.RUN),
                         results=results,

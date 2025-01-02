@@ -1,10 +1,10 @@
 clients:
-  - endpoint_id: "ed4a1881-120e-4f67-88d7-876cd280feef"
+  - endpoint_id: "8c9d7483-b65e-4dd4-a53e-34f93588706e"
+    client_id: "Client1"
     train_configs:
       # Device [Optional]: default is "cpu"
       device: "cpu"
-      # Logging and outputs [Optional]
-      logging_id: "Client1"
+      # Logging [Optional]
       logging_output_dirname: "./output"
       logging_output_filename: "result"
 
@@ -18,12 +18,12 @@ clients:
         partition_strategy: "class_noniid"
         visualization: True
 
-  - endpoint_id: "762629a0-f3b3-44b5-9acf-2f9b0ab9310f"
+  - endpoint_id: "ec52a4f9-4aaf-4059-b8a7-b4033a7ac8d0"
+    client_id: "Client2"
     train_configs:
       # Device [Optional]: default is "cpu"
       device: "cpu"
-      # Logging and outputs [Optional]
-      logging_id: "Client2"
+      # Logging [Optional]
       logging_output_dirname: "./output"
       logging_output_filename: "result"
 

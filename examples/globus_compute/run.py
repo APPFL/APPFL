@@ -1,14 +1,9 @@
 import pprint
 import argparse
-import warnings
 from omegaconf import OmegaConf
 from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
-
-warnings.filterwarnings(
-    "ignore", category=DeprecationWarning
-)  # Ignore deprecation warnings
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(

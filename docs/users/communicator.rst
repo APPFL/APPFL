@@ -59,9 +59,9 @@ The server can handle the following tasks:
             """
             Client requests the FL configurations that are shared among all clients from the server.
             :param: `request.header.client_id`: A unique client ID
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.header.status`: Server status
-            :return `response.configuration`: JSON serialized FL configurations
+            :return `response.configuration`: YAML serialized FL configurations
             """
 
         def GetGlobalModel(self, request, context):
@@ -70,7 +70,7 @@ The server can handle the following tasks:
             clients to get the initial and final global model. Returns are sent back as a
             stream of messages.
             :param: `request.header.client_id`: A unique client ID
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.header.status`: Server status
             :return `response.global_model`: Serialized global model
             """
@@ -85,7 +85,7 @@ The server can handle the following tasks:
             If concatenating all messages in `request_iterator` to get a `request`, then
             :param: request.header.client_id: A unique client ID
             :param: request.local_model: Serialized local model
-            :param: request.meta_data: JSON serialized metadata dictionary (if needed)
+            :param: request.meta_data: YAML serialized metadata dictionary (if needed)
             """
 
         def InvokeCustomAction(self, request, context):
@@ -95,9 +95,9 @@ The server can handle the following tasks:
             function to perform the action.
             :param: `request.header.client_id`: A unique client ID
             :param: `request.action`: A string tag representing the custom action
-            :param: `request.meta_data`: JSON serialized metadata dictionary for the custom action (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary for the custom action (if needed)
             :return `response.header.status`: Server status
-            :return `response.meta_data`: JSON serialized metadata dictionary for return values (if needed)
+            :return `response.meta_data`: YAML serialized metadata dictionary for return values (if needed)
             """
 
 gRPC Client Communicator
@@ -234,62 +234,60 @@ The server can handle the following tasks:
             """
 
         def _get_configuration(
-            self,
-            client_id: int,
-            request: MPITaskRequest
+            self, client_rank: int, request: MPITaskRequest
         ) -> MPITaskResponse:
             """
             Client requests the FL configurations that are shared among all clients from the server.
-            :param: `client_id`: A unique client ID (only for logging purpose now)
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+
+            :param: `client_rank`: The rank of the client in MPI
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.status`: Server status
-            :return `response.meta_data`: JSON serialized FL configurations
+            :return `response.meta_data`: YAML serialized FL configurations
             """
 
         def _get_global_model(
-            self,
-            client_id: int,
-            request: MPITaskRequest
+            self, client_rank: int, request: MPITaskRequest
         ) -> Optional[MPITaskResponse]:
             """
-            Return the global model to clients. This method is supposed to be called by
-                clients to get the initial and final global model.
-            :param: `client_id`: A unique client ID, which is the rank of the client in
-                MPI (only for logging purpose now)
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            Return the global model to clients. This method is supposed to provide clients with
+            the initial and final global model.
+
+            :param: `client_rank`: The rank of the client(s) in MPI
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
+
+                - `meta_data['_client_ids']`: A list of client ids to get the global model for batched clients
+                - `meta_data['init_model']`: Whether to get the initial global model or not
             :return `response.status`: Server status
             :return `response.payload`: Serialized global model
-            :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+            :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
             """
 
         def _update_global_model(
-            self,
-            client_id: int,
-            request: MPITaskRequest
+            self, client_rank: int, request: MPITaskRequest
         ) -> Optional[MPITaskResponse]:
             """
             Update the global model with the local model from the client,
             and return the updated global model to the client.
-            :param: `client_id`: A unique client ID, which is the rank of the client in MPI.
+
+            :param: `client_rank`: The rank of the client in MPI
             :param: `request.payload`: Serialized local model
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.status`: Server status
             :return `response.payload`: Serialized updated global model
-            :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+            :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
             """
 
         def _invoke_custom_action(
             self,
-            client_id: int,
+            client_rank: int,
             request: MPITaskRequest,
         ) -> Optional[MPITaskResponse]:
             """
             Invoke custom action on the server.
-            :param: `client_id`: A unique client ID, which is the rank of the client in
-                MPI (only for logging purpose now)
-            :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+            :param: `client_rank`: The rank of the client in MPI
+            :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
             :return `response.status`: Server status
-            :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+            :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
             """
 
 MPI Client Communicator
@@ -304,45 +302,107 @@ During the federated learning process, the client can communicates to the server
 .. code:: python
 
     class MPIClientCommunicator:
-        def __init__(
-            self,
-            comm,
-            server_rank: int,
-        ):
-            """
-            Create an MPI client communicator.
-            :param `comm`: MPI communicator object
-            :param `server_rank`: Rank of the MPI process that is running the server
-            """
+        """
+        MPI client communicator for federated learning.
+
+        :param comm: the MPI communicator from mpi4py
+        :param server_rank: the rank of the server in the MPI communicator
+        :param client_id: [optional] an optional client ID for one client for logging purposes, mutually exclusive with client_ids
+        :param client_ids: [optional] a list of client IDs for a batched clients,
+            this is only required when the MPI process represents multiple clients
+        """
 
         def get_configuration(self, **kwargs) -> DictConfig:
             """
             Get the federated learning configurations from the server.
+
             :param kwargs: additional metadata to be sent to the server
             :return: the federated learning configurations
             """
 
-        def get_global_model(self, **kwargs) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
+        def get_global_model(
+            self, **kwargs
+        ) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
             """
             Get the global model from the server.
+
             :param kwargs: additional metadata to be sent to the server
             :return: the global model with additional metadata (if any)
             """
 
-        def update_global_model(self, local_model: Union[Dict, OrderedDict, bytes], **kwargs) -> Tuple[Union[Dict, OrderedDict], Dict]:
+        def update_global_model(
+            self,
+            local_model: Union[Dict, OrderedDict, bytes],
+            client_id: Optional[Union[str, int]] = None,
+            **kwargs,
+        ) -> Tuple[Union[Dict, OrderedDict], Dict]:
             """
-            Send local model to FL server for global update, and return the new global model.
+            Send local model(s) to the FL server for global update, and return the new global model.
+
             :param local_model: the local model to be sent to the server for global aggregation
-            :param kwargs: additional metadata to be sent to the server
-            :return: the updated global model with additional metadata. Specifically, `meta_data["status"]` is either "RUNNING" or "DONE".
+
+                - `local_model` can be a single model if one MPI process has only one client or one MPI process
+                    has multiple clients but the user wants to send one model at a time
+                - `local_model` can be a dictionary of multiple models as well if one MPI process has multiple clients
+                    and the user wants to send all models
+            :param client_id (optional): the client ID for the local model. It is only required when the MPI process has multiple clients
+                and the user only wants to send one model at a time.
+            :param kwargs (optional): additional metadata to be sent to the server. When sending local models for multiple clients,
+                use the client ID as the key and the metadata as the value, e.g.,
+
+            ```
+            update_global_model(
+                local_model=...,
+                kwargs = {
+                    client_id1: {key1: value1, key2: value2},
+                    client_id2: {key1: value1, key2: value2},
+                }
+            )
+            ```
+            :return model: the updated global model
+
+                - Note: the global model is only one model even if multiple local models are sent, which means that
+                the server should have synchronous aggregation. If asynchronous aggregation is needed, the user should
+                pass the local models one by one.
+
+            :return meta_data: additional metadata from the server. When updating local models for multiple clients, the response will
+                be a dictionary with the client ID as the key and the response as the value, e.g.,
+            ```
+            {
+                client_id1: {ret1: value1, ret2: value2},
+                client_id2: {ret1: value1, ret2: value2},
+            }
+            ```
             """
 
-        def invoke_custom_action(self, action: str, **kwargs) -> Dict:
+        def invoke_custom_action(
+            self, action: str, client_id: Optional[Union[str, int]] = None, **kwargs
+        ) -> Dict:
             """
             Invoke a custom action on the server.
+
             :param action: the action to be invoked
-            :param kwargs: additional metadata to be sent to the server
-            :return: the response from the server (if any)
+            :param client_id (optional): the client ID for the action. It is only required when the MPI process has multiple clients
+                and the action is specific to a client instead of all clients.
+            :param kwargs (optional): additional metadata to be sent to the server. When invoking custom action for multiple clients,
+                use the client ID as the key and the metadata as the value, e.g.,
+            ```
+            invoke_custom_action(
+                action=...,
+                kwargs = {
+                    client_id1: {key1: value1, key2: value2},
+                    client_id2: {key1: value1, key2: value2},
+                }
+            )
+            ```
+            :return: the response from the server (if any). When invoking custom action for multiple clients, the response will
+                be a dictionary with the client ID as the key and the response as the value, e.g.,
+            ```
+            {
+                client_id1: {ret1: value1, ret2: value2},
+                client_id2: {ret1: value1, ret2: value2},
+            }
+            ```
             """
 
 Example Usage (MPI)
