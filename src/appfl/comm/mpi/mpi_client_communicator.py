@@ -5,6 +5,7 @@ from typing import Dict, Union, Tuple, OrderedDict, Optional, List
 from .config import MPITaskRequest, MPITaskResponse, MPIServerStatus, MPITask
 from .serializer import request_to_byte, byte_to_response, byte_to_model, model_to_byte
 
+
 class MPIClientCommunicator:
     """
     MPI client communicator for federated learning.

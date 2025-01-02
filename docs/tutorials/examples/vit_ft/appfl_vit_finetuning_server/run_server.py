@@ -17,7 +17,7 @@ server_agent = ServerAgent(server_agent_config=server_agent_config)
 communicator = GRPCServerCommunicator(
     server_agent,
     logger=server_agent.logger,
-    **server_agent_config.server_configs.comm_configs.grpc_configs
+    **server_agent_config.server_configs.comm_configs.grpc_configs,
 )
 
 # Start serving

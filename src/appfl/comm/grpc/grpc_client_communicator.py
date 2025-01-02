@@ -206,7 +206,8 @@ class GRPCClientCommunicator:
             try:
                 return deserialize_yaml(
                     response.results,
-                    trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
+                    trusted=self.kwargs.get("trusted", False)
+                    or self._use_authenticator,
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             except:  # noqa E722

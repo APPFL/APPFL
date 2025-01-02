@@ -53,7 +53,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             else:
                 meta_data = deserialize_yaml(
                     request.meta_data,
-                    trusted=self.kwargs.get("trusted", False) or self.kwargs.get("use_authenticator", False),
+                    trusted=self.kwargs.get("trusted", False)
+                    or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             client_configs = self.server_agent.get_client_configs(**meta_data)
@@ -89,7 +90,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             else:
                 meta_data = deserialize_yaml(
                     request.meta_data,
-                    trusted=self.kwargs.get("trusted", False) or self.kwargs.get("use_authenticator", False),
+                    trusted=self.kwargs.get("trusted", False)
+                    or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             model = self.server_agent.get_parameters(**meta_data, blocking=True)
@@ -141,7 +143,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             else:
                 meta_data = deserialize_yaml(
                     request.meta_data,
-                    trusted=self.kwargs.get("trusted", False) or self.kwargs.get("use_authenticator", False),
+                    trusted=self.kwargs.get("trusted", False)
+                    or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             if len(meta_data) > 0:
@@ -197,7 +200,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             for bytes in request_iterator:
                 bytes_received += bytes.data_bytes
             request.ParseFromString(bytes_received)
-            
+
             self.logger.info(
                 f"Received InvokeCustomAction {request.action} request from client {request.header.client_id}"
             )
@@ -208,7 +211,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             else:
                 meta_data = deserialize_yaml(
                     request.meta_data,
-                    trusted=self.kwargs.get("trusted", False) or self.kwargs.get("use_authenticator", False),
+                    trusted=self.kwargs.get("trusted", False)
+                    or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             if action == "set_sample_size":

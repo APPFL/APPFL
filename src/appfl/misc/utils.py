@@ -374,7 +374,7 @@ def load_data_from_file(file_path: str, to_device=None):
 
 
 def deserialize_yaml(
-    stream, 
+    stream,
     trusted: bool = False,
     warning_message: str = None,
 ):
@@ -394,7 +394,9 @@ def deserialize_yaml(
             if warning_message is not None:
                 raise ValueError(warning_message)
             else:
-                raise ValueError(f"An error occurred: {e}, you may need to use the `trusted` flag to load the YAML object")
+                raise ValueError(
+                    f"An error occurred: {e}, you may need to use the `trusted` flag to load the YAML object"
+                )
 
 
 def dump_data_to_file(obj, file_path: str):

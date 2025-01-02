@@ -287,8 +287,8 @@ def test_batched_mpi_fedavg():
             client_agents.append(ClientAgent(client_agent_config=client_agent_config))
         # Create the client communicator for batched clients
         client_communicator = MPIClientCommunicator(
-            comm, 
-            server_rank=0, 
+            comm,
+            server_rank=0,
             client_ids=[f"Client{client_id}" for client_id in client_batch[rank - 1]],
         )
         # Get and load the general client configurations
@@ -302,8 +302,10 @@ def test_batched_mpi_fedavg():
         # Send the sample size to the server
         client_sample_sizes = {
             client_id: {"sample_size": client_agent.get_sample_size(), "sync": True}
-            for client_id, client_agent in 
-            zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents)
+            for client_id, client_agent in zip(
+                [f"Client{client_id}" for client_id in client_batch[rank - 1]],
+                client_agents,
+            )
         }
         client_communicator.invoke_custom_action(
             action="set_sample_size", kwargs=client_sample_sizes
@@ -313,7 +315,10 @@ def test_batched_mpi_fedavg():
         while True:
             client_local_models = {}
             client_metadata = {}
-            for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
+            for client_id, client_agent in zip(
+                [f"Client{client_id}" for client_id in client_batch[rank - 1]],
+                client_agents,
+            ):
                 client_agent.train()
                 local_model = client_agent.get_parameters()
                 if isinstance(local_model, tuple):
@@ -325,7 +330,10 @@ def test_batched_mpi_fedavg():
             )
             if all(metadata[client_id]["status"] == "DONE" for client_id in metadata):
                 break
-            for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
+            for client_id, client_agent in zip(
+                [f"Client{client_id}" for client_id in client_batch[rank - 1]],
+                client_agents,
+            ):
                 client_agent.load_parameters(new_global_model)
         client_communicator.invoke_custom_action(action="close_connection")
 
@@ -350,7 +358,9 @@ def test_batched_mpi_fedasync():
         server_agent_config.server_configs.num_global_epochs *= 2
         server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
         if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
+            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
+                num_clients
+            )
         # Create the server agent and communicator
         server_agent = ServerAgent(server_agent_config=server_agent_config)
         server_communicator = MPIServerCommunicator(
@@ -372,8 +382,8 @@ def test_batched_mpi_fedasync():
             client_agents.append(ClientAgent(client_agent_config=client_agent_config))
         # Create the client communicator for batched clients
         client_communicator = MPIClientCommunicator(
-            comm, 
-            server_rank=0, 
+            comm,
+            server_rank=0,
             client_ids=[f"Client{client_id}" for client_id in client_batch[rank - 1]],
         )
         # Get and load the general client configurations
@@ -387,8 +397,10 @@ def test_batched_mpi_fedasync():
         # Send the sample size to the server
         client_sample_sizes = {
             client_id: {"sample_size": client_agent.get_sample_size(), "sync": True}
-            for client_id, client_agent in 
-            zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents)
+            for client_id, client_agent in zip(
+                [f"Client{client_id}" for client_id in client_batch[rank - 1]],
+                client_agents,
+            )
         }
         client_communicator.invoke_custom_action(
             action="set_sample_size", kwargs=client_sample_sizes
@@ -397,7 +409,10 @@ def test_batched_mpi_fedasync():
         # Local training and global model update iterations
         finish_flag = False
         while True:
-            for client_id, client_agent in zip([f"Client{client_id}" for client_id in client_batch[rank - 1]], client_agents):
+            for client_id, client_agent in zip(
+                [f"Client{client_id}" for client_id in client_batch[rank - 1]],
+                client_agents,
+            ):
                 client_agent.train()
                 local_model = client_agent.get_parameters()
                 if isinstance(local_model, tuple):
@@ -431,7 +446,9 @@ def test_mpi_dr():
         server_agent_config = OmegaConf.load(server_config)
         server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
         if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
+            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
+                num_clients
+            )
         # Create the server agent and communicator
         server_agent = ServerAgent(server_agent_config=server_agent_config)
         server_communicator = MPIServerCommunicator(
@@ -451,9 +468,7 @@ def test_mpi_dr():
         # Create the client agent and communicator
         client_agent = ClientAgent(client_agent_config=client_agent_config)
         client_communicator = MPIClientCommunicator(
-            comm, 
-            server_rank=0, 
-            client_id=client_agent_config.client_id
+            comm, server_rank=0, client_id=client_agent_config.client_id
         )
         # Load the configurations and initial global model
         client_config = client_communicator.get_configuration()
@@ -492,7 +507,9 @@ def test_grpc():
         server_agent_config = OmegaConf.load(server_config)
         server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
         if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
+            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
+                num_clients
+            )
         server_agent = ServerAgent(server_agent_config=server_agent_config)
 
         communicator = GRPCServerCommunicator(
@@ -556,7 +573,9 @@ def test_grpc():
             if metadata["status"] == "DONE":
                 break
             if "local_steps" in metadata:
-                client_agent.trainer.train_configs.num_local_steps = metadata["local_steps"]
+                client_agent.trainer.train_configs.num_local_steps = metadata[
+                    "local_steps"
+                ]
             client_agent.load_parameters(new_global_model)
         client_communicator.invoke_custom_action(action="close_connection")
 
@@ -566,7 +585,7 @@ def test_serial():
     server_config = "./tests/resources/configs/server_dr.yaml"
     client_config = "./tests/resources/configs/client_1.yaml"
     num_clients = 2
-    
+
     # Load server agent configurations and set the number of clients
     server_agent_config = OmegaConf.load(server_config)
     server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
@@ -577,9 +596,7 @@ def test_serial():
     server_agent = ServerAgent(server_agent_config=server_agent_config)
 
     # Load base client configurations and set corresponding fields for different clients
-    client_agent_configs = [
-        OmegaConf.load(client_config) for _ in range(num_clients)
-    ]
+    client_agent_configs = [OmegaConf.load(client_config) for _ in range(num_clients)]
     for i in range(num_clients):
         client_agent_configs[i].client_id = f"Client{i+1}"
         client_agent_configs[i].data_configs.dataset_kwargs.num_clients = num_clients
@@ -631,7 +648,9 @@ def test_serial():
             )
             new_global_models.append(new_global_model_future)
         # Load the new global model from the server
-        for client_agent, new_global_model_future in zip(client_agents, new_global_models):
+        for client_agent, new_global_model_future in zip(
+            client_agents, new_global_models
+        ):
             client_agent.load_parameters(new_global_model_future.result())
 
 
