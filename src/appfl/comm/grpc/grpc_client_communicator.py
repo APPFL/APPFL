@@ -120,7 +120,7 @@ class GRPCClientCommunicator:
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
-            warning_message="Loading metadata fails due to untrusted data, you can fix this by setting `trusted=True` in grpc_configs or use an authenticator.",
+            warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
         )
         if len(meta_data) == 0:
             return model
@@ -165,7 +165,7 @@ class GRPCClientCommunicator:
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
-            warning_message="Loading metadata fails due to untrusted data, you can fix this by setting `trusted=True` in grpc_configs or use an authenticator.",
+            warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
         )
         meta_data["status"] = (
             "DONE" if response.header.status == ServerStatus.DONE else "RUNNING"
@@ -207,7 +207,7 @@ class GRPCClientCommunicator:
                 return deserialize_yaml(
                     response.results,
                     trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
-                    warning_message="Loading metadata fails due to untrusted data, you can fix this by setting `trusted=True` in grpc_configs or use an authenticator.",
+                    warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             except:  # noqa E722
                 return {}
