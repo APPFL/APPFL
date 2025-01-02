@@ -12,6 +12,7 @@ log_globus_compute_appfl
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 examples/config_gc/creds/credential.csv
+examples/resources/monai
 note
 datasets
 *output*
