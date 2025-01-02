@@ -54,6 +54,6 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 2
+  num_global_epochs: 1
   logging_output_dirname: "./output"
   logging_output_filename: "result"

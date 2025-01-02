@@ -8,12 +8,12 @@ client_configs:
     optim_args:
       lr: 0.001
     # Loss function
-    loss_fn_path: "./resources/loss/celoss.py"
+    loss_fn_path: "./tests/resources/loss/celoss.py"
     loss_fn_name: "CELoss"
     # Client validation
     do_validation: True
     do_pre_validation: True
-    metric_path: "./resources/metric/acc.py"
+    metric_path: "./tests/resources/metric/acc.py"
     metric_name: "accuracy"
     # Differential privacy
     use_dp: False
@@ -58,7 +58,7 @@ client_configs:
         feature_space_distribution: True
 
   model_configs:
-    model_path: "./resources/model/cnn.py"
+    model_path: "./tests/resources/model/cnn.py"
     model_name: "CNN"
     model_kwargs:
       num_channel: 1
@@ -84,7 +84,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 10
+  num_global_epochs: 1
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:

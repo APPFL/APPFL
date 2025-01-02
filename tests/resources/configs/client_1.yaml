@@ -18,3 +18,9 @@ data_configs:
     visualization: False
     output_dirname: "./output"
     output_filename: "visualization.pdf"
+
+comm_configs:
+  grpc_configs:
+    server_uri: localhost:50051
+    max_message_size: 10485760
+    use_ssl: False
