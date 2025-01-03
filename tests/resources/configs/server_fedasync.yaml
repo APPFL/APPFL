@@ -62,6 +62,6 @@ server_configs:
     alpha: 0.9
     gradient_based: True
   device: "cpu"
-  num_global_epochs: 5
+  num_global_epochs: 4
   logging_output_dirname: "./output"
   logging_output_filename: "result"

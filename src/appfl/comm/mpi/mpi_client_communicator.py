@@ -81,7 +81,7 @@ class MPIClientCommunicator:
         if response.status == MPIServerStatus.ERROR.value:
             raise Exception("Server returned an error, stopping the client.")
         model = byte_to_model(response.payload)
-        meta_data = yaml.safe_load(response.meta_data)
+        meta_data = yaml.unsafe_load(response.meta_data)
         if len(meta_data) == 0:
             return model
         else:
@@ -152,7 +152,7 @@ class MPIClientCommunicator:
         if response.status == MPIServerStatus.ERROR.value:
             raise Exception("Server returned an error, stopping the client.")
         model = byte_to_model(response.payload)
-        meta_data = yaml.safe_load(response.meta_data)
+        meta_data = yaml.unsafe_load(response.meta_data)
         # post-process the results if the client has multiple clients
         status = "DONE" if response.status == MPIServerStatus.DONE.value else "RUNNING"
         if client_id is not None or (not self._default_batching):
@@ -212,7 +212,7 @@ class MPIClientCommunicator:
             return {}
         else:
             try:
-                results = yaml.safe_load(response.meta_data)
+                results = yaml.unsafe_load(response.meta_data)
                 # post-process the results if the client has multiple clients
                 if client_id is not None or (not self._default_batching):
                     results = results[kwargs["_client_ids"][0]]
