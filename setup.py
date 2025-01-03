@@ -78,6 +78,7 @@ setuptools.setup(
         "seaborn",
         "piq",
         "scikit-learn",
+        "wandb",
     ],
     extras_require={
         "dev": [
