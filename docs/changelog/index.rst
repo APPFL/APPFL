@@ -1,6 +1,25 @@
 Changelog
 =========
 
+appfl v1.2.0
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Improve client name display for running FL experiments by specifying ``client_id`` in the client configuration file.
+- Add documentation for using APPFL on ALCF Polaris at `here <https://appfl.ai/en/latest/tutorials/examples_gpuclusterrun.html#grpc-simulation-on-polaris-cluster>`_.
+- Allow users to send payload of arbitrary size for custom actions in gRPC communication.
+- Add more tests for FL experiments under different scenarios: serial, MPI, batched MPI, and gRPC.
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix path issues when running APPFL on Windows.
+- Fix batched MPI issue with compression.
+- Fix some other small bugs and bump the version of few dependencies.
+
+
 appfl v1.1.0
 ------------
 
