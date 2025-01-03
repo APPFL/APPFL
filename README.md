@@ -100,7 +100,7 @@ APPFL is primarily composed of the following six technical components
 
 ## :bulb: Framework Overview
 <p align="center">
-  <img src='docs/_static/design-logic-new.jpg' style="width: 85%; height: auto;"/>
+  <img src='https://github.com/APPFL/APPFL/blob/main/docs/_static/design-logic-new.jpg?raw=true' style="width: 85%; height: auto;"/>
 </p>
 
 In the design of the APPFL framework, we essentially create the server agent and client agent, using the six technical components above as building blocks, to act on behalf of the FL server and clients to conduct FL experiments. For more details, please refer to our [documentation](http://appfl.rtfd.io/).
