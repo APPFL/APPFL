@@ -66,6 +66,6 @@ server_configs:
     gradient_based: True
     num_clients: 2
   device: "cpu"
-  num_global_epochs: 5
+  num_global_epochs: 4
   logging_output_dirname: "./output"
   logging_output_filename: "result"

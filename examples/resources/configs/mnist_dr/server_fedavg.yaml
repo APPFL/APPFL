@@ -92,3 +92,4 @@ server_configs:
       server_uri: localhost:50051
       max_message_size: 10485760
       use_ssl: False
+      trusted: True

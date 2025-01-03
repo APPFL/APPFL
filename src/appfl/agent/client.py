@@ -2,6 +2,7 @@ import os
 import uuid
 import torch
 import pathlib
+import warnings
 import importlib
 import torch.nn as nn
 from datetime import datetime
@@ -90,8 +91,21 @@ class ClientAgent:
         """Return a unique client id for server to distinguish clients."""
         if not hasattr(self, "client_id"):
             if hasattr(self.client_agent_config, "client_id"):
-                self.client_id = self.client_agent_config.client_id
+                self.client_id = str(self.client_agent_config.client_id)
+            elif hasattr(self.client_agent_config, "train_configs") and hasattr(
+                self.client_agent_config.train_configs, "logging_id"
+            ):
+                self.client_id = str(self.client_agent_config.train_configs.logging_id)
+                # Emit a deprecated warning
+                warnings.warn(
+                    message="client_agent_config.train_configs.logging_id is deprecated. Please use client_id instead.",
+                    category=DeprecationWarning,
+                )
             else:
+                warnings.warn(
+                    message="Client ID (client_id) not specified. Generating a random one.",
+                    category=UserWarning,
+                )
                 self.client_id = str(uuid.uuid4())
         return self.client_id
 
@@ -266,14 +280,11 @@ class ClientAgent:
         if hasattr(self, "logger"):
             return
         kwargs = {}
+        kwargs["logging_id"] = self.get_id()
         if not hasattr(self.client_agent_config, "train_configs"):
-            kwargs["logging_id"] = self.get_id()
             kwargs["file_dir"] = "./output"
             kwargs["file_name"] = "result"
         else:
-            kwargs["logging_id"] = self.client_agent_config.train_configs.get(
-                "logging_id", self.get_id()
-            )
             kwargs["file_dir"] = self.client_agent_config.train_configs.get(
                 "logging_output_dirname", "./output"
             )

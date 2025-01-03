@@ -1,5 +1,5 @@
 import time
-import json
+import yaml
 import logging
 import threading
 from mpi4py import MPI
@@ -86,17 +86,25 @@ class MPIServerCommunicator:
         Client requests the FL configurations that are shared among all clients from the server.
 
         :param: `client_rank`: The rank of the client in MPI
-        :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+        :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
         :return `response.status`: Server status
-        :return `response.meta_data`: JSON serialized FL configurations
+        :return `response.meta_data`: YAML serialized FL configurations
         """
-        self.logger.info(
-            f"Received GetConfiguration request from MPI rank {client_rank}"
+        meta_data = (
+            yaml.unsafe_load(request.meta_data) if len(request.meta_data) > 0 else {}
         )
-        meta_data = json.loads(request.meta_data) if len(request.meta_data) > 0 else {}
+        client_ids = meta_data.get("_client_ids", [client_rank])
+        if len(client_ids) > 1:
+            self.logger.info(
+                f"Received GetConfiguration request from batched clients: {client_ids} [MPI rank {client_rank}]"
+            )
+        else:
+            self.logger.info(
+                f"Received GetConfiguration request from {client_ids[0]} [MPI rank {client_rank}]"
+            )
         client_configs = self.server_agent.get_client_configs(**meta_data)
         client_configs = OmegaConf.to_container(client_configs, resolve=True)
-        client_configs_serialized = json.dumps(client_configs)
+        client_configs_serialized = yaml.dump(client_configs)
         response = MPITaskResponse(
             status=MPIServerStatus.RUN.value,
             meta_data=client_configs_serialized,
@@ -111,26 +119,35 @@ class MPIServerCommunicator:
         the initial and final global model.
 
         :param: `client_rank`: The rank of the client(s) in MPI
-        :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+        :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
 
              - `meta_data['_client_ids']`: A list of client ids to get the global model for batched clients
              - `meta_data['init_model']`: Whether to get the initial global model or not
         :return `response.status`: Server status
         :return `response.payload`: Serialized global model
-        :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+        :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
         """
-        self.logger.info(f"Received GetGlobalModel request from MPI rank {client_rank}")
-        meta_data = json.loads(request.meta_data) if len(request.meta_data) > 0 else {}
+        meta_data = (
+            yaml.unsafe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        )
         client_ids = meta_data.get("_client_ids", [client_rank])
+        if len(client_ids) > 1:
+            self.logger.info(
+                f"Received GetGlobalModel request from batched clients: {client_ids} [MPI rank {client_rank}]"
+            )
+        else:
+            self.logger.info(
+                f"Received GetGlobalModel request from {client_ids[0]} [MPI rank {client_rank}]"
+            )
         self._client_id_to_client_rank[client_rank] = client_rank
         meta_data["num_batched_clients"] = len(client_ids)
         model = self.server_agent.get_parameters(**meta_data, blocking=False)
         if not isinstance(model, Future):
             if isinstance(model, tuple):
                 model = model[0]
-                meta_data = json.dumps(model[1])
+                meta_data = yaml.dump(model[1])
             else:
-                meta_data = json.dumps({})
+                meta_data = yaml.dump({})
             model_serialized = model_to_byte(model)
             return MPITaskResponse(
                 status=MPIServerStatus.RUN.value,
@@ -151,13 +168,15 @@ class MPIServerCommunicator:
 
         :param: `client_rank`: The rank of the client in MPI
         :param: `request.payload`: Serialized local model
-        :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+        :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
         :return `response.status`: Server status
         :return `response.payload`: Serialized updated global model
-        :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+        :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
         """
         local_model = request.payload
-        meta_data = json.loads(request.meta_data) if len(request.meta_data) > 0 else {}
+        meta_data = (
+            yaml.unsafe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+        )
         if meta_data.get("_torch_serialized", True):
             local_model = byte_to_model(local_model)
         # read the client ids from the metadata if any
@@ -170,22 +189,16 @@ class MPIServerCommunicator:
                 == "SyncScheduler"
             ), "Batched clients are only supported with SyncScheduler."
             self.logger.info(
-                f"Received UpdateGlobalModel request from batched clients: {client_ids}"
+                f"Received UpdateGlobalModel request from batched clients: {client_ids} [MPI rank {client_rank}]"
             )
         else:
             self.logger.info(
-                f"Received UpdateGlobalModel request from MPI rank {client_rank}"
+                f"Received GetGlobalModel request from {client_ids[0]} [MPI rank {client_rank}]"
             )
-
         for client_id in client_ids:
             client_metadata = (
                 meta_data[client_id] if client_id in meta_data else meta_data
             )
-            # client_metadata_copy = client_metadata.copy()
-            # if '_client_ids' in client_metadata_copy:
-            #     del client_metadata_copy['_client_ids']
-            # if len(client_metadata_copy) > 0:
-            #     self.logger.info(f"Received Metadata from {client_id}:\n{pprint.pformat(client_metadata_copy)}")
             client_local_model = (
                 local_model[client_id]
                 if (
@@ -216,7 +229,7 @@ class MPIServerCommunicator:
                 return MPITaskResponse(
                     status=status,
                     payload=global_model_serialized,
-                    meta_data=json.dumps(meta_data),
+                    meta_data=yaml.dump(meta_data),
                 )
             else:
                 self._update_global_model_futures[client_id] = global_model
@@ -231,17 +244,25 @@ class MPIServerCommunicator:
         """
         Invoke custom action on the server.
         :param: `client_rank`: The rank of the client in MPI
-        :param: `request.meta_data`: JSON serialized metadata dictionary (if needed)
+        :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
         :return `response.status`: Server status
-        :return `response.meta_data`: JSON serialized metadata dictionary (if needed)
+        :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
         """
-        meta_data = json.loads(request.meta_data) if len(request.meta_data) > 0 else {}
-        assert "action" in meta_data, "The action is not specified in the metadata"
-        self.logger.info(
-            f"Received InvokeCustomAction: {meta_data['action']} request from MPI rank {client_rank}"
+        meta_data = (
+            yaml.unsafe_load(request.meta_data) if len(request.meta_data) > 0 else {}
         )
+        assert "action" in meta_data, "The action is not specified in the metadata"
         action = meta_data["action"]
         client_ids = meta_data.get("_client_ids", [client_rank])
+        if len(client_ids) > 1:
+            self.logger.info(
+                f"Received InvokeCustomAction ({meta_data['action']}) request from batched clients: {client_ids} [MPI rank {client_rank}]"
+            )
+        else:
+            self.logger.info(
+                f"Received InvokeCustomAction ({meta_data['action']}) request from {client_ids[0]} [MPI rank {client_rank}]"
+            )
+
         del meta_data["action"]
         if action == "set_sample_size":
             sync = True
@@ -317,7 +338,7 @@ class MPIServerCommunicator:
         for client_rank, meta_data in responses.items():
             response = MPITaskResponse(
                 status=MPIServerStatus.RUN.value,
-                meta_data=json.dumps(meta_data),
+                meta_data=yaml.dump(meta_data),
             )
             response_bytes = response_to_byte(response)
             self.comm.Send(response_bytes, dest=client_rank, tag=client_rank)
@@ -347,7 +368,7 @@ class MPIServerCommunicator:
                 response = MPITaskResponse(
                     status=status,
                     payload=global_model_serialized,
-                    meta_data=json.dumps(meta_data),
+                    meta_data=yaml.dump(meta_data),
                 )
                 response_bytes = response_to_byte(response)
                 self.comm.Send(response_bytes, dest=client_rank, tag=client_rank)
@@ -386,7 +407,7 @@ class MPIServerCommunicator:
             response = MPITaskResponse(
                 status=status,
                 payload=model_responses[client_rank],
-                meta_data=json.dumps(meta_data_responses[client_rank]),
+                meta_data=yaml.dump(meta_data_responses[client_rank]),
             )
             response_bytes = response_to_byte(response)
             self.comm.Send(response_bytes, dest=client_rank, tag=client_rank)

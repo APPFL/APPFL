@@ -19,8 +19,8 @@ The server needs to load configuration from a configuration file, then we can cr
 
     communicator = GRPCServerCommunicator(
         server_agent,
-        max_message_size=server_agent_config.server_configs.comm_configs.grpc_configs.max_message_size,
         logger=server_agent.logger,
+        **server_agent_config.comm_configs.grpc_configs,
     )
 
     serve(

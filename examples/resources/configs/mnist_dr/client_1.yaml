@@ -1,8 +1,8 @@
+client_id: "Client1"
 train_configs:
   # Device
   device: "cpu"
   # Logging and outputs
-  logging_id: "Client1"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 

@@ -4,7 +4,7 @@ service GRPCCommunicator {
   rpc GetConfiguration (ConfigurationRequest) returns (ConfigurationResponse) {}
   rpc GetGlobalModel (GetGlobalModelRequest) returns (stream DataBuffer) {}
   rpc UpdateGlobalModel (stream DataBuffer) returns (stream DataBuffer) {}
-  rpc InvokeCustomAction (CustomActionRequest) returns (CustomActionResponse) {}
+  rpc InvokeCustomAction (stream DataBuffer) returns (stream DataBuffer) {}
 }
 
 // Binary data buffer for transmitted data with larger size
