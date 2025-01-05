@@ -3,6 +3,7 @@ import pathlib
 import logging
 from typing import Optional
 from datetime import datetime
+from colorama import Fore, Style
 
 
 class ServerAgentFileLogger:
@@ -19,7 +20,9 @@ class ServerAgentFileLogger:
     ) -> None:
         if file_name != "":
             file_name += f"_Server_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-        fmt = logging.Formatter("[%(asctime)s %(levelname)-4s server]: %(message)s")
+        fmt = logging.Formatter(
+            f"{Fore.BLUE}appfl: {Style.RESET_ALL}[%(asctime)s server]: %(message)s"
+        )
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
 
@@ -44,16 +47,16 @@ class ServerAgentFileLogger:
             f_handler.setLevel(logging.INFO)
             f_handler.setFormatter(fmt)
             self.logger.addHandler(f_handler)
-            self.logger.info(f"Logging to {real_file_name}")
+            self.info(f"Logging to {real_file_name}")
 
     def info(self, info: str) -> None:
-        self.logger.info(info)
+        self.logger.info(f"{Fore.GREEN}✅{Style.RESET_ALL} {info}")
 
     def debug(self, debug: str) -> None:
-        self.logger.debug(debug)
+        self.logger.debug(f"{Fore.YELLOW}💡{Style.RESET_ALL} {debug}")
 
     def error(self, error: str) -> None:
-        self.logger.error(error)
+        self.logger.error(f"{Fore.RED}❌{Style.RESET_ALL} {error}")
 
     def get_log_filepath(self) -> Optional[str]:
         if hasattr(self, "log_filepath"):

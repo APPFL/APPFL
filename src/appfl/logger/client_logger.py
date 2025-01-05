@@ -3,6 +3,7 @@ import uuid
 import logging
 import pathlib
 from datetime import datetime
+from colorama import Fore, Style
 from typing import List, Dict, Union
 
 
@@ -27,10 +28,12 @@ class ClientAgentFileLogger:
             file_name += f"_{logging_id}" if logging_id != "" else ""
             file_name += f"_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         fmt = (
-            logging.Formatter("[%(asctime)s %(levelname)-4s]: %(message)s")
+            logging.Formatter(
+                f"{Fore.BLUE}appfl: {Style.RESET_ALL}[%(asctime)s]: %(message)s"
+            )
             if logging_id == ""
             else logging.Formatter(
-                f"[%(asctime)s %(levelname)-4s {logging_id}]: %(message)s"
+                f"{Fore.BLUE}appfl: {Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
             )
         )
         self.logger = logging.getLogger(
@@ -61,12 +64,12 @@ class ClientAgentFileLogger:
             f_handler.setFormatter(fmt)
             self.logger.addHandler(f_handler)
             if not file_exists:
-                self.logger.info(f"Logging to {real_file_name}")
+                self.info(f"Logging to {real_file_name}")
 
     def log_title(self, titles: List) -> None:
         self.titles = titles
         title = " ".join(["%10s" % t for t in titles])
-        self.logger.info(title)
+        self.info(title)
 
     def set_title(self, titles: List) -> None:
         if not hasattr(self, "titles"):
@@ -90,13 +93,13 @@ class ClientAgentFileLogger:
                 for ln, cnt in zip(length, contents)
             ]
         )
-        self.logger.info(content)
+        self.info(content)
 
     def info(self, info: str) -> None:
-        self.logger.info(info)
+        self.logger.info(f"{Fore.GREEN}✅{Style.RESET_ALL} {info}")
 
     def debug(self, debug: str) -> None:
-        self.logger.debug(debug)
+        self.logger.debug(f"{Fore.YELLOW}💡{Style.RESET_ALL} {debug}")
 
     def error(self, error: str) -> None:
-        self.logger.error(error)
+        self.logger.error(f"{Fore.RED}❌{Style.RESET_ALL} {error}")

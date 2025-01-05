@@ -94,13 +94,18 @@ def serve(
         while True:
             time.sleep(1)
             if servicer.server_agent.server_terminated():
-                print("Terminating the server ...")
+                if hasattr(servicer.server_agent, "logger"):
+                    servicer.server_agent.logger.info("Terminating the server ...")
+                else:
+                    print("Terminating the server ...")
                 time.sleep(
                     10
                 )  # sleep for 10 seconds to ensure clients receive the termination signal
                 server.stop(0)
                 break
     except KeyboardInterrupt:
-        logger = logging.getLogger(__name__)
-        logger.info("Terminating the server ...")
+        if hasattr(servicer.server_agent, "logger"):
+            servicer.server_agent.logger.info("Terminating the server ...")
+        else:
+            print("Terminating the server ...")
         return
