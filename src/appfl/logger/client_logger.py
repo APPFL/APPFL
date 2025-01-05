@@ -29,11 +29,11 @@ class ClientAgentFileLogger:
             file_name += f"_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         fmt = (
             logging.Formatter(
-                f"{Fore.BLUE}appfl: {Style.RESET_ALL}[%(asctime)s]: %(message)s"
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: {Style.RESET_ALL}[%(asctime)s]: %(message)s"
             )
             if logging_id == ""
             else logging.Formatter(
-                f"{Fore.BLUE}appfl: {Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: {Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
             )
         )
         self.logger = logging.getLogger(

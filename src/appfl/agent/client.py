@@ -1,6 +1,7 @@
 import os
 import uuid
 import torch
+import wandb
 import pathlib
 import warnings
 import importlib
@@ -71,6 +72,7 @@ class ClientAgent:
     ) -> None:
         self.client_agent_config = client_agent_config
         self._create_logger()
+        self._init_wandb()
         self._load_model()
         self._load_loss()
         self._load_metric()
@@ -517,3 +519,24 @@ class ClientAgent:
                 compressor_name=self.client_agent_config.comm_configs.compressor_configs.lossy_compressor,
                 compressor_config=self.client_agent_config.comm_configs.compressor_configs,
             )
+
+    def _init_wandb(self) -> None:
+        """
+        Initialize Weights and Biases for logging.
+        """
+        if not hasattr(self.client_agent_config, "wandb_configs"):
+            self.client_agent_config.train_configs.enable_wandb = False
+            return
+        if not self.client_agent_config.wandb_configs.get("enable_wandb", False):
+            self.client_agent_config.train_configs.enable_wandb = False
+            return
+        wandb.init(
+            entity=self.client_agent_config.wandb_configs.get("entity", None),
+            project=self.client_agent_config.wandb_configs.get("project", None),
+            dir=self.client_agent_config.train_configs.get("logging_output_dirname", "./output"),
+            id=self.client_agent_config.get('experiment_id', wandb.util.generate_id()),
+            name=self.client_agent_config.wandb_configs.get("exp_name", "appfl"),
+            config=OmegaConf.to_container(self.client_agent_config, resolve=True),
+            resume="allow",
+        )
+        self.client_agent_config.train_configs.enable_wandb = True
