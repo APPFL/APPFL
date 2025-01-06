@@ -1,0 +1,31 @@
+# This workflow publishes pre-release versions to PyPI when branches starting with 'pre-release' are updated.
+# It's designed to test changes potentially affecting the release process, including changes in dependencies updated by Dependabot.
+
+name: Publish Pre-release Package
+
+on:
+  push:
+    branches:
+      - 'pre-release*'
+
+jobs:
+  publish-prerelease:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+    - name: Build package
+      run: python -m build
+    - name: Publish package to PyPI as a pre-release
+      uses: pypa/gh-action-pypi-publish@67339c736fd9354cd4f8cb0b744f2b82a74b5c70
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
