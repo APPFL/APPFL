@@ -4,7 +4,6 @@ Serve a gRPC server
 
 import time
 import grpc
-import logging
 from concurrent import futures
 from .grpc_communicator_pb2_grpc import add_GRPCCommunicatorServicer_to_server
 from .utils import load_credential_from_file

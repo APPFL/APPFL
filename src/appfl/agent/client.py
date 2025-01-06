@@ -533,10 +533,13 @@ class ClientAgent:
         wandb.init(
             entity=self.client_agent_config.wandb_configs.get("entity", None),
             project=self.client_agent_config.wandb_configs.get("project", None),
-            dir=self.client_agent_config.train_configs.get("logging_output_dirname", "./output"),
-            id=self.client_agent_config.get('experiment_id', wandb.util.generate_id()),
+            dir=self.client_agent_config.train_configs.get(
+                "logging_output_dirname", "./output"
+            ),
+            id=self.client_agent_config.get("experiment_id", wandb.util.generate_id()),
             name=self.client_agent_config.wandb_configs.get("exp_name", "appfl"),
             config=OmegaConf.to_container(self.client_agent_config, resolve=True),
             resume="allow",
         )
         self.client_agent_config.train_configs.enable_wandb = True
+        self.client_agent_config.train_configs.wandb_logging_id = self.get_id()
