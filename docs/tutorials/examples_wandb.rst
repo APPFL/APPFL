@@ -20,7 +20,7 @@ Each client and specify configurations for wandb in their client configuration y
 .. code-block:: yaml
 
     client_id: Client1
-    
+
     data_configs:
         ...
     ...

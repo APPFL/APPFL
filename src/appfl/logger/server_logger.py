@@ -21,10 +21,10 @@ class ServerAgentFileLogger:
     ) -> None:
         if file_name != "":
             file_name += f"_Server_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-        
+
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-        
+
         info_fmt = logging.Formatter(
             f"{Fore.BLUE}{Style.BRIGHT}appfl: ✅{Style.RESET_ALL}[%(asctime)s server]: %(message)s"
         )

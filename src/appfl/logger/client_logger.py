@@ -7,6 +7,7 @@ from datetime import datetime
 from colorama import Fore, Style
 from typing import List, Dict, Union
 
+
 class ClientAgentFileLogger:
     """
     ClientAgentFileLogger is a class that logs FL client-side messages to the console and to a file.
@@ -27,7 +28,7 @@ class ClientAgentFileLogger:
         if file_name != "":
             file_name += f"_{logging_id}" if logging_id != "" else ""
             file_name += f"_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-        
+
         self.logger = logging.getLogger(
             __name__ + "_" + logging_id if logging_id != "" else str(uuid.uuid4())
         )
@@ -59,7 +60,7 @@ class ClientAgentFileLogger:
                 f"{Fore.BLUE}{Style.BRIGHT}appfl: ❌{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
             )
         )
-        
+
         num_s_handlers = len(
             [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
         )
@@ -80,7 +81,7 @@ class ClientAgentFileLogger:
             self.logger.addHandler(s_handler_info)
             self.logger.addHandler(s_handler_debug)
             self.logger.addHandler(s_handler_error)
-            
+
         if file_dir != "" and file_name != "" and num_f_handlers == 0:
             if not os.path.exists(file_dir):
                 pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
