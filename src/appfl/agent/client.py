@@ -525,10 +525,12 @@ class ClientAgent:
         Initialize Weights and Biases for logging.
         """
         if not hasattr(self.client_agent_config, "wandb_configs"):
-            self.client_agent_config.train_configs.enable_wandb = False
+            self.client_agent_config.train_configs.enable_wandb = wandb.run is not None
+            self.client_agent_config.train_configs.wandb_logging_id = self.get_id()
             return
         if not self.client_agent_config.wandb_configs.get("enable_wandb", False):
-            self.client_agent_config.train_configs.enable_wandb = False
+            self.client_agent_config.train_configs.enable_wandb = wandb.run is not None
+            self.client_agent_config.train_configs.wandb_logging_id = self.get_id()
             return
         wandb.init(
             entity=self.client_agent_config.wandb_configs.get("entity", None),

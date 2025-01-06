@@ -1,5 +1,6 @@
-import numpy as np
+import copy
 import argparse
+import numpy as np
 from mpi4py import MPI
 from typing import List
 from omegaconf import OmegaConf
@@ -45,14 +46,23 @@ else:
     # Create client agents for each client in the batch
     client_agents: List[ClientAgent] = []
     client_agent_config = OmegaConf.load(args.client_config)
-    for client_id in client_batch[rank - 1]:
+    for batch_idx, client_id in enumerate(client_batch[rank - 1]):
         client_agent_config.client_id = f"Client{client_id}"
         client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
         client_agent_config.data_configs.dataset_kwargs.client_id = client_id
         client_agent_config.data_configs.dataset_kwargs.visualization = (
             True if client_id == 0 else False
         )
-        client_agents.append(ClientAgent(client_agent_config=client_agent_config))
+        # Only enable wandb logging for the first client in the batch is sufficient
+        if hasattr(
+            client_agent_config, "wandb_configs"
+        ) and client_agent_config.wandb_configs.get("enable_wandb", False):
+            client_agent_config.wandb_configs.enable_wandb = (
+                True if batch_idx == 0 else False
+            )
+        client_agents.append(
+            ClientAgent(client_agent_config=copy.deepcopy(client_agent_config))
+        )
     # Create the client communicator for batched clients
     client_communicator = MPIClientCommunicator(
         comm,
