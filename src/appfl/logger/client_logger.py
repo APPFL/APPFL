@@ -2,7 +2,9 @@ import os
 import uuid
 import logging
 import pathlib
+from .utils import LevelFilter
 from datetime import datetime
+from colorama import Fore, Style
 from typing import List, Dict, Union
 
 
@@ -26,17 +28,38 @@ class ClientAgentFileLogger:
         if file_name != "":
             file_name += f"_{logging_id}" if logging_id != "" else ""
             file_name += f"_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-        fmt = (
-            logging.Formatter("[%(asctime)s %(levelname)-4s]: %(message)s")
-            if logging_id == ""
-            else logging.Formatter(
-                f"[%(asctime)s %(levelname)-4s {logging_id}]: %(message)s"
-            )
-        )
+
         self.logger = logging.getLogger(
             __name__ + "_" + logging_id if logging_id != "" else str(uuid.uuid4())
         )
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
+        info_fmt = (
+            logging.Formatter(
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: ✅{Style.RESET_ALL}[%(asctime)s]: %(message)s"
+            )
+            if logging_id == ""
+            else logging.Formatter(
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: ✅{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
+            )
+        )
+        debug_fmt = (
+            logging.Formatter(
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: 💡{Style.RESET_ALL}[%(asctime)s]: %(message)s"
+            )
+            if logging_id == ""
+            else logging.Formatter(
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: 💡{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
+            )
+        )
+        error_fmt = (
+            logging.Formatter(
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: ❌{Style.RESET_ALL}[%(asctime)s]: %(message)s"
+            )
+            if logging_id == ""
+            else logging.Formatter(
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: ❌{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
+            )
+        )
 
         num_s_handlers = len(
             [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
@@ -46,27 +69,44 @@ class ClientAgentFileLogger:
         )
 
         if num_s_handlers == 0:
-            s_handler = logging.StreamHandler()
-            s_handler.setLevel(logging.INFO)
-            s_handler.setFormatter(fmt)
-            self.logger.addHandler(s_handler)
+            s_handler_info = logging.StreamHandler()
+            s_handler_info.setFormatter(info_fmt)
+            s_handler_info.addFilter(LevelFilter(logging.INFO))
+            s_handler_debug = logging.StreamHandler()
+            s_handler_debug.setFormatter(debug_fmt)
+            s_handler_debug.addFilter(LevelFilter(logging.DEBUG))
+            s_handler_error = logging.StreamHandler()
+            s_handler_error.setFormatter(error_fmt)
+            s_handler_error.addFilter(LevelFilter(logging.ERROR))
+            self.logger.addHandler(s_handler_info)
+            self.logger.addHandler(s_handler_debug)
+            self.logger.addHandler(s_handler_error)
+
         if file_dir != "" and file_name != "" and num_f_handlers == 0:
             if not os.path.exists(file_dir):
                 pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
             real_file_name = f"{file_dir}/{file_name}.txt"
             # check if the file exists
             file_exists = os.path.exists(real_file_name)
-            f_handler = logging.FileHandler(real_file_name)
-            f_handler.setLevel(logging.INFO)
-            f_handler.setFormatter(fmt)
-            self.logger.addHandler(f_handler)
+            f_handler_info = logging.FileHandler(real_file_name)
+            f_handler_info.setFormatter(info_fmt)
+            f_handler_info.setLevel(logging.INFO)
+            f_handler_debug = logging.FileHandler(real_file_name)
+            f_handler_debug.setFormatter(debug_fmt)
+            f_handler_debug.setLevel(logging.DEBUG)
+            f_handler_error = logging.FileHandler(real_file_name)
+            f_handler_error.setFormatter(error_fmt)
+            f_handler_error.setLevel(logging.ERROR)
+            self.logger.addHandler(f_handler_info)
+            self.logger.addHandler(f_handler_debug)
+            self.logger.addHandler(f_handler_error)
             if not file_exists:
-                self.logger.info(f"Logging to {real_file_name}")
+                self.info(f"Logging to {real_file_name}")
 
     def log_title(self, titles: List) -> None:
         self.titles = titles
         title = " ".join(["%10s" % t for t in titles])
-        self.logger.info(title)
+        self.info(title)
 
     def set_title(self, titles: List) -> None:
         if not hasattr(self, "titles"):
@@ -90,7 +130,7 @@ class ClientAgentFileLogger:
                 for ln, cnt in zip(length, contents)
             ]
         )
-        self.logger.info(content)
+        self.info(content)
 
     def info(self, info: str) -> None:
         self.logger.info(info)

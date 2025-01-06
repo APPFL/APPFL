@@ -122,6 +122,12 @@ class GlobusComputeServerCommunicator:
                     "client_agent_config.train_configs.logging_id is deprecated. Please use client_id instead.",
                     DeprecationWarning,
                 )
+            # logging information regarding wandb
+            if hasattr(
+                client_config, "wandb_configs"
+            ) and client_config.wandb_configs.get("enable_wandb", False):
+                self.logger.info(f"{client_id} is using wandb for logging. ")
+
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
                 client_endpoint_id=client_endpoint_id,

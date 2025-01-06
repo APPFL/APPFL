@@ -78,6 +78,8 @@ setuptools.setup(
         "seaborn",
         "piq",
         "scikit-learn",
+        "wandb",
+        "colorama",
     ],
     extras_require={
         "dev": [

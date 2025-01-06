@@ -37,6 +37,14 @@ for i in range(args.num_clients):
     client_agent_configs[i].data_configs.dataset_kwargs.visualization = (
         True if i == 0 else False
     )
+    # only enable wandb for the first client is sufficient for logging all clients in serial run
+    if hasattr(client_agent_configs[i], "wandb_configs") and client_agent_configs[
+        i
+    ].wandb_configs.get("enable_wandb", False):
+        if i == 0:
+            client_agent_configs[i].wandb_configs.enable_wandb = True
+        else:
+            client_agent_configs[i].wandb_configs.enable_wandb = False
 
 # Load client agents
 client_agents = [
