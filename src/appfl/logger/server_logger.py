@@ -1,6 +1,7 @@
 import os
 import pathlib
 import logging
+from .utils import LevelFilter
 from typing import Optional
 from datetime import datetime
 from colorama import Fore, Style
@@ -20,11 +21,19 @@ class ServerAgentFileLogger:
     ) -> None:
         if file_name != "":
             file_name += f"_Server_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-        fmt = logging.Formatter(
-            f"{Fore.BLUE}{Style.BRIGHT}appfl: {Style.RESET_ALL}[%(asctime)s server]: %(message)s"
-        )
+        
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
+        
+        info_fmt = logging.Formatter(
+            f"{Fore.BLUE}{Style.BRIGHT}appfl: ✅{Style.RESET_ALL}[%(asctime)s server]: %(message)s"
+        )
+        debug_fmt = logging.Formatter(
+            f"{Fore.BLUE}{Style.BRIGHT}appfl: 💡{Style.RESET_ALL}[%(asctime)s server]: %(message)s"
+        )
+        error_fmt = logging.Formatter(
+            f"{Fore.BLUE}{Style.BRIGHT}appfl: ❌{Style.RESET_ALL}[%(asctime)s server]: %(message)s"
+        )
 
         num_s_handlers = len(
             [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
@@ -34,29 +43,45 @@ class ServerAgentFileLogger:
         )
 
         if num_s_handlers == 0:
-            s_handler = logging.StreamHandler()
-            s_handler.setLevel(logging.INFO)
-            s_handler.setFormatter(fmt)
-            self.logger.addHandler(s_handler)
+            s_handler_info = logging.StreamHandler()
+            s_handler_info.setFormatter(info_fmt)
+            s_handler_info.addFilter(LevelFilter(logging.INFO))
+            s_handler_debug = logging.StreamHandler()
+            s_handler_debug.setFormatter(debug_fmt)
+            s_handler_debug.addFilter(LevelFilter(logging.DEBUG))
+            s_handler_error = logging.StreamHandler()
+            s_handler_error.setFormatter(error_fmt)
+            s_handler_error.addFilter(LevelFilter(logging.ERROR))
+            self.logger.addHandler(s_handler_info)
+            self.logger.addHandler(s_handler_debug)
+            self.logger.addHandler(s_handler_error)
         if file_dir != "" and file_name != "" and num_f_handlers == 0:
             if not os.path.exists(file_dir):
                 pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
             real_file_name = f"{file_dir}/{file_name}.txt"
-            f_handler = logging.FileHandler(real_file_name)
             self.log_filepath = real_file_name
-            f_handler.setLevel(logging.INFO)
-            f_handler.setFormatter(fmt)
-            self.logger.addHandler(f_handler)
+            f_handler_info = logging.FileHandler(real_file_name)
+            f_handler_info.setFormatter(info_fmt)
+            f_handler_info.setLevel(logging.INFO)
+            f_handler_debug = logging.FileHandler(real_file_name)
+            f_handler_debug.setFormatter(debug_fmt)
+            f_handler_debug.setLevel(logging.DEBUG)
+            f_handler_error = logging.FileHandler(real_file_name)
+            f_handler_error.setFormatter(error_fmt)
+            f_handler_error.setLevel(logging.ERROR)
+            self.logger.addHandler(f_handler_info)
+            self.logger.addHandler(f_handler_debug)
+            self.logger.addHandler(f_handler_error)
             self.info(f"Logging to {real_file_name}")
 
     def info(self, info: str) -> None:
-        self.logger.info(f"{Fore.GREEN}✅{Style.RESET_ALL} {info}")
+        self.logger.info(info)
 
     def debug(self, debug: str) -> None:
-        self.logger.debug(f"{Fore.YELLOW}💡{Style.RESET_ALL} {debug}")
+        self.logger.debug(debug)
 
     def error(self, error: str) -> None:
-        self.logger.error(f"{Fore.RED}❌{Style.RESET_ALL} {error}")
+        self.logger.error(error)
 
     def get_log_filepath(self) -> Optional[str]:
         if hasattr(self, "log_filepath"):

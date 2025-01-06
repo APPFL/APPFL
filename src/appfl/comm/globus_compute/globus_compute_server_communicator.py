@@ -126,7 +126,7 @@ class GlobusComputeServerCommunicator:
             if hasattr(
                 client_config, "wandb_configs"
             ) and client_config.wandb_configs.get("enable_wandb", False):
-                self.logger.info(f"Client {client_id} is using wandb for logging. ")
+                self.logger.info(f"{client_id} is using wandb for logging. ")
 
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
