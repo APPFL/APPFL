@@ -11,6 +11,7 @@ New Features
 - Add documentation for using APPFL on ALCF Polaris at `here <https://appfl.ai/en/latest/tutorials/examples_gpuclusterrun.html#grpc-simulation-on-polaris-cluster>`_.
 - Allow users to send payload of arbitrary size for custom actions in gRPC communication.
 - Add more tests for FL experiments under different scenarios: serial, MPI, batched MPI, and gRPC.
+- Integrate ``wandb`` for logging training metadata such as training and validation losses into client trainer, with documentation available `here <https://appfl.ai/en/latest/tutorials/examples_wandb.html>`_.
 
 Bug Fixes
 ~~~~~~~~~
