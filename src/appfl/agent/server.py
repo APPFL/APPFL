@@ -2,6 +2,7 @@ import io
 import os
 import torch
 import pathlib
+import warnings
 import threading
 import numpy as np
 import torch.nn as nn
@@ -51,6 +52,7 @@ class ServerAgent:
                 if hasattr(self.server_agent_config.server_configs, "comm_configs")
                 else self.server_agent_config.client_configs.comm_configs
             )
+        self._set_num_clients()
         self._create_logger()
         self._load_model()
         self._load_loss()
@@ -65,27 +67,7 @@ class ServerAgent:
         Get the number of clients.
         """
         if not hasattr(self, "num_clients"):
-            assert (
-                hasattr(self.server_agent_config.server_configs, "num_clients")
-                or hasattr(
-                    self.server_agent_config.server_configs.scheduler_kwargs,
-                    "num_clients",
-                )
-                or hasattr(
-                    self.server_agent_config.server_configs.aggregator_kwargs,
-                    "num_clients",
-                )
-            ), "The number of clients should be set in the server configurations."
-            self.num_clients = (
-                self.server_agent_config.server_configs.num_clients
-                if hasattr(self.server_agent_config.server_configs, "num_clients")
-                else self.server_agent_config.server_configs.scheduler_kwargs.num_clients
-                if hasattr(
-                    self.server_agent_config.server_configs.scheduler_kwargs,
-                    "num_clients",
-                )
-                else self.server_agent_config.server_configs.aggregator_kwargs.num_clients
-            )
+            self._set_num_clients()
         return self.num_clients
 
     def get_client_configs(self, **kwargs) -> DictConfig:
@@ -577,3 +559,71 @@ class ServerAgent:
         torch.cuda.manual_seed_all(seed_value)  # Set seed for all GPUs
         torch.backends.cudnn.deterministic = True  # Use deterministic algorithms
         torch.backends.cudnn.benchmark = False  # Disable this to ensure reproducibility
+
+    def _set_num_clients(self) -> None:
+        """
+        Set the number of clients.
+        The recommended way is to set the number of clients in the server_configs.
+        Give deprecation warnings if the number of clients is set in the scheduler_kwargs or aggregator_kwargs.
+        """
+        if not hasattr(self, "num_clients"):
+            assert (
+                hasattr(self.server_agent_config.server_configs, "num_clients")
+                or (
+                    hasattr(self.server_agent_config.server_configs, "scheduler_kwargs")
+                    and hasattr(
+                        self.server_agent_config.server_configs.scheduler_kwargs,
+                        "num_clients",
+                    )
+                )
+                or (
+                    hasattr(
+                        self.server_agent_config.server_configs, "aggregator_kwargs"
+                    )
+                    and hasattr(
+                        self.server_agent_config.server_configs.aggregator_kwargs,
+                        "num_clients",
+                    )
+                )
+            ), "The number of clients should be set in the server configurations."
+            self.num_clients = (
+                self.server_agent_config.server_configs.num_clients
+                if hasattr(self.server_agent_config.server_configs, "num_clients")
+                else self.server_agent_config.server_configs.scheduler_kwargs.num_clients
+                if (
+                    hasattr(self.server_agent_config.server_configs, "scheduler_kwargs")
+                    and hasattr(
+                        self.server_agent_config.server_configs.scheduler_kwargs,
+                        "num_clients",
+                    )
+                )
+                else self.server_agent_config.server_configs.aggregator_kwargs.num_clients
+            )
+            # [Deprecation]: It is recommended to specify the number of clients once in server_configs
+            if hasattr(
+                self.server_agent_config.server_configs, "scheduler_kwargs"
+            ) and hasattr(
+                self.server_agent_config.server_configs.scheduler_kwargs,
+                "num_clients",
+            ):
+                warnings.warn(
+                    message="It is deprecated to specify the number of clients in the scheduler_kwargs. It is recommended to specify it in the server_configs.num_clients instead.",
+                    category=DeprecationWarning,
+                )
+            if hasattr(
+                self.server_agent_config.server_configs, "aggregator_kwargs"
+            ) and hasattr(
+                self.server_agent_config.server_configs.aggregator_kwargs,
+                "num_clients",
+            ):
+                warnings.warn(
+                    message="It is deprecated to specify the number of clients in the aggregator_kwargs. It is recommended to specify it in the server_configs.num_clients instead.",
+                    category=DeprecationWarning,
+                )
+            # Set num_clients for aggregator and scheduler
+            if hasattr(self.server_agent_config.server_configs, "scheduler_kwargs"):
+                self.server_agent_config.server_configs.scheduler_kwargs.num_clients = (
+                    self.num_clients
+                )
+            if hasattr(self.server_agent_config.server_configs, "aggregator_kwargs"):
+                self.server_agent_config.server_configs.aggregator_kwargs.num_clients = self.num_clients
