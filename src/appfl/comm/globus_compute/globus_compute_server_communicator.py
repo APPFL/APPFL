@@ -76,8 +76,11 @@ class GlobusComputeServerCommunicator:
             server_agent_config.server_configs.num_clients
             if hasattr(server_agent_config.server_configs, "num_clients")
             else server_agent_config.server_configs.scheduler_kwargs.num_clients
-            if hasattr(
-                server_agent_config.server_configs.scheduler_kwargs, "num_clients"
+            if (
+                hasattr(server_agent_config.server_configs, "scheduler_kwargs")
+                and hasattr(
+                    server_agent_config.server_configs.scheduler_kwargs, "num_clients"
+                )
             )
             else server_agent_config.server_configs.aggregator_kwargs.num_clients
         )

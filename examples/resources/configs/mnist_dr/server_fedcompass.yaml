@@ -78,9 +78,9 @@ client_configs:
         feature_space_distribution: True
 
 server_configs:
+  num_clients: 2
   scheduler: "CompassScheduler"
   scheduler_kwargs:
-    num_clients: 2
     same_init_model: True
     max_local_steps: 100
     min_local_steps: 20
@@ -94,7 +94,6 @@ server_configs:
       a: 0.5
     alpha: 0.9
     gradient_based: True
-    num_clients: 2
   device: "cpu"
   num_global_epochs: 20
   logging_output_dirname: "./output"

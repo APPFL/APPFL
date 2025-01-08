@@ -19,9 +19,7 @@ args = argparser.parse_args()
 
 # Load server agent configurations and set the number of clients
 server_agent_config = OmegaConf.load(args.server_config)
-server_agent_config.server_configs.scheduler_kwargs.num_clients = args.num_clients
-if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-    server_agent_config.server_configs.aggregator_kwargs.num_clients = args.num_clients
+server_agent_config.server_configs.num_clients = args.num_clients
 
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)

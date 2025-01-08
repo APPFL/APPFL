@@ -625,5 +625,15 @@ class ServerAgent:
                 self.server_agent_config.server_configs.scheduler_kwargs.num_clients = (
                     self.num_clients
                 )
+            else:
+                self.server_agent_config.server_configs.scheduler_kwargs = OmegaConf.create(
+                    {"num_clients": self.num_clients}
+                )
             if hasattr(self.server_agent_config.server_configs, "aggregator_kwargs"):
                 self.server_agent_config.server_configs.aggregator_kwargs.num_clients = self.num_clients
+            else:
+                self.server_agent_config.server_configs.aggregator_kwargs = OmegaConf.create(
+                    {"num_clients": self.num_clients}
+                )
+            # Set num_clients for server_configs
+            self.server_agent_config.server_configs.num_clients = self.num_clients
