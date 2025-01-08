@@ -53,6 +53,7 @@ class ServerAgent:
                 else self.server_agent_config.client_configs.comm_configs
             )
         self._set_num_clients()
+        self._prepare_configs()
         self._create_logger()
         self._load_model()
         self._load_loss()
@@ -626,14 +627,47 @@ class ServerAgent:
                     self.num_clients
                 )
             else:
-                self.server_agent_config.server_configs.scheduler_kwargs = OmegaConf.create(
-                    {"num_clients": self.num_clients}
+                self.server_agent_config.server_configs.scheduler_kwargs = (
+                    OmegaConf.create({"num_clients": self.num_clients})
                 )
             if hasattr(self.server_agent_config.server_configs, "aggregator_kwargs"):
                 self.server_agent_config.server_configs.aggregator_kwargs.num_clients = self.num_clients
             else:
-                self.server_agent_config.server_configs.aggregator_kwargs = OmegaConf.create(
-                    {"num_clients": self.num_clients}
+                self.server_agent_config.server_configs.aggregator_kwargs = (
+                    OmegaConf.create({"num_clients": self.num_clients})
                 )
             # Set num_clients for server_configs
             self.server_agent_config.server_configs.num_clients = self.num_clients
+
+    def _prepare_configs(self):
+        """
+        Prepare the configurations for the server agent.
+        """
+        if hasattr(
+            self.server_agent_config.client_configs.train_configs, "send_gradient"
+        ):
+            if hasattr(self.server_agent_config.server_configs, "aggregator_kwargs"):
+                if hasattr(
+                    self.server_agent_config.server_configs.aggregator_kwargs,
+                    "gradient_based",
+                ):
+                    warnings.warn(
+                        message="There is no need to specify the gradient_based in the aggregator_kwargs. It is automatically set based on the send_gradient in the client_configs.train_configs.",
+                        category=UserWarning,
+                    )
+                self.server_agent_config.server_configs.aggregator_kwargs.gradient_based = self.server_agent_config.client_configs.train_configs.send_gradient
+            else:
+                self.server_agent_config.server_configs.aggregator_kwargs = OmegaConf.create(
+                    {
+                        "gradient_based": self.server_agent_config.client_configs.train_configs.send_gradient
+                    }
+                )
+        else:
+            # Assert no gradient_based in the aggregator_kwargs
+            assert not (
+                hasattr(self.server_agent_config.server_configs, "aggregator_kwargs")
+                and hasattr(
+                    self.server_agent_config.server_configs.aggregator_kwargs,
+                    "gradient_based",
+                )
+            ), "The gradient_based should be set in the client_configs.train_configs.send_gradient."

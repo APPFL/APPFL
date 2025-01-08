@@ -89,7 +89,6 @@ server_configs:
     staleness_fn_kwargs:
       a: 0.5
     alpha: 0.9
-    gradient_based: True
   device: "cpu"
   num_global_epochs: 100
   logging_output_dirname: "./output"

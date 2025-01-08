@@ -301,13 +301,17 @@ class APPFLxDataExchanger:
         # [Deprecated] The following code is used for the old version of the server configuration
         # and should no longer needed.
         if hasattr(server_config.server_configs, "aggregator_kwargs"):
-            server_config.server_configs.aggregator_kwargs.num_clients = len(client_configs)
+            server_config.server_configs.aggregator_kwargs.num_clients = len(
+                client_configs
+            )
         else:
             server_config.server_configs.aggregator_kwargs = OmegaConf.create(
                 {"num_clients": len(client_configs)}
             )
         if hasattr(server_config.server_configs, "scheduler_kwargs"):
-            server_config.server_configs.scheduler_kwargs.num_clients = len(client_configs)
+            server_config.server_configs.scheduler_kwargs.num_clients = len(
+                client_configs
+            )
         else:
             server_config.server_configs.scheduler_kwargs = OmegaConf.create(
                 {"num_clients": len(client_configs)}
