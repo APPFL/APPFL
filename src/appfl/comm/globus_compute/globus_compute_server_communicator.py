@@ -263,6 +263,7 @@ class GlobusComputeServerCommunicator:
                 client_model, client_metadata_local = (
                     self.__parse_globus_compute_result(result)
                 )
+                client_metadata_local = self.__check_deprecation(client_id, client_metadata_local)
                 client_results[client_id] = client_model
                 client_metadata[client_id] = client_metadata_local
                 # Set the status of the finished task
@@ -300,6 +301,7 @@ class GlobusComputeServerCommunicator:
             result = fut.result()
             client_id = self.executing_tasks[task_id].client_id
             client_model, client_metadata = self.__parse_globus_compute_result(result)
+            client_metadata = self.__check_deprecation(client_id, client_metadata)
             # Set the status of the finished task
             client_log = client_metadata.get("log", {})
             self.executing_tasks[task_id].end_time = time.time()
@@ -340,6 +342,26 @@ class GlobusComputeServerCommunicator:
             self.client_endpoints[client_id].cancel_task()
         self.executing_task_futs = {}
         self.executing_tasks = {}
+        
+    def __check_deprecation(
+        self,
+        client_id: str,
+        client_metadata: Dict,
+    ):
+        """
+        This function is used to check deprecation on the client site packages.
+        """
+        if not hasattr(self, "__version_deprecation_warning_set"):
+            self.__version_deprecation_warning_set = set()
+        self.logger.debug(f"Checking deprecation for client {client_id}: {client_metadata}.")
+        if "_deprecated" in client_metadata:
+            if client_id not in self.__version_deprecation_warning_set:
+                warnings.warn(
+                    f"Client {client_id} is using a deprecated version of the client site package of appfl, and they should update it to version 1.2.1.",
+                    UserWarning,
+                )
+            client_metadata.pop("_deprecated")
+        return client_metadata
 
     def __parse_globus_compute_result(self, result):
         """
