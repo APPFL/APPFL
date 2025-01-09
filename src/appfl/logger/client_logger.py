@@ -60,6 +60,15 @@ class ClientAgentFileLogger:
                 f"{Fore.BLUE}{Style.BRIGHT}appfl: ❌{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
             )
         )
+        warning_fmt = (
+            logging.Formatter(
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: ❗️{Style.RESET_ALL}[%(asctime)s]: %(message)s"
+            )
+            if logging_id == ""
+            else logging.Formatter(
+                f"{Fore.BLUE}{Style.BRIGHT}appfl: ❗️{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
+            )
+        )
 
         num_s_handlers = len(
             [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
@@ -78,9 +87,13 @@ class ClientAgentFileLogger:
             s_handler_error = logging.StreamHandler()
             s_handler_error.setFormatter(error_fmt)
             s_handler_error.addFilter(LevelFilter(logging.ERROR))
+            s_handler_warning = logging.StreamHandler()
+            s_handler_warning.setFormatter(warning_fmt)
+            s_handler_warning.addFilter(LevelFilter(logging.WARNING))
             self.logger.addHandler(s_handler_info)
             self.logger.addHandler(s_handler_debug)
             self.logger.addHandler(s_handler_error)
+            self.logger.addHandler(s_handler_warning)
 
         if file_dir != "" and file_name != "" and num_f_handlers == 0:
             if not os.path.exists(file_dir):
@@ -97,9 +110,13 @@ class ClientAgentFileLogger:
             f_handler_error = logging.FileHandler(real_file_name)
             f_handler_error.setFormatter(error_fmt)
             f_handler_error.setLevel(logging.ERROR)
+            f_handler_warning = logging.FileHandler(real_file_name)
+            f_handler_warning.setFormatter(warning_fmt)
+            f_handler_warning.setLevel(logging.WARNING)
             self.logger.addHandler(f_handler_info)
             self.logger.addHandler(f_handler_debug)
             self.logger.addHandler(f_handler_error)
+            self.logger.addHandler(f_handler_warning)
             if not file_exists:
                 self.info(f"Logging to {real_file_name}")
 
@@ -140,3 +157,6 @@ class ClientAgentFileLogger:
 
     def error(self, error: str) -> None:
         self.logger.error(error)
+
+    def warning(self, warning: str) -> None:
+        self.logger.warning(warning)

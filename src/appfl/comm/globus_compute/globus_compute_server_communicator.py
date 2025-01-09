@@ -68,7 +68,7 @@ class GlobusComputeServerCommunicator:
                 code_serialization_strategy=CombinedCode(),
             )
         else:
-            gcc = Client()
+            gcc = Client(code_serialization_strategy=CombinedCode(),)
         self.gce = Executor(client=gcc)  # Globus Compute Executor
         self.logger = logger if logger is not None else self._default_logger()
         # Sanity check for configurations: Check for the number of clients
@@ -279,7 +279,7 @@ class GlobusComputeServerCommunicator:
                 self.executing_tasks.pop(task_id)
                 self.executing_task_futs.pop(fut)
             except Exception as e:
-                self.logger.info(
+                self.logger.error(
                     f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
                 )
                 raise e
@@ -316,7 +316,7 @@ class GlobusComputeServerCommunicator:
             self.executing_task_futs.pop(fut)
         except Exception as e:
             client_id = self.executing_tasks[task_id].client_id
-            self.logger.info(
+            self.logger.error(
                 f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
             )
             raise e
@@ -351,15 +351,14 @@ class GlobusComputeServerCommunicator:
         """
         This function is used to check deprecation on the client site packages.
         """
-        if not hasattr(self, "__version_deprecation_warning_set"):
-            self.__version_deprecation_warning_set = set()
-        self.logger.debug(f"Checking deprecation for client {client_id}: {client_metadata}.")
+        if not hasattr(self, "_version_deprecation_warning_set"):
+            self._version_deprecation_warning_set = set()
         if "_deprecated" in client_metadata:
-            if client_id not in self.__version_deprecation_warning_set:
-                warnings.warn(
-                    f"Client {client_id} is using a deprecated version of the client site package of appfl, and they should update it to version 1.2.1.",
-                    UserWarning,
+            if client_id not in self._version_deprecation_warning_set:
+                self.logger.warning(
+                    f"Client {client_id} is using a deprecated version of appfl, and it is highly recommended to update it to at least version 1.2.1."
                 )
+                self._version_deprecation_warning_set.add(client_id)
             client_metadata.pop("_deprecated")
         return client_metadata
 
