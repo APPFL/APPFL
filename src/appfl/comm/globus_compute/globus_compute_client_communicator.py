@@ -21,10 +21,13 @@ def globus_compute_client_entry_point(
             data_readiness_report_executor,
             train_executor,
         )
+
         if task_name == "get_sample_size":
             return get_sample_size_executor(client_agent_config=client_agent_config)
         elif task_name == "data_readiness_report":
-            return data_readiness_report_executor(client_agent_config=client_agent_config)
+            return data_readiness_report_executor(
+                client_agent_config=client_agent_config
+            )
         elif task_name == "train":
             return train_executor(
                 client_agent_config=client_agent_config,
@@ -36,12 +39,13 @@ def globus_compute_client_entry_point(
                 f"Task {task_name} is not implemented in the client endpoint."
             )
     # Continue to support the old client appfl version until version 2.0.0
-    except (ModuleNotFoundError, ImportError) as e:
+    except (ModuleNotFoundError, ImportError):
         from appfl.agent import ClientAgent
         from appfl.comm.globus_compute.utils.client_utils import (
             load_global_model,
             send_local_model,
         )
+
         client_agent = ClientAgent(client_agent_config=client_agent_config)
         if model is not None:
             model = load_global_model(client_agent.client_agent_config, model)
@@ -71,8 +75,12 @@ def globus_compute_client_entry_point(
             local_model = send_local_model(
                 client_agent.client_agent_config,
                 local_model,
-                meta_data["local_model_key"] if "local_model_key" in meta_data else None,
-                meta_data["local_model_url"] if "local_model_url" in meta_data else None,
+                meta_data["local_model_key"]
+                if "local_model_key" in meta_data
+                else None,
+                meta_data["local_model_url"]
+                if "local_model_url" in meta_data
+                else None,
             )
             meta_data_local["_deprecated"] = True
             return local_model, meta_data_local
