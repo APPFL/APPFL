@@ -328,9 +328,9 @@ class GlobusComputeClientLogger:
         if step is not None:
             step = self.__get_step_str(step)
             name = f"{step} {name}"
-        assert (
-            name == self.timer_stack[-1]
-        ), f"Please stop timing event in order! {name} {self.timer_stack}"
+        assert name == self.timer_stack[-1], (
+            f"Please stop timing event in order! {name} {self.timer_stack}"
+        )
         event_dict = self.timing
         for i, event in enumerate(self.timer_stack):
             if i == len(self.timer_stack) - 1:

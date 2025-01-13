@@ -27,15 +27,15 @@ def show():
 def load_executable_func(cfg_dict):
     """Load the executable function from the configuration dictionary."""
     exct_func = OmegaConf.create(ExecutableFunc(**cfg_dict))
-    assert (
-        exct_func.module != "" or exct_func.script_file != ""
-    ), "Need to specify the executable function by (module, call) or script file"
-    assert not (
-        exct_func.module != "" and exct_func.script_file != ""
-    ), "Can only specify the executable function by (module, call) or script file but not both"
-    assert (
-        exct_func.call != ""
-    ), "Need to specify the function's name by setting 'call: <func name>' in the config file"
+    assert exct_func.module != "" or exct_func.script_file != "", (
+        "Need to specify the executable function by (module, call) or script file"
+    )
+    assert not (exct_func.module != "" and exct_func.script_file != ""), (
+        "Can only specify the executable function by (module, call) or script file but not both"
+    )
+    assert exct_func.call != "", (
+        "Need to specify the function's name by setting 'call: <func name>' in the config file"
+    )
     if exct_func.script_file != "":
         with open(exct_func.script_file) as fi:
             exct_func.source = fi.read()
@@ -73,15 +73,15 @@ def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str
     with open(config_file) as fi:
         data = yaml.load(fi, Loader=yaml.SafeLoader)
     cfg.server = OmegaConf.structured(GlobusComputeServerConfig(**data["server"]))
-    assert (
-        "func" in data and "get_model" in data["func"]
-    ), "Please specify the function to obtain the model."
-    assert (
-        "get_model" in data["func"]
-    ), "Please specify the function to obtain the model."
-    assert (
-        "val_metric" in data["func"]
-    ), "Please specify the validation metric function."
+    assert "func" in data and "get_model" in data["func"], (
+        "Please specify the function to obtain the model."
+    )
+    assert "get_model" in data["func"], (
+        "Please specify the function to obtain the model."
+    )
+    assert "val_metric" in data["func"], (
+        "Please specify the validation metric function."
+    )
     cfg.get_model = load_executable_func(data["func"]["get_model"])
     cfg.val_metric = load_executable_func(data["func"]["val_metric"])
     # TODO: Zilinghan what is this data - this is a general dataset if each client does not specify a local dataloader
@@ -102,17 +102,17 @@ def load_globus_compute_server_config(cfg: GlobusComputeConfig, config_file: str
     is_step_optimizer = check_step_optimizer(data["algorithm"]["clientname"])
     # Perform some sanity checks
     if is_step_optimizer:
-        assert (
-            "num_local_steps" in data["algorithm"]["args"]
-        ), "Please provide the number of local steps for step-based client optimizer."
+        assert "num_local_steps" in data["algorithm"]["args"], (
+            "Please provide the number of local steps for step-based client optimizer."
+        )
     else:
-        assert (
-            "num_local_epochs" in data["algorithm"]["args"]
-        ), "Please provide the number of local epochs for epoch-based client optimizer."
+        assert "num_local_epochs" in data["algorithm"]["args"], (
+            "Please provide the number of local epochs for epoch-based client optimizer."
+        )
     if use_compass:
-        assert (
-            is_step_optimizer
-        ), "Compass scheduler only works with step-based client optimizer."
+        assert is_step_optimizer, (
+            "Compass scheduler only works with step-based client optimizer."
+        )
     # Load FL algorithm configs
     cfg.fed = Federated()
     cfg.fed.servername = data["algorithm"]["servername"]
@@ -222,23 +222,23 @@ def get_call(script: str):
     module_spec.loader.exec_module(module)
     functions = inspect.getmembers(module, inspect.isfunction)
     function_names = [func[0] for func in functions]
-    assert (
-        len(function_names) == 1
-    ), f"More than one function defined in script {script}"
+    assert len(function_names) == 1, (
+        f"More than one function defined in script {script}"
+    )
     return function_names[0]
 
 
 def load_appfl_client_config_funcx_web(
     cfg: GlobusComputeConfig, config_files: List[str], dataloaders: List[str]
 ):
-    assert len(config_files) == len(
-        dataloaders
-    ), "The number of configuration files and dataloader files are different!"
+    assert len(config_files) == len(dataloaders), (
+        "The number of configuration files and dataloader files are different!"
+    )
     for config_file, dataloader_file in zip(config_files, dataloaders):
         assert osp.exists(config_file), f"Config file {config_file} not found!"
-        assert osp.exists(
-            dataloader_file
-        ), f"Dataloader file {dataloader_file} not found!"
+        assert osp.exists(dataloader_file), (
+            f"Dataloader file {dataloader_file} not found!"
+        )
         # load the client configuration file
         with open(config_file) as fi:
             data = yaml.load(fi, Loader=yaml.SafeLoader)

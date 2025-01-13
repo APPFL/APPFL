@@ -28,9 +28,9 @@ def create_grpc_channel(
     :param max_message_size: The maximum message size in bytes.
     :return: The created gRPC channel.
     """
-    assert not (
-        use_authenticator and not use_ssl
-    ), "Authenticator can only be used with SSL/TLS"
+    assert not (use_authenticator and not use_ssl), (
+        "Authenticator can only be used with SSL/TLS"
+    )
     channel_options = [
         ("grpc.max_send_message_length", max_message_size),
         ("grpc.max_receive_message_length", max_message_size),
@@ -43,9 +43,9 @@ def create_grpc_channel(
         else:
             credentials = grpc.ssl_channel_credentials()
         if use_authenticator:
-            assert (
-                authenticator is not None
-            ), "Authenticator must be provided if use_authenticator is True"
+            assert authenticator is not None, (
+                "Authenticator must be provided if use_authenticator is True"
+            )
             call_credentials = grpc.metadata_call_credentials(
                 APPFLAuthMetadataProvider(authenticator)
             )

@@ -35,21 +35,21 @@ def grpc_serve(
     :param max_message_size: The maximum message size in bytes.
     :param max_workers: The maximum number of workers to use for the server.
     """
-    assert not (
-        use_authenticator and not use_ssl
-    ), "Authenticator can only be used with SSL/TLS"
+    assert not (use_authenticator and not use_ssl), (
+        "Authenticator can only be used with SSL/TLS"
+    )
     if use_ssl:
-        assert (
-            server_certificate_key is not None
-        ), "Server certificate key must be provided if use_ssl is True"
-        assert (
-            server_certificate is not None
-        ), "Server certificate must be provided if use_ssl is True"
+        assert server_certificate_key is not None, (
+            "Server certificate key must be provided if use_ssl is True"
+        )
+        assert server_certificate is not None, (
+            "Server certificate must be provided if use_ssl is True"
+        )
     if use_authenticator:
         assert use_ssl, "Authenticator can only be used with SSL/TLS"
-        assert (
-            authenticator is not None
-        ), "Authenticator must be provided if use_authenticator is True"
+        assert authenticator is not None, (
+            "Authenticator must be provided if use_authenticator is True"
+        )
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
         options=[

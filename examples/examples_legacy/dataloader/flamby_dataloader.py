@@ -17,9 +17,9 @@ def get_flamby(dataset: str, num_clients: int):
         ]
         return train_datasets, test_dataset
     elif dataset == "HeartDisease":
-        assert (
-            num_clients <= 4
-        ), "Heart disease dataset can support at most four clients"
+        assert num_clients <= 4, (
+            "Heart disease dataset can support at most four clients"
+        )
         test_dataset = FedHeartDisease(train=False, pooled=True)
         train_datasets = [
             FedHeartDisease(train=True, center=i, pooled=False)
