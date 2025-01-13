@@ -51,11 +51,7 @@ def test_mpi_fedavg():
     if rank == 0:
         # Load and set the server configurations
         server_agent_config = OmegaConf.load(server_config)
-        server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-        if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
-                num_clients
-            )
+        server_agent_config.server_configs.num_clients = num_clients
         # Create the server agent and communicator
         server_agent = ServerAgent(server_agent_config=server_agent_config)
         server_communicator = MPIServerCommunicator(
@@ -120,11 +116,7 @@ def test_mpi_fedcompass():
     if rank == 0:
         # Load and set the server configurations
         server_agent_config = OmegaConf.load(server_config)
-        server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-        if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
-                num_clients
-            )
+        server_agent_config.server_configs.num_clients = num_clients
         # Create the server agent and communicator
         server_agent = ServerAgent(server_agent_config=server_agent_config)
         server_communicator = MPIServerCommunicator(
@@ -189,11 +181,7 @@ def test_mpi_fedasync():
     if rank == 0:
         # Load and set the server configurations
         server_agent_config = OmegaConf.load(server_config)
-        server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-        if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
-                num_clients
-            )
+        server_agent_config.server_configs.num_clients = num_clients
         # Create the server agent and communicator
         server_agent = ServerAgent(server_agent_config=server_agent_config)
         server_communicator = MPIServerCommunicator(
@@ -261,11 +249,7 @@ def test_batched_mpi_fedavg():
     if rank == 0:
         # Load and set the server configurations
         server_agent_config = OmegaConf.load(server_config)
-        server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-        if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
-                num_clients
-            )
+        server_agent_config.server_configs.num_clients = num_clients
         # Create the server agent and communicator
         server_agent = ServerAgent(server_agent_config=server_agent_config)
         server_communicator = MPIServerCommunicator(
@@ -356,11 +340,7 @@ def test_batched_mpi_fedasync():
         # Load and set the server configurations
         server_agent_config = OmegaConf.load(server_config)
         server_agent_config.server_configs.num_global_epochs *= 2
-        server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-        if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
-                num_clients
-            )
+        server_agent_config.server_configs.num_clients = num_clients
         # Create the server agent and communicator
         server_agent = ServerAgent(server_agent_config=server_agent_config)
         server_communicator = MPIServerCommunicator(
@@ -444,11 +424,7 @@ def test_mpi_dr():
     if rank == 0:
         # Load and set the server configurations
         server_agent_config = OmegaConf.load(server_config)
-        server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-        if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
-                num_clients
-            )
+        server_agent_config.server_configs.num_clients = num_clients
         # Create the server agent and communicator
         server_agent = ServerAgent(server_agent_config=server_agent_config)
         server_communicator = MPIServerCommunicator(
@@ -505,11 +481,7 @@ def test_grpc():
     num_clients = size - 1
     if rank == 0:
         server_agent_config = OmegaConf.load(server_config)
-        server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-        if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = (
-                num_clients
-            )
+        server_agent_config.server_configs.num_clients = num_clients
         server_agent = ServerAgent(server_agent_config=server_agent_config)
 
         communicator = GRPCServerCommunicator(
@@ -588,9 +560,7 @@ def test_serial():
 
     # Load server agent configurations and set the number of clients
     server_agent_config = OmegaConf.load(server_config)
-    server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-    if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-        server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
+    server_agent_config.server_configs.num_clients = num_clients
 
     # Create server agent
     server_agent = ServerAgent(server_agent_config=server_agent_config)

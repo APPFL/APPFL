@@ -27,9 +27,7 @@ First, user needs to load configuration files for the client and server agents. 
     if rank == 0:
         # Load and update server configuration
         server_agent_config = OmegaConf.load("<path_to_server_config>.yaml")
-        server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-        if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-            server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
+        server_agent_config.server_configs.num_clients = num_clients
         # Create the server agent
         server_agent = ServerAgent(server_agent_config=server_agent_config)
     else:

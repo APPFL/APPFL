@@ -1,5 +1,6 @@
-import numpy as np
+import copy
 import argparse
+import numpy as np
 from mpi4py import MPI
 from typing import List
 from omegaconf import OmegaConf
@@ -31,9 +32,7 @@ client_batch = [
 if rank == 0:
     # Load and set the server configurations
     server_agent_config = OmegaConf.load(args.server_config)
-    server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-    if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-        server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
+    server_agent_config.server_configs.num_clients = num_clients
     # Create the server agent and communicator
     server_agent = ServerAgent(server_agent_config=server_agent_config)
     server_communicator = MPIServerCommunicator(
@@ -45,14 +44,23 @@ else:
     # Create client agents for each client in the batch
     client_agents: List[ClientAgent] = []
     client_agent_config = OmegaConf.load(args.client_config)
-    for client_id in client_batch[rank - 1]:
+    for batch_idx, client_id in enumerate(client_batch[rank - 1]):
         client_agent_config.client_id = f"Client{client_id}"
         client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
         client_agent_config.data_configs.dataset_kwargs.client_id = client_id
         client_agent_config.data_configs.dataset_kwargs.visualization = (
             True if client_id == 0 else False
         )
-        client_agents.append(ClientAgent(client_agent_config=client_agent_config))
+        # Only enable wandb logging for the first client in the batch is sufficient
+        if hasattr(
+            client_agent_config, "wandb_configs"
+        ) and client_agent_config.wandb_configs.get("enable_wandb", False):
+            client_agent_config.wandb_configs.enable_wandb = (
+                True if batch_idx == 0 else False
+            )
+        client_agents.append(
+            ClientAgent(client_agent_config=copy.deepcopy(client_agent_config))
+        )
     # Create the client communicator for batched clients
     client_communicator = MPIClientCommunicator(
         comm,

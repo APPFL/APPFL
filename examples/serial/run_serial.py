@@ -19,9 +19,7 @@ args = argparser.parse_args()
 
 # Load server agent configurations and set the number of clients
 server_agent_config = OmegaConf.load(args.server_config)
-server_agent_config.server_configs.scheduler_kwargs.num_clients = args.num_clients
-if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-    server_agent_config.server_configs.aggregator_kwargs.num_clients = args.num_clients
+server_agent_config.server_configs.num_clients = args.num_clients
 
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)
@@ -37,6 +35,14 @@ for i in range(args.num_clients):
     client_agent_configs[i].data_configs.dataset_kwargs.visualization = (
         True if i == 0 else False
     )
+    # only enable wandb for the first client is sufficient for logging all clients in serial run
+    if hasattr(client_agent_configs[i], "wandb_configs") and client_agent_configs[
+        i
+    ].wandb_configs.get("enable_wandb", False):
+        if i == 0:
+            client_agent_configs[i].wandb_configs.enable_wandb = True
+        else:
+            client_agent_configs[i].wandb_configs.enable_wandb = False
 
 # Load client agents
 client_agents = [
