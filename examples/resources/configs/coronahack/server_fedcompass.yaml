@@ -48,9 +48,9 @@ client_configs:
       param_cutoff: 1024
 
 server_configs:
+  num_clients: 4
   scheduler: "CompassScheduler"
   scheduler_kwargs:
-    num_clients: 4
     same_init_model: True
     max_local_steps: 100
     min_local_steps: 20
@@ -63,8 +63,6 @@ server_configs:
     staleness_fn_kwargs:
       a: 0.5
     alpha: 0.9
-    gradient_based: True
-    num_clients: 4
   device: "cpu"
   num_global_epochs: 20
   logging_output_dirname: "./output"

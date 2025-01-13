@@ -31,9 +31,9 @@ client_configs:
   dr_metrics: ["ci", "ss"]
 
 server_configs:
+  num_clients: 2
   scheduler: "SyncScheduler"
   scheduler_kwargs:
-    num_clients: 2
     same_init_model: True
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:

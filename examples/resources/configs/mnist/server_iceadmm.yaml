@@ -57,13 +57,11 @@ client_configs:
       param_cutoff: 1024
 
 server_configs:
+  num_clients: 2
   scheduler: "SyncScheduler"
   scheduler_kwargs:
-    num_clients: 2
     same_init_model: True
   aggregator: "ICEADMMAggregator"
-  aggregator_kwargs:
-    num_clients: 2
   device: "cpu"
   num_global_epochs: 10
   logging_output_dirname: "./output"
