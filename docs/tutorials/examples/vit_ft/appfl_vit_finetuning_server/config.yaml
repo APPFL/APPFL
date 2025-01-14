@@ -28,12 +28,12 @@ client_configs:
 
 # Server specific configurations
 server_configs:
+  num_clients: 1
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:
     client_weights_mode: "equal"
   scheduler: "SyncScheduler"
   scheduler_kwargs:
-    num_clients: 1
     same_init_model: True
   device: "cpu"
   num_global_epochs: 10

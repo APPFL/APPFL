@@ -76,8 +76,11 @@ class GlobusComputeServerCommunicator:
             server_agent_config.server_configs.num_clients
             if hasattr(server_agent_config.server_configs, "num_clients")
             else server_agent_config.server_configs.scheduler_kwargs.num_clients
-            if hasattr(
-                server_agent_config.server_configs.scheduler_kwargs, "num_clients"
+            if (
+                hasattr(server_agent_config.server_configs, "scheduler_kwargs")
+                and hasattr(
+                    server_agent_config.server_configs.scheduler_kwargs, "num_clients"
+                )
             )
             else server_agent_config.server_configs.aggregator_kwargs.num_clients
         )
@@ -122,6 +125,12 @@ class GlobusComputeServerCommunicator:
                     "client_agent_config.train_configs.logging_id is deprecated. Please use client_id instead.",
                     DeprecationWarning,
                 )
+            # logging information regarding wandb
+            if hasattr(
+                client_config, "wandb_configs"
+            ) and client_config.wandb_configs.get("enable_wandb", False):
+                self.logger.info(f"{client_id} is using wandb for logging. ")
+
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
                 client_endpoint_id=client_endpoint_id,

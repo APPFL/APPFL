@@ -33,10 +33,7 @@ server_agent_config = OmegaConf.load(args.server_config)
 
 if rank == 0:
     # set the server configurations
-
-    server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
-    if hasattr(server_agent_config.server_configs.aggregator_kwargs, "num_clients"):
-        server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
+    server_agent_config.server_configs.num_clients = num_clients
     # Create the server agent and communicator
     server_agent = ServerAgent(server_agent_config=server_agent_config)
     server_communicator = MPIServerCommunicator(

@@ -1,5 +1,6 @@
 local_tests
 src/appfl/service/resources
+wandb
 uploads*
 .vscode
 .gitignore

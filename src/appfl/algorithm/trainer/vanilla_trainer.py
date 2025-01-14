@@ -1,6 +1,7 @@
 import copy
 import time
 import torch
+import wandb
 import importlib
 import numpy as np
 from torch.nn import Module
@@ -59,6 +60,14 @@ class VanillaTrainer(BaseTrainer):
             if self.val_dataset is not None
             else None
         )
+        if (
+            hasattr(self.train_configs, "enable_wandb")
+            and self.train_configs.enable_wandb
+        ):
+            self.enabled_wandb = True
+            self.wandb_logging_id = self.train_configs.wandb_logging_id
+        else:
+            self.enabled_wandb = False
         self._sanity_check()
 
     def train(self, **kwargs):
@@ -126,6 +135,13 @@ class VanillaTrainer(BaseTrainer):
             if self.train_configs.mode == "epoch":
                 content.insert(1, 0)
             self.logger.log_content(content)
+            if self.enabled_wandb:
+                wandb.log(
+                    {
+                        f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
+                        f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
+                    }
+                )
 
         # Start training
         optim_module = importlib.import_module("torch.optim")
@@ -158,6 +174,15 @@ class VanillaTrainer(BaseTrainer):
                     self.val_results["val_loss"].append(val_loss)
                     self.val_results["val_accuracy"].append(val_accuracy)
                 per_epoch_time = time.time() - start_time
+                if self.enabled_wandb:
+                    wandb.log(
+                        {
+                            f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
+                            f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
+                            f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
+                            f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
+                        }
+                    )
                 self.logger.log_content(
                     [self.round, epoch, per_epoch_time, train_loss, train_accuracy]
                     if (not do_validation) and (not do_pre_validation)
@@ -209,6 +234,15 @@ class VanillaTrainer(BaseTrainer):
                 self.val_results["val_loss"] = val_loss
                 self.val_results["val_accuracy"] = val_accuracy
             per_step_time = time.time() - start_time
+            if self.enabled_wandb:
+                wandb.log(
+                    {
+                        f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
+                        f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
+                        f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
+                        f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
+                    }
+                )
             self.logger.log_content(
                 [self.round, per_step_time, train_loss, train_accuracy]
                 if (not do_validation) and (not do_pre_validation)
