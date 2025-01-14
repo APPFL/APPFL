@@ -29,26 +29,26 @@ class MonaiTrainer(BaseTrainer):
                 ExtraItems.CLIENT_NAME: client_id,
             }
         )
-        
+
         # load initial model parameters
         self.monai_algo.send_weight_diff = False
         init_model = self.monai_algo.get_weights()
         self.load_parameters(init_model)
         self.monai_algo.send_weight_diff = train_configs.get("send_gradient", False)
-        
-        # set initial model parameters 
+
+        # set initial model parameters
         self.model_state = copy.deepcopy(init_model.weights)
-        
+
     def get_parameters(self):
         return (
             (self.model_state, self.metrics)
             if hasattr(self, "metrics")
             else self.model_state
         )
-        
+
     def load_parameters(self, params):
         self._loaded_model = params
-        
+
     def train(self, **kwargs):
         self.metrics = {"round": self.round + 1}
         do_validation = self.train_configs.get("do_validation", False)
@@ -65,39 +65,40 @@ class MonaiTrainer(BaseTrainer):
         if self.round == 0:
             self.logger.log_title(title)
         self.logger.set_title(title)
-        
+
         # Validation pre training
         if do_pre_validation:
             metric = self.monai_algo.evaluate(self._loaded_model).metrics
             for k, v in metric.items():
                 self.metrics[k + "_before_train"] = v
-            content = [self.round, 'Y', "", metric]
+            content = [self.round, "Y", "", metric]
             self.logger.log_content(content)
-            
+
         # Start training
         start_time = time.time()
         self.monai_algo.train(self._loaded_model)
         end_time = time.time()
-        
+
         # Post training validation
         if do_validation:
             self.monai_algo.send_weight_diff = False
             new_model = self.monai_algo.get_weights()
-            self.monai_algo.send_weight_diff = self.train_configs.get("send_gradient", False)
+            self.monai_algo.send_weight_diff = self.train_configs.get(
+                "send_gradient", False
+            )
             metric = self.monai_algo.evaluate(new_model).metrics
             for k, v in metric.items():
                 self.metrics[k] = v
-            content = [self.round, "N", end_time-start_time, metric]  if do_pre_validation else [self.round, end_time-start_time, metric]
+            content = (
+                [self.round, "N", end_time - start_time, metric]
+                if do_pre_validation
+                else [self.round, end_time - start_time, metric]
+            )
         else:
-            content = [self.round, end_time-start_time]
-            
+            content = [self.round, end_time - start_time]
+
         self.logger.log_content(content)
-        
+
         # Update model state
         model = self.monai_algo.get_weights()
         self.model_state = copy.deepcopy(model.weights)
-        
-        
-        
-        
-            
