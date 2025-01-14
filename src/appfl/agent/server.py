@@ -670,4 +670,6 @@ class ServerAgent:
                     self.server_agent_config.server_configs.aggregator_kwargs,
                     "gradient_based",
                 )
-            ), "The gradient_based should be set in the client_configs.train_configs.send_gradient."
+            ), (
+                "The gradient_based should be set in the client_configs.train_configs.send_gradient."
+            )

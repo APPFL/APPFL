@@ -41,9 +41,9 @@ class MpiCommunicator:
         :return `content`: the content received by the current MPI process
         """
         if source == self.comm_rank:
-            assert (
-                len(contents) == self.comm_size
-            ), "The size of the contents is not equal to the number of clients in scatter!"
+            assert len(contents) == self.comm_size, (
+                "The size of the contents is not equal to the number of clients in scatter!"
+            )
         content = self.comm.scatter(contents, root=source)
         return content
 
@@ -105,9 +105,9 @@ class MpiCommunicator:
         :param `args`: additional arguments to be sent
         :param `client_idx`: the index of the destination client
         """
-        assert (
-            client_idx >= 0 and client_idx < self.comm_size
-        ), "Please provide a valid destination client index!"
+        assert client_idx >= 0 and client_idx < self.comm_size, (
+            "Please provide a valid destination client index!"
+        )
 
         self.dests = (
             [i for i in range(self.comm_size) if i != self.comm_rank]

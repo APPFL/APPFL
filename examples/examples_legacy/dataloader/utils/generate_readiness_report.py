@@ -9,7 +9,7 @@ def generate_readiness_report(train_datasets, dr_metrics):
             # Access the labels from the current dataset
             labels = dataset.data_label.tolist()
             imb_deg = imbalance_degree(labels)
-            print(f"  Client {i + 1}: {round(imb_deg,2)}")
+            print(f"  Client {i + 1}: {round(imb_deg, 2)}")
 
     if "ss" in dr_metrics:
         print("Sample Size:")

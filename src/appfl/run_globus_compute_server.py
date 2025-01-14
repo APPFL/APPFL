@@ -60,17 +60,17 @@ class APPFLGlobusComputeServer(abc.ABC):
         mode = ["train", "val", "test"]
         self.communicator.send_task_to_all_clients(client_validate_data, mode)
         data_info_at_client, _ = self.communicator.receive_sync_endpoints_updates()
-        assert (
-            len(data_info_at_client) > 0
-        ), "Number of clients need to be larger than 0"
+        assert len(data_info_at_client) > 0, (
+            "Number of clients need to be larger than 0"
+        )
         GlobusComputeServerLogger.log_client_data_info(self.cfg, data_info_at_client)
         self.data_info_at_client = data_info_at_client
 
     def _set_client_weights(self):
         """Set the aggregation weights for clients."""
-        assert (
-            self.data_info_at_client is not None
-        ), "Please call the validate clients' data first"
+        assert self.data_info_at_client is not None, (
+            "Please call the validate clients' data first"
+        )
         mode = self.cfg.fed.args.client_weights
         if mode == "sample_size":
             total_num_data = 0
@@ -272,9 +272,9 @@ class APPFLGlobusComputeSyncServer(APPFLGlobusComputeServer):
                 self._do_server_validation(t + 1)
             self._save_checkpoint(t + 1)
 
-            self.logger.info(f"Total training time: {time.time()-start_time:.3f}")
+            self.logger.info(f"Total training time: {time.time() - start_time:.3f}")
             self.logger.info(
-                f"Training time for epoch {t+1}: {time.time()-per_iter_start:.3f}"
+                f"Training time for epoch {t + 1}: {time.time() - per_iter_start:.3f}"
             )
 
 
@@ -331,7 +331,7 @@ class APPFLGlobusComputeAsyncServer(APPFLGlobusComputeServer):
                 self._do_server_validation(t + 1)
             self._save_checkpoint(t + 1)
 
-            self.logger.info(f"Total training time: {time.time()-start_time:.3f}")
+            self.logger.info(f"Total training time: {time.time() - start_time:.3f}")
         self.communicator.cancel_all_tasks()
 
 
@@ -381,7 +381,7 @@ class APPFLGlobusComputeCompassServer(APPFLGlobusComputeServer):
                 self._do_server_validation(t + 1)
             self._save_checkpoint(t + 1)
 
-            self.logger.info(f"Total training time: {time.time()-start_time:.3f}")
+            self.logger.info(f"Total training time: {time.time() - start_time:.3f}")
         self.communicator.cancel_all_tasks()
 
 

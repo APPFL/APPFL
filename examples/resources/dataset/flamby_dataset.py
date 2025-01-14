@@ -20,9 +20,9 @@ def get_flamby(
         train_dataset = FedTcgaBrca(train=True, center=client_id, pooled=False)
         return train_dataset, test_dataset
     elif dataset == "HeartDisease":
-        assert (
-            num_clients <= 4
-        ), "Heart disease dataset can support at most four clients"
+        assert num_clients <= 4, (
+            "Heart disease dataset can support at most four clients"
+        )
         test_dataset = FedHeartDisease(train=False, pooled=True)
         train_dataset = FedHeartDisease(train=True, center=client_id, pooled=False)
         return train_dataset, test_dataset

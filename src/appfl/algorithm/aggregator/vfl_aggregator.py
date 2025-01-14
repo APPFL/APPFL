@@ -30,9 +30,9 @@ class VFLAggregator(BaseAggregator):
         self.device = self.aggregator_configs.get("device", "cpu")
         self.model.to(self.device)
         optim_module = importlib.import_module("torch.optim")
-        assert hasattr(
-            optim_module, self.aggregator_configs.optim
-        ), f"Optimizer {self.aggregator_configs.optim} not found in torch.optim"
+        assert hasattr(optim_module, self.aggregator_configs.optim), (
+            f"Optimizer {self.aggregator_configs.optim} not found in torch.optim"
+        )
         self.optimizer = getattr(optim_module, self.aggregator_configs.optim)(
             self.model.parameters(), **self.aggregator_configs.optim_args
         )

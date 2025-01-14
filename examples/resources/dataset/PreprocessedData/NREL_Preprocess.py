@@ -166,9 +166,9 @@ class NRELDataDownloader:
         self.STATIC_COLUMNS = STATIC_COLUMNS
 
         # verify that there are as many lists of b_id's as dset_tags
-        assert (
-            len(dset_tags) == len(b_id)
-        ), "Data manager didn't get the same number of dataset tags and building ID keys."
+        assert len(dset_tags) == len(b_id), (
+            "Data manager didn't get the same number of dataset tags and building ID keys."
+        )
 
         # populate list of power consumption files
         dset_urls = [

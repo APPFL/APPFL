@@ -145,9 +145,9 @@ class VanillaTrainer(BaseTrainer):
 
         # Start training
         optim_module = importlib.import_module("torch.optim")
-        assert hasattr(
-            optim_module, self.train_configs.optim
-        ), f"Optimizer {self.train_configs.optim} not found in torch.optim"
+        assert hasattr(optim_module, self.train_configs.optim), (
+            f"Optimizer {self.train_configs.optim} not found in torch.optim"
+        )
         optimizer = getattr(optim_module, self.train_configs.optim)(
             self.model.parameters(), **self.train_configs.optim_args
         )
@@ -272,12 +272,12 @@ class VanillaTrainer(BaseTrainer):
 
         # Differential privacy
         if self.train_configs.get("use_dp", False):
-            assert hasattr(
-                self.train_configs, "clip_value"
-            ), "Gradient clipping value must be specified"
-            assert hasattr(
-                self.train_configs, "epsilon"
-            ), "Privacy budget (epsilon) must be specified"
+            assert hasattr(self.train_configs, "clip_value"), (
+                "Gradient clipping value must be specified"
+            )
+            assert hasattr(self.train_configs, "epsilon"), (
+                "Privacy budget (epsilon) must be specified"
+            )
             sensitivity = (
                 2.0 * self.train_configs.clip_value * self.train_configs.optim_args.lr
             )
@@ -317,13 +317,13 @@ class VanillaTrainer(BaseTrainer):
             "step",
         ], "Training mode must be either 'epoch' or 'step'"
         if self.train_configs.mode == "epoch":
-            assert hasattr(
-                self.train_configs, "num_local_epochs"
-            ), "Number of local epochs must be specified"
+            assert hasattr(self.train_configs, "num_local_epochs"), (
+                "Number of local epochs must be specified"
+            )
         else:
-            assert hasattr(
-                self.train_configs, "num_local_steps"
-            ), "Number of local steps must be specified"
+            assert hasattr(self.train_configs, "num_local_steps"), (
+                "Number of local steps must be specified"
+            )
 
     def _validate(self) -> Tuple[float, float]:
         """
@@ -368,12 +368,12 @@ class VanillaTrainer(BaseTrainer):
         if getattr(self.train_configs, "clip_grad", False) or getattr(
             self.train_configs, "use_dp", False
         ):
-            assert hasattr(
-                self.train_configs, "clip_value"
-            ), "Gradient clipping value must be specified"
-            assert hasattr(
-                self.train_configs, "clip_norm"
-            ), "Gradient clipping norm must be specified"
+            assert hasattr(self.train_configs, "clip_value"), (
+                "Gradient clipping value must be specified"
+            )
+            assert hasattr(self.train_configs, "clip_norm"), (
+                "Gradient clipping norm must be specified"
+            )
             torch.nn.utils.clip_grad_norm_(
                 self.model.parameters(),
                 self.train_configs.clip_value,
