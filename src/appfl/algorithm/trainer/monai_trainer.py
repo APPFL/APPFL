@@ -102,3 +102,22 @@ class MonaiTrainer(BaseTrainer):
         # Update model state
         model = self.monai_algo.get_weights()
         self.model_state = copy.deepcopy(model.weights)
+
+
+if __name__ == "__main__":
+    from appfl.logger import ClientAgentFileLogger
+    logger = ClientAgentFileLogger(logging_id="test")
+    
+    trainer = MonaiTrainer(
+        client_id="test",
+        bundle_root="/eagle/tpc/zilinghan/appfl/APPFL/examples/resources/monai/job/app/config/spleen_ct_segmentation",
+        train_configs=DictConfig({
+            "num_local_epochs": 2,
+            "send_gradient": True,
+            "do_validation": True,
+            "do_pre_validation": True,
+        }),
+        logger=logger,
+    )
+    
+    trainer.train()
