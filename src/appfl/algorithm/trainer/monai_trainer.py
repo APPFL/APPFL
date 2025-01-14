@@ -19,11 +19,13 @@ class MonaiTrainer(BaseTrainer):
         self.round = 0
         self.logger = logger
         self.train_configs = train_configs
+
         self.monai_algo = MonaiAlgo(
             bundle_root=bundle_root,
             local_epochs=train_configs.get("num_local_epochs", 1),
             send_weight_diff=train_configs.get("send_gradient", False),
         )
+        self.monai_algo.logger.setLevel("WARNING")  # suppress logging
         self.monai_algo.initialize(
             extra={
                 ExtraItems.CLIENT_NAME: client_id,
@@ -71,7 +73,7 @@ class MonaiTrainer(BaseTrainer):
             metric = self.monai_algo.evaluate(self._loaded_model).metrics
             for k, v in metric.items():
                 self.metrics[k + "_before_train"] = v
-            content = [self.round, "Y", "", metric]
+            content = [self.round, "Y", "N/A", metric]
             self.logger.log_content(content)
 
         # Start training
@@ -95,7 +97,11 @@ class MonaiTrainer(BaseTrainer):
                 else [self.round, end_time - start_time, metric]
             )
         else:
-            content = [self.round, end_time - start_time]
+            content = (
+                [self.round, end_time - start_time]
+                if not do_pre_validation
+                else [self.round, "N", end_time - start_time, "N/A"]
+            )
 
         self.logger.log_content(content)
 
@@ -106,18 +112,23 @@ class MonaiTrainer(BaseTrainer):
 
 if __name__ == "__main__":
     from appfl.logger import ClientAgentFileLogger
+
     logger = ClientAgentFileLogger(logging_id="test")
-    
+
     trainer = MonaiTrainer(
         client_id="test",
         bundle_root="/eagle/tpc/zilinghan/appfl/APPFL/examples/resources/monai/job/app/config/spleen_ct_segmentation",
-        train_configs=DictConfig({
-            "num_local_epochs": 2,
-            "send_gradient": True,
-            "do_validation": True,
-            "do_pre_validation": True,
-        }),
+        train_configs=DictConfig(
+            {
+                "num_local_epochs": 2,
+                "send_gradient": True,
+                "do_validation": True,
+                "do_pre_validation": True,
+            }
+        ),
         logger=logger,
     )
-    
+
     trainer.train()
+    model, metrics = trainer.get_parameters()
+    print(metrics)
