@@ -69,7 +69,9 @@ class GlobusComputeServerCommunicator:
                 code_serialization_strategy=CombinedCode(),
             )
         else:
-            gcc = Client()
+            gcc = Client(
+                code_serialization_strategy=CombinedCode(),
+            )
         self.gce = Executor(client=gcc)  # Globus Compute Executor
         self.logger = logger if logger is not None else self._default_logger()
         # Sanity check for configurations: Check for the number of clients
@@ -267,6 +269,9 @@ class GlobusComputeServerCommunicator:
                 client_model, client_metadata_local = (
                     self.__parse_globus_compute_result(result)
                 )
+                client_metadata_local = self.__check_deprecation(
+                    client_id, client_metadata_local
+                )
                 client_results[client_id] = client_model
                 client_metadata[client_id] = client_metadata_local
                 # Set the status of the finished task
@@ -282,7 +287,7 @@ class GlobusComputeServerCommunicator:
                 self.executing_tasks.pop(task_id)
                 self.executing_task_futs.pop(fut)
             except Exception as e:
-                self.logger.info(
+                self.logger.error(
                     f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
                 )
                 raise e
@@ -304,6 +309,7 @@ class GlobusComputeServerCommunicator:
             result = fut.result()
             client_id = self.executing_tasks[task_id].client_id
             client_model, client_metadata = self.__parse_globus_compute_result(result)
+            client_metadata = self.__check_deprecation(client_id, client_metadata)
             # Set the status of the finished task
             client_log = client_metadata.get("log", {})
             self.executing_tasks[task_id].end_time = time.time()
@@ -318,7 +324,7 @@ class GlobusComputeServerCommunicator:
             self.executing_task_futs.pop(fut)
         except Exception as e:
             client_id = self.executing_tasks[task_id].client_id
-            self.logger.info(
+            self.logger.error(
                 f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
             )
             raise e
@@ -344,6 +350,25 @@ class GlobusComputeServerCommunicator:
             self.client_endpoints[client_id].cancel_task()
         self.executing_task_futs = {}
         self.executing_tasks = {}
+
+    def __check_deprecation(
+        self,
+        client_id: str,
+        client_metadata: Dict,
+    ):
+        """
+        This function is used to check deprecation on the client site packages.
+        """
+        if not hasattr(self, "_version_deprecation_warning_set"):
+            self._version_deprecation_warning_set = set()
+        if "_deprecated" in client_metadata:
+            if client_id not in self._version_deprecation_warning_set:
+                self.logger.warning(
+                    f"{client_id} is using a deprecated version of appfl, and it is highly recommended to update it to at least version 1.2.1."
+                )
+                self._version_deprecation_warning_set.add(client_id)
+            client_metadata.pop("_deprecated")
+        return client_metadata
 
     def __parse_globus_compute_result(self, result):
         """

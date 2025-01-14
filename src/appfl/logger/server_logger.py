@@ -34,6 +34,9 @@ class ServerAgentFileLogger:
         error_fmt = logging.Formatter(
             f"{Fore.BLUE}{Style.BRIGHT}appfl: ❌{Style.RESET_ALL}[%(asctime)s server]: %(message)s"
         )
+        warning_fmt = logging.Formatter(
+            f"{Fore.BLUE}{Style.BRIGHT}appfl: ❗️{Style.RESET_ALL}[%(asctime)s server]: %(message)s"
+        )
 
         num_s_handlers = len(
             [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
@@ -52,9 +55,13 @@ class ServerAgentFileLogger:
             s_handler_error = logging.StreamHandler()
             s_handler_error.setFormatter(error_fmt)
             s_handler_error.addFilter(LevelFilter(logging.ERROR))
+            s_handler_warning = logging.StreamHandler()
+            s_handler_warning.setFormatter(warning_fmt)
+            s_handler_warning.addFilter(LevelFilter(logging.WARNING))
             self.logger.addHandler(s_handler_info)
             self.logger.addHandler(s_handler_debug)
             self.logger.addHandler(s_handler_error)
+            self.logger.addHandler(s_handler_warning)
         if file_dir != "" and file_name != "" and num_f_handlers == 0:
             if not os.path.exists(file_dir):
                 pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
@@ -69,9 +76,13 @@ class ServerAgentFileLogger:
             f_handler_error = logging.FileHandler(real_file_name)
             f_handler_error.setFormatter(error_fmt)
             f_handler_error.setLevel(logging.ERROR)
+            f_handler_warning = logging.FileHandler(real_file_name)
+            f_handler_warning.setFormatter(warning_fmt)
+            f_handler_warning.setLevel(logging.WARNING)
             self.logger.addHandler(f_handler_info)
             self.logger.addHandler(f_handler_debug)
             self.logger.addHandler(f_handler_error)
+            self.logger.addHandler(f_handler_warning)
             self.info(f"Logging to {real_file_name}")
 
     def info(self, info: str) -> None:
@@ -82,6 +93,9 @@ class ServerAgentFileLogger:
 
     def error(self, error: str) -> None:
         self.logger.error(error)
+
+    def warning(self, warning: str) -> None:
+        self.logger.warning(warning)
 
     def get_log_filepath(self) -> Optional[str]:
         if hasattr(self, "log_filepath"):
