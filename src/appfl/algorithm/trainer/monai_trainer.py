@@ -1,9 +1,13 @@
+import warnings
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+
 import copy
 import time
-from omegaconf import DictConfig
 from typing import Optional, Any
-from monai.fl.utils.constants import ExtraItems
+from omegaconf import DictConfig
+from monai.fl.utils.constants import ExtraItems, WeightType
 from monai.fl.client.monai_algo import MonaiAlgo
+from monai.fl.utils.exchange_object import ExchangeObject
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 
 
@@ -36,7 +40,7 @@ class MonaiTrainer(BaseTrainer):
         # load initial model parameters
         self.monai_algo.send_weight_diff = False
         init_model = self.monai_algo.get_weights()
-        self.load_parameters(init_model)
+        self.load_parameters(init_model.weights)
         self.monai_algo.send_weight_diff = train_configs.get("send_gradient", False)
 
         # set initial model parameters
@@ -50,7 +54,7 @@ class MonaiTrainer(BaseTrainer):
         )
 
     def load_parameters(self, params):
-        self._loaded_model = params
+        self._loaded_model = ExchangeObject(weights=params, weight_type=WeightType.WEIGHTS)
 
     def train(self, **kwargs):
         self.metrics = {"round": self.round + 1}
@@ -109,6 +113,8 @@ class MonaiTrainer(BaseTrainer):
         # Update model state
         model = self.monai_algo.get_weights()
         self.model_state = copy.deepcopy(model.weights)
+        
+        self.round += 1
 
 
 if __name__ == "__main__":

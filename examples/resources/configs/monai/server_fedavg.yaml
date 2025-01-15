@@ -16,7 +16,7 @@ client_configs:
       param_cutoff: 1024
 
 server_configs:
-  num_clients: 1  
+  num_clients: 2
   scheduler: "SyncScheduler"
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:
