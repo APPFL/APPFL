@@ -11,7 +11,6 @@ class MonaiTrainer(BaseTrainer):
     def __init__(
         self,
         client_id: str,
-        bundle_root: str,
         train_configs: DictConfig = DictConfig({}),
         logger: Optional[Any] = None,
         **kwargs,
@@ -19,9 +18,11 @@ class MonaiTrainer(BaseTrainer):
         self.round = 0
         self.logger = logger
         self.train_configs = train_configs
+        
+        assert hasattr(train_configs, "bundle_root"), "bundle_root not found in train_configs"
 
         self.monai_algo = MonaiAlgo(
-            bundle_root=bundle_root,
+            bundle_root=train_configs.bundle_root,
             local_epochs=train_configs.get("num_local_epochs", 1),
             send_weight_diff=train_configs.get("send_gradient", False),
         )
@@ -117,9 +118,9 @@ if __name__ == "__main__":
 
     trainer = MonaiTrainer(
         client_id="test",
-        bundle_root="/eagle/tpc/zilinghan/appfl/APPFL/examples/resources/monai/job/app/config/spleen_ct_segmentation",
         train_configs=DictConfig(
             {
+                "bundle_root": "/eagle/tpc/zilinghan/appfl/APPFL/examples/resources/monai/job/app/config/spleen_ct_segmentation",
                 "num_local_epochs": 2,
                 "send_gradient": True,
                 "do_validation": True,
