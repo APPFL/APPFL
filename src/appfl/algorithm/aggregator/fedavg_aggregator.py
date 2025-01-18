@@ -93,7 +93,9 @@ class FedAvgAggregator(BaseAggregator):
                 param_sum = torch.zeros_like(self.global_state[name])
                 for _, model in local_models.items():
                     param_sum += model[name]
-                self.global_state[name] = torch.div(param_sum, len(local_models))
+                # make sure global state have the same type as the local model
+                self.global_state[name] = torch.div(param_sum, len(local_models)).type(param_sum.dtype) 
+                
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)
         return {k: v.clone() for k, v in self.global_state.items()}
@@ -105,7 +107,10 @@ class FedAvgAggregator(BaseAggregator):
         Compute the changes to the global model after the aggregation.
         """
         for name in self.global_state:
-            if self.named_parameters is not None and name not in self.named_parameters:
+            # Skip integer parameters by averaging them later in the `aggregate` method
+            if (
+                self.named_parameters is not None and name not in self.named_parameters
+            ) or (self.global_state[name].dtype == torch.int64 or self.global_state[name].dtype == torch.int32):
                 continue
             self.step[name] = torch.zeros_like(self.global_state[name])
 

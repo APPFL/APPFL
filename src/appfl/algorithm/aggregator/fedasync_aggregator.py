@@ -128,7 +128,10 @@ class FedAsyncAggregator(BaseAggregator):
         )
 
         for name in self.global_state:
-            if self.named_parameters is not None and name not in self.named_parameters:
+            # Skip integer parameters by averaging them later in the `aggregate` method
+            if (
+                self.named_parameters is not None and name not in self.named_parameters
+            ) or self.global_state[name].dtype == torch.int64 or self.global_state[name].dtype == torch.int32:
                 continue
             self.step[name] = (
                 alpha_t * (-local_model[name])

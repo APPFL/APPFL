@@ -488,7 +488,6 @@ class ClientAgent:
                 raise ValueError(
                     f"Invalid trainer name: {self.client_agent_config.train_configs.trainer}"
                 )
-            self.logger.debug(f"Loading trainer: {self.client_agent_config.train_configs.trainer}")
             self.trainer: BaseTrainer = getattr(
                 trainer_module, self.client_agent_config.train_configs.trainer
             )(
