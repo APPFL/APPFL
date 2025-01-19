@@ -23,12 +23,12 @@ class MonaiTrainer(BaseTrainer):
         self.logger = logger
         self.train_configs = train_configs
 
-        assert hasattr(
-            train_configs, "bundle_root"
-        ), "bundle_root not found in train_configs"
-        assert not train_configs.get(
-            "send_gradient", False
-        ), "send_gradient=True is not supported in the beta version of MonaiTrainer. It will be supported soon."
+        assert hasattr(train_configs, "bundle_root"), (
+            "bundle_root not found in train_configs"
+        )
+        assert not train_configs.get("send_gradient", False), (
+            "send_gradient=True is not supported in the beta version of MonaiTrainer. It will be supported soon."
+        )
 
         self.monai_algo = MonaiAlgo(
             bundle_root=train_configs.bundle_root,

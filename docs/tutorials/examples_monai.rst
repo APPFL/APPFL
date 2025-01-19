@@ -9,15 +9,15 @@ Example: Running APPFL using MONAI Bundle
         </div>
     </div>
 
-This tutorial describes how to run federated learning experiments via APPFL using MONAI Bundles to leverage a collection of medical imaging models available in `MONAI model zoo <https://monai.io/model-zoo.html>`_. This examples shows how to use MONAI Bundle to do 3D spleen CT segmentation using gRPC with two clients. 
+This tutorial describes how to run federated learning experiments via APPFL using MONAI Bundles to leverage a collection of medical imaging models available in `MONAI model zoo <https://monai.io/model-zoo.html>`_. This examples shows how to use MONAI Bundle to do 3D spleen CT segmentation using gRPC with two clients.
 
 .. note::
-    
+
     **Acknowledgement**: We extend our gratitude to the MONAI and NVFlare teams for their invaluable support and information throughout this tutorial. Specifically, this tutorial refers to the `NVFlare-MONAI integration tutorial <https://github.com/NVIDIA/NVFlare/tree/dev/integration/monai/examples/spleen_ct_segmentation_local>`_.
 
 .. note::
 
-    This tutorial is the beta version of the integration of MONAI Bundle with APPFL. The integration is still under active development. 
+    This tutorial is the beta version of the integration of MONAI Bundle with APPFL. The integration is still under active development.
 
 
 Installation
@@ -34,14 +34,14 @@ User can install ``appfl`` and ``monai`` packages from ``appfl``'s source code b
 Download MONAI Bundle
 ---------------------
 
-We suggest user to donwload the bundle into the ``examples/resources/monai`` directory.
+We suggest user to download the bundle into the ``examples/resources/monai`` directory.
 
 .. code-block:: bash
 
     mkdir -p examples/resources/monai
     cd examples/resources/monai
 
-Then, downlaod the spleen CT segmentation bundle from MONAI Bundle repository:
+Then, download the spleen CT segmentation bundle from MONAI Bundle repository:
 
 .. code-block:: bash
 
