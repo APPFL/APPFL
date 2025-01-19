@@ -216,9 +216,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             if action == "set_sample_size":
-                assert (
-                    "sample_size" in meta_data
-                ), "The metadata should contain parameter `sample_size`."
+                assert "sample_size" in meta_data, (
+                    "The metadata should contain parameter `sample_size`."
+                )
                 ret_val = self.server_agent.set_sample_size(client_id, **meta_data)
                 if ret_val is None:
                     response = CustomActionResponse(

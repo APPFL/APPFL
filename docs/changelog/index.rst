@@ -1,6 +1,15 @@
 Changelog
 =========
 
+appfl v1.2.1
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Remove redundant experiment configurations. (`#228 <https://github.com/APPFL/APPFL/issues/228>`_)
+- Enhance safety for Globus Compute by only sending a trigger function. (`#227 <https://github.com/APPFL/APPFL/issues/227>`_)
+
 appfl v1.2.0
 ------------
 

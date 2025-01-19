@@ -374,7 +374,7 @@ class SchedulerCompassGlobusCompute(SchedulerCompass):
             self.server.weights,
             LargeObjectWrapper(
                 self.server.model.state_dict(),
-                f"{self.server_model_basename}_{self.iter+1}",
+                f"{self.server_model_basename}_{self.iter + 1}",
             ),
             do_validation=self.do_validation,
             global_epoch=self.iter + 1,

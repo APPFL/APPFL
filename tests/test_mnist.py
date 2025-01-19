@@ -568,7 +568,7 @@ def test_serial():
     # Load base client configurations and set corresponding fields for different clients
     client_agent_configs = [OmegaConf.load(client_config) for _ in range(num_clients)]
     for i in range(num_clients):
-        client_agent_configs[i].client_id = f"Client{i+1}"
+        client_agent_configs[i].client_id = f"Client{i + 1}"
         client_agent_configs[i].data_configs.dataset_kwargs.num_clients = num_clients
         client_agent_configs[i].data_configs.dataset_kwargs.client_id = i
         client_agent_configs[i].data_configs.dataset_kwargs.visualization = (

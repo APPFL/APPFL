@@ -153,9 +153,9 @@ def main():
     comm = MPI.COMM_WORLD
     comm_rank = comm.Get_rank()
     comm_size = comm.Get_size()
-    assert (
-        comm_size > 1
-    ), "This script requires the toal number of processes to be greater than one!"
+    assert comm_size > 1, (
+        "This script requires the toal number of processes to be greater than one!"
+    )
     args.num_clients = comm_size - 1 if args.num_clients <= 0 else args.num_clients
 
     ## Configuration

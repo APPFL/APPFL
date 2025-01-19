@@ -235,9 +235,9 @@ class GlobusComputeCommunicator:
 
     def receive_async_endpoint_update(self):
         """Receive asynchronous update from only one client endpoint."""
-        assert len(
-            self.executing_task_futs
-        ), "There is no active client endpoint running tasks."
+        assert len(self.executing_task_futs), (
+            "There is no active client endpoint running tasks."
+        )
         client_log = OrderedDict()
         try:
             fut = next(concurrent.futures.as_completed(list(self.executing_task_futs)))

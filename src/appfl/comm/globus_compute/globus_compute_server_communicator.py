@@ -45,10 +45,11 @@ class GlobusComputeServerCommunicator:
         **kwargs,
     ):
         # Assert compute_token and openid_token are both provided if necessary
-        assert (
-            ("compute_token" in kwargs and "openid_token" in kwargs)
-            or ("compute_token" not in kwargs and "openid_token" not in kwargs)
-        ), "Both compute_token and openid_token must be provided if one of them is provided."
+        assert ("compute_token" in kwargs and "openid_token" in kwargs) or (
+            "compute_token" not in kwargs and "openid_token" not in kwargs
+        ), (
+            "Both compute_token and openid_token must be provided if one of them is provided."
+        )
 
         if "compute_token" in kwargs and "openid_token" in kwargs:
             ComputeScopes = ComputeScopeBuilder()
@@ -68,7 +69,9 @@ class GlobusComputeServerCommunicator:
                 code_serialization_strategy=CombinedCode(),
             )
         else:
-            gcc = Client()
+            gcc = Client(
+                code_serialization_strategy=CombinedCode(),
+            )
         self.gce = Executor(client=gcc)  # Globus Compute Executor
         self.logger = logger if logger is not None else self._default_logger()
         # Sanity check for configurations: Check for the number of clients
@@ -84,9 +87,9 @@ class GlobusComputeServerCommunicator:
             )
             else server_agent_config.server_configs.aggregator_kwargs.num_clients
         )
-        assert (
-            num_clients == len(client_agent_configs)
-        ), "Number of clients in the server configuration does not match the number of client configurations."
+        assert num_clients == len(client_agent_configs), (
+            "Number of clients in the server configuration does not match the number of client configurations."
+        )
         client_config_from_server = server_agent_config.client_configs
         # Create a unique experiment ID for this federated learning experiment
         experiment_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -94,9 +97,9 @@ class GlobusComputeServerCommunicator:
         self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
         _client_id_check_set = set()
         for client_config in client_agent_configs:
-            assert hasattr(
-                client_config, "endpoint_id"
-            ), "Client configuration must have an endpoint_id."
+            assert hasattr(client_config, "endpoint_id"), (
+                "Client configuration must have an endpoint_id."
+            )
             # Read the client dataloader source file
             with open(client_config.data_configs.dataset_path) as file:
                 client_config.data_configs.dataset_source = file.read()
@@ -113,9 +116,9 @@ class GlobusComputeServerCommunicator:
                     else client_config.endpoint_id
                 )
             )
-            assert (
-                client_id not in _client_id_check_set
-            ), f"Client ID {client_id} is not unique for this client configuration.\n{client_config}"
+            assert client_id not in _client_id_check_set, (
+                f"Client ID {client_id} is not unique for this client configuration.\n{client_config}"
+            )
             _client_id_check_set.add(client_id)
             client_endpoint_id = client_config.endpoint_id
             client_config.experiment_id = experiment_id
@@ -266,6 +269,9 @@ class GlobusComputeServerCommunicator:
                 client_model, client_metadata_local = (
                     self.__parse_globus_compute_result(result)
                 )
+                client_metadata_local = self.__check_deprecation(
+                    client_id, client_metadata_local
+                )
                 client_results[client_id] = client_model
                 client_metadata[client_id] = client_metadata_local
                 # Set the status of the finished task
@@ -281,7 +287,7 @@ class GlobusComputeServerCommunicator:
                 self.executing_tasks.pop(task_id)
                 self.executing_task_futs.pop(fut)
             except Exception as e:
-                self.logger.info(
+                self.logger.error(
                     f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
                 )
                 raise e
@@ -294,15 +300,16 @@ class GlobusComputeServerCommunicator:
         :return `client_model`: The model returned from the client
         :return `client_metadata`: The metadata returned from the client
         """
-        assert len(
-            self.executing_task_futs
-        ), "There is no active client endpoint running tasks."
+        assert len(self.executing_task_futs), (
+            "There is no active client endpoint running tasks."
+        )
         try:
             fut = next(as_completed(list(self.executing_task_futs)))
             task_id = self.executing_task_futs[fut]
             result = fut.result()
             client_id = self.executing_tasks[task_id].client_id
             client_model, client_metadata = self.__parse_globus_compute_result(result)
+            client_metadata = self.__check_deprecation(client_id, client_metadata)
             # Set the status of the finished task
             client_log = client_metadata.get("log", {})
             self.executing_tasks[task_id].end_time = time.time()
@@ -317,7 +324,7 @@ class GlobusComputeServerCommunicator:
             self.executing_task_futs.pop(fut)
         except Exception as e:
             client_id = self.executing_tasks[task_id].client_id
-            self.logger.info(
+            self.logger.error(
                 f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
             )
             raise e
@@ -343,6 +350,25 @@ class GlobusComputeServerCommunicator:
             self.client_endpoints[client_id].cancel_task()
         self.executing_task_futs = {}
         self.executing_tasks = {}
+
+    def __check_deprecation(
+        self,
+        client_id: str,
+        client_metadata: Dict,
+    ):
+        """
+        This function is used to check deprecation on the client site packages.
+        """
+        if not hasattr(self, "_version_deprecation_warning_set"):
+            self._version_deprecation_warning_set = set()
+        if "_deprecated" in client_metadata:
+            if client_id not in self._version_deprecation_warning_set:
+                self.logger.warning(
+                    f"{client_id} is using a deprecated version of appfl, and it is highly recommended to update it to at least version 1.2.1."
+                )
+                self._version_deprecation_warning_set.add(client_id)
+            client_metadata.pop("_deprecated")
+        return client_metadata
 
     def __parse_globus_compute_result(self, result):
         """

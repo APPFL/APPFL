@@ -28,9 +28,9 @@ class MPIClientCommunicator:
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
         self.server_rank = server_rank
-        assert not (
-            client_id is not None and client_ids is not None
-        ), "client_id and client_ids are mutually exclusive. Use client_id for one client and client_ids for multiple clients."
+        assert not (client_id is not None and client_ids is not None), (
+            "client_id and client_ids are mutually exclusive. Use client_id for one client and client_ids for multiple clients."
+        )
         if client_ids is not None:
             self.client_ids = [client_id for client_id in client_ids]
         elif client_id is not None:

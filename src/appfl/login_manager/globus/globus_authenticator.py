@@ -18,9 +18,9 @@ class GlobusAuthenticator(BaseAuthenticator):
         self.group_id = globus_group_id
         self.is_fl_server = is_fl_server
         if self.is_fl_server:
-            assert (
-                self.group_id is not None
-            ), "FL server must be associated with a Globus group for authentication"
+            assert self.group_id is not None, (
+                "FL server must be associated with a Globus group for authentication"
+            )
             group_client = self.login_manager.get_group_client()
             try:
                 group_memberships = group_client.get_group(
