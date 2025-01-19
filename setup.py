@@ -104,6 +104,7 @@ setuptools.setup(
             "torchvision",
             "tensorboard",
         ],
+        "monai": ["monai[all]==1.2.0"],
     },
     entry_points={
         "console_scripts": [

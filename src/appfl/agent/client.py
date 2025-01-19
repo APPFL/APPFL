@@ -485,6 +485,10 @@ class ClientAgent:
             if not hasattr(
                 trainer_module, self.client_agent_config.train_configs.trainer
             ):
+                if self.client_agent_config.train_configs.trainer == "MonaiTrainer":
+                    raise ImportError(
+                        'Monai is not installed. Please install Monai to use MonaiTrainer using: pip install "appfl[monai]" or pip install -e ".[monai]" if installing from source.'
+                    )
                 raise ValueError(
                     f"Invalid trainer name: {self.client_agent_config.train_configs.trainer}"
                 )
