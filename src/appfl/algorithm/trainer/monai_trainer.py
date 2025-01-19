@@ -5,9 +5,9 @@ import copy
 import time
 from typing import Optional, Any
 from omegaconf import DictConfig
-from monai.fl.utils.constants import ExtraItems, WeightType
 from monai.fl.client.monai_algo import MonaiAlgo
 from monai.fl.utils.exchange_object import ExchangeObject
+from monai.fl.utils.constants import ExtraItems, WeightType
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 
 
@@ -24,6 +24,9 @@ class MonaiTrainer(BaseTrainer):
         self.train_configs = train_configs
         
         assert hasattr(train_configs, "bundle_root"), "bundle_root not found in train_configs"
+        assert train_configs.get("send_gradient", False) == False, (
+            "send_gradient=True is not supported in the beta version of MonaiTrainer. It will be supported soon."
+        )
 
         self.monai_algo = MonaiAlgo(
             bundle_root=train_configs.bundle_root,
@@ -115,27 +118,3 @@ class MonaiTrainer(BaseTrainer):
         self.model_state = copy.deepcopy(model.weights)
         
         self.round += 1
-
-
-if __name__ == "__main__":
-    from appfl.logger import ClientAgentFileLogger
-
-    logger = ClientAgentFileLogger(logging_id="test")
-
-    trainer = MonaiTrainer(
-        client_id="test",
-        train_configs=DictConfig(
-            {
-                "bundle_root": "/eagle/tpc/zilinghan/appfl/APPFL/examples/resources/monai/job/app/config/spleen_ct_segmentation",
-                "num_local_epochs": 2,
-                "send_gradient": True,
-                "do_validation": True,
-                "do_pre_validation": True,
-            }
-        ),
-        logger=logger,
-    )
-
-    trainer.train()
-    model, metrics = trainer.get_parameters()
-    print(metrics)
