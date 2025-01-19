@@ -1,14 +1,14 @@
-import warnings
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-
 import copy
 import time
+import warnings
 from typing import Optional, Any
 from omegaconf import DictConfig
-from monai.fl.client.monai_algo import MonaiAlgo
-from monai.fl.utils.exchange_object import ExchangeObject
-from monai.fl.utils.constants import ExtraItems, WeightType
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+from monai.fl.client.monai_algo import MonaiAlgo  # noqa: E402
+from monai.fl.utils.exchange_object import ExchangeObject  # noqa: E402
+from monai.fl.utils.constants import ExtraItems, WeightType  # noqa: E402
 
 
 class MonaiTrainer(BaseTrainer):
@@ -22,11 +22,13 @@ class MonaiTrainer(BaseTrainer):
         self.round = 0
         self.logger = logger
         self.train_configs = train_configs
-        
-        assert hasattr(train_configs, "bundle_root"), "bundle_root not found in train_configs"
-        assert train_configs.get("send_gradient", False) == False, (
-            "send_gradient=True is not supported in the beta version of MonaiTrainer. It will be supported soon."
-        )
+
+        assert hasattr(
+            train_configs, "bundle_root"
+        ), "bundle_root not found in train_configs"
+        assert not train_configs.get(
+            "send_gradient", False
+        ), "send_gradient=True is not supported in the beta version of MonaiTrainer. It will be supported soon."
 
         self.monai_algo = MonaiAlgo(
             bundle_root=train_configs.bundle_root,
@@ -57,7 +59,9 @@ class MonaiTrainer(BaseTrainer):
         )
 
     def load_parameters(self, params):
-        self._loaded_model = ExchangeObject(weights=params, weight_type=WeightType.WEIGHTS)
+        self._loaded_model = ExchangeObject(
+            weights=params, weight_type=WeightType.WEIGHTS
+        )
 
     def train(self, **kwargs):
         self.metrics = {"round": self.round + 1}
@@ -116,5 +120,5 @@ class MonaiTrainer(BaseTrainer):
         # Update model state
         model = self.monai_algo.get_weights()
         self.model_state = copy.deepcopy(model.weights)
-        
+
         self.round += 1

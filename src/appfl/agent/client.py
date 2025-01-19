@@ -498,7 +498,7 @@ class ClientAgent:
                 val_dataset=self.val_dataset,
                 train_configs=self.client_agent_config.train_configs,
                 logger=self.logger,
-                client_id=self.get_id(), # currently, only useful for MonaiTrainer
+                client_id=self.get_id(),  # currently, only useful for MonaiTrainer
             )
 
     def _load_compressor(self) -> None:

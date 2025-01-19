@@ -50,8 +50,13 @@ class FedBuffAggregator(FedAsyncAggregator):
                 if (
                     self.named_parameters is not None
                     and name not in self.named_parameters
-                ) or (self.global_state[name].dtype == torch.int64 or self.global_state[name].dtype == torch.int32):
-                    self.global_state[name] = torch.div(self.step[name], self.K).type(self.global_state[name].dtype)
+                ) or (
+                    self.global_state[name].dtype == torch.int64
+                    or self.global_state[name].dtype == torch.int32
+                ):
+                    self.global_state[name] = torch.div(self.step[name], self.K).type(
+                        self.global_state[name].dtype
+                    )
                 else:
                     self.global_state[name] = self.global_state[name] + self.step[name]
 
@@ -98,7 +103,10 @@ class FedBuffAggregator(FedAsyncAggregator):
         for name in self.global_state:
             if self.named_parameters is not None and name not in self.named_parameters:
                 self.step[name] += local_model[name]
-            elif self.global_state[name].dtype == torch.int64 or self.global_state[name].dtype == torch.int32:
+            elif (
+                self.global_state[name].dtype == torch.int64
+                or self.global_state[name].dtype == torch.int32
+            ):
                 self.step[name] += local_model[name]
             else:
                 self.step[name] += (

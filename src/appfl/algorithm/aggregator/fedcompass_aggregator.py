@@ -87,7 +87,10 @@ class FedCompassAggregator(BaseAggregator):
                 if (
                     self.named_parameters is not None
                     and name not in self.named_parameters
-                ) or (self.global_state[name].dtype == torch.int64 or self.global_state[name].dtype == torch.int32):
+                ) or (
+                    self.global_state[name].dtype == torch.int64
+                    or self.global_state[name].dtype == torch.int32
+                ):
                     self.global_state[name] = local_model[name]
                 else:
                     if gradient_based:
@@ -114,7 +117,10 @@ class FedCompassAggregator(BaseAggregator):
                     if (
                         self.named_parameters is not None
                         and name not in self.named_parameters
-                    ) or (self.global_state[name].dtype == torch.int64 or self.global_state[name].dtype == torch.int32):
+                    ) or (
+                        self.global_state[name].dtype == torch.int64
+                        or self.global_state[name].dtype == torch.int32
+                    ):
                         if i == 0:
                             self.global_state[name] = torch.zeros_like(
                                 local_model[name]
@@ -132,11 +138,11 @@ class FedCompassAggregator(BaseAggregator):
                                 self.global_state[name] - local_model[name] * alpha_t
                             )
                         else:
-                            global_state_cp[name] += local_model[name] * alpha_t          
+                            global_state_cp[name] += local_model[name] * alpha_t
                             if i == len(local_models) - 1:
-                                self.global_state[name] = (1 - alpha_t_sum) * self.global_state[
-                                    name
-                                ] + global_state_cp[name]
+                                self.global_state[name] = (
+                                    1 - alpha_t_sum
+                                ) * self.global_state[name] + global_state_cp[name]
 
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)
