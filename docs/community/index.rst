@@ -66,4 +66,5 @@ Collaboration Institutions
         <img src="../_static/uc_merced.png" alt="UC Merced">
         <img src="../_static/broad.png" alt="Broad Institute">
         <img src="../_static/uw.png" alt="University of Washington">
+        <img src="../_static/monai.png" alt="MONAI">
     </div>

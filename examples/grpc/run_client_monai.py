@@ -8,7 +8,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--config",
     type=str,
-    default="./resources/configs/mnist/client_1.yaml",
+    default="./resources/configs/monai/client_1.yaml",
     help="Path to the configuration file.",
 )
 args = argparser.parse_args()
