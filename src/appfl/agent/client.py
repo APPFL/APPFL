@@ -299,6 +299,9 @@ class ClientAgent:
 
     def _load_data(self) -> None:
         """Get train and validation dataloaders from local dataloader file."""
+        if not hasattr(self.client_agent_config, "data_configs"):
+            self.train_dataset, self.val_dataset = None, None
+            return
         if hasattr(self.client_agent_config.data_configs, "dataset_source"):
             self.train_dataset, self.val_dataset = run_function_from_file_source(
                 self.client_agent_config.data_configs.dataset_source,
@@ -482,6 +485,10 @@ class ClientAgent:
             if not hasattr(
                 trainer_module, self.client_agent_config.train_configs.trainer
             ):
+                if self.client_agent_config.train_configs.trainer == "MonaiTrainer":
+                    raise ImportError(
+                        'Monai is not installed. Please install Monai to use MonaiTrainer using: pip install "appfl[monai]" or pip install -e ".[monai]" if installing from source.'
+                    )
                 raise ValueError(
                     f"Invalid trainer name: {self.client_agent_config.train_configs.trainer}"
                 )
@@ -495,6 +502,7 @@ class ClientAgent:
                 val_dataset=self.val_dataset,
                 train_configs=self.client_agent_config.train_configs,
                 logger=self.logger,
+                client_id=self.get_id(),  # currently, only useful for MonaiTrainer
             )
 
     def _load_compressor(self) -> None:

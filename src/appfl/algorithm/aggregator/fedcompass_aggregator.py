@@ -56,7 +56,7 @@ class FedCompassAggregator(BaseAggregator):
                             for name, tensor in local_model.items()
                         }
                 else:
-                    self.global_state = self.global_state = {
+                    self.global_state = {
                         name: tensor.detach().clone()
                         for name, tensor in local_model.items()
                     }
@@ -87,6 +87,9 @@ class FedCompassAggregator(BaseAggregator):
                 if (
                     self.named_parameters is not None
                     and name not in self.named_parameters
+                ) or (
+                    self.global_state[name].dtype == torch.int64
+                    or self.global_state[name].dtype == torch.int32
                 ):
                     self.global_state[name] = local_model[name]
                 else:
@@ -100,14 +103,23 @@ class FedCompassAggregator(BaseAggregator):
                         ] + local_model[name] * alpha_t
 
         else:
+            if not gradient_based:
+                global_state_cp = copy.deepcopy(self.global_state)
+                for name in global_state_cp:
+                    global_state_cp[name] = torch.zeros_like(global_state_cp[name])
+            alpha_t_sum = 0
             for i, client_id in enumerate(local_models):
                 local_model = local_models[client_id]
                 weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
                 alpha_t = self.alpha * self.staleness_fn(staleness[client_id]) * weight
+                alpha_t_sum += alpha_t
                 for name in self.global_state:
                     if (
                         self.named_parameters is not None
                         and name not in self.named_parameters
+                    ) or (
+                        self.global_state[name].dtype == torch.int64
+                        or self.global_state[name].dtype == torch.int32
                     ):
                         if i == 0:
                             self.global_state[name] = torch.zeros_like(
@@ -119,16 +131,18 @@ class FedCompassAggregator(BaseAggregator):
                         if i == len(local_models) - 1:
                             self.global_state[name] = torch.div(
                                 self.global_state[name], len(local_models)
-                            )
+                            ).type(self.global_state[name].dtype)
                     else:
                         if gradient_based:
                             self.global_state[name] = (
                                 self.global_state[name] - local_model[name] * alpha_t
                             )
                         else:
-                            self.global_state[name] = (1 - alpha_t) * self.global_state[
-                                name
-                            ] + local_model[name] * alpha_t
+                            global_state_cp[name] += local_model[name] * alpha_t
+                            if i == len(local_models) - 1:
+                                self.global_state[name] = (
+                                    1 - alpha_t_sum
+                                ) * self.global_state[name] + global_state_cp[name]
 
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)

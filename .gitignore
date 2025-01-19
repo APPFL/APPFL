@@ -13,6 +13,7 @@ log_globus_compute_appfl
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
 examples/config_gc/creds/credential.csv
+examples/resources/monai
 note
 datasets
 *output*
@@ -218,3 +219,4 @@ Installation.md
 src/appfl/run_mpi_pca.py
 src/appfl/run_serial_pca.py
 outputs_*
+test_polaris/test_script.sh
