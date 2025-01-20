@@ -177,7 +177,7 @@ Extra: Integration with ProxyStore
 Prepare the ProxyStore Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As Globus Compute limits the data transmission size for the function inputs and outputs to several Megabytes, it is not suitable for transmitting large models. To address this issue, users can integrate Globus Compute with `ProxyStore <https://docs.proxystore.dev/latest/>`_, which facilitates efficient data flow in distributed computing applications. 
+As Globus Compute limits the data transmission size for the function inputs and outputs to several Megabytes, it is not suitable for transmitting large models. To address this issue, users can integrate Globus Compute with `ProxyStore <https://docs.proxystore.dev/latest/>`_, which facilitates efficient data flow in distributed computing applications.
 
 By default, a ProxyStore endpoint connects to ProxyStore's cloud-hosted relay server, which uses Globus Auth for identity and access management. To use the provided relay server, users need to do a one-time-per-system authentication using the following command:
 
@@ -238,7 +238,7 @@ Below shows how to configure the client configuration file. A full sample config
             enable_proxystore: True
             connector_type: "EndpointConnector"
             connector_configs:
-              endpoints: ["endpoint_id_1", "endpoint_id_2", ...] # List of all endpoint ids for server and clients  
+              endpoints: ["endpoint_id_1", "endpoint_id_2", ...] # List of all endpoint ids for server and clients
 
       - endpoint_id: ...
         ...
@@ -247,7 +247,7 @@ Below shows how to configure the client configuration file. A full sample config
             enable_proxystore: True
             connector_type: "EndpointConnector"
             connector_configs:
-              endpoints: ["endpoint_id_1", "endpoint_id_2", ...] # List of all endpoint ids for server and clients  
+              endpoints: ["endpoint_id_1", "endpoint_id_2", ...] # List of all endpoint ids for server and clients
 
 Running the Experiment
 ~~~~~~~~~~~~~~~~~~~~~~~
