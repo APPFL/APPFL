@@ -54,7 +54,7 @@ docs/notebooks/results
 results
 mryu_lib/*
 endpoints
-
+**/.proxystore*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

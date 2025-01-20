@@ -32,19 +32,25 @@ def get_appfl_algorithm(
     except AttributeError:
         raise ValueError(f"Invalid algorithm name: {algorithm_name}")
 
+
 def get_proxystore_connector(
     connector_name: str,
     connector_args: Dict[str, Any],
 ):
-    assert connector_name in ["RedisConnector", "FileConnector", "EndpointConnector"], f"Invalid connector name: {connector_name}, only RedisConnector, FileConnector, and EndpointConnector are supported"
+    assert connector_name in ["RedisConnector", "FileConnector", "EndpointConnector"], (
+        f"Invalid connector name: {connector_name}, only RedisConnector, FileConnector, and EndpointConnector are supported"
+    )
     if connector_name == "RedisConnector":
         from proxystore.connectors.redis import RedisConnector
+
         connector = RedisConnector(**connector_args)
     elif connector_name == "FileConnector":
         from proxystore.connectors.file import FileConnector
+
         connector = FileConnector(**connector_args)
     elif connector_name == "EndpointConnector":
         from proxystore.connectors.endpoint import EndpointConnector
+
         connector = EndpointConnector(**connector_args)
     return connector
 

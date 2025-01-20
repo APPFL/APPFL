@@ -9,10 +9,13 @@ from omegaconf import OmegaConf
 from collections import OrderedDict
 from globus_sdk.scopes import AuthScopes
 from globus_sdk import AccessTokenAuthorizer
+from proxystore.store import Store
+from proxystore.proxy import Proxy, extract
 from globus_compute_sdk import Executor, Client
 from concurrent.futures import Future, as_completed
 from typing import Optional, Dict, List, Union, Tuple, Any
 from appfl.logger import ServerAgentFileLogger
+from appfl.misc.utils import get_proxystore_connector
 from appfl.config import ClientAgentConfig, ServerAgentConfig
 from .utils.config import ClientTask
 from .utils.endpoint import GlobusComputeClientEndpoint
@@ -168,6 +171,12 @@ class GlobusComputeServerCommunicator:
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
 
+        # Load proxystore
+        self._load_proxystore(server_agent_config)
+        assert not (self.use_proxystore and self.use_s3bucket), (
+            "Proxystore and S3 bucket cannot be used together."
+        )
+
         self.executing_tasks: Dict[str, ClientTask] = {}
         self.executing_task_futs: Dict[Future, str] = {}
 
@@ -196,6 +205,8 @@ class GlobusComputeServerCommunicator:
                 model = CloudStorage.upload_object(
                     model_wrapper, register_for_clean=True
                 )
+        elif self.use_proxystore and model is not None:
+            model = self.proxystore.proxy(model)
         for i, client_id in enumerate(self.client_endpoints):
             client_metadata = metadata[i] if isinstance(metadata, list) else metadata
             if need_model_response and self.use_s3bucket:
@@ -230,7 +241,7 @@ class GlobusComputeServerCommunicator:
         :param `need_model_response`: Whether the task requires a model response from the clients
             If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
         """
-        if self.use_s3bucket:
+        if self.use_s3bucket and model is not None:
             model_wrapper = LargeObjectWrapper(
                 data=model,
                 name=str(uuid.uuid4()) + "_server_state",
@@ -239,6 +250,8 @@ class GlobusComputeServerCommunicator:
                 model = CloudStorage.upload_object(
                     model_wrapper, register_for_clean=True
                 )
+        elif self.use_proxystore and model is not None:
+            model = self.proxystore.proxy(model)
         if need_model_response and self.use_s3bucket:
             local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
@@ -337,6 +350,12 @@ class GlobusComputeServerCommunicator:
         # Clean-up cloud storage
         if self.use_s3bucket:
             CloudStorage.clean_up()
+        # Clean-up proxystore
+        if hasattr(self, "proxystore") and self.proxystore is not None:
+            try:
+                self.proxystore.close(clear=True)
+            except:  # noqa: E722
+                self.proxystore.close()
         self.logger.info(
             "The server and all clients have been shutted down successfully."
         )
@@ -384,7 +403,9 @@ class GlobusComputeServerCommunicator:
             model, metadata = result
         else:
             model, metadata = result, {}
-        # Download model from S3 bucket if necessary
+        # Download model from S3 bucket or ProxyStore if necessary
+        if isinstance(model, Proxy):
+            model = extract(model)
         if self.use_s3bucket:
             if CloudStorage.is_cloud_storage_object(model):
                 model = CloudStorage.download_object(
@@ -416,3 +437,30 @@ class GlobusComputeServerCommunicator:
         s_handler.setFormatter(fmt)
         logger.addHandler(s_handler)
         return logger
+
+    def _load_proxystore(self, server_agent_config) -> None:
+        """
+        Create the proxystore for storing and sending model parameters from the server to the clients.
+        """
+        self.proxystore = None
+        self.use_proxystore = False
+        if (
+            hasattr(server_agent_config.server_configs, "comm_configs")
+            and hasattr(
+                server_agent_config.server_configs.comm_configs, "proxystore_configs"
+            )
+            and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
+                "enable_proxystore", False
+            )
+        ):
+            self.use_proxystore = True
+            self.proxystore = Store(
+                name="server-proxystore",
+                connector=get_proxystore_connector(
+                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type,
+                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_configs,
+                ),
+            )
+            self.logger.info(
+                f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
+            )
