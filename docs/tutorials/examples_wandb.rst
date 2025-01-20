@@ -1,7 +1,15 @@
 Example: Using Weights & Biases
 ===============================
 
-Weights & Biases (wandb) is a tool that helps you track your experiments. It's a great tool to use with APPFL. In this example, we'll show you how to use Weights & Biases with APPFL.
+.. raw:: html
+
+    <div style="display: flex; justify-content: center; width: 90%; margin: auto; margin-top: 35px; margin-bottom: 35px;">
+        <div style="display: inline-block; ;">
+            <img src="../_static/appfl-wandb.png" alt="wandb">
+        </div>
+    </div>
+
+`Weights & Biases (wandb) <https://wandb.ai>`_ is a tool that helps you track your experiments. It's a great tool to use with APPFL. In this example, we'll show you how to use Weights & Biases with APPFL.
 
 wandb Login
 -----------
