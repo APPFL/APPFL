@@ -12,10 +12,10 @@ We present a collection of tutorials for APPFL framework.
     examples_aws
     examples_ssl
     examples_vit_finetuning
+    examples_globus_compute
     examples_wandb
     examples_custom_action
     examples_batched_mpi
-    examples_globus_compute
     examples_monai
     appflx/index
     deprecated_tutorial

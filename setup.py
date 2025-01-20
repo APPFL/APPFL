@@ -75,6 +75,7 @@ setuptools.setup(
         "scikit-learn",
         "wandb",
         "colorama",
+        "proxystore[all]",
     ],
     extras_require={
         "dev": [

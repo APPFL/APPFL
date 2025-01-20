@@ -1,6 +1,14 @@
 Example: Run FL Experiment using Globus Compute
 ===============================================
 
+.. raw:: html
+
+    <div style="display: flex; justify-content: center; width: 80%; margin: auto;">
+        <div style="display: inline-block; ;">
+            <img src="../_static/appfl-globus.png" alt="globus">
+        </div>
+    </div>
+
 This tutorial describes how to run federated learning experiments on APPFL using Globus Compute as the communication backend. All the code snippets needed for this tutorial is available at the ``examples`` directory of the APPFL repository at `here <https://github.com/APPFL/APPFL/tree/main/examples>`_.
 
 .. note::
@@ -151,6 +159,103 @@ We provide a sample experiment launching script at ``examples/globus_compute/run
 
 .. code-block:: bash
 
-    python run.py
+    python globus_compute/run.py
 
 User can take this script as a reference and starting point to run their own federated learning experiments using Globus Compute as the communication backend.
+
+Extra: Integration with ProxyStore
+----------------------------------
+
+.. raw:: html
+
+    <div style="display: flex; justify-content: center; width: 80%; margin: auto; margin-top: 30px; margin-bottom: 30px;">
+        <div style="display: inline-block; ;">
+            <img src="../_static/appfl-proxystore.png" alt="proxystore">
+        </div>
+    </div>
+
+Prepare the ProxyStore Endpoint
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As Globus Compute limits the data transmission size for the function inputs and outputs to several Megabytes, it is not suitable for transmitting large models. To address this issue, users can integrate Globus Compute with `ProxyStore <https://docs.proxystore.dev/latest/>`_, which facilitates efficient data flow in distributed computing applications.
+
+By default, a ProxyStore endpoint connects to ProxyStore's cloud-hosted relay server, which uses Globus Auth for identity and access management. To use the provided relay server, users need to do a one-time-per-system authentication using the following command:
+
+.. code-block:: bash
+
+    proxystore-globus-auth login
+
+User can then create an endpoint using the following command:
+
+.. code-block:: bash
+
+    $ proxystore-endpoint configure my-endpoint # you can replace my-endpoint with any name you like
+    INFO: Configured endpoint: my-endpoint <a6c7f036-3e29-4a7a-bf90-5a5f21056e39>
+    INFO: Config and log file directory: ~/.local/share/proxystore/my-endpoint
+    INFO: Start the endpoint with:
+    INFO:   $ proxystore-endpoint start my-endpoint
+
+.. note::
+
+    User can change endpoint configuration at ``~/.local/share/proxystore/my-endpoint/config.toml`` to  change maximum object size or use their own relay server.
+
+After creating the endpoint and finishing the configuration (if needed), user can start the endpoint by the following command:
+
+.. code-block:: bash
+
+    proxystore-endpoint start my-endpoint
+
+Configure for Federated Learning
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With ProxyStore endpoints installed on the client/server which would like to use ProxyStore to transfer model parameters, user needs to collect all endpoints ids and put them in the both the server and client configuration files as ``comm_configs.proxystore_configs``. It should be noted that you only need to specify such configuration for site that you would like to use ProxyStore to transfer model parameters, although you would like to use it for all sites most of the time.
+
+Below shows how to configure the server configuration file. A full sample configuration file is available at ``examples/resources/configs_gc/server_fedavg_proxystore.yaml`` in the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/server_fedavg_proxystore.yaml>`_.
+
+.. code-block:: yaml
+
+    client_configs:
+      ... # general client configurations
+
+    server_configs:
+      ...
+      comm_configs:
+        proxystore_configs:
+          enable_proxystore: True
+          connector_type: "EndpointConnector"
+          connector_configs:
+            endpoints: ["endpoint_id_1", "endpoint_id_2", ...] # List of all endpoint ids for server and clients
+
+Below shows how to configure the client configuration file. A full sample configuration file is available at ``examples/resources/configs_gc/clients_proxystore.yaml`` in the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/clients_proxystore.yaml>`_.
+
+.. code-block:: yaml
+
+    clients:
+      - endpoint_id: ...
+        ...
+        comm_configs:
+          proxystore_configs:
+            enable_proxystore: True
+            connector_type: "EndpointConnector"
+            connector_configs:
+              endpoints: ["endpoint_id_1", "endpoint_id_2", ...] # List of all endpoint ids for server and clients
+
+      - endpoint_id: ...
+        ...
+        comm_configs:
+          proxystore_configs:
+            enable_proxystore: True
+            connector_type: "EndpointConnector"
+            connector_configs:
+              endpoints: ["endpoint_id_1", "endpoint_id_2", ...] # List of all endpoint ids for server and clients
+
+Running the Experiment
+~~~~~~~~~~~~~~~~~~~~~~~
+
+After configuring the server and client configuration files, user can run the federated learning experiment using the same script as before by providing the new paths to the configuration files.
+
+.. code-block:: bash
+
+    python globus_compute/run.py \
+      --server_config ./resources/config_gc/mnist/server_fedavg_proxystore.yaml \
+      --client_config ./resources/config_gc/mnist/clients_proxystore.yaml

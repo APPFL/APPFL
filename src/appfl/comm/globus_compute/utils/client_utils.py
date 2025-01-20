@@ -1,25 +1,31 @@
 import os
 import torch
 import pathlib
+from proxystore.store import Store
+from proxystore.proxy import Proxy, extract
 from appfl.config import ClientAgentConfig
+from appfl.misc.utils import get_proxystore_connector
 from typing import Union, Dict, OrderedDict, Any, Optional
 from .s3_storage import CloudStorage, LargeObjectWrapper
 from .utils import get_executable_func
 
 
 def load_global_model(client_agent_config: ClientAgentConfig, global_model: Any):
-    s3_tmp_dir = str(
-        pathlib.Path.home()
-        / ".appfl"
-        / "globus_compute"
-        / client_agent_config.endpoint_id
-        / client_agent_config.experiment_id
-    )
-    if not pathlib.Path(s3_tmp_dir).exists():
-        pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
-    if CloudStorage.is_cloud_storage_object(global_model):
-        CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
-        global_model = CloudStorage.download_object(global_model)
+    if isinstance(global_model, Proxy):
+        global_model = extract(global_model)
+    else:
+        s3_tmp_dir = str(
+            pathlib.Path.home()
+            / ".appfl"
+            / "globus_compute"
+            / client_agent_config.endpoint_id
+            / client_agent_config.experiment_id
+        )
+        if not pathlib.Path(s3_tmp_dir).exists():
+            pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
+        if CloudStorage.is_cloud_storage_object(global_model):
+            CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
+            global_model = CloudStorage.download_object(global_model)
     return global_model
 
 
@@ -54,6 +60,22 @@ def send_local_model(
                 object_url=local_model_url,
                 ext="pt" if not isinstance(local_model, bytes) else "pkl",
             )
+    elif (
+        hasattr(client_agent_config, "comm_configs")
+        and hasattr(client_agent_config.comm_configs, "proxystore_configs")
+        and client_agent_config.comm_configs.proxystore_configs.get(
+            "enable_proxystore", False
+        )
+    ):
+        store = Store(
+            name=client_agent_config.endpoint_id,
+            connector=get_proxystore_connector(
+                client_agent_config.comm_configs.proxystore_configs.connector_type,
+                client_agent_config.comm_configs.proxystore_configs.connector_configs,
+            ),
+        )
+        local_model = store.proxy(local_model)
+
     return local_model
 
 
