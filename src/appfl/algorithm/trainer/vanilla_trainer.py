@@ -10,6 +10,7 @@ from typing import Tuple, Dict, Optional, Any
 from torch.utils.data import Dataset, DataLoader
 from appfl.privacy import laplace_mechanism_output_perturb
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
+from appfl.misc.utils import parse_device_str, apply_model_device
 
 
 class VanillaTrainer(BaseTrainer):
@@ -84,7 +85,9 @@ class VanillaTrainer(BaseTrainer):
         if send_gradient:
             self.model_prev = copy.deepcopy(self.model.state_dict())
 
-        self.model.to(self.train_configs.device)
+        self.model_device_configs, self.data_device = parse_device_str(self.train_configs.device)
+        self.model = apply_model_device(self.model, self.model_device_configs, self.data_device)
+        # self.model.to(self.train_configs.device)
 
         do_validation = (
             self.train_configs.get("do_validation", False)
@@ -336,7 +339,7 @@ class VanillaTrainer(BaseTrainer):
         with torch.no_grad():
             target_pred, target_true = [], []
             for data, target in self.val_dataloader:
-                data, target = data.to(device), target.to(device)
+                data, target = data.to(self.data_device), target.to(self.data_device)
                 output = self.model(data)
                 val_loss += self.loss_fn(output, target).item()
                 target_true.append(target.detach().cpu().numpy())
@@ -359,8 +362,8 @@ class VanillaTrainer(BaseTrainer):
         :return: loss, prediction, label
         """
         device = self.train_configs.device
-        data = data.to(device)
-        target = target.to(device)
+        data = data.to(self.data_device)
+        target = target.to(self.data_device)
         optimizer.zero_grad()
         output = self.model(data)
         loss = self.loss_fn(output, target)
