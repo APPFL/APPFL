@@ -74,7 +74,6 @@ class VanillaTrainer(BaseTrainer):
         # Extract train device, and configurations for possible DataParallel
         self.device_config, self.device = parse_device_str(self.train_configs.device)
 
-
     def train(self, **kwargs):
         """
         Train the model for a certain number of local epochs or steps and store the mode state

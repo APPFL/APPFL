@@ -10,7 +10,6 @@ import string
 import logging
 import pathlib
 import importlib
-import collections
 import numpy as np
 import pickle as pkl
 import os.path as osp
@@ -18,7 +17,7 @@ import importlib.util
 import torch.nn as nn
 from omegaconf import DictConfig
 from .deprecation import deprecated
-from typing import Any, Optional, Union, Tuple, List, Dict, OrderedDict
+from typing import Any, Optional, Union, Tuple, List, Dict
 
 
 @deprecated(silent=True)
@@ -505,6 +504,7 @@ def scale_update(model, pre_update_params, scale=1.0):
     for param_old, param_new in zip(pre_update_params, list(model.parameters())):
         param_new = param_old + scale * (param_new - param_old)
 
+
 def parse_device_str(devices_str: str):
     """
     Parse a string like "cpu", "cuda:0", "cuda:0,cuda:1". Raise ValueError if invalid devices or out-of-range indices.
@@ -519,49 +519,51 @@ def parse_device_str(devices_str: str):
     if len(devices) == 1:
         dev = devices[0]
         if dev == "cpu":
-            return (
-                {"device_type": "cpu", "device_ids": []},
-                "cpu"
-            )
+            return ({"device_type": "cpu", "device_ids": []}, "cpu")
         elif dev.startswith("cuda:"):
             match = re.match(r"cuda:(\d+)$", dev)
             if not match:
-                raise ValueError(f"Invalid device format: '{dev}'. Expected 'cuda:<index>' or 'cpu'")
+                raise ValueError(
+                    f"Invalid device format: '{dev}'. Expected 'cuda:<index>' or 'cpu'"
+                )
             index = int(match.group(1))
             if index < 0 or index >= torch.cuda.device_count():
-                raise ValueError(f"Requested {dev}, but only {torch.cuda.device_count()} GPUs available.")
-            return (
-                {"device_type": "gpu-single", "device_ids": [index]},
-                dev
-            )
+                raise ValueError(
+                    f"Requested {dev}, but only {torch.cuda.device_count()} GPUs available."
+                )
+            return ({"device_type": "gpu-single", "device_ids": [index]}, dev)
         else:
-            raise ValueError(f"Unsupported device string: '{dev}'. Use 'cpu' or 'cuda:<index>'.")
-    
+            raise ValueError(
+                f"Unsupported device string: '{dev}'. Use 'cpu' or 'cuda:<index>'."
+            )
+
     # CASE 2: multiple devices
     # e.g. "cuda:0,cuda:1"
     device_ids = []
     for d in devices:
         if d == "cpu":
-            raise ValueError("Cannot mix 'cpu' with other devices in multi-device usage.")
+            raise ValueError(
+                "Cannot mix 'cpu' with other devices in multi-device usage."
+            )
         match = re.match(r"cuda:(\d+)$", d)
         if not match:
             raise ValueError(f"Invalid device format: '{d}'. Expected 'cuda:<index>'.")
         index = int(match.group(1))
         if index < 0 or index >= torch.cuda.device_count():
-            raise ValueError(f"Requested {d}, but only {torch.cuda.device_count()} GPUs available.")
+            raise ValueError(
+                f"Requested {d}, but only {torch.cuda.device_count()} GPUs available."
+            )
         device_ids.append(index)
 
-    device_ids = list(set(device_ids)) 
+    device_ids = list(set(device_ids))
     device_ids.sort()
     if not device_ids:
         raise ValueError("No valid CUDA devices parsed from string.")
 
     # For multi-GPU, use the first in device_ids as primary
     first_dev = f"cuda:{device_ids[0]}"
-    return (
-        {"device_type": "gpu-multi", "device_ids": device_ids},
-        first_dev
-    )
+    return ({"device_type": "gpu-multi", "device_ids": device_ids}, first_dev)
+
 
 def apply_model_device(model, config: dict, xy_device: str):
     """
@@ -572,7 +574,7 @@ def apply_model_device(model, config: dict, xy_device: str):
     :xy_device: main device string (e.g., "cuda:0" or "cpu")
     """
     device_type = config["device_type"]
-    
+
     if device_type == "cpu":
         # Single CPU
         model.to("cpu")
@@ -596,6 +598,7 @@ def apply_model_device(model, config: dict, xy_device: str):
 
     else:
         raise ValueError(f"Unknown device_type: {device_type}")
+
 
 @deprecated(silent=True)
 def set_seed(seed=233):
