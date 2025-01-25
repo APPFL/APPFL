@@ -71,6 +71,10 @@ class VanillaTrainer(BaseTrainer):
             self.enabled_wandb = False
         self._sanity_check()
 
+        # Extract train device, and configurations for possible DataParallel
+        self.device_config, self.device = parse_device_str(self.train_configs.device)
+
+
     def train(self, **kwargs):
         """
         Train the model for a certain number of local epochs or steps and store the mode state
@@ -85,9 +89,8 @@ class VanillaTrainer(BaseTrainer):
         if send_gradient:
             self.model_prev = copy.deepcopy(self.model.state_dict())
 
-        self.model_device_configs, self.data_device = parse_device_str(self.train_configs.device)
-        self.model = apply_model_device(self.model, self.model_device_configs, self.data_device)
-        # self.model.to(self.train_configs.device)
+        # Configure model for possible DataParallel
+        self.model = apply_model_device(self.model, self.device_config, self.device)
 
         do_validation = (
             self.train_configs.get("do_validation", False)
@@ -271,6 +274,10 @@ class VanillaTrainer(BaseTrainer):
                 )
             )
 
+        # If model was wrapped in DataParallel, unload it
+        if self.device_config["device_type"] == "gpu-multi":
+            self.model = self.model.module.to(self.device)
+
         self.round += 1
 
         # Differential privacy
@@ -333,13 +340,13 @@ class VanillaTrainer(BaseTrainer):
         Validate the model
         :return: loss, accuracy
         """
-        device = self.train_configs.device
+        device = self.device
         self.model.eval()
         val_loss = 0
         with torch.no_grad():
             target_pred, target_true = [], []
             for data, target in self.val_dataloader:
-                data, target = data.to(self.data_device), target.to(self.data_device)
+                data, target = data.to(device), target.to(device)
                 output = self.model(data)
                 val_loss += self.loss_fn(output, target).item()
                 target_true.append(target.detach().cpu().numpy())
@@ -361,9 +368,9 @@ class VanillaTrainer(BaseTrainer):
         :param target: target label
         :return: loss, prediction, label
         """
-        device = self.train_configs.device
-        data = data.to(self.data_device)
-        target = target.to(self.data_device)
+        device = self.device
+        data = data.to(device)
+        target = target.to(device)
         optimizer.zero_grad()
         output = self.model(data)
         loss = self.loss_fn(output, target)

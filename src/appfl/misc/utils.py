@@ -10,6 +10,7 @@ import string
 import logging
 import pathlib
 import importlib
+import collections
 import numpy as np
 import pickle as pkl
 import os.path as osp
@@ -17,7 +18,7 @@ import importlib.util
 import torch.nn as nn
 from omegaconf import DictConfig
 from .deprecation import deprecated
-from typing import Any, Optional, Union, Tuple, List, Dict
+from typing import Any, Optional, Union, Tuple, List, Dict, OrderedDict
 
 
 @deprecated(silent=True)
@@ -514,6 +515,7 @@ def parse_device_str(devices_str: str):
     devices = [d.strip().lower() for d in devices_str.split(",")]
 
     # CASE 1: single device
+    # e.g. "cuda" or "cpu"
     if len(devices) == 1:
         dev = devices[0]
         if dev == "cpu":
@@ -563,7 +565,8 @@ def parse_device_str(devices_str: str):
 
 def apply_model_device(model, config: dict, xy_device: str):
     """
-    Apply model device to given output, and return the updated model. Extends the model.to() functionality.
+    Apply model device to given configuration, and return the updated model. Extends the model.to() functionality.
+    Config is acquired by parsing a string like "cuda:0,cuda:1" using parse_device_str().
     :model: current nn.Module
     :config: config returned from parse_device_str
     :xy_device: main device string (e.g., "cuda:0" or "cpu")
@@ -584,16 +587,15 @@ def apply_model_device(model, config: dict, xy_device: str):
         return model
 
     elif device_type == "gpu-multi":
+        # Wrap in DataParallel
+        model = nn.DataParallel(model, device_ids=config["device_ids"])
         # Move base model to the first device
         first_dev_id = config["device_ids"][0]
         model.to(torch.device(f"cuda:{first_dev_id}"))
-        # Wrap in DataParallel
-        model = nn.DataParallel(model, device_ids=config["device_ids"])
         return model
 
     else:
         raise ValueError(f"Unknown device_type: {device_type}")
-
 
 @deprecated(silent=True)
 def set_seed(seed=233):
