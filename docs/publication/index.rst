@@ -3,6 +3,10 @@ Publications
 
 This page presents the publications using the APPFL framework. You may also find an FL-as-a-service platform built on top of APPFL at `service.appfl.ai <https://appflx.link/>`_.
 
+2025
+----
+- **[NAACL Main 2025]** G. Bai, Y. Li, Z. Li, L. Zhao, K. Kim, "FedSpaLLM: Federated Pruning of Large Language Models," to appear in *The Main Conference of 2025 Annual Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics (NAACL 2025 Main)*, 2025. `[Paper] <https://arxiv.org/pdf/2410.14852>`_
+
 2024
 ----
 
@@ -13,10 +17,10 @@ This page presents the publications using the APPFL framework. You may also find
 - **[IEEE PES 2024]** S. Bose, Y. Zhang, and K. Kim, "Privacy-preserving load forecasting via personalized model obfuscation," in *2024 IEEE PES General Meeting*, 2024. `[Paper] <https://arxiv.org/pdf/2312.00036.pdf>`_
 - **[IISE 2024]** S. Bose, Y. Zhang, and K. Kim, "Addressing heterogeneity in federated load forecasting with personalization layers," in *The Institute of Industrial and Systems Engineers (IISE) Annual Conference & Expo*, 2024. `[Paper] <https://arxiv.org/pdf/2404.01517.pdf>`_
 - **[IEEE TPS 2024]** R. Madduri, Z. Li, T. Nandi, K. Kim, M. Ryu, A. Rodriguez, "Advances in Privacy Preserving Federated Learning to Realize a Truly Learning Healthcare System," in *The Sixth IEEE International Conference on Trust, Privacy and Security in Intelligent Systems, and Applications*, 2024. `[Paper] <https://arxiv.org/pdf/2409.19756>`_
+- **[IEEE BigData 2024]** K. Kim, et al. "Privacy-Preserving Federated Learning for Science: Challenges and Research Directions," in *2024 IEEE International Conference on Big Data (BigData). IEEE*, 2024. `[Paper] <https://ieeexplore.ieee.org/document/10825853>`_
 - **[SSDBM 2024]** K. Hiniduma, S. Byna, J. L. Bez, and R. Madduri. "AI Data Readiness Inspector (AIDRIN) for Quantitative Assessment of Data Readiness for AI," in *Proceedings of the 36th International Conference on Scientific and Statistical Database Management*, 2024. `[Paper] <https://dl.acm.org/doi/pdf/10.1145/3676288.3676296>`_
 - **[Preprint]** Z. Li, S. He, Z. Yang, M. Ryu, K. Kim, R. Madduri, "Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework," *arXiv preprint arXiv:2409.11585.*, 2024. `[Paper] <https://arxiv.org/pdf/2409.11585>`_
 - **[Preprint]** C. Iakovidou, K. Kim, "Asynchronous Federated Stochastic Optimization with Exact Averaging for Heterogeneous Local Objectives," *arXiv preprint arXiv:2405.10123*, 2024. `[Paper] <https://arxiv.org/pdf/2405.10123>`_
-- **[Preprint]** G. Bai, Y. Li, Z. Li, L. Zhao, K. Kim, "FedSpaLLM: Federated Pruning of Large Language Models," *arXiv preprint arXiv:2410.14852.*, 2024. `[Paper] <https://arxiv.org/pdf/2410.14852>`_
 
 2023
 ----

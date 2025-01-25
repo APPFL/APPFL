@@ -179,7 +179,7 @@ Prepare the ProxyStore Endpoint
 
 As Globus Compute limits the data transmission size for the function inputs and outputs to several Megabytes, it is not suitable for transmitting large models. To address this issue, users can integrate Globus Compute with `ProxyStore <https://docs.proxystore.dev/latest/>`_, which facilitates efficient data flow in distributed computing applications.
 
-By default, a ProxyStore endpoint connects to ProxyStore's cloud-hosted relay server, which uses Globus Auth for identity and access management. To use the provided relay server, users need to do a one-time-per-system authentication using the following command:
+By default, a `ProxyStore endpoint <https://docs.proxystore.dev/latest/guides/endpoints/>`_ connects to ProxyStore's cloud-hosted relay server, which uses Globus Auth for identity and access management. To use the provided relay server, users need to do a one-time-per-system authentication using the following command:
 
 .. code-block:: bash
 
@@ -204,6 +204,10 @@ After creating the endpoint and finishing the configuration (if needed), user ca
 .. code-block:: bash
 
     proxystore-endpoint start my-endpoint
+
+.. note::
+
+  For debugging the endpoint, user can refer to the official `ProxyStore documentation <https://docs.proxystore.dev/latest/guides/endpoints-debugging/>`_.
 
 Configure for Federated Learning
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
