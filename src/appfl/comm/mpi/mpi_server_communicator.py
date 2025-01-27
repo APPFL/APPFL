@@ -193,7 +193,7 @@ class MPIServerCommunicator:
             )
         else:
             self.logger.info(
-                f"Received GetGlobalModel request from {client_ids[0]} [MPI rank {client_rank}]"
+                f"Received UpdateGlobalModel request from {client_ids[0]} [MPI rank {client_rank}]"
             )
         for client_id in client_ids:
             client_metadata = (

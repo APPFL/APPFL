@@ -507,10 +507,16 @@ def scale_update(model, pre_update_params, scale=1.0):
 
 def parse_device_str(devices_str: str):
     """
-    Parse a string like "cpu", "cuda:0", "cuda:0,cuda:1". Raise ValueError if invalid devices or out-of-range indices.
-    Return config: dict with keys:{"device_type": "cpu"|"gpu-single"|"gpu-multi", "device_ids": [list_of_ints_if_applicable]}.
-    Return xy_device: str for the main device to place input/output tensors, e.g. "cuda:0" or "cpu".
-    :devices_str: Device config provided by user
+    Parse a string like `cpu`, `cuda:0`, `cuda:0,cuda:1`. Raise `ValueError` if invalid devices or out-of-range indices.
+    :param devices_str: Device config provided by user
+    :return: `device_config` device configuration dictionary
+    ```python
+        {
+            "device_type": "cpu" | "gpu-single" | "gpu-multi", 
+            "device_ids": [list_of_ints_if_applicable]
+        }
+    ```
+    :return: `xy_device`: str for the main device to place input/output tensors, e.g. `cuda:0` or `cpu`.
     """
     devices = [d.strip().lower() for d in devices_str.split(",")]
 
@@ -520,6 +526,8 @@ def parse_device_str(devices_str: str):
         dev = devices[0]
         if dev == "cpu":
             return ({"device_type": "cpu", "device_ids": []}, "cpu")
+        elif dev == "cuda":
+            return ({"device_type": "gpu-single", "device_ids": []}, "cuda")
         elif dev.startswith("cuda:"):
             match = re.match(r"cuda:(\d+)$", dev)
             if not match:
@@ -567,11 +575,12 @@ def parse_device_str(devices_str: str):
 
 def apply_model_device(model, config: dict, xy_device: str):
     """
-    Apply model device to given configuration, and return the updated model. Extends the model.to() functionality.
-    Config is acquired by parsing a string like "cuda:0,cuda:1" using parse_device_str().
-    :model: current nn.Module
-    :config: config returned from parse_device_str
-    :xy_device: main device string (e.g., "cuda:0" or "cpu")
+    This function extends pytorch's `model.to()` functionality, which applies
+    the model to a device given the configuration and return the updated model.
+    :param: `model` current nn.Module
+    :param: `config` config returned from parse_device_str
+    :param: `xy_device` main device string (e.g., "cuda:0" or "cpu")
+    :return: updated model moved to the device
     """
     device_type = config["device_type"]
 
@@ -583,9 +592,13 @@ def apply_model_device(model, config: dict, xy_device: str):
 
     elif device_type == "gpu-single":
         # Single GPU
-        device_id = config["device_ids"][0]
-        d = torch.device(f"cuda:{device_id}")
-        model.to(d)
+        if len(config["device_ids"]) == 0:
+            # device is `cuda` without index
+            model.to(xy_device)
+        else:
+            device_id = config["device_ids"][0]
+            d = torch.device(f"cuda:{device_id}")
+            model.to(d)
         return model
 
     elif device_type == "gpu-multi":
