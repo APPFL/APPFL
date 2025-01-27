@@ -512,7 +512,7 @@ def parse_device_str(devices_str: str):
     :return: `device_config` device configuration dictionary
     ```python
         {
-            "device_type": "cpu" | "gpu-single" | "gpu-multi", 
+            "device_type": "cpu" | "gpu-single" | "gpu-multi",
             "device_ids": [list_of_ints_if_applicable]
         }
     ```
