@@ -178,7 +178,7 @@ The output file ``slurm-{job_id}.out`` is generated when the script starts to ru
 Multi-GPU Training
 ------------------
 
-APPFL supports distributed data parallelism (DDP) for multi-GPU training. To enable DDP, users only need to specify the device as a list of cuda devices in the client configuratoin file, for example (``examples/resources/configs/cifar10/client_1_multigpu.yaml``):
+APPFL supports distributed data parallelism (DDP) for multi-GPU training. To enable DDP, users only need to specify the device as a list of cuda devices in the client configuration file, for example (``examples/resources/configs/cifar10/client_1_multigpu.yaml``):
 
 .. code-block:: yaml
 	client_id: "Client1"
