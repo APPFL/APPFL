@@ -46,7 +46,7 @@ The Polaris supercomputer uses PBS workload manager for job management. Below is
 	#!/bin/bash
 	#PBS -A <your_project>
 	#PBS -q debug
-	#PBS -l walltime=00:10:00
+	#PBS -l walltime=00:15:00
 	#PBS -l nodes=1:ppn=64
 	#PBS -l filesystems=home:eagle:grand
 	#PBS -m bae
@@ -173,3 +173,69 @@ The output file ``slurm-{job_id}.out`` is generated when the script starts to ru
 .. code-block:: bash
 
 	tail -f -n 10 slurm-{job_id}.out
+
+
+Multi-GPU Training
+------------------
+
+APPFL supports distributed data parallelism (DDP) for multi-GPU training. To enable DDP, users only need to specify the device as a list of cuda devices in the client configuratoin file, for example (``examples/resources/configs/cifar10/client_1_multigpu.yaml``):
+
+.. code-block:: yaml
+	client_id: "Client1"
+	train_configs:
+		# Device
+		device: "cuda:0,cuda:1,cuda:2,cuda:3"
+		...
+
+.. note::
+
+	When you are using multi-GPU training, please make sure the training and validation batch size are divisible by the number of GPUs.
+
+Below provides the batch script to run the multi-GPU training on Delta cluster using MPI.
+
+.. code-block:: bash
+	:caption: submit.sh
+
+	#!/bin/bash
+	#SBATCH --mem=150g                              # required number of memory
+	#SBATCH --nodes=1                               # number of required nodes
+	#SBATCH --ntasks-per-node=6                     # number of tasks per node [SHOULD BE EQUAL TO THE NUMBER OF CLIENTS+1]
+	#SBATCH --cpus-per-task=1                       # <- match to OMP_NUM_THREADS
+	#SBATCH --partition=gpuA40x4                    # <- or one of: gpuA100x4 gpuA40x4 gpuA100x8 gpuMI100x8
+	#SBATCH --account=<xxxx-delta-gpu>              # <- one of: replace xxxx with your project name
+	#SBATCH --job-name=APPFL-test                   # job name
+	#SBATCH --time=00:15:00                         # dd-hh:mm:ss for the job
+	#SBATCH --gpus-per-node=4
+	#SBATCH --gpu-bind=none
+
+	# Activate conda environment
+	source ~/.bashrc
+	conda activate appfl
+	cd <your_path_to_appfl>/examples
+
+	# Launch the experiment
+	mpiexec -np 6 python ./mpi/run_mpi.py --server_config ./resources/configs/cifar10/server_fedcompass.yaml \
+			--client_config ./resources/configs/cifar10/client_1_multigpus.yaml
+
+Below provides the batch script to run the multi-GPU training on Polaris cluster using MPI.
+
+.. code-block:: bash
+	:caption: submit.sh
+
+	#!/bin/bash
+	#PBS -A <your_project>
+	#PBS -q debug
+	#PBS -l walltime=00:15:00
+	#PBS -l nodes=1:ppn=64
+	#PBS -l filesystems=home:eagle:grand
+	#PBS -m bae
+
+	# Load modules and activate conda environment
+	module use /soft/modulefiles
+	module load conda
+	conda activate <your_env>
+	cd <your_appfl_path>/APPFL/examples
+
+	# Launch the experiment
+	mpiexec -np 6 python ./mpi/run_mpi.py --server_config ./resources/configs/cifar10/server_fedcompass.yaml \
+			--client_config ./resources/configs/cifar10/client_1_multigpus.yaml
