@@ -10,6 +10,7 @@ from typing import Tuple, Dict, Optional, Any
 from torch.utils.data import Dataset, DataLoader
 from appfl.privacy import laplace_mechanism_output_perturb
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
+from appfl.misc.utils import parse_device_str, apply_model_device
 
 
 class VanillaTrainer(BaseTrainer):
@@ -70,6 +71,9 @@ class VanillaTrainer(BaseTrainer):
             self.enabled_wandb = False
         self._sanity_check()
 
+        # Extract train device, and configurations for possible DataParallel
+        self.device_config, self.device = parse_device_str(self.train_configs.device)
+
     def train(self, **kwargs):
         """
         Train the model for a certain number of local epochs or steps and store the mode state
@@ -84,7 +88,8 @@ class VanillaTrainer(BaseTrainer):
         if send_gradient:
             self.model_prev = copy.deepcopy(self.model.state_dict())
 
-        self.model.to(self.train_configs.device)
+        # Configure model for possible DataParallel
+        self.model = apply_model_device(self.model, self.device_config, self.device)
 
         do_validation = (
             self.train_configs.get("do_validation", False)
@@ -268,6 +273,10 @@ class VanillaTrainer(BaseTrainer):
                 )
             )
 
+        # If model was wrapped in DataParallel, unload it
+        if self.device_config["device_type"] == "gpu-multi":
+            self.model = self.model.module.to(self.device)
+
         self.round += 1
 
         # Differential privacy
@@ -330,7 +339,7 @@ class VanillaTrainer(BaseTrainer):
         Validate the model
         :return: loss, accuracy
         """
-        device = self.train_configs.device
+        device = self.device
         self.model.eval()
         val_loss = 0
         with torch.no_grad():
@@ -358,7 +367,7 @@ class VanillaTrainer(BaseTrainer):
         :param target: target label
         :return: loss, prediction, label
         """
-        device = self.train_configs.device
+        device = self.device
         data = data.to(device)
         target = target.to(device)
         optimizer.zero_grad()

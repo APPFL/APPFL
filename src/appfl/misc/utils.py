@@ -1,4 +1,5 @@
 import os
+import re
 import ast
 import sys
 import copy
@@ -13,6 +14,7 @@ import numpy as np
 import pickle as pkl
 import os.path as osp
 import importlib.util
+import torch.nn as nn
 from omegaconf import DictConfig
 from .deprecation import deprecated
 from typing import Any, Optional, Union, Tuple, List, Dict
@@ -501,6 +503,114 @@ def scale_update(model, pre_update_params, scale=1.0):
     """
     for param_old, param_new in zip(pre_update_params, list(model.parameters())):
         param_new = param_old + scale * (param_new - param_old)
+
+
+def parse_device_str(devices_str: str):
+    """
+    Parse a string like `cpu`, `cuda:0`, `cuda:0,cuda:1`. Raise `ValueError` if invalid devices or out-of-range indices.
+    :param devices_str: Device config provided by user
+    :return: `device_config` device configuration dictionary
+    ```python
+        {
+            "device_type": "cpu" | "gpu-single" | "gpu-multi",
+            "device_ids": [list_of_ints_if_applicable]
+        }
+    ```
+    :return: `xy_device`: str for the main device to place input/output tensors, e.g. `cuda:0` or `cpu`.
+    """
+    devices = [d.strip().lower() for d in devices_str.split(",")]
+
+    # CASE 1: single device
+    # e.g. "cuda" or "cpu"
+    if len(devices) == 1:
+        dev = devices[0]
+        if dev == "cpu":
+            return ({"device_type": "cpu", "device_ids": []}, "cpu")
+        elif dev == "cuda":
+            return ({"device_type": "gpu-single", "device_ids": []}, "cuda")
+        elif dev.startswith("cuda:"):
+            match = re.match(r"cuda:(\d+)$", dev)
+            if not match:
+                raise ValueError(
+                    f"Invalid device format: '{dev}'. Expected 'cuda:<index>' or 'cpu'"
+                )
+            index = int(match.group(1))
+            if index < 0 or index >= torch.cuda.device_count():
+                raise ValueError(
+                    f"Requested {dev}, but only {torch.cuda.device_count()} GPUs available."
+                )
+            return ({"device_type": "gpu-single", "device_ids": [index]}, dev)
+        else:
+            raise ValueError(
+                f"Unsupported device string: '{dev}'. Use 'cpu' or 'cuda:<index>'."
+            )
+
+    # CASE 2: multiple devices
+    # e.g. "cuda:0,cuda:1"
+    device_ids = []
+    for d in devices:
+        if d == "cpu":
+            raise ValueError(
+                "Cannot mix 'cpu' with other devices in multi-device usage."
+            )
+        match = re.match(r"cuda:(\d+)$", d)
+        if not match:
+            raise ValueError(f"Invalid device format: '{d}'. Expected 'cuda:<index>'.")
+        index = int(match.group(1))
+        if index < 0 or index >= torch.cuda.device_count():
+            raise ValueError(
+                f"Requested {d}, but only {torch.cuda.device_count()} GPUs available."
+            )
+        device_ids.append(index)
+
+    device_ids = list(set(device_ids))
+    device_ids.sort()
+    if not device_ids:
+        raise ValueError("No valid CUDA devices parsed from string.")
+
+    # For multi-GPU, use the first in device_ids as primary
+    first_dev = f"cuda:{device_ids[0]}"
+    return ({"device_type": "gpu-multi", "device_ids": device_ids}, first_dev)
+
+
+def apply_model_device(model, config: dict, xy_device: str):
+    """
+    This function extends pytorch's `model.to()` functionality, which applies
+    the model to a device given the configuration and return the updated model.
+    :param: `model` current nn.Module
+    :param: `config` config returned from parse_device_str
+    :param: `xy_device` main device string (e.g., "cuda:0" or "cpu")
+    :return: updated model moved to the device
+    """
+    device_type = config["device_type"]
+
+    if device_type == "cpu":
+        # Single CPU
+        model.to("cpu")
+        # The model is now on CPU. (xy_device is also "cpu".)
+        return model
+
+    elif device_type == "gpu-single":
+        # Single GPU
+        if len(config["device_ids"]) == 0:
+            # device is `cuda` without index
+            model.to(xy_device)
+        else:
+            device_id = config["device_ids"][0]
+            d = torch.device(f"cuda:{device_id}")
+            model.to(d)
+        return model
+
+    elif device_type == "gpu-multi":
+        # Wrap in DataParallel
+        model = nn.DataParallel(model, device_ids=config["device_ids"])
+        # Move base model to the first device
+        first_dev_id = config["device_ids"][0]
+        model.to(torch.device(f"cuda:{first_dev_id}"))
+        return model
+
+    else:
+        raise ValueError(f"Unknown device_type: {device_type}")
 
 
 @deprecated(silent=True)
