@@ -16,11 +16,13 @@ from .grpc_communicator_pb2 import (
     ServerHeader,
     ServerStatus,
 )
+from proxystore.store import Store
+from proxystore.proxy import extract
 from .grpc_communicator_pb2_grpc import GRPCCommunicatorServicer
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
-from .utils import proto_to_databuffer, serialize_model
-from appfl.misc.utils import deserialize_yaml
+from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
+from .utils import proto_to_databuffer, serialize_model, deserialize_model
 
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
@@ -35,6 +37,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.max_message_size = max_message_size
         self.logger = logger if logger is not None else self._default_logger()
         self.kwargs = kwargs
+        self._load_proxystore(server_agent.server_agent_config)
+        self.logger.debug(f"ProxyStore: {self.use_proxystore}")
 
     def GetConfiguration(self, request, context):
         """
@@ -100,6 +104,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 model = model[0]
             else:
                 meta_data = yaml.dump({})
+            if self.use_proxystore:
+                model = self.proxystore.proxy(model)
+                self.logger.debug("Server using proxystore for model transfer.")
             model_serialized = serialize_model(model)
             response_proto = GetGlobalModelRespone(
                 header=ServerHeader(status=ServerStatus.RUN),
@@ -147,6 +154,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
+            if meta_data.get("_use_proxystore", False):
+                local_model_proxy = deserialize_model(local_model)
+                local_model = extract(local_model_proxy)
+                self.logger.debug("Server received proxied model from client.")
             if len(meta_data) > 0:
                 self.logger.info(
                     f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
@@ -159,6 +170,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 global_model = global_model[0]
             else:
                 meta_data = yaml.dump({})
+            if self.use_proxystore:
+                global_model = self.proxystore.proxy(global_model)
+                self.logger.debug("Server using proxystore for model transfer.")
             global_model_serialized = serialize_model(global_model)
             status = (
                 ServerStatus.DONE
@@ -275,6 +289,16 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             context.set_details("Server error occurred!")
             raise e
 
+    def cleanup(self):
+        """Cleanup the server communicator."""
+        # Clean-up proxystore
+        if hasattr(self, "proxystore") and self.proxystore is not None:
+            try:
+                self.proxystore.close(clear=True)
+            except:  # noqa: E722
+                self.proxystore.close()
+        self.logger.debug("Server communicator cleaned up.")
+
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
         logger = logging.getLogger(__name__)
@@ -285,3 +309,30 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         s_handler.setFormatter(fmt)
         logger.addHandler(s_handler)
         return logger
+
+    def _load_proxystore(self, server_agent_config) -> None:
+        """
+        Create the proxystore for storing and sending model parameters from the server to the clients.
+        """
+        self.proxystore = None
+        self.use_proxystore = False
+        if (
+            hasattr(server_agent_config.server_configs, "comm_configs")
+            and hasattr(
+                server_agent_config.server_configs.comm_configs, "proxystore_configs"
+            )
+            and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
+                "enable_proxystore", False
+            )
+        ):
+            self.use_proxystore = True
+            self.proxystore = Store(
+                name="server-proxystore",
+                connector=get_proxystore_connector(
+                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type,
+                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_configs,
+                ),
+            )
+            self.logger.info(
+                f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
+            )

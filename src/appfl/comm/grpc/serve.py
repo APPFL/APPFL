@@ -93,6 +93,7 @@ def serve(
         while True:
             time.sleep(1)
             if servicer.server_agent.server_terminated():
+                servicer.cleanup()
                 if hasattr(servicer.server_agent, "logger"):
                     servicer.server_agent.logger.info("Terminating the server ...")
                 else:
@@ -103,6 +104,7 @@ def serve(
                 server.stop(0)
                 break
     except KeyboardInterrupt:
+        servicer.cleanup()
         if hasattr(servicer.server_agent, "logger"):
             servicer.server_agent.logger.info("Terminating the server ...")
         else:
