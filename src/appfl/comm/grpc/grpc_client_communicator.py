@@ -143,7 +143,6 @@ class GRPCClientCommunicator:
         """
         if self.use_proxystore:
             local_model = self.proxystore.proxy(local_model)
-            print("[DEBUG]: Client sent proxied model to server.")
             kwargs["_use_proxystore"] = True
         if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
@@ -173,7 +172,6 @@ class GRPCClientCommunicator:
         model = deserialize_model(response.global_model)
         if isinstance(model, Proxy):
             model = extract(model)
-            print("[DEBUG]: Client received proxied model from server.")
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -220,7 +218,6 @@ class GRPCClientCommunicator:
                     self.proxystore.close(clear=True)
                 except:  # noqa: E722
                     self.proxystore.close()
-                print("[DEBUG]: Proxystore closed.")
             
         if len(response.results) == 0:
             return {}
@@ -254,7 +251,4 @@ class GRPCClientCommunicator:
                     self.kwargs["proxystore_configs"]["connector_type"],
                     self.kwargs["proxystore_configs"]["connector_configs"],
                 ),
-            )
-            print(
-                f"Client using proxystore for model transfer with store: {self.kwargs['proxystore_configs']['connector_type']}."
             )
