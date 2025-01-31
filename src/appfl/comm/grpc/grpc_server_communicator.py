@@ -38,7 +38,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.logger = logger if logger is not None else self._default_logger()
         self.kwargs = kwargs
         self._load_proxystore(server_agent.server_agent_config)
-        self.logger.debug(f"ProxyStore: {self.use_proxystore}")
 
     def GetConfiguration(self, request, context):
         """
@@ -106,7 +105,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 meta_data = yaml.dump({})
             if self.use_proxystore:
                 model = self.proxystore.proxy(model)
-                self.logger.debug("Server using proxystore for model transfer.")
             model_serialized = serialize_model(model)
             response_proto = GetGlobalModelRespone(
                 header=ServerHeader(status=ServerStatus.RUN),
@@ -157,7 +155,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if meta_data.get("_use_proxystore", False):
                 local_model_proxy = deserialize_model(local_model)
                 local_model = extract(local_model_proxy)
-                self.logger.debug("Server received proxied model from client.")
             if len(meta_data) > 0:
                 self.logger.info(
                     f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
@@ -172,7 +169,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 meta_data = yaml.dump({})
             if self.use_proxystore:
                 global_model = self.proxystore.proxy(global_model)
-                self.logger.debug("Server using proxystore for model transfer.")
             global_model_serialized = serialize_model(global_model)
             status = (
                 ServerStatus.DONE
@@ -297,7 +293,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 self.proxystore.close(clear=True)
             except:  # noqa: E722
                 self.proxystore.close()
-        self.logger.debug("Server communicator cleaned up.")
 
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
