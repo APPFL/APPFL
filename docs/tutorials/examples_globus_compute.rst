@@ -59,7 +59,7 @@ Then you will be asked to configure the endpoint. If you are using your local co
       max_blocks: 1
       min_blocks: 0
       nodes_per_block: 1
-      queue: debug # Replace with preemptable or other queue if needed
+      queue: debug # Replace with other queue if needed
       scheduler_options: '#PBS -l filesystems=home:eagle:grand'
       select_options: ngpus=4
       type: PBSProProvider
@@ -274,12 +274,12 @@ Extra: Integration with ProxyStore on Polaris
         </div>
     </div>
 
-In this section, we show how to launch a Globus Compute endpoint on ALCF's Polaris supercomputer and use ProxyStore Endpoint to transfer model parameters between the server and clients. 
+In this section, we show how to launch a Globus Compute endpoint on ALCF's Polaris supercomputer and use ProxyStore Endpoint to transfer model parameters between the server and clients.
 
 Prepare the ProxyStore Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-One of the most tricky parts of Polaris is that its compute node does not have internet access, with the exception of HTTP, HTTPS, and FTP through a proxy server. Therefore, **users have to start their ProxyStore endpoint on a login node** with internet access. The started endpoint acts as proxy for data transmission traffic between the compute nodes and the ProxyStore relay server, which listents on ``http://<login_node_id>:<port>``. When you start the endpoint with the command ``proxystore-endpoint start <endpoint_name>``, the endpoint log at ``~/.local/share/proxystore/<endpoint_name>/log.txt`` should look like something below:
+One of the most tricky parts of Polaris is that its compute node does not have internet access, with the exception of HTTP, HTTPS, and FTP through a proxy server. Therefore, **users have to start their ProxyStore endpoint on a login node** with internet access. The started endpoint acts as proxy for data transmission traffic between the compute nodes and the ProxyStore relay server, which listens on ``http://<login_node_id>:<port>``. When you start the endpoint with the command ``proxystore-endpoint start <endpoint_name>``, the endpoint log at ``~/.local/share/proxystore/<endpoint_name>/log.txt`` should look like something below:
 
 .. code-block:: bash
 
@@ -331,7 +331,7 @@ After starting the ProxyStore endpoint on Polaris login node, user can create a 
       max_blocks: 1
       min_blocks: 0
       nodes_per_block: 1
-      queue: debug # Replace with preemptable or other queue if needed
+      queue: debug # Replace with other queue if needed
       scheduler_options: '#PBS -l filesystems=home:eagle:grand'
       select_options: ngpus=4
       type: PBSProProvider
@@ -353,7 +353,7 @@ To test if your local ProxyStore endpoint (e.g., ``my-endpoint``) is working, yo
 
 .. code-block:: bash
 
-  $ proxystore-endpoint test my-endpoint exists abcdef  
+  $ proxystore-endpoint test my-endpoint exists abcdef
   # Expected output
   INFO: Object exists: False
 

@@ -154,7 +154,10 @@ class GRPCClientCommunicator:
             header=ClientHeader(client_id=client_id),
             local_model=(
                 serialize_model(local_model)
-                if (isinstance(local_model, Proxy) or (not isinstance(local_model, bytes)))
+                if (
+                    isinstance(local_model, Proxy)
+                    or (not isinstance(local_model, bytes))
+                )
                 else local_model
             ),
             meta_data=meta_data,
@@ -210,7 +213,7 @@ class GRPCClientCommunicator:
         response.ParseFromString(byte_received)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
-        
+
         if action == "close_connection":
             # Clean-up proxystore
             if hasattr(self, "proxystore") and self.proxystore is not None:
@@ -218,7 +221,7 @@ class GRPCClientCommunicator:
                     self.proxystore.close(clear=True)
                 except:  # noqa: E722
                     self.proxystore.close()
-            
+
         if len(response.results) == 0:
             return {}
         else:
