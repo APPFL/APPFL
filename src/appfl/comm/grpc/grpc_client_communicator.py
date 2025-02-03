@@ -20,7 +20,9 @@ from appfl.comm.grpc import (
     deserialize_model,
     create_grpc_channel,
 )
-from appfl.misc.utils import deserialize_yaml
+from proxystore.store import Store
+from proxystore.proxy import Proxy, extract
+from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 
 
 class GRPCClientCommunicator:
@@ -68,6 +70,7 @@ class GRPCClientCommunicator:
         self.stub = GRPCCommunicatorStub(channel)
         self._use_authenticator = use_authenticator
         self.kwargs = kwargs
+        self._load_proxystore()
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -117,6 +120,8 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
+        if isinstance(model, Proxy):
+            model = extract(model)
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -136,6 +141,9 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the updated global model with additional metadata. Specifically, `meta_data["status"]` is either "RUNNING" or "DONE".
         """
+        if self.use_proxystore:
+            local_model = self.proxystore.proxy(local_model)
+            kwargs["_use_proxystore"] = True
         if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
             del kwargs["_client_id"]
@@ -146,7 +154,10 @@ class GRPCClientCommunicator:
             header=ClientHeader(client_id=client_id),
             local_model=(
                 serialize_model(local_model)
-                if not isinstance(local_model, bytes)
+                if (
+                    isinstance(local_model, Proxy)
+                    or (not isinstance(local_model, bytes))
+                )
                 else local_model
             ),
             meta_data=meta_data,
@@ -162,6 +173,8 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
+        if isinstance(model, Proxy):
+            model = extract(model)
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -200,6 +213,15 @@ class GRPCClientCommunicator:
         response.ParseFromString(byte_received)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
+
+        if action == "close_connection":
+            # Clean-up proxystore
+            if hasattr(self, "proxystore") and self.proxystore is not None:
+                try:
+                    self.proxystore.close(clear=True)
+                except:  # noqa: E722
+                    self.proxystore.close()
+
         if len(response.results) == 0:
             return {}
         else:
@@ -212,3 +234,24 @@ class GRPCClientCommunicator:
                 )
             except:  # noqa E722
                 return {}
+
+    def _load_proxystore(self):
+        """
+        Create the proxystore for storing and sending model parameters from the server to the clients.
+        """
+        self.proxystore = None
+        self.use_proxystore = False
+
+        if (
+            "proxystore_configs" in self.kwargs
+            and "enable_proxystore" in self.kwargs["proxystore_configs"]
+            and self.kwargs["proxystore_configs"]["enable_proxystore"]
+        ):
+            self.use_proxystore = True
+            self.proxystore = Store(
+                name="server-proxystore",
+                connector=get_proxystore_connector(
+                    self.kwargs["proxystore_configs"]["connector_type"],
+                    self.kwargs["proxystore_configs"]["connector_configs"],
+                ),
+            )

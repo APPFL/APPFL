@@ -35,7 +35,6 @@ client_configs:
       num_classes: 10
       num_pixel: 28
 
-  # comm_configs will be copied to server_configs as well
   comm_configs:
     compressor_configs:
       enable_compression: False
@@ -56,12 +55,15 @@ server_configs:
     client_weights_mode: "equal"
   device: "cpu"
   num_global_epochs: 10
-  server_validation: False
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
+    grpc_configs:
+      server_uri: localhost:50051
+      max_message_size: 1048576
+      use_ssl: False
     proxystore_configs:
       enable_proxystore: True
       connector_type: "EndpointConnector"
       connector_configs:
-        endpoints: ["32b077ce-fb56-40ab-a26c-bdbd99d7fe87", "b6cfb02b-323f-4eac-8c42-20102bb0bd26"]
+        endpoints: ["32b077ce-fb56-40ab-a26c-bdbd99d7fe87", "c5ac5f15-1cca-480c-9d8b-7ddd924af28a"]

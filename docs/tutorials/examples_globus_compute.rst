@@ -47,33 +47,32 @@ Then you will be asked to configure the endpoint. If you are using your local co
 
 .. code-block:: yaml
 
-    display_name: appfl-endpoint
-
-    engine:
-        type: GlobusComputeEngine
-        max_workers_per_node: 1
-
+  engine:
     address:
-        type: address_by_interface
-        ifname: bond0
-
+      ifname: bond0
+      type: address_by_interface
+    max_workers_per_node: 1
     provider:
-        type: PBSProProvider
+      account: <your_polaris_account> # Replace with your account
+      cpus_per_node: 32
+      init_blocks: 0
+      max_blocks: 1
+      min_blocks: 0
+      nodes_per_block: 1
+      queue: debug # Replace with other queue if needed
+      scheduler_options: '#PBS -l filesystems=home:eagle:grand'
+      select_options: ngpus=4
+      type: PBSProProvider
+      walltime: 00:30:00
+      worker_init: module use /soft/modulefiles; module load conda; conda activate <your_conda_env>;
+    strategy:
+      max_idletime: 3600
+      type: SimpleStrategy
+    type: HighThroughputEngine
 
-        account: ParaLLMs
-        queue: debug
-        cpus_per_node: 32
-        select_options: ngpus=4
+.. note::
 
-        scheduler_options: '#PBS -l filesystems=home:eagle:grand'
-
-        worker_init: module use /soft/modulefiles ; module load conda; conda activate appfl;
-
-        walltime: 00:30:00
-        nodes_per_block: 1
-        init_blocks: 0
-        max_blocks: 2
-        min_blocks: 0
+    It is recommended to set ``max_idletime`` (in seconds) to a large value to avoid the endpoint being shut down by the Globus Compute service when there is no task running.
 
 After the configuration, you can start the endpoint by the following command:
 
@@ -263,3 +262,111 @@ After configuring the server and client configuration files, user can run the fe
     python globus_compute/run.py \
       --server_config ./resources/config_gc/mnist/server_fedavg_proxystore.yaml \
       --client_config ./resources/config_gc/mnist/clients_proxystore.yaml
+
+Extra: Integration with ProxyStore on Polaris
+---------------------------------------------
+
+.. raw:: html
+
+    <div style="display: flex; justify-content: center; width: 80%; margin: auto; margin-top: 30px; margin-bottom: 30px;">
+        <div style="display: inline-block; ;">
+            <img src="../_static/appfl-proxystore-polaris.png" alt="polaris">
+        </div>
+    </div>
+
+In this section, we show how to launch a Globus Compute endpoint on ALCF's Polaris supercomputer and use ProxyStore Endpoint to transfer model parameters between the server and clients.
+
+Prepare the ProxyStore Endpoint
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One of the most tricky parts of Polaris is that its compute node does not have internet access, with the exception of HTTP, HTTPS, and FTP through a proxy server. Therefore, **users have to start their ProxyStore endpoint on a login node** with internet access. The started endpoint acts as proxy for data transmission traffic between the compute nodes and the ProxyStore relay server, which listens on ``http://<login_node_id>:<port>``. When you start the endpoint with the command ``proxystore-endpoint start <endpoint_name>``, the endpoint log at ``~/.local/share/proxystore/<endpoint_name>/log.txt`` should look like something below:
+
+.. code-block:: bash
+
+  [2025-01-30 23:43:08.113] INFO  (proxystore.endpoint.serve) :: Installing uvloop as default event loop
+  [2025-01-30 23:43:08.125] WARNING (proxystore.endpoint.serve) :: Database path not provided. Data will not be persisted
+  [2025-01-30 23:43:08.125] INFO  (proxystore.endpoint.serve) :: Using native app Globus Auth client
+  [2025-01-30 23:43:08.126] INFO  (globus_sdk.client) :: Creating client of type <class 'globus_sdk.services.auth.client.native_client.NativeAppAuthClient'> for service "auth"
+  [2025-01-30 23:43:08.127] INFO  (globus_sdk.services.auth.client.base_login_client) :: Finished initializing AuthLoginClient. client_id='a3379dba-a492-459a-a8df-5e7676a0472f', type(authorizer)=<class 'globus_sdk.authorizers.base.NullAuthorizer'>
+  [2025-01-30 23:43:08.188] INFO  (globus_sdk.authorizers.refresh_token) :: Setting up RefreshTokenAuthorizer with auth_client=[instance:139892558440592]
+  [2025-01-30 23:43:08.188] INFO  (globus_sdk.authorizers.renewing) :: Setting up a RenewingAuthorizer. It will use an auth type of Bearer and can handle 401s.
+  [2025-01-30 23:43:08.188] INFO  (globus_sdk.authorizers.renewing) :: RenewingAuthorizer will start by using access_token with hash "f41c966eeea9ab06d4c69aa4e0219efebe70e2f3e85fd41005ee4e954ec877fd"
+  [2025-01-30 23:43:08.223] INFO  (proxystore.p2p.nat) :: Checking NAT type. This may take a moment...
+  [2025-01-30 23:43:08.249] INFO  (proxystore.p2p.nat) :: NAT Type:       Full-cone NAT
+  [2025-01-30 23:43:08.249] INFO  (proxystore.p2p.nat) :: External IP:    140.221.112.14
+  [2025-01-30 23:43:08.249] INFO  (proxystore.p2p.nat) :: External Port:  54320
+  [2025-01-30 23:43:08.250] INFO  (proxystore.p2p.nat) :: NAT traversal for peer-to-peer methods (e.g., hole-punching) is likely to work. (NAT traversal does not work reliably across symmetric NATs or poorly behaved legacy NATs.)
+  [2025-01-30 23:43:08.540] INFO  (proxystore.p2p.relay.client) :: Established client connection to relay server at wss://relay.proxystore.dev with client uuid=b6cfb02b-323f-4eac-8c42-20102bb0bd26 and name=my-endpoint
+  [2025-01-30 23:43:08.541] INFO  (proxystore.endpoint.endpoint) :: Endpoint[my-endpoint(b6cfb02b)]: initialized endpoint operating in PEERING mode
+  [2025-01-30 23:43:08.545] INFO  (proxystore.endpoint.serve) :: Serving endpoint b6cfb02b-323f-4eac-8c42-20102bb0bd26 (my-endpoint) on 10.201.0.56:8767
+  [2025-01-30 23:43:08.545] INFO  (proxystore.endpoint.serve) :: Config: name='my-endpoint' uuid='b6cfb02b-323f-4eac-8c42-20102bb0bd26' port=8767 host='10.201.0.56' relay=EndpointRelayConfig(address='wss://relay.proxystore.dev', auth=EndpointRelayAuthConfig(method='globus', kwargs={}), peer_channels=1, verify_certificate=True) storage=EndpointStorageConfig(database_path=None, max_object_size=100000000)
+  [2025-01-30 23:43:08.909] INFO  (uvicorn.error) :: Started server process [909609]
+  [2025-01-30 23:43:08.909] INFO  (uvicorn.error) :: Waiting for application startup.
+  [2025-01-30 23:43:08.909] INFO  (proxystore.p2p.manager) :: PeerManager[my-endpoint(b6cfb02b)]: listening for messages from relay server
+  [2025-01-30 23:43:08.909] INFO  (proxystore.endpoint.endpoint) :: Endpoint[my-endpoint(b6cfb02b)]: listening for peer requests
+  [2025-01-30 23:43:08.910] INFO  (uvicorn.error) :: Application startup complete.
+  [2025-01-30 23:43:08.910] INFO  (uvicorn.error) :: Uvicorn running on http://10.201.0.56:8767 (Press CTRL+C to quit)
+
+
+.. note::
+
+  It is important to make sure that the endpoint is started by checking its log. For example, the port your endpoint is listening on might be in use and might cause error like: ``[Errno 98] error while attempting to bind on address ('10.201.0.56', 8765): address already in use``.
+
+Prepare the Globus Compute Endpoint
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After starting the ProxyStore endpoint on Polaris login node, user can create a Globus Compute endpoint with the following configuration. **It should be noted that compared with the configuration above, we specifically unset the ``http_proxy/HTTP_PROXY`` environment variable so that the compute node can access the ProxyStore endpoint on the login node.**
+
+.. code-block:: yaml
+
+  engine:
+    address:
+      ifname: bond0
+      type: address_by_interface
+    max_workers_per_node: 1
+    provider:
+      account: <your_polaris_account> # Replace with your account
+      cpus_per_node: 32
+      init_blocks: 0
+      max_blocks: 1
+      min_blocks: 0
+      nodes_per_block: 1
+      queue: debug # Replace with other queue if needed
+      scheduler_options: '#PBS -l filesystems=home:eagle:grand'
+      select_options: ngpus=4
+      type: PBSProProvider
+      walltime: 00:30:00
+      worker_init: module use /soft/modulefiles; module load conda; conda activate <your_conda_env>; export HTTP_PROXY=""; export http_proxy="";
+    strategy:
+      max_idletime: 3600
+      type: SimpleStrategy
+    type: HighThroughputEngine
+
+After the configuration, user can start the Globus Compute endpoint and configure the FL experiments as described in the previous sections.
+
+Additional Debugging Tips
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Test Local ProxyStore Endpoint**:
+
+To test if your local ProxyStore endpoint (e.g., ``my-endpoint``) is working, you can use the following command to check if a random object exists in the endpoint store, and it is expected to return a ``False``.
+
+.. code-block:: bash
+
+  $ proxystore-endpoint test my-endpoint exists abcdef
+  # Expected output
+  INFO: Object exists: False
+
+**Test Remote ProxyStore Endpoint**:
+
+Consider you have an endpoint running on system A with UUID ``aaaa0259-5a8c-454b-b17d-61f010d874d4`` and name ``endpoint-a``, and another on System B with UUID ``bbbbab4d-c73a-44ee-a316-58ec8857e83a`` and name ``endpoint-b``. You want to test the peer connection between two endpoints on system A, then you can request the endpoint on system A to invoke an ``exists`` operatoin on the endpoint on system B via the following command:
+
+.. code-block:: bash
+
+  $ proxystore-endpoint test --remote bbbbab4d-c73a-44ee-a316-58ec8857e83a endpoint-a exists abcdef
+  # Expected output
+  INFO: Object exists: False
+
+.. note::
+
+  For more detailed endpoint debugging tips, we refer users to the official `ProxyStore documentation <https://docs.proxystore.dev/latest/guides/endpoints-debugging/>`_.
