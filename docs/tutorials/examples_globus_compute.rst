@@ -315,7 +315,7 @@ One of the most tricky parts of Polaris is that its compute node does not have i
 Prepare the Globus Compute Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After starting the ProxyStore endpoint on Polaris login node, user can create a Globus Compute endpoint with the following configuration. **It should be noted that compared with the configuration above, we specifically unset the ``http_proxy/HTTP_PROXY`` environment variable so that the compute node can access the ProxyStore endpoint on the login node.**
+After starting the ProxyStore endpoint on Polaris login node, user can create a Globus Compute endpoint with the following configuration. **It should be noted that compared with the configuration above, we specifically unset the** ``http_proxy/HTTP_PROXY`` **environment variable so that the compute node can access the ProxyStore endpoint on the login node.**
 
 .. code-block:: yaml
 
