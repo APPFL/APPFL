@@ -1,6 +1,17 @@
 Changelog
 =========
 
+appfl v1.3.0
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Integrate APPFL with MONAI to use MONAI bundles for federated learning, with documentation available `here <https://appfl.ai/en/latest/tutorials/examples_monai.html>`_.  (`#251 <https://github.com/APPFL/APPFL/issues/251>`_)
+- Add support for Multi-GPU training using PyTorch DDP, with documentation available `here <https://appfl.ai/en/latest/tutorials/examples_gpuclusterrun.html#multi-gpu-training>`_.  (`#254 <https://github.com/APPFL/APPFL/issues/254>`_)
+- Integrate `ProxyStore <https://docs.proxystore.dev/latest/>`_ into Globus Compute and gRPC communication protocols for data transmission, with documentation available `here <https://appfl.ai/en/latest/tutorials/examples_globus_compute.html#extra-integration-with-proxystore>`_.  (`#252 <https://github.com/APPFL/APPFL/issues/252>`_, `#259 <https://github.com/APPFL/APPFL/issues/259>`_)
+- Add three colab-based tutorials at `here <https://appfl.ai/en/latest/notebooks/index.html#colab-notebooks>`_ for running APPFL on Google Colab (`#255 <https://github.com/APPFL/APPFL/issues/255>`_).
+
 appfl v1.2.1
 ------------
 
