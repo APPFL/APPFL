@@ -13,8 +13,8 @@ client_configs:
     # Client validation
     do_validation: True
     do_pre_validation: True
-    metric_path: "./resources/metric/acc.py"
-    metric_name: "accuracy"
+    metric_path: "./resources/metric/f1score.py"
+    metric_name: "f1score"
     # Differential privacy
     use_dp: False
     epsilon: 1
@@ -31,6 +31,7 @@ client_configs:
     generate_dr_report: True
     output_dirname: "./output"
     output_filename: "data_readiness_report"
+    
     dr_metrics: 
       class_imbalance: True
       sample_size: True
@@ -44,23 +45,24 @@ client_configs:
       entropy: True
       kurtosis: True
       class_distribution: True
-      brisque: True
+      brisque: False
       sharpness: False
+      outlier_proporation: False
       plot:
         class_distribution_plot: True
-        data_sample_plot: True
+        data_sample_plot: False
         data_distribution_plot: True
-        class_variance_plot: True
+        class_variance_plot: False
+        outlier_detection_plot: False
       combine:
         feature_space_distribution: True
     
   model_configs:
-    model_path: "./resources/model/cnn.py"
-    model_name: "CNN"
+    model_path: "./resources/model/mlp.py"
+    model_name: "MLP"
     model_kwargs:
-      num_channel: 1
-      num_classes: 10
-      num_pixel: 28
+      num_features: 14
+      num_classes: 2
   
   comm_configs:
     compressor_configs:

@@ -45,12 +45,15 @@ client_configs:
       kurtosis: True
       class_distribution: True
       brisque: True
-      sharpness: False
+      sharpness: True
+      total_variation: True
+      outlier_propotion: True
       plot:
         class_distribution_plot: True
         data_sample_plot: True
         data_distribution_plot: True
         class_variance_plot: True
+        outlier_detection_plot: True
       combine:
         feature_space_distribution: True
     

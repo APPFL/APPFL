@@ -1,57 +1,108 @@
 clients:
   - endpoint_id: "17b4d21f-3f70-47a8-af4d-736c5e89e0d6"
     train_configs:
-      # Device [Optional]: default is "cpu"
+      # Device
       device: "cpu"
-      # Logging and outputs [Optional]
+      # Logging and outputs
       logging_id: "Client1"
       logging_output_dirname: "./output"
       logging_output_filename: "result"
 
     # Local dataset
     data_configs:
-      dataset_path: "./resources/dataset/mnist_dataset.py"
-      dataset_name: "get_mnist"
+      dataset_path: "./resources/dataset/flamby_dataset.py"
+      dataset_name: "get_flamby"
       dataset_kwargs:
-        num_clients: 3
+        dataset: "TcgaBrca"
+        num_clients: 6
         client_id: 0
-        partition_strategy: "class_noniid"
-        visualization: True
 
   - endpoint_id: "270c774d-f081-4445-a6d2-94d6ec4f1f8f"
     train_configs:
-      # Device [Optional]: default is "cpu"
+      # Device
       device: "cpu"
-      # Logging and outputs [Optional]
+      # Logging and outputs
       logging_id: "Client2"
       logging_output_dirname: "./output"
       logging_output_filename: "result"
 
     # Local dataset
     data_configs:
-      dataset_path: "./resources/dataset/mnist_dataset.py"
-      dataset_name: "get_mnist"
+      dataset_path: "./resources/dataset/flamby_dataset.py"
+      dataset_name: "get_flamby"
       dataset_kwargs:
-        num_clients: 3
+        dataset: "TcgaBrca"
+        num_clients: 6
         client_id: 1
-        partition_strategy: "class_noniid"
-        visualization: False
-  
+
   - endpoint_id: "2004f578-b796-4d78-8aab-1b4873521bde"
     train_configs:
-      # Device [Optional]: default is "cpu"
+      # Device
       device: "cpu"
-      # Logging and outputs [Optional]
-      logging_id: "Client1"
+      # Logging and outputs
+      logging_id: "Client3"
       logging_output_dirname: "./output"
       logging_output_filename: "result"
 
     # Local dataset
     data_configs:
-      dataset_path: "./resources/dataset/mnist_dataset.py"
-      dataset_name: "get_mnist"
+      dataset_path: "./resources/dataset/flamby_dataset.py"
+      dataset_name: "get_flamby"
       dataset_kwargs:
-        num_clients: 3
+        dataset: "TcgaBrca"
+        num_clients: 6
         client_id: 2
-        partition_strategy: "class_noniid"
-        visualization: True
+
+  - endpoint_id: "db20a7f0-4b49-4ae5-98bc-34166df5fbcc"
+    train_configs:
+      # Device
+      device: "cpu"
+      # Logging and outputs
+      logging_id: "Client4"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/flamby_dataset.py"
+      dataset_name: "get_flamby"
+      dataset_kwargs:
+        dataset: "TcgaBrca"
+        num_clients: 6
+        client_id: 3
+
+  - endpoint_id: "a0c5dc24-884b-42e1-84e6-e13cf3cf2f01"
+    train_configs:
+      # Device
+      device: "cpu"
+      # Logging and outputs
+      logging_id: "Client5"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/flamby_dataset.py"
+      dataset_name: "get_flamby"
+      dataset_kwargs:
+        dataset: "TcgaBrca"
+        num_clients: 6
+        client_id: 4
+
+  - endpoint_id: "b6f01933-0bdd-4796-8a1c-45816bb796e9"
+    train_configs:
+      # Device
+      device: "cpu"
+      # Logging and outputs
+      logging_id: "Client6"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/flamby_dataset.py"
+      dataset_name: "get_flamby"
+      dataset_kwargs:
+        dataset: "TcgaBrca"
+        num_clients: 6
+        client_id: 5

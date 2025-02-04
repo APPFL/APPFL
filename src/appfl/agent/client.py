@@ -106,6 +106,7 @@ class ClientAgent:
         torch.save(self.model.state_dict(), checkpoint_path)
 
     def generate_readiness_report(self, client_config):
+        
         """
         Generate data readiness report based on the configuration provided by the server.
         """
@@ -114,39 +115,68 @@ class ClientAgent:
             plot_results = {"plots": {}}
             to_combine_results = {"to_combine":{}}
 
+            # Determine how to retrieve data input and labels based on dataset attributes
+            if hasattr(self.train_dataset, 'data_label'):
+                data_labels = self.train_dataset.data_label.tolist()
+            else:
+                
+                # data_labels = [label.item() for _, label in self.train_dataset] # this for flamby heartdisease
+                data_labels = [label for _, label in self.train_dataset] # this for flamby tcgabrca
+                # data_labels = []
+                # for _, label in self.train_dataset:
+                #     # Convert from PyTorch tensor to NumPy array (optional)
+                #     label_np = label.numpy()
+                
+                    
+
+            if hasattr(self.train_dataset, 'data_input'):
+                data_input = self.train_dataset.data_input
+            else:
+                data_input = torch.stack([input_data for input_data, _ in self.train_dataset])
+
+            # data_input, data_labels = balance_data(data_input, data_labels)
+            # data_input, explained_variance = apply_pca(data_input)
+            # data_input = normalize_data(data_input)
+
             # Define metrics with corresponding computation functions
             standard_metrics = {
-                "class_imbalance": lambda: round(imbalance_degree(self.train_dataset.data_label.tolist()), 2),
-                "sample_size": lambda: len(self.train_dataset.data_label.tolist()),
-                "num_classes": lambda: len(self.train_dataset.data_label.unique()),
-                "data_shape": lambda: list(self.train_dataset.data_input.shape),
-                "completeness": lambda: completeness(self.train_dataset.data_input),
-                "data_range": lambda: get_data_range(self.train_dataset.data_input),
-                "sparsity": lambda: sparsity(self.train_dataset.data_input),
-                "variance": lambda: variance(self.train_dataset.data_input),
-                "skewness": lambda: skewness(self.train_dataset.data_input),
-                "entropy": lambda: entropy(self.train_dataset.data_input),
-                "kurtosis": lambda: kurtosis(self.train_dataset.data_input),
-                "class_distribution": lambda: class_distribution(self.train_dataset.data_label.tolist()),
-                "brisque": lambda: brisque(self.train_dataset.data_input),
-                "sharpness": lambda: dataset_sharpness(self.train_dataset),
-                "total_variation": lambda: total_variation(self.train_dataset.data_input),
-                "sharpness": lambda: dataset_sharpness(self.train_dataset.data_input),
+                "class_imbalance": lambda: round(imbalance_degree(data_labels), 2),
+                "sample_size": lambda: len(data_labels),
+                "num_classes": lambda: len(set(data_labels)),
+                "data_shape": lambda: (len(data_input), *data_input[0].size()),
+                "completeness": lambda: completeness(data_input),
+                "data_range": lambda: get_data_range(data_input),
+                "sparsity": lambda: sparsity(data_input),
+                "variance": lambda: variance(data_input),
+                "skewness": lambda: skewness(data_input),
+                "entropy": lambda: entropy(data_input),
+                "kurtosis": lambda: kurtosis(data_input),
+                "class_distribution": lambda: class_distribution(data_labels),
+                "brisque": lambda: brisque(data_input),
+                "total_variation": lambda: total_variation(data_input),
+                "sharpness": lambda: dataset_sharpness(data_input),
+                "outlier_propotion": lambda: calculate_outlier_proportion(data_input),
+                "time_to_event_imbalance": lambda: quantify_time_to_event_imbalance(data_labels),
+                "class_voxel_imbalance": lambda: calculate_class_voxel_imbalance(label_np)
+
 
             }
 
             plots = {
-            "class_distribution_plot": lambda: plot_class_distribution(self.train_dataset),
-            "data_sample_plot": lambda: plot_data_sample(self.train_dataset),
-            "data_distribution_plot": lambda: plot_data_distribution(self.train_dataset),
-            "class_variance_plot": lambda: plot_class_variance(self.train_dataset),
+            "class_distribution_plot": lambda: plot_class_distribution(data_labels),
+            "data_sample_plot": lambda: plot_data_sample(data_input),
+            "data_distribution_plot": lambda: plot_data_distribution(data_input),
+            "class_variance_plot": lambda: plot_class_variance(data_input, data_labels),
+            "outlier_detection_plot": lambda: plot_outliers(data_input),
+            "time_to_event_plot": lambda: plot_time_to_event_distribution(data_labels)
         }
             combine= {
-                "feature_space_distribution": lambda: get_feature_space_distribution(self.train_dataset),
+                "feature_space_distribution": lambda: get_feature_space_distribution(data_input),
             }
 
             # Handle standard metrics
             for metric_name, compute_function in standard_metrics.items():
+
                 if metric_name in client_config.data_readiness_configs.dr_metrics:
                     if getattr(client_config.data_readiness_configs.dr_metrics, metric_name):
                         results[metric_name] = compute_function()
@@ -213,7 +243,16 @@ class ClientAgent:
                     if hasattr(self.client_agent_config.data_configs, "dataset_kwargs")
                     else {}
                 )
-            )
+            )                
+
+                # Convert target to Long if it is not already
+            # self.train_dataset = apply_pca_to_dataset(self.train_dataset)
+            # self.val_dataset = apply_pca_to_dataset(self.val_dataset)
+
+            # self.train_dataset = normalize_dataset(self.train_dataset)
+            # self.val_dataset = normalize_dataset(self.val_dataset)
+
+            # self.train_dataset = balance_classes_undersample(self.train_dataset)
 
     def _load_model(self) -> None:
         """
