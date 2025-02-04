@@ -1,4 +1,5 @@
 import uuid
+import time
 from enum import Enum
 from omegaconf import DictConfig
 from concurrent.futures import Future
@@ -78,6 +79,7 @@ class GlobusComputeClientEndpoint:
         if self.status != ClientEndpointStatus.AVAILABLE:
             return None, None
         gce.endpoint_id = self.client_endpoint_id
+        self.client_config.start_time = time.time()
         self.future = gce.submit(
             globus_compute_client_entry_point,
             task_name=task_name,

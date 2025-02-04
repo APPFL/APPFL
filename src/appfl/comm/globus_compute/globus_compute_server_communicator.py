@@ -403,9 +403,17 @@ class GlobusComputeServerCommunicator:
             model, metadata = result
         else:
             model, metadata = result, {}
+        # print some timing logs
+        client_finish_time = metadata['end_time']
+        self.logger.info(f'Result sending time is {time.time() - client_finish_time}')
+        self.logger.info(f'Total task sent time is {metadata["total_task_sent_time"]}')
+        self.logger.info(f'Total model download time is {metadata["total_model_download_time"]}')
+        self.logger.info(f'Total task execution time is {metadata["total_task_execution_time"]}')
         # Download model from S3 bucket or ProxyStore if necessary
         if isinstance(model, Proxy):
+            model_download_start_time = time.time()
             model = extract(model)
+            self.logger.info(f'Model download time: {time.time() - model_download_start_time}')
         if self.use_s3bucket:
             if CloudStorage.is_cloud_storage_object(model):
                 model = CloudStorage.download_object(
