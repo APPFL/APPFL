@@ -25,11 +25,12 @@ class FedYogiAggregator(FedAvgAggregator):
         self.m_vector = {}
         self.v_vector = {}
     
-    def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]):
+    def compute_steps(self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs):
         """
         Compute the changes to the global model after the aggregation.
         """
-        super().compute_steps(local_models)
+
+        super().compute_steps(local_models, **kwargs)
         if len(self.m_vector) == 0:
             for name in self.step:
                 self.m_vector[name] = torch.zeros_like(self.step[name])

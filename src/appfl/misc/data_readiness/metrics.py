@@ -14,7 +14,6 @@ def imbalance_degree(lst):
     # Check if only one class exists
     num_classes = len(counts)
     if num_classes == 1:
-        # Handle the case where there's only one class
         return float('inf')  # Or return a specific value like 0, or None, or raise an error
     
     # Calculate imbalance degree
@@ -22,6 +21,16 @@ def imbalance_degree(lst):
     actual_proportions = np.array([counts[elem] / total_elements for elem in sorted(counts.keys())])
     balanced_proportions = np.array([1 / num_classes] * num_classes)
     euclidean_distance = np.linalg.norm(actual_proportions - balanced_proportions)
+    
+    # Normalize for 2-class problems
+    if num_classes == 2:
+        # Calculate the maximum possible imbalance
+        max_imbalance = np.linalg.norm(np.array([1/total_elements, (total_elements-1)/total_elements]) - np.array([0.5, 0.5]))
+        
+        # Normalize the euclidean distance
+        normalized_distance = euclidean_distance / max_imbalance
+        
+        return normalized_distance
     
     return euclidean_distance
 
@@ -93,6 +102,7 @@ def get_data_range(data):
     return {"min": round(data_min,2), "max": round(data_max,2)}
 
 def brisque(data):
+
     brisque_score = piq.brisque(data)
     return round(brisque_score.item(), 2)
 

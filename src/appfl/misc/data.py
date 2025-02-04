@@ -11,6 +11,8 @@ from appfl.config import *
 from torch.utils import data
 from typing import List, Optional
 from .deprecation import deprecated
+from appfl.misc.data_readiness import *
+
 
 class Dataset(data.Dataset):
     """
@@ -103,6 +105,7 @@ def iid_partition(
     :param num_clients: number of clients
     :return train_dataset_partitioned: a list of `torch.utils.data.Dataset` for each client
     """
+    
     train_dataset_split_indices = np.array_split(range(len(train_dataset)), num_clients)
     train_dataset_partitioned = []
     for i in range(num_clients):

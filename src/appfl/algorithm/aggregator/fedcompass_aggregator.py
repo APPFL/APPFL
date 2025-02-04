@@ -3,6 +3,8 @@ import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
+import numpy as np
+import appfl.misc.data_readiness as dr
 
 class FedCompassAggregator(BaseAggregator):
     """
@@ -13,7 +15,8 @@ class FedCompassAggregator(BaseAggregator):
         self,
         model: Optional[torch.nn.Module] = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None
+        logger: Optional[Any] = None,
+        
     ):
         self.model = model
         self.logger = logger
@@ -25,6 +28,10 @@ class FedCompassAggregator(BaseAggregator):
         self.alpha = self.aggregator_configs.get("alpha", 0.9)
         
         self.global_state = None # Models parameters that are used for aggregation, this is unknown at the beginning
+        self.client_weights_mode = aggregator_configs.get("weights")
+        self.metric_mappings = {}
+        self.weight_mappings = {}
+        
 
         if model is not None:
             self.named_parameters = set()
@@ -73,7 +80,29 @@ class FedCompassAggregator(BaseAggregator):
 
         gradient_based = self.aggregator_configs.get("gradient_based", False)
         if client_id is not None and local_model is not None:
-            weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
+            
+            if client_id not in self.metric_mappings:
+                self.metric_mappings[client_id] = {}
+            
+            self.metric_mappings[client_id].update({key: kwargs[key] for key in kwargs['metrics']})
+
+            if self.client_weights_mode == "data_ready":
+                if len(self.metric_mappings) < self.aggregator_configs.get("num_clients", 1):
+                    weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
+                elif len(self.metric_mappings) == self.aggregator_configs.get("num_clients", 1):
+                    distances = dr.find_most_diverse_client(self.metric_mappings)
+                    self.weight_mappings = dr.compute_client_weights(distances)
+
+                    if client_id in self.weight_mappings:
+                        weight = self.weight_mappings[client_id]
+                    else:
+                        raise ValueError(f"Weight for client {client_id} is missing in weights_mapping.")
+                
+
+            elif self.client_weights_mode == "equal":
+                weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
+            elif self.client_weights_mode == "sample_size":
+                weight = self.client_sample_size[client_id] / sum(self.client_sample_size.values())
             alpha_t = self.alpha * self.staleness_fn(staleness) * weight
             
             for name in self.global_state:
@@ -88,7 +117,15 @@ class FedCompassAggregator(BaseAggregator):
         else:
             for i, client_id in enumerate(local_models):
                 local_model = local_models[client_id]
-                weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
+
+                if self.client_weights_mode == "data_ready":
+                    weight = self.weight_mappings[client_id]
+
+                    
+                elif self.client_weights_mode == "equal":
+                    weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
+                elif self.client_weights_mode == "sample_size":
+                    weight = self.client_sample_size[client_id] / sum(self.client_sample_size.values())
                 alpha_t = self.alpha * self.staleness_fn(staleness[client_id]) * weight
                 for name in self.global_state:
                     if self.named_parameters is not None and name not in self.named_parameters:

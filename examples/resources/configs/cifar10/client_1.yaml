@@ -1,6 +1,6 @@
 train_configs:
   # Device
-  device: "cuda"
+  device: "cpu"
   # Logging and outputs
   logging_id: "Client1"
   logging_output_dirname: "./output"
@@ -11,9 +11,9 @@ data_configs:
   dataset_path: "./resources/dataset/cifar10_dataset.py"
   dataset_name: "get_cifar10"
   dataset_kwargs:
-    num_clients: 2
+    num_clients: 10
     client_id: 0
-    partition_strategy: "class_noniid"
+    partition_strategy: "iid"
     visualization: True
     output_dirname: "./output"
     output_filename: "visualization.pdf"

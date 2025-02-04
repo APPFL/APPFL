@@ -119,13 +119,19 @@ class ClientAgent:
             if hasattr(self.train_dataset, 'data_label'):
                 data_labels = self.train_dataset.data_label.tolist()
             else:
-                data_labels = [label.item() for _, label in self.train_dataset]
-                # data_labels = [label for _, label in self.train_dataset]
+                try:
+
+                    data_labels = [label.item() for _, label in self.train_dataset]
+                except:
+
+                    data_labels = [label for _, label in self.train_dataset]
 
             if hasattr(self.train_dataset, 'data_input'):
                 data_input = self.train_dataset.data_input
             else:
                 data_input = torch.stack([input_data for input_data, _ in self.train_dataset])
+
+            fairness_feature_idx = getattr(client_config.data_readiness_configs, "fairness_feature_idx", None)
 
             # data_input, data_labels = balance_data(data_input, data_labels)
             # data_input, explained_variance = apply_pca(data_input)
@@ -159,9 +165,12 @@ class ClientAgent:
             "data_distribution_plot": lambda: plot_data_distribution(data_input),
             "class_variance_plot": lambda: plot_class_variance(data_input, data_labels),
             "outlier_detection_plot": lambda: plot_outliers(data_input),
-            "time_to_event_plot": lambda: plot_time_to_event_distribution(data_labels),
             "feature_correlation_plot": lambda: plot_feature_correlations(data_input),
             "feature_statistics_plot": lambda: plot_feature_statistics(data_input),
+            "representative_rates_plot": lambda: plot_representative_rates(data_input, fairness_feature_idx),
+            "feature_importance_plot": lambda: plot_feature_importance(data_input, data_labels),
+            "incompleteness_plot": lambda: plot_incompleteness(data_input),
+            "segmentation_class_distribution_plot": lambda: plot_segmentation_class_distribution(data_labels),
         }
             combine= {
                 "feature_space_distribution": lambda: get_feature_space_distribution(data_input),

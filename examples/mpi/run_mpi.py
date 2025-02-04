@@ -5,6 +5,7 @@ from appfl.agent import ClientAgent, ServerAgent
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator 
 argparse = argparse.ArgumentParser()
 import warnings
+from appfl.misc.data_readiness import *
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)    
 argparse.add_argument("--server_config", type=str, default="./resources/configs/flamby/server_fedcompass.yaml")
@@ -49,15 +50,28 @@ else:
     if hasattr(client_config.data_readiness_configs, 'generate_dr_report') and client_config.data_readiness_configs.generate_dr_report:
         data_readiness = client_agent.generate_readiness_report(client_config)
         client_communicator.invoke_custom_action(action='get_data_readiness_report', **data_readiness)
-        
+        dr_metrics = client_config.data_readiness_configs.dr_metrics
+        excluded_metrics = {"plot", "combine"}
+        enabled_metrics = [
+            metric for metric, is_enabled in client_config.data_readiness_configs.dr_metrics.items()
+            if is_enabled and metric not in excluded_metrics
+        ]
+
+        # Update the data readiness dictionary
+        data_readiness['metrics'] = enabled_metrics
+
+    
     # Local training and global model update iterations
     while True:
+        
+
         client_agent.train()
         local_model = client_agent.get_parameters()
-        new_global_model, metadata = client_communicator.update_global_model(local_model)
+        new_global_model, metadata = client_communicator.update_global_model(local_model,**data_readiness)
         if metadata['status'] == 'DONE':
             break
         if 'local_steps' in metadata:
             client_agent.trainer.train_configs.num_local_steps = metadata['local_steps']
         client_agent.load_parameters(new_global_model)
     client_communicator.invoke_custom_action(action='close_connection')
+    plot_all_clients('./output' )

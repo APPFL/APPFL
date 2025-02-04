@@ -7,6 +7,10 @@ import torch
 import numpy as np
 from collections import Counter
 import random
+from sklearn.cluster import KMeans
+import pandas as pd
+import os
+import matplotlib.pyplot as plt
 
 def balance_classes_undersample(train_dataset):
     """
@@ -156,3 +160,145 @@ def normalize_dataset(train_dataset, feature_range=(0, 1)):
     normalized_train_dataset = [(data_input_normalized_tensor[i], label) for i, (_, label) in enumerate(train_dataset)]
 
     return normalized_train_dataset
+
+def find_most_diverse_client(metric_mappings, n_clusters=1, output_dir="output", output_filename="kmeans_plot.png"):
+    """
+    Determines the most diverse client based on metric mappings using K-Means clustering and saves a plot of the clusters.
+
+    Parameters:
+    - metric_mappings (dict): A dictionary where keys are client IDs and values are dictionaries of metrics.
+    - n_clusters (int): The number of clusters to form and the number of centroids to generate.
+    - output_dir (str): The directory where the plot will be saved.
+    - output_filename (str): The name of the file to save the plot as.
+
+    Returns:
+    - int: The client ID of the most diverse client.
+    """
+    # Convert the metric mappings to a DataFrame
+    data = pd.DataFrame(metric_mappings).T
+    client_ids = list(metric_mappings.keys())
+
+    # Perform K-Means clustering
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    data['cluster'] = kmeans.fit_predict(data)
+
+    # Calculate the distance to cluster centers for each client
+    data['distance_to_center'] = np.linalg.norm(
+        data.iloc[:, :-1] - kmeans.cluster_centers_[data['cluster']], axis=1
+    )
+
+    # Find the client with the maximum distance to the cluster center
+    most_diverse_client = data['distance_to_center'].idxmax()
+
+    # Perform PCA to reduce data to 2 dimensions for visualization
+    pca = PCA(n_components=2)
+    reduced_data = pca.fit_transform(data.iloc[:, :-2])
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.scatter(reduced_data[:, 0], reduced_data[:, 1], c=data['cluster'], cmap='viridis', marker='o', alpha=0.7)
+
+    for i, client_id in enumerate(client_ids):
+        plt.text(reduced_data[i, 0], reduced_data[i, 1], str(client_id), fontsize=8, ha='right')
+
+    
+    # Mark the centroids
+    pca_centroids = pca.transform(kmeans.cluster_centers_)
+    plt.scatter(pca_centroids[:, 0], pca_centroids[:, 1], s=300, c='red', marker='X', label='Centroids')
+    
+
+    plt.title('K-Means Clustering of Clients')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.legend()
+    
+    # Save plot to the specified directory
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, output_filename)
+    plt.savefig(output_path)
+    plt.close()
+
+    return data['distance_to_center']
+
+def compute_client_weights(distances, min_weight=0.01):
+    """
+    Normalize distances and compute weights for clients, ensuring weights add up to 1.
+
+    Args:
+        distances (dict): A dictionary where keys are client IDs and values are distances.
+                          Example: {1: 2.614750, 2: 1.026734, ...}
+        min_weight (float): Minimum weight value to ensure weights are not zero. Default is 0.01.
+
+    Returns:
+        dict: A dictionary where keys are client IDs and values are the computed weights, summing to 1.
+    """
+    # Ensure distances is a dictionary
+    distances = dict(distances)
+
+    # Extract distance values and compute min-max normalization
+    dist_values = np.array(list(distances.values()))
+    min_dist = dist_values.min()
+    max_dist = dist_values.max()
+    normalized_distances = (dist_values - min_dist) / (max_dist - min_dist)
+
+    # Compute base weights (higher distance -> lower weight)
+    base_weights = 1 - normalized_distances
+
+    # Scale weights to ensure no weight is zero
+    weight_range = 1 - min_weight
+    scaled_weights = weight_range * base_weights + min_weight
+
+    # Normalize weights to ensure they sum to 1
+    normalized_weights = scaled_weights / scaled_weights.sum()
+
+    # Map weights back to client IDs
+    client_weights = {client: weight for client, weight in zip(distances.keys(), normalized_weights)}
+
+    return client_weights
+
+def add_noise_to_subset(dataset, scale, fraction):
+    """
+    Add random noise to a fraction of the input data in the dataset.
+
+    Parameters:
+    - dataset: Dataset where each item is a tuple (input_data, label).
+    - scale: Scale of the Gaussian noise.
+    - fraction: Fraction of data to add noise to (0 to 1).
+
+    Returns:
+    - modified_dataset: List with partially noisy input data and original labels.
+    """
+    # Convert dataset to list for easy manipulation
+    dataset_list = list(dataset)
+    
+    # Determine number of samples to add noise to
+    num_noisy_samples = int(len(dataset_list) * fraction)
+    
+    # Randomly select indices for noisy samples
+    noisy_indices = random.sample(range(len(dataset_list)), num_noisy_samples)
+    
+    # Add noise to selected samples
+    for idx in noisy_indices:
+        input_data, label = dataset_list[idx]
+        noise = torch.randn_like(input_data) * scale
+        noisy_input = (input_data + noise).clamp(0, 1)
+        dataset_list[idx] = (noisy_input, label)
+    
+    return dataset_list
+
+def sample_subset(dataset, sample_size):
+    """
+    Sample a subset of the dataset.
+    
+    :param dataset: the dataset to sample from (should be a PyTorch Dataset or list)
+    :param sample_size: the size of the sample
+    :return: a subset of the dataset
+    """
+    if len(dataset) <= sample_size:
+        return dataset
+    else:
+        # Randomly permute indices and select a subset
+        indices = torch.randperm(len(dataset))[:sample_size]
+        # Use list comprehension to create the subset
+        sampled_data = [dataset[i] for i in indices]
+        return sampled_data

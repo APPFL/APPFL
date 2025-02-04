@@ -6,12 +6,55 @@ import seaborn as sns
 import base64
 import io
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+import os
 
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 
+def plot_segmentation_class_distribution(segmentation_map):
+    """
+    Plots the class distribution in a segmentation map.
+
+    Args:
+        segmentation_map (list, numpy.ndarray, or torch.Tensor): 
+            A 2D or 3D segmentation map with pixel-wise class labels.
+
+    Returns:
+        str: Base64-encoded image of the class distribution pie chart.
+    """
+    # Convert list or other formats to a NumPy array
+    if isinstance(segmentation_map, list):
+        segmentation_map = np.array(segmentation_map)
+    elif isinstance(segmentation_map, torch.Tensor):  # Handle PyTorch tensors
+        segmentation_map = segmentation_map.cpu().numpy()
+    
+    # Flatten the segmentation map to count class occurrences
+    flattened_map = segmentation_map.flatten()
+
+    # Get unique classes and their counts
+    classes, counts = np.unique(flattened_map, return_counts=True)
+
+    # Plot the distribution
+    plt.figure(figsize=(8, 8))
+    plt.pie(counts, labels=classes, autopct='%1.1f%%', startangle=90, colors=plt.cm.tab10.colors)
+    plt.title("Segmentation Class Distribution")
+    plt.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle.
+
+    # Save the plot to a buffer as a base64 image
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png', bbox_inches='tight')
+    plt.close()
+
+    encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    buffer.close()
+
+    return encoded_image
+
 def plot_class_distribution(data_labels):
+    
     plt.figure()
 
     classes = list(set(data_labels))
@@ -39,27 +82,59 @@ def plot_data_sample(data_input):
     num_samples = 10
     total_samples = len(data)
 
+    # Handle the case where total_samples is less than num_samples
+    num_samples = min(num_samples, total_samples)
     sample_indices = random.sample(range(total_samples), num_samples)
 
     for i, idx in enumerate(sample_indices):
         plt.subplot(1, num_samples, i + 1)
 
-        sample = data[idx]
+        sample = data[idx]  # Extract a sample
 
+        # Handle 2D Tensors (Height x Width)
         if sample.dim() == 2:
-            channels = 1
             height, width = sample.shape
+            plt.imshow(sample.numpy(), cmap='gray', aspect='auto')
+
+        # Handle 3D Tensors (Channels x Height x Width)
         elif sample.dim() == 3:
             channels, height, width = sample.shape
+
+            if channels == 1:  # Grayscale
+                plt.imshow(sample[0].numpy(), cmap='gray', aspect='auto')
+            elif channels == 3:  # RGB
+                plt.imshow(sample.permute(1, 2, 0).numpy())
+            else:
+                raise ValueError(f"Unexpected number of channels in 3D tensor: {channels}")
+
+        # Handle 4D Tensors (1 x Depth x Height x Width)
+        elif sample.dim() == 4:
+            channels, depth, height, width = sample.shape
+
+            if channels != 1:
+                raise ValueError(f"Unexpected number of channels in 4D tensor: {channels}")
+            
+            # Select middle slice along the depth axis
+            middle_slice = depth // 2
+            slice_to_plot = sample[0, middle_slice, :, :]  # Shape: (Height x Width)
+            plt.imshow(slice_to_plot.numpy(), cmap='gray', aspect='auto')
+
+        # Handle 5D Tensors (Batch x Channels x Depth x Height x Width)
+        elif sample.dim() == 5:
+            batch, channels, depth, height, width = sample.shape
+
+            if batch != 1:
+                raise ValueError(f"Unexpected batch size in 5D tensor: {batch}")
+            if channels != 1:
+                raise ValueError(f"Unexpected number of channels in 5D tensor: {channels}")
+            
+            # Select middle slice along the depth axis of the first sample
+            middle_slice = depth // 2
+            slice_to_plot = sample[0, 0, middle_slice, :, :]  # Shape: (Height x Width)
+            plt.imshow(slice_to_plot.numpy(), cmap='gray', aspect='auto')
+
         else:
             raise ValueError(f"Unexpected tensor dimension: {sample.dim()}")
-
-        if channels == 1:
-            plt.imshow(sample.view(height, width).numpy(), cmap='gray', aspect='auto')
-        elif channels == 3:
-            plt.imshow(sample.permute(1, 2, 0).numpy())
-        else:
-            raise ValueError(f"Unexpected number of channels: {channels}")
 
         plt.axis('off')
 
@@ -212,31 +287,77 @@ def generate_combined_feature_space_plot(client_feature_space_dict, client_ids, 
 
 def plot_outliers(data_input):
     num_features = data_input.shape[1]
-    
-    plt.figure(figsize=(20, 10))
-    
+    outlier_proportions = []
+
     for feature_idx in range(num_features):
         # Extract feature values
         feature_values = data_input[:, feature_idx].numpy()
         
-        # Create subplot for each feature
-        plt.subplot(2, 7, feature_idx + 1)  # 2 rows, 7 columns layout
-        sns.boxplot(x=feature_values)
-        plt.title(f'Feature {feature_idx + 1}')
-        plt.xlabel("Value")
-    
-    plt.tight_layout()
-    
+        # Calculate Q1, Q3, and IQR
+        q1 = np.percentile(feature_values, 25)
+        q3 = np.percentile(feature_values, 75)
+        iqr = q3 - q1
+
+        # Define outlier bounds
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+
+        # Identify outliers
+        outliers = (feature_values < lower_bound) | (feature_values > upper_bound)
+
+        # Calculate the proportion of outliers
+        outlier_proportion = np.sum(outliers) / len(feature_values)
+        
+        # Consider only features with outliers
+        if outlier_proportion > 0:
+            outlier_proportions.append(outlier_proportion)
+
+    # Create bar chart
+    plt.figure()
+    sns.barplot(x=[f'{i + 1}' for i in range(len(outlier_proportions))], y=outlier_proportions, palette='viridis')
+    plt.title('Proportion of Outliers in Features with Outliers')
+    plt.ylabel('Proportion of Outliers')
+    plt.xlabel('Features')
+    plt.xticks(rotation=45)
+
     # Save plot to buffer
     buffer = io.BytesIO()
     plt.savefig(buffer, format='png')
     plt.close()
-    
+
     # Encode image to base64
     encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
     buffer.close()
-    
+
     return encoded_image
+
+def plot_representative_rates(data_input, fairness_feature_idx):
+    if fairness_feature_idx != None:
+        # Extract fairness feature values
+        fairness_values = data_input[:, fairness_feature_idx].numpy()
+
+        # Calculate the proportion of each unique value
+        unique_values, value_counts = np.unique(fairness_values, return_counts=True)
+        value_proportions = value_counts / len(fairness_values)
+
+        # Create bar chart
+        plt.figure()
+        sns.barplot(x=unique_values, y=value_proportions, palette='viridis')
+        plt.title('Proportion of Each Unique Value in the Fairness Feature')
+        plt.ylabel('Proportion')
+        plt.xlabel('Unique Values')
+        plt.xticks(rotation=45)
+
+        # Save plot to buffer
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png')
+        plt.close()
+
+        # Encode image to base64
+        encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        buffer.close()
+
+        return encoded_image
 
 def plot_feature_correlations(data_input):
 
@@ -268,6 +389,69 @@ def plot_feature_correlations(data_input):
     buffer.close()
 
     return encoded_image
+
+def plot_feature_importance(data_input, data_labels):
+    # Convert data to numpy array
+    data_array = data_input.numpy()
+
+    # Compute feature importance using a random forest classifier
+    clf = RandomForestClassifier()
+    clf.fit(data_array, data_labels)
+    importances = clf.feature_importances_
+
+    # Sort feature importances in descending order
+    indices = np.argsort(importances)[::-1]
+
+    # Plot the feature importances
+    plt.figure()
+    plt.bar(range(data_array.shape[1]), importances[indices], align='center')
+    plt.xticks(range(data_array.shape[1]), indices, rotation=90)
+    plt.xlabel('Feature Index')
+    plt.ylabel('Importance')
+    plt.title('Feature Importance')
+
+    # Save to buffer and encode
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    plt.close()
+
+    encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    buffer.close()
+
+    return encoded_image
+
+def plot_incompleteness(data_input):
+    # Convert data_input to numpy array
+    data_array = data_input.numpy()
+
+    # Calculate the proportion of missing values in each feature
+    nan_mask = np.isnan(data_array)
+    nan_mask_float = nan_mask.astype(float)
+    missing_proportions = np.mean(nan_mask_float, axis=0)
+
+    # Check if all features are complete
+    if np.all(missing_proportions == 0):
+        return "All features are complete."
+
+    # Create bar chart
+    plt.figure()
+    sns.barplot(x=[f'{i+1}' for i in range(len(missing_proportions))], y=missing_proportions, palette='viridis')
+    plt.title('Proportion of Missing Values in Each Feature')
+    plt.ylabel('Proportion of Missing Values')
+    plt.xlabel('Features')
+    plt.xticks(rotation=45)
+
+    # Save plot to buffer
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    plt.close()
+
+    # Encode image to base64
+    encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    buffer.close()
+
+    return encoded_image
+    
 
 def calculate_entropy(data):
     """Calculate entropy of a 1D PyTorch tensor feature."""
@@ -399,3 +583,55 @@ def plot_feature_statistics(data_input):
     plt.close(fig)
 
     return img_str
+
+def plot_metric_pca(metrics_data,output_dir="output", filename="pca_plot.png"):
+    """
+    Generate and save a PCA plot for client metrics.
+
+    Args:
+        metrics_data (dict): Dictionary where keys are client IDs and values are 
+                             dictionaries of metrics. Example:
+                             {
+                                 1: {'metric1': value1, 'metric2': value2, ...},
+                                 2: {'metric1': value1, 'metric2': value2, ...},
+                                 ...
+                             }
+        output_dir (str): Directory where the plot will be saved. Default is "output".
+        filename (str): Name of the file to save the plot as. Default is "pca_plot.png".
+    """
+    # Extract client IDs and metrics
+    ids = list(metrics_data.keys())
+    metrics = list(metrics_data[ids[0]].keys())
+    data = np.array([[metrics_data[id_][metric] for metric in metrics] for id_ in ids])
+
+    # Standardize the data
+    scaler = StandardScaler()
+    data_scaled = scaler.fit_transform(data)
+
+    # Perform PCA
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(data_scaled)
+
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    file_path = os.path.join(output_dir, filename)
+
+    # Plot the PCA results
+    plt.figure(figsize=(8, 6))
+    for i, (x, y) in enumerate(pca_result):
+        plt.scatter(x, y, label=f"Client {ids[i]}")
+        plt.text(x + 0.02, y + 0.02, f"{ids[i]}", fontsize=9)
+
+    plt.axhline(0, color='grey', linestyle='--', linewidth=0.5)
+    plt.axvline(0, color='grey', linestyle='--', linewidth=0.5)
+    plt.title("PCA Plot of Client Metrics")
+    plt.xlabel("PCA Component 1")
+    plt.ylabel("PCA Component 2")
+    plt.legend(title="Clients")
+    plt.grid(True)
+
+    # Save the plot to the specified output directory
+    plt.savefig(file_path, bbox_inches='tight')
+    plt.close()  # Close the plot to free memory
+
+    print(f"PCA plot saved at: {file_path}")

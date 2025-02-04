@@ -1,4 +1,6 @@
 from appfl.misc.data_readiness import *
+from torch.utils.data import Subset
+import numpy as np
 try:
     from flamby.datasets.fed_tcga_brca import FedTcgaBrca
     from flamby.datasets.fed_heart_disease import FedHeartDisease
@@ -26,8 +28,22 @@ def get_flamby(
         return train_dataset, test_dataset
     elif dataset == 'IXI':
         assert num_clients <= 3, "IXI dataset can support at most three clients"
+        
         test_dataset = FedIXITiny(train=False, pooled=True)
         train_dataset = FedIXITiny(train=True, center=client_id, pooled=False) 
+
+        # Check if the dataset has more than 59 samples
+        # if len(train_dataset) > 59:
+        #     # Randomly select 59 indices from the dataset
+        #     indices = np.random.choice(len(train_dataset), 59, replace=False)
+        #     # Use Subset to create a smaller dataset with 59 samples
+        #     train_dataset = Subset(train_dataset, indices)
+
+        # # Add equal proportion of noise to each client's dataset
+        if client_id == 0:
+        
+            train_dataset = add_noise_to_subset(train_dataset, scale=2, fraction=0.95)
+
         return train_dataset, test_dataset
     elif dataset == 'ISIC2019':
         assert num_clients <= 6, "ISIC 2019 dataset can support at most six clients"

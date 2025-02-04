@@ -217,6 +217,7 @@ class MPIServerCommunicator:
                     self._dr_metrics = {}
                     self._dr_metrics_client_ids = set()
             return None
+            
         else:
             raise NotImplementedError(f"Custom action {action} is not implemented.")
         
