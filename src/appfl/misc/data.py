@@ -122,6 +122,79 @@ def iid_partition(
         )
     return train_dataset_partitioned
 
+def iid_partition_homogeneous_imbalance(
+    train_dataset: data.Dataset, 
+    num_clients: int, 
+    samples_per_client: int,
+    imbalance_ratio: float, # Ratio of class 0 in each client
+) -> List[data.Dataset]:
+    """
+    Partition dataset into `num_clients` with the same class imbalance ratio and fixed sample size across all clients.
+    
+    :param train_dataset: the full training dataset
+    :param num_clients: number of clients
+    :param samples_per_client: fixed number of samples for each client
+    :param imbalance_ratio: proportion of class 0 in each client (e.g., 0.8 means 80% class 0, 20% class 1)
+    :return: List of partitioned datasets for each client
+    """
+    # Separate dataset by class
+    class_0_indices = [i for i in range(len(train_dataset)) if train_dataset[i][1] == 0]
+    class_1_indices = [i for i in range(len(train_dataset)) if train_dataset[i][1] == 1]
+
+    # Shuffle to avoid ordering bias
+    np.random.shuffle(class_0_indices)
+    np.random.shuffle(class_1_indices)
+
+    # Calculate number of samples for each class per client
+    num_class_0_per_client = int(samples_per_client * imbalance_ratio)
+    num_class_1_per_client = samples_per_client - num_class_0_per_client
+
+    # Ensure we have enough data for all clients
+    total_samples_needed = num_clients * samples_per_client
+    if len(class_0_indices) < num_clients * num_class_0_per_client or len(class_1_indices) < num_clients * num_class_1_per_client:
+        raise ValueError("Not enough samples to satisfy the required number of clients and samples per client with the given imbalance ratio.")
+
+    train_dataset_partitioned = []
+    
+    for client_id in range(num_clients):
+        # If running out of samples, reshuffle and reuse
+        if len(class_0_indices) < num_class_0_per_client:
+            np.random.shuffle(class_0_indices)
+        if len(class_1_indices) < num_class_1_per_client:
+            np.random.shuffle(class_1_indices)
+
+        # Sample fixed number of class 0 and class 1 for each client
+        selected_class_0 = class_0_indices[:num_class_0_per_client]
+        selected_class_1 = class_1_indices[:num_class_1_per_client]
+
+        # Remove selected indices
+        class_0_indices = class_0_indices[num_class_0_per_client:]
+        class_1_indices = class_1_indices[num_class_1_per_client:]
+
+        # Combine and shuffle
+        client_indices = np.array(selected_class_0 + selected_class_1)
+        np.random.shuffle(client_indices)
+
+        # Create dataset
+        train_data_input = [train_dataset[idx][0].tolist() for idx in client_indices]
+        train_data_label = [train_dataset[idx][1] for idx in client_indices]
+
+        client_dataset = Dataset(
+            torch.FloatTensor(train_data_input),
+            torch.tensor(train_data_label),
+        )
+
+        # Verify imbalance and sample size for this client
+        class_0_count = sum(1 for label in train_data_label if label == 0)
+        actual_imbalance = class_0_count / len(train_data_label)
+        print(f"Client {client_id} imbalance: {actual_imbalance:.2f}, samples: {len(train_data_label)}")
+        assert abs(actual_imbalance - imbalance_ratio) < 0.05, f"Imbalance for client {client_id} is off: {actual_imbalance:.2f}"
+        assert len(train_data_label) == samples_per_client, f"Sample size for client {client_id} is incorrect: {len(train_data_label)}"
+
+        train_dataset_partitioned.append(client_dataset)
+
+    return train_dataset_partitioned
+
 def class_noniid_partition(
     train_dataset: data.Dataset, 
     num_clients: int, 

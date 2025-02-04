@@ -2,7 +2,7 @@ import os
 import torch
 import torchvision
 import torchvision.transforms as transforms
-from appfl.misc.data import Dataset, iid_partition, class_noniid_partition, dirichlet_noniid_partition
+from appfl.misc.data import Dataset, iid_partition, class_noniid_partition, dirichlet_noniid_partition,iid_partition_homogeneous_imbalance
 from appfl.misc.data_readiness import *
 from omegaconf import OmegaConf
 
@@ -23,6 +23,7 @@ def get_mnist(
     client_agent_config = OmegaConf.load("./resources/configs/mnist/client_1.yaml")
     noise_prop = client_agent_config.data_configs.dataset_kwargs.noise_prop
     sample_size = client_agent_config.data_configs.dataset_kwargs.sample_size
+    imbalance_ratio = client_agent_config.data_configs.dataset_kwargs.imbalance_ratio
 
     # Get the download directory for dataset
     dir = os.getcwd() + "/datasets/RawData"
@@ -47,7 +48,7 @@ def get_mnist(
 
     # Partition the dataset
     if partition_strategy == "iid":
-        train_datasets = iid_partition(train_data_raw, num_clients)
+        train_datasets = iid_partition_homogeneous_imbalance(train_data_raw, num_clients, samples_per_client=sample_size, imbalance_ratio=imbalance_ratio)
     elif partition_strategy == "class_noniid":
         train_datasets = class_noniid_partition(train_data_raw, num_clients, **kwargs)
     elif partition_strategy == "dirichlet_noniid":
@@ -66,10 +67,9 @@ def get_mnist(
     if noise_prop >= 0:
         train_datasets[client_id] = add_noise_to_subset(train_datasets[client_id], scale=2, fraction=noise_prop)
     
-    if sample_size >= 0:
-        train_datasets[client_id] = sample_subset(train_datasets[client_id], sample_size)
+    # if sample_size >= 0:
+    #     train_datasets[client_id] = sample_subset(train_datasets[client_id], sample_size)
 
-    print(len(test_dataset))
 
     return train_datasets[client_id], test_dataset
 

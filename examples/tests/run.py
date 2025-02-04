@@ -34,7 +34,8 @@ logger.info("Experiment started")
 # Define the range of values to test
 num_clients_list = [2, 4, 8, 10]
 noise_props = [0,0.25, 0.5, 0.75, 0.95]
-sample_sizes = [100, 500, 1000, 3000, 6000]
+sample_sizes = [100, 500, 1000, 3000, 5000]
+imbalance_ratios = [0.1, 0.2, 0.3, 0.4, 0.5]
 
 def get_dataset_name(client_config_path):
     """Extract dataset name from client config YAML."""
@@ -86,11 +87,11 @@ def modify_yaml(file_path, key_path, value):
         logger.error(f"Error modifying YAML file {file_path}: {e}")
         raise
 
-def run_experiment(num_clients, noise_props, sample_sizes, server_config, client_config):
+def run_experiment(num_clients, noise_props, sample_sizes, imbalance_ratios, server_config, client_config):
     """Run the MPI experiment with given parameters and save output in structured folders."""
     dataset_name = get_dataset_name(client_config)
     algorithm_name = get_algorithm_name(server_config)
-    output_dir = f"tests/{algorithm_name}/{dataset_name}/num_clients_{num_clients}/noise_props_{noise_props}/sample_size_{sample_sizes}"
+    output_dir = f"tests/{algorithm_name}/{dataset_name}/num_clients_{num_clients}/noise_props_{noise_props}/sample_size_{sample_sizes}/imbalance_ratio_{imbalance_ratios}"
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, "output.log")
     
@@ -99,7 +100,7 @@ def run_experiment(num_clients, noise_props, sample_sizes, server_config, client
         "--server_config", server_config,
         "--client_config", client_config
     ]
-    logger.info(f"Running experiment with num_clients={num_clients}, noise_props={noise_props}, sample_size={sample_sizes}")
+    logger.info(f"Running experiment with num_clients={num_clients}, noise_props={noise_props}, sample_size={sample_sizes}, imbalance_ratio={imbalance_ratios}")
     logger.info(f"Command: {' '.join(command)}")
     
     try:
@@ -149,16 +150,17 @@ def run_experiment(num_clients, noise_props, sample_sizes, server_config, client
 server_config_path = "resources/configs/mnist/server_fedyogi.yaml"
 client_config_path = "resources/configs/mnist/client_1.yaml"
 
-for num_clients, noise_props, sample_sizes in itertools.product(num_clients_list, noise_props, sample_sizes):
-    logger.info(f"Starting experiment with num_clients={num_clients}, noise_props={noise_props}, sample_size={sample_sizes}")
+for num_clients, noise_props, sample_sizes, imbalance_ratios in itertools.product(num_clients_list, noise_props, sample_sizes, imbalance_ratios):
+    logger.info(f"Starting experiment with num_clients={num_clients}, noise_props={noise_props}, sample_size={sample_sizes}, imbalance_ratio={imbalance_ratios}")
     try:
         modify_yaml(client_config_path, "data_configs.dataset_kwargs.num_clients", num_clients)
         modify_yaml(client_config_path, "data_configs.dataset_kwargs.sample_size", sample_sizes)
         modify_yaml(client_config_path, "data_configs.dataset_kwargs.noise_prop", noise_props)
+        modify_yaml(client_config_path, "data_configs.dataset_kwargs.imbalance_ratio", imbalance_ratios)
         modify_yaml(server_config_path, "server_configs.num_clients", num_clients)
-        run_experiment(num_clients, noise_props, sample_sizes, server_config_path, client_config_path)
-        logger.info(f"Experiment with num_clients={num_clients}, noise_props={noise_props}, sample_size={sample_sizes} completed successfully.")
+        run_experiment(num_clients, noise_props, sample_sizes, imbalance_ratios, server_config_path, client_config_path)
+        logger.info(f"Experiment with num_clients={num_clients}, noise_props={noise_props}, sample_size={sample_sizes}, imbalance_ratio={imbalance_ratios} completed")
     except Exception as e:
-        logger.error(f"Error during experiment with num_clients={num_clients}, noise_props={noise_props}, sample_size={sample_sizes}: {e}")
+        logger.error(f"Error during experiment with num_clients={num_clients}, noise_props={noise_props}, sample_size={sample_sizes}, imbalance_ratio={imbalance_ratios}: {e}")
 
 logger.info("Experiment completed")

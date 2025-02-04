@@ -64,7 +64,7 @@ client_configs:
       combine:
         feature_space_distribution: false
 server_configs:
-  num_clients: 2
+  num_clients: 10
   scheduler: SyncScheduler
   scheduler_kwargs:
     same_init_model: true
