@@ -21,7 +21,11 @@ For most users, including data scientists, this simple installation is sufficien
 .. code-block:: bash
 
     pip install pip --upgrade
-    pip install "appfl[examples]"
+    pip install "appfl[mpi,examples]"
+
+.. note::
+
+    If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install "appfl[examples]""``.
 
 If you want to even minimize the installation of package dependencies, you can use:
 
@@ -43,7 +47,12 @@ To set up the development environment,
 
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
-    pip install -e ".[dev,examples]"
+    pip install -e ".[dev,mpi,examples]"
+
+.. note::
+
+    If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install -e ".[dev,examples]"``.
+
 
 On Ubuntu, if the installation process failed, you can try:
 

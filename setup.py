@@ -59,7 +59,6 @@ setuptools.setup(
         "grpcio-tools",
         "omegaconf",
         "globus-sdk",
-        "mpi4py",
         "globus-compute-sdk",
         "globus-compute-endpoint",
         "boto3",
@@ -106,6 +105,7 @@ setuptools.setup(
             "tensorboard",
         ],
         "monai": ["monai[all]==1.2.0"],
+        "mpi": ["mpi4py"],
     },
     entry_points={
         "console_scripts": [

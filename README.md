@@ -61,7 +61,7 @@ For most users such as data scientists, this simple installation must be suffici
 
 ```bash
 pip install pip --upgrade
-pip install "appfl[examples]"
+pip install "appfl[examples,mpi]"
 ```
 
 If we want to even minimize the installation of package dependencies, we can skip the installation of a few packages (e.g., `matplotlib` and `jupyter`):
@@ -78,7 +78,7 @@ To set up the development environment,
 ```bash
 git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
 cd APPFL
-pip install -e ".[dev,examples]"
+pip install -e ".[mpi,dev,examples]"
 ```
 
 On Ubuntu:

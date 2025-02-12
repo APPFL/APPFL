@@ -12,9 +12,13 @@ First, we need to make sure that the APPFL package and its dependencies are inst
 
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
-    pip install -e ".[examples]"
+    pip install -e ".[mpi,examples]"
     cd examples
 
+
+.. note::
+
+    If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install -e ".[examples]"``.
 
 Serial simulation
 -----------------

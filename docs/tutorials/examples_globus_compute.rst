@@ -26,7 +26,6 @@ First, both the client and the server should install the APPFL package on their 
     cd APPFL
     conda create -n appfl python=3.10 --y
     conda activate appfl
-    conda install mpi4py --y
     pip install -e ".[examples]"
 
 Creating Globus Compute Endpoint on Client Machines
