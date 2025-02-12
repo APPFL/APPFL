@@ -127,7 +127,7 @@ Now, we can create a conda environment and install APPFL.
     conda activate appfl
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
-    pip install -e ".[examples]"
+    pip install -e ".[mpi,examples]"
     cd examples
 
 

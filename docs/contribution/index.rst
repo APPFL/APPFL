@@ -38,7 +38,7 @@ When you want to develop ``appfl`` locally to create a pull request, you can fol
 
     git clone https://github.com/APPFL/APPFL.git # Or your forked repository
     cd APPFL
-    pip install -e ".[dev,examples]"
+    pip install -e ".[dev,mpi,examples]"
 
 3. Create a new branch for your changes from the ``main`` branch.
 

@@ -16,7 +16,7 @@ body:
         # OR
         $ git clone https://github.com/APPFL/APPFL.git
         $ cd APPFL
-        $ pip install -e ".[dev,examples]"
+        $ pip install -e ".[mpi,dev,examples]"
       render: console
     validations:
       required: true
