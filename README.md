@@ -64,6 +64,8 @@ pip install pip --upgrade
 pip install "appfl[examples,mpi]"
 ```
 
+💡 Note: If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install "appfl[examples]"``.
+
 If we want to even minimize the installation of package dependencies, we can skip the installation of a few packages (e.g., `matplotlib` and `jupyter`):
 
 ```bash
@@ -80,6 +82,8 @@ git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
 cd APPFL
 pip install -e ".[mpi,dev,examples]"
 ```
+
+💡 Note: If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install -e ".[dev,examples]"``.
 
 On Ubuntu:
 If the install process failed, you can try:
