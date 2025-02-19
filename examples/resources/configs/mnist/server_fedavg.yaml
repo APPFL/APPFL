@@ -32,7 +32,7 @@ client_configs:
     output_dirname: "./output"
     output_filename: "data_readiness_report"
     dr_metrics: 
-      class_imbalance: True
+      class_imbalance: false
       sample_size: True
       num_classes: False
       data_shape: False
@@ -56,6 +56,10 @@ client_configs:
         outlier_detection_plot: False
       combine:
         feature_space_distribution: False
+      specified_metrics:
+        metric_path: ./resources/dr_agent/agent2.py
+        metric_name: DRAgent
+        adapt_data: false
 
   model_configs:
     model_path: "./resources/model/cnn.py"
@@ -78,7 +82,7 @@ client_configs:
 server_configs:
   scheduler: "FedDrawScheduler"
   scheduler_kwargs:
-    num_clients: 10
+    num_clients: 2
     same_init_model: True
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:

@@ -7,14 +7,14 @@ data_configs:
   dataset_path: ./resources/dataset/mnist_dataset.py
   dataset_name: get_mnist
   dataset_kwargs:
-    num_clients: 10
+    num_clients: 2
     client_id: 1
     partition_strategy: iid
     visualization: true
     output_dirname: ./output
     output_filename: visualization.pdf
     sample_size: 5000
-    noise_prop: 0.95
+    noise_prop: 1
     imbalance_ratio: 0.5
 comm_configs:
   grpc_configs:

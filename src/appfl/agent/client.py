@@ -49,6 +49,7 @@ class ClientAgent:
         self._load_data()
         self._load_trainer()
         self._load_compressor()
+        self.specified_metrics = None
 
     def load_config(self, config: DictConfig) -> None:
         """Load additional configurations provided by the server."""
@@ -139,6 +140,7 @@ class ClientAgent:
 
             # Define metrics with corresponding computation functions
             standard_metrics = {
+                
                 "class_imbalance": lambda: round(imbalance_degree(data_labels), 2),
                 "sample_size": lambda: len(data_labels),
                 "num_classes": lambda: len(set(data_labels)),
@@ -200,10 +202,43 @@ class ClientAgent:
             
             results.update(to_combine_results)
 
+            if hasattr(client_config.data_readiness_configs.dr_metrics, "specified_metrics") and hasattr(client_config.data_readiness_configs.dr_metrics.specified_metrics, "metric_path") and hasattr(client_config.data_readiness_configs.dr_metrics.specified_metrics, "metric_name"):
+                self.specified_metrics = create_instance_from_file(
+                    client_config.data_readiness_configs.dr_metrics.specified_metrics.metric_path,
+                    client_config.data_readiness_configs.dr_metrics.specified_metrics.metric_name,
+                    self.train_dataset
+                )
+                results['specified_metrics'] = self.specified_metrics.metric()
+            
+            # if hasattr(client_config.data_readiness_configs.dr_metrics.specified_metrics, "adapt_data") and client_config.data_readiness_configs.dr_metrics.specified_metrics.adapt_data:
+            #     self.train_dataset = self.specified_metrics.rule(list(results['specified_metrics'].values())[0])
+            #     self.logger.info(f"Data modified based on user-defined modification")
+
             return results
         else:
             return "Data readiness metrics not available in configuration"
         
+    def adapt_data(self):
+        """
+        Modify the data based on the configuration provided by the server configs.
+        """
+        
+        self.train_dataset = self.specified_metrics.remedy(self.specified_metrics.metric(), self.logger)
+        
+    # def adapt_data(self, client_config, metric_val):
+    #     """
+    #     Modify the data based on the configuration provided by the server configs.
+    #     """
+
+    #     if hasattr(client_config.data_readiness_configs.dr_metrics.specified_metrics, "threshold") and hasattr(client_config.data_readiness_configs.dr_metrics.specified_metrics, "proportion"):
+    #         threshold = client_config.data_readiness_configs.dr_metrics.specified_metrics.threshold
+    #         proportion = client_config.data_readiness_configs.dr_metrics.specified_metrics.proportion
+            
+    #         if metric_val > threshold:
+    #             num_samples = int(proportion * len(self.train_dataset))
+    #             self.train_dataset = random.sample(self.train_dataset, num_samples)
+    #             self.logger.info(f"Data modified based on user-defined modification")
+
     def _create_logger(self):
         """
         Create logger for the client agent to log local training process.
@@ -245,8 +280,7 @@ class ClientAgent:
                     if hasattr(self.client_agent_config.data_configs, "dataset_kwargs")
                     else {}
                 )
-            )                
-
+            )    
                 # Convert target to Long if it is not already
             # self.train_dataset = apply_pca_to_dataset(self.train_dataset)
             # self.val_dataset = apply_pca_to_dataset(self.val_dataset)

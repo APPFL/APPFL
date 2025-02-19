@@ -25,7 +25,6 @@ def generate_html_content(readiness_report):
 
     attribute_keys = [key for key in readiness_report.keys() if key != 'to_combine']
     client_ids = list(readiness_report[attribute_keys[0]].keys())
-
     # Start creating the table
     html_content += '<table><thead><tr><th>Client ID</th>'
 
@@ -33,7 +32,10 @@ def generate_html_content(readiness_report):
     for key in attribute_keys:
         if key == 'plots':
             continue
-        html_content += f'<th>{key}</th>'
+        if key == "specified_metrics":
+            html_content += f'<th style="text-align: center; color: red;" colspan="2">{key.replace("_", " ").title()}</th>'
+        else:
+            html_content += f'<th>{key.replace("_"," ").title()}</th>'
     
     html_content += '</tr></thead><tbody>'
 

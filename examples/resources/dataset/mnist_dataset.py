@@ -48,7 +48,8 @@ def get_mnist(
 
     # Partition the dataset
     if partition_strategy == "iid":
-        train_datasets = iid_partition_homogeneous_imbalance(train_data_raw, num_clients, samples_per_client=sample_size, imbalance_ratio=imbalance_ratio)
+        # train_datasets = iid_partition_homogeneous_imbalance(train_data_raw, num_clients, samples_per_client=sample_size, imbalance_ratio=imbalance_ratio)
+        train_datasets = iid_partition(train_data_raw, num_clients)
     elif partition_strategy == "class_noniid":
         train_datasets = class_noniid_partition(train_data_raw, num_clients, **kwargs)
     elif partition_strategy == "dirichlet_noniid":
@@ -56,16 +57,17 @@ def get_mnist(
     else:
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
-    # perct_client_ids = 0.9
+    perct_client_ids = 0.5
 
-    # if client_id < int(perct_client_ids * num_clients):
+    if client_id < int(perct_client_ids * num_clients):
+        train_datasets[client_id] = add_noise_to_subset(train_datasets[client_id], scale=2, fraction=noise_prop)
     # if client_id == 0:
     #     train_datasets[client_id] = add_noise_to_subset(train_datasets[client_id], scale=2, fraction=0.95)
     # elif client_id == 1:
     #     train_datasets[client_id] = add_noise_to_subset(train_datasets[client_id], scale=2, fraction=0.95)
     
-    if noise_prop >= 0:
-        train_datasets[client_id] = add_noise_to_subset(train_datasets[client_id], scale=2, fraction=noise_prop)
+    # if noise_prop >= 0:
+    #     train_datasets[client_id] = add_noise_to_subset(train_datasets[client_id], scale=2, fraction=noise_prop)
     
     # if sample_size >= 0:
     #     train_datasets[client_id] = sample_subset(train_datasets[client_id], sample_size)

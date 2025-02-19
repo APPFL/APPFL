@@ -47,14 +47,14 @@ client_configs:
       data_shape: false
       completeness: false
       data_range: false
-      variance: true
-      skewness: true
-      entropy: true
-      kurtosis: true
+      variance: false
+      skewness: false
+      entropy: false
+      kurtosis: false
       class_distribution: false
       brisque: true
-      sharpness: true
-      total_variation: true
+      sharpness: false
+      total_variation: false
       plot:
         class_distribution_plot: true
         data_sample_plot: true
@@ -63,8 +63,13 @@ client_configs:
         outlier_detection_plot: false
       combine:
         feature_space_distribution: false
+      specified_metrics:
+        metric_path: ./resources/dr_agent/agent2.py
+        metric_name: DRAgent
+        adapt_data: true
+        
 server_configs:
-  num_clients: 10
+  num_clients: 2
   scheduler: SyncScheduler
   scheduler_kwargs:
     same_init_model: true

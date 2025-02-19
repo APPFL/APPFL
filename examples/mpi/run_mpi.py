@@ -59,8 +59,8 @@ else:
 
         # Update the data readiness dictionary
         data_readiness['metrics'] = enabled_metrics
-
-    
+    if hasattr(client_config.data_readiness_configs.dr_metrics, "specified_metrics") and hasattr(client_config.data_readiness_configs.dr_metrics.specified_metrics, "adapt_data") and client_config.data_readiness_configs.dr_metrics.specified_metrics.adapt_data:
+        client_agent.adapt_data()
     # Local training and global model update iterations
     while True:
         
@@ -74,4 +74,4 @@ else:
             client_agent.trainer.train_configs.num_local_steps = metadata['local_steps']
         client_agent.load_parameters(new_global_model)
     client_communicator.invoke_custom_action(action='close_connection')
-    plot_all_clients('./output' )
+    # plot_all_clients('./output' )
