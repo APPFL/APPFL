@@ -111,8 +111,8 @@ In the server configuration file, we specify that the number of clients is two, 
 .. code-block:: bash
 
     cd examples
-    python grpc/run_client.py --config ./resources/configs/monai/client_1.yaml # terminal 1
-    python grpc/run_client.py --config ./resources/configs/monai/client_2.yaml # terminal 2
+    python grpc/run_client_monai.py --config ./resources/configs/monai/client_1.yaml # terminal 1
+    python grpc/run_client_monai.py --config ./resources/configs/monai/client_2.yaml # terminal 2
 
 Experiment Results
 ------------------
