@@ -2,20 +2,16 @@ import os
 import time
 import uuid
 import pathlib
-import logging
 import warnings
 from datetime import datetime
 from omegaconf import OmegaConf
 from collections import OrderedDict
 from globus_sdk.scopes import AuthScopes
 from globus_sdk import AccessTokenAuthorizer
-from proxystore.store import Store
-from proxystore.proxy import Proxy, extract
 from globus_compute_sdk import Executor, Client
 from concurrent.futures import Future, as_completed
 from typing import Optional, Dict, List, Union, Tuple, Any
 from appfl.logger import ServerAgentFileLogger
-from appfl.misc.utils import get_proxystore_connector
 from appfl.config import ClientAgentConfig, ServerAgentConfig
 from appfl.comm.utils.config import ClientTask
 from .utils.endpoint import GlobusComputeClientEndpoint
@@ -282,9 +278,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             client_id = self.executing_tasks[task_id].client_id
             try:
                 result = fut.result()
-                client_model, client_metadata_local = (
-                    self._parse_result(result)
-                )
+                client_model, client_metadata_local = self._parse_result(result)
                 client_metadata_local = self.__check_deprecation(
                     client_id, client_metadata_local
                 )
