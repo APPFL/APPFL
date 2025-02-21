@@ -1,0 +1,62 @@
+# An unique identifier for the head node and workers of this cluster.
+cluster_name: appfl-ray
+
+# Cloud-provider specific configuration.
+provider:
+    type: aws
+    region: us-east-1
+    cache_stopped_nodes: False # if set False terminates the instance when ray down is executed, True: instance stopped
+    security_group:
+        GroupName: ray_client_security_group
+        IpPermissions:
+            - FromPort: 6379
+              ToPort: 6379
+              IpProtocol: TCP
+              IpRanges:
+                  # Allow traffic only from your local IP address.
+                  - CidrIp: 0.0.0.0/0
+            - FromPort: 8265
+              ToPort: 8265
+              IpProtocol: TCP
+              IpRanges:
+                  # Allow traffic only from your local IP address.
+                  - CidrIp: 0.0.0.0/0
+
+max_workers: 2
+
+available_node_types:
+    ray.head.default:
+        resources: { }
+        node_config:
+            InstanceType: t3.medium
+            ImageId: 'ami-02becfccddf667d86' # APPFL Ray AMI - Deep Learning Base Neuron AMI (Ubuntu 20.04) 20240216
+    ray.worker.client_1:
+        min_workers: 1
+        max_workers: 1
+        resources: {Client1: 1}
+        node_config:
+            InstanceType: t3.medium
+            ImageId: 'ami-02becfccddf667d86' # APPFL Ray AMI - Deep Learning Base Neuron AMI (Ubuntu 20.04) 20240216
+            InstanceMarketOptions:
+                MarketType: spot  # Configure worker nodes to use Spot Instances
+                SpotOptions:
+                    MaxPrice: '0.05'
+    ray.worker.client_2:
+        min_workers: 1
+        max_workers: 1
+        resources: {Client2: 1}
+        node_config:
+            InstanceType: t3.medium
+            ImageId: 'ami-02becfccddf667d86' # AMIRAY Deep Learning Base Neuron AMI (Ubuntu 20.04) 20240216
+            InstanceMarketOptions:
+                MarketType: spot  # Configure worker nodes to use Spot Instances
+                SpotOptions:
+                    MaxPrice: '0.05'
+
+file_mounts: {
+    "/home/ubuntu/APPFL": "../../../APPFL",
+    "/home/ubuntu/resources": "../resources",
+    "/home/ubuntu/run.py": "run.py"
+}
+
+setup_commands: ['cd APPFL && pip install -e ".[dev,examples]"']

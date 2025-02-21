@@ -11,13 +11,15 @@ from .utils import get_executable_func
 
 
 def load_global_model(client_agent_config: ClientAgentConfig, global_model: Any):
+    comm_type = get_comm_type(client_agent_config)
+
     if isinstance(global_model, Proxy):
         global_model = extract(global_model)
     else:
         s3_tmp_dir = str(
             pathlib.Path.home()
             / ".appfl"
-            / "globus_compute"
+            / comm_type
             / client_agent_config.endpoint_id
             / client_agent_config.experiment_id
         )
@@ -43,10 +45,11 @@ def send_local_model(
         )
         is not None
     ):
+        comm_type = get_comm_type(client_agent_config)
         s3_tmp_dir = str(
             pathlib.Path.home()
             / ".appfl"
-            / "globus_compute"
+            / comm_type
             / client_agent_config.endpoint_id
             / client_agent_config.experiment_id
         )
@@ -154,3 +157,12 @@ def send_client_state(cfg, client_state, temp_dir, local_model_key, local_model_
         )
     else:
         return client_state.data
+
+
+def get_comm_type(client_agent_config: ClientAgentConfig):
+    comm_type = "globus_compute"
+    if hasattr(client_agent_config, "comm_configs"):
+        comm_type = client_agent_config.comm_configs.get(
+            "comm_type", "globus_compute"
+        )
+    return comm_type

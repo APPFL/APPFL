@@ -17,15 +17,16 @@ from typing import Optional, Dict, List, Union, Tuple, Any
 from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import get_proxystore_connector
 from appfl.config import ClientAgentConfig, ServerAgentConfig
-from .utils.config import ClientTask
+from appfl.comm.utils.config import ClientTask
 from .utils.endpoint import GlobusComputeClientEndpoint
-from .utils.s3_storage import CloudStorage, LargeObjectWrapper
+from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 from globus_compute_sdk.serialize import CombinedCode
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
+from appfl.comm.base.base_server_communicator import BaseServerCommunicator
 
 
-class GlobusComputeServerCommunicator:
+class GlobusComputeServerCommunicator(BaseServerCommunicator):
     """
     Communicator used by the federated learning server which plans to use Globus Compute
     for orchestrating the federated learning experiments.
@@ -47,6 +48,7 @@ class GlobusComputeServerCommunicator:
         logger: Optional[ServerAgentFileLogger] = None,
         **kwargs,
     ):
+        self.comm_type = "globus_compute"
         # Assert compute_token and openid_token are both provided if necessary
         assert ("compute_token" in kwargs and "openid_token" in kwargs) or (
             "compute_token" not in kwargs and "openid_token" not in kwargs
@@ -125,6 +127,7 @@ class GlobusComputeServerCommunicator:
             _client_id_check_set.add(client_id)
             client_endpoint_id = client_config.endpoint_id
             client_config.experiment_id = experiment_id
+            client_config.comm_type = self.comm_type
             # Raise deprecation warning for logging_id
             if hasattr(client_config.train_configs, "logging_id"):
                 warnings.warn(
@@ -162,7 +165,7 @@ class GlobusComputeServerCommunicator:
                 str(
                     pathlib.Path.home()
                     / ".appfl"
-                    / "globus_compute"
+                    / self.comm_type
                     / "server"
                     / experiment_id
                 ),
@@ -280,7 +283,7 @@ class GlobusComputeServerCommunicator:
             try:
                 result = fut.result()
                 client_model, client_metadata_local = (
-                    self.__parse_globus_compute_result(result)
+                    self._parse_result(result)
                 )
                 client_metadata_local = self.__check_deprecation(
                     client_id, client_metadata_local
@@ -321,7 +324,7 @@ class GlobusComputeServerCommunicator:
             task_id = self.executing_task_futs[fut]
             result = fut.result()
             client_id = self.executing_tasks[task_id].client_id
-            client_model, client_metadata = self.__parse_globus_compute_result(result)
+            client_model, client_metadata = self._parse_result(result)
             client_metadata = self.__check_deprecation(client_id, client_metadata)
             # Set the status of the finished task
             client_log = client_metadata.get("log", {})
@@ -389,29 +392,8 @@ class GlobusComputeServerCommunicator:
             client_metadata.pop("_deprecated")
         return client_metadata
 
-    def __parse_globus_compute_result(self, result):
-        """
-        Parse the returned results from a Globus Compute endpoint.
-        The results can be composed of two parts:
-        - Model parameters (can be model, gradients, compressed model, etc.)
-        - Metadata (may contain additional information such as logs, etc.)
-        :param `result`: The result returned from the Globus Compute endpoint.
-        :return `model`: The model parameters returned from the client
-        :return `metadata`: The metadata returned from the client
-        """
-        if isinstance(result, tuple):
-            model, metadata = result
-        else:
-            model, metadata = result, {}
-        # Download model from S3 bucket or ProxyStore if necessary
-        if isinstance(model, Proxy):
-            model = extract(model)
-        if self.use_s3bucket:
-            if CloudStorage.is_cloud_storage_object(model):
-                model = CloudStorage.download_object(
-                    model, delete_cloud=True, delete_local=True
-                )
-        return model, metadata
+    def _parse_result(self, result):
+        return super()._parse_result(result)
 
     def __register_task(self, task_id, task_fut, client_id, task_name):
         """
@@ -428,39 +410,7 @@ class GlobusComputeServerCommunicator:
         self.executing_task_futs[task_fut] = task_id
 
     def _default_logger(self):
-        """Create a default logger for the gRPC server if no logger provided."""
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
-        fmt = logging.Formatter("[%(asctime)s %(levelname)-4s server]: %(message)s")
-        s_handler = logging.StreamHandler()
-        s_handler.setLevel(logging.INFO)
-        s_handler.setFormatter(fmt)
-        logger.addHandler(s_handler)
-        return logger
+        return super()._default_logger()
 
     def _load_proxystore(self, server_agent_config) -> None:
-        """
-        Create the proxystore for storing and sending model parameters from the server to the clients.
-        """
-        self.proxystore = None
-        self.use_proxystore = False
-        if (
-            hasattr(server_agent_config.server_configs, "comm_configs")
-            and hasattr(
-                server_agent_config.server_configs.comm_configs, "proxystore_configs"
-            )
-            and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
-                "enable_proxystore", False
-            )
-        ):
-            self.use_proxystore = True
-            self.proxystore = Store(
-                name="server-proxystore",
-                connector=get_proxystore_connector(
-                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type,
-                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_configs,
-                ),
-            )
-            self.logger.info(
-                f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
-            )
+        super()._load_proxystore(server_agent_config)

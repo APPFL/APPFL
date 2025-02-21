@@ -75,6 +75,7 @@ setuptools.setup(
         "wandb",
         "colorama",
         "proxystore[all]",
+        "ray"
     ],
     extras_require={
         "dev": [
