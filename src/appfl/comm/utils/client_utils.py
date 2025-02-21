@@ -162,7 +162,5 @@ def send_client_state(cfg, client_state, temp_dir, local_model_key, local_model_
 def get_comm_type(client_agent_config: ClientAgentConfig):
     comm_type = "globus_compute"
     if hasattr(client_agent_config, "comm_configs"):
-        comm_type = client_agent_config.comm_configs.get(
-            "comm_type", "globus_compute"
-        )
+        comm_type = client_agent_config.comm_configs.get("comm_type", "globus_compute")
     return comm_type

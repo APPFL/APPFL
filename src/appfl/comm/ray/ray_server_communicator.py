@@ -1,6 +1,5 @@
 import uuid
 import time
-from datetime import datetime
 from typing import List, Optional, Union, Dict, OrderedDict, Any, Tuple
 
 from omegaconf import OmegaConf
@@ -13,14 +12,14 @@ from appfl.logger import ServerAgentFileLogger
 from appfl.comm.utils.config import ClientTask
 import ray
 
-class RayServerCommunicator(BaseServerCommunicator):
 
+class RayServerCommunicator(BaseServerCommunicator):
     def __init__(
-            self,
-            server_agent_config: ServerAgentConfig,
-            client_agent_configs: List[ClientAgentConfig],
-            logger: Optional[ServerAgentFileLogger] = None,
-            **kwargs,
+        self,
+        server_agent_config: ServerAgentConfig,
+        client_agent_configs: List[ClientAgentConfig],
+        logger: Optional[ServerAgentFileLogger] = None,
+        **kwargs,
     ):
         self.comm_type = "ray"
         super().__init__(server_agent_config, client_agent_configs, logger, **kwargs)
@@ -29,26 +28,37 @@ class RayServerCommunicator(BaseServerCommunicator):
         for client_config in client_agent_configs:
             endpoint_id = client_config["endpoint_id"]
             client_config.experiment_id = self.experiment_id
-            client_config = OmegaConf.merge(server_agent_config.client_configs, client_config)
+            client_config = OmegaConf.merge(
+                server_agent_config.client_configs, client_config
+            )
             client_config.comm_configs.comm_type = self.comm_type
-            if (hasattr(server_agent_config.client_configs, "comm_configs") and
-                hasattr(server_agent_config.client_configs.comm_configs, "ray_config") and
-                not server_agent_config.client_configs.comm_configs.ray_config.get("assign_random", True)):
-                self.client_actors[endpoint_id] = (RayClientCommunicator.options(resources={client_config["client_id"]: 1})
-                                          .remote(server_agent_config, client_config))
+            if (
+                hasattr(server_agent_config.client_configs, "comm_configs")
+                and hasattr(
+                    server_agent_config.client_configs.comm_configs, "ray_config"
+                )
+                and not server_agent_config.client_configs.comm_configs.ray_config.get(
+                    "assign_random", True
+                )
+            ):
+                self.client_actors[endpoint_id] = RayClientCommunicator.options(
+                    resources={client_config["client_id"]: 1}
+                ).remote(server_agent_config, client_config)
             else:
-                self.client_actors[endpoint_id] = RayClientCommunicator.remote(server_agent_config, client_config)
+                self.client_actors[endpoint_id] = RayClientCommunicator.remote(
+                    server_agent_config, client_config
+                )
 
         self.executing_tasks: Dict[str, ClientTask] = {}
         self.executing_task_futs: Dict[Any, str] = {}
 
     def send_task_to_all_clients(
-            self,
-            task_name: str,
-            *,
-            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-            metadata: Union[Dict, List[Dict]] = {},
-            need_model_response: bool = False,
+        self,
+        task_name: str,
+        *,
+        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+        metadata: Union[Dict, List[Dict]] = {},
+        need_model_response: bool = False,
     ):
         """
         Send a specific task to all clients.
@@ -60,18 +70,20 @@ class RayServerCommunicator(BaseServerCommunicator):
         """
         for i, client_id in enumerate(self.client_actors):
             client_metadata = metadata[i] if isinstance(metadata, list) else metadata
-            task_id, task_ref = self.__send_task(self.client_actors[client_id], task_name, model, client_metadata)
+            task_id, task_ref = self.__send_task(
+                self.client_actors[client_id], task_name, model, client_metadata
+            )
             super()._register_task(task_id, task_ref, client_id, task_name)
             self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
     def send_task_to_one_client(
-            self,
-            client_id: str,
-            task_name: str,
-            *,
-            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-            metadata: Optional[Dict] = {},
-            need_model_response: bool = False,
+        self,
+        client_id: str,
+        task_name: str,
+        *,
+        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+        metadata: Optional[Dict] = {},
+        need_model_response: bool = False,
     ):
         """
         Send a specific task to one specific client endpoint.
@@ -82,7 +94,9 @@ class RayServerCommunicator(BaseServerCommunicator):
         :param `need_model_response`: Whether the task requires a model response from the clients
             If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
         """
-        task_id, task_ref = self.__send_task(self.client_actors[client_id], task_name, model, metadata)
+        task_id, task_ref = self.__send_task(
+            self.client_actors[client_id], task_name, model, metadata
+        )
         self._register_task(task_id, task_ref, client_id, task_name)
         self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
@@ -97,7 +111,9 @@ class RayServerCommunicator(BaseServerCommunicator):
         i = 0
         # for i, task_fut in enumerate(self.executing_task_futs):
         while len(self.executing_task_futs):
-            done_futs, _ = ray.wait(list(self.executing_task_futs.keys()), num_returns=1)
+            done_futs, _ = ray.wait(
+                list(self.executing_task_futs.keys()), num_returns=1
+            )
 
             if not done_futs:
                 continue
@@ -111,7 +127,9 @@ class RayServerCommunicator(BaseServerCommunicator):
                 client_model, client_metadata_local = self._parse_result(result)
                 client_results[client_id] = client_model
                 client_metadata[client_id] = client_metadata_local
-                self.__update_executing_task(client_metadata_local, task_id, client_id, fut)
+                self.__update_executing_task(
+                    client_metadata_local, task_id, client_id, fut
+                )
 
             except Exception as e:
                 self.logger.error(
@@ -131,16 +149,18 @@ class RayServerCommunicator(BaseServerCommunicator):
         assert len(self.executing_task_futs), (
             "There is no active client endpoint running tasks."
         )
-        ready_refs, _ = ray.wait(list(self.executing_task_futs), num_returns=1, timeout=None)
+        ready_refs, _ = ray.wait(
+            list(self.executing_task_futs), num_returns=1, timeout=None
+        )
         finished_ref = ready_refs[0]
         task_id = self.executing_task_futs[finished_ref]
         try:
             result = ray.get(finished_ref)
             client_id = self.executing_tasks[task_id].client_id
-            client_model, client_metadata = (
-                self._parse_result(result)
+            client_model, client_metadata = self._parse_result(result)
+            self.__update_executing_task(
+                client_metadata, task_id, client_id, finished_ref
             )
-            self.__update_executing_task(client_metadata, task_id, client_id, finished_ref)
         except Exception as e:
             client_id = self.executing_tasks[task_id].client_id
             self.logger.error(
@@ -160,7 +180,7 @@ class RayServerCommunicator(BaseServerCommunicator):
         if hasattr(self, "proxystore") and self.proxystore is not None:
             try:
                 self.proxystore.close(clear=True)
-            except Exception as e:  # noqa: E722
+            except Exception:  # noqa: E722
                 self.proxystore.close()
         self.logger.info(
             "The server and all clients have been shutted down successfully."
@@ -175,7 +195,9 @@ class RayServerCommunicator(BaseServerCommunicator):
         self.executing_task_futs = {}
         self.executing_tasks = {}
 
-    def __update_executing_task(self, client_metadata_local, task_id, client_id, task_fut):
+    def __update_executing_task(
+        self, client_metadata_local, task_id, client_id, task_fut
+    ):
         try:
             self.executing_tasks[task_id].end_time = time.time()
             self.executing_tasks[task_id].success = True
@@ -201,7 +223,7 @@ class RayServerCommunicator(BaseServerCommunicator):
         elif task_name == "train":
             ref = client.train.remote(model, metadata)
         return str(uuid.uuid4()), ref
-    
+
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
         return super()._default_logger()
@@ -214,7 +236,6 @@ class RayServerCommunicator(BaseServerCommunicator):
 
     def _check_and_initialize_s3(self, server_agent_config):
         super()._check_and_initialize_s3(server_agent_config)
-
 
     def _load_proxystore(self, server_agent_config) -> None:
         """

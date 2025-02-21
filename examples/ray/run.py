@@ -1,4 +1,3 @@
-import os
 import pprint
 import argparse
 from omegaconf import OmegaConf

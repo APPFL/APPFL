@@ -19,11 +19,11 @@ from appfl.comm.utils.s3_storage import CloudStorage
 
 class BaseServerCommunicator:
     def __init__(
-            self,
-            server_agent_config: ServerAgentConfig,
-            client_agent_configs: List[ClientAgentConfig],
-            logger: Optional[ServerAgentFileLogger] = None,
-            **kwargs,
+        self,
+        server_agent_config: ServerAgentConfig,
+        client_agent_configs: List[ClientAgentConfig],
+        logger: Optional[ServerAgentFileLogger] = None,
+        **kwargs,
     ):
         self.server_agent_config = server_agent_config
         self.client_agent_configs = client_agent_configs
@@ -41,12 +41,12 @@ class BaseServerCommunicator:
 
     @abstractmethod
     def send_task_to_all_clients(
-            self,
-            task_name: str,
-            *,
-            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-            metadata: Union[Dict, List[Dict]] = {},
-            need_model_response: bool = False,
+        self,
+        task_name: str,
+        *,
+        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+        metadata: Union[Dict, List[Dict]] = {},
+        need_model_response: bool = False,
     ):
         """
         Send a specific task to all clients.
@@ -60,13 +60,13 @@ class BaseServerCommunicator:
 
     @abstractmethod
     def send_task_to_one_client(
-            self,
-            client_id: str,
-            task_name: str,
-            *,
-            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-            metadata: Optional[Dict] = {},
-            need_model_response: bool = False,
+        self,
+        client_id: str,
+        task_name: str,
+        *,
+        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+        metadata: Optional[Dict] = {},
+        need_model_response: bool = False,
     ):
         """
         Send a specific task to one specific client endpoint.
@@ -170,7 +170,6 @@ class BaseServerCommunicator:
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
-
 
     def _load_proxystore(self, server_agent_config) -> None:
         """
