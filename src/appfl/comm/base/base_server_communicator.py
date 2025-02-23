@@ -1,20 +1,18 @@
-import logging
 import os
-import pathlib
-from abc import abstractmethod
 import time
+import logging
+import pathlib
 from datetime import datetime
-from typing import List, Optional, Union, Dict, OrderedDict, Tuple, Any
-
+from abc import abstractmethod
 from omegaconf import OmegaConf
-
-from appfl.config import ClientAgentConfig, ServerAgentConfig
+from proxystore.store import Store
+from proxystore.proxy import Proxy, extract
 from appfl.comm.utils.config import ClientTask
 from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import get_proxystore_connector
-from proxystore.store import Store
-from proxystore.proxy import Proxy, extract
 from appfl.comm.utils.s3_storage import CloudStorage
+from appfl.config import ClientAgentConfig, ServerAgentConfig
+from typing import List, Optional, Union, Dict, OrderedDict, Tuple, Any
 
 
 class BaseServerCommunicator:
@@ -29,9 +27,8 @@ class BaseServerCommunicator:
         self.client_agent_configs = client_agent_configs
         self.logger = logger if logger is not None else self._default_logger()
         self.experiment_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        # Check if using s3 for model transfer
+        self._sanity_check()
         self._check_and_initialize_s3(server_agent_config)
-        # Load proxystore
         self._load_proxystore(server_agent_config)
         assert not (self.use_proxystore and self.use_s3bucket), (
             "Proxystore and S3 bucket cannot be used together."
@@ -200,11 +197,11 @@ class BaseServerCommunicator:
 
     def _parse_result(self, result):
         """
-        Parse the returned results from a Globus Compute endpoint.
+        Parse the returned results from the client endpoint.
         The results can be composed of two parts:
         - Model parameters (can be model, gradients, compressed model, etc.)
         - Metadata (may contain additional information such as logs, etc.)
-        :param `result`: The result returned from the Globus Compute endpoint.
+        :param `result`: The result returned from the client endpoint.
         :return `model`: The model parameters returned from the client
         :return `metadata`: The metadata returned from the client
         """
@@ -221,3 +218,21 @@ class BaseServerCommunicator:
                     model, delete_cloud=True, delete_local=True
                 )
         return model, metadata
+
+    def _sanity_check(self):
+        # Sanity check for number of clients
+        num_clients = (
+            self.server_agent_config.server_configs.num_clients
+            if hasattr(self.server_agent_config.server_configs, "num_clients")
+            else self.server_agent_config.server_configs.scheduler_kwargs.num_clients
+            if (
+                hasattr(self.server_agent_config.server_configs, "scheduler_kwargs")
+                and hasattr(
+                    self.server_agent_config.server_configs.scheduler_kwargs, "num_clients"
+                )
+            )
+            else self.server_agent_config.server_configs.aggregator_kwargs.num_clients
+        )
+        assert num_clients == len(self.client_agent_configs), (
+            "Number of clients in the server configuration does not match the number of client configurations."
+        )

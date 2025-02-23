@@ -1,16 +1,14 @@
+import ray
 import uuid
 import time
-from typing import List, Optional, Union, Dict, OrderedDict, Any, Tuple
-
 from omegaconf import OmegaConf
-
-from appfl.comm.base.base_server_communicator import BaseServerCommunicator
-from appfl.comm.ray.ray_client_communicator import RayClientCommunicator
+from appfl.logger import ServerAgentFileLogger
+from appfl.comm.ray import RayClientCommunicator
+from appfl.comm.base import BaseServerCommunicator
+from appfl.comm.utils.config import ClientTask
 from appfl.comm.utils.s3_storage import CloudStorage
 from appfl.config import ServerAgentConfig, ClientAgentConfig
-from appfl.logger import ServerAgentFileLogger
-from appfl.comm.utils.config import ClientTask
-import ray
+from typing import List, Optional, Union, Dict, OrderedDict, Any, Tuple
 
 
 class RayServerCommunicator(BaseServerCommunicator):
@@ -222,33 +220,3 @@ class RayServerCommunicator(BaseServerCommunicator):
             ref = client.train.remote(model, metadata)
         return str(uuid.uuid4()), ref
 
-    def _default_logger(self):
-        """Create a default logger for the gRPC server if no logger provided."""
-        return super()._default_logger()
-
-    def _register_task(self, task_id, task_fut, client_id, task_name):
-        """
-        Register new client task to the list of executing tasks - call after task submission.
-        """
-        super()._register_task(task_id, task_fut, client_id, task_name)
-
-    def _check_and_initialize_s3(self, server_agent_config):
-        super()._check_and_initialize_s3(server_agent_config)
-
-    def _load_proxystore(self, server_agent_config) -> None:
-        """
-        Create the proxystore for storing and sending model parameters from the server to the clients.
-        """
-        super()._load_proxystore(server_agent_config)
-
-    def _parse_result(self, result):
-        """
-        Parse the returned results from a Globus Compute endpoint.
-        The results can be composed of two parts:
-        - Model parameters (can be model, gradients, compressed model, etc.)
-        - Metadata (may contain additional information such as logs, etc.)
-        :param `result`: The result returned from the Globus Compute endpoint.
-        :return `model`: The model parameters returned from the client
-        :return `metadata`: The metadata returned from the client
-        """
-        return super()._parse_result(result)

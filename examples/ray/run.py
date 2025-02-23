@@ -5,8 +5,6 @@ from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.comm.ray import RayServerCommunicator
 
-# os.chdir("/Users/adioosin/Documents/ANL/APPFL/examples")
-
 argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--server_config",
@@ -16,8 +14,6 @@ argparser.add_argument(
 argparser.add_argument(
     "--client_config", type=str, default="./resources/config_gc/mnist/clients.yaml"
 )
-argparser.add_argument("--compute_token", required=False)
-argparser.add_argument("--openid_token", required=False)
 args = argparser.parse_args()
 
 # Load server and client agents configurations
@@ -32,14 +28,6 @@ server_communicator = RayServerCommunicator(
     server_agent_config=server_agent.server_agent_config,
     client_agent_configs=client_agent_configs["clients"],
     logger=server_agent.logger,
-    **(
-        {
-            "compute_token": args.compute_token,
-            "openid_token": args.openid_token,
-        }
-        if args.compute_token is not None and args.openid_token is not None
-        else {}
-    ),
 )
 
 # Get sample size from clients

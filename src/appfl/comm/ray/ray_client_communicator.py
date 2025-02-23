@@ -1,10 +1,10 @@
+import ray
 from omegaconf import OmegaConf
 from appfl.comm.utils.executor import (
     get_sample_size_executor,
     data_readiness_report_executor,
     train_executor,
 )
-import ray
 
 
 @ray.remote
