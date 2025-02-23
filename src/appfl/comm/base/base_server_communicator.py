@@ -228,7 +228,8 @@ class BaseServerCommunicator:
             if (
                 hasattr(self.server_agent_config.server_configs, "scheduler_kwargs")
                 and hasattr(
-                    self.server_agent_config.server_configs.scheduler_kwargs, "num_clients"
+                    self.server_agent_config.server_configs.scheduler_kwargs,
+                    "num_clients",
                 )
             )
             else self.server_agent_config.server_configs.aggregator_kwargs.num_clients

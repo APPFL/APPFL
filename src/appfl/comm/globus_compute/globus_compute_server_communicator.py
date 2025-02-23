@@ -9,7 +9,6 @@ from globus_compute_sdk import Executor, Client
 from concurrent.futures import as_completed
 from typing import Optional, Dict, List, Union, Tuple, Any
 from appfl.logger import ServerAgentFileLogger
-from appfl.comm.utils.config import ClientTask
 from appfl.comm.base import BaseServerCommunicator
 from appfl.config import ClientAgentConfig, ServerAgentConfig
 from .utils.endpoint import GlobusComputeClientEndpoint
@@ -49,7 +48,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             **kwargs,
         )
         self._load_gce(**kwargs)
-         
+
         # Initiate the Globus Compute client endpoints.
         self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
         _client_id_check_set = set()
@@ -95,7 +94,9 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
                 client_endpoint_id=client_endpoint_id,
-                client_config=OmegaConf.merge(server_agent_config.client_configs, client_config),
+                client_config=OmegaConf.merge(
+                    server_agent_config.client_configs, client_config
+                ),
             )
 
     def send_task_to_all_clients(

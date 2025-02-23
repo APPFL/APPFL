@@ -219,4 +219,3 @@ class RayServerCommunicator(BaseServerCommunicator):
         elif task_name == "train":
             ref = client.train.remote(model, metadata)
         return str(uuid.uuid4()), ref
-
