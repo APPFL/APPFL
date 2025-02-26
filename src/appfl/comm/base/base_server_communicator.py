@@ -17,11 +17,11 @@ from typing import List, Optional, Union, Dict, OrderedDict, Tuple, Any
 
 class BaseServerCommunicator:
     def __init__(
-        self,
-        server_agent_config: ServerAgentConfig,
-        client_agent_configs: List[ClientAgentConfig],
-        logger: Optional[ServerAgentFileLogger] = None,
-        **kwargs,
+            self,
+            server_agent_config: ServerAgentConfig,
+            client_agent_configs: List[ClientAgentConfig],
+            logger: Optional[ServerAgentFileLogger] = None,
+            **kwargs,
     ):
         self.server_agent_config = server_agent_config
         self.client_agent_configs = client_agent_configs
@@ -38,12 +38,12 @@ class BaseServerCommunicator:
 
     @abstractmethod
     def send_task_to_all_clients(
-        self,
-        task_name: str,
-        *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Union[Dict, List[Dict]] = {},
-        need_model_response: bool = False,
+            self,
+            task_name: str,
+            *,
+            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+            metadata: Union[Dict, List[Dict]] = {},
+            need_model_response: bool = False,
     ):
         """
         Send a specific task to all clients.
@@ -57,16 +57,16 @@ class BaseServerCommunicator:
 
     @abstractmethod
     def send_task_to_one_client(
-        self,
-        client_id: str,
-        task_name: str,
-        *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Optional[Dict] = {},
-        need_model_response: bool = False,
+            self,
+            client_id: str,
+            task_name: str,
+            *,
+            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+            metadata: Optional[Dict] = {},
+            need_model_response: bool = False,
     ):
         """
-        Send a specific task to one specific client endpoint.
+        Send a specific task to one specific client.
         :param `client_id`: The client id to which the task is sent.
         :param `task_name`: Name of the task to be executed on the clients
         :param [Optional] `model`: Model to be sent to the clients
@@ -88,7 +88,7 @@ class BaseServerCommunicator:
     def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
         """
         Receive task results from the first client that finishes the task.
-        :return `client_id`: The client endpoint id from which the result is received.
+        :return `client_id`: The client id from which the result is received.
         :return `client_model`: The model returned from the client
         :return `client_metadata`: The metadata returned from the client
         """
@@ -130,40 +130,52 @@ class BaseServerCommunicator:
         self.executing_task_futs[task_fut] = task_id
 
     def _check_and_initialize_s3(self, server_agent_config):
+        # check if s3 enable
+        self.use_s3bucket = False
+        s3_bucket = None
         if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
-            server_agent_config.server_configs.comm_configs, "globus_compute_configs"
+                server_agent_config.server_configs.comm_configs, "s3_configs"
         ):
+            self.use_s3bucket = server_agent_config.server_configs.comm_configs.s3_configs.get(
+                "enable_s3", False
+            )
+            s3_bucket = server_agent_config.server_configs.comm_configs.s3_configs.get(
+                "s3_bucket", None
+            )
+        # backward compatibility for globus compute
+        if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
+                server_agent_config.server_configs.comm_configs, "globus_compute_configs"
+        ):
+            # TODO call deprecation
             s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
                 "s3_bucket", None
             )
-        elif hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
-            server_agent_config.server_configs.comm_configs, "s3_bucket"
-        ):
-            s3_bucket = server_agent_config.server_configs.comm_configs.get(
-                "s3_bucket", None
-            )
-        else:
-            s3_bucket = None
-        self.use_s3bucket = s3_bucket is not None
+            self.use_s3bucket = s3_bucket is not None
+
         if self.use_s3bucket:
             self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
-            s3_creds_file = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
+            s3_creds_file = server_agent_config.server_configs.comm_configs.s3_configs.get(
                 "s3_creds_file", None
             )
-            if s3_creds_file is None:
-                s3_creds_file = server_agent_config.server_configs.comm_configs.get(
-                    "s3_creds_file", None
-                )
-            s3_temp_dir = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
-                "s3_temp_dir",
-                str(
-                    pathlib.Path.home()
-                    / ".appfl"
-                    / self.comm_type
-                    / "server"
-                    / self.experiment_id
-                ),
+            # backward compatibility for globus compute
+            if (hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs") and
+                    hasattr(server_agent_config.server_configs.comm_configs.globus_compute_configs, "s3_creds_file")):
+                s3_creds_file = (server_agent_config.server_configs.comm_configs.globus_compute_configs
+                                 .get("s3_creds_file", None))
+
+            s3_temp_dir_default = str(
+                pathlib.Path.home()
+                / ".appfl"
+                / self.comm_type
+                / "server"
+                / self.experiment_id
             )
+            s3_temp_dir = server_agent_config.server_configs.comm_configs.s3_configs.get(
+                "s3_temp_dir", s3_temp_dir_default)
+            if (hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs") and
+                    hasattr(server_agent_config.server_configs.comm_configs.globus_compute_configs, "s3_temp_dir")):
+                s3_temp_dir = (server_agent_config.server_configs.comm_configs.globus_compute_configs
+                               .get("s3_temp_dir",s3_temp_dir_default))
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
@@ -175,13 +187,13 @@ class BaseServerCommunicator:
         self.proxystore = None
         self.use_proxystore = False
         if (
-            hasattr(server_agent_config.server_configs, "comm_configs")
-            and hasattr(
-                server_agent_config.server_configs.comm_configs, "proxystore_configs"
-            )
-            and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
-                "enable_proxystore", False
-            )
+                hasattr(server_agent_config.server_configs, "comm_configs")
+                and hasattr(
+            server_agent_config.server_configs.comm_configs, "proxystore_configs"
+        )
+                and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
+            "enable_proxystore", False
+        )
         ):
             self.use_proxystore = True
             self.proxystore = Store(
@@ -197,11 +209,11 @@ class BaseServerCommunicator:
 
     def _parse_result(self, result):
         """
-        Parse the returned results from the client endpoint.
+        Parse the returned results from the client.
         The results can be composed of two parts:
         - Model parameters (can be model, gradients, compressed model, etc.)
         - Metadata (may contain additional information such as logs, etc.)
-        :param `result`: The result returned from the client endpoint.
+        :param `result`: The result returned from the client.
         :return `model`: The model parameters returned from the client
         :return `metadata`: The metadata returned from the client
         """
@@ -226,11 +238,11 @@ class BaseServerCommunicator:
             if hasattr(self.server_agent_config.server_configs, "num_clients")
             else self.server_agent_config.server_configs.scheduler_kwargs.num_clients
             if (
-                hasattr(self.server_agent_config.server_configs, "scheduler_kwargs")
-                and hasattr(
-                    self.server_agent_config.server_configs.scheduler_kwargs,
-                    "num_clients",
-                )
+                    hasattr(self.server_agent_config.server_configs, "scheduler_kwargs")
+                    and hasattr(
+                self.server_agent_config.server_configs.scheduler_kwargs,
+                "num_clients",
+            )
             )
             else self.server_agent_config.server_configs.aggregator_kwargs.num_clients
         )

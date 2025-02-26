@@ -1,6 +1,5 @@
 clients:
-  - endpoint_id: "8c9d7483-b65e-4dd4-a53e-34f93588706e"
-    client_id: "Client1"
+  - client_id: "Client1"
     train_configs:
       # Device [Optional]: default is "cpu"
       device: "cpu"
@@ -18,8 +17,7 @@ clients:
         partition_strategy: "class_noniid"
         visualization: True
 
-  - endpoint_id: "ec52a4f9-4aaf-4059-b8a7-b4033a7ac8d0"
-    client_id: "Client2"
+  - client_id: "Client2"
     train_configs:
       # Device [Optional]: default is "cpu"
       device: "cpu"

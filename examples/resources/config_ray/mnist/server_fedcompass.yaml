@@ -47,9 +47,11 @@ client_configs:
       error_bounding_mode: "REL"
       error_bound: 1e-3
       param_cutoff: 1024
-    s3_bucket: "appflx-models"
-    s3_creds_file: "./resources/config_ray/creds/credential.csv"
-    ray_config:
+    s3_configs:
+      enable_s3: True
+      s3_bucket: "appflx-models"
+      s3_creds_file: "./resources/config_ray/creds/credential.csv"
+    ray_configs:
       assign_random: False
 
 server_configs:

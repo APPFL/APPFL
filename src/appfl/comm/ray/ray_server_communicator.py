@@ -6,7 +6,7 @@ from appfl.logger import ServerAgentFileLogger
 from appfl.comm.ray import RayClientCommunicator
 from appfl.comm.base import BaseServerCommunicator
 from appfl.comm.utils.config import ClientTask
-from appfl.comm.utils.s3_storage import CloudStorage
+from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 from appfl.config import ServerAgentConfig, ClientAgentConfig
 from typing import List, Optional, Union, Dict, OrderedDict, Any, Tuple
 
@@ -23,27 +23,41 @@ class RayServerCommunicator(BaseServerCommunicator):
         super().__init__(server_agent_config, client_agent_configs, logger, **kwargs)
         ray.init(address="auto")
         self.client_actors = {}
+        _client_id_check_set = set()
         for client_config in client_agent_configs:
-            endpoint_id = client_config["endpoint_id"]
+            assert hasattr(client_config, "client_id"), (
+                "Client configuration must have an client_id."
+            )
+            client_id = client_config["client_id"]
+            assert client_id not in _client_id_check_set, (
+                f"Client ID {client_id} is not unique for this client configuration.\n{client_config}"
+            )
+            _client_id_check_set.add(client_id)
+            # Read the client dataloader source file
+            with open(client_config.data_configs.dataset_path) as file:
+                client_config.data_configs.dataset_source = file.read()
+            del client_config.data_configs.dataset_path
+
             client_config.experiment_id = self.experiment_id
             client_config = OmegaConf.merge(
                 server_agent_config.client_configs, client_config
             )
             client_config.comm_configs.comm_type = self.comm_type
+            # If specific client is required to use specific resource type assign_random = False
             if (
                 hasattr(server_agent_config.client_configs, "comm_configs")
                 and hasattr(
-                    server_agent_config.client_configs.comm_configs, "ray_config"
+                    server_agent_config.client_configs.comm_configs, "ray_configs"
                 )
-                and not server_agent_config.client_configs.comm_configs.ray_config.get(
+                and not server_agent_config.client_configs.comm_configs.ray_configs.get(
                     "assign_random", True
                 )
             ):
-                self.client_actors[endpoint_id] = RayClientCommunicator.options(
+                self.client_actors[client_id] = RayClientCommunicator.options(
                     resources={client_config["client_id"]: 1}
                 ).remote(server_agent_config, client_config)
             else:
-                self.client_actors[endpoint_id] = RayClientCommunicator.remote(
+                self.client_actors[client_id] = RayClientCommunicator.remote(
                     server_agent_config, client_config
                 )
 
@@ -66,8 +80,21 @@ class RayServerCommunicator(BaseServerCommunicator):
         :param `need_model_response`: Whether the task requires a model response from the clients
             If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
         """
+        if self.use_s3bucket and model is not None:
+            model_wrapper = LargeObjectWrapper(
+                data=model,
+                name=str(uuid.uuid4()) + "_server_state",
+            )
+            model = CloudStorage.upload_object(
+                model_wrapper, register_for_clean=True
+            )
         for i, client_id in enumerate(self.client_actors):
             client_metadata = metadata[i] if isinstance(metadata, list) else metadata
+            if need_model_response and self.use_s3bucket:
+                local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
+                local_model_url = CloudStorage.presign_upload_object(local_model_key)
+                client_metadata["local_model_key"] = local_model_key
+                client_metadata["local_model_url"] = local_model_url
             task_id, task_ref = self.__send_task(
                 self.client_actors[client_id], task_name, model, client_metadata
             )
@@ -84,7 +111,7 @@ class RayServerCommunicator(BaseServerCommunicator):
         need_model_response: bool = False,
     ):
         """
-        Send a specific task to one specific client endpoint.
+        Send a specific task to one specific client.
         :param `client_id`: The client id to which the task is sent.
         :param `task_name`: Name of the task to be executed on the clients
         :param [Optional] `model`: Model to be sent to the clients
@@ -92,6 +119,19 @@ class RayServerCommunicator(BaseServerCommunicator):
         :param `need_model_response`: Whether the task requires a model response from the clients
             If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
         """
+        if self.use_s3bucket and model is not None:
+            model_wrapper = LargeObjectWrapper(
+                data=model,
+                name=str(uuid.uuid4()) + "_server_state",
+            )
+            model = CloudStorage.upload_object(
+                model_wrapper, register_for_clean=True
+            )
+        if need_model_response and self.use_s3bucket:
+            local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
+            local_model_url = CloudStorage.presign_upload_object(local_model_key)
+            metadata["local_model_key"] = local_model_key
+            metadata["local_model_url"] = local_model_url
         task_id, task_ref = self.__send_task(
             self.client_actors[client_id], task_name, model, metadata
         )
@@ -137,12 +177,12 @@ class RayServerCommunicator(BaseServerCommunicator):
     def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
         """
         Receive task results from the first client that finishes the task.
-        :return `client_id`: The client endpoint id from which the result is received.
+        :return `client_id`: The client id from which the result is received.
         :return `client_model`: The model returned from the client
         :return `client_metadata`: The metadata returned from the client
         """
         assert len(self.executing_task_futs), (
-            "There is no active client endpoint running tasks."
+            "There is no active client running tasks."
         )
         ready_refs, _ = ray.wait(
             list(self.executing_task_futs), num_returns=1, timeout=None

@@ -20,7 +20,7 @@ def load_global_model(client_agent_config: ClientAgentConfig, global_model: Any)
             pathlib.Path.home()
             / ".appfl"
             / comm_type
-            / client_agent_config.endpoint_id
+            / client_agent_config.client_id
             / client_agent_config.experiment_id
         )
         if not pathlib.Path(s3_tmp_dir).exists():
@@ -37,26 +37,21 @@ def send_local_model(
     local_model_key: Optional[str],
     local_model_url: Optional[str],
 ):
-    if (
-        hasattr(client_agent_config, "comm_configs")
-        and hasattr(client_agent_config.comm_configs, "globus_compute_configs")
-        and client_agent_config.comm_configs.globus_compute_configs.get(
-            "s3_bucket", None
-        )
-        is not None
-    ):
+    s3_enabled = is_s3_enabled(client_agent_config)
+    if s3_enabled:
         comm_type = get_comm_type(client_agent_config)
         s3_tmp_dir = str(
             pathlib.Path.home()
             / ".appfl"
             / comm_type
-            / client_agent_config.endpoint_id
+            / client_agent_config.client_id
             / client_agent_config.experiment_id
         )
         if not pathlib.Path(s3_tmp_dir).exists():
             pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
         local_model_wrapper = LargeObjectWrapper(local_model, local_model_key)
-        if not local_model_wrapper.can_send_directly:
+        if ((comm_type == "globus_compute" and not local_model_wrapper.can_send_directly) or
+                (comm_type != "globus_compute" and s3_enabled)):
             CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
             local_model = CloudStorage.upload_object(
                 local_model_wrapper,
@@ -164,3 +159,23 @@ def get_comm_type(client_agent_config: ClientAgentConfig):
     if hasattr(client_agent_config, "comm_configs"):
         comm_type = client_agent_config.comm_configs.get("comm_type", "globus_compute")
     return comm_type
+
+
+def is_s3_enabled(client_agent_config: ClientAgentConfig):
+    use_s3bucket = False
+    if hasattr(client_agent_config, "comm_configs") and hasattr(
+            client_agent_config.comm_configs, "s3_configs"
+    ):
+        use_s3bucket = client_agent_config.comm_configs.s3_configs.get(
+            "enable_s3", False
+        )
+    # backward compatibility for globus compute
+    if hasattr(client_agent_config, "comm_configs") and hasattr(
+            client_agent_config.comm_configs, "globus_compute_configs"
+    ):
+        # TODO call deprecation
+        s3_bucket = client_agent_config.comm_configs.globus_compute_configs.get(
+            "s3_bucket", None
+        )
+        use_s3bucket = s3_bucket is not None
+    return use_s3bucket
