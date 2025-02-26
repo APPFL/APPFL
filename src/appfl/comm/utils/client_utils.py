@@ -50,8 +50,9 @@ def send_local_model(
         if not pathlib.Path(s3_tmp_dir).exists():
             pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
         local_model_wrapper = LargeObjectWrapper(local_model, local_model_key)
-        if ((comm_type == "globus_compute" and not local_model_wrapper.can_send_directly) or
-                (comm_type != "globus_compute" and s3_enabled)):
+        if (
+            comm_type == "globus_compute" and not local_model_wrapper.can_send_directly
+        ) or (comm_type != "globus_compute" and s3_enabled):
             CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
             local_model = CloudStorage.upload_object(
                 local_model_wrapper,
@@ -164,14 +165,14 @@ def get_comm_type(client_agent_config: ClientAgentConfig):
 def is_s3_enabled(client_agent_config: ClientAgentConfig):
     use_s3bucket = False
     if hasattr(client_agent_config, "comm_configs") and hasattr(
-            client_agent_config.comm_configs, "s3_configs"
+        client_agent_config.comm_configs, "s3_configs"
     ):
         use_s3bucket = client_agent_config.comm_configs.s3_configs.get(
             "enable_s3", False
         )
     # backward compatibility for globus compute
     if hasattr(client_agent_config, "comm_configs") and hasattr(
-            client_agent_config.comm_configs, "globus_compute_configs"
+        client_agent_config.comm_configs, "globus_compute_configs"
     ):
         # TODO call deprecation
         s3_bucket = client_agent_config.comm_configs.globus_compute_configs.get(
