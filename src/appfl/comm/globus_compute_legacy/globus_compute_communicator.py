@@ -7,7 +7,7 @@ from appfl.config import ClientTask
 from omegaconf import DictConfig, OmegaConf
 from globus_compute_sdk import Executor, Client
 from .utils.endpoint import GlobusComputeClientEndpoint
-from appfl.comm.globus_compute.utils.s3_storage import CloudStorage, LargeObjectWrapper
+from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 
 
 class GlobusComputeCommunicator:

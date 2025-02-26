@@ -13,8 +13,8 @@ from omegaconf import DictConfig
 from collections import OrderedDict
 from globus_compute_sdk import Client
 from .comm.globus_compute import GlobusComputeCommunicator
-from .comm.globus_compute.utils.utils import get_dataloader
-from .comm.globus_compute.utils.s3_storage import LargeObjectWrapper
+from .comm.utils.utils import get_dataloader
+from .comm.utils.s3_storage import LargeObjectWrapper
 from .comm.globus_compute.utils.logging import GlobusComputeServerLogger
 from .comm.globus_compute import (
     client_validate_data,

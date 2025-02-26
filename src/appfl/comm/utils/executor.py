@@ -1,5 +1,5 @@
 from appfl.agent import ClientAgent
-from appfl.comm.globus_compute.utils.client_utils import (
+from appfl.comm.utils.client_utils import (
     load_global_model,
     send_local_model,
 )

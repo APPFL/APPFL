@@ -13,6 +13,7 @@ We present a collection of tutorials for APPFL framework.
     examples_ssl
     examples_vit_finetuning
     examples_globus_compute
+    examples_ray
     examples_wandb
     examples_custom_action
     examples_batched_mpi
