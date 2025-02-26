@@ -287,7 +287,6 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         self.executing_task_futs = {}
         self.executing_tasks = {}
 
-
     def _load_gce(self, **kwargs):
         """
         Load the Globus Compute Executor.
