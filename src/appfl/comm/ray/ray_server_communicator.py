@@ -156,6 +156,9 @@ class RayServerCommunicator(BaseServerCommunicator):
             try:
                 result = ray.get(fut)
                 client_model, client_metadata_local = self._parse_result(result)
+                client_metadata_local = self._check_deprecation(
+                    client_id, client_metadata_local
+                )
                 client_results[client_id] = client_model
                 client_metadata[client_id] = client_metadata_local
                 self.__update_executing_task(
@@ -187,6 +190,7 @@ class RayServerCommunicator(BaseServerCommunicator):
             result = ray.get(finished_ref)
             client_id = self.executing_tasks[task_id].client_id
             client_model, client_metadata = self._parse_result(result)
+            client_metadata = self._check_deprecation(client_id, client_metadata)
             self.__update_executing_task(
                 client_metadata, task_id, client_id, finished_ref
             )

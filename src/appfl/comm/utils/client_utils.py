@@ -174,7 +174,6 @@ def is_s3_enabled(client_agent_config: ClientAgentConfig):
     if hasattr(client_agent_config, "comm_configs") and hasattr(
         client_agent_config.comm_configs, "globus_compute_configs"
     ):
-        # TODO call deprecation
         s3_bucket = client_agent_config.comm_configs.globus_compute_configs.get(
             "s3_bucket", None
         )

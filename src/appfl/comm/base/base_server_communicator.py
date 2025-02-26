@@ -145,10 +145,13 @@ class BaseServerCommunicator:
                 "s3_bucket", None
             )
         # backward compatibility for globus compute
-        if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
-            server_agent_config.server_configs.comm_configs, "globus_compute_configs"
-        ):
-            # TODO call deprecation
+        if (hasattr(server_agent_config.server_configs, "comm_configs") and
+                hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs" and
+                    hasattr(server_agent_config.server_configs.comm_configs.globus_compute_configs, "s3_bucket")
+        )):
+            self.logger.warning(
+                f"Use of globus_compute_configs in server configs is deprecated. Moving forward use s3_configs key to configure AWS S3 you can find it here https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/"
+            )
             s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
                 "s3_bucket", None
             )
@@ -268,3 +271,22 @@ class BaseServerCommunicator:
         assert num_clients == len(self.client_agent_configs), (
             "Number of clients in the server configuration does not match the number of client configurations."
         )
+
+    def _check_deprecation(
+        self,
+        client_id: str,
+        client_metadata: Dict,
+    ):
+        """
+        This function is used to check deprecation on the client site packages.
+        """
+        if not hasattr(self, "_version_deprecation_warning_set"):
+            self._version_deprecation_warning_set = set()
+        if "_deprecated" in client_metadata:
+            if client_id not in self._version_deprecation_warning_set:
+                self.logger.warning(
+                    f"{client_id} is using a deprecated version of appfl, and it is highly recommended to update it to at least version 1.2.1."
+                )
+                self._version_deprecation_warning_set.add(client_id)
+            client_metadata.pop("_deprecated")
+        return client_metadata

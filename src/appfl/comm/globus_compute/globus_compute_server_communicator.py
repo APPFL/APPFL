@@ -287,24 +287,6 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         self.executing_task_futs = {}
         self.executing_tasks = {}
 
-    def _check_deprecation(
-        self,
-        client_id: str,
-        client_metadata: Dict,
-    ):
-        """
-        This function is used to check deprecation on the client site packages.
-        """
-        if not hasattr(self, "_version_deprecation_warning_set"):
-            self._version_deprecation_warning_set = set()
-        if "_deprecated" in client_metadata:
-            if client_id not in self._version_deprecation_warning_set:
-                self.logger.warning(
-                    f"{client_id} is using a deprecated version of appfl, and it is highly recommended to update it to at least version 1.2.1."
-                )
-                self._version_deprecation_warning_set.add(client_id)
-            client_metadata.pop("_deprecated")
-        return client_metadata
 
     def _load_gce(self, **kwargs):
         """
