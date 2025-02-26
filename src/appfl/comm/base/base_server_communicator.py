@@ -145,13 +145,16 @@ class BaseServerCommunicator:
                 "s3_bucket", None
             )
         # backward compatibility for globus compute
-        if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
-            server_agent_config.server_configs.comm_configs,
-            "globus_compute_configs"
+        if (
+            hasattr(server_agent_config.server_configs, "comm_configs")
+            and hasattr(
+                server_agent_config.server_configs.comm_configs,
+                "globus_compute_configs",
+            )
             and hasattr(
                 server_agent_config.server_configs.comm_configs.globus_compute_configs,
                 "s3_bucket",
-            ),
+            )
         ):
             self.logger.warning(
                 "Use of globus_compute_configs in server configs is deprecated. Moving forward use s3_configs key to configure AWS S3 you can find it here https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/"
