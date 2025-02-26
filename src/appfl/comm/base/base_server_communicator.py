@@ -17,11 +17,11 @@ from typing import List, Optional, Union, Dict, OrderedDict, Tuple, Any
 
 class BaseServerCommunicator:
     def __init__(
-            self,
-            server_agent_config: ServerAgentConfig,
-            client_agent_configs: List[ClientAgentConfig],
-            logger: Optional[ServerAgentFileLogger] = None,
-            **kwargs,
+        self,
+        server_agent_config: ServerAgentConfig,
+        client_agent_configs: List[ClientAgentConfig],
+        logger: Optional[ServerAgentFileLogger] = None,
+        **kwargs,
     ):
         self.server_agent_config = server_agent_config
         self.client_agent_configs = client_agent_configs
@@ -38,12 +38,12 @@ class BaseServerCommunicator:
 
     @abstractmethod
     def send_task_to_all_clients(
-            self,
-            task_name: str,
-            *,
-            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-            metadata: Union[Dict, List[Dict]] = {},
-            need_model_response: bool = False,
+        self,
+        task_name: str,
+        *,
+        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+        metadata: Union[Dict, List[Dict]] = {},
+        need_model_response: bool = False,
     ):
         """
         Send a specific task to all clients.
@@ -57,13 +57,13 @@ class BaseServerCommunicator:
 
     @abstractmethod
     def send_task_to_one_client(
-            self,
-            client_id: str,
-            task_name: str,
-            *,
-            model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-            metadata: Optional[Dict] = {},
-            need_model_response: bool = False,
+        self,
+        client_id: str,
+        task_name: str,
+        *,
+        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
+        metadata: Optional[Dict] = {},
+        need_model_response: bool = False,
     ):
         """
         Send a specific task to one specific client.
@@ -134,17 +134,19 @@ class BaseServerCommunicator:
         self.use_s3bucket = False
         s3_bucket = None
         if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
-                server_agent_config.server_configs.comm_configs, "s3_configs"
+            server_agent_config.server_configs.comm_configs, "s3_configs"
         ):
-            self.use_s3bucket = server_agent_config.server_configs.comm_configs.s3_configs.get(
-                "enable_s3", False
+            self.use_s3bucket = (
+                server_agent_config.server_configs.comm_configs.s3_configs.get(
+                    "enable_s3", False
+                )
             )
             s3_bucket = server_agent_config.server_configs.comm_configs.s3_configs.get(
                 "s3_bucket", None
             )
         # backward compatibility for globus compute
         if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
-                server_agent_config.server_configs.comm_configs, "globus_compute_configs"
+            server_agent_config.server_configs.comm_configs, "globus_compute_configs"
         ):
             # TODO call deprecation
             s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
@@ -154,14 +156,22 @@ class BaseServerCommunicator:
 
         if self.use_s3bucket:
             self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
-            s3_creds_file = server_agent_config.server_configs.comm_configs.s3_configs.get(
-                "s3_creds_file", None
+            s3_creds_file = (
+                server_agent_config.server_configs.comm_configs.s3_configs.get(
+                    "s3_creds_file", None
+                )
             )
             # backward compatibility for globus compute
-            if (hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs") and
-                    hasattr(server_agent_config.server_configs.comm_configs.globus_compute_configs, "s3_creds_file")):
-                s3_creds_file = (server_agent_config.server_configs.comm_configs.globus_compute_configs
-                                 .get("s3_creds_file", None))
+            if hasattr(
+                server_agent_config.server_configs.comm_configs,
+                "globus_compute_configs",
+            ) and hasattr(
+                server_agent_config.server_configs.comm_configs.globus_compute_configs,
+                "s3_creds_file",
+            ):
+                s3_creds_file = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
+                    "s3_creds_file", None
+                )
 
             s3_temp_dir_default = str(
                 pathlib.Path.home()
@@ -170,12 +180,21 @@ class BaseServerCommunicator:
                 / "server"
                 / self.experiment_id
             )
-            s3_temp_dir = server_agent_config.server_configs.comm_configs.s3_configs.get(
-                "s3_temp_dir", s3_temp_dir_default)
-            if (hasattr(server_agent_config.server_configs.comm_configs, "globus_compute_configs") and
-                    hasattr(server_agent_config.server_configs.comm_configs.globus_compute_configs, "s3_temp_dir")):
-                s3_temp_dir = (server_agent_config.server_configs.comm_configs.globus_compute_configs
-                               .get("s3_temp_dir",s3_temp_dir_default))
+            s3_temp_dir = (
+                server_agent_config.server_configs.comm_configs.s3_configs.get(
+                    "s3_temp_dir", s3_temp_dir_default
+                )
+            )
+            if hasattr(
+                server_agent_config.server_configs.comm_configs,
+                "globus_compute_configs",
+            ) and hasattr(
+                server_agent_config.server_configs.comm_configs.globus_compute_configs,
+                "s3_temp_dir",
+            ):
+                s3_temp_dir = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
+                    "s3_temp_dir", s3_temp_dir_default
+                )
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
@@ -187,13 +206,13 @@ class BaseServerCommunicator:
         self.proxystore = None
         self.use_proxystore = False
         if (
-                hasattr(server_agent_config.server_configs, "comm_configs")
-                and hasattr(
-            server_agent_config.server_configs.comm_configs, "proxystore_configs"
-        )
-                and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
-            "enable_proxystore", False
-        )
+            hasattr(server_agent_config.server_configs, "comm_configs")
+            and hasattr(
+                server_agent_config.server_configs.comm_configs, "proxystore_configs"
+            )
+            and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
+                "enable_proxystore", False
+            )
         ):
             self.use_proxystore = True
             self.proxystore = Store(
@@ -238,11 +257,11 @@ class BaseServerCommunicator:
             if hasattr(self.server_agent_config.server_configs, "num_clients")
             else self.server_agent_config.server_configs.scheduler_kwargs.num_clients
             if (
-                    hasattr(self.server_agent_config.server_configs, "scheduler_kwargs")
-                    and hasattr(
-                self.server_agent_config.server_configs.scheduler_kwargs,
-                "num_clients",
-            )
+                hasattr(self.server_agent_config.server_configs, "scheduler_kwargs")
+                and hasattr(
+                    self.server_agent_config.server_configs.scheduler_kwargs,
+                    "num_clients",
+                )
             )
             else self.server_agent_config.server_configs.aggregator_kwargs.num_clients
         )

@@ -85,9 +85,7 @@ class RayServerCommunicator(BaseServerCommunicator):
                 data=model,
                 name=str(uuid.uuid4()) + "_server_state",
             )
-            model = CloudStorage.upload_object(
-                model_wrapper, register_for_clean=True
-            )
+            model = CloudStorage.upload_object(model_wrapper, register_for_clean=True)
         for i, client_id in enumerate(self.client_actors):
             client_metadata = metadata[i] if isinstance(metadata, list) else metadata
             if need_model_response and self.use_s3bucket:
@@ -124,9 +122,7 @@ class RayServerCommunicator(BaseServerCommunicator):
                 data=model,
                 name=str(uuid.uuid4()) + "_server_state",
             )
-            model = CloudStorage.upload_object(
-                model_wrapper, register_for_clean=True
-            )
+            model = CloudStorage.upload_object(model_wrapper, register_for_clean=True)
         if need_model_response and self.use_s3bucket:
             local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
@@ -181,9 +177,7 @@ class RayServerCommunicator(BaseServerCommunicator):
         :return `client_model`: The model returned from the client
         :return `client_metadata`: The metadata returned from the client
         """
-        assert len(self.executing_task_futs), (
-            "There is no active client running tasks."
-        )
+        assert len(self.executing_task_futs), "There is no active client running tasks."
         ready_refs, _ = ray.wait(
             list(self.executing_task_futs), num_returns=1, timeout=None
         )
