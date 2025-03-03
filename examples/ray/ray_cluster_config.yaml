@@ -65,7 +65,7 @@ file_mounts: {
 }
 
 setup_commands:
-    ["conda config --remove channels intel",
+    ["conda config --remove channels intel || true",
      "conda create -n APPFL python=3.10 -y ",
-     'conda activate APPFL && pip install ray["default"] && pip install confluent-kafka --prefer-binary && cd APPFL && pip install -e ".[examples]"',
+     'conda activate APPFL && pip install uv && uv pip install ray["default"] && pip install confluent-kafka --prefer-binary && cd APPFL && uv pip install -e ".[examples]"',
      "(stat $HOME/anaconda3/envs/APPFL/ &> /dev/null && echo 'export PATH=\"$HOME/anaconda3/envs/APPFL/bin:$PATH\"' >> ~/.bashrc) || true"]
