@@ -1,6 +1,20 @@
 Changelog
 =========
 
+appfl v1.4.0
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add `Ray <https://www.ray.io/>`_ into communicator, with documentation available `here <https://appfl.ai/en/latest/tutorials/examples_ray.html>`_. (`#271 <https://github.com/APPFL/APPFL/pull/271>`_)
+- Make ``mpi4py`` optional during installation. (`#264 <https://github.com/APPFL/APPFL/issues/264>`_)
+
+Deprecated
+~~~~~~~~~~
+
+- Derecate the usage of ``comm_configs.globus_compute_configs`` for AWS S3 configurations, which is replaced by ``comm_configs.s3_configs``.
+
 appfl v1.3.0
 ------------
 
