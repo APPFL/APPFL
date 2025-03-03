@@ -157,12 +157,14 @@ class BaseServerCommunicator:
             )
         ):
             self.logger.warning(
-                "Use of globus_compute_configs in server configs is deprecated. Moving forward use s3_configs key to configure AWS S3 you can find it here https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/"
+                "[Deprecation] Use of globus_compute_configs in server configs is deprecated. Moving forward use s3_configs key to configure AWS S3 you can find new examples here https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/"
             )
             s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
                 "s3_bucket", None
             )
             self.use_s3bucket = s3_bucket is not None
+            # copy globus_compute_configs to s3_configs
+            server_agent_config.server_configs.comm_configs.s3_configs = server_agent_config.server_configs.comm_configs.globus_compute_configs
 
         if self.use_s3bucket:
             self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
@@ -171,18 +173,6 @@ class BaseServerCommunicator:
                     "s3_creds_file", None
                 )
             )
-            # backward compatibility for globus compute
-            if hasattr(
-                server_agent_config.server_configs.comm_configs,
-                "globus_compute_configs",
-            ) and hasattr(
-                server_agent_config.server_configs.comm_configs.globus_compute_configs,
-                "s3_creds_file",
-            ):
-                s3_creds_file = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
-                    "s3_creds_file", None
-                )
-
             s3_temp_dir_default = str(
                 pathlib.Path.home()
                 / ".appfl"
@@ -195,16 +185,6 @@ class BaseServerCommunicator:
                     "s3_temp_dir", s3_temp_dir_default
                 )
             )
-            if hasattr(
-                server_agent_config.server_configs.comm_configs,
-                "globus_compute_configs",
-            ) and hasattr(
-                server_agent_config.server_configs.comm_configs.globus_compute_configs,
-                "s3_temp_dir",
-            ):
-                s3_temp_dir = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
-                    "s3_temp_dir", s3_temp_dir_default
-                )
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)

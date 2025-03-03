@@ -356,7 +356,7 @@ class ServerAgent:
         if not hasattr(self.server_agent_config, "client_configs") or not hasattr(
             self.server_agent_config.client_configs, "train_configs"
         ):
-            self.loss_fn = None
+            self.metric = None
             return
         if hasattr(
             self.server_agent_config.client_configs.train_configs, "metric_path"

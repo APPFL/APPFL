@@ -1,7 +1,7 @@
 Example: Run FL Experiment using Ray
 ===============================================
 
-This tutorial describes how to run federated learning experiments on APPFL using Ray on cloud platforms such as AWS, GCP & Azure. All the code snippets needed for this tutorial is available at the ``examples`` directory of the APPFL repository at `here <https://github.com/APPFL/APPFL/tree/main/examples>`_.
+This tutorial describes how to run federated learning experiments with APPFL using Ray on cloud platforms such as AWS, GCP, and Azure. All the code snippets needed for this tutorial is available at the ``examples`` directory of the APPFL repository at `here <https://github.com/APPFL/APPFL/tree/main/examples>`_.
 
 .. note::
 
@@ -10,7 +10,7 @@ This tutorial describes how to run federated learning experiments on APPFL using
 Installation
 ------------
 
-First, we should install the APPFL package on the loca` l machines. Below shows how to install the APPFL package from its source code. For more information, please refer to the `APPFL documentation <https://appfl.ai/en/latest/install/index.html>`_.
+First, we should install the APPFL package on the local machines. Below shows how to install the APPFL package from its source code. For more information, please refer to the `APPFL installation guide <https://appfl.ai/en/latest/install/index.html>`_.
 
 .. code-block:: bash
 
@@ -176,7 +176,7 @@ For other field description you can follow inline comments in ``examples/ray/ray
 
 
 Running Experiment
-=================
+==================
 
 Environment setup
 ------------------

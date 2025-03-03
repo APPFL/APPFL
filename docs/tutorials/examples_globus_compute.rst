@@ -140,15 +140,12 @@ Server Configurations
 
 We have provide three sample server configuration files available at ``examples/resources/config_gc`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/>`_. The detailed description of the server configuration file can be found in the `APPFL documentation <https://appfl.ai/en/latest/users/server_agent.html#configurations>`_.
 
-It should be noted that ``client_configs.comm_configs.globus_compute_configs``(Deprecated) -> Use ``client_configs.comm_configs.s3_configs`` is optional and should be set only if the user wants to use AWS S3 for data transmission (Globus Compute limits data transmission size to 10 MB, so models larger than 10 MB should be transmitted using AWS S3). Specifically, ``enable_s3`` to use AWS S3 for model transfer, ``s3_bucket`` field should be set to the name of the S3 bucket that the user wants to use, and ``s3_creds_file`` is a CSV file containing the AWS credentials. The CSV file should have the following format.
+It should be noted that ``client_configs.comm_configs.s3_configs`` is optional and should be set only if the user wants to use AWS S3 for data transmission (Globus Compute limits data transmission size to 10 MB, so models larger than 10 MB should be transmitted using AWS S3). Specifically, ``enable_s3`` to use AWS S3 for model transfer, ``s3_bucket`` field should be set to the name of the S3 bucket that the user wants to use, and ``s3_creds_file`` is a CSV file containing the AWS credentials. The CSV file should have the following format. Alternatively, the server can set these information before running the experiment via the ``aws configure`` command.
 
 .. code-block:: csv
 
     <region>,<access_key_id>,<secret_access_key>
 
-.. note::
-
-    The server can also set these information before running the experiment via the ``aws configure`` command.
 
 Running the Experiment
 ----------------------
@@ -208,7 +205,7 @@ After creating the endpoint and finishing the configuration (if needed), user ca
   For debugging the endpoint, user can refer to the official `ProxyStore documentation <https://docs.proxystore.dev/latest/guides/endpoints-debugging/>`_.
 
 Configure for Federated Learning
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 With ProxyStore endpoints installed on the client/server which would like to use ProxyStore to transfer model parameters, user needs to collect all endpoints ids and put them in the both the server and client configuration files as ``comm_configs.proxystore_configs``. It should be noted that you only need to specify such configuration for site that you would like to use ProxyStore to transfer model parameters, although you would like to use it for all sites most of the time.
 
