@@ -16,7 +16,7 @@ def globus_compute_client_entry_point(
     # The new way to execute task for globus compute is to import the executor functions
     # from client's local appfl instead of sending the function logics within the function.
     try:
-        from appfl.comm.globus_compute.utils.executor import (
+        from appfl.comm.utils.executor import (
             get_sample_size_executor,
             data_readiness_report_executor,
             train_executor,
@@ -41,7 +41,7 @@ def globus_compute_client_entry_point(
     # Continue to support the old client appfl version until version 2.0.0
     except (ModuleNotFoundError, ImportError):
         from appfl.agent import ClientAgent
-        from appfl.comm.globus_compute.utils.client_utils import (
+        from appfl.comm.utils.client_utils import (
             load_global_model,
             send_local_model,
         )

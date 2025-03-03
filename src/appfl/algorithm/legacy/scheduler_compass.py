@@ -362,7 +362,7 @@ class SchedulerCompassGlobusCompute(SchedulerCompass):
 
     def _send_global_model_to_client(self, client_idx, client_steps, client_lr):
         from appfl.comm.globus_compute import client_training
-        from appfl.comm.globus_compute.utils.s3_storage import LargeObjectWrapper
+        from appfl.comm.utils.s3_storage import LargeObjectWrapper
 
         if not hasattr(self, "server_model_basename"):
             self.server_model_basename = str(uuid.uuid4()) + "_server_state"

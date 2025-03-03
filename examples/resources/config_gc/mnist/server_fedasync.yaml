@@ -47,7 +47,8 @@ client_configs:
       error_bounding_mode: "REL"
       error_bound: 1e-3
       param_cutoff: 1024
-    globus_compute_configs:
+    s3_configs:
+      enable_s3: False
       s3_bucket: "appflx-models"
       s3_creds_file: "./resources/config_gc/creds/credential.csv"
 

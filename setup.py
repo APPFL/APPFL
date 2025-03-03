@@ -31,7 +31,7 @@ else:
 
 setuptools.setup(
     name="appfl",
-    version="1.3.2",
+    version="1.4.0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -75,6 +75,7 @@ setuptools.setup(
         "wandb",
         "colorama",
         "proxystore[all]",
+        "ray[default]",
     ],
     extras_require={
         "dev": [

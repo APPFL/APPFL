@@ -1,31 +1,24 @@
-import os
 import time
 import uuid
-import pathlib
-import logging
 import warnings
-from datetime import datetime
 from omegaconf import OmegaConf
 from collections import OrderedDict
 from globus_sdk.scopes import AuthScopes
 from globus_sdk import AccessTokenAuthorizer
-from proxystore.store import Store
-from proxystore.proxy import Proxy, extract
 from globus_compute_sdk import Executor, Client
-from concurrent.futures import Future, as_completed
+from concurrent.futures import as_completed
 from typing import Optional, Dict, List, Union, Tuple, Any
 from appfl.logger import ServerAgentFileLogger
-from appfl.misc.utils import get_proxystore_connector
+from appfl.comm.base import BaseServerCommunicator
 from appfl.config import ClientAgentConfig, ServerAgentConfig
-from .utils.config import ClientTask
 from .utils.endpoint import GlobusComputeClientEndpoint
-from .utils.s3_storage import CloudStorage, LargeObjectWrapper
+from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 from globus_compute_sdk.serialize import CombinedCode
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
 
 
-class GlobusComputeServerCommunicator:
+class GlobusComputeServerCommunicator(BaseServerCommunicator):
     """
     Communicator used by the federated learning server which plans to use Globus Compute
     for orchestrating the federated learning experiments.
@@ -47,55 +40,15 @@ class GlobusComputeServerCommunicator:
         logger: Optional[ServerAgentFileLogger] = None,
         **kwargs,
     ):
-        # Assert compute_token and openid_token are both provided if necessary
-        assert ("compute_token" in kwargs and "openid_token" in kwargs) or (
-            "compute_token" not in kwargs and "openid_token" not in kwargs
-        ), (
-            "Both compute_token and openid_token must be provided if one of them is provided."
+        self.comm_type = "globus_compute"
+        super().__init__(
+            server_agent_config=server_agent_config,
+            client_agent_configs=client_agent_configs,
+            logger=logger,
+            **kwargs,
         )
+        self._load_gce(**kwargs)
 
-        if "compute_token" in kwargs and "openid_token" in kwargs:
-            ComputeScopes = ComputeScopeBuilder()
-            compute_login_manager = AuthorizerLoginManager(
-                authorizers={
-                    ComputeScopes.resource_server: AccessTokenAuthorizer(
-                        kwargs["compute_token"]
-                    ),
-                    AuthScopes.resource_server: AccessTokenAuthorizer(
-                        kwargs["openid_token"]
-                    ),
-                }
-            )
-            compute_login_manager.ensure_logged_in()
-            gcc = Client(
-                login_manager=compute_login_manager,
-                code_serialization_strategy=CombinedCode(),
-            )
-        else:
-            gcc = Client(
-                code_serialization_strategy=CombinedCode(),
-            )
-        self.gce = Executor(client=gcc)  # Globus Compute Executor
-        self.logger = logger if logger is not None else self._default_logger()
-        # Sanity check for configurations: Check for the number of clients
-        num_clients = (
-            server_agent_config.server_configs.num_clients
-            if hasattr(server_agent_config.server_configs, "num_clients")
-            else server_agent_config.server_configs.scheduler_kwargs.num_clients
-            if (
-                hasattr(server_agent_config.server_configs, "scheduler_kwargs")
-                and hasattr(
-                    server_agent_config.server_configs.scheduler_kwargs, "num_clients"
-                )
-            )
-            else server_agent_config.server_configs.aggregator_kwargs.num_clients
-        )
-        assert num_clients == len(client_agent_configs), (
-            "Number of clients in the server configuration does not match the number of client configurations."
-        )
-        client_config_from_server = server_agent_config.client_configs
-        # Create a unique experiment ID for this federated learning experiment
-        experiment_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         # Initiate the Globus Compute client endpoints.
         self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
         _client_id_check_set = set()
@@ -124,7 +77,8 @@ class GlobusComputeServerCommunicator:
             )
             _client_id_check_set.add(client_id)
             client_endpoint_id = client_config.endpoint_id
-            client_config.experiment_id = experiment_id
+            client_config.experiment_id = self.experiment_id
+            client_config.comm_type = self.comm_type
             # Raise deprecation warning for logging_id
             if hasattr(client_config.train_configs, "logging_id"):
                 warnings.warn(
@@ -140,45 +94,10 @@ class GlobusComputeServerCommunicator:
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
                 client_endpoint_id=client_endpoint_id,
-                client_config=OmegaConf.merge(client_config_from_server, client_config),
-            )
-        # Initialize the S3 bucket for large model transfer if necessary.
-        if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
-            server_agent_config.server_configs.comm_configs, "globus_compute_configs"
-        ):
-            s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
-                "s3_bucket", None
-            )
-        else:
-            s3_bucket = None
-        self.use_s3bucket = s3_bucket is not None
-        if self.use_s3bucket:
-            self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
-            s3_creds_file = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
-                "s3_creds_file", None
-            )
-            s3_temp_dir = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
-                "s3_temp_dir",
-                str(
-                    pathlib.Path.home()
-                    / ".appfl"
-                    / "globus_compute"
-                    / "server"
-                    / experiment_id
+                client_config=OmegaConf.merge(
+                    server_agent_config.client_configs, client_config
                 ),
             )
-            if not os.path.exists(s3_temp_dir):
-                pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
-            CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
-
-        # Load proxystore
-        self._load_proxystore(server_agent_config)
-        assert not (self.use_proxystore and self.use_s3bucket), (
-            "Proxystore and S3 bucket cannot be used together."
-        )
-
-        self.executing_tasks: Dict[str, ClientTask] = {}
-        self.executing_task_futs: Dict[Future, str] = {}
 
     def send_task_to_all_clients(
         self,
@@ -220,7 +139,7 @@ class GlobusComputeServerCommunicator:
                 model,
                 client_metadata,
             )
-            self.__register_task(task_id, task_future, client_id, task_name)
+            self._register_task(task_id, task_future, client_id, task_name)
             self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
     def send_task_to_one_client(
@@ -263,7 +182,7 @@ class GlobusComputeServerCommunicator:
             model,
             metadata,
         )
-        self.__register_task(task_id, task_future, client_id, task_name)
+        self._register_task(task_id, task_future, client_id, task_name)
         self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
     def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
@@ -279,10 +198,8 @@ class GlobusComputeServerCommunicator:
             client_id = self.executing_tasks[task_id].client_id
             try:
                 result = fut.result()
-                client_model, client_metadata_local = (
-                    self.__parse_globus_compute_result(result)
-                )
-                client_metadata_local = self.__check_deprecation(
+                client_model, client_metadata_local = self._parse_result(result)
+                client_metadata_local = self._check_deprecation(
                     client_id, client_metadata_local
                 )
                 client_results[client_id] = client_model
@@ -321,8 +238,8 @@ class GlobusComputeServerCommunicator:
             task_id = self.executing_task_futs[fut]
             result = fut.result()
             client_id = self.executing_tasks[task_id].client_id
-            client_model, client_metadata = self.__parse_globus_compute_result(result)
-            client_metadata = self.__check_deprecation(client_id, client_metadata)
+            client_model, client_metadata = self._parse_result(result)
+            client_metadata = self._check_deprecation(client_id, client_metadata)
             # Set the status of the finished task
             client_log = client_metadata.get("log", {})
             self.executing_tasks[task_id].end_time = time.time()
@@ -370,97 +287,36 @@ class GlobusComputeServerCommunicator:
         self.executing_task_futs = {}
         self.executing_tasks = {}
 
-    def __check_deprecation(
-        self,
-        client_id: str,
-        client_metadata: Dict,
-    ):
+    def _load_gce(self, **kwargs):
         """
-        This function is used to check deprecation on the client site packages.
+        Load the Globus Compute Executor.
         """
-        if not hasattr(self, "_version_deprecation_warning_set"):
-            self._version_deprecation_warning_set = set()
-        if "_deprecated" in client_metadata:
-            if client_id not in self._version_deprecation_warning_set:
-                self.logger.warning(
-                    f"{client_id} is using a deprecated version of appfl, and it is highly recommended to update it to at least version 1.2.1."
-                )
-                self._version_deprecation_warning_set.add(client_id)
-            client_metadata.pop("_deprecated")
-        return client_metadata
-
-    def __parse_globus_compute_result(self, result):
-        """
-        Parse the returned results from a Globus Compute endpoint.
-        The results can be composed of two parts:
-        - Model parameters (can be model, gradients, compressed model, etc.)
-        - Metadata (may contain additional information such as logs, etc.)
-        :param `result`: The result returned from the Globus Compute endpoint.
-        :return `model`: The model parameters returned from the client
-        :return `metadata`: The metadata returned from the client
-        """
-        if isinstance(result, tuple):
-            model, metadata = result
-        else:
-            model, metadata = result, {}
-        # Download model from S3 bucket or ProxyStore if necessary
-        if isinstance(model, Proxy):
-            model = extract(model)
-        if self.use_s3bucket:
-            if CloudStorage.is_cloud_storage_object(model):
-                model = CloudStorage.download_object(
-                    model, delete_cloud=True, delete_local=True
-                )
-        return model, metadata
-
-    def __register_task(self, task_id, task_fut, client_id, task_name):
-        """
-        Register new client task to the list of executing tasks - call after task submission.
-        """
-        self.executing_tasks[task_id] = OmegaConf.structured(
-            ClientTask(
-                task_id=task_id,
-                task_name=task_name,
-                client_id=client_id,
-                start_time=time.time(),
-            )
+        # Assert compute_token and openid_token are both provided if necessary
+        assert ("compute_token" in kwargs and "openid_token" in kwargs) or (
+            "compute_token" not in kwargs and "openid_token" not in kwargs
+        ), (
+            "Both compute_token and openid_token must be provided if one of them is provided."
         )
-        self.executing_task_futs[task_fut] = task_id
 
-    def _default_logger(self):
-        """Create a default logger for the gRPC server if no logger provided."""
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
-        fmt = logging.Formatter("[%(asctime)s %(levelname)-4s server]: %(message)s")
-        s_handler = logging.StreamHandler()
-        s_handler.setLevel(logging.INFO)
-        s_handler.setFormatter(fmt)
-        logger.addHandler(s_handler)
-        return logger
-
-    def _load_proxystore(self, server_agent_config) -> None:
-        """
-        Create the proxystore for storing and sending model parameters from the server to the clients.
-        """
-        self.proxystore = None
-        self.use_proxystore = False
-        if (
-            hasattr(server_agent_config.server_configs, "comm_configs")
-            and hasattr(
-                server_agent_config.server_configs.comm_configs, "proxystore_configs"
+        if "compute_token" in kwargs and "openid_token" in kwargs:
+            ComputeScopes = ComputeScopeBuilder()
+            compute_login_manager = AuthorizerLoginManager(
+                authorizers={
+                    ComputeScopes.resource_server: AccessTokenAuthorizer(
+                        kwargs["compute_token"]
+                    ),
+                    AuthScopes.resource_server: AccessTokenAuthorizer(
+                        kwargs["openid_token"]
+                    ),
+                }
             )
-            and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
-                "enable_proxystore", False
+            compute_login_manager.ensure_logged_in()
+            gcc = Client(
+                login_manager=compute_login_manager,
+                code_serialization_strategy=CombinedCode(),
             )
-        ):
-            self.use_proxystore = True
-            self.proxystore = Store(
-                name="server-proxystore",
-                connector=get_proxystore_connector(
-                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type,
-                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_configs,
-                ),
+        else:
+            gcc = Client(
+                code_serialization_strategy=CombinedCode(),
             )
-            self.logger.info(
-                f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
-            )
+        self.gce = Executor(client=gcc)  # Globus Compute Executor

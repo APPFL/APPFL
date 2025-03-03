@@ -8,7 +8,7 @@ def client_validate_data(cfg, client_idx, mode="train"):
     client_validate_data:
         Validate the dataloader provided by the clients, and return the statistics of the dataset of different `mode` (train, val, test).
     """
-    from appfl.comm.globus_compute.utils.client_utils import get_dataset
+    from appfl.comm.utils.client_utils import get_dataset
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
 
     modes = [mode] if type(mode) is str else mode
@@ -50,9 +50,9 @@ def client_training(
     import importlib
     import os.path as osp
     from appfl.misc.utils import client_log
-    from appfl.comm.globus_compute.utils.utils import get_dataloader
+    from appfl.comm.utils.utils import get_dataloader
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
-    from appfl.comm.globus_compute.utils.client_utils import (
+    from appfl.comm.utils.client_utils import (
         get_dataset,
         get_model,
         get_loss,
@@ -146,9 +146,9 @@ def client_testing(cfg, client_idx, weights, global_state):
     import importlib
     import os.path as osp
     from appfl.misc.utils import client_log
-    from appfl.comm.globus_compute.utils.utils import get_dataloader
+    from appfl.comm.utils.utils import get_dataloader
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
-    from appfl.comm.globus_compute.utils.client_utils import (
+    from appfl.comm.utils.client_utils import (
         get_dataset,
         load_global_state,
         get_model,
@@ -234,7 +234,7 @@ def client_model_saving(cfg, client_idx, global_state):
     """
     import os.path as osp
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
-    from appfl.comm.globus_compute.utils.client_utils import save_global_model
+    from appfl.comm.utils.client_utils import save_global_model
 
     ## Create logger
     cli_logger = GlobusComputeClientLogger()
