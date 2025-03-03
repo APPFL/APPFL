@@ -164,7 +164,9 @@ class BaseServerCommunicator:
             )
             self.use_s3bucket = s3_bucket is not None
             # copy globus_compute_configs to s3_configs
-            server_agent_config.server_configs.comm_configs.s3_configs = server_agent_config.server_configs.comm_configs.globus_compute_configs
+            server_agent_config.server_configs.comm_configs.s3_configs = (
+                server_agent_config.server_configs.comm_configs.globus_compute_configs
+            )
 
         if self.use_s3bucket:
             self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
