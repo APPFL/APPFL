@@ -167,7 +167,9 @@ class BaseServerCommunicator:
             server_agent_config.server_configs.comm_configs.s3_configs = (
                 server_agent_config.server_configs.comm_configs.globus_compute_configs
             )
-            server_agent_config.server_configs.comm_configs.s3_configs["enable_s3"] = self.use_s3bucket
+            server_agent_config.server_configs.comm_configs.s3_configs["enable_s3"] = (
+                self.use_s3bucket
+            )
 
         if self.use_s3bucket:
             self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
