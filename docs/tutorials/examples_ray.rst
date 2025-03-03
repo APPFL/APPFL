@@ -77,7 +77,7 @@ Server Configurations
 
 We have provide three sample server configuration files available at ``examples/resources/config_ray`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_ray/>`_. The detailed description of the server configuration file can be found in the `APPFL documentation <https://appfl.ai/en/latest/users/server_agent.html#configurations>`_.
 
-It should be noted that ``client_configs.comm_configs.ray_configs`` is optional and should be set only if the user wants to assign a job to a particular AWS instance and not randomly by setting ``assign_random`` as False by default it is True. You need to configure the same in ray_cluster_config.yaml as well.
+It should be noted that ``client_configs.comm_configs.ray_configs`` is optional and only needed be set if the user wants to assign a job to randomly, instead to a particular AWS instance, by setting ``assign_random`` as ``True`` (by default it is ``False``). You need to configure the same in ``ray_cluster_config.yaml`` as well.
 
 To use AWS S3 for model parameter transmission, add a configuration under ``comm_configs`` as ``s3_configs``. Set ``enable_s3`` to True, and specify the ``s3_bucket`` field with the name of the S3 bucket that you want to use. Additionally, set ``s3_creds_file`` to the path of a CSV file containing AWS credentials.
 
@@ -181,7 +181,7 @@ Running Experiment
 Environment setup
 ------------------
 
-1. Configure AWS credentials - IAM having AmazonEC2FullAccess, AmazonEC2RoleforSSM
+Configure AWS credentials - IAM having ``AmazonEC2FullAccess`` and ``AmazonEC2RoleforSSM``
 
 Cluster Creation
 -----------------

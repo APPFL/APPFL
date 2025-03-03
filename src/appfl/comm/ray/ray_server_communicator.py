@@ -43,14 +43,14 @@ class RayServerCommunicator(BaseServerCommunicator):
                 server_agent_config.client_configs, client_config
             )
             client_config.comm_configs.comm_type = self.comm_type
-            # If specific client is required to use specific resource type assign_random = False
+            # If specific client is required to use specific resource type, i.e,  `assign_random = False`
             if (
-                hasattr(server_agent_config.client_configs, "comm_configs")
+                hasattr(server_agent_config.server_configs, "comm_configs")
                 and hasattr(
-                    server_agent_config.client_configs.comm_configs, "ray_configs"
+                    server_agent_config.server_configs.comm_configs, "ray_configs"
                 )
-                and not server_agent_config.client_configs.comm_configs.ray_configs.get(
-                    "assign_random", True
+                and not server_agent_config.server_configs.comm_configs.ray_configs.get(
+                    "assign_random", False
                 )
             ):
                 self.client_actors[client_id] = RayClientCommunicator.options(

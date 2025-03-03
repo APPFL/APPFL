@@ -45,8 +45,6 @@ client_configs:
       error_bounding_mode: "REL"
       error_bound: 1e-3
       param_cutoff: 1024
-    ray_configs:
-      assign_random: False
 
 server_configs:
   num_clients: 2
@@ -68,4 +66,4 @@ server_configs:
       connector_configs:
         endpoints: ["32b077ce-fb56-40ab-a26c-bdbd99d7fe87", "b6cfb02b-323f-4eac-8c42-20102bb0bd26"]
     ray_configs:
-      assign_random: True
+      assign_random: False

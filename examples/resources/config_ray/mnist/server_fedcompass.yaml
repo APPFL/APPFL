@@ -51,8 +51,6 @@ client_configs:
       enable_s3: True
       s3_bucket: "appflx-models"
       s3_creds_file: "./resources/config_ray/creds/credential.csv"
-    ray_configs:
-      assign_random: False
 
 server_configs:
   num_clients: 2
@@ -74,3 +72,6 @@ server_configs:
   num_global_epochs: 20
   logging_output_dirname: "./output"
   logging_output_filename: "result"
+  comm_configs:
+    ray_configs:
+      assign_random: False
