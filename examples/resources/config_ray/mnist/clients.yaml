@@ -17,6 +17,10 @@ clients:
         partition_strategy: "class_noniid"
         visualization: True
 
+    comm_configs:
+      checkpoint_configs:
+        enable_checkpointing: False
+
   - client_id: "Client2"
     train_configs:
       # Device [Optional]: default is "cpu"
@@ -34,3 +38,7 @@ clients:
         client_id: 1
         partition_strategy: "class_noniid"
         visualization: False
+
+    comm_configs:
+      checkpoint_configs:
+        enable_checkpointing: False

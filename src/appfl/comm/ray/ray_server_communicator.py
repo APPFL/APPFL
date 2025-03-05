@@ -2,6 +2,8 @@ import ray
 import uuid
 import time
 from omegaconf import OmegaConf
+from ray.exceptions import RayActorError
+
 from appfl.logger import ServerAgentFileLogger
 from appfl.comm.ray import RayClientCommunicator
 from appfl.comm.base import BaseServerCommunicator
@@ -9,7 +11,6 @@ from appfl.comm.utils.config import ClientTask
 from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 from appfl.config import ServerAgentConfig, ClientAgentConfig
 from typing import List, Optional, Union, Dict, OrderedDict, Any, Tuple
-
 
 class RayServerCommunicator(BaseServerCommunicator):
     def __init__(
@@ -24,6 +25,7 @@ class RayServerCommunicator(BaseServerCommunicator):
         ray.init(address="auto")
         self.client_actors = {}
         _client_id_check_set = set()
+        self.client_configs = {}
         for client_config in client_agent_configs:
             assert hasattr(client_config, "client_id"), (
                 "Client configuration must have an client_id."
@@ -43,6 +45,11 @@ class RayServerCommunicator(BaseServerCommunicator):
                 server_agent_config.client_configs, client_config
             )
             client_config.comm_configs.comm_type = self.comm_type
+            self.client_configs[client_id] = client_config
+            assert self.__is_checkpointing_enabled(client_config) and self.use_s3bucket, (
+                f"For checkpointing to work you are required to enable s3"
+            )
+
             # If specific client is required to use specific resource type, i.e,  `assign_random = False`
             if (
                 hasattr(server_agent_config.server_configs, "comm_configs")
@@ -63,6 +70,7 @@ class RayServerCommunicator(BaseServerCommunicator):
 
         self.executing_tasks: Dict[str, ClientTask] = {}
         self.executing_task_futs: Dict[Any, str] = {}
+        self.clients_futs: Dict[str, Any] = {}
 
     def send_task_to_all_clients(
         self,
@@ -94,9 +102,8 @@ class RayServerCommunicator(BaseServerCommunicator):
                 client_metadata["local_model_key"] = local_model_key
                 client_metadata["local_model_url"] = local_model_url
             task_id, task_ref = self.__send_task(
-                self.client_actors[client_id], task_name, model, client_metadata
+                self.client_actors[client_id], task_name, model, client_metadata, client_id
             )
-            super()._register_task(task_id, task_ref, client_id, task_name)
             self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
     def send_task_to_one_client(
@@ -129,9 +136,8 @@ class RayServerCommunicator(BaseServerCommunicator):
             metadata["local_model_key"] = local_model_key
             metadata["local_model_url"] = local_model_url
         task_id, task_ref = self.__send_task(
-            self.client_actors[client_id], task_name, model, metadata
+            self.client_actors[client_id], task_name, model, metadata, client_id
         )
-        self._register_task(task_id, task_ref, client_id, task_name)
         self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
     def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
@@ -142,18 +148,18 @@ class RayServerCommunicator(BaseServerCommunicator):
         """
         client_results, client_metadata = {}, {}
         while len(self.executing_task_futs):
-            done_futs, _ = ray.wait(
-                list(self.executing_task_futs.keys()), num_returns=1
-            )
-
-            if not done_futs:
-                continue
-
-            fut = done_futs[0]
-            task_id = self.executing_task_futs[fut]
-            client_id = self.executing_tasks[task_id].client_id
-
             try:
+                done_futs, _ = ray.wait(
+                    list(self.executing_task_futs.keys()), num_returns=1, timeout=None
+                )
+
+                if not done_futs:
+                    continue
+
+                fut = done_futs[0]
+                task_id = self.executing_task_futs[fut]
+                client_id = self.executing_tasks[task_id].client_id
+
                 result = ray.get(fut)
                 client_model, client_metadata_local = self._parse_result(result)
                 client_metadata_local = self._check_deprecation(
@@ -165,11 +171,9 @@ class RayServerCommunicator(BaseServerCommunicator):
                     client_metadata_local, task_id, client_id, fut
                 )
 
-            except Exception as e:
-                self.logger.error(
-                    f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
-                )
-                raise e
+            except RayActorError as e:
+                self.logger.error(f"Client stopped with exception: {str(e)}")
+                self.__relaunch_client_actor(e)
 
         return client_results, client_metadata
 
@@ -181,12 +185,12 @@ class RayServerCommunicator(BaseServerCommunicator):
         :return `client_metadata`: The metadata returned from the client
         """
         assert len(self.executing_task_futs), "There is no active client running tasks."
-        ready_refs, _ = ray.wait(
-            list(self.executing_task_futs), num_returns=1, timeout=None
-        )
-        finished_ref = ready_refs[0]
-        task_id = self.executing_task_futs[finished_ref]
         try:
+            ready_refs, _ = ray.wait(
+                list(self.executing_task_futs), num_returns=1, timeout=None
+            )
+            finished_ref = ready_refs[0]
+            task_id = self.executing_task_futs[finished_ref]
             result = ray.get(finished_ref)
             client_id = self.executing_tasks[task_id].client_id
             client_model, client_metadata = self._parse_result(result)
@@ -194,13 +198,14 @@ class RayServerCommunicator(BaseServerCommunicator):
             self.__update_executing_task(
                 client_metadata, task_id, client_id, finished_ref
             )
-        except Exception as e:
-            client_id = self.executing_tasks[task_id].client_id
-            self.logger.error(
-                f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
-            )
-            raise e
-        return client_id, client_model, client_metadata
+
+            return client_id, client_model, client_metadata
+
+        except RayActorError as e:
+            self.logger.error(f"Client stopped with exception: {str(e)}")
+            self.__relaunch_client_actor(e)
+            return self.recv_result_from_one_client()
+
 
     def shutdown_all_clients(self):
         """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
@@ -229,12 +234,60 @@ class RayServerCommunicator(BaseServerCommunicator):
         self.executing_task_futs = {}
         self.executing_tasks = {}
 
+    @staticmethod
+    def __is_checkpointing_enabled(client_config):
+        if hasattr(client_config, "comm_configs") and hasattr(client_config.comm_configs, "checkpoint_configs"):
+            return client_config.comm_configs.checkpoint_configs.get("enable_checkpointing", False)
+        return False
+
+    def __relaunch_client_actor(self, exception):
+        """Relaunch the client"""
+        actor_id = str(exception.actor_id)
+        interrupted_client_id = None
+        # find the interrupted client id using the actor id
+        for client_id in self.client_actors.keys():
+            if actor_id == str(self.client_actors[client_id]._ray_actor_id.hex()):
+                interrupted_client_id = client_id
+                break
+        self.logger.info(f"Client: {interrupted_client_id} execution was interrupted")
+        if not self.__is_checkpointing_enabled(self.client_configs[interrupted_client_id]):
+            self.__remove_old_tasks(interrupted_client_id, False)
+            return
+        self.logger.info(f"Relaunching client {interrupted_client_id}")
+        # re launch the ray client
+        self.client_actors[interrupted_client_id] = (RayClientCommunicator.options(resources={interrupted_client_id: 1})
+                                         .remote(self.server_agent_config, self.client_configs[interrupted_client_id]))
+        # check all the ObjectRef which needs rerun on the new client
+        self.__remove_old_tasks(interrupted_client_id, True)
+
+    def __remove_old_tasks(self, client_id, trigger_again=False):
+        """
+        removes the old task from the executing queue and if asked for retrigger queues the task to the new spawned actor
+        """
+        for old_fut in self.clients_futs[client_id]:
+            task_id = self.executing_task_futs[old_fut]
+            client_task = self.executing_tasks[task_id]
+            client_task.failure = True
+            client_task.pending = False
+            # send the old task to new client
+            if trigger_again:
+                self.logger.info(f"retriggering task {task_id} {str(client_task)}")
+                model = OmegaConf.to_container(client_task.parameters["model"], resolve=True)
+                metadata = OmegaConf.to_container(client_task.parameters["metadata"], resolve=True)
+                self.__send_task(self.client_actors[client_id], client_task.task_name,
+                             model, metadata, client_id)
+            # remove old tasks from the queue
+            self.executing_tasks.pop(task_id)
+            self.executing_task_futs.pop(old_fut)
+            self.clients_futs[client_id].remove(old_fut)
+
     def __update_executing_task(
         self, client_metadata_local, task_id, client_id, task_fut
     ):
         try:
             self.executing_tasks[task_id].end_time = time.time()
             self.executing_tasks[task_id].success = True
+            self.executing_tasks[task_id].pending = False
             self.executing_tasks[task_id].log = client_metadata_local.get("log", {})
             # Clean up the task
             self.logger.info(
@@ -242,13 +295,14 @@ class RayServerCommunicator(BaseServerCommunicator):
             )
             self.executing_tasks.pop(task_id)
             self.executing_task_futs.pop(task_fut)
+            self.clients_futs[client_id].remove(task_fut)
         except Exception as e:
             self.logger.error(
                 f"Task {self.executing_tasks[task_id].task_name} on {client_id} failed with an error."
             )
             raise e
 
-    def __send_task(self, client: RayClientCommunicator, task_name, model, metadata):
+    def __send_task(self, client: RayClientCommunicator, task_name, model, metadata, client_id):
         ref = None
         if task_name == "get_sample_size":
             ref = client.get_sample_size.remote()
@@ -256,4 +310,15 @@ class RayServerCommunicator(BaseServerCommunicator):
             ref = client.data_readiness_report.remote()
         elif task_name == "train":
             ref = client.train.remote(model, metadata)
-        return str(uuid.uuid4()), ref
+
+        task_id = str(uuid.uuid4())
+        self._register_task(task_id, ref, client_id, task_name)
+        if self.__is_checkpointing_enabled(self.client_configs[client_id]):
+            parameters = {"model": model, "metadata": metadata}
+            self.executing_tasks[task_id].parameters = parameters
+        if client_id in self.clients_futs.keys():
+            self.clients_futs[client_id].append(ref)
+        else:
+            self.clients_futs[client_id] = [ref]
+
+        return task_id, ref
