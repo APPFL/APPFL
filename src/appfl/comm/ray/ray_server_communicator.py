@@ -12,6 +12,7 @@ from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 from appfl.config import ServerAgentConfig, ClientAgentConfig
 from typing import List, Optional, Union, Dict, OrderedDict, Any, Tuple
 
+
 class RayServerCommunicator(BaseServerCommunicator):
     def __init__(
         self,
@@ -46,9 +47,9 @@ class RayServerCommunicator(BaseServerCommunicator):
             )
             client_config.comm_configs.comm_type = self.comm_type
             self.client_configs[client_id] = client_config
-            assert self.__is_checkpointing_enabled(client_config) and self.use_s3bucket, (
-                f"For checkpointing to work you are required to enable s3"
-            )
+            assert (
+                self.__is_checkpointing_enabled(client_config) and self.use_s3bucket
+            ), "For checkpointing to work you are required to enable s3"
 
             # If specific client is required to use specific resource type, i.e,  `assign_random = False`
             if (
@@ -102,7 +103,11 @@ class RayServerCommunicator(BaseServerCommunicator):
                 client_metadata["local_model_key"] = local_model_key
                 client_metadata["local_model_url"] = local_model_url
             task_id, task_ref = self.__send_task(
-                self.client_actors[client_id], task_name, model, client_metadata, client_id
+                self.client_actors[client_id],
+                task_name,
+                model,
+                client_metadata,
+                client_id,
             )
             self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
@@ -206,7 +211,6 @@ class RayServerCommunicator(BaseServerCommunicator):
             self.__relaunch_client_actor(e)
             return self.recv_result_from_one_client()
 
-
     def shutdown_all_clients(self):
         """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
         self.logger.info("Shutting down all clients......")
@@ -236,8 +240,12 @@ class RayServerCommunicator(BaseServerCommunicator):
 
     @staticmethod
     def __is_checkpointing_enabled(client_config):
-        if hasattr(client_config, "comm_configs") and hasattr(client_config.comm_configs, "checkpoint_configs"):
-            return client_config.comm_configs.checkpoint_configs.get("enable_checkpointing", False)
+        if hasattr(client_config, "comm_configs") and hasattr(
+            client_config.comm_configs, "checkpoint_configs"
+        ):
+            return client_config.comm_configs.checkpoint_configs.get(
+                "enable_checkpointing", False
+            )
         return False
 
     def __relaunch_client_actor(self, exception):
@@ -250,13 +258,16 @@ class RayServerCommunicator(BaseServerCommunicator):
                 interrupted_client_id = client_id
                 break
         self.logger.info(f"Client: {interrupted_client_id} execution was interrupted")
-        if not self.__is_checkpointing_enabled(self.client_configs[interrupted_client_id]):
+        if not self.__is_checkpointing_enabled(
+            self.client_configs[interrupted_client_id]
+        ):
             self.__remove_old_tasks(interrupted_client_id, False)
             return
         self.logger.info(f"Relaunching client {interrupted_client_id}")
         # re launch the ray client
-        self.client_actors[interrupted_client_id] = (RayClientCommunicator.options(resources={interrupted_client_id: 1})
-                                         .remote(self.server_agent_config, self.client_configs[interrupted_client_id]))
+        self.client_actors[interrupted_client_id] = RayClientCommunicator.options(
+            resources={interrupted_client_id: 1}
+        ).remote(self.server_agent_config, self.client_configs[interrupted_client_id])
         # check all the ObjectRef which needs rerun on the new client
         self.__remove_old_tasks(interrupted_client_id, True)
 
@@ -272,10 +283,19 @@ class RayServerCommunicator(BaseServerCommunicator):
             # send the old task to new client
             if trigger_again:
                 self.logger.info(f"retriggering task {task_id} {str(client_task)}")
-                model = OmegaConf.to_container(client_task.parameters["model"], resolve=True)
-                metadata = OmegaConf.to_container(client_task.parameters["metadata"], resolve=True)
-                self.__send_task(self.client_actors[client_id], client_task.task_name,
-                             model, metadata, client_id)
+                model = OmegaConf.to_container(
+                    client_task.parameters["model"], resolve=True
+                )
+                metadata = OmegaConf.to_container(
+                    client_task.parameters["metadata"], resolve=True
+                )
+                self.__send_task(
+                    self.client_actors[client_id],
+                    client_task.task_name,
+                    model,
+                    metadata,
+                    client_id,
+                )
             # remove old tasks from the queue
             self.executing_tasks.pop(task_id)
             self.executing_task_futs.pop(old_fut)
@@ -302,7 +322,9 @@ class RayServerCommunicator(BaseServerCommunicator):
             )
             raise e
 
-    def __send_task(self, client: RayClientCommunicator, task_name, model, metadata, client_id):
+    def __send_task(
+        self, client: RayClientCommunicator, task_name, model, metadata, client_id
+    ):
         ref = None
         if task_name == "get_sample_size":
             ref = client.get_sample_size.remote()
