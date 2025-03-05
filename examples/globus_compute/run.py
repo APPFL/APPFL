@@ -9,13 +9,14 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--server_config",
     type=str,
-    default="./resources/config_gc/mnist/server_fedcompass.yaml",
+    default="./resources/config_gc/mnist/server_fedavg_withval.yaml",
 )
 argparser.add_argument(
     "--client_config", type=str, default="./resources/config_gc/mnist/clients.yaml"
 )
 argparser.add_argument("--compute_token", required=False)
 argparser.add_argument("--openid_token", required=False)
+argparser.add_argument("--enable_server_val", action="store_true")
 args = argparser.parse_args()
 
 # Load server and client agents configurations
@@ -107,6 +108,12 @@ while not server_agent.training_finished():
             client_rounds[client_endpoint_id] = 0
         client_rounds[client_endpoint_id] += 1
         metadata["round"] = client_rounds[client_endpoint_id]
+        
+        if args.enable_server_val:
+            # Run server validation only before sending the model to the client, i.e., global update is done
+            server_val_loss, server_val_acc = server_agent.server_validate()
+            server_agent.logger.info(f"Server validation loss: {server_val_loss}, accuracy: {server_val_acc}")
+        
         if not server_agent.training_finished():
             server_communicator.send_task_to_one_client(
                 client_endpoint_id,
@@ -117,7 +124,7 @@ while not server_agent.training_finished():
             )
     # Deal with the model futures
     del_keys = []
-    for client_endpoint_id in model_futures:
+    for i, client_endpoint_id in enumerate(model_futures):
         if model_futures[client_endpoint_id].done():
             global_model = model_futures[client_endpoint_id].result()
             if isinstance(global_model, tuple):
@@ -128,6 +135,10 @@ while not server_agent.training_finished():
                 client_rounds[client_endpoint_id] = 0
             client_rounds[client_endpoint_id] += 1
             metadata["round"] = client_rounds[client_endpoint_id]
+            if args.enable_server_val and i == 0:
+                # Run server validation only before sending the model to the client, i.e., global update is done
+                server_val_loss, server_val_acc = server_agent.server_validate()
+                server_agent.logger.info(f"Server validation loss: {server_val_loss}, accuracy: {server_val_acc}")
             if not server_agent.training_finished():
                 server_communicator.send_task_to_one_client(
                     client_endpoint_id,
