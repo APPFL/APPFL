@@ -1,0 +1,54 @@
+clients:
+  - endpoint_id: "557d2916-2c0d-4c0f-b222-b38b2bc2bbbd"
+    client_id: "Client1"
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "timesfm_0.02_fedavg"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/comstock_dataset.py"
+      dataset_name: "get_datasets"
+      dataset_kwargs:
+        num_clients: 2
+        client_id: 0
+        data_path: "IllinoisCommercial.npz"
+        split_ratios: [0.02, 0.02, 0.95]
+
+    # Communication configurations
+    comm_configs:
+      proxystore_configs:
+        enable_proxystore: True
+        connector_type: "EndpointConnector"
+        connector_configs:
+          endpoints: ["1becb3c3-fdb4-4dfb-a07f-89c363ce0a75", "1becb3c3-fdb4-4dfb-a07f-89c363ce0a75"]
+
+  - endpoint_id: "9b8d7b7a-bb1e-40da-a843-fb5e3f42dcf7"
+    client_id: "Client2"
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "timesfm_0.02_fedavg"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/comstock_dataset.py"
+      dataset_name: "get_datasets"
+      dataset_kwargs:
+        num_clients: 2
+        client_id: 1
+        data_path: "IllinoisCommercial.npz"
+        split_ratios: [0.02, 0.02, 0.95]
+
+    # Communication configurations
+    comm_configs:
+      proxystore_configs:
+        enable_proxystore: True
+        connector_type: "EndpointConnector"
+        connector_configs:
+          endpoints: ["c767bedb-56bb-4b61-b004-2d60b4d1a6c3", "1becb3c3-fdb4-4dfb-a07f-89c363ce0a75"]

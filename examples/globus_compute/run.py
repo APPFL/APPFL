@@ -9,10 +9,10 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--server_config",
     type=str,
-    default="./resources/config_gc/mnist/server_fedcompass.yaml",
+    default="./resources/config_gc/c4/server_fedavg_proxystore.yaml",
 )
 argparser.add_argument(
-    "--client_config", type=str, default="./resources/config_gc/mnist/clients.yaml"
+    "--client_config", type=str, default="./resources/config_gc/c4/clients_fedavg_proxystore.yaml"
 )
 argparser.add_argument("--compute_token", required=False)
 argparser.add_argument("--openid_token", required=False)

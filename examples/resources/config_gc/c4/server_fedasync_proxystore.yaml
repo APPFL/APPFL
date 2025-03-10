@@ -1,0 +1,72 @@
+client_configs:
+  train_configs:
+    # Local trainer
+    trainer: "LLMTrainer"
+    trainer_path: "./resources/trainer/LLM_trainer.py"
+    mode: "epoch"
+    num_local_epochs: 1
+    optim: "Adam"
+    optim_args:
+      lr: 5e-6
+      weight_decay: 0.01
+    # Loss function
+    loss_fn_path: "./resources/loss/celoss.py"
+    loss_fn_name: "CELoss"
+    # Client validation
+    do_validation: True
+    do_pre_validation: True
+    metric_path: "./resources/metric/acc.py"
+    metric_name: "accuracy"
+    # Differential privacy
+    use_dp: False
+    epsilon: 1
+    clip_grad: True
+    clip_value: 1.0
+    clip_norm: 2.0
+    # Data format
+    send_gradient: True
+    # Data loader
+    train_batch_size: 8
+    val_batch_size: 8
+    train_data_shuffle: True
+    val_data_shuffle: False
+
+  model_configs:
+    model_path: "./resources/model/opt.py"
+    model_name: "get_opt"
+    model_kwargs:
+      model_name: "facebook/opt-125m"
+
+  # comm_configs will be copied to server_configs as well
+  comm_configs:
+    compressor_configs:
+      enable_compression: False
+      # Used if enable_compression is True
+      lossy_compressor:  "SZ2Compressor"
+      lossless_compressor: "blosc"
+      error_bounding_mode: "REL"
+      error_bound: 1e-3
+      param_cutoff: 1024
+
+server_configs:
+  num_clients: 2
+  scheduler: "AsyncScheduler"
+  scheduler_kwargs:
+    same_init_model: True
+  aggregator: "FedAsyncAggregator"
+  aggregator_kwargs:
+    client_weights_mode: "equal"
+    staleness_fn: "polynomial"
+    staleness_fn_kwargs:
+      a: 0.5
+    alpha: 0.9
+  device: "cpu"
+  num_global_epochs: 3
+  logging_output_dirname: "./output"
+  logging_output_filename: "opt125m_128samples_fedasync"
+  comm_configs:
+    proxystore_configs:
+      enable_proxystore: True
+      connector_type: "EndpointConnector"
+      connector_configs:
+        endpoints: ["e75ae45d-404c-4f62-b0d9-52ca3ca5c330", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330", "16d732a3-7221-45c2-bc8e-38e4414ebfd9", "16d04e0e-fd36-43c9-89b1-666e79feb39e", "86016ed5-1a1c-4335-8812-d72c8d3d5fce"]
