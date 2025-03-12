@@ -12,3 +12,5 @@ class ClientTask:
     start_time: float = -1
     end_time: float = -1
     log: Optional[Dict] = field(default_factory=dict)
+    parameters: Optional[Dict] = field(default_factory=dict)
+    failure: bool = False
