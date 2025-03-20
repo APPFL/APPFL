@@ -31,7 +31,7 @@ First, both the client and the server should install the APPFL package on their 
 Creating Globus Compute Endpoint on Client Machines
 ---------------------------------------------------
 
-User can create a Globus Compute endpoint on their local machine by the following command:
+User can create a Globus Compute endpoint on their local machine by the following command. However, it should be noted that the endpoint created in this manner is only accessible by the user who created it, thus only suitable for testing purposes. To create a shared endpoint for a real federated learning experiment, please follow the `guidance below <#creating-shared-globus-compute-endpoint-on-client-machines>`_.
 
 .. code-block:: bash
 
@@ -78,6 +78,40 @@ After the configuration, you can start the endpoint by the following command:
 .. code-block:: bash
 
     globus-compute-endpoint start appfl-endpoint
+
+Creating Shared Globus Compute Endpoint on Client Machines
+----------------------------------------------------------
+
+To create shared Globus Compute endpoints for a real federated learning experiment on client machines, a group of trusted users need to find a "leading server" to generate some credentials and share them with the other users. Below shows how to generate such credentials:
+
+1. The leading server needs to go to the `Globus Developer Console <https://app.globus.org/settings/developers/>`_, and click *Register a service account or application credential for automation*. Then the leader can either register application under an existing project or create a new project. In the popped out *App Registration* form, the leader just needs to give the App an arbitrary name and click *Register App*.
+
+2. Click the created application to go to the application details page. You see be shown something like the image below. First, the leading server needs to notedown the *Client UUID*. Then, click *Add Client Secreat* to generate a client secret, and notedown the *Client Secret*.
+
+.. raw:: html
+
+    <div style="display: flex; justify-content: center; width: 100%; margin: auto;">
+        <div style="display: inline-block; ;">
+            <img src="../_static/globus-registration.png" alt="globus-registration">
+        </div>
+    </div>
+
+3. The leading server then needs to share the *Client UUID* and *Client Secret* with the other **trusted users**.
+
+4. For all clients, after they receive the *Client UUID* and *Client Secret*, they need to run the following commands before creating the shared endpoint:
+
+.. code-block:: bash
+
+    export GLOBUS_COMPUTE_CLIENT_ID=<Client UUID>
+    export GLOBUS_COMPUTE_CLIENT_SECRET=<Client Secret>
+
+5. Then, the clients can create the endpoints by following the same steps as `above <#creating-globus-compute-endpoint-on-client-machines>`_.
+
+6. It should be noted that the server machine should also set the *Client UUID* and *Client Secret* as environment variables before running the federated learning experiment.
+
+.. note::
+
+    A sample experiment log using four shared endpoints on ALCF's Polaris, Sophia, Aurora, and NCSA's Delta supercomputers is available at `here <https://github.com/APPFL/APPFL/blob/main/docs/_static/sample_log.txt>`_.
 
 Client Configurations
 ---------------------
