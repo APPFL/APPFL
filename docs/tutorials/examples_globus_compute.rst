@@ -96,7 +96,7 @@ To create shared Globus Compute endpoints for a real federated learning experime
         </div>
     </div>
 
-3. The leading server then needs to share the *Client UUID* and *Client Secret* with the other **trusted users**. 
+3. The leading server then needs to share the *Client UUID* and *Client Secret* with the other **trusted users**.
 
 4. For all clients, after they receive the *Client UUID* and *Client Secret*, they need to run the following commands before creating the shared endpoint:
 
