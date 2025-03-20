@@ -84,9 +84,9 @@ Creating Shared Globus Compute Endpoint on Client Machines
 
 To create shared Globus Compute endpoints for a real federated learning experiment on client machines, a group of trusted users need to find a "leading server" to generate some credentials and share them with the other users. Below shows how to generate such credentials:
 
-1. The leading server needs to go to the `Globus Developer Console <https://app.globus.org/settings/developers/>`_, and click *Register a service account or application credential for automation*. Then the leader can either register application under an existing project or create a new project. In the popped out *App Registration* form, the leader just needs to give the App an arbitary name and click *Register App*.
+1. The leading server needs to go to the `Globus Developer Console <https://app.globus.org/settings/developers/>`_, and click *Register a service account or application credential for automation*. Then the leader can either register application under an existing project or create a new project. In the popped out *App Registration* form, the leader just needs to give the App an arbitrary name and click *Register App*.
 
-2. Click the created application to go to the application details page. You see be shown something like the iamge below. First, the leading server needs to notedown the *Client UUID*. Then, click *Add Client Secreat* to generate a client secret, and notedown the *Client Secret*.
+2. Click the created application to go to the application details page. You see be shown something like the image below. First, the leading server needs to notedown the *Client UUID*. Then, click *Add Client Secreat* to generate a client secret, and notedown the *Client Secret*.
 
 .. raw:: html
 
