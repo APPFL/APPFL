@@ -1,69 +1,19 @@
 clients:
-  - endpoint_id: "557d2916-2c0d-4c0f-b222-b38b2bc2bbbd"
-    client_id: "Client1"
-    train_configs:
-      # Device [Optional]: default is "cpu"
-      device: "cuda"
-      # Logging [Optional]
-      logging_output_dirname: "./output"
-      logging_output_filename: "opt1.3b_32samples_fedavg"
-
-    # Local dataset
-    data_configs:
-      dataset_path: "./resources/dataset/c4_dataset.py"
-      dataset_name: "get_c4"
-      dataset_kwargs:
-        model_name: "facebook/opt-1.3b"
-        nsamples: 32
-
-    # Communication configurations
-    comm_configs:
-      proxystore_configs:
-        enable_proxystore: True
-        connector_type: "EndpointConnector"
-        connector_configs:
-          endpoints: ["e75ae45d-404c-4f62-b0d9-52ca3ca5c330", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
-
-  - endpoint_id: "9b8d7b7a-bb1e-40da-a843-fb5e3f42dcf7"
-    client_id: "Client2"
-    train_configs:
-      # Device [Optional]: default is "cpu"
-      device: "cuda"
-      # Logging [Optional]
-      logging_output_dirname: "./output"
-      logging_output_filename: "opt1.3b_32samples_fedavg"
-
-    # Local dataset
-    data_configs:
-      dataset_path: "./resources/dataset/c4_dataset.py"
-      dataset_name: "get_c4"
-      dataset_kwargs:
-        model_name: "facebook/opt-1.3b"
-        nsamples: 32
-
-    # Communication configurations
-    comm_configs:
-      proxystore_configs:
-        enable_proxystore: True
-        connector_type: "EndpointConnector"
-        connector_configs:
-          endpoints: ["16d732a3-7221-45c2-bc8e-38e4414ebfd9", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
-
-  # - endpoint_id: "521ad10c-0c1b-4708-aed1-db03b24ff9c5"
-  #   client_id: "Client3"
+  # - endpoint_id: "557d2916-2c0d-4c0f-b222-b38b2bc2bbbd"
+  #   client_id: "Client1"
   #   train_configs:
   #     # Device [Optional]: default is "cpu"
   #     device: "cuda"
   #     # Logging [Optional]
   #     logging_output_dirname: "./output"
-  #     logging_output_filename: "result"
+  #     logging_output_filename: "opt1.3b_32samples_fedavg"
 
   #   # Local dataset
   #   data_configs:
   #     dataset_path: "./resources/dataset/c4_dataset.py"
   #     dataset_name: "get_c4"
   #     dataset_kwargs:
-  #       model_name: "facebook/opt-125m"
+  #       model_name: "facebook/opt-1.3b"
   #       nsamples: 32
 
   #   # Communication configurations
@@ -72,29 +22,95 @@ clients:
   #       enable_proxystore: True
   #       connector_type: "EndpointConnector"
   #       connector_configs:
-  #         endpoints: ["16d04e0e-fd36-43c9-89b1-666e79feb39e", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+  #         endpoints: ["e75ae45d-404c-4f62-b0d9-52ca3ca5c330", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+
+  # - endpoint_id: "9b8d7b7a-bb1e-40da-a843-fb5e3f42dcf7"
+  #   client_id: "Client2"
+  #   train_configs:
+  #     # Device [Optional]: default is "cpu"
+  #     device: "cuda"
+  #     # Logging [Optional]
+  #     logging_output_dirname: "./output"
+  #     logging_output_filename: "opt1.3b_32samples_fedavg"
+
+  #   # Local dataset
+  #   data_configs:
+  #     dataset_path: "./resources/dataset/c4_dataset.py"
+  #     dataset_name: "get_c4"
+  #     dataset_kwargs:
+  #       model_name: "facebook/opt-1.3b"
+  #       nsamples: 32
+
+  #   # Communication configurations
+  #   comm_configs:
+  #     proxystore_configs:
+  #       enable_proxystore: True
+  #       connector_type: "EndpointConnector"
+  #       connector_configs:
+  #         endpoints: ["16d732a3-7221-45c2-bc8e-38e4414ebfd9", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+
+  - endpoint_id: "521ad10c-0c1b-4708-aed1-db03b24ff9c5"
+    client_id: "Perlmutter"
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "opt125m_32samples_fedavg"
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/c4_dataset.py"
+      dataset_name: "get_c4"
+      dataset_kwargs:
+        model_name: "facebook/opt-125m"
+        nsamples: 32
+
+    # Communication configurations
+    comm_configs:
+      # proxystore_configs:
+      #   enable_proxystore: True
+      #   connector_type: "EndpointConnector"
+      #   connector_configs:
+      #     endpoints: ["16d04e0e-fd36-43c9-89b1-666e79feb39e", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+      proxystore_configs:
+        enable_proxystore: True
+        connector_type: "GlobusConnector"
+        connector_configs:
+          endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "9d6d994a-6d04-11e5-ba46-22000b92c6ec"]
+          endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/global/homes/y/yli697/.cache/proxystore-globus-transfer/"]
+          local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/global/homes/y/yli697/.cache/proxystore-globus-transfer/"]
+          host_regex: ['bdw-\d+', 'nid\d+']
   
-  # - endpoint_id: "69965bb2-5754-42f0-a4ce-dc849645e94a"
-  #   client_id: "Client4"
-  #   train_configs:
-  #     # Device [Optional]: default is "cpu"
-  #     device: "cuda"
-  #     # Logging [Optional]
-  #     logging_output_dirname: "./output"
-  #     logging_output_filename: "result"
+  - endpoint_id: "69965bb2-5754-42f0-a4ce-dc849645e94a"
+    client_id: "Frontier"
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "opt125m_32samples_fedavg"
 
-  #   # Local dataset
-  #   data_configs:
-  #     dataset_path: "./resources/dataset/c4_dataset.py"
-  #     dataset_name: "get_c4"
-  #     dataset_kwargs:
-  #       model_name: "facebook/opt-125m"
-  #       nsamples: 32
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/c4_dataset.py"
+      dataset_name: "get_c4"
+      dataset_kwargs:
+        model_name: "facebook/opt-125m"
+        nsamples: 32
 
-  #   # Communication configurations
-  #   comm_configs:
-  #     proxystore_configs:
-  #       enable_proxystore: True
-  #       connector_type: "EndpointConnector"
-  #       connector_configs:
-  #         endpoints: ["86016ed5-1a1c-4335-8812-d72c8d3d5fce", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+    # Communication configurations
+    comm_configs:
+      # proxystore_configs:
+      #   enable_proxystore: True
+      #   connector_type: "EndpointConnector"
+      #   connector_configs:
+      #     endpoints: ["86016ed5-1a1c-4335-8812-d72c8d3d5fce", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+      proxystore_configs:
+        enable_proxystore: True
+        connector_type: "GlobusConnector"
+        connector_configs:
+          endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "36d521b3-c182-4071-b7d5-91db5d380d42"]
+          endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/ccs/home/yli697/.cache/proxystore-globus-transfer/"]
+          local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/ccs/home/yli697/.cache/proxystore-globus-transfer/"]
+          host_regex: ['bdw-\d+', 'frontier\d+']

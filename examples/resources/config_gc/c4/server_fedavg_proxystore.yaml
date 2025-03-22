@@ -33,7 +33,7 @@ client_configs:
     model_path: "./resources/model/opt.py"
     model_name: "get_opt"
     model_kwargs:
-      model_name: "facebook/opt-1.3b"
+      model_name: "facebook/opt-125m"
 
 
   # comm_configs will be copied to server_configs as well
@@ -59,10 +59,18 @@ server_configs:
   num_global_epochs: 3
   server_validation: False
   logging_output_dirname: "./output"
-  logging_output_filename: "opt1.3b_32samples_fedavg"
+  logging_output_filename: "opt125m_32samples_fedavg"
   comm_configs:
+    # proxystore_configs:
+    #   enable_proxystore: True
+    #   connector_type: "EndpointConnector"
+    #   connector_configs:
+    #     endpoints: ["e75ae45d-404c-4f62-b0d9-52ca3ca5c330", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330", "16d732a3-7221-45c2-bc8e-38e4414ebfd9", "16d04e0e-fd36-43c9-89b1-666e79feb39e", "86016ed5-1a1c-4335-8812-d72c8d3d5fce"]
     proxystore_configs:
       enable_proxystore: True
-      connector_type: "EndpointConnector"
+      connector_type: "GlobusConnector"
       connector_configs:
-        endpoints: ["e75ae45d-404c-4f62-b0d9-52ca3ca5c330", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330", "16d732a3-7221-45c2-bc8e-38e4414ebfd9", "16d04e0e-fd36-43c9-89b1-666e79feb39e", "86016ed5-1a1c-4335-8812-d72c8d3d5fce"]
+        endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "9d6d994a-6d04-11e5-ba46-22000b92c6ec", "36d521b3-c182-4071-b7d5-91db5d380d42"]
+        endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/global/homes/y/yli697/.cache/proxystore-globus-transfer/", "/ccs/home/yli697/.cache/proxystore-globus-transfer/"]
+        local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/global/homes/y/yli697/.cache/proxystore-globus-transfer/", "/ccs/home/yli697/.cache/proxystore-globus-transfer/"]
+        host_regex: ['bdw-\d+', 'nid\d+', 'frontier\d+']
