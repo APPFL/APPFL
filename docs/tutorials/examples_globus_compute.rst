@@ -96,7 +96,7 @@ To create shared Globus Compute endpoints for a real federated learning experime
         </div>
     </div>
 
-3. The leading server then needs to go back the corresponding Project page, and click *Roles*, which will show the information like below. Click *Assign New Role*. Then select *User* and enter the Globus ID/email of trusted client users to assign them the Administator role.
+3. The leading server then needs to go back the corresponding Project page, and click *Roles*, which will show the information like below. Click *Assign New Role*. Then select *User* and enter the Globus ID/email of trusted client users to assign them the Administrator role.
 
 .. raw:: html
 
