@@ -56,7 +56,9 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 server_agent_config.client_configs, client_config
             )
             client_config.comm_configs.comm_type = self.comm_type
-            self.clients_info[client_id].batch_size = client_config.train_configs.get("train_batch_size", 32)
+            self.clients_info[client_id].batch_size = client_config.train_configs.get(
+                "train_batch_size", 32
+            )
             self.client_configs[client_id] = client_config
             assert (
                 not self.__is_checkpointing_enabled(client_config) or self.use_s3bucket
@@ -88,7 +90,6 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
 
         thread = threading.Thread(target=self._run_async_loop, daemon=True)
         thread.start()
-
 
     def send_task_to_all_clients(
         self,
@@ -266,7 +267,6 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         self.executing_task_futs = {}
         self.executing_tasks = {}
 
-
     def warmup_clients(self, clients_sample_size_dict: Dict[str, int], model):
         """
         Estimates per epoch time by sending task with few steps to clients.
@@ -288,26 +288,46 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             sample_size = clients_sample_size_dict[client_id]
             batch_size = self.clients_info[client_id].batch_size
             self.clients_info[client_id].sample_size = sample_size
-            self.clients_info[client_id].steps_per_epoch = math.ceil(sample_size / (batch_size * 1.0))
+            self.clients_info[client_id].steps_per_epoch = math.ceil(
+                sample_size / (batch_size * 1.0)
+            )
             if sample_size < min_sample_size:
                 min_sample_size = sample_size
                 min_data_client_id = client_id
 
-        self.logger.info(f"client {min_data_client_id} with least sample size of {min_sample_size}")
+        self.logger.info(
+            f"client {min_data_client_id} with least sample size of {min_sample_size}"
+        )
 
         if two_step_warmup:
             # 0% step size
-            round_one_steps, round_one_train_res, _ = self._get_warmup_training_res(min_data_client_id, 0, model)
+            round_one_steps, round_one_train_res, _ = self._get_warmup_training_res(
+                min_data_client_id, 0, model
+            )
             # 50% step size
-            round_two_steps, round_two_train_res, _ = self._get_warmup_training_res(min_data_client_id, 50, model)
+            round_two_steps, round_two_train_res, _ = self._get_warmup_training_res(
+                min_data_client_id, 50, model
+            )
 
             self.logger.info(f"round one results {round_one_train_res}")
             self.logger.info(f"round two results {round_two_train_res}")
-            self._update_epoch_est_after_warmup(two_step_warmup, round_one_steps, round_one_train_res, round_two_steps, round_two_train_res)
+            self._update_epoch_est_after_warmup(
+                two_step_warmup,
+                round_one_steps,
+                round_one_train_res,
+                round_two_steps,
+                round_two_train_res,
+            )
         else:
-            round_one_steps, round_one_train_res, train_metadata = self._get_warmup_training_res(min_data_client_id, 50, model)
-            self._update_epoch_est_after_warmup(two_step_warmup, round_one_steps, round_one_train_res, train_metadata=train_metadata)
-
+            round_one_steps, round_one_train_res, train_metadata = (
+                self._get_warmup_training_res(min_data_client_id, 50, model)
+            )
+            self._update_epoch_est_after_warmup(
+                two_step_warmup,
+                round_one_steps,
+                round_one_train_res,
+                train_metadata=train_metadata,
+            )
 
     def check_client_termination_and_schedule_spinup(self, client_id):
         """
@@ -316,24 +336,41 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         Args:
             client_id:
         """
-        max_task = max(self.executing_tasks, key=lambda task: task.est_finish_time, default=None)
+        max_task = max(
+            self.executing_tasks, key=lambda task: task.est_finish_time, default=None
+        )
         if max_task is not None:
             max_time = max_task.est_finish_time
             current_time = time.time()
             if current_time > max_time:
-                self.logger.info(f"slowest task should have been finished according to estimate {max_task.client_id}")
+                self.logger.info(
+                    f"slowest task should have been finished according to estimate {max_task.client_id}"
+                )
                 return
-            if max_time - current_time > self.clients_info[client_id].est_spinup_time + self.TERMINATION_BUFFER_SEC:
+            if (
+                max_time - current_time
+                > self.clients_info[client_id].est_spinup_time
+                + self.TERMINATION_BUFFER_SEC
+            ):
                 terminate_node_by_resource_tag({client_id: 1})
                 client_info = self.clients_info[client_id]
                 client_info.instance_alive = False
                 self.logger.info(f"Terminating instance of client {client_id}")
-                if client_info.budget < client_info.est_time_per_epoch * client_info.spot_price_per_hr / 3600:
+                if (
+                    client_info.budget
+                    < client_info.est_time_per_epoch
+                    * client_info.spot_price_per_hr
+                    / 3600
+                ):
                     client_info.inactive = True
                 else:
                     # set spinup time
-                    self.spinup_queue.append((client_id, max_time - self.clients_info[client_id].est_spinup_time))
-
+                    self.spinup_queue.append(
+                        (
+                            client_id,
+                            max_time - self.clients_info[client_id].est_spinup_time,
+                        )
+                    )
 
     # def spinup_clients(self):
     #     for client_id in self.clients_info.keys():
@@ -345,53 +382,91 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
     #             )
     #     self.recv_result_from_all_clients()
 
-
-    def _update_epoch_est_after_warmup(self, two_step_warmup,  round_one_steps, round_one_train_res: Dict[str, ClientTask], round_two_steps=None,
-                                   round_two_train_res: Dict[str, ClientTask]=None, train_metadata=None):
-        """ Method to update epoch estimated time after warmup completion """
-        self.logger.info(f"Updating estimated epoch time after warmup for each client.")
+    def _update_epoch_est_after_warmup(
+        self,
+        two_step_warmup,
+        round_one_steps,
+        round_one_train_res: Dict[str, ClientTask],
+        round_two_steps=None,
+        round_two_train_res: Dict[str, ClientTask] = None,
+        train_metadata=None,
+    ):
+        """Method to update epoch estimated time after warmup completion"""
+        self.logger.info("Updating estimated epoch time after warmup for each client.")
         if two_step_warmup:
             for client_id in round_one_train_res.keys():
-                round_one_total_time = int(round_one_train_res[client_id].task_execution_finish_time -
-                                        round_one_train_res[client_id].task_execution_start_time)
-                round_two_total_time = int(round_two_train_res[client_id].task_execution_finish_time -
-                                        round_two_train_res[client_id].task_execution_start_time)
-                self.logger.info(f"{client_id} round one total time: {round_one_total_time}")
-                self.logger.info(f"{client_id} round two total time: {round_two_total_time}")
-                time_per_step = (round_two_total_time - round_one_total_time) / (round_two_steps - round_one_steps)
+                round_one_total_time = int(
+                    round_one_train_res[client_id].task_execution_finish_time
+                    - round_one_train_res[client_id].task_execution_start_time
+                )
+                round_two_total_time = int(
+                    round_two_train_res[client_id].task_execution_finish_time
+                    - round_two_train_res[client_id].task_execution_start_time
+                )
+                self.logger.info(
+                    f"{client_id} round one total time: {round_one_total_time}"
+                )
+                self.logger.info(
+                    f"{client_id} round two total time: {round_two_total_time}"
+                )
+                time_per_step = (round_two_total_time - round_one_total_time) / (
+                    round_two_steps - round_one_steps
+                )
                 # average overhead, includes pre validation and post training validation
-                train_time_overhead_sec = ((round_two_total_time - time_per_step * round_two_steps) +
-                                           (round_one_total_time - time_per_step * round_one_steps)) / 2
-                est_time_per_epoch = time_per_step * self.clients_info[client_id].steps_per_epoch + train_time_overhead_sec
-                self.clients_info[client_id].train_time_overhead_sec = train_time_overhead_sec
+                train_time_overhead_sec = (
+                    (round_two_total_time - time_per_step * round_two_steps)
+                    + (round_one_total_time - time_per_step * round_one_steps)
+                ) / 2
+                est_time_per_epoch = (
+                    time_per_step * self.clients_info[client_id].steps_per_epoch
+                    + train_time_overhead_sec
+                )
+                self.clients_info[
+                    client_id
+                ].train_time_overhead_sec = train_time_overhead_sec
                 self.clients_info[client_id].time_per_step = time_per_step
                 self.clients_info[client_id].est_time_per_epoch = est_time_per_epoch
-                self.logger.info(f"Client {client_id} estimated time per epoch: {est_time_per_epoch}")
+                self.logger.info(
+                    f"Client {client_id} estimated time per epoch: {est_time_per_epoch}"
+                )
         else:
             for client_id in round_one_train_res.keys():
-                round_one_total_time = int(round_one_train_res[client_id].task_execution_finish_time -
-                                           round_one_train_res[client_id].task_execution_start_time)
+                round_one_total_time = int(
+                    round_one_train_res[client_id].task_execution_finish_time
+                    - round_one_train_res[client_id].task_execution_start_time
+                )
                 training_time = train_metadata[client_id]["per_step_time"]
                 train_time_overhead_sec = round_one_total_time - training_time
                 time_per_step = training_time / round_one_steps
-                est_time_per_epoch = time_per_step * self.clients_info[
-                    client_id].steps_per_epoch + train_time_overhead_sec
-                self.clients_info[client_id].train_time_overhead_sec = train_time_overhead_sec
+                est_time_per_epoch = (
+                    time_per_step * self.clients_info[client_id].steps_per_epoch
+                    + train_time_overhead_sec
+                )
+                self.clients_info[
+                    client_id
+                ].train_time_overhead_sec = train_time_overhead_sec
                 self.clients_info[client_id].time_per_step = time_per_step
                 self.clients_info[client_id].est_time_per_epoch = est_time_per_epoch
-                self.logger.info(f"Client {client_id} estimated time per epoch: {est_time_per_epoch}")
-
+                self.logger.info(
+                    f"Client {client_id} estimated time per epoch: {est_time_per_epoch}"
+                )
 
     def _get_warmup_training_res(self, min_data_client_id, percent_step, model):
-        """ updates clients config to send warmup task to all the clients and returns back its results """
-        num_of_steps = math.ceil(percent_step / 100 * self.clients_info[min_data_client_id].steps_per_epoch)
+        """updates clients config to send warmup task to all the clients and returns back its results"""
+        num_of_steps = math.ceil(
+            percent_step / 100 * self.clients_info[min_data_client_id].steps_per_epoch
+        )
         if num_of_steps == 0:
             num_of_steps = 1
         for client_id in self.client_configs.keys():
             self.client_configs[client_id].train_configs["mode"] = "step"
-            self.client_configs[client_id].train_configs["num_local_steps"] = num_of_steps
+            self.client_configs[client_id].train_configs["num_local_steps"] = (
+                num_of_steps
+            )
 
-        self.logger.info(f"Sending warmup task to all clients for num_local_steps: {num_of_steps}")
+        self.logger.info(
+            f"Sending warmup task to all clients for num_local_steps: {num_of_steps}"
+        )
         self.send_task_to_all_clients("train", model=model, need_model_response=True)
 
         res = self.recv_result_from_all_clients()
@@ -399,20 +474,28 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         train_res = res[2]
         return num_of_steps, train_res, metadata
 
-
-    def _update_epoch_estimate_time(self, task:ClientTask):
-        """ After receiving result of training task we update the epoch estimate time for clients """
+    def _update_epoch_estimate_time(self, task: ClientTask):
+        """After receiving result of training task we update the epoch estimate time for clients"""
         client_id = task.client_id
-        if task.task_name == "train" and self.client_configs[client_id].train_configs["mode"] == "epoch":
-            total_execution_time = int(task.task_execution_finish_time - task.task_execution_start_time)
+        if (
+            task.task_name == "train"
+            and self.client_configs[client_id].train_configs["mode"] == "epoch"
+        ):
+            total_execution_time = int(
+                task.task_execution_finish_time - task.task_execution_start_time
+            )
             alpha = self.clients_info[client_id].alpha
-            self.clients_info[client_id].est_time_per_epoch = ((1 - alpha) * self.clients_info[client_id].est_time_per_epoch +
-                                                             alpha * total_execution_time)
-            self.logger.info(f"Updated est_time_per_epoch to {self.clients_info[client_id].est_time_per_epoch} for Client {client_id}")
-
+            self.clients_info[client_id].est_time_per_epoch = (
+                1 - alpha
+            ) * self.clients_info[
+                client_id
+            ].est_time_per_epoch + alpha * total_execution_time
+            self.logger.info(
+                f"Updated est_time_per_epoch to {self.clients_info[client_id].est_time_per_epoch} for Client {client_id}"
+            )
 
     def _update_spinup_time(self, task: ClientTask):
-        """ After receiving result we check if a spinup took place and if it does we update the spinup estimate time for client """
+        """After receiving result we check if a spinup took place and if it does we update the spinup estimate time for client"""
         client_id = task.client_id
         nodes_info = state_api.list_nodes(detail=True)
         node_info = self.__get_current_client_node_info(nodes_info, client_id)
@@ -425,13 +508,17 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 self.clients_info[client_id].est_spinup_time = spinup_time
             else:
                 alpha = self.clients_info[client_id].alpha
-                self.clients_info[client_id].est_spinup_time = (alpha * self.clients_info[client_id].est_spinup_time +
-                                                                (1 - alpha) * spinup_time)
-
+                self.clients_info[client_id].est_spinup_time = (
+                    alpha * self.clients_info[client_id].est_spinup_time
+                    + (1 - alpha) * spinup_time
+                )
 
     def __get_current_client_node_info(self, nodes_info, client_id):
         for node_info in nodes_info:
-            if node_info.state=='ALIVE' and client_id in node_info.resources_total.keys():
+            if (
+                node_info.state == "ALIVE"
+                and client_id in node_info.resources_total.keys()
+            ):
                 return node_info
 
     def _run_async_loop(self):
@@ -441,7 +528,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         loop.run_until_complete(self._monitor())
 
     async def _monitor(self):
-        """ Deamon process that updates the budget of the clients based on usage and also spins up the clients that are scheduled """
+        """Daemon process that updates the budget of the clients based on usage and also spins up the clients that are scheduled"""
         while True:
             await asyncio.to_thread(self._update_budget)
             await asyncio.to_thread(self._spinup_clients)
@@ -449,13 +536,16 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             await asyncio.sleep(30)
 
     def _update_budget(self):
-        """ It keeps the track of the time till which it has updated budget of the clients and then using the rays API checks uptime of instances and updates their respective budgets """
+        """It keeps the track of the time till which it has updated budget of the clients and then using the rays API checks uptime of instances and updates their respective budgets"""
         nodes_info = state_api.list_nodes(detail=True)
         update_time = int(time.time())
         client_node_info = {client_id: [] for client_id in self.client_configs.keys()}
         alive_instance_client_ids = set()
         for node_info in nodes_info:
-            if not node_info.is_head_node and (node_info.end_time_ms == 0 or node_info.end_time_ms > self.budget_updated_till):
+            if not node_info.is_head_node and (
+                node_info.end_time_ms == 0
+                or node_info.end_time_ms > self.budget_updated_till
+            ):
                 for key in node_info.resources_total.keys():
                     if key in self.client_configs.keys():
                         client_node_info[key].append(node_info)
@@ -463,7 +553,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                             alive_instance_client_ids.add(key)
 
         for client_id in client_node_info:
-            client_node_info[client_id].sort(key=lambda x: x['start_time_ms'])
+            client_node_info[client_id].sort(key=lambda x: x["start_time_ms"])
             # maintain state of the clients instance
             if client_id in alive_instance_client_ids:
                 self.clients_info[client_id].instance_triggered = False
@@ -482,12 +572,15 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                     end = update_time
                 time_in_sec = end - start
                 print(f"Updating budget for client {client_id} time {time_in_sec}")
-                self.clients_info[client_id].budget -= time_in_sec * self.clients_info[client_id].spot_price_per_hr / 3600.0
+                self.clients_info[client_id].budget -= (
+                    time_in_sec
+                    * self.clients_info[client_id].spot_price_per_hr
+                    / 3600.0
+                )
         self.budget_updated_till = update_time
 
-
     def _spinup_clients(self):
-        """ Check the spinup queue and spinup the client who are ready """
+        """Check the spinup queue and spinup the client who are ready"""
         current_time = time.time()
         # Iterate in reverse to safely remove items by index
         for i in reversed(range(len(self.spinup_queue))):
@@ -502,7 +595,6 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                     client_info.instance_triggered = True
                     client_info.instance_triggered_at = current_time
                 self.spinup_queue.pop(i)
-
 
     @staticmethod
     def __is_checkpointing_enabled(client_config):
@@ -537,16 +629,18 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         # check all the ObjectRef which needs rerun on the new client
         self.__remove_old_tasks(interrupted_client_id, True)
 
-
     def __update_spinup_time_on_exception(self, client_id):
-        """ During exception we relaunch the tasks to clients, this method makes sure that already scheduled tasks spinup times are updated in queue according to the slowest task in queue """
-        max_task = max(self.executing_tasks, key=lambda task: task.est_finish_time, default=None)
+        """During exception we relaunch the tasks to clients, this method makes sure that already scheduled tasks spinup times are updated in queue according to the slowest task in queue"""
+        max_task = max(
+            self.executing_tasks, key=lambda task: task.est_finish_time, default=None
+        )
         # check if the slowest task is the client which had exception, if yes update spinup time for rest of the queued tasks
         if max_task is not None and max_task.client_id == client_id:
             max_time = max_task.est_finish_time
             for client_id, _ in self.spinup_queue:
-                self.spinup_queue.append((client_id, max_time - self.clients_info[client_id].est_spinup_time))
-
+                self.spinup_queue.append(
+                    (client_id, max_time - self.clients_info[client_id].est_spinup_time)
+                )
 
     def __remove_old_tasks(self, client_id, trigger_again=False):
         """
@@ -605,29 +699,44 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
     ):
         task_id = str(uuid.uuid4())
         task = ClientTask(
-                task_id=task_id,
-                task_name=task_name,
-                client_id=client_id,
-                start_time=time.time(),
-            )
+            task_id=task_id,
+            task_name=task_name,
+            client_id=client_id,
+            start_time=time.time(),
+        )
         ref = None
         if task_name == "get_sample_size":
             ref = client.get_sample_size.remote(self.client_configs[client_id], task)
         elif task_name == "data_readiness_report":
-            ref = client.data_readiness_report.remote(self.client_configs[client_id], task)
+            ref = client.data_readiness_report.remote(
+                self.client_configs[client_id], task
+            )
         elif task_name == "train":
             if self.client_configs[client_id].train_configs["mode"] == "epoch":
                 client_info = self.clients_info[client_id]
                 if client_info.instance_triggered:
-                    task.est_finish_time = time.time() + max(client_info.est_spinup_time - (time.time() - client_info.instance_triggered_at), 0) + client_info.est_time_per_epoch
+                    task.est_finish_time = (
+                        time.time()
+                        + max(
+                            client_info.est_spinup_time
+                            - (time.time() - client_info.instance_triggered_at),
+                            0,
+                        )
+                        + client_info.est_time_per_epoch
+                    )
                 elif not client_info.instance_alive:
-                    task.est_finish_time = time.time() + client_info.est_time_per_epoch + client_info.est_spinup_time
+                    task.est_finish_time = (
+                        time.time()
+                        + client_info.est_time_per_epoch
+                        + client_info.est_spinup_time
+                    )
                 else:
-                    task.est_finish_time = time.time() +  client_info.est_time_per_epoch
-            ref = client.train.remote(model, metadata, self.client_configs[client_id], task)
+                    task.est_finish_time = time.time() + client_info.est_time_per_epoch
+            ref = client.train.remote(
+                model, metadata, self.client_configs[client_id], task
+            )
         elif task_name == "spinup":
             ref = client.spinup.remote(task)
-
 
         self.executing_tasks[task_id] = task
         self.executing_task_futs[ref] = task_id

@@ -17,7 +17,6 @@ class RayClientCommunicator:
             server_agent_config.client_configs, client_agent_config
         )
 
-
     def spinup(self, task: ClientTask):
         task.task_execution_start_time = time.time()
         task.result = "Launched"
@@ -41,14 +40,18 @@ class RayClientCommunicator:
             client_config = self.client_config
         if task is not None:
             task.task_execution_start_time = time.time()
-            data_readiness_report = data_readiness_report_executor(client_agent_config=client_config)
+            data_readiness_report = data_readiness_report_executor(
+                client_agent_config=client_config
+            )
             task.result = data_readiness_report
             task.task_execution_finish_time = time.time()
             return task
         else:
             return data_readiness_report_executor(client_agent_config=client_config)
 
-    def train(self, model_ref, metadata=None, client_config=None, task: ClientTask = None):
+    def train(
+        self, model_ref, metadata=None, client_config=None, task: ClientTask = None
+    ):
         if client_config is None:
             client_config = self.client_config
         if isinstance(model_ref, ray.ObjectRef):
