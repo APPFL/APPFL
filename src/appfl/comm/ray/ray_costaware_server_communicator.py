@@ -528,7 +528,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         loop.run_until_complete(self._monitor())
 
     async def _monitor(self):
-        """Daemon process that updates the budget of the clients based on usage and also spins up the clients that are scheduled"""
+        """Deamon process that updates the budget of the clients based on usage and also spins up the clients that are scheduled"""
         while True:
             await asyncio.to_thread(self._update_budget)
             await asyncio.to_thread(self._spinup_clients)
