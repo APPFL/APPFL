@@ -48,7 +48,7 @@ class RayServerCommunicator(BaseServerCommunicator):
             client_config.comm_configs.comm_type = self.comm_type
             self.client_configs[client_id] = client_config
             assert (
-                self.__is_checkpointing_enabled(client_config) and self.use_s3bucket
+                not self.__is_checkpointing_enabled(client_config) or self.use_s3bucket
             ), "For checkpointing to work you are required to enable s3"
 
             # If specific client is required to use specific resource type, i.e,  `assign_random = False`

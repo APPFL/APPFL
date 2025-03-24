@@ -62,6 +62,16 @@ class SyncScheduler(BaseScheduler):
         with self._access_lock:
             return self._num_global_epochs
 
+
+    def update_num_of_clients(self, num_of_active_clients: int) -> None:
+        """
+        updates number of active clients, we can use this if few clients drops off between training
+        Args:
+            num_of_active_clients:
+        """
+        self.num_clients = num_of_active_clients
+
+
     def _parse_aggregated_model(
         self, aggregated_model: Dict, client_id: Union[int, str]
     ) -> Dict:
