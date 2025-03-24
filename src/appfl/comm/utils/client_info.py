@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class ClientInfo:
     client_id: str
     budget: float = 0.0
-    instance_type: str = 't3.medium'
+    instance_type: str = "t3.medium"
     sample_size: int = 0
     batch_size: int = 0
     steps_per_epoch: int = 0
