@@ -1,4 +1,4 @@
-client_id: "Client1"
+client_id: "Client2"
 
 train_configs:
   # Device
@@ -13,7 +13,7 @@ data_configs:
   dataset_name: "get_ai_readi"
   dataset_kwargs:
     num_clients: 2
-    client_id: 0
+    client_id: 1
     partition_strategy: "class_noniid"
     visualization: True
     output_dirname: "./output"
