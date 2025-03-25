@@ -3,58 +3,57 @@ from torch.utils.data import Dataset
 import torchvision.transforms as T
 from PIL import Image
 from appfl.misc.data import (
-    iid_partition,
-    class_noniid_partition,
-    dirichlet_noniid_partition,
+    iid_partition_df,
+    class_noniid_partition_df,
+    dirichlet_noniid_partition_df,
 )
 import pandas as pd
 
+# class IndexLabelDataset(Dataset):
+#     def __init__(self, df):
+#         self.df = df
+#
+#     def __len__(self):
+#         return len(self.df)
+#
+#     def __getitem__(self, idx):
+#         row = self.df.iloc[idx]
+#         label = row["label_idx"]
+#         return idx, label  # index is the key here
+#
+#
+# # Defining a dataloader class, which returns image and its label
+# class RetinopathyDataset(Dataset):
+#     def __init__(self, df, indices, transform=None):
+#         """
+#         Args:
+#           df: a DataFrame with at least ['file_path', 'label_idx'] columns
+#           transform: torchvision transforms (augmentations) to apply
+#         """
+#         self.df = df.reset_index(drop=True)
+#         self.indices = indices
+#         self.transform = transform
+#
+#     def __len__(self):
+#         return len(self.indices)
+#
+#     def __getitem__(self, idx):
+#         actual_idx = self.indices[idx]
+#         row = self.df.iloc[actual_idx]
+#         img_path = "cfp_images/" + row["file_path"]
+#         label = row["label_idx"]
+#
+#         # load the image
+#         image = Image.open(img_path).convert("RGB")
+#
+#         # apply transforms
+#         if self.transform:
+#             image = self.transform(image)
+#
+#         return image, label
 
-class IndexLabelDataset(Dataset):
-    def __init__(self, df):
-        self.df = df
 
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        label = row["label_idx"]
-        return idx, label  # index is the key here
-
-
-# Defining a dataloader class, which returns image and its label
 class RetinopathyDataset(Dataset):
-    def __init__(self, df, indices, transform=None):
-        """
-        Args:
-          df: a DataFrame with at least ['file_path', 'label_idx'] columns
-          transform: torchvision transforms (augmentations) to apply
-        """
-        self.df = df.reset_index(drop=True)
-        self.indices = indices
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.indices)
-
-    def __getitem__(self, idx):
-        actual_idx = self.indices[idx]
-        row = self.df.iloc[actual_idx]
-        img_path = "cfp_images/" + row["file_path"]
-        label = row["label_idx"]
-
-        # load the image
-        image = Image.open(img_path).convert("RGB")
-
-        # apply transforms
-        if self.transform:
-            image = self.transform(image)
-
-        return image, label
-
-
-class RetinopathyTestDataset(Dataset):
     def __init__(self, df, transform=None):
         """
         Args:
@@ -90,7 +89,7 @@ def get_ai_readi(
     df = pd.read_csv(tsv_path, sep="\t")
 
     train_df = df[df["partition"] == "train"].copy()
-    test_df = df[df["partition"] == "test"].copy()
+    test_df = df[df["partition"] == "val"].copy()
 
     unique_classes = sorted(train_df["device"].unique())
     class_to_idx = {cls_name: idx for idx, cls_name in enumerate(unique_classes)}
@@ -118,33 +117,28 @@ def get_ai_readi(
     )
 
     # Use a lightweight dataset for partitioning (no image loading)
-    index_label_dataset = IndexLabelDataset(train_df)
-    print(index_label_dataset)
+    # index_label_dataset = IndexLabelDataset(train_df)
+    # print(index_label_dataset)
 
     # Run existing partitioning function
     if partition_strategy == "iid":
-        partitioned_datasets = iid_partition(index_label_dataset, num_clients)
+        partitioned_datasets = iid_partition_df(train_df, num_clients)
     elif partition_strategy == "class_noniid":
-        partitioned_datasets = class_noniid_partition(
-            index_label_dataset, num_clients, Cmin={1: 4, 2: 2, 3: 2, "none": 1}, Cmax={1: 4, 2: 4, 3: 3, "none": 4}, **kwargs
+        partitioned_datasets = class_noniid_partition_df(
+            train_df, num_clients, label_col="label_idx", Cmin={1: 4, 2: 2, 3: 2, "none": 1},
+            Cmax={1: 4, 2: 4, 3: 3, "none": 4}, **kwargs
         )
     elif partition_strategy == "dirichlet_noniid":
-        partitioned_datasets = dirichlet_noniid_partition(
-            index_label_dataset, num_clients, **kwargs
+        partitioned_datasets = dirichlet_noniid_partition_df(
+            train_df, num_clients, label_col="label_idx", **kwargs
         )
     else:
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
-    client_partition = partitioned_datasets[client_id]
-    partition_indices = [
-        sample[0] for sample in client_partition
-    ]  # sample is (index, label)
-    partition_indices = [int(i.item()) for i in partition_indices]
-
     client_train_dataset = RetinopathyDataset(
-        train_df, partition_indices, transform=train_transform
+        partitioned_datasets[client_id], transform=train_transform
     )
-    client_test_dataset = RetinopathyTestDataset(test_df, transform=val_transform)
+    client_test_dataset = RetinopathyDataset(test_df, transform=val_transform)
     print(len(client_train_dataset))
     print(len(client_test_dataset))
 
