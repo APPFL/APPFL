@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from torch.utils import data
 from typing import List, Optional
 from .deprecation import deprecated
+import pandas as pd
 
 
 class Dataset(data.Dataset):
@@ -151,7 +152,7 @@ def class_noniid_partition(
     output_dirname: Optional[str] = None,
     output_filename: Optional[str] = None,
     seed: int = 42,
-    num_of_classes = 10,
+    num_of_classes=10,
     Cmin=None,
     Cmax=None,
     **kwargs,
@@ -396,8 +397,8 @@ def dirichlet_noniid_partition(
 
 
 def iid_partition_df(
-        train_df: pd.DataFrame,
-        num_clients: int,
+    train_df: pd.DataFrame,
+    num_clients: int,
 ) -> List[pd.DataFrame]:
     """
     Partition a pandas DataFrame into `num_clients` chunks in an IID manner.
@@ -419,16 +420,16 @@ def iid_partition_df(
 
 
 def class_noniid_partition_df(
-        train_df: pd.DataFrame,
-        num_clients: int,
-        label_col: str = "label",
-        visualization: bool = False,
-        output_dirname: Optional[str] = None,
-        output_filename: Optional[str] = None,
-        seed: int = 42,
-        Cmin=None,
-        Cmax=None,
-        **kwargs,
+    train_df: pd.DataFrame,
+    num_clients: int,
+    label_col: str = "label",
+    visualization: bool = False,
+    output_dirname: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    seed: int = 42,
+    Cmin=None,
+    Cmax=None,
+    **kwargs,
 ) -> List[pd.DataFrame]:
     """
     Partition a pandas DataFrame into `num_clients` in a non-IID manner by
@@ -472,7 +473,9 @@ def class_noniid_partition_df(
             cmin = Cmin[num_clients] if num_clients in Cmin else Cmin["none"]
             cmax = Cmax[num_clients] if num_clients in Cmax else Cmax["none"]
             cnum = np.random.randint(cmin, cmax + 1)
-            classes = np.random.permutation(labels)[:cnum]  # pick random classes for this client
+            classes = np.random.permutation(labels)[
+                :cnum
+            ]  # pick random classes for this client
             client_classes[i] = classes
             for cls in classes:
                 class_partition[cls] = class_partition.get(cls, 0) + 1
@@ -506,7 +509,11 @@ def class_noniid_partition_df(
 
     for i in range(num_clients):
         for cls in client_classes[i]:
-            start_idx = 0 if partition_pointer[cls] == 0 else partition_endpoints[cls][partition_pointer[cls] - 1]
+            start_idx = (
+                0
+                if partition_pointer[cls] == 0
+                else partition_endpoints[cls][partition_pointer[cls] - 1]
+            )
             end_idx = partition_endpoints[cls][partition_pointer[cls]]
 
             sub_indices = label_indices[cls][start_idx:end_idx]
@@ -536,16 +543,16 @@ def class_noniid_partition_df(
 
 
 def dirichlet_noniid_partition_df(
-        train_df: pd.DataFrame,
-        num_clients: int,
-        label_col: str = "label",
-        visualization: bool = False,
-        output_dirname: Optional[str] = None,
-        output_filename: Optional[str] = None,
-        alpha1: float = 8,
-        alpha2: float = 0.5,
-        seed: int = 42,
-        **kwargs,
+    train_df: pd.DataFrame,
+    num_clients: int,
+    label_col: str = "label",
+    visualization: bool = False,
+    output_dirname: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    alpha1: float = 8,
+    alpha2: float = 0.5,
+    seed: int = 42,
+    **kwargs,
 ) -> List[pd.DataFrame]:
     """
     Partition a pandas DataFrame into `num_clients` using two Dirichlet distributions:
@@ -590,7 +597,9 @@ def dirichlet_noniid_partition_df(
 
     # Dirichlet samples:
     weights = np.random.dirichlet(q1)  # how to split total # of elements among clients
-    individuals = np.random.dirichlet(q2, num_clients)  # how to split each class among clients
+    individuals = np.random.dirichlet(
+        q2, num_clients
+    )  # how to split each class among clients
 
     classes_samples = [len(label_indices[label]) for label in labels]
 
@@ -601,8 +610,7 @@ def dirichlet_noniid_partition_df(
             # This line effectively normalizes so that sum over i for individuals[i][j]
             # matches the fraction of class j in the entire dataset
             normalized_portions[i][j] = (
-                    weights[i] * individuals[i][j]
-                    / np.dot(weights, individuals[:, j])
+                weights[i] * individuals[i][j] / np.dot(weights, individuals[:, j])
             )
 
     sample_matrix = np.multiply(
@@ -624,7 +632,9 @@ def dirichlet_noniid_partition_df(
 
     # Construct final splits
     num_elements = sample_matrix.astype(np.int32).T  # shape: (#clients, #classes)
-    sum_elements = np.cumsum(num_elements, axis=0)  # cumulative sum down each column (class)
+    sum_elements = np.cumsum(
+        num_elements, axis=0
+    )  # cumulative sum down each column (class)
 
     client_dataframes = []
     for i in range(num_clients):

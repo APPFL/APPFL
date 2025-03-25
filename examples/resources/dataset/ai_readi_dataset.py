@@ -125,8 +125,12 @@ def get_ai_readi(
         partitioned_datasets = iid_partition_df(train_df, num_clients)
     elif partition_strategy == "class_noniid":
         partitioned_datasets = class_noniid_partition_df(
-            train_df, num_clients, label_col="label_idx", Cmin={1: 4, 2: 2, 3: 2, "none": 1},
-            Cmax={1: 4, 2: 4, 3: 3, "none": 4}, **kwargs
+            train_df,
+            num_clients,
+            label_col="label_idx",
+            Cmin={1: 4, 2: 2, 3: 2, "none": 1},
+            Cmax={1: 4, 2: 4, 3: 3, "none": 4},
+            **kwargs,
         )
     elif partition_strategy == "dirichlet_noniid":
         partitioned_datasets = dirichlet_noniid_partition_df(
