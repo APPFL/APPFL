@@ -1,12 +1,8 @@
 import os
-import torch
 from torch.utils.data import Dataset
-import torchvision
 import torchvision.transforms as T
-from typing import List
 from PIL import Image
 from appfl.misc.data import (
-    Dataset,
     iid_partition,
     class_noniid_partition,
     dirichlet_noniid_partition,
@@ -47,7 +43,6 @@ class RetinopathyDataset(Dataset):
         row = self.df.iloc[actual_idx]
         img_path = "cfp_images/" + row["file_path"]
         label = row["label_idx"]
-        dm_severity = row["dm_severity"]
 
         # load the image
         image = Image.open(img_path).convert("RGB")
@@ -87,10 +82,12 @@ class RetinopathyTestDataset(Dataset):
         return image, label
 
 
-def get_ai_readi(num_clients: int, client_id: int, partition_strategy: str = "iid", **kwargs):
+def get_ai_readi(
+    num_clients: int, client_id: int, partition_strategy: str = "iid", **kwargs
+):
     print(os.getcwd())
     tsv_path = os.getcwd() + "/cfp_images/labels.tsv"
-    df = pd.read_csv(tsv_path, sep='\t')
+    df = pd.read_csv(tsv_path, sep="\t")
 
     train_df = df[df["partition"] == "train"].copy()
     test_df = df[df["partition"] == "test"].copy()
@@ -100,19 +97,25 @@ def get_ai_readi(num_clients: int, client_id: int, partition_strategy: str = "ii
     train_df["label_idx"] = train_df["device"].map(class_to_idx)
     test_df["label_idx"] = test_df["device"].map(class_to_idx)
 
-    train_transform = T.Compose([
-        T.Resize((224, 224)),  # Resize image to 224x224 pixels
-        T.RandomHorizontalFlip(p=0.5),  # Randomly flip images horizontally
-        T.RandomRotation(degrees=15),  # Randomly rotate images
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize using ImageNet stats
-    ])
+    train_transform = T.Compose(
+        [
+            T.Resize((224, 224)),  # Resize image to 224x224 pixels
+            T.RandomHorizontalFlip(p=0.5),  # Randomly flip images horizontally
+            T.RandomRotation(degrees=15),  # Randomly rotate images
+            T.ToTensor(),
+            T.Normalize(
+                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+            ),  # Normalize using ImageNet stats
+        ]
+    )
 
-    val_transform = T.Compose([
-        T.Resize((224, 224)),
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    val_transform = T.Compose(
+        [
+            T.Resize((224, 224)),
+            T.ToTensor(),
+            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
 
     # Use a lightweight dataset for partitioning (no image loading)
     index_label_dataset = IndexLabelDataset(train_df)
@@ -122,17 +125,25 @@ def get_ai_readi(num_clients: int, client_id: int, partition_strategy: str = "ii
     if partition_strategy == "iid":
         partitioned_datasets = iid_partition(index_label_dataset, num_clients)
     elif partition_strategy == "class_noniid":
-        partitioned_datasets = class_noniid_partition(index_label_dataset, num_clients, **kwargs)
+        partitioned_datasets = class_noniid_partition(
+            index_label_dataset, num_clients, **kwargs
+        )
     elif partition_strategy == "dirichlet_noniid":
-        partitioned_datasets = dirichlet_noniid_partition(index_label_dataset, num_clients, **kwargs)
+        partitioned_datasets = dirichlet_noniid_partition(
+            index_label_dataset, num_clients, **kwargs
+        )
     else:
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     client_partition = partitioned_datasets[client_id]
-    partition_indices = [sample[0] for sample in client_partition]  # sample is (index, label)
+    partition_indices = [
+        sample[0] for sample in client_partition
+    ]  # sample is (index, label)
     partition_indices = [int(i.item()) for i in partition_indices]
 
-    client_train_dataset = RetinopathyDataset(train_df, partition_indices, transform=train_transform)
+    client_train_dataset = RetinopathyDataset(
+        train_df, partition_indices, transform=train_transform
+    )
     client_test_dataset = RetinopathyTestDataset(test_df, transform=val_transform)
     print(len(client_train_dataset))
     print(len(client_test_dataset))

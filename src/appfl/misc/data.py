@@ -151,8 +151,8 @@ def class_noniid_partition(
     output_dirname: Optional[str] = None,
     output_filename: Optional[str] = None,
     seed: int = 42,
-    Cmin = None,
-    Cmax = None,
+    Cmin=None,
+    Cmax=None,
     **kwargs,
 ):
     """
