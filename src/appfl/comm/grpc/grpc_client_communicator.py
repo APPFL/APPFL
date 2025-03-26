@@ -275,6 +275,7 @@ class GRPCClientCommunicator:
             and self.kwargs["colab_connector_configs"]["enable"]
         ):
             from appfl.comm.utils.colab_connector import GoogleColabConnector
+
             self.use_colab_connector = True
             self.colab_connector = GoogleColabConnector(
                 self.kwargs["colab_connector_configs"].get(

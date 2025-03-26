@@ -362,6 +362,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             )
         ):
             from appfl.comm.utils.colab_connector import GoogleColabConnector
+
             self.use_colab_connector = True
             self.colab_connector = GoogleColabConnector(
                 server_agent_config.server_configs.comm_configs.colab_connector_configs.get(
