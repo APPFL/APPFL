@@ -25,3 +25,6 @@ comm_configs:
     server_uri: localhost:50051
     max_message_size: 1048576
     use_ssl: False
+    colab_connector_configs:
+      enable: True
+      model_path: "/content/drive/MyDrive/AVRO/client1"

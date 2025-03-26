@@ -24,6 +24,7 @@ from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 from .utils import proto_to_databuffer, serialize_model, deserialize_model
 from appfl.comm.utils.colab_connector import GoogleColabConnector
+import time
 
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
@@ -109,7 +110,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 model = self.proxystore.proxy(model)
 
             if self.use_colab_connector:
-                model = self.colab_connector.upload(model, "global_model")
+                model = self.colab_connector.upload(
+                    model, f"init_global_model{int(time.time())}.pt"
+                )
 
             model_serialized = serialize_model(model)
             response_proto = GetGlobalModelRespone(
@@ -161,6 +164,11 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if meta_data.get("_use_proxystore", False):
                 local_model_proxy = deserialize_model(local_model)
                 local_model = extract(local_model_proxy)
+            if meta_data.get("_use_colab_connector", False):
+                local_model = deserialize_model(local_model)
+                local_model = self.colab_connector.load_model(
+                    local_model["model_drive_path"]
+                )
             if len(meta_data) > 0:
                 self.logger.info(
                     f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
@@ -175,6 +183,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 meta_data = yaml.dump({})
             if self.use_proxystore:
                 global_model = self.proxystore.proxy(global_model)
+            if self.use_colab_connector:
+                global_model = self.colab_connector.upload(
+                    global_model, f"global_model{int(time.time())}.pt"
+                )
             global_model_serialized = serialize_model(global_model)
             status = (
                 ServerStatus.DONE

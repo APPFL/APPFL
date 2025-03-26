@@ -23,6 +23,8 @@ from appfl.comm.grpc import (
 from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
+from appfl.comm.utils.colab_connector import GoogleColabConnector
+import time
 
 
 class GRPCClientCommunicator:
@@ -71,6 +73,7 @@ class GRPCClientCommunicator:
         self._use_authenticator = use_authenticator
         self.kwargs = kwargs
         self._load_proxystore()
+        self._load_google_drive()
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -120,9 +123,10 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
-        print(model)
         if isinstance(model, Proxy):
             model = extract(model)
+        if isinstance(model, dict) and "model_drive_path" in model.keys():
+            model = self.colab_connector.load_model(model["model_drive_path"])
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -145,6 +149,11 @@ class GRPCClientCommunicator:
         if self.use_proxystore:
             local_model = self.proxystore.proxy(local_model)
             kwargs["_use_proxystore"] = True
+        if self.colab_connector:
+            local_model = self.colab_connector.upload(
+                local_model, f"local_model_epoch{int(time.time())}.pt"
+            )
+            kwargs["_use_colab_connector"] = True
         if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
             del kwargs["_client_id"]
@@ -176,6 +185,8 @@ class GRPCClientCommunicator:
         model = deserialize_model(response.global_model)
         if isinstance(model, Proxy):
             model = extract(model)
+        if isinstance(model, dict) and "model_drive_path" in model.keys():
+            model = self.colab_connector.load_model(model["model_drive_path"])
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -255,4 +266,18 @@ class GRPCClientCommunicator:
                     self.kwargs["proxystore_configs"]["connector_type"],
                     self.kwargs["proxystore_configs"]["connector_configs"],
                 ),
+            )
+
+    def _load_google_drive(self) -> None:
+        self.use_colab_connector = False
+        if (
+            "colab_connector_configs" in self.kwargs
+            and "enable" in self.kwargs["colab_connector_configs"]
+            and self.kwargs["colab_connector_configs"]["enable"]
+        ):
+            self.use_colab_connector = True
+            self.colab_connector = GoogleColabConnector(
+                self.kwargs["colab_connector_configs"].get(
+                    "model_path", "/content/drive/My Drive/APPFL"
+                )
             )

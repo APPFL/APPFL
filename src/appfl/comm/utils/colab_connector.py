@@ -32,6 +32,37 @@ class GoogleColabConnector:
         print(f"PyTorch model saved to: {full_path}")
         return {"model_drive_path": full_path, "drive_path": self.drive_path}
 
+    def load_model(self, filename, model_class=None, load_state_dict=False):
+        """
+        Load a PyTorch model or state_dict from the drive path.
+
+        Args:
+            filename (str): The name of the file in the drive directory.
+            model_class (nn.Module, optional): The class of the model (required if loading state_dict).
+            load_state_dict (bool): If True, loads state_dict into model_class.
+
+        Returns:
+            nn.Module: The loaded model.
+        """
+        full_path = os.path.join(self.drive_path, filename)
+        if not os.path.exists(full_path):
+            raise FileNotFoundError(f"No such file: {full_path}")
+
+        if load_state_dict:
+            if model_class is None:
+                raise ValueError(
+                    "model_class must be provided when loading state_dict."
+                )
+            model = model_class()
+            state_dict = torch.load(full_path, map_location="cpu")
+            model.load_state_dict(state_dict)
+            print(f"State dict loaded into {model_class.__name__} from: {full_path}")
+        else:
+            model = torch.load(full_path, map_location="cpu")
+            print(f"Full model loaded from: {full_path}")
+
+        return model
+
     def __getstate__(self):
         """Serialize only the drive_path."""
         return {"drive_path": self.drive_path}
