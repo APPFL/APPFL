@@ -45,12 +45,8 @@ class GoogleColabConnector:
         Returns:
             nn.Module: The loaded model.
         """
-        # drive.flush_and_unmount()  # unmount
-        # drive.mount("/content/drive")  # remount
         full_path = os.path.join(self.drive_path, filename)
-        # if not os.path.exists(full_path):
-        #     raise FileNotFoundError(f"No such file: {full_path}")
-
+        # waits for the model to sync to google drive
         timeout = 120
         start_time = time.time()
 
