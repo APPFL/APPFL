@@ -23,7 +23,6 @@ from appfl.comm.grpc import (
 from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
-from appfl.comm.utils.colab_connector import GoogleColabConnector
 import time
 
 
@@ -275,6 +274,7 @@ class GRPCClientCommunicator:
             and "enable" in self.kwargs["colab_connector_configs"]
             and self.kwargs["colab_connector_configs"]["enable"]
         ):
+            from appfl.comm.utils.colab_connector import GoogleColabConnector
             self.use_colab_connector = True
             self.colab_connector = GoogleColabConnector(
                 self.kwargs["colab_connector_configs"].get(

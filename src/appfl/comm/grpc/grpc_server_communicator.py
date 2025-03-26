@@ -23,7 +23,6 @@ from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 from .utils import proto_to_databuffer, serialize_model, deserialize_model
-from appfl.comm.utils.colab_connector import GoogleColabConnector
 import time
 
 
@@ -362,6 +361,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 "enable", False
             )
         ):
+            from appfl.comm.utils.colab_connector import GoogleColabConnector
             self.use_colab_connector = True
             self.colab_connector = GoogleColabConnector(
                 server_agent_config.server_configs.comm_configs.colab_connector_configs.get(
