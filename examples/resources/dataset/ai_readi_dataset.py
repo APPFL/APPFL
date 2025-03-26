@@ -56,7 +56,9 @@ def get_ai_readi(
     class_to_idx = {cls_name: idx for idx, cls_name in enumerate(unique_classes)}
     train_df["label_idx"] = train_df[label_col].map(class_to_idx)
     test_df["label_idx"] = test_df[label_col].map(class_to_idx)
+    # down sampling for faster training time
     train_df = train_df.sample(frac=0.5, random_state=42).reset_index(drop=True)
+    test_df = test_df.sample(frac=0.5, random_state=42).reset_index(drop=True)
 
     train_transform = T.Compose(
         [
