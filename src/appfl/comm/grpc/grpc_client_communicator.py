@@ -278,6 +278,6 @@ class GRPCClientCommunicator:
             self.use_colab_connector = True
             self.colab_connector = GoogleColabConnector(
                 self.kwargs["colab_connector_configs"].get(
-                    "model_path", "/content/drive/My Drive/APPFL"
+                    "model_path", "/content/drive/MyDrive/APPFL"
                 )
             )

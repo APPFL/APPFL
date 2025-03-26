@@ -365,6 +365,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             self.use_colab_connector = True
             self.colab_connector = GoogleColabConnector(
                 server_agent_config.server_configs.comm_configs.colab_connector_configs.get(
-                    "model_path", "/content/drive/My Drive/APPFL"
+                    "model_path", "/content/drive/MyDrive/APPFL"
                 )
             )
