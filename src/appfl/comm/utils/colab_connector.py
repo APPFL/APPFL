@@ -1,6 +1,7 @@
 import os
 import torch
 from google.colab import drive
+import time
 
 
 class GoogleColabConnector:
@@ -44,9 +45,21 @@ class GoogleColabConnector:
         Returns:
             nn.Module: The loaded model.
         """
+        drive.flush_and_unmount()  # unmount
+        drive.mount("/content/drive")  # remount
         full_path = os.path.join(self.drive_path, filename)
-        if not os.path.exists(full_path):
-            raise FileNotFoundError(f"No such file: {full_path}")
+        # if not os.path.exists(full_path):
+        #     raise FileNotFoundError(f"No such file: {full_path}")
+
+        timeout = 90
+        start_time = time.time()
+
+        while not os.path.exists(full_path):
+            if time.time() - start_time > timeout:
+                raise TimeoutError(
+                    f"File not found after {timeout} seconds: {full_path}"
+                )
+            time.sleep(10)
 
         if load_state_dict:
             if model_class is None:

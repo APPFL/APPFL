@@ -65,4 +65,4 @@ server_configs:
 
     colab_connector_configs:
       enable: True
-      model_path: "/content/drive/My Drive/AVRO"
+      model_path: "/content/drive/MyDrive/AVRO"
