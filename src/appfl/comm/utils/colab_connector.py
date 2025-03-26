@@ -45,13 +45,13 @@ class GoogleColabConnector:
         Returns:
             nn.Module: The loaded model.
         """
-        drive.flush_and_unmount()  # unmount
-        drive.mount("/content/drive")  # remount
+        # drive.flush_and_unmount()  # unmount
+        # drive.mount("/content/drive")  # remount
         full_path = os.path.join(self.drive_path, filename)
         # if not os.path.exists(full_path):
         #     raise FileNotFoundError(f"No such file: {full_path}")
 
-        timeout = 90
+        timeout = 120
         start_time = time.time()
 
         while not os.path.exists(full_path):
@@ -59,7 +59,7 @@ class GoogleColabConnector:
                 raise TimeoutError(
                     f"File not found after {timeout} seconds: {full_path}"
                 )
-            time.sleep(10)
+            time.sleep(5)
 
         if load_state_dict:
             if model_class is None:
