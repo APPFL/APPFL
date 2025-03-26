@@ -9,49 +9,6 @@ from appfl.misc.data import (
 )
 import pandas as pd
 
-# class IndexLabelDataset(Dataset):
-#     def __init__(self, df):
-#         self.df = df
-#
-#     def __len__(self):
-#         return len(self.df)
-#
-#     def __getitem__(self, idx):
-#         row = self.df.iloc[idx]
-#         label = row["label_idx"]
-#         return idx, label  # index is the key here
-#
-#
-# # Defining a dataloader class, which returns image and its label
-# class RetinopathyDataset(Dataset):
-#     def __init__(self, df, indices, transform=None):
-#         """
-#         Args:
-#           df: a DataFrame with at least ['file_path', 'label_idx'] columns
-#           transform: torchvision transforms (augmentations) to apply
-#         """
-#         self.df = df.reset_index(drop=True)
-#         self.indices = indices
-#         self.transform = transform
-#
-#     def __len__(self):
-#         return len(self.indices)
-#
-#     def __getitem__(self, idx):
-#         actual_idx = self.indices[idx]
-#         row = self.df.iloc[actual_idx]
-#         img_path = "cfp_images/" + row["file_path"]
-#         label = row["label_idx"]
-#
-#         # load the image
-#         image = Image.open(img_path).convert("RGB")
-#
-#         # apply transforms
-#         if self.transform:
-#             image = self.transform(image)
-#
-#         return image, label
-
 
 class RetinopathyDataset(Dataset):
     def __init__(self, df, transform=None):
@@ -119,10 +76,6 @@ def get_ai_readi(
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
     )
-
-    # Use a lightweight dataset for partitioning (no image loading)
-    # index_label_dataset = IndexLabelDataset(train_df)
-    # print(index_label_dataset)
 
     # Run existing partitioning function
     if partition_strategy == "iid":

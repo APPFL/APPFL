@@ -228,7 +228,7 @@ def class_noniid_partition(
 
         # Partition the samples from the same class to different lengths
         partitions = class_partition[label]
-        partition_lengths = np.abs(np.random.normal(num_of_classes, 3, size=partitions))
+        partition_lengths = np.abs(np.random.normal(10, 3, size=partitions))
 
         # Scale the lengths so they add to the total length
         partition_lengths = partition_lengths / np.sum(partition_lengths) * total_size
