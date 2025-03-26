@@ -82,7 +82,11 @@ class RetinopathyDataset(Dataset):
 
 
 def get_ai_readi(
-    num_clients: int, client_id: int, partition_strategy: str = "iid", **kwargs
+    num_clients: int,
+    client_id: int,
+    partition_strategy: str = "iid",
+    label_col: str = "device",
+    **kwargs,
 ):
     print(os.getcwd())
     tsv_path = os.getcwd() + "/cfp_images/labels.tsv"
@@ -91,10 +95,10 @@ def get_ai_readi(
     train_df = df[df["partition"] == "train"].copy()
     test_df = df[df["partition"] == "val"].copy()
 
-    unique_classes = sorted(train_df["device"].unique())
+    unique_classes = sorted(train_df[label_col].unique())
     class_to_idx = {cls_name: idx for idx, cls_name in enumerate(unique_classes)}
-    train_df["label_idx"] = train_df["device"].map(class_to_idx)
-    test_df["label_idx"] = test_df["device"].map(class_to_idx)
+    train_df["label_idx"] = train_df[label_col].map(class_to_idx)
+    test_df["label_idx"] = test_df[label_col].map(class_to_idx)
 
     train_transform = T.Compose(
         [
