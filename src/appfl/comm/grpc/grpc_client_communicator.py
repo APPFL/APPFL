@@ -120,6 +120,7 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         model = deserialize_model(response.global_model)
+        print(model)
         if isinstance(model, Proxy):
             model = extract(model)
         meta_data = deserialize_yaml(

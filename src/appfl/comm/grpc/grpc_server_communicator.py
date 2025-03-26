@@ -23,6 +23,7 @@ from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 from .utils import proto_to_databuffer, serialize_model, deserialize_model
+from appfl.comm.utils.colab_connector import GoogleColabConnector
 
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
@@ -38,6 +39,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.logger = logger if logger is not None else self._default_logger()
         self.kwargs = kwargs
         self._load_proxystore(server_agent.server_agent_config)
+        self._load_google_drive(server_agent.server_agent_config)
 
     def GetConfiguration(self, request, context):
         """
@@ -105,6 +107,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 meta_data = yaml.dump({})
             if self.use_proxystore:
                 model = self.proxystore.proxy(model)
+
+            if self.use_colab_connector:
+                model = self.colab_connector.upload(model, "global_model")
+
             model_serialized = serialize_model(model)
             response_proto = GetGlobalModelRespone(
                 header=ServerHeader(status=ServerStatus.RUN),
@@ -330,4 +336,23 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             )
             self.logger.info(
                 f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
+            )
+
+    def _load_google_drive(self, server_agent_config) -> None:
+        self.use_colab_connector = False
+        if (
+            hasattr(server_agent_config.server_configs, "comm_configs")
+            and hasattr(
+                server_agent_config.server_configs.comm_configs,
+                "colab_connector_configs",
+            )
+            and server_agent_config.server_configs.comm_configs.colab_connector_configs.get(
+                "enable", False
+            )
+        ):
+            self.use_colab_connector = True
+            self.colab_connector = GoogleColabConnector(
+                server_agent_config.server_configs.comm_configs.colab_connector_configs.get(
+                    "model_path", "/content/drive/My Drive/APPFL"
+                )
             )
