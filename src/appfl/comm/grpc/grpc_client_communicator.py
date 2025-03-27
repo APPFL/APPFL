@@ -148,7 +148,7 @@ class GRPCClientCommunicator:
         if self.use_proxystore:
             local_model = self.proxystore.proxy(local_model)
             kwargs["_use_proxystore"] = True
-        if self.colab_connector:
+        if self.use_colab_connector:
             local_model = self.colab_connector.upload(
                 local_model, f"local_model_epoch{int(time.time())}.pt"
             )
@@ -269,6 +269,7 @@ class GRPCClientCommunicator:
 
     def _load_google_drive(self) -> None:
         self.use_colab_connector = False
+        self.colab_connector = None
         if (
             "colab_connector_configs" in self.kwargs
             and "enable" in self.kwargs["colab_connector_configs"]

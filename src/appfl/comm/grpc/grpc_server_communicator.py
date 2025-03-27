@@ -351,6 +351,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
 
     def _load_google_drive(self, server_agent_config) -> None:
         self.use_colab_connector = False
+        self.colab_connector = None
         if (
             hasattr(server_agent_config.server_configs, "comm_configs")
             and hasattr(
