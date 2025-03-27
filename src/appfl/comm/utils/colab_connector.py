@@ -1,7 +1,7 @@
 import os
 import torch
-from google.colab import drive
 import time
+from google.colab import drive
 
 
 class GoogleColabConnector:

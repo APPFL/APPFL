@@ -1,4 +1,5 @@
 import grpc
+import time
 import yaml
 from .grpc_communicator_pb2 import (
     ClientHeader,
@@ -23,7 +24,6 @@ from appfl.comm.grpc import (
 from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
-import time
 
 
 class GRPCClientCommunicator:

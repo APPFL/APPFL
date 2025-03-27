@@ -45,7 +45,6 @@ def get_ai_readi(
     label_col: str = "device",
     **kwargs,
 ):
-    print(os.getcwd())
     tsv_path = os.getcwd() + "/cfp_images/labels.tsv"
     df = pd.read_csv(tsv_path, sep="\t")
 
@@ -103,7 +102,5 @@ def get_ai_readi(
         partitioned_datasets[client_id], transform=train_transform
     )
     client_test_dataset = RetinopathyDataset(test_df, transform=val_transform)
-    print(len(client_train_dataset))
-    print(len(client_test_dataset))
 
     return client_train_dataset, client_test_dataset

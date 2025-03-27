@@ -1,4 +1,5 @@
 import grpc
+import time
 import yaml
 import pprint
 import logging
@@ -23,7 +24,6 @@ from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 from .utils import proto_to_databuffer, serialize_model, deserialize_model
-import time
 
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
