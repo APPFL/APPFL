@@ -6,6 +6,7 @@ from appfl.misc.data import (
     iid_partition_df,
     class_noniid_partition_df,
     dirichlet_noniid_partition_df,
+    column_based_partition_df,
 )
 import pandas as pd
 
@@ -43,8 +44,13 @@ def get_ai_readi(
     client_id: int,
     partition_strategy: str = "iid",
     label_col: str = "device",
+    partition_col: str = None,
     **kwargs,
 ):
+    """
+    It expects data to be in working directory {WORKING_DIR}/cfp_images
+    Note: there should be a labels.tsv in the data directory mentioned above
+    """
     tsv_path = os.getcwd() + "/cfp_images/labels.tsv"
     df = pd.read_csv(tsv_path, sep="\t")
 
@@ -94,6 +100,14 @@ def get_ai_readi(
     elif partition_strategy == "dirichlet_noniid":
         partitioned_datasets = dirichlet_noniid_partition_df(
             train_df, num_clients, label_col="label_idx", **kwargs
+        )
+    elif partition_strategy == "column_based":
+        column_based_partition_df(
+            train_df,
+            num_clients,
+            label_col="label_idx",
+            partition_col=partition_col,
+            **kwargs,
         )
     else:
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")

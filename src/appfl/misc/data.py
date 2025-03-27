@@ -11,6 +11,7 @@ from torch.utils import data
 from typing import List, Optional
 from .deprecation import deprecated
 import pandas as pd
+import random
 
 
 class Dataset(data.Dataset):
@@ -648,6 +649,109 @@ def dirichlet_noniid_partition_df(
         client_dataframes.append(sub_df)
 
     return client_dataframes
+
+
+def column_based_partition_df(
+    train_df: pd.DataFrame,
+    num_clients: int,
+    label_col: str,
+    partition_col: str,
+    visualization: bool = False,
+    output_dirname: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    random_seed: Optional[int] = 42,
+    **kwargs,
+) -> List[pd.DataFrame]:
+    """
+    Partition a dataframe into a list of dataframes based on the unique values in `partition_col`.
+    If #classes >= #clients, distribute classes across clients as evenly as possible.
+    If #classes < #clients, split the largest partition (by number of rows) repeatedly
+    until we reach #clients partitions or cannot split any more.
+
+    Args:
+        :param train_df: the training DataFrame
+        :param num_clients: number of clients
+        :param label_col: the name of the label column
+        :param partition_col (str): The column containing the class or partition labels.
+        :param visualization: whether to visualize the data distribution among clients
+        :param output_dirname: the directory to save the plot (if visualizing)
+        :param output_filename: the filename to save the plot (if visualizing)
+        :param random_seed (int, optional): If provided, sets a seed for reproducible random splitting.
+        **kwargs: Additional keyword arguments for future extensibility.
+
+    Returns:
+        List[pd.DataFrame]: A list of dataframes, each corresponding to one client's partition.
+    """
+    if random_seed is not None:
+        random.seed(random_seed)
+
+    # group by class, one partition per unique class initially
+    grouped = train_df.groupby(partition_col)
+    partitions = [group.copy() for _, group in grouped]
+    unique_classes = sorted(train_df[partition_col].unique())
+    num_partitions = len(partitions)
+
+    if num_partitions >= num_clients:
+        # assign classes as evenly
+        base_classes_per_client = num_partitions // num_clients
+        remainder = num_partitions % num_clients
+
+        client_dfs = []
+        current_idx = 0
+        for i in range(num_clients):
+            c_count = base_classes_per_client + (1 if i < remainder else 0)
+            if c_count == 0:
+                client_dfs.append(pd.DataFrame(columns=train_df.columns))
+                continue
+            these_classes = unique_classes[current_idx : current_idx + c_count]
+            current_idx += c_count
+            client_df = train_df[train_df[partition_col].isin(these_classes)].copy()
+            client_dfs.append(client_df)
+
+    else:
+        # split the largest partitions until we reach #clients or can't split further
+        while len(partitions) < num_clients:
+            largest_idx = max(range(len(partitions)), key=lambda i: len(partitions[i]))
+            largest_df = partitions[largest_idx]
+            size = len(largest_df)
+            if size <= 1:
+                break
+            split_size = random.randint(1, size - 1)
+            subset_a = largest_df.sample(n=split_size, replace=False, random_state=None)
+            subset_b = largest_df.drop(subset_a.index)
+            partitions.pop(largest_idx)
+            partitions.append(subset_a)
+            partitions.append(subset_b)
+
+        # We assign each partition to a different client
+        client_dfs = []
+        for i in range(num_clients):
+            if i < len(partitions):
+                client_dfs.append(partitions[i])
+            else:
+                client_dfs.append(pd.DataFrame(columns=train_df.columns))
+
+    if visualization:
+        all_unique_classes = sorted(train_df[partition_col].unique())
+        num_classes = len(all_unique_classes)
+        sample_matrix = np.zeros((num_classes, num_clients), dtype=int)
+
+        for j, df_j in enumerate(client_dfs):
+            class_counts = df_j[partition_col].value_counts()
+            for i, cls in enumerate(all_unique_classes):
+                sample_matrix[i, j] = class_counts.get(cls, 0)
+
+        classes_samples = list(sample_matrix.sum(axis=1))
+
+        plot_distribution(
+            num_clients=num_clients,
+            classes_samples=classes_samples,
+            sample_matrix=sample_matrix,
+            output_dirname=output_dirname,
+            output_filename=output_filename,
+        )
+
+    return client_dfs
 
 
 @deprecated(silent=True)
