@@ -102,7 +102,7 @@ def get_ai_readi(
             train_df, num_clients, label_col="label_idx", **kwargs
         )
     elif partition_strategy == "column_based":
-        column_based_partition_df(
+        partitioned_datasets = column_based_partition_df(
             train_df,
             num_clients,
             label_col="label_idx",
