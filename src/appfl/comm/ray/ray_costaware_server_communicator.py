@@ -88,8 +88,9 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         self.budget_updated_till = -1
         self.spinup_queue = []
 
-        thread = threading.Thread(target=self._run_async_loop, daemon=True)
-        thread.start()
+        self.stop_event = threading.Event()
+        self.monitor_thread = threading.Thread(target=self._run_async_loop, daemon=True)
+        self.monitor_thread.start()
 
     def send_task_to_all_clients(
         self,
@@ -242,6 +243,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
 
     def shutdown_all_clients(self):
         """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
+        self.stop_resource_monitor()
         self.logger.info("Shutting down all clients......")
         ray.shutdown()
         # Clean-up cloud storage
@@ -337,7 +339,9 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_id:
         """
         max_task = max(
-            self.executing_tasks, key=lambda task: task.est_finish_time, default=None
+            self.executing_tasks.values(),
+            key=lambda task: task.est_finish_time,
+            default=None,
         )
         if max_task is not None:
             max_time = max_task.est_finish_time
@@ -500,10 +504,12 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         nodes_info = state_api.list_nodes(detail=True)
         node_info = self.__get_current_client_node_info(nodes_info, client_id)
         # node start after task was submitted, it means new node was needed
-        if node_info.start_time_ms > task.start_time:
-            self.logger.info(f"Updating spinup time for client {client_id}")
+        if int(node_info.start_time_ms // 1000) > task.start_time:
             # using execution_start_time instead of node start time as we need to take all overhead in consideration for pre start
             spinup_time = int(task.task_execution_start_time) - int(task.start_time)
+            self.logger.info(
+                f"Updating spinup time for client {client_id} to {spinup_time}"
+            )
             if self.clients_info[client_id].est_spinup_time == -1:
                 self.clients_info[client_id].est_spinup_time = spinup_time
             else:
@@ -527,13 +533,24 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self._monitor())
 
+    def stop_resource_monitor(self):
+        """Stops the background resource monitoring thread."""
+        self.stop_event.set()
+        if self.monitor_thread.is_alive():
+            self.monitor_thread.join()  # Wait for the thread to exit safely
+        print("monitoring stopped.")
+
     async def _monitor(self):
-        """Deamon process that updates the budget of the clients based on usage and also spins up the clients that are scheduled"""
-        while True:
+        """Daemon process that updates the budget of the clients based on usage and also spins up the clients that are scheduled"""
+        while not self.stop_event.is_set():
             await asyncio.to_thread(self._update_budget)
             await asyncio.to_thread(self._spinup_clients)
             # TODO spin up clients
-            await asyncio.sleep(30)
+            for _ in range(30):  # Check the stop_event every second
+                if self.stop_event.is_set():
+                    return
+                time.sleep(1)
+            # await asyncio.sleep(30)
 
     def _update_budget(self):
         """It keeps the track of the time till which it has updated budget of the clients and then using the rays API checks uptime of instances and updates their respective budgets"""
@@ -544,7 +561,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         for node_info in nodes_info:
             if not node_info.is_head_node and (
                 node_info.end_time_ms == 0
-                or node_info.end_time_ms > self.budget_updated_till
+                or int(node_info.end_time_ms // 1000) > self.budget_updated_till
             ):
                 for key in node_info.resources_total.keys():
                     if key in self.client_configs.keys():
@@ -562,7 +579,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 self.logger.info(f"Client {client_id} instance is running")
             else:
                 self.clients_info[client_id].instance_alive = False
-                self.logger.info(f"Client {client_id} instance is stopped")
+                self.logger.info(f"Client {client_id} instance is not running")
 
         for client_id in client_node_info:
             for node_info in client_node_info[client_id]:
@@ -588,7 +605,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             if spinup_time >= current_time:
                 client_info = self.clients_info[client_id]
                 if not client_info.inactive and not client_info.instance_triggered:
-                    self.server_communicator.send_task_to_one_client(
+                    self.send_task_to_one_client(
                         client_id,
                         task_name="spinup",
                     )
@@ -632,7 +649,9 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
     def __update_spinup_time_on_exception(self, client_id):
         """During exception we relaunch the tasks to clients, this method makes sure that already scheduled tasks spinup times are updated in queue according to the slowest task in queue"""
         max_task = max(
-            self.executing_tasks, key=lambda task: task.est_finish_time, default=None
+            self.executing_tasks.values(),
+            key=lambda task: task.est_finish_time,
+            default=None,
         )
         # check if the slowest task is the client which had exception, if yes update spinup time for rest of the queued tasks
         if max_task is not None and max_task.client_id == client_id:
