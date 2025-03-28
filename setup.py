@@ -76,6 +76,7 @@ setuptools.setup(
         "colorama",
         "proxystore[all]",
         "ray[default]",
+        "pandas",
     ],
     extras_require={
         "dev": [
@@ -96,7 +97,6 @@ setuptools.setup(
         ],
         "examples": [
             "opencv-python",
-            "pandas",
             "pyarrow",
             "fastparquet",
             "tqdm",
