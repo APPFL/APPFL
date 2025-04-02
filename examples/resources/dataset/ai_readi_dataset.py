@@ -45,10 +45,12 @@ def get_ai_readi(
     partition_strategy: str = "iid",
     label_col: str = "device",
     partition_col: str = None,
+    sampling_factor: int = None,
     **kwargs,
 ):
     """
     It expects data to be in working directory {WORKING_DIR}/cfp_images
+    sampling_factor: 0.0 - 1.0
     Note: there should be a labels.tsv in the data directory mentioned above
     """
     tsv_path = os.getcwd() + "/cfp_images/labels.tsv"
@@ -62,8 +64,9 @@ def get_ai_readi(
     train_df["label_idx"] = train_df[label_col].map(class_to_idx)
     test_df["label_idx"] = test_df[label_col].map(class_to_idx)
     # down sampling for faster training time
-    train_df = train_df.sample(frac=0.5, random_state=42).reset_index(drop=True)
-    test_df = test_df.sample(frac=0.5, random_state=42).reset_index(drop=True)
+    if sampling_factor is not None:
+        train_df = train_df.sample(frac=sampling_factor, random_state=42).reset_index(drop=True)
+        test_df = test_df.sample(frac=sampling_factor, random_state=42).reset_index(drop=True)
 
     train_transform = T.Compose(
         [
