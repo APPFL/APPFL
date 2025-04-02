@@ -65,8 +65,12 @@ def get_ai_readi(
     test_df["label_idx"] = test_df[label_col].map(class_to_idx)
     # down sampling for faster training time
     if sampling_factor is not None:
-        train_df = train_df.sample(frac=sampling_factor, random_state=42).reset_index(drop=True)
-        test_df = test_df.sample(frac=sampling_factor, random_state=42).reset_index(drop=True)
+        train_df = train_df.sample(frac=sampling_factor, random_state=42).reset_index(
+            drop=True
+        )
+        test_df = test_df.sample(frac=sampling_factor, random_state=42).reset_index(
+            drop=True
+        )
 
     train_transform = T.Compose(
         [
