@@ -310,6 +310,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 self.proxystore.close(clear=True)
             except:  # noqa: E722
                 self.proxystore.close()
+        if self.colab_connector is not None:
+            self.colab_connector.cleanup()
 
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""

@@ -9,6 +9,7 @@ class GoogleColabConnector:
         self.drive_path = drive_path
         self._mount_drive()
         self._create_directory_if_missing()
+        self.file_paths = []
 
     def _mount_drive(self):
         """Mount Google Drive if not already mounted."""
@@ -30,6 +31,7 @@ class GoogleColabConnector:
         """
         full_path = os.path.join(self.drive_path, filename)
         torch.save(model, full_path)
+        self.file_paths.append(full_path)
         print(f"PyTorch model saved to: {full_path}")
         return {"model_drive_path": full_path, "drive_path": self.drive_path}
 
@@ -71,6 +73,17 @@ class GoogleColabConnector:
             print(f"Full model loaded from: {full_path}")
 
         return model
+
+    def cleanup(self):
+        for file_path in self.file_paths:
+            try:
+                os.remove(file_path)
+                print(f"Deleted: {file_path}")
+            except FileNotFoundError:
+                print(f"File not found: {file_path}")
+            except Exception as e:
+                print(f"Error deleting {file_path}: {e}")
+        print("Google drive cleaned!")
 
     def __getstate__(self):
         """Serialize only the drive_path."""

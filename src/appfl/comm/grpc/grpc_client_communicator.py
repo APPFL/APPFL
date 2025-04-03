@@ -233,6 +233,9 @@ class GRPCClientCommunicator:
                 except:  # noqa: E722
                     self.proxystore.close()
 
+            if self.colab_connector is not None:
+                self.colab_connector.cleanup()
+
         if len(response.results) == 0:
             return {}
         else:
