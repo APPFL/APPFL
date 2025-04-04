@@ -46,7 +46,7 @@ client_configs:
       param_cutoff: 1024
 
 server_configs:
-  num_clients: 2
+  num_clients: 4
   scheduler: "SyncScheduler"
   scheduler_kwargs:
     same_init_model: True
