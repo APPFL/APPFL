@@ -1,4 +1,5 @@
 import grpc
+import time
 import yaml
 import pprint
 import logging
@@ -38,6 +39,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.logger = logger if logger is not None else self._default_logger()
         self.kwargs = kwargs
         self._load_proxystore(server_agent.server_agent_config)
+        self._load_google_drive(server_agent.server_agent_config)
 
     def GetConfiguration(self, request, context):
         """
@@ -105,6 +107,12 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 meta_data = yaml.dump({})
             if self.use_proxystore:
                 model = self.proxystore.proxy(model)
+
+            if self.use_colab_connector:
+                model = self.colab_connector.upload(
+                    model, f"init_global_model{int(time.time())}.pt"
+                )
+
             model_serialized = serialize_model(model)
             response_proto = GetGlobalModelRespone(
                 header=ServerHeader(status=ServerStatus.RUN),
@@ -155,6 +163,11 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if meta_data.get("_use_proxystore", False):
                 local_model_proxy = deserialize_model(local_model)
                 local_model = extract(local_model_proxy)
+            if meta_data.get("_use_colab_connector", False):
+                local_model = deserialize_model(local_model)
+                local_model = self.colab_connector.load_model(
+                    local_model["model_drive_path"]
+                )
             if len(meta_data) > 0:
                 self.logger.info(
                     f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
@@ -169,6 +182,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 meta_data = yaml.dump({})
             if self.use_proxystore:
                 global_model = self.proxystore.proxy(global_model)
+            if self.use_colab_connector:
+                global_model = self.colab_connector.upload(
+                    global_model, f"global_model{int(time.time())}.pt"
+                )
             global_model_serialized = serialize_model(global_model)
             status = (
                 ServerStatus.DONE
@@ -293,6 +310,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 self.proxystore.close(clear=True)
             except:  # noqa: E722
                 self.proxystore.close()
+        if self.colab_connector is not None:
+            self.colab_connector.cleanup()
 
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
@@ -330,4 +349,26 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             )
             self.logger.info(
                 f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
+            )
+
+    def _load_google_drive(self, server_agent_config) -> None:
+        self.use_colab_connector = False
+        self.colab_connector = None
+        if (
+            hasattr(server_agent_config.server_configs, "comm_configs")
+            and hasattr(
+                server_agent_config.server_configs.comm_configs,
+                "colab_connector_configs",
+            )
+            and server_agent_config.server_configs.comm_configs.colab_connector_configs.get(
+                "enable", False
+            )
+        ):
+            from appfl.comm.utils.colab_connector import GoogleColabConnector
+
+            self.use_colab_connector = True
+            self.colab_connector = GoogleColabConnector(
+                server_agent_config.server_configs.comm_configs.colab_connector_configs.get(
+                    "model_path", "/content/drive/MyDrive/APPFL"
+                )
             )
