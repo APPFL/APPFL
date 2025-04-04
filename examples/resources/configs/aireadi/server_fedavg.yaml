@@ -35,16 +35,6 @@ client_configs:
     model_kwargs:
       num_classes: 4
 
-  comm_configs:
-    compressor_configs:
-      enable_compression: False
-      # Used if enable_compression is True
-      lossy_compressor:  "SZ2Compressor"
-      lossless_compressor: "blosc"
-      error_bounding_mode: "REL"
-      error_bound: 1e-3
-      param_cutoff: 1024
-
 server_configs:
   num_clients: 2
   scheduler: "SyncScheduler"
