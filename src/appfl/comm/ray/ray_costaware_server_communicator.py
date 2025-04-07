@@ -87,6 +87,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         self.clients_futs: Dict[str, Any] = {}
         self.budget_updated_till = -1
         self.spinup_queue = []
+        self.clients_to_terminate = []
 
         self.stop_event = threading.Event()
         self.monitor_thread = threading.Thread(target=self._run_async_loop, daemon=True)
@@ -356,10 +357,8 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 > self.clients_info[client_id].est_spinup_time
                 + self.TERMINATION_BUFFER_SEC
             ):
-                terminate_node_by_resource_tag({client_id: 1})
+                self.clients_to_terminate.append(client_id)
                 client_info = self.clients_info[client_id]
-                client_info.instance_alive = False
-                self.logger.info(f"Terminating instance of client {client_id}")
                 if (
                     client_info.budget
                     < client_info.est_time_per_epoch
@@ -546,11 +545,26 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             await asyncio.to_thread(self._update_budget)
             await asyncio.to_thread(self._spinup_clients)
             # TODO spin up clients
-            for _ in range(30):  # Check the stop_event every second
+            for i in range(30):  # Check the stop_event every second
+                if i % 5 == 0:
+
+                    await asyncio.to_thread(self._terminate_clients)
                 if self.stop_event.is_set():
                     return
                 time.sleep(1)
             # await asyncio.sleep(30)
+
+    def _terminate_clients(self):
+        # we are terminating in async manner using queue as interaction with autoscaler is through shared kv and
+        # termination happens in async manner so we collect all the nodes to terminate and then terminate it in a batch
+        resource_tag = {}
+        for client_id in self.clients_to_terminate:
+            client_info = self.clients_info[client_id]
+            client_info.instance_alive = False
+            self.logger.info(f"Terminating instance of client {client_id}")
+            resource_tag[client_id] = 1
+        terminate_node_by_resource_tag(resource_tag)
+        self.clients_to_terminate = []
 
     def _update_budget(self):
         """It keeps the track of the time till which it has updated budget of the clients and then using the rays API checks uptime of instances and updates their respective budgets"""
@@ -602,7 +616,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         # Iterate in reverse to safely remove items by index
         for i in reversed(range(len(self.spinup_queue))):
             client_id, spinup_time = self.spinup_queue[i]
-            if spinup_time >= current_time:
+            if spinup_time < current_time:
                 client_info = self.clients_info[client_id]
                 if not client_info.inactive and not client_info.instance_triggered:
                     self.send_task_to_one_client(
