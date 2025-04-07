@@ -127,6 +127,8 @@ def get_ai_readi(
     client_train_dataset = RetinopathyDataset(
         partitioned_datasets[client_id], label_col=label_col, transform=train_transform
     )
-    client_test_dataset = RetinopathyDataset(test_df, transform=val_transform)
+    client_test_dataset = RetinopathyDataset(
+        test_df, label_col=label_col, transform=val_transform
+    )
 
     return client_train_dataset, client_test_dataset
