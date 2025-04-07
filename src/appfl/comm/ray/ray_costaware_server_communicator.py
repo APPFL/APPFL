@@ -547,7 +547,6 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             # TODO spin up clients
             for i in range(30):  # Check the stop_event every second
                 if i % 5 == 0:
-
                     await asyncio.to_thread(self._terminate_clients)
                 if self.stop_event.is_set():
                     return
