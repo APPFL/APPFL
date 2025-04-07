@@ -12,7 +12,7 @@ import pandas as pd
 
 
 class RetinopathyDataset(Dataset):
-    def __init__(self, df, transform=None):
+    def __init__(self, df, label_col, transform=None):
         """
         Args:
           df: a DataFrame with at least ['file_path', 'label_idx'] columns
@@ -20,6 +20,7 @@ class RetinopathyDataset(Dataset):
         """
         self.df = df.reset_index(drop=True)
         self.transform = transform
+        self.label_col = label_col
 
     def __len__(self):
         return len(self.df)
@@ -37,6 +38,10 @@ class RetinopathyDataset(Dataset):
             image = self.transform(image)
 
         return image, label
+
+    def label_counts(self):
+        """Returns a dictionary of label_col and their counts."""
+        return self.df[self.label_col].value_counts().to_dict()
 
 
 def get_ai_readi(
@@ -120,7 +125,7 @@ def get_ai_readi(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     client_train_dataset = RetinopathyDataset(
-        partitioned_datasets[client_id], transform=train_transform
+        partitioned_datasets[client_id], label_col=label_col, transform=train_transform
     )
     client_test_dataset = RetinopathyDataset(test_df, transform=val_transform)
 
