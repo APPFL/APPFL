@@ -291,6 +291,95 @@ def class_noniid_partition(
         )
     return train_datasets
 
+def class_noniid_partition_binary(
+    train_dataset: data.Dataset,
+    num_clients: int,
+    min_class_ratio: float = 0.1,  # Minimum proportion for minority class (ensures both classes exist)
+    visualization: bool = False,
+    output_dirname: Optional[str] = None,
+    output_filename: Optional[str] = None,
+    seed: int = 42,
+    **kwargs,
+):
+    """
+    Partition a dataset into `num_clients` in a class non-IID manner where
+    each client has both binary classes (0 and 1), but with different class ratios.
+
+    Parameters:
+    - min_class_ratio: Ensures that both classes exist per client by bounding class ratio between [min, 1-min].
+    """
+    np.random.seed(seed)
+
+    # Separate dataset by class
+    labels = [0, 1]
+    label_indices = {label: [] for label in labels}
+    for idx, (_, label) in enumerate(train_dataset):
+        label_indices[label].append(idx)
+
+    # Shuffle indices
+    for label in labels:
+        np.random.shuffle(label_indices[label])
+
+    # Track how many samples we've used
+    label_ptr = {label: 0 for label in labels}
+
+    # Total available per class
+    label_total = {label: len(label_indices[label]) for label in labels}
+
+    # Prepare outputs
+    client_datasets = []
+    client_dataset_info = {}
+
+    # Equal total samples per client for simplicity
+    total_per_client = (label_total[0] + label_total[1]) // num_clients
+
+    for i in range(num_clients):
+        # Randomly choose a class ratio, making sure both classes are included
+        class_0_ratio = np.random.uniform(min_class_ratio, 1 - min_class_ratio)
+        class_1_ratio = 1.0 - class_0_ratio
+
+        num_class_0 = int(class_0_ratio * total_per_client)
+        num_class_1 = total_per_client - num_class_0
+
+        # Pull samples from class 0
+        start_0 = label_ptr[0]
+        end_0 = min(start_0 + num_class_0, label_total[0])
+        indices_0 = label_indices[0][start_0:end_0]
+        label_ptr[0] = end_0
+
+        # Pull samples from class 1
+        start_1 = label_ptr[1]
+        end_1 = min(start_1 + num_class_1, label_total[1])
+        indices_1 = label_indices[1][start_1:end_1]
+        label_ptr[1] = end_1
+
+        # Combine and shuffle
+        client_indices = indices_0 + indices_1
+        np.random.shuffle(client_indices)
+
+        # Store
+        inputs = [train_dataset[idx][0].tolist() for idx in client_indices]
+        labels_ = [train_dataset[idx][1] for idx in client_indices]
+
+        client_datasets.append(Dataset(
+            torch.FloatTensor(inputs),
+            torch.tensor(labels_),
+        ))
+
+        client_dataset_info[i] = {0: len(indices_0), 1: len(indices_1)}
+
+    # Visualization
+    if visualization:
+        sample_matrix = np.zeros((2, num_clients))
+        for i in range(num_clients):
+            sample_matrix[0][i] = client_dataset_info[i][0]
+            sample_matrix[1][i] = client_dataset_info[i][1]
+
+        classes_samples = [label_total[0], label_total[1]]
+        plot_distribution(num_clients, classes_samples, sample_matrix, output_dirname, output_filename)
+
+    return client_datasets
+
 
 def dirichlet_noniid_partition(
     train_dataset: data.Dataset,

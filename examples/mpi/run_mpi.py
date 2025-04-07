@@ -56,6 +56,11 @@ else:
     client_communicator.invoke_custom_action(
         action="set_sample_size", sample_size=sample_size
     )
+
+    # Chck dragent availability and if the data needs remediation
+    if hasattr(client_config.data_readiness_configs.dr_metrics, "dragent_configs") and hasattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "remedy_action") and client_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action:
+            dr_agent_metadata = client_agent.adapt_data(client_config=client_config)
+
     # Generate data readiness report
     if (
         hasattr(client_config, "data_readiness_configs")

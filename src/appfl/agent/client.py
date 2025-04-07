@@ -181,6 +181,11 @@ class ClientAgent:
                     [input_data for input_data, _ in self.train_dataset]
                 )
 
+            if hasattr(client_config.data_readiness_configs.dr_metrics, "dragent_configs") and hasattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "dragent_kwargs"):
+                dragent_kwargs = getattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "dragent_kwargs", {})
+            else:
+                dragent_kwargs = {}
+
             # data_input, data_labels = balance_data(data_input, data_labels)
             # data_input, explained_variance = apply_pca(data_input)
             # data_input = normalize_data(data_input)
@@ -270,9 +275,42 @@ class ClientAgent:
 
             results.update(to_combine_results)
 
+            # Handle data readiness agent metrics
+            if hasattr(client_config.data_readiness_configs.dr_metrics, "dragent_configs") and hasattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "dragent_path") and hasattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "dragent_name"):
+                self.specified_metrics = create_instance_from_file(
+                    client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_path,
+                    client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_name,
+                    self.train_dataset
+                )
+                results['specified_metrics'] = dict([next(iter(self.specified_metrics.metric(**dragent_kwargs).items()))])
+            
+
             return results
         else:
             return "Data readiness metrics not available in configuration"
+        
+    def adapt_data(self, client_config):
+        """
+        Modify the data based on the configuration provided by the daragent configs
+        """
+
+        if hasattr(client_config.data_readiness_configs.dr_metrics, "dragent_configs") and hasattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "dragent_path") and hasattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "dragent_name"):
+                self.specified_metrics = create_instance_from_file(
+                    client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_path,
+                    client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_name,
+                    self.train_dataset
+                )
+
+        if hasattr(client_config.data_readiness_configs.dr_metrics, "dragent_configs") and hasattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "dragent_kwargs"):
+            dragent_kwargs = getattr(client_config.data_readiness_configs.dr_metrics.dragent_configs, "dragent_kwargs", {})
+        else:
+            dragent_kwargs = {}
+       
+        ai_ready_data = self.specified_metrics.remedy(self.specified_metrics.metric(**dragent_kwargs), self.logger, **dragent_kwargs)
+        self.train_dataset = ai_ready_data["ai_ready_dataset"]
+        metadata = ai_ready_data["metadata"]
+
+        return metadata
 
     def _create_logger(self):
         """
