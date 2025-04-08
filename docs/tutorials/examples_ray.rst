@@ -176,15 +176,15 @@ For other field description you can follow inline comments in ``examples/ray/ray
 
 
 Running Experiment
-==================
+------------------
 
 Environment setup
-------------------
+~~~~~~~~~~~~~~~~~
 
 Configure AWS credentials - IAM having ``AmazonEC2FullAccess`` and ``AmazonEC2RoleforSSM``
 
 Cluster Creation
------------------
+~~~~~~~~~~~~~~~~
 
 Go inside ray example
 
@@ -203,18 +203,18 @@ Run below command, which brings up whole cluster that is described in ``examples
     For lower cluster spin up time create a custom AMI image by running setup command on given image id in ray_cluster_config.yaml. After creating custom AMI you can provide it in ray_cluster_config.yaml under ImageId attribute of each node
 
 Checking cluster status
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
-From Local machine
-~~~~~~~~~~~~~~~~~~
+**From Local machine**
+
 1. You can check cluster status by running
 
 .. code-block:: bash
 
     ray exec ray_cluster_config.yaml 'ray status'
 
-From Head Node
-~~~~~~~~~~~~~~
+**From Head Node**
+
 1. Go into head node using
 
 .. code-block:: bash
@@ -257,10 +257,10 @@ Output of ray status would look like below
 
 
 Job Submission
---------------
+~~~~~~~~~~~~~~
 
-From Local machine
-~~~~~~~~~~~~~~~~~~
+**From Local machine**
+
 1. Do port forwarding using
 
 .. code-block:: bash
@@ -273,8 +273,8 @@ From Local machine
 
     ray job submit --address http://localhost:8265  -- python APPFL/examples/ray/run.py
 
-From Head Node
-~~~~~~~~~~~~~~
+**From Head Node**
+
 1. Connect to head node
 
 .. code-block:: bash
@@ -288,7 +288,7 @@ From Head Node
     python run.py
 
 Stopping Cluster
-----------------
+~~~~~~~~~~~~~~~~
 1. To stop cluster run
 
 .. code-block:: bash
