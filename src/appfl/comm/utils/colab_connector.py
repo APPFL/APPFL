@@ -63,7 +63,7 @@ class GoogleColabConnector:
 
             if current_time - last_mount_time >= 20:
                 # Force mount drive
-                drive.mount('/content/drive', force_remount=True)
+                drive.mount("/content/drive", force_remount=True)
                 last_mount_time = current_time
 
             time.sleep(5)
