@@ -80,8 +80,8 @@ def get_ai_readi(
     train_transform = T.Compose(
         [
             T.Resize((224, 224)),  # Resize image to 224x224 pixels
-            T.RandomHorizontalFlip(p=0.5),  # Randomly flip images horizontally
-            T.RandomRotation(degrees=15),  # Randomly rotate images
+            # T.RandomHorizontalFlip(p=0.5),  # Randomly flip images horizontally
+            # T.RandomRotation(degrees=15),  # Randomly rotate images
             T.ToTensor(),
             T.Normalize(
                 mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
