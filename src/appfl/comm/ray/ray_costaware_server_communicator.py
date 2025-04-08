@@ -562,6 +562,9 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_info.instance_alive = False
             self.logger.info(f"Terminating instance of client {client_id}")
             resource_tag[client_id] = 1
+            self.client_actors[client_id] = RayClientCommunicator.options(
+                resources={client_id: 1}
+            ).remote(self.server_agent_config, self.client_configs[client_id])
         terminate_node_by_resource_tag(resource_tag)
         self.clients_to_terminate = []
 
@@ -686,17 +689,17 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             # send the old task to new client
             if trigger_again:
                 self.logger.info(f"retriggering task {task_id} {str(client_task)}")
-                model = OmegaConf.to_container(
-                    client_task.parameters["model"], resolve=True
-                )
-                metadata = OmegaConf.to_container(
-                    client_task.parameters["metadata"], resolve=True
-                )
+                # model = OmegaConf.to_container(
+                #     client_task.parameters["model"], resolve=True
+                # )
+                # metadata = OmegaConf.to_container(
+                #     client_task.parameters["metadata"], resolve=True
+                # )
                 self.__send_task(
                     self.client_actors[client_id],
                     client_task.task_name,
-                    model,
-                    metadata,
+                    client_task.parameters["model"],
+                    client_task.parameters["metadata"],
                     client_id,
                 )
             # remove old tasks from the queue
