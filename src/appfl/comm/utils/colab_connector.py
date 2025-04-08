@@ -61,7 +61,7 @@ class GoogleColabConnector:
                     f"File not found after {timeout} seconds: {full_path}"
                 )
 
-            if current_time - last_mount_time >= 10:
+            if current_time - last_mount_time >= 15:
                 # Force mount drive
                 try:
                     drive.mount("/content/drive", force_remount=True)
