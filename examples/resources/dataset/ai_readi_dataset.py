@@ -105,7 +105,7 @@ def get_ai_readi(
             train_df,
             num_clients,
             label_col="label_idx",
-            Cmin={1: 4, 2: 2, 3: 2, "none": 1},
+            Cmin={1: 4, 2: 3, 3: 2, "none": 1},
             Cmax={1: 4, 2: 3, 3: 3, "none": 4},
             **kwargs,
         )
