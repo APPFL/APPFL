@@ -51,12 +51,21 @@ class GoogleColabConnector:
         # waits for the model to sync to google drive
         timeout = 120
         start_time = time.time()
+        last_mount_time = start_time
 
         while not os.path.exists(full_path):
-            if time.time() - start_time > timeout:
+            current_time = time.time()
+
+            if current_time - start_time > timeout:
                 raise TimeoutError(
                     f"File not found after {timeout} seconds: {full_path}"
                 )
+
+            if current_time - last_mount_time >= 20:
+                # Force mount drive
+                drive.mount('/content/drive', force_remount=True)
+                last_mount_time = current_time
+
             time.sleep(5)
 
         if load_state_dict:
