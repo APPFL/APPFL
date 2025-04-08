@@ -63,8 +63,11 @@ class GoogleColabConnector:
 
             if current_time - last_mount_time >= 10:
                 # Force mount drive
-                drive.mount("/content/drive", force_remount=True)
-                last_mount_time = current_time
+                try:
+                    drive.mount("/content/drive", force_remount=True)
+                    last_mount_time = current_time
+                except Exception as e:
+                    print("exception: ", str(e))
 
             time.sleep(5)
 
