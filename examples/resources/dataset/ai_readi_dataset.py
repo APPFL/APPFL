@@ -106,7 +106,7 @@ def get_ai_readi(
             num_clients,
             label_col="label_idx",
             Cmin={1: 4, 2: 2, 3: 2, "none": 1},
-            Cmax={1: 4, 2: 4, 3: 3, "none": 4},
+            Cmax={1: 4, 2: 2, 3: 3, "none": 4},
             **kwargs,
         )
     elif partition_strategy == "dirichlet_noniid":
