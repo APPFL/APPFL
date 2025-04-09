@@ -18,7 +18,7 @@ data_configs:
     sampling_factor: 0.5
     alpha1: 10
     alpha2: 3
-    visualization: False
+    visualization: True
     output_dirname: "./output"
     output_filename: "visualization.pdf"
 
