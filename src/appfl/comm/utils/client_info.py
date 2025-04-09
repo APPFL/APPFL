@@ -17,7 +17,7 @@ class ClientInfo:
     est_spinup_time: float = -1
     est_time_per_epoch: float = -1
     est_cost_per_epoch: float = 0
-    alpha: float = 0.7
+    alpha: float = 0.9
 
     inactive: bool = False
     instance_alive: bool = False

@@ -122,6 +122,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 client_metadata["local_model_key"] = local_model_key
                 client_metadata["local_model_url"] = local_model_url
+            self._check_actor_state(client_id)
             task_id, task_ref = self.__send_task(
                 self.client_actors[client_id],
                 task_name,
@@ -160,10 +161,21 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
             metadata["local_model_key"] = local_model_key
             metadata["local_model_url"] = local_model_url
+        self._check_actor_state(client_id)
         task_id, task_ref = self.__send_task(
             self.client_actors[client_id], task_name, model, metadata, client_id
         )
         self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
+
+    def _check_actor_state(self, client_id: str):
+        ray_actors = ray._private.state.actors()
+        ray_actor_details = ray_actors[
+            self.client_actors[client_id]._ray_actor_id.hex()
+        ]
+        if ray_actor_details["State"] == "DEAD":
+            self.client_actors[client_id] = RayClientCommunicator.options(
+                resources={client_id: 1}
+            ).remote(self.server_agent_config, self.client_configs[client_id])
 
     def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
         """
@@ -562,9 +574,6 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_info.instance_alive = False
             self.logger.info(f"Terminating instance of client {client_id}")
             resource_tag[client_id] = 1
-            self.client_actors[client_id] = RayClientCommunicator.options(
-                resources={client_id: 1}
-            ).remote(self.server_agent_config, self.client_configs[client_id])
         terminate_node_by_resource_tag(resource_tag)
         self.clients_to_terminate = []
 
