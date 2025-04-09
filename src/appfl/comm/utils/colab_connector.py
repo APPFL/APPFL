@@ -4,6 +4,7 @@ import torch
 import threading
 from google.colab import drive
 
+
 class GoogleColabConnector:
     # A lock used only to protect the flush_and_unmount + mount steps.
     # We do NOT hold this lock for the entire load, so that multiple
@@ -46,7 +47,7 @@ class GoogleColabConnector:
         model_class=None,
         load_state_dict=False,
         timeout=150,
-        flush_interval=15
+        flush_interval=15,
     ):
         """
         Load a PyTorch model or state_dict from the drive path, possibly flushing+remounting
