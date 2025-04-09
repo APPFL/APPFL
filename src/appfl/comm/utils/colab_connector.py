@@ -89,7 +89,7 @@ class GoogleColabConnector:
                         drive.flush_and_unmount()
                         drive.mount("/content/drive")
                         if os.path.exists(full_path):
-                            # don't release lock yet
+                            # don't release lock yet, we do this so that other client do not interrupt the model loading
                             found = True
                         print("Drive forcibly re-mounted to sync.")
                     except Exception as e:
