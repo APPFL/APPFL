@@ -6,8 +6,8 @@ client_configs:
     num_local_epochs: 1
     optim: "Adam"
     optim_args:
-      lr: 0.00001
-      weight_decay: 0.001
+      lr: 0.0001
+      weight_decay: 0.0001
     # Loss function
     loss_fn_path: "./resources/loss/celoss.py"
     loss_fn_name: "CELoss"
@@ -40,7 +40,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 5
+  num_global_epochs: 3
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
