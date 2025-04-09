@@ -1,10 +1,15 @@
 import os
-import torch
 import time
+import torch
+import threading
 from google.colab import drive
 
-
 class GoogleColabConnector:
+    # A lock used only to protect the flush_and_unmount + mount steps.
+    # We do NOT hold this lock for the entire load, so that multiple
+    # clients can keep checking for the file concurrently.
+    _flush_lock = threading.Lock()
+
     def __init__(self, drive_path):
         self.drive_path = drive_path
         self._mount_drive()
@@ -35,44 +40,69 @@ class GoogleColabConnector:
         print(f"PyTorch model saved to: {full_path}")
         return {"model_drive_path": full_path, "drive_path": self.drive_path}
 
-    def load_model(self, filename, model_class=None, load_state_dict=False):
+    def load_model(
+        self,
+        filename,
+        model_class=None,
+        load_state_dict=False,
+        timeout=150,
+        flush_interval=15
+    ):
         """
-        Load a PyTorch model or state_dict from the drive path.
+        Load a PyTorch model or state_dict from the drive path, possibly flushing+remounting
+        to force Google Drive sync. Only one client at a time will do the flush.
 
         Args:
             filename (str): The name of the file in the drive directory.
             model_class (nn.Module, optional): The class of the model (required if loading state_dict).
             load_state_dict (bool): If True, loads state_dict into model_class.
+            timeout (int): How many seconds to wait for the file to appear before giving up.
+            flush_interval (int): The minimum gap (seconds) before we try flush+mount again
+                                  if the file still isn't present.
 
         Returns:
             nn.Module: The loaded model.
         """
         full_path = os.path.join(self.drive_path, filename)
-        # waits for the model to sync to google drive
-        timeout = 150
         start_time = time.time()
-        last_mount_time = start_time
+        last_flush_time = start_time
+        found = False
 
+        # Loop until the file is found, or until we exceed timeout
         while not os.path.exists(full_path):
-            current_time = time.time()
-
-            if current_time - start_time > timeout:
+            found = False
+            elapsed = time.time() - start_time
+            if elapsed > timeout:
                 raise TimeoutError(
                     f"File not found after {timeout} seconds: {full_path}"
                 )
 
-            if current_time - last_mount_time >= 15:
-                # Force mount drive
-                try:
-                    drive.flush_and_unmount()
-                    drive.mount("/content/drive")
-                    # drive.mount("/content/drive", force_remount=True)
-                    last_mount_time = current_time
-                except Exception as e:
-                    print("exception: ", str(e))
+            # If it's time to do a forced flush/mount check
+            if (time.time() - last_flush_time) >= flush_interval:
+                # Attempt to acquire the flush_lock without blocking:
+                # - If we get it, do the flush and mount
+                # - If not, skip the flush (someone else is already doing it)
+                acquired = self._flush_lock.acquire(blocking=False)
+                if acquired:
+                    try:
+                        drive.flush_and_unmount()
+                        drive.mount("/content/drive")
+                        if os.path.exists(full_path):
+                            # don't release lock yet
+                            found = True
+                        print("Drive forcibly re-mounted to sync.")
+                    except Exception as e:
+                        print("Exception during flush_and_unmount/mount:", e)
+                    finally:
+                        if not found:
+                            self._flush_lock.release()
 
-            time.sleep(5)
+                last_flush_time = time.time()
 
+            # Sleep briefly before checking again
+            time.sleep(2)
+
+        # If we reach here, the file is now visible; load the model
         if load_state_dict:
             if model_class is None:
                 raise ValueError(
@@ -86,6 +116,10 @@ class GoogleColabConnector:
             model = torch.load(full_path, map_location="cpu")
             print(f"Full model loaded from: {full_path}")
 
+        # check if its acquired then release it.
+        if found and self._flush_lock.locked():
+            self._flush_lock.release()
+
         return model
 
     def cleanup(self):
@@ -97,7 +131,7 @@ class GoogleColabConnector:
                 print(f"File not found: {file_path}")
             except Exception as e:
                 print(f"Error deleting {file_path}: {e}")
-        print("Google drive cleaned!")
+        print("Google Drive cleaned!")
 
     def __getstate__(self):
         """Serialize only the drive_path."""
