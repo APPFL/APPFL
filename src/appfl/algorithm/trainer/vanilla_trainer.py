@@ -188,6 +188,7 @@ class VanillaTrainer(BaseTrainer):
                             f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
                         }
                     )
+                self.val_results["per_epoch_time"] = per_epoch_time
                 self.logger.log_content(
                     [self.round, epoch, per_epoch_time, train_loss, train_accuracy]
                     if (not do_validation) and (not do_pre_validation)
@@ -248,6 +249,7 @@ class VanillaTrainer(BaseTrainer):
                         f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
                     }
                 )
+            self.val_results["per_step_time"] = per_step_time
             self.logger.log_content(
                 [self.round, per_step_time, train_loss, train_accuracy]
                 if (not do_validation) and (not do_pre_validation)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 
 @dataclass
@@ -12,3 +12,9 @@ class ClientTask:
     start_time: float = -1
     end_time: float = -1
     log: Optional[Dict] = field(default_factory=dict)
+    parameters: Optional[Dict] = field(default_factory=dict)
+    failure: bool = False
+    task_execution_start_time: float = -1
+    task_execution_finish_time: float = -1
+    result: Any = None
+    est_finish_time: float = -1
