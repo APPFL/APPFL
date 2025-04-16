@@ -1,0 +1,14 @@
+train_configs:
+  trainer: FedSBTrainer
+  agg_type: fed-sb
+  seed: 42
+  lora_r: 200
+  lora_alpha: 200
+  run_dir: experiments/instruction_tuning
+  model: meta-llama/Llama-3.2-3B
+  dataset_split: "train[:20000]"
+  wandb_configs:
+    enable_wandb: True
+    entity: zl52-university-of-illinois-urbana-champaign
+    project: appfl
+    exp_name: fed-sb-arithmetic-2
