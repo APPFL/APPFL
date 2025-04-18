@@ -27,7 +27,7 @@ def get_mnist(
     )
 
     # Load the server agent config to get the pollution method based on the DRAgent name
-    if hasattr(
+    if hasattr(server_agent_config, "data_readiness_configs") and hasattr(
         server_agent_config.client_configs.data_readiness_configs.dr_metrics.dragent_configs,
         "dragent_name",
     ):
