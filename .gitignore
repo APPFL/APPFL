@@ -1,4 +1,5 @@
 local_tests
+**/experiments_log/
 src/appfl/service/resources
 wandb
 uploads*

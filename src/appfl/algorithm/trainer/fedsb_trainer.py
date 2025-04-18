@@ -239,7 +239,7 @@ class FedSBTrainer(BaseTrainer):
         os.makedirs(os.path.join(run_dir, "checkpoints"), exist_ok=True)
         os.makedirs(os.path.join(run_dir, "logs"), exist_ok=True)
         
-        config_dict = dict(self.train_configs)
+        config_dict = OmegaConf.to_container(self.train_configs, resolve=True)
         with open(os.path.join(run_dir, "config.json"), 'w') as f:
             json.dump(config_dict, f, indent=4)
         
@@ -263,7 +263,7 @@ class FedSBTrainer(BaseTrainer):
                 
 if __name__ == "__main__":
     from omegaconf import OmegaConf
-    config_path = "path/to/your/config.yaml"
+    config_path = "/eagle/tpc/zilinghan/appfl/APPFL/examples/resources/configs/fedsb/fedsb_config.yaml"
     client_configs = OmegaConf.load(config_path)
     trainer = FedSBTrainer(client_configs.train_configs)
     trainer.train()

@@ -1,28 +1,30 @@
 train_configs:
   client_idx: 0
-  num_clients: 2
+  num_clients: 25
   trainer: FedSBTrainer
-  agg_type: fed-sb
+  device: cuda
   seed: 42
-  lora_r: 200
-  lora_alpha: 200
-  eg_bs: 3
+  agg_type: fed-sb
+  lr: 0.0001
   batch_size: 1
   scheduler: cosine
   warmup_ratio: 0.02
   num_samples: 50
   epochs: 1
-  run_dir: experiments/instruction_tuning
+  eg_bs: 3
+  lora_r: 200
+  lora_alpha: 200
+  max_seq_length: 512
   model: meta-llama/Llama-3.2-3B
   data_path: meta-math/MetaMathQA
-  dataset_field: ["query", "response"]
   dataset_split: "train[:20000]"
+  dataset_field: ["query", "response"]
+  run_dir: experiments_log/instruction_tuning
   wandb_configs:
     enable_wandb: True
     entity: zl52-university-of-illinois-urbana-champaign
     project: appfl
     exp_name: fed-sb-arithmetic-2
-    max_seq_length: 512
   reconstruction_configs:
     reconstruction_type: "svd"
     reconstr_mode: "separated"
