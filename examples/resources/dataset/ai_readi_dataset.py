@@ -12,7 +12,7 @@ import pandas as pd
 
 
 class RetinopathyDataset(Dataset):
-    def __init__(self, df, transform=None):
+    def __init__(self, df, label_col, transform=None):
         """
         Args:
           df: a DataFrame with at least ['file_path', 'label_idx'] columns
@@ -20,6 +20,7 @@ class RetinopathyDataset(Dataset):
         """
         self.df = df.reset_index(drop=True)
         self.transform = transform
+        self.label_col = label_col
 
     def __len__(self):
         return len(self.df)
@@ -37,6 +38,10 @@ class RetinopathyDataset(Dataset):
             image = self.transform(image)
 
         return image, label
+
+    def label_counts(self):
+        """Returns a dictionary of label_col and their counts."""
+        return self.df[self.label_col].value_counts().to_dict()
 
 
 def get_ai_readi(
@@ -75,8 +80,8 @@ def get_ai_readi(
     train_transform = T.Compose(
         [
             T.Resize((224, 224)),  # Resize image to 224x224 pixels
-            T.RandomHorizontalFlip(p=0.5),  # Randomly flip images horizontally
-            T.RandomRotation(degrees=15),  # Randomly rotate images
+            # T.RandomHorizontalFlip(p=0.5),  # Randomly flip images horizontally
+            # T.RandomRotation(degrees=15),  # Randomly rotate images
             T.ToTensor(),
             T.Normalize(
                 mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -100,8 +105,8 @@ def get_ai_readi(
             train_df,
             num_clients,
             label_col="label_idx",
-            Cmin={1: 4, 2: 2, 3: 2, "none": 1},
-            Cmax={1: 4, 2: 4, 3: 3, "none": 4},
+            Cmin={1: 4, 2: 3, 3: 2, "none": 1},
+            Cmax={1: 4, 2: 3, 3: 3, "none": 4},
             **kwargs,
         )
     elif partition_strategy == "dirichlet_noniid":
@@ -120,8 +125,10 @@ def get_ai_readi(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     client_train_dataset = RetinopathyDataset(
-        partitioned_datasets[client_id], transform=train_transform
+        partitioned_datasets[client_id], label_col=label_col, transform=train_transform
     )
-    client_test_dataset = RetinopathyDataset(test_df, transform=val_transform)
+    client_test_dataset = RetinopathyDataset(
+        test_df, label_col=label_col, transform=val_transform
+    )
 
     return client_train_dataset, client_test_dataset

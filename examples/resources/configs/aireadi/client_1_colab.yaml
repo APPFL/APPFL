@@ -14,8 +14,10 @@ data_configs:
   dataset_kwargs:
     num_clients: 2
     client_id: 0
-    label_col: "device"
-    partition_strategy: "class_noniid"
+    partition_strategy: "dirichlet_noniid"
+    sampling_factor: 0.5
+    alpha1: 10
+    alpha2: 3
     visualization: True
     output_dirname: "./output"
     output_filename: "visualization.pdf"

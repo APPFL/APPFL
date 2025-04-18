@@ -1,6 +1,16 @@
 Changelog
 =========
 
+appfl v1.4.1
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add a new tutorial for using shared Globus Compute endpoints at `here <https://appfl.ai/en/latest/tutorials/examples_globus_compute.html#creating-shared-globus-compute-endpoint-on-client-machines>`_.
+- Add a new tutorial for joining APPFL-hosted international federation at `here <https://appfl.ai/en/latest/tutorials/examples_international.html>`_.
+- Support colab notebooks for running APPFL on Google Colab with a colab connector for easy data transmission.
+
 appfl v1.4.0
 ------------
 
