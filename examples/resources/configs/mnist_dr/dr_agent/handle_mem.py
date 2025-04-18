@@ -1,6 +1,7 @@
 from base_dragent import BaseDRAgent
 import torch
-from typing import Any, Dict, List
+from typing import Any, Dict
+
 
 class DRAgentMem(BaseDRAgent):
     """
@@ -27,12 +28,14 @@ class DRAgentMem(BaseDRAgent):
         Returns:
             Dict[str, float]: A dictionary containing memory usage in MB.
         """
-        if hasattr(self.train_dataset, 'data_input'):
+        if hasattr(self.train_dataset, "data_input"):
             data_input = self.train_dataset.data_input
         else:
-            data_input = torch.stack([input_data for input_data, _ in self.train_dataset])
+            data_input = torch.stack(
+                [input_data for input_data, _ in self.train_dataset]
+            )
 
-        mem_usage = data_input.element_size() * data_input.nelement() / (1024 ** 2)
+        mem_usage = data_input.element_size() * data_input.nelement() / (1024**2)
         return {"mem_usage": round(mem_usage, 2)}
 
     def rule(self, metric_result: Dict[str, float], threshold: float = 100.0) -> bool:
@@ -46,9 +49,11 @@ class DRAgentMem(BaseDRAgent):
         Returns:
             bool: True if memory usage exceeds the threshold, False otherwise.
         """
-        return metric_result['mem_usage'] > threshold
+        return metric_result["mem_usage"] > threshold
 
-    def remedy(self, metric_result: Dict[str, float], logger: Any, **kwargs: Any) -> Dict[str, Any]:
+    def remedy(
+        self, metric_result: Dict[str, float], logger: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
         """
         Remedy the dataset based on the metric result and rule.
         If the rule is met, remove duplicates from the dataset.
@@ -64,7 +69,9 @@ class DRAgentMem(BaseDRAgent):
         ai_ready_data = {"ai_ready_dataset": self.train_dataset, "metadata": None}
 
         if self.rule(metric_result):
-            logger.info("Memory usage exceeds threshold. Removing duplicates from the dataset.")
+            logger.info(
+                "Memory usage exceeds threshold. Removing duplicates from the dataset."
+            )
             self.train_dataset = list(set(self.train_dataset))
             ai_ready_data = {"ai_ready_dataset": self.train_dataset, "metadata": None}
         else:

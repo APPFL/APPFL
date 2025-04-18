@@ -1,7 +1,6 @@
 from base_dragent import BaseDRAgent
 import torch
-import random
-from typing import Dict, Any
+
 
 class DRAgentNoise(BaseDRAgent):
     def __init__(self, train_dataset, **kwargs):
@@ -24,21 +23,20 @@ class DRAgentNoise(BaseDRAgent):
             - "magnitudes": A list of magnitudes for each sample in the dataset.
         """
         # Check if the dataset has a 'data_input' attribute; otherwise, process the dataset.
-        if hasattr(self.train_dataset, 'data_input'):
+        if hasattr(self.train_dataset, "data_input"):
             data_input = self.train_dataset.data_input
         else:
             # Stack input data from the dataset.
-            data_input = torch.stack([input_data for input_data, _ in self.train_dataset])
+            data_input = torch.stack(
+                [input_data for input_data, _ in self.train_dataset]
+            )
 
         # Compute the magnitude of each sample.
         magnitudes = [torch.mean(sample[0] ** 2).item() for sample in data_input]
         # Calculate the mean of the magnitudes.
         mean = sum(magnitudes) / len(magnitudes)
 
-        return {
-            "mean": round(mean, 2),
-            "magnitudes": magnitudes
-        }
+        return {"mean": round(mean, 2), "magnitudes": magnitudes}
 
     def rule(self, metric_result, noise_threshold=1):
         """
@@ -52,7 +50,11 @@ class DRAgentNoise(BaseDRAgent):
         - A list of indices of samples considered noisy.
         """
         # Identify indices of samples with magnitudes below the noise threshold.
-        noisy_indices = [i for i, mag in enumerate(metric_result['magnitudes']) if mag < noise_threshold]
+        noisy_indices = [
+            i
+            for i, mag in enumerate(metric_result["magnitudes"])
+            if mag < noise_threshold
+        ]
         return noisy_indices
 
     def remedy(self, metric_result, logger, **kwargs):
@@ -82,6 +84,6 @@ class DRAgentNoise(BaseDRAgent):
         logger.info(f"Filtered dataset to remove {len(noisy_indices)} noisy samples.")
 
         # Update the AI-ready dataset.
-        ai_ready_data['ai_ready_dataset'] = self.train_dataset
+        ai_ready_data["ai_ready_dataset"] = self.train_dataset
 
         return ai_ready_data

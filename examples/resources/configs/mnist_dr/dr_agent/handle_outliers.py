@@ -3,6 +3,7 @@ import numpy as np
 from typing import Dict, Any
 from base_dragent import BaseDRAgent
 
+
 class DRAgentOutliers(BaseDRAgent):
     """
     DRAgent specializing in outlier detection using the IQR method.
@@ -11,7 +12,7 @@ class DRAgentOutliers(BaseDRAgent):
     def __init__(self, train_dataset, **kwargs):
         """
         Initialize the DRAgent with a training dataset.
-        
+
         Args:
             train_dataset: The dataset used for training.
             **kwargs: Additional arguments for the base class.
@@ -26,10 +27,12 @@ class DRAgentOutliers(BaseDRAgent):
             A dictionary containing the proportion of outliers and their indices.
         """
         # Extract images from the dataset
-        if hasattr(self.train_dataset, 'data_input'):
+        if hasattr(self.train_dataset, "data_input"):
             images = self.train_dataset.data_input
         else:
-            images = torch.stack([img for img, _ in self.train_dataset])  # Convert dataset to tensor batch
+            images = torch.stack(
+                [img for img, _ in self.train_dataset]
+            )  # Convert dataset to tensor batch
 
         # Compute mean and standard deviation per image
         image_means = images.view(images.shape[0], -1).mean(dim=1).cpu().numpy()
@@ -64,7 +67,7 @@ class DRAgentOutliers(BaseDRAgent):
 
         return {
             "proportion_outliers": round(proportion_outliers, 4),
-            "outlier_indices": list(outlier_indices)
+            "outlier_indices": list(outlier_indices),
         }
 
     def rule(self, metric_result: Dict[str, Any], threshold: float = 0.1) -> bool:
@@ -78,7 +81,7 @@ class DRAgentOutliers(BaseDRAgent):
         Returns:
             True if the proportion of outliers exceeds the threshold, False otherwise.
         """
-        return metric_result['proportion_outliers'] > threshold
+        return metric_result["proportion_outliers"] > threshold
 
     def remedy(self, metric_result: Dict[str, Any], logger, **kwargs) -> Dict[str, Any]:
         """
@@ -100,10 +103,12 @@ class DRAgentOutliers(BaseDRAgent):
         if self.rule(metric_result) and outlier_indices:
             # Remove outlier images by filtering the dataset
             self.train_dataset = [
-                (img, label) for i, (img, label) in enumerate(self.train_dataset) if i not in outlier_indices
+                (img, label)
+                for i, (img, label) in enumerate(self.train_dataset)
+                if i not in outlier_indices
             ]
 
             logger.info(f"Removed {len(outlier_indices)} outlier images.")
 
-        ai_ready_data['ai_ready_dataset'] = self.train_dataset
+        ai_ready_data["ai_ready_dataset"] = self.train_dataset
         return ai_ready_data

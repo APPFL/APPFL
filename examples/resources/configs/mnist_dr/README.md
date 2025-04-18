@@ -7,10 +7,10 @@ This directory contains **Data Readiness (DR) agents** designed to identify and 
 Inside the `dr_agent/` directory, we provide five different custom DR agents. Each is responsible for detecting and optionally remedying a specific data readiness issue such as:
 
 - Noise handling
-- Class imbalance  
+- Class imbalance
 - Duplicate samples
 - Outlier management
-- Memory usage optimization  
+- Memory usage optimization
 - (Others depending on your implementation)
 
 To run a specific DR agent, configure it in the server configuration YAML file.

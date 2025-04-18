@@ -42,7 +42,7 @@ def generate_html_content(readiness_report):
         if key == "specified_metrics":
             html_content += f'<th style="text-align: center; color: red;" colspan="2">{key.replace("_", " ").title()}</th>'
         else:
-            html_content += f'<th>{key.replace("_"," ").title()}</th>'
+            html_content += f"<th>{key.replace('_', ' ').title()}</th>"
 
     html_content += "</tr></thead><tbody>"
 

@@ -1,6 +1,6 @@
-
 import random
 import torch
+
 
 def add_noise_to_subset(dataset, scale, fraction):
     """
@@ -16,21 +16,22 @@ def add_noise_to_subset(dataset, scale, fraction):
     """
     # Convert dataset to list for easy manipulation
     dataset_list = list(dataset)
-    
+
     # Determine number of samples to add noise to
     num_noisy_samples = int(len(dataset_list) * fraction)
-    
+
     # Randomly select indices for noisy samples
     noisy_indices = random.sample(range(len(dataset_list)), num_noisy_samples)
-    
+
     # Add noise to selected samples
     for idx in noisy_indices:
         input_data, label = dataset_list[idx]
         noise = torch.randn_like(input_data) * scale
         noisy_input = (input_data + noise).clamp(2, 5)
         dataset_list[idx] = (noisy_input, label)
-    
+
     return dataset_list
+
 
 def add_duplicates(dataset, duplicate_ratio):
     """
@@ -38,7 +39,7 @@ def add_duplicates(dataset, duplicate_ratio):
 
     Parameters:
     - dataset: Dataset where each item is a tuple (input_data, label).
-    - duplicate_ratio: Float between 0 and 1 indicating the proportion of duplicates 
+    - duplicate_ratio: Float between 0 and 1 indicating the proportion of duplicates
                        to add (e.g., 0.2 means 20% duplicates of the original size).
 
     Returns:

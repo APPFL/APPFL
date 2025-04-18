@@ -291,6 +291,7 @@ def class_noniid_partition(
         )
     return train_datasets
 
+
 def class_noniid_partition_binary(
     train_dataset: data.Dataset,
     num_clients: int,
@@ -336,7 +337,6 @@ def class_noniid_partition_binary(
     for i in range(num_clients):
         # Randomly choose a class ratio, making sure both classes are included
         class_0_ratio = np.random.uniform(min_class_ratio, 1 - min_class_ratio)
-        class_1_ratio = 1.0 - class_0_ratio
 
         num_class_0 = int(class_0_ratio * total_per_client)
         num_class_1 = total_per_client - num_class_0
@@ -361,10 +361,12 @@ def class_noniid_partition_binary(
         inputs = [train_dataset[idx][0].tolist() for idx in client_indices]
         labels_ = [train_dataset[idx][1] for idx in client_indices]
 
-        client_datasets.append(Dataset(
-            torch.FloatTensor(inputs),
-            torch.tensor(labels_),
-        ))
+        client_datasets.append(
+            Dataset(
+                torch.FloatTensor(inputs),
+                torch.tensor(labels_),
+            )
+        )
 
         client_dataset_info[i] = {0: len(indices_0), 1: len(indices_1)}
 
@@ -376,7 +378,9 @@ def class_noniid_partition_binary(
             sample_matrix[1][i] = client_dataset_info[i][1]
 
         classes_samples = [label_total[0], label_total[1]]
-        plot_distribution(num_clients, classes_samples, sample_matrix, output_dirname, output_filename)
+        plot_distribution(
+            num_clients, classes_samples, sample_matrix, output_dirname, output_filename
+        )
 
     return client_datasets
 
