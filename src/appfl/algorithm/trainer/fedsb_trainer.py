@@ -11,8 +11,8 @@ from appfl.algorithm.trainer import BaseTrainer
 from transformers import AdamW, TrainingArguments, Trainer
 from fed_sb.utils.initialization_utils import find_and_initialize_grad
 from fed_sb.utils.gradient_utils import estimate_and_process_grads_torch
-from fed_sb.models import create_model_tokenizer_it, create_peft_model_it
 from fed_sb.utils.data_utils import load_and_preprocess_it, DataCollatorForSupervisedDataset
+from fed_sb.models import create_model_tokenizer_it, create_peft_model_it, create_peft_FFA_model_it
 
 class FedSBTrainer(BaseTrainer):
     def __init__(
@@ -150,7 +150,69 @@ class FedSBTrainer(BaseTrainer):
             trainer.save_state()
             client_model.save_pretrained(final_model_path)
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
+        else:
+            # Create client dataset
+            client_dataset = self.train_dataset.select(
+                range(
+                    self.train_configs.client_idx*len(self.train_dataset)//self.train_configs.num_clients, 
+                    (self.train_configs.client_idx+1)*len(self.train_dataset)//self.train_configs.num_clients
+                )
+            )
 
+            data_module = dict(train_dataset=client_dataset, data_collator=self.data_collator)
+            # Create client model and optimizer
+            if self.train_configs.agg_type == "ffa":
+                client_model, lora_config = create_peft_FFA_model_it(model, self.train_configs)
+            else:   
+                client_model, lora_config = create_peft_model_it(model, self.train_configs)
+        
+            optimizer = AdamW(client_model.parameters(), lr=self.train_configs.lr)
+
+
+            # Training arguments
+            training_args = TrainingArguments(
+                output_dir=os.path.join(self.run_dir, "checkpoints"),
+                num_train_epochs=self.train_configs.epochs,
+                per_device_train_batch_size=self.train_configs.batch_size,
+                learning_rate=self.train_configs.lr,
+                weight_decay=0,
+                warmup_ratio=self.train_configs.warmup_ratio,
+                lr_scheduler_type=self.train_configs.scheduler,
+                seed=self.train_configs.seed,
+                report_to="wandb",
+                gradient_accumulation_steps=32,
+                save_strategy="no",
+                bf16=True,
+                tf32=False,
+                fp16=False,
+                logging_steps=1,
+                logging_first_step=True,
+                logging_dir=os.path.join(self.run_dir, "logs")
+            )
+
+            # Save training arguments
+            training_args_path = os.path.join(self.run_dir, "training_args.json")
+            with open(training_args_path, 'w') as f:
+                json.dump(training_args.to_dict(), f, indent=4)
+
+            # Create trainers
+            trainer = Trainer(
+                model=model,
+                args=training_args,
+                **data_module,
+                optimizers=(optimizer, None),
+            )
+        
+            # Save tokenizer
+            self.tokenizer.save_pretrained(os.path.join(self.run_dir, "tokenizer"))
+
+            client_model.config.use_cache = False
+            trainer.train()
+
+            final_model_path = os.path.join(self.run_dir, f"final_model_{self.train_configs.client_idx}")  # Fixed path naming
+            trainer.save_state()
+            client_model.save_pretrained(final_model_path)
+            print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
         
     def _set_seed(self):
         """
@@ -198,3 +260,11 @@ class FedSBTrainer(BaseTrainer):
             )
             with open(os.path.join(self.run_dir, "wandb_run_id.txt"), "w") as f:
                 f.write(wandb_run.id)
+                
+if __name__ == "__main__":
+    from omegaconf import OmegaConf
+    config_path = "path/to/your/config.yaml"
+    client_configs = OmegaConf.load(config_path)
+    trainer = FedSBTrainer(client_configs.train_configs)
+    trainer.train()
+    
