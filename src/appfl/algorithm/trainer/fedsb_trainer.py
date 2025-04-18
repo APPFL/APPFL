@@ -5,13 +5,18 @@ import wandb
 import numpy as np
 from datetime import datetime
 from typing import Any, Optional
+from torch.utils.data import DataLoader
 from omegaconf import DictConfig, OmegaConf
 from appfl.algorithm.trainer import BaseTrainer
-
+from transformers import AdamW, TrainingArguments, Trainer
+from fed_sb.utils.initialization_utils import find_and_initialize_grad
+from fed_sb.utils.gradient_utils import estimate_and_process_grads_torch
+from fed_sb.models import create_model_tokenizer_it, create_peft_model_it
+from fed_sb.utils.data_utils import load_and_preprocess_it, DataCollatorForSupervisedDataset
 
 class FedSBTrainer(BaseTrainer):
     def __init__(
-        self, 
+        self,
         train_configs: DictConfig,
         logger: Optional[Any] = None,
         **kwargs,
@@ -27,8 +32,125 @@ class FedSBTrainer(BaseTrainer):
         self.run_dir = self._create_run_directory()
         self._init_wandb()
         
+        self.model, self.tokenizer = create_model_tokenizer_it(
+            self.train_configs
+        )
+        self.train_dataset = load_and_preprocess_it(
+            tokenizer=self.tokenizer,
+            args=self.train_configs,
+        )
+        self.data_collator = DataCollatorForSupervisedDataset(tokenizer=self.tokenizer)
         
+    def train(self):
+        if self.train_configs.agg_type == "fed-sb":
+            train_loader = DataLoader(
+                self.train_dataset, 
+                batch_size=self.train_configs.eg_bs, 
+                shuffle=True, 
+                collate_fn=self.data_collator
+            )
+
+            total_training_steps = len(train_loader) * self.train_configs.epochs
+            eff_lr = self.train_configs.lr/(self.train_configs.warmup_ratio * total_training_steps)
+            named_grads = None
+            named_grads = estimate_and_process_grads_torch(
+                model=self.model,
+                dataloader=train_loader,
+                lr=eff_lr,
+                num_samples=self.train_configs.num_samples,
+            )
+            
+            model, lora_config = create_peft_model_it(self.model, self.train_configs)
+            
+            self.train_configs.reconstruction_configs.svd.rank = self.train_configs.lora_r
+            
+            adapter_name = "default"
+            peft_config_dict = {adapter_name: lora_config}
+            
+            named_grads_new = {f'base_model.model.{k}': v for k, v in named_grads.items()}
+            
+            del model
+            self.model, self.tokenizer = create_model_tokenizer_it(
+                self.train_configs
+            )
+            
+            if named_grads is not None:
+                del named_grads
+                
+            # Create client dataset
+            client_dataset = self.train_dataset.select(
+                range(
+                    self.train_configs.client_idx*len(self.train_dataset)//self.train_configs.num_clients, 
+                    (self.train_configs.client_idx+1)*len(self.train_dataset)//self.train_configs.num_clients
+                )
+            )
+
+            data_module = dict(train_dataset=client_dataset, data_collator=self.data_collator)
+            
+            client_model, lora_config = create_peft_model_it(self.model, self.train_configs)
+            
+            adapter_name = "default"
+            
+            peft_config_dict = {adapter_name: lora_config}
+            find_and_initialize_grad(
+                model=client_model,
+                peft_config=peft_config_dict,
+                adapter_name=adapter_name,
+                reconstr_type='svd',
+                reconstruct_config=self.train_configs.reconstruction_configs,
+                writer=None,
+                named_grads=named_grads_new,
+            )
+            for param in client_model.parameters():
+                param.data = param.data.contiguous()
+            optimizer = AdamW(client_model.parameters(), lr=self.train_configs.lr)
+
+
+            # Training arguments
+            training_args = TrainingArguments(
+                output_dir=os.path.join(self.run_dir, "checkpoints"),
+                num_train_epochs=self.train_configs.epochs,
+                per_device_train_batch_size=self.train_configs.batch_size,
+                learning_rate=self.train_configs.lr,
+                weight_decay=0,
+                warmup_ratio=self.train_configs.warmup_ratio,
+                lr_scheduler_type=self.train_configs.scheduler,
+                seed=self.train_configs.seed,
+                report_to="wandb",
+                gradient_accumulation_steps=32,
+                save_strategy="no",
+                bf16=True,
+                tf32=False,
+                fp16=False,
+                logging_steps=1,
+                logging_first_step=True,
+                logging_dir=os.path.join(self.run_dir, "logs")
+            )
+
+            # Save training arguments
+            training_args_path = os.path.join(self.run_dir, "training_args.json")
+            with open(training_args_path, 'w') as f:
+                json.dump(training_args.to_dict(), f, indent=4)
+
+            # Create trainers
+            trainer = Trainer(
+                model=client_model,
+                args=training_args,
+                **data_module,
+                optimizers=(optimizer, None),
+            )
         
+            # Save tokenizer
+            self.tokenizer.save_pretrained(os.path.join(self.run_dir, "tokenizer"))
+
+            client_model.config.use_cache = False
+            trainer.train()
+
+            final_model_path = os.path.join(self.run_dir, f"final_model_{self.train_configs.client_idx}")  # Fixed path naming
+            trainer.save_state()
+            client_model.save_pretrained(final_model_path)
+            print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
+
         
     def _set_seed(self):
         """
