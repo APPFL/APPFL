@@ -1,6 +1,5 @@
 import os
 import torch
-import pathlib
 from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
 from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_pre_signed_s3
@@ -17,10 +16,12 @@ def load_global_model(client_agent_config: ClientAgentConfig, global_model: Any)
     if isinstance(global_model, Proxy):
         global_model = extract(global_model)
     else:
-        global_model = extract_model_from_s3(client_agent_config.client_id,
-                                    client_agent_config.experiment_id,
-                                    comm_type,
-                                    global_model)
+        global_model = extract_model_from_s3(
+            client_agent_config.client_id,
+            client_agent_config.experiment_id,
+            comm_type,
+            global_model,
+        )
     return global_model
 
 
@@ -33,12 +34,14 @@ def send_local_model(
     s3_enabled = is_s3_enabled(client_agent_config)
     comm_type = get_comm_type(client_agent_config)
     if s3_enabled:
-        local_model = send_model_by_pre_signed_s3(client_agent_config.client_id,
-                                       client_agent_config.experiment_id,
-                                       comm_type,
-                                       local_model,
-                                       local_model_key,
-                                       local_model_url)
+        local_model = send_model_by_pre_signed_s3(
+            client_agent_config.client_id,
+            client_agent_config.experiment_id,
+            comm_type,
+            local_model,
+            local_model_key,
+            local_model_url,
+        )
     elif (
         hasattr(client_agent_config, "comm_configs")
         and hasattr(client_agent_config.comm_configs, "proxystore_configs")

@@ -43,7 +43,12 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.max_message_size = max_message_size
         self.logger = logger if logger is not None else self._default_logger()
         self.kwargs = kwargs
-        self.experiment_id = "exp-" + datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + "-" + ''.join(random.choices(string.ascii_lowercase + string.digits, k=2))
+        self.experiment_id = (
+            "exp-"
+            + datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            + "-"
+            + "".join(random.choices(string.ascii_lowercase + string.digits, k=2))
+        )
         self._load_proxystore(server_agent.server_agent_config)
         self._load_google_drive(server_agent.server_agent_config)
 
@@ -115,10 +120,17 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             meta_data = {}
             if isinstance(model, tuple):
                 model, meta_data = model
-            
+
             if use_s3:
-                model = send_model_by_pre_signed_s3(request.header.client_id, self.experiment_id, "grpc", model, model_key=model_key, model_url=model_url)
-            
+                model = send_model_by_pre_signed_s3(
+                    request.header.client_id,
+                    self.experiment_id,
+                    "grpc",
+                    model,
+                    model_key=model_key,
+                    model_url=model_url,
+                )
+
             meta_data = yaml.dump(meta_data)
             if self.use_proxystore:
                 model = self.proxystore.proxy(model)
@@ -127,7 +139,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 model = self.colab_connector.upload(
                     model, f"init_global_model{int(time.time())}.pt"
                 )
-            
 
             model_serialized = serialize_model(model)
             response_proto = GetGlobalModelRespone(
@@ -188,7 +199,12 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if use_s3:
                 model_key = meta_data.get("model_key", None)
                 model_url = meta_data.get("model_url", None)
-                local_model = extract_model_from_s3(client_id, self.experiment_id, "grpc", deserialize_model(local_model))
+                local_model = extract_model_from_s3(
+                    client_id,
+                    self.experiment_id,
+                    "grpc",
+                    deserialize_model(local_model),
+                )
             if len(meta_data) > 0:
                 self.logger.info(
                     f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
@@ -199,7 +215,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             meta_data = {}
             if isinstance(global_model, tuple):
                 global_model, meta_data = global_model
-            
+
             if self.use_proxystore:
                 global_model = self.proxystore.proxy(global_model)
             if self.use_colab_connector:
@@ -207,8 +223,15 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     global_model, f"global_model{int(time.time())}.pt"
                 )
             if use_s3:
-                global_model = send_model_by_pre_signed_s3(request.header.client_id, self.experiment_id, "grpc", global_model, model_key, model_url)
-            
+                global_model = send_model_by_pre_signed_s3(
+                    request.header.client_id,
+                    self.experiment_id,
+                    "grpc",
+                    global_model,
+                    model_key,
+                    model_url,
+                )
+
             meta_data = yaml.dump(meta_data)
             global_model_serialized = serialize_model(global_model)
             status = (
