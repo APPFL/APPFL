@@ -1,6 +1,11 @@
+import pathlib
+import uuid
 import grpc
 import time
 import yaml
+
+from appfl.comm.utils.s3_storage import CloudStorage
+from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_pre_signed_s3, send_model_by_s3
 from .grpc_communicator_pb2 import (
     ClientHeader,
     ConfigurationRequest,
@@ -24,6 +29,7 @@ from appfl.comm.grpc import (
 from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
+import os
 
 
 class GRPCClientCommunicator:
@@ -73,6 +79,7 @@ class GRPCClientCommunicator:
         self.kwargs = kwargs
         self._load_proxystore()
         self._load_google_drive()
+        self._check_and_initialize_s3()
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -94,6 +101,7 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
+        self.experiment_id = configuration.get("experiment_id", None)
         return configuration
 
     def get_global_model(
@@ -109,6 +117,12 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
+        if self.use_s3bucket:
+            local_model_key = f"{self.experiment_id}_{str(uuid.uuid4())}_client_state_{client_id}"
+            local_model_url = CloudStorage.presign_upload_object(local_model_key)
+            kwargs["model_key"] = local_model_key
+            kwargs["model_url"] = local_model_url
+            kwargs["_use_s3"] = True
         meta_data = yaml.dump(kwargs)
         request = GetGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
@@ -126,6 +140,8 @@ class GRPCClientCommunicator:
             model = extract(model)
         if isinstance(model, dict) and "model_drive_path" in model.keys():
             model = self.colab_connector.load_model(model["model_drive_path"])
+        if self.use_s3bucket:
+            model = extract_model_from_s3(client_id, self.experiment_id, "grpc", model)
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -158,6 +174,13 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
+        if self.use_s3bucket:
+            local_model = send_model_by_s3(self.experiment_id, "grpc", local_model)
+            local_model_key = f"{self.experiment_id}_{str(uuid.uuid4())}_client_state_{client_id}"
+            local_model_url = CloudStorage.presign_upload_object(local_model_key)
+            kwargs["model_key"] = local_model_key
+            kwargs["model_url"] = local_model_url
+            kwargs["_use_s3"] = True
         meta_data = yaml.dump(kwargs)
         request = UpdateGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
@@ -186,6 +209,8 @@ class GRPCClientCommunicator:
             model = extract(model)
         if isinstance(model, dict) and "model_drive_path" in model.keys():
             model = self.colab_connector.load_model(model["model_drive_path"])
+        if self.use_s3bucket:
+            model = extract_model_from_s3(client_id, self.experiment_id, "grpc", model)
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -286,3 +311,40 @@ class GRPCClientCommunicator:
                     "model_path", "/content/drive/MyDrive/APPFL"
                 )
             )
+
+    def _check_and_initialize_s3(self):
+        # check if s3 enable
+        self.use_s3bucket = False
+        s3_bucket = None
+        if (
+            "s3_configs" in self.kwargs
+            and "enable" in self.kwargs["s3_configs"]
+            and self.kwargs["s3_configs"]["enable"]
+        ):
+            self.use_s3bucket = True
+            s3_bucket = self.kwargs["s3_configs"].get(
+                "s3_bucket", None
+            )
+
+        if self.use_s3bucket:
+            print(f"Using S3 bucket {s3_bucket} for model transfer.")
+            s3_creds_file = (
+                self.kwargs["s3_configs"].get(
+                    "s3_creds_file", None
+                )
+            )
+            s3_temp_dir_default = str(
+                pathlib.Path.home()
+                / ".appfl"
+                / "grpc"
+                / "server"
+                / self.experiment_id
+            )
+            s3_temp_dir = (
+                self.kwargs["s3_configs"].get(
+                    "s3_temp_dir", s3_temp_dir_default
+                )
+            )
+            if not os.path.exists(s3_temp_dir):
+                pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
+            CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)

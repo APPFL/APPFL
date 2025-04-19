@@ -27,3 +27,6 @@ comm_configs:
     server_uri: localhost:50051
     max_message_size: 1048576
     use_ssl: False
+    s3_configs:
+      enable: True
+      s3_bucket: "sagemaker-studio-n6da22vdq5q"

@@ -19,11 +19,11 @@ client_configs:
     # Differential privacy
     use_dp: False
     # Data loader
-    train_batch_size: 64
-    val_batch_size: 64
+    train_batch_size: 32
+    val_batch_size: 32
     train_data_shuffle: True
     val_data_shuffle: False
-    num_workers: 12
+    num_workers: 8
 
   model_configs:
     model_path: "./resources/model/resnet_aireadi.py"
@@ -31,10 +31,6 @@ client_configs:
     model_kwargs:
       num_classes: 4
 
-  comm_configs:
-    s3_configs:
-      enable_s3: True
-      s3_bucket: "sagemaker-studio-n6da22vdq5q"
 
 server_configs:
   num_clients: 2
