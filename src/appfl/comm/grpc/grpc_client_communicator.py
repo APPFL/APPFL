@@ -79,7 +79,6 @@ class GRPCClientCommunicator:
         self.kwargs = kwargs
         self._load_proxystore()
         self._load_google_drive()
-        self._check_and_initialize_s3()
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -102,6 +101,8 @@ class GRPCClientCommunicator:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
         self.experiment_id = configuration.get("experiment_id", None)
+        # initializing s3 here as we need experiment id so that we can keep track of the models
+        self._check_and_initialize_s3()
         return configuration
 
     def get_global_model(
@@ -260,6 +261,10 @@ class GRPCClientCommunicator:
 
             if self.colab_connector is not None:
                 self.colab_connector.cleanup()
+            
+            if self.use_s3bucket:
+                CloudStorage.clean_up()
+                print("S3 bucket cleaned up.")
 
         if len(response.results) == 0:
             return {}
@@ -347,4 +352,4 @@ class GRPCClientCommunicator:
             )
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
-            CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
+            CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir)
