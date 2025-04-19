@@ -228,8 +228,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     self.experiment_id,
                     "grpc",
                     global_model,
-                    model_key,
-                    model_url,
+                    model_key=model_key,
+                    model_url=model_url,
                 )
 
             meta_data = yaml.dump(meta_data)
