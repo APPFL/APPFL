@@ -162,7 +162,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
         """
         if self.use_s3bucket and model is not None:
-            model = send_model_by_s3(self.experiment_id, self.comm_type, model)
+            model = send_model_by_s3(self.experiment_id, self.comm_type, model, "server")
         elif self.use_proxystore and model is not None:
             model = self.proxystore.proxy(model)
         if need_model_response and self.use_s3bucket:

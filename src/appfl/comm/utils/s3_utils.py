@@ -31,10 +31,11 @@ def send_model_by_pre_signed_s3(
             model_wrapper,
             object_url=model_url,
             ext="pt" if not isinstance(model, bytes) else "pkl",
+            register_for_clean=True,
         )
     return model
 
-def send_model_by_s3(experiment_id, comm_type, model):
+def send_model_by_s3(experiment_id, comm_type, model, sender_id):
     model_wrapper = LargeObjectWrapper(
         data=model,
         name=experiment_id + str(uuid.uuid4()) + "_server_state",

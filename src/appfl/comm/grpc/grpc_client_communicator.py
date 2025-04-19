@@ -119,7 +119,7 @@ class GRPCClientCommunicator:
         else:
             client_id = str(self.client_id)
         if self.use_s3bucket:
-            local_model_key = f"{self.experiment_id}_{str(uuid.uuid4())}_client_state_{client_id}"
+            local_model_key = f"{self.experiment_id}_{str(uuid.uuid4())}_server_state_{client_id}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
             kwargs["model_key"] = local_model_key
             kwargs["model_url"] = local_model_url
@@ -177,7 +177,7 @@ class GRPCClientCommunicator:
             client_id = str(self.client_id)
         if self.use_s3bucket:
             local_model = send_model_by_s3(self.experiment_id, "grpc", local_model)
-            local_model_key = f"{self.experiment_id}_{str(uuid.uuid4())}_client_state_{client_id}"
+            local_model_key = f"{self.experiment_id}_{str(uuid.uuid4())}_server_state_{client_id}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
             kwargs["model_key"] = local_model_key
             kwargs["model_url"] = local_model_url

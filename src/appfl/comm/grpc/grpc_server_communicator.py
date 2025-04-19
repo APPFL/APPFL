@@ -106,14 +106,19 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
+            use_s3 = meta_data.get("_use_s3", False)
+            if use_s3:
+                model_key = meta_data.get("model_key", None)
+                model_url = meta_data.get("model_url", None)
+
             model = self.server_agent.get_parameters(**meta_data, blocking=True)
             meta_data = {}
             if isinstance(model, tuple):
                 model, meta_data = model
             
-            use_s3 = meta_data.get("_use_s3", False)
             if use_s3:
-                model = send_model_by_pre_signed_s3(request.header.client_id, self.experiment_id, "grpc", model, meta_data.get("model_key", None), meta_data.get("model_url", None))
+                model = send_model_by_pre_signed_s3(request.header.client_id, self.experiment_id, "grpc", model, model_key=model_key, model_url=model_url)
+            
             meta_data = yaml.dump(meta_data)
             if self.use_proxystore:
                 model = self.proxystore.proxy(model)
@@ -181,7 +186,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 )
             use_s3 = meta_data.get("_use_s3", False)
             if use_s3:
-                local_model = extract_model_from_s3(client_id, self.experiment_id, "grpc", local_model)
+                model_key = meta_data.get("model_key", None)
+                model_url = meta_data.get("model_url", None)
+                local_model = extract_model_from_s3(client_id, self.experiment_id, "grpc", deserialize_model(local_model))
             if len(meta_data) > 0:
                 self.logger.info(
                     f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
@@ -200,7 +207,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     global_model, f"global_model{int(time.time())}.pt"
                 )
             if use_s3:
-                global_model = send_model_by_pre_signed_s3(request.header.client_id, self.experiment_id, "grpc", global_model, meta_data.get("model_key", None), meta_data.get("model_url", None))
+                global_model = send_model_by_pre_signed_s3(request.header.client_id, self.experiment_id, "grpc", global_model, model_key, model_url)
             
             meta_data = yaml.dump(meta_data)
             global_model_serialized = serialize_model(global_model)
