@@ -36,7 +36,7 @@ def send_model_by_pre_signed_s3(
 def send_model_by_s3(experiment_id, comm_type, model, sender_id):
     model_wrapper = LargeObjectWrapper(
         data=model,
-        name=experiment_id + str(uuid.uuid4()) + "_server_state",
+        name=experiment_id + str(uuid.uuid4()) + f"_{sender_id}_state",
     )
     if (
         comm_type == "globus_compute" and not model_wrapper.can_send_directly
