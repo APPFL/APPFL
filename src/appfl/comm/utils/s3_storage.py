@@ -333,7 +333,9 @@ class CloudStorage:
         return data
 
     @classmethod
-    def presign_upload_object(cls, object_name: str, expiration: int = 3600, register_for_clean=False):
+    def presign_upload_object(
+        cls, object_name: str, expiration: int = 3600, register_for_clean=False
+    ):
         """Presign a url for uploading an object to S3 bucket"""
         cs = cls.get_instance()
         try:

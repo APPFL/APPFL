@@ -122,7 +122,9 @@ class GRPCClientCommunicator:
             local_model_key = (
                 f"{self.experiment_id}_{str(uuid.uuid4())}_server_state_{client_id}"
             )
-            local_model_url = CloudStorage.presign_upload_object(local_model_key, register_for_clean=True)
+            local_model_url = CloudStorage.presign_upload_object(
+                local_model_key, register_for_clean=True
+            )
             kwargs["model_key"] = local_model_key
             kwargs["model_url"] = local_model_url
             kwargs["_use_s3"] = True
@@ -184,7 +186,9 @@ class GRPCClientCommunicator:
             local_model_key = (
                 f"{self.experiment_id}_{str(uuid.uuid4())}_server_state_{client_id}"
             )
-            local_model_url = CloudStorage.presign_upload_object(local_model_key, register_for_clean=True)
+            local_model_url = CloudStorage.presign_upload_object(
+                local_model_key, register_for_clean=True
+            )
             kwargs["model_key"] = local_model_key
             kwargs["model_url"] = local_model_url
             kwargs["_use_s3"] = True
