@@ -1,8 +1,7 @@
-from collections import OrderedDict
-import pathlib
-from typing import Any, Dict, Optional, Union
 import uuid
-
+import pathlib
+from collections import OrderedDict
+from typing import Any, Dict, Optional, Union
 from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 
 
@@ -13,6 +12,7 @@ def send_model_by_pre_signed_s3(
     model: Union[Dict, OrderedDict, bytes],
     model_key: Optional[str],
     model_url: Optional[str],
+    logger: Optional[Any] = None,
 ):
     s3_tmp_dir = str(
         pathlib.Path.home() / ".appfl" / comm_type / client_id / experiment_id
@@ -23,7 +23,7 @@ def send_model_by_pre_signed_s3(
     if (
         comm_type == "globus_compute" and not model_wrapper.can_send_directly
     ) or comm_type != "globus_compute":
-        CloudStorage.init(s3_tmp_dir=s3_tmp_dir)
+        CloudStorage.init(s3_tmp_dir=s3_tmp_dir, logger=logger)
         model = CloudStorage.upload_object(
             model_wrapper,
             object_url=model_url,

@@ -11,9 +11,9 @@ from typing import Optional, Dict, List, Union, Tuple, Any
 from appfl.comm.utils.s3_utils import send_model_by_s3
 from appfl.logger import ServerAgentFileLogger
 from appfl.comm.base import BaseServerCommunicator
+from appfl.comm.utils.s3_storage import CloudStorage
 from appfl.config import ClientAgentConfig, ServerAgentConfig
 from .utils.endpoint import GlobusComputeClientEndpoint
-from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 from globus_compute_sdk.serialize import CombinedCode
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
@@ -117,14 +117,9 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
         """
         if self.use_s3bucket and model is not None:
-            model_wrapper = LargeObjectWrapper(
-                data=model,
-                name=str(uuid.uuid4()) + "_server_state",
+            model = send_model_by_s3(
+                self.experiment_id, self.comm_type, model, "server"
             )
-            if not model_wrapper.can_send_directly:
-                model = CloudStorage.upload_object(
-                    model_wrapper, register_for_clean=True
-                )
         elif self.use_proxystore and model is not None:
             model = self.proxystore.proxy(model)
         for i, client_id in enumerate(self.client_endpoints):

@@ -18,6 +18,7 @@ client_agent_config = OmegaConf.load(args.config)
 client_agent = ClientAgent(client_agent_config=client_agent_config)
 client_communicator = GRPCClientCommunicator(
     client_id=client_agent.get_id(),
+    logger=client_agent.logger,
     **client_agent_config.comm_configs.grpc_configs,
 )
 

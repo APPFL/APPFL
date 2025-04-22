@@ -1,9 +1,10 @@
-import pathlib
+import os
 import uuid
 import grpc
 import time
 import yaml
-
+import pathlib
+from datetime import datetime
 from appfl.comm.utils.s3_storage import CloudStorage
 from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_s3
 from .grpc_communicator_pb2 import (
@@ -29,7 +30,6 @@ from appfl.comm.grpc import (
 from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
-import os
 
 
 class GRPCClientCommunicator:
@@ -48,6 +48,7 @@ class GRPCClientCommunicator:
         authenticator: Optional[str] = None,
         authenticator_args: Dict[str, Any] = {},
         max_message_size: int = 2 * 1024 * 1024,
+        logger: Optional[Any] = None,
         **kwargs,
     ):
         """
@@ -63,6 +64,7 @@ class GRPCClientCommunicator:
         :param max_message_size: The maximum message size in bytes.
         """
         self.client_id = client_id
+        self.logger = logger
         self.max_message_size = max_message_size
         channel = create_grpc_channel(
             server_uri,
@@ -79,6 +81,7 @@ class GRPCClientCommunicator:
         self.kwargs = kwargs
         self._load_proxystore()
         self._load_google_drive()
+        self._s3_initalized = False
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -100,9 +103,8 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
-        self.experiment_id = configuration.get("experiment_id", None)
         # initializing s3 here as we need experiment id so that we can keep track of the models
-        self._check_and_initialize_s3()
+        self._check_and_initialize_s3(experiment_id=configuration.get("experiment_id", None))
         return configuration
 
     def get_global_model(
@@ -113,6 +115,7 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the global model with additional metadata (if any)
         """
+        self._check_and_initialize_s3()
         if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
             del kwargs["_client_id"]
@@ -166,6 +169,7 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the updated global model with additional metadata. Specifically, `meta_data["status"]` is either "RUNNING" or "DONE".
         """
+        self._check_and_initialize_s3()
         if self.use_proxystore:
             local_model = self.proxystore.proxy(local_model)
             kwargs["_use_proxystore"] = True
@@ -274,7 +278,8 @@ class GRPCClientCommunicator:
 
             if self.use_s3bucket:
                 CloudStorage.clean_up()
-                print("S3 bucket cleaned up.")
+                if self.logger is not None:
+                    self.logger.info("S3 bucket cleaned up.")
 
         if len(response.results) == 0:
             return {}
@@ -327,20 +332,25 @@ class GRPCClientCommunicator:
                 )
             )
 
-    def _check_and_initialize_s3(self):
+    def _check_and_initialize_s3(self, experiment_id=None):
+        if self._s3_initalized:
+            return
+        self.experiment_id = experiment_id if experiment_id is not None else datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        self._s3_initalized = True
         # check if s3 enable
         self.use_s3bucket = False
         s3_bucket = None
         if (
             "s3_configs" in self.kwargs
-            and "enable" in self.kwargs["s3_configs"]
-            and self.kwargs["s3_configs"]["enable"]
+            and "enable_s3" in self.kwargs["s3_configs"]
+            and self.kwargs["s3_configs"]["enable_s3"]
         ):
             self.use_s3bucket = True
             s3_bucket = self.kwargs["s3_configs"].get("s3_bucket", None)
-
+            self.use_s3bucket = self.use_s3bucket and s3_bucket is not None
         if self.use_s3bucket:
-            print(f"Using S3 bucket {s3_bucket} for model transfer.")
+            if self.logger is not None:
+                self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
             s3_creds_file = self.kwargs["s3_configs"].get("s3_creds_file", None)
             s3_temp_dir_default = str(
                 pathlib.Path.home() / ".appfl" / "grpc" / "server" / self.experiment_id
@@ -350,4 +360,4 @@ class GRPCClientCommunicator:
             )
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
-            CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir)
+            CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)

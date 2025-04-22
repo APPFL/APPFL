@@ -1,16 +1,16 @@
-from datetime import datetime
-import random
-import string
+import copy
 import grpc
 import time
 import yaml
+import random
+import string
 import pprint
 import logging
 import threading
 from typing import Optional
+from datetime import datetime
 from omegaconf import OmegaConf
 from concurrent.futures import Future
-
 from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_pre_signed_s3
 from .grpc_communicator_pb2 import (
     UpdateGlobalModelRequest,
@@ -129,6 +129,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     model,
                     model_key=model_key,
                     model_url=model_url,
+                    logger=self.logger,
                 )
 
             meta_data = yaml.dump(meta_data)
@@ -206,8 +207,19 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     deserialize_model(local_model),
                 )
             if len(meta_data) > 0:
+                meta_data_print = copy.deepcopy(meta_data)
+                remove_keys = [
+                    "_use_proxystore",
+                    "_use_colab_connector",
+                    "_use_s3",
+                    "model_key",
+                    "model_url",
+                ]
+                for key in remove_keys:
+                    if key in meta_data_print:
+                        del meta_data_print[key]
                 self.logger.info(
-                    f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
+                    f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
                 )
             global_model = self.server_agent.global_update(
                 client_id, local_model, blocking=True, **meta_data
@@ -230,6 +242,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     global_model,
                     model_key=model_key,
                     model_url=model_url,
+                    logger=self.logger,
                 )
 
             meta_data = yaml.dump(meta_data)

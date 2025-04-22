@@ -28,5 +28,5 @@ comm_configs:
     max_message_size: 1048576
     use_ssl: False
     s3_configs:
-      enable: True
+      enable_s3: True
       s3_bucket: "sagemaker-us-east-1-794660029210"
