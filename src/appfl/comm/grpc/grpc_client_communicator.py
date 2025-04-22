@@ -104,7 +104,9 @@ class GRPCClientCommunicator:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
         # initializing s3 here as we need experiment id so that we can keep track of the models
-        self._check_and_initialize_s3(experiment_id=configuration.get("experiment_id", None))
+        self._check_and_initialize_s3(
+            experiment_id=configuration.get("experiment_id", None)
+        )
         return configuration
 
     def get_global_model(
@@ -335,7 +337,11 @@ class GRPCClientCommunicator:
     def _check_and_initialize_s3(self, experiment_id=None):
         if self._s3_initalized:
             return
-        self.experiment_id = experiment_id if experiment_id is not None else datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        self.experiment_id = (
+            experiment_id
+            if experiment_id is not None
+            else datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        )
         self._s3_initalized = True
         # check if s3 enable
         self.use_s3bucket = False
