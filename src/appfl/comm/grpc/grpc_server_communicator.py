@@ -1,12 +1,17 @@
+import copy
 import grpc
 import time
 import yaml
+import random
+import string
 import pprint
 import logging
 import threading
 from typing import Optional
+from datetime import datetime
 from omegaconf import OmegaConf
 from concurrent.futures import Future
+from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_pre_signed_s3
 from .grpc_communicator_pb2 import (
     UpdateGlobalModelRequest,
     UpdateGlobalModelResponse,
@@ -38,6 +43,12 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.max_message_size = max_message_size
         self.logger = logger if logger is not None else self._default_logger()
         self.kwargs = kwargs
+        self.experiment_id = (
+            "exp-"
+            + datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            + "-"
+            + "".join(random.choices(string.ascii_lowercase + string.digits, k=2))
+        )
         self._load_proxystore(server_agent.server_agent_config)
         self._load_google_drive(server_agent.server_agent_config)
 
@@ -63,6 +74,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             client_configs = self.server_agent.get_client_configs(**meta_data)
+            client_configs["experiment_id"] = self.experiment_id
             client_configs = OmegaConf.to_container(client_configs, resolve=True)
             client_configs_serialized = yaml.dump(client_configs)
             response = ConfigurationResponse(
@@ -99,12 +111,28 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
+            use_s3 = meta_data.get("_use_s3", False)
+            if use_s3:
+                model_key = meta_data.get("model_key", None)
+                model_url = meta_data.get("model_url", None)
+
             model = self.server_agent.get_parameters(**meta_data, blocking=True)
+            meta_data = {}
             if isinstance(model, tuple):
-                meta_data = yaml.dump(model[1])
-                model = model[0]
-            else:
-                meta_data = yaml.dump({})
+                model, meta_data = model
+
+            if use_s3:
+                model = send_model_by_pre_signed_s3(
+                    request.header.client_id,
+                    self.experiment_id,
+                    "grpc",
+                    model,
+                    model_key=model_key,
+                    model_url=model_url,
+                    logger=self.logger,
+                )
+
+            meta_data = yaml.dump(meta_data)
             if self.use_proxystore:
                 model = self.proxystore.proxy(model)
 
@@ -168,24 +196,56 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 local_model = self.colab_connector.load_model(
                     local_model["model_drive_path"]
                 )
+            use_s3 = meta_data.get("_use_s3", False)
+            if use_s3:
+                model_key = meta_data.get("model_key", None)
+                model_url = meta_data.get("model_url", None)
+                local_model = extract_model_from_s3(
+                    client_id,
+                    self.experiment_id,
+                    "grpc",
+                    deserialize_model(local_model),
+                )
             if len(meta_data) > 0:
+                meta_data_print = copy.deepcopy(meta_data)
+                remove_keys = [
+                    "_use_proxystore",
+                    "_use_colab_connector",
+                    "_use_s3",
+                    "model_key",
+                    "model_url",
+                ]
+                for key in remove_keys:
+                    if key in meta_data_print:
+                        del meta_data_print[key]
                 self.logger.info(
-                    f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data)}"
+                    f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
                 )
             global_model = self.server_agent.global_update(
                 client_id, local_model, blocking=True, **meta_data
             )
+            meta_data = {}
             if isinstance(global_model, tuple):
-                meta_data = yaml.dump(global_model[1])
-                global_model = global_model[0]
-            else:
-                meta_data = yaml.dump({})
+                global_model, meta_data = global_model
+
             if self.use_proxystore:
                 global_model = self.proxystore.proxy(global_model)
             if self.use_colab_connector:
                 global_model = self.colab_connector.upload(
                     global_model, f"global_model{int(time.time())}.pt"
                 )
+            if use_s3:
+                global_model = send_model_by_pre_signed_s3(
+                    request.header.client_id,
+                    self.experiment_id,
+                    "grpc",
+                    global_model,
+                    model_key=model_key,
+                    model_url=model_url,
+                    logger=self.logger,
+                )
+
+            meta_data = yaml.dump(meta_data)
             global_model_serialized = serialize_model(global_model)
             status = (
                 ServerStatus.DONE

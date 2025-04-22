@@ -333,7 +333,9 @@ class CloudStorage:
         return data
 
     @classmethod
-    def presign_upload_object(cls, object_name: str, expiration: int = 3600):
+    def presign_upload_object(
+        cls, object_name: str, expiration: int = 3600, register_for_clean=False
+    ):
         """Presign a url for uploading an object to S3 bucket"""
         cs = cls.get_instance()
         try:
@@ -342,6 +344,8 @@ class CloudStorage:
                 Params={"Bucket": cs.bucket, "Key": object_name},
                 ExpiresIn=expiration,
             )
+            if object_name is not None and register_for_clean:
+                cs.registered_obj.add(object_name)
         except Exception as e:
             if cs.logger is not None:
                 cs.logger.info(
