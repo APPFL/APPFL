@@ -29,4 +29,4 @@ comm_configs:
     use_ssl: False
     s3_configs:
       enable_s3: True
-      s3_bucket: "sagemaker-us-east-1-794660029210"
+      s3_bucket: "sagemaker-arvo-tutorial-models"
