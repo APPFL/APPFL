@@ -1,4 +1,4 @@
-client_id: "Client1"
+client_id: "Client2"
 
 train_configs:
   # Device
@@ -13,7 +13,7 @@ data_configs:
   dataset_name: "get_ai_readi"
   dataset_kwargs:
     num_clients: 2
-    client_id: 0
+    client_id: 1
     partition_strategy: "dirichlet_noniid"
     sampling_factor: 0.5
     alpha1: 10
@@ -27,6 +27,6 @@ comm_configs:
     server_uri: localhost:50051
     max_message_size: 1048576
     use_ssl: False
-    colab_connector_configs:
-      enable: True
-      model_path: "/content/drive/MyDrive/AVRO/client1"
+    s3_configs:
+      enable_s3: True
+      s3_bucket: "sagemaker-us-east-1-794660029210"
