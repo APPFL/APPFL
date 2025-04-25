@@ -1,5 +1,5 @@
-from base_dragent import BaseDRAgent
 import torch
+from appfl.misc.data_readiness import BaseDRAgent
 
 
 class DRAgentDuplicates(BaseDRAgent):

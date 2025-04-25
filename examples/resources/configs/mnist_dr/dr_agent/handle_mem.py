@@ -1,6 +1,6 @@
-from base_dragent import BaseDRAgent
 import torch
 from typing import Any, Dict
+from appfl.misc.data_readiness import BaseDRAgent
 
 
 class DRAgentMem(BaseDRAgent):

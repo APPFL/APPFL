@@ -17,7 +17,7 @@ To run a specific DR agent, configure it in the server configuration YAML file.
 
 ## Example: Handling Class Imbalance
 
-To handle **class imbalance**, update the `dragent_configs` in `server_fedavg_dragent.yaml` as shown:
+To handle **class imbalance (ci)**, update the `dragent_configs` in `server_fedavg_dragent.yaml` as shown:
 
 ```yaml
 dragent_configs:
@@ -62,14 +62,7 @@ Each report includes:
 - Custom metrics specific to the selected DR agent
 
 ## Simulate data issues
-Note: Most data issues are not naturally present in MNIST. To evaluate DR agents effectively, we intentionally inject issues (e.g., duplicates, noise).
-
-These data perturbations are implemented in
-
-```bash
-./resources/dataset/mnist_dataset_dr.py
-```
-
+Fortunately and unfortunately, most data issues are not naturally presented in the MNIST dataset as it is a very well-curated dataset, therefore, to evaluate DR agents effectively, we intentionally inject issues (e.g., duplicates, noise) to create a "noisy" and "non-AI-ready" version of MNIST dataset at `./resources/dataset/mnist_dataset_dr.py`.
 
 ## Notes
-- You can extend the `dr_agent/base_dragent.py` and create new custom DR agents to handle any data related issues easily
+- You can extend the `BaseAgent` from `appfl.misc.data_readiness` and create new custom DR agents to handle any data related issues easily

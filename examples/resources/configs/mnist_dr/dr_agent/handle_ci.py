@@ -1,7 +1,7 @@
+import torch
 import random
 import numpy as np
-import torch
-from base_dragent import BaseDRAgent
+from appfl.misc.data_readiness import BaseDRAgent
 
 
 class DRAgentCI(BaseDRAgent):

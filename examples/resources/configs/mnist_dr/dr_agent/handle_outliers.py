@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from typing import Dict, Any
-from base_dragent import BaseDRAgent
+from appfl.misc.data_readiness import BaseDRAgent
 
 
 class DRAgentOutliers(BaseDRAgent):
