@@ -53,6 +53,24 @@ mpiexec -n 3 python ./mpi/run_mpi.py \
     --client_config ./resources/configs/mnist_dr/client_1_dragent.yaml
 ```
 
+## Running Experiments with gRPC
+To launch an experiment with 2 clients and 1 server using gRPC, run the following three commands inside the `examples` directory from three different terminals:
+
+```bash
+# Terminal 1 [Server]
+python ./grpc/run_server.py --config ./resources/configs/mnist_dr/server_fedavg_dragent.yaml
+```
+
+```bash
+# Terminal 2 [Client1]
+python ./grpc/run_client.py --config ./resources/configs/mnist_dr/client_1_dragent.yaml
+```
+
+```bash
+# Terminal 3 [Client2]
+python ./grpc/run_client.py --config ./resources/configs/mnist_dr/client_2_dragent.yaml
+```
+
 ## DR Reports
 After running, DR evaluation reports are saved in the `output/` directory.
 

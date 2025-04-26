@@ -266,6 +266,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 )
             elif action == "get_data_readiness_report":
                 num_clients = self.server_agent.get_num_clients()
+                print(f'num_clients: {num_clients}')
                 if not hasattr(self, "_dr_metrics_lock"):
                     self._dr_metrics = {}
                     self._dr_metrics_futures = {}

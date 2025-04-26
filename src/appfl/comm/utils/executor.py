@@ -10,6 +10,13 @@ def get_sample_size_executor(
     **kwargs,
 ):
     client_agent = ClientAgent(client_agent_config=client_agent_config)
+    if (
+        hasattr(client_agent_config, "data_readiness_configs")
+        and hasattr(client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs")
+        and hasattr(client_agent_config.data_readiness_configs.dr_metrics.dragent_configs, "remedy_action")
+        and client_agent_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
+    ):
+        client_agent.adapt_data(client_config=client_agent_config)
     return None, {"sample_size": client_agent.get_sample_size()}
 
 
@@ -18,6 +25,13 @@ def data_readiness_report_executor(
     **kwargs,
 ):
     client_agent = ClientAgent(client_agent_config=client_agent_config)
+    if (
+        hasattr(client_agent_config, "data_readiness_configs")
+        and hasattr(client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs")
+        and hasattr(client_agent_config.data_readiness_configs.dr_metrics.dragent_configs, "remedy_action")
+        and client_agent_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
+    ):
+        client_agent.adapt_data(client_config=client_agent_config)
     return None, {
         "data_readiness": client_agent.generate_readiness_report(client_agent_config)
     }
@@ -29,6 +43,13 @@ def train_executor(
     meta_data=None,
 ):
     client_agent = ClientAgent(client_agent_config=client_agent_config)
+    if (
+        hasattr(client_agent_config, "data_readiness_configs")
+        and hasattr(client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs")
+        and hasattr(client_agent_config.data_readiness_configs.dr_metrics.dragent_configs, "remedy_action")
+        and client_agent_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
+    ):
+        client_agent.adapt_data(client_config=client_agent_config)
     if model is not None:
         model = load_global_model(client_agent.client_agent_config, model)
         client_agent.load_parameters(model)

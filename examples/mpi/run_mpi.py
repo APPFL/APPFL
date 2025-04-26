@@ -72,7 +72,7 @@ else:
             )
             and client_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
         ):
-            dr_agent_metadata = client_agent.adapt_data(client_config=client_config)
+            client_agent.adapt_data(client_config=client_config)
         data_readiness = client_agent.generate_readiness_report(client_config)
         client_communicator.invoke_custom_action(
             action="get_data_readiness_report", **data_readiness
