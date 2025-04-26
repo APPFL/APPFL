@@ -22,11 +22,11 @@ To handle **class imbalance (ci)**, update the `dragent_configs` in `server_feda
 ```yaml
 dragent_configs:
     dragent_path: ./resources/configs/mnist_dr/dr_agent/handle_ci.py
-    dragent_name: DRAgentCI
+    dragent_name: DRAgentCI # Optional, if not specified, the last class will be used
     remedy_action: false  # Set to true to balance classes
 ```
 
-The `dragent_name` is the name of the class defined in the `dragent_path` file.
+The `dragent_name` is the name of the class defined in the `dragent_path` file. It is optional, and if not specified, the last Python class defined within the dragent file will be used.
 Setting `remedy_action: true` will apply the fix (e.g., undersampling the majority class). The agent will then perform:
 
 - Evaluation of the custom data readiness status
@@ -38,7 +38,7 @@ To detect or fix **duplicate entries**, modify the YAML config like so:
 ```yaml
 dragent_configs:
     dragent_path: ./resources/configs/mnist_dr/dr_agent/handle_duplicates.py
-    dragent_name: DRAgentDuplicates
+    dragent_name: DRAgentDuplicates # Optional, if not specified, the last class will be used
     remedy_action: false  # Set to true to remove duplicates
 ```
 

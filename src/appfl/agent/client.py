@@ -162,7 +162,10 @@ class ClientAgent:
         """
         Generate data readiness report based on the configuration provided by the server.
         """
-        if hasattr(client_config.data_readiness_configs, "dr_metrics"):
+        if (
+            hasattr(client_config, "data_readiness_configs") and
+            hasattr(client_config.data_readiness_configs, "dr_metrics")
+        ):
             results = {}
             plot_results = {"plots": {}}
             to_combine_results = {"to_combine": {}}
@@ -293,14 +296,12 @@ class ClientAgent:
                     client_config.data_readiness_configs.dr_metrics.dragent_configs,
                     "dragent_path",
                 )
-                and hasattr(
-                    client_config.data_readiness_configs.dr_metrics.dragent_configs,
-                    "dragent_name",
-                )
             ):
                 self.specified_metrics = create_instance_from_file(
                     client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_path,
-                    client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_name,
+                    client_config.data_readiness_configs.dr_metrics.dragent_configs.get(
+                        "dragent_name", None
+                    ),
                     self.train_dataset,
                 )
                 results["specified_metrics"] = dict(
@@ -328,14 +329,12 @@ class ClientAgent:
                 client_config.data_readiness_configs.dr_metrics.dragent_configs,
                 "dragent_path",
             )
-            and hasattr(
-                client_config.data_readiness_configs.dr_metrics.dragent_configs,
-                "dragent_name",
-            )
         ):
             self.specified_metrics = create_instance_from_file(
                 client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_path,
-                client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_name,
+                client_config.data_readiness_configs.dr_metrics.dragent_configs.get(
+                    "dragent_name", None
+                ),
                 self.train_dataset,
             )
 
