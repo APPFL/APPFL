@@ -12,8 +12,13 @@ def get_sample_size_executor(
     client_agent = ClientAgent(client_agent_config=client_agent_config)
     if (
         hasattr(client_agent_config, "data_readiness_configs")
-        and hasattr(client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs")
-        and hasattr(client_agent_config.data_readiness_configs.dr_metrics.dragent_configs, "remedy_action")
+        and hasattr(
+            client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs"
+        )
+        and hasattr(
+            client_agent_config.data_readiness_configs.dr_metrics.dragent_configs,
+            "remedy_action",
+        )
         and client_agent_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
     ):
         client_agent.adapt_data(client_config=client_agent_config)
@@ -27,8 +32,13 @@ def data_readiness_report_executor(
     client_agent = ClientAgent(client_agent_config=client_agent_config)
     if (
         hasattr(client_agent_config, "data_readiness_configs")
-        and hasattr(client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs")
-        and hasattr(client_agent_config.data_readiness_configs.dr_metrics.dragent_configs, "remedy_action")
+        and hasattr(
+            client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs"
+        )
+        and hasattr(
+            client_agent_config.data_readiness_configs.dr_metrics.dragent_configs,
+            "remedy_action",
+        )
         and client_agent_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
     ):
         client_agent.adapt_data(client_config=client_agent_config)
@@ -45,8 +55,13 @@ def train_executor(
     client_agent = ClientAgent(client_agent_config=client_agent_config)
     if (
         hasattr(client_agent_config, "data_readiness_configs")
-        and hasattr(client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs")
-        and hasattr(client_agent_config.data_readiness_configs.dr_metrics.dragent_configs, "remedy_action")
+        and hasattr(
+            client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs"
+        )
+        and hasattr(
+            client_agent_config.data_readiness_configs.dr_metrics.dragent_configs,
+            "remedy_action",
+        )
         and client_agent_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
     ):
         client_agent.adapt_data(client_config=client_agent_config)

@@ -162,9 +162,8 @@ class ClientAgent:
         """
         Generate data readiness report based on the configuration provided by the server.
         """
-        if (
-            hasattr(client_config, "data_readiness_configs") and
-            hasattr(client_config.data_readiness_configs, "dr_metrics")
+        if hasattr(client_config, "data_readiness_configs") and hasattr(
+            client_config.data_readiness_configs, "dr_metrics"
         ):
             results = {}
             plot_results = {"plots": {}}
@@ -288,14 +287,11 @@ class ClientAgent:
             results.update(to_combine_results)
 
             # Handle data readiness agent metrics
-            if (
-                hasattr(
-                    client_config.data_readiness_configs.dr_metrics, "dragent_configs"
-                )
-                and hasattr(
-                    client_config.data_readiness_configs.dr_metrics.dragent_configs,
-                    "dragent_path",
-                )
+            if hasattr(
+                client_config.data_readiness_configs.dr_metrics, "dragent_configs"
+            ) and hasattr(
+                client_config.data_readiness_configs.dr_metrics.dragent_configs,
+                "dragent_path",
             ):
                 self.specified_metrics = create_instance_from_file(
                     client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_path,
@@ -323,12 +319,11 @@ class ClientAgent:
         Modify the data based on the configuration provided by the daragent configs
         """
 
-        if (
-            hasattr(client_config.data_readiness_configs.dr_metrics, "dragent_configs")
-            and hasattr(
-                client_config.data_readiness_configs.dr_metrics.dragent_configs,
-                "dragent_path",
-            )
+        if hasattr(
+            client_config.data_readiness_configs.dr_metrics, "dragent_configs"
+        ) and hasattr(
+            client_config.data_readiness_configs.dr_metrics.dragent_configs,
+            "dragent_path",
         ):
             self.specified_metrics = create_instance_from_file(
                 client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_path,
