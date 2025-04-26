@@ -40,6 +40,16 @@ if (
     and hasattr(client_config.data_readiness_configs, "generate_dr_report")
     and client_config.data_readiness_configs.generate_dr_report
 ):
+    # Check dragent availability and if the data needs remediation
+    if (
+        hasattr(client_config.data_readiness_configs.dr_metrics, "dragent_configs")
+        and hasattr(
+            client_config.data_readiness_configs.dr_metrics.dragent_configs,
+            "remedy_action",
+        )
+        and client_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
+    ):
+        client_agent.adapt_data(client_config=client_config)
     data_readiness = client_agent.generate_readiness_report(client_config)
     client_communicator.invoke_custom_action(
         action="get_data_readiness_report", **data_readiness
