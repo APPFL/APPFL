@@ -11,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from appfl.privacy import laplace_mechanism_output_perturb
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 from appfl.misc.utils import parse_device_str, apply_model_device
+import torch.optim.lr_scheduler as lr_scheduler
 
 
 class VanillaTrainer(BaseTrainer):
@@ -156,6 +157,23 @@ class VanillaTrainer(BaseTrainer):
         optimizer = getattr(optim_module, self.train_configs.optim)(
             self.model.parameters(), **self.train_configs.optim_args
         )
+        scheduler = None
+        if hasattr(self.train_configs, "scheduler") and self.train_configs.scheduler:
+            scheduler_name = self.train_configs.scheduler
+            scheduler_args = self.train_configs.get("scheduler_args", {})
+            try:
+                # Check if scheduler exists in torch.optim.lr_scheduler
+                assert hasattr(lr_scheduler, scheduler_name), (
+                     f"Scheduler {scheduler_name} not found in torch.optim.lr_scheduler"
+                )
+                scheduler_class = getattr(lr_scheduler, scheduler_name)
+                scheduler = scheduler_class(optimizer, **scheduler_args)
+                self.logger.info(f"Initialized scheduler: {scheduler_name} with args: {scheduler_args}")
+            except Exception as e:
+                self.logger.warning(f"Could not initialize scheduler '{scheduler_name}': {e}. Proceeding without scheduler.")
+                scheduler = None
+        else:
+            self.logger.info("No scheduler configured.")
         if self.train_configs.mode == "epoch":
             for epoch in range(self.train_configs.num_local_epochs):
                 start_time = time.time()
@@ -171,6 +189,7 @@ class VanillaTrainer(BaseTrainer):
                     np.concatenate(target_pred),
                 )
                 train_accuracy = float(self.metric(target_true, target_pred))
+                current_lr = optimizer.param_groups[0]['lr']
                 if do_validation:
                     val_loss, val_accuracy = self._validate()
                     if "val_loss" not in self.val_results:
@@ -178,12 +197,26 @@ class VanillaTrainer(BaseTrainer):
                         self.val_results["val_accuracy"] = []
                     self.val_results["val_loss"].append(val_loss)
                     self.val_results["val_accuracy"].append(val_accuracy)
+                if scheduler is not None:
+                    if isinstance(scheduler, lr_scheduler.ReduceLROnPlateau):
+                        if do_validation and val_loss is not None:
+                            scheduler.step(val_loss)
+                            self.logger.info(f"Scheduler ReduceLROnPlateau stepped with val_loss: {val_loss:.4f}")
+                        else:
+                            self.logger.warning("ReduceLROnPlateau scheduler requires validation loss to step.")
+                    else:
+                        # Step most other schedulers after the epoch
+                        scheduler.step()
+                        self.logger.info(f"Scheduler {self.train_configs.scheduler} stepped.")
+                    # Update LR *after* potentially stepping
+                    current_lr = optimizer.param_groups[0]['lr']
                 per_epoch_time = time.time() - start_time
                 if self.enabled_wandb:
                     wandb.log(
                         {
                             f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
                             f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
+                            f"{self.wandb_logging_id}/learning-rate": current_lr,
                             f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
                             f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
                         }
@@ -235,6 +268,7 @@ class VanillaTrainer(BaseTrainer):
                 np.concatenate(target_pred),
             )
             train_accuracy = float(self.metric(target_true, target_pred))
+            current_lr = optimizer.param_groups[0]['lr']
             if do_validation:
                 val_loss, val_accuracy = self._validate()
                 self.val_results["val_loss"] = val_loss
@@ -245,6 +279,7 @@ class VanillaTrainer(BaseTrainer):
                     {
                         f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
                         f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
+                        f"{self.wandb_logging_id}/learning-rate": current_lr,
                         f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
                         f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
                     }

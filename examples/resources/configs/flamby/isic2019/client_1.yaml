@@ -1,0 +1,25 @@
+client_id: "Client1"
+train_configs:
+  # Device
+  device: "cuda"
+  # Logging and outputs
+  logging_output_dirname: "./output"
+  logging_output_filename: "result"
+
+# Local dataset
+data_configs:
+  dataset_path: "./resources/dataset/flamby_fed_isic2019.py"
+  dataset_name: "get_flamby_fed_isic2019"
+  dataset_kwargs:
+    client_id: 0
+    use_s3: True
+    s3_bucket: "sagemaker-ai-readi-tutorial-dataset"
+    s3_image_prefix: "Flamby/ISIC_2019"
+    s3_metadata_key: "Flamby/ISIC_2019"
+
+
+comm_configs:
+  grpc_configs:
+    server_uri: localhost:50051
+    max_message_size: 1048576
+    use_ssl: False
