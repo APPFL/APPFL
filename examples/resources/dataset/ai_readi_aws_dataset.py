@@ -1,6 +1,6 @@
 import os
-import boto3 # Added for S3 interaction
-import io    # Added for handling byte streams
+import boto3  # Added for S3 interaction
+import io  # Added for handling byte streams
 from torch.utils.data import Dataset
 import torchvision.transforms as T
 from PIL import Image
@@ -11,6 +11,7 @@ from appfl.misc.data import (
     column_based_partition_df,
 )
 import pandas as pd
+
 
 class RetinopathyDataset(Dataset):
     def __init__(self, df, label_col, transform=None):
@@ -27,9 +28,9 @@ class RetinopathyDataset(Dataset):
         self.df = df.reset_index(drop=True)
         self.transform = transform
         self.label_col = label_col
-        self.s3_client = boto3.client("s3") # Initialize S3 client
+        self.s3_client = boto3.client("s3")  # Initialize S3 client
         self.s3_bucket = "sagemaker-ai-readi-tutorial-dataset"
-        self.s3_prefix = 'cfp_images'
+        self.s3_prefix = "cfp_images"
 
     def __len__(self):
         return len(self.df)
@@ -47,7 +48,7 @@ class RetinopathyDataset(Dataset):
             # Get the image object from S3
             s3_object = self.s3_client.get_object(Bucket=self.s3_bucket, Key=s3_key)
             # Read the image data from the object's body
-            image_data = s3_object['Body'].read()
+            image_data = s3_object["Body"].read()
             # Load the image from the byte stream
             image = Image.open(io.BytesIO(image_data)).convert("RGB")
 
@@ -72,13 +73,13 @@ class RetinopathyDataset(Dataset):
 def get_ai_readi(
     num_clients: int,
     client_id: int,
-    s3_bucket: str = "sagemaker-ai-readi-tutorial-dataset",          # Added: S3 bucket name
-    s3_prefix: str = "cfp_images", # Added: S3 prefix, defaults to 'cfp_images'
+    s3_bucket: str = "sagemaker-ai-readi-tutorial-dataset",  # Added: S3 bucket name
+    s3_prefix: str = "cfp_images",  # Added: S3 prefix, defaults to 'cfp_images'
     partition_strategy: str = "iid",
     label_col: str = "device",
     partition_col: str = None,
     sampling_factor: int = None,
-    aws_region: str = None,      # Optional: specify AWS region if needed by boto3
+    aws_region: str = None,  # Optional: specify AWS region if needed by boto3
     **kwargs,
 ):
     """
@@ -107,14 +108,14 @@ def get_ai_readi(
     s3_client = boto3.client("s3", region_name=aws_region)
 
     # Define the S3 key for the labels file
-    tsv_key = os.path.join(s3_prefix, "labels.tsv") # e.g., "cfp_images/labels.tsv"
+    tsv_key = os.path.join(s3_prefix, "labels.tsv")  # e.g., "cfp_images/labels.tsv"
 
     try:
         # Get the labels.tsv file from S3
         print(f"Attempting to load labels from: s3://{s3_bucket}/{tsv_key}")
         obj = s3_client.get_object(Bucket=s3_bucket, Key=tsv_key)
         # Read the content and load into pandas DataFrame
-        tsv_content = obj['Body'].read().decode('utf-8')
+        tsv_content = obj["Body"].read().decode("utf-8")
         df = pd.read_csv(io.StringIO(tsv_content), sep="\t")
         print(f"Successfully loaded labels.tsv from S3. Shape: {df.shape}")
 
@@ -128,12 +129,14 @@ def get_ai_readi(
     test_df = df[df["partition"] == "val"].copy()
 
     if train_df.empty or test_df.empty:
-         print("Warning: Train or test dataframe is empty after filtering by partition.")
-         # Handle this case appropriately, maybe raise an error or return empty datasets
+        print("Warning: Train or test dataframe is empty after filtering by partition.")
+        # Handle this case appropriately, maybe raise an error or return empty datasets
 
     # Check if label_col exists
     if label_col not in train_df.columns:
-        raise ValueError(f"Label column '{label_col}' not found in the loaded labels.tsv data.")
+        raise ValueError(
+            f"Label column '{label_col}' not found in the loaded labels.tsv data."
+        )
 
     unique_classes = sorted(train_df[label_col].unique())
     class_to_idx = {cls_name: idx for idx, cls_name in enumerate(unique_classes)}
@@ -149,8 +152,9 @@ def get_ai_readi(
         test_df = test_df.sample(frac=sampling_factor, random_state=42).reset_index(
             drop=True
         )
-        print(f"Sampled train DF shape: {train_df.shape}, Sampled test DF shape: {test_df.shape}")
-
+        print(
+            f"Sampled train DF shape: {train_df.shape}, Sampled test DF shape: {test_df.shape}"
+        )
 
     train_transform = T.Compose(
         [
@@ -192,9 +196,13 @@ def get_ai_readi(
         )
     elif partition_strategy == "column_based":
         if partition_col is None:
-            raise ValueError("partition_col must be specified for 'column_based' strategy")
+            raise ValueError(
+                "partition_col must be specified for 'column_based' strategy"
+            )
         if partition_col not in train_df.columns:
-             raise ValueError(f"Partition column '{partition_col}' not found in the training data.")
+            raise ValueError(
+                f"Partition column '{partition_col}' not found in the training data."
+            )
         partitioned_datasets = column_based_partition_df(
             train_df,
             num_clients,
@@ -206,26 +214,28 @@ def get_ai_readi(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     if client_id < 0 or client_id >= len(partitioned_datasets):
-        raise ValueError(f"client_id {client_id} is out of range for {len(partitioned_datasets)} partitions.")
+        raise ValueError(
+            f"client_id {client_id} is out of range for {len(partitioned_datasets)} partitions."
+        )
 
     client_train_df = partitioned_datasets[client_id]
     print(f"Client {client_id} train data shape: {client_train_df.shape}")
     if client_train_df.empty:
-        print(f"Warning: Client {client_id} has an empty training dataset after partitioning.")
+        print(
+            f"Warning: Client {client_id} has an empty training dataset after partitioning."
+        )
 
     # --- Create Dataset instances using the S3 info ---
     client_train_dataset = RetinopathyDataset(
-        client_train_df,
-        label_col=label_col,
-        transform=train_transform
+        client_train_df, label_col=label_col, transform=train_transform
     )
     # The test dataset usually uses the full test set, not partitioned per client
     client_test_dataset = RetinopathyDataset(
-        test_df,
-        label_col=label_col,
-        transform=val_transform
+        test_df, label_col=label_col, transform=val_transform
     )
 
-    print(f"Created datasets for client {client_id}. Train size: {len(client_train_dataset)}, Test size: {len(client_test_dataset)}")
+    print(
+        f"Created datasets for client {client_id}. Train size: {len(client_train_dataset)}, Test size: {len(client_test_dataset)}"
+    )
 
     return client_train_dataset, client_test_dataset

@@ -13,7 +13,7 @@ class Baseline(nn.Module):
     """
 
     def __init__(self, pretrained=True, arch_name="efficientnet-b0"):
-        super(Baseline, self).__init__()
+        super().__init__()
         self.pretrained = pretrained
         self.base_model = (
             EfficientNet.from_pretrained(arch_name)
@@ -31,5 +31,4 @@ class Baseline(nn.Module):
 
 
 if __name__ == "__main__":
-
     model = Baseline()

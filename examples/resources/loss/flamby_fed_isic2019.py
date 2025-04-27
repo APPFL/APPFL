@@ -28,7 +28,7 @@ class BaselineLoss(_Loss):
         ),
         gamma=2.0,
     ):
-        super(BaselineLoss, self).__init__()
+        super().__init__()
         self.alpha = alpha.to(torch.float)
         self.gamma = gamma
 
@@ -53,6 +53,4 @@ class BaselineLoss(_Loss):
 
 
 if __name__ == "__main__":
-
     loss = BaselineLoss(alpha=torch.tensor([1, 2, 1, 1, 5, 1, 1, 1]))
-

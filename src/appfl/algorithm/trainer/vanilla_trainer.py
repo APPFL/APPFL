@@ -164,13 +164,17 @@ class VanillaTrainer(BaseTrainer):
             try:
                 # Check if scheduler exists in torch.optim.lr_scheduler
                 assert hasattr(lr_scheduler, scheduler_name), (
-                     f"Scheduler {scheduler_name} not found in torch.optim.lr_scheduler"
+                    f"Scheduler {scheduler_name} not found in torch.optim.lr_scheduler"
                 )
                 scheduler_class = getattr(lr_scheduler, scheduler_name)
                 scheduler = scheduler_class(optimizer, **scheduler_args)
-                self.logger.info(f"Initialized scheduler: {scheduler_name} with args: {scheduler_args}")
+                self.logger.info(
+                    f"Initialized scheduler: {scheduler_name} with args: {scheduler_args}"
+                )
             except Exception as e:
-                self.logger.warning(f"Could not initialize scheduler '{scheduler_name}': {e}. Proceeding without scheduler.")
+                self.logger.warning(
+                    f"Could not initialize scheduler '{scheduler_name}': {e}. Proceeding without scheduler."
+                )
                 scheduler = None
         else:
             self.logger.info("No scheduler configured.")
@@ -189,7 +193,7 @@ class VanillaTrainer(BaseTrainer):
                     np.concatenate(target_pred),
                 )
                 train_accuracy = float(self.metric(target_true, target_pred))
-                current_lr = optimizer.param_groups[0]['lr']
+                current_lr = optimizer.param_groups[0]["lr"]
                 if do_validation:
                     val_loss, val_accuracy = self._validate()
                     if "val_loss" not in self.val_results:
@@ -201,15 +205,21 @@ class VanillaTrainer(BaseTrainer):
                     if isinstance(scheduler, lr_scheduler.ReduceLROnPlateau):
                         if do_validation and val_loss is not None:
                             scheduler.step(val_loss)
-                            self.logger.info(f"Scheduler ReduceLROnPlateau stepped with val_loss: {val_loss:.4f}")
+                            self.logger.info(
+                                f"Scheduler ReduceLROnPlateau stepped with val_loss: {val_loss:.4f}"
+                            )
                         else:
-                            self.logger.warning("ReduceLROnPlateau scheduler requires validation loss to step.")
+                            self.logger.warning(
+                                "ReduceLROnPlateau scheduler requires validation loss to step."
+                            )
                     else:
                         # Step most other schedulers after the epoch
                         scheduler.step()
-                        self.logger.info(f"Scheduler {self.train_configs.scheduler} stepped.")
+                        self.logger.info(
+                            f"Scheduler {self.train_configs.scheduler} stepped."
+                        )
                     # Update LR *after* potentially stepping
-                    current_lr = optimizer.param_groups[0]['lr']
+                    current_lr = optimizer.param_groups[0]["lr"]
                 per_epoch_time = time.time() - start_time
                 if self.enabled_wandb:
                     wandb.log(
@@ -268,7 +278,7 @@ class VanillaTrainer(BaseTrainer):
                 np.concatenate(target_pred),
             )
             train_accuracy = float(self.metric(target_true, target_pred))
-            current_lr = optimizer.param_groups[0]['lr']
+            current_lr = optimizer.param_groups[0]["lr"]
             if do_validation:
                 val_loss, val_accuracy = self._validate()
                 self.val_results["val_loss"] = val_loss
