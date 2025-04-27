@@ -14,8 +14,8 @@ data_configs:
     client_id: 0
     use_s3: True
     s3_bucket: "sagemaker-ai-readi-tutorial-dataset"
-    s3_image_prefix: "Flamby/ISIC_2019"
-    s3_metadata_key: "Flamby/ISIC_2019"
+    s3_image_prefix: "Flamby/ISIC_2019/ISIC_2019_Training_Input_preprocessed"
+    s3_metadata_key: "Flamby/ISIC_2019/train_test_split.csv"
 
 
 comm_configs:
