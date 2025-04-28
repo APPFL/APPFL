@@ -21,10 +21,11 @@ data_configs:
     visualization: True
     output_dirname: "./output"
     output_filename: "visualization.pdf"
+    data_path: "full/"
 
 comm_configs:
   grpc_configs:
-    server_uri: localhost:50051
+    server_uri: 0.0.0.0:50051
     max_message_size: 1048576
     use_ssl: False
     s3_configs:

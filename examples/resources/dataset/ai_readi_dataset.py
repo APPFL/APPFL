@@ -12,7 +12,7 @@ import pandas as pd
 
 
 class RetinopathyDataset(Dataset):
-    def __init__(self, df, label_col, transform=None):
+    def __init__(self, df, label_col, transform=None, data_path="cfp_images/"):
         """
         Args:
           df: a DataFrame with at least ['file_path', 'label_idx'] columns
@@ -21,13 +21,14 @@ class RetinopathyDataset(Dataset):
         self.df = df.reset_index(drop=True)
         self.transform = transform
         self.label_col = label_col
+        self.data_path = data_path
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        img_path = "cfp_images/" + row["file_path"]
+        img_path = self.data_path + row["file_path"]
         label = row["label_idx"]
 
         # load the image
@@ -51,6 +52,7 @@ def get_ai_readi(
     label_col: str = "device",
     partition_col: str = None,
     sampling_factor: int = None,
+    data_path: str = "cfp_images/",
     **kwargs,
 ):
     """
@@ -58,7 +60,7 @@ def get_ai_readi(
     sampling_factor: 0.0 - 1.0
     Note: there should be a labels.tsv in the data directory mentioned above
     """
-    tsv_path = os.getcwd() + "/cfp_images/labels.tsv"
+    tsv_path = os.getcwd() + "/" + data_path + "labels.tsv"
     df = pd.read_csv(tsv_path, sep="\t")
 
     train_df = df[df["partition"] == "train"].copy()
