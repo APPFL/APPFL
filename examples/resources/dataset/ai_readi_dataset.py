@@ -72,6 +72,7 @@ def get_ai_readi(
     partition_col: str = None,
     sampling_factor: int = None,
     data_path: str = "cfp_images/",
+    preload: bool = True,
     **kwargs,
 ):
     """
@@ -146,10 +147,10 @@ def get_ai_readi(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     client_train_dataset = RetinopathyDataset(
-        partitioned_datasets[client_id], label_col=label_col, transform=train_transform, data_path=data_path, preload=True
+        partitioned_datasets[client_id], label_col=label_col, transform=train_transform, data_path=data_path, preload=preload
     )
     client_test_dataset = RetinopathyDataset(
-        test_df, label_col=label_col, transform=val_transform, data_path=data_path, preload=True
+        test_df, label_col=label_col, transform=val_transform, data_path=data_path, preload=preload
     )
 
     return client_train_dataset, client_test_dataset
