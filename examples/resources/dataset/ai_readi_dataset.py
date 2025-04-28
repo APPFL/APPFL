@@ -127,10 +127,10 @@ def get_ai_readi(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     client_train_dataset = RetinopathyDataset(
-        partitioned_datasets[client_id], label_col=label_col, transform=train_transform
+        partitioned_datasets[client_id], label_col=label_col, transform=train_transform, data_path=data_path
     )
     client_test_dataset = RetinopathyDataset(
-        test_df, label_col=label_col, transform=val_transform
+        test_df, label_col=label_col, transform=val_transform, data_path=data_path
     )
 
     return client_train_dataset, client_test_dataset
