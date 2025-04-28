@@ -1,4 +1,4 @@
-client_id: "Client2"
+client_id: "Client1"
 
 train_configs:
   # Device
@@ -13,7 +13,7 @@ data_configs:
   dataset_name: "get_ai_readi"
   dataset_kwargs:
     num_clients: 2
-    client_id: 1
+    client_id: 0
     partition_strategy: "dirichlet_noniid"
     sampling_factor: 0.5
     alpha1: 10
@@ -21,6 +21,7 @@ data_configs:
     visualization: True
     output_dirname: "./output"
     output_filename: "visualization.pdf"
+    data_path: "full/"
 
 comm_configs:
   grpc_configs:
@@ -28,5 +29,5 @@ comm_configs:
     max_message_size: 1048576
     use_ssl: False
     s3_configs:
-      enable_s3: True
+      enable_s3: False
       s3_bucket: "sagemaker-arvo-tutorial-models"
