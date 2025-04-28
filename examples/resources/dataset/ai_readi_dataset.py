@@ -9,10 +9,12 @@ from appfl.misc.data import (
     column_based_partition_df,
 )
 import pandas as pd
+import numpy as np
+from tqdm import tqdm
 
 
 class RetinopathyDataset(Dataset):
-    def __init__(self, df, label_col, transform=None, data_path="cfp_images/"):
+    def __init__(self, df, label_col, transform=None, data_path="cfp_images/", preload=False):
         """
         Args:
           df: a DataFrame with at least ['file_path', 'label_idx'] columns
@@ -22,17 +24,34 @@ class RetinopathyDataset(Dataset):
         self.transform = transform
         self.label_col = label_col
         self.data_path = data_path
+        self.preload = []
+        if preload:
+            partition = self.df["partition"][0]
+            npsavfn = f"{data_path}{partition}.npy"
+            if os.path.isfile(npsavfn):
+                self.preload = np.load(npsavfn)
+            else:
+                for i in tqdm(range(0,len(self.df))):
+                    row = self.df.iloc[i]
+                    img_path = f"{data_path}" + row["file_path"]
+                    image = Image.open(img_path).convert("RGB").resize((224, 224))
+                    self.preload.append(image)
+                self.preload = np.asarray(self.preload)
+                np.save(npsavfn, self.preload)
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        img_path = self.data_path + row["file_path"]
         label = row["label_idx"]
 
-        # load the image
-        image = Image.open(img_path).convert("RGB")
+        if len(self.preload) > 0:
+            image = Image.fromarray(self.preload[idx])
+        else:
+            img_path = self.data_path + row["file_path"]
+            # load the image
+            image = Image.open(img_path).convert("RGB").resize((224, 224))
 
         # apply transforms
         if self.transform:
@@ -127,10 +146,10 @@ def get_ai_readi(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     client_train_dataset = RetinopathyDataset(
-        partitioned_datasets[client_id], label_col=label_col, transform=train_transform, data_path=data_path
+        partitioned_datasets[client_id], label_col=label_col, transform=train_transform, data_path=data_path, preload=True
     )
     client_test_dataset = RetinopathyDataset(
-        test_df, label_col=label_col, transform=val_transform, data_path=data_path
+        test_df, label_col=label_col, transform=val_transform, data_path=data_path, preload=True
     )
 
     return client_train_dataset, client_test_dataset
