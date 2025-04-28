@@ -194,6 +194,7 @@ class VanillaTrainer(BaseTrainer):
                 )
                 train_accuracy = float(self.metric(target_true, target_pred))
                 current_lr = optimizer.param_groups[0]["lr"]
+                next_round_lr = current_lr
                 if do_validation:
                     val_loss, val_accuracy = self._validate()
                     if "val_loss" not in self.val_results:
@@ -219,7 +220,7 @@ class VanillaTrainer(BaseTrainer):
                             f"Scheduler {self.train_configs.scheduler} stepped."
                         )
                     # Update LR *after* potentially stepping
-                    current_lr = optimizer.param_groups[0]["lr"]
+                    next_round_lr = optimizer.param_groups[0]["lr"]
                 per_epoch_time = time.time() - start_time
                 if self.enabled_wandb:
                     wandb.log(
@@ -232,6 +233,7 @@ class VanillaTrainer(BaseTrainer):
                         }
                     )
                 self.val_results["per_epoch_time"] = per_epoch_time
+                self.val_results["next_round_lr"] = next_round_lr
                 self.logger.log_content(
                     [self.round, epoch, per_epoch_time, train_loss, train_accuracy]
                     if (not do_validation) and (not do_pre_validation)

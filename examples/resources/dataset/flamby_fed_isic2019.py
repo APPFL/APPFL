@@ -466,7 +466,6 @@ class FedIsic2019(Isic2019Raw):
         self.image_identifiers = df_filtered["image"].tolist()
         self.targets = df_filtered["target"].tolist()
         self.centers = df_filtered["center"].tolist()
-        # Optionally keep the filtered dataframe itself if needed elsewhere
         # self.filtered_metadata_df = df_filtered
 
         print(
