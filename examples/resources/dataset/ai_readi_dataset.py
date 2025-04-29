@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 
 class RetinopathyDataset(Dataset):
-    def __init__(self, df, label_col, transform=None, data_path="cfp_images/", preload=False):
+    def __init__(self, df, label_col, transform=None, data_path="cfp_images/", preload=False, client_id=None):
         """
         Args:
           df: a DataFrame with at least ['file_path', 'label_idx'] columns
@@ -27,7 +27,10 @@ class RetinopathyDataset(Dataset):
         self.preload = []
         if preload:
             partition = self.df["partition"][0]
-            npsavfn = f"{data_path}{partition}.npy"
+            if partition == "train":
+                npsavfn = f"{data_path}{partition}{client_id}.npy"
+            else:
+                npsavfn = f"{data_path}{partition}.npy"
             if os.path.isfile(npsavfn):
                 self.preload = np.load(npsavfn)
             else:
@@ -147,10 +150,10 @@ def get_ai_readi(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     client_train_dataset = RetinopathyDataset(
-        partitioned_datasets[client_id], label_col=label_col, transform=train_transform, data_path=data_path, preload=preload
+        partitioned_datasets[client_id], label_col=label_col, transform=train_transform, data_path=data_path, preload=preload, client_id=client_id
     )
     client_test_dataset = RetinopathyDataset(
-        test_df, label_col=label_col, transform=val_transform, data_path=data_path, preload=preload
+        test_df, label_col=label_col, transform=val_transform, data_path=data_path, preload=preload, client_id=client_id
     )
 
     return client_train_dataset, client_test_dataset
