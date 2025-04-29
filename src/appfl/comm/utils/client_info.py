@@ -31,3 +31,5 @@ class ClientInfo:
     terminate_savings: float = 0.0
     on_demand_total_cost: float = 0.0
     spot_only_total_cost: float = 0.0
+
+    tasks: list = []

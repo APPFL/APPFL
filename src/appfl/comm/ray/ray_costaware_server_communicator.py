@@ -209,6 +209,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 client_metadata[client_id] = client_metadata_local
                 client_task_info[client_id] = result
                 result.result = None
+                self.clients_info[client_id].tasks.append(result)
                 self.executing_tasks[task_id] = result
                 self.__update_executing_task(
                     client_metadata_local, task_id, client_id, fut
@@ -242,6 +243,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             self._update_learning_rate(result, client_metadata)
             client_metadata = self._check_deprecation(client_id, client_metadata)
             result.result = None
+            self.clients_info[client_id].tasks.append(result)
             self.executing_tasks[task_id] = result
             self.__update_executing_task(
                 client_metadata, task_id, client_id, finished_ref
