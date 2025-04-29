@@ -500,9 +500,11 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             and hasattr(self.client_configs[client_id].train_configs, "optim_args")
             and hasattr(self.client_configs[client_id].train_configs.optim_args, "lr")
         ):
-            self.client_configs[client_id].train_configs.optim_args["lr"] = client_metadata["next_round_lr"]
+            self.client_configs[client_id].train_configs.optim_args["lr"] = (
+                client_metadata["next_round_lr"]
+            )
             self.logger.info(
-                f"Updated learning rate to {client_metadata["next_round_lr"]} for Client {client_id}"
+                f"Updated learning rate to {client_metadata['next_round_lr']} for Client {client_id}"
             )
 
     def _update_epoch_estimate_time(self, task: ClientTask):
