@@ -46,6 +46,6 @@ server_configs:
   logging_output_filename: "result"
   comm_configs:
     grpc_configs:
-      server_uri: 0.0.0.0:50051
+      server_uri: localhost:50051
       max_message_size: 1048576
       use_ssl: False
