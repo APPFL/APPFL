@@ -201,6 +201,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 self._update_spinup_time(result)
                 self._update_epoch_estimate_time(result)
                 client_model, client_metadata_local = self._parse_result(result.result)
+                self._update_learning_rate(result, client_metadata_local)
                 client_metadata_local = self._check_deprecation(
                     client_id, client_metadata_local
                 )
@@ -238,6 +239,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             self._update_epoch_estimate_time(result)
             client_id = self.executing_tasks[task_id].client_id
             client_model, client_metadata = self._parse_result(result.result)
+            self._update_learning_rate(result, client_metadata)
             client_metadata = self._check_deprecation(client_id, client_metadata)
             result.result = None
             self.executing_tasks[task_id] = result
@@ -488,6 +490,20 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         metadata = res[1]
         train_res = res[2]
         return num_of_steps, train_res, metadata
+
+    def _update_learning_rate(self, task: ClientTask, client_metadata):
+        """After receiving result of training task we update the learning rate for clients"""
+        client_id = task.client_id
+        if (
+            task.task_name == "train"
+            and self.client_configs[client_id].train_configs["mode"] == "epoch"
+            and hasattr(self.client_configs[client_id].train_configs, "optim_args")
+            and hasattr(self.client_configs[client_id].train_configs.optim_args, "lr")
+        ):
+            self.client_configs[client_id].train_configs.optim_args["lr"] = client_metadata["next_round_lr"]
+            self.logger.info(
+                f"Updated learning rate to {client_metadata["next_round_lr"]} for Client {client_id}"
+            )
 
     def _update_epoch_estimate_time(self, task: ClientTask):
         """After receiving result of training task we update the epoch estimate time for clients"""
