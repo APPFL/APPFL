@@ -80,8 +80,8 @@ class FedSBTrainer(BaseTrainer):
             # Create client dataset
             client_dataset = self.train_dataset.select(
                 range(
-                    self.train_configs.client_idx*len(self.train_dataset)//self.train_configs.num_clients, 
-                    (self.train_configs.client_idx+1)*len(self.train_dataset)//self.train_configs.num_clients
+                    self.train_configs.client_idx*len(self.train_dataset)//self.train_configs.num_splits, 
+                    (self.train_configs.client_idx+1)*len(self.train_dataset)//self.train_configs.num_splits
                 )
             )
 
@@ -150,12 +150,13 @@ class FedSBTrainer(BaseTrainer):
             trainer.save_state()
             client_model.save_pretrained(final_model_path)
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
+            self.saved_model_path = final_model_path
         else:
             # Create client dataset
             client_dataset = self.train_dataset.select(
                 range(
-                    self.train_configs.client_idx*len(self.train_dataset)//self.train_configs.num_clients, 
-                    (self.train_configs.client_idx+1)*len(self.train_dataset)//self.train_configs.num_clients
+                    self.train_configs.client_idx*len(self.train_dataset)//self.train_configs.num_splits, 
+                    (self.train_configs.client_idx+1)*len(self.train_dataset)//self.train_configs.num_splits
                 )
             )
 
@@ -213,6 +214,16 @@ class FedSBTrainer(BaseTrainer):
             trainer.save_state()
             client_model.save_pretrained(final_model_path)
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
+            self.saved_model_path = final_model_path
+            
+    def get_parameters(self):
+        return self.saved_model_path, {
+            "model_name": self.train_configs.model,
+            "agg_type": self.train_configs.agg_type,
+            "lora_r": self.train_configs.lora_r,
+            "lora_alpha": self.train_configs.lora_alpha,
+            "max_seq_length": self.train_configs.max_seq_length,
+        }
         
     def _set_seed(self):
         """

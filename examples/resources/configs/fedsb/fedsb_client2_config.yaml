@@ -1,0 +1,15 @@
+client_id: "Client2"
+
+train_configs:
+  client_idx: 1
+  num_splits: 25
+  device: cuda
+  data_path: meta-math/MetaMathQA
+  dataset_split: "train[:20000]"
+  dataset_field: ["query", "response"]
+  run_dir: experiments_log/instruction_tuning
+  wandb_configs:
+    enable_wandb: True
+    entity: zl52-university-of-illinois-urbana-champaign
+    project: appfl
+    exp_name: fed-sb-arithmetic-2
