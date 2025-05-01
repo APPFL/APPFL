@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -32,4 +32,5 @@ class ClientInfo:
     on_demand_total_cost: float = 0.0
     spot_only_total_cost: float = 0.0
 
-    tasks: list = []
+    tasks: list = field(default_factory=list)
+    cloud_configs: dict = field(default_factory=dict)
