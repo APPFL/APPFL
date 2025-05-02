@@ -9,6 +9,7 @@ class ClientInfo:
     sample_size: int = 0
     batch_size: int = 0
     steps_per_epoch: int = 0
+    total_instance_up_time: float = 0.0
 
     time_per_step: float = 0.0
     train_time_overhead_sec: float = 0.0

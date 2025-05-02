@@ -1,0 +1,192 @@
+clients:
+  - client_id: "Client1"
+
+    budget: 100
+    cloud_configs:
+      cloud_provider: "aws"
+      instance_type: "g4dn.xlarge"
+      aws_credentials:
+        # aws_access_key_id: "aa"
+        # aws_secret_access_key: "tt"
+
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+    dataset_path: "./resources/dataset/flamby_fed_isic2019.py"
+    dataset_name: "get_flamby_fed_isic2019"
+    dataset_kwargs:
+      client_id: 0
+      use_s3: True
+      s3_bucket: "sagemaker-ai-readi-tutorial-dataset"
+      s3_image_prefix: "Flamby/ISIC_2019/ISIC_2019_Training_Input_preprocessed"
+      s3_metadata_key: "Flamby/ISIC_2019/train_test_split.csv"
+
+    comm_configs:
+      checkpoint_configs:
+        enable_checkpointing: True
+
+  - client_id: "Client2"
+
+    budget: 100
+    cloud_configs:
+      cloud_provider: "aws"
+      instance_type: "g4dn.xlarge"
+      aws_credentials:
+        # aws_access_key_id: "aa"
+        # aws_secret_access_key: "tt"
+    
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+    dataset_path: "./resources/dataset/flamby_fed_isic2019.py"
+    dataset_name: "get_flamby_fed_isic2019"
+    dataset_kwargs:
+      client_id: 1
+      use_s3: True
+      s3_bucket: "sagemaker-ai-readi-tutorial-dataset"
+      s3_image_prefix: "Flamby/ISIC_2019/ISIC_2019_Training_Input_preprocessed"
+      s3_metadata_key: "Flamby/ISIC_2019/train_test_split.csv"
+
+    comm_configs:
+      checkpoint_configs:
+        enable_checkpointing: True
+    
+  - client_id: "Client3"
+
+    budget: 100
+    cloud_configs:
+      cloud_provider: "aws"
+      instance_type: "g4dn.xlarge"
+      aws_credentials:
+        # aws_access_key_id: "aa"
+        # aws_secret_access_key: "tt"
+
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+    dataset_path: "./resources/dataset/flamby_fed_isic2019.py"
+    dataset_name: "get_flamby_fed_isic2019"
+    dataset_kwargs:
+      client_id: 2
+      use_s3: True
+      s3_bucket: "sagemaker-ai-readi-tutorial-dataset"
+      s3_image_prefix: "Flamby/ISIC_2019/ISIC_2019_Training_Input_preprocessed"
+      s3_metadata_key: "Flamby/ISIC_2019/train_test_split.csv"
+
+    comm_configs:
+      checkpoint_configs:
+        enable_checkpointing: True
+  
+  - client_id: "Client4"
+
+    budget: 100
+    cloud_configs:
+      cloud_provider: "aws"
+      instance_type: "g4dn.xlarge"
+      aws_credentials:
+        # aws_access_key_id: "aa"
+        # aws_secret_access_key: "tt"
+
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+    dataset_path: "./resources/dataset/flamby_fed_isic2019.py"
+    dataset_name: "get_flamby_fed_isic2019"
+    dataset_kwargs:
+      client_id: 3
+      use_s3: True
+      s3_bucket: "sagemaker-ai-readi-tutorial-dataset"
+      s3_image_prefix: "Flamby/ISIC_2019/ISIC_2019_Training_Input_preprocessed"
+      s3_metadata_key: "Flamby/ISIC_2019/train_test_split.csv"
+
+    comm_configs:
+      checkpoint_configs:
+        enable_checkpointing: True
+  
+  - client_id: "Client5"  
+
+    budget: 100
+    cloud_configs:
+      cloud_provider: "aws"
+      instance_type: "g4dn.xlarge"
+      aws_credentials:
+        # aws_access_key_id: "aa"
+        # aws_secret_access_key: "tt"
+
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+    dataset_path: "./resources/dataset/flamby_fed_isic2019.py"
+    dataset_name: "get_flamby_fed_isic2019"
+    dataset_kwargs:
+      client_id: 4
+      use_s3: True
+      s3_bucket: "sagemaker-ai-readi-tutorial-dataset"
+      s3_image_prefix: "Flamby/ISIC_2019/ISIC_2019_Training_Input_preprocessed"
+      s3_metadata_key: "Flamby/ISIC_2019/train_test_split.csv"
+
+    comm_configs:
+      checkpoint_configs:
+        enable_checkpointing: True
+  
+  - client_id: "Client6"  
+
+    budget: 100
+    cloud_configs:
+      cloud_provider: "aws"
+      instance_type: "g4dn.xlarge"
+      aws_credentials:
+        # aws_access_key_id: "aa"
+        # aws_secret_access_key: "tt"
+        
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+
+    # Local dataset
+    data_configs:
+    dataset_path: "./resources/dataset/flamby_fed_isic2019.py"
+    dataset_name: "get_flamby_fed_isic2019"
+    dataset_kwargs:
+      client_id: 5
+      use_s3: True
+      s3_bucket: "sagemaker-ai-readi-tutorial-dataset"
+      s3_image_prefix: "Flamby/ISIC_2019/ISIC_2019_Training_Input_preprocessed"
+      s3_metadata_key: "Flamby/ISIC_2019/train_test_split.csv"
+
+    comm_configs:
+      checkpoint_configs:
+        enable_checkpointing: True

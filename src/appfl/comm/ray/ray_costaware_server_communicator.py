@@ -639,6 +639,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                     * self.clients_info[client_id].spot_price_per_hr
                     / 3600.0
                 )
+                self.clients_info[client_id].total_instance_up_time += time_in_sec
         self.budget_updated_till = update_time
 
     def _spinup_clients(self):
