@@ -75,7 +75,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 )
             ):
                 self.client_actors[client_id] = RayClientCommunicator.options(
-                    resources={client_config["client_id"]: 1}
+                    resources={client_config["client_id"]: 1}, num_gpus=1
                 ).remote(server_agent_config, client_config)
             else:
                 self.client_actors[client_id] = RayClientCommunicator.remote(
@@ -174,7 +174,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         ]
         if ray_actor_details["State"] == "DEAD":
             self.client_actors[client_id] = RayClientCommunicator.options(
-                resources={client_id: 1}
+                resources={client_id: 1}, num_gpus=1
             ).remote(self.server_agent_config, self.client_configs[client_id])
 
     def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
@@ -687,7 +687,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         self.logger.info(f"Relaunching client {interrupted_client_id}")
         # re launch the ray client
         self.client_actors[interrupted_client_id] = RayClientCommunicator.options(
-            resources={interrupted_client_id: 1}
+            resources={interrupted_client_id: 1}, num_gpus=1
         ).remote(self.server_agent_config, self.client_configs[interrupted_client_id])
         # check all the ObjectRef which needs rerun on the new client
         self.__remove_old_tasks(interrupted_client_id, True)

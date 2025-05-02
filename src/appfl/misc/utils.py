@@ -594,6 +594,7 @@ def apply_model_device(model, config: dict, xy_device: str):
         # Single GPU
         if len(config["device_ids"]) == 0:
             # device is `cuda` without index
+            print(f"Checking Cuda: {torch.cuda.is_available()}")
             model.to(xy_device)
         else:
             device_id = config["device_ids"][0]
