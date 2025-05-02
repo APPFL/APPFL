@@ -18,3 +18,5 @@ class ClientTask:
     task_execution_finish_time: float = -1
     result: Any = None
     est_finish_time: float = -1
+    spin_up_time: float = -1
+    task_execution_time: float = -1
