@@ -356,7 +356,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_id:
         """
         max_task = max(
-            (task for task in self.executing_tasks.values() if task.name == "train"),
+            (task for task in self.executing_tasks.values() if task.task_name == "train"),
             key=lambda task: task.est_finish_time,
             default=None,
         )
