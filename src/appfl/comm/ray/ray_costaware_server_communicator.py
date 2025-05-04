@@ -535,15 +535,12 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         task.task_execution_time = int(task.task_execution_finish_time) - int(
             task.task_execution_start_time
         )
-        nodes_info = state_api.list_nodes(detail=True)
-        node_info = self.__get_current_client_node_info(nodes_info, client_id)
+        # nodes_info = state_api.list_nodes(detail=True)
+        # node_info = self.__get_current_client_node_info(nodes_info, client_id)
         # if node_info is None:
         #     return
         # node start after task was submitted, it means new node was needed
-        if (
-            int(task.task_execution_start_time) - int(task.start_time) > 80
-            or int(node_info.start_time_ms // 1000) > task.start_time
-        ):
+        if int(task.task_execution_start_time) - int(task.start_time) > 80:
             # using execution_start_time instead of node start time as we need to take all overhead in consideration for pre start
             spinup_time = int(task.task_execution_start_time) - int(task.start_time)
             task.spin_up_time = spinup_time
@@ -555,9 +552,8 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             else:
                 alpha = self.clients_info[client_id].alpha
                 self.clients_info[client_id].est_spinup_time = (
-                    alpha * self.clients_info[client_id].est_spinup_time
-                    + (1 - alpha) * spinup_time
-                )
+                    1 - alpha
+                ) * self.clients_info[client_id].est_spinup_time + (alpha * spinup_time)
 
     def __get_current_client_node_info(self, nodes_info, client_id):
         for node_info in nodes_info:
@@ -659,7 +655,11 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_id, spinup_time = self.spinup_queue[i]
             if spinup_time < current_time:
                 client_info = self.clients_info[client_id]
-                if not client_info.inactive and not client_info.instance_triggered:
+                if (
+                    not client_info.inactive
+                    and not client_info.instance_triggered
+                    and not client_info.instance_alive
+                ):
                     self.send_task_to_one_client(
                         client_id,
                         task_name="spinup",
@@ -779,6 +779,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             start_time=time.time(),
         )
         ref = None
+        current_time = time.time()
         if task_name == "get_sample_size":
             ref = client.get_sample_size.remote(self.client_configs[client_id], task)
         elif task_name == "data_readiness_report":
@@ -790,22 +791,24 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 client_info = self.clients_info[client_id]
                 if client_info.instance_triggered:
                     task.est_finish_time = (
-                        time.time()
+                        current_time
                         + max(
                             client_info.est_spinup_time
-                            - (time.time() - client_info.instance_triggered_at),
+                            - (current_time - client_info.instance_triggered_at),
                             0,
                         )
                         + client_info.est_time_per_epoch
                     )
                 elif not client_info.instance_alive:
+                    client_info.instance_triggered = True
+                    client_info.instance_triggered_at = current_time
                     task.est_finish_time = (
-                        time.time()
+                        current_time
                         + client_info.est_time_per_epoch
                         + client_info.est_spinup_time
                     )
-                else:
-                    task.est_finish_time = time.time() + client_info.est_time_per_epoch
+                elif client_info.instance_alive:
+                    task.est_finish_time = current_time + client_info.est_time_per_epoch
             ref = client.train.remote(
                 model, metadata, self.client_configs[client_id], task
             )
