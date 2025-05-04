@@ -535,6 +535,8 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         task.task_execution_time = int(task.task_execution_finish_time) - int(task.task_execution_start_time)
         nodes_info = state_api.list_nodes(detail=True)
         node_info = self.__get_current_client_node_info(nodes_info, client_id)
+        if node_info is None:
+            return
         # node start after task was submitted, it means new node was needed
         if int(node_info.start_time_ms // 1000) > task.start_time:
             # using execution_start_time instead of node start time as we need to take all overhead in consideration for pre start
