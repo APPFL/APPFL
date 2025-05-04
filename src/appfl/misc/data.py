@@ -775,15 +775,15 @@ def data_sanity_check(train_datasets, test_dataset, num_channel, num_pixel):
 
 
 def dirichlet_noniid_partition_indices(
-    dataset: torch.utils.data.Dataset, # Takes a standard PyTorch Dataset
+    dataset: torch.utils.data.Dataset,  # Takes a standard PyTorch Dataset
     num_clients: int,
     visualization: bool = False,
     output_dirname: Optional[str] = None,
     output_filename: Optional[str] = None,
-    alpha1: float = 8.0, # Changed type hint to float, Dirichlet alpha is typically float
-    alpha2: float = 0.5, # Changed type hint to float
+    alpha1: float = 8.0,  # Changed type hint to float, Dirichlet alpha is typically float
+    alpha2: float = 0.5,  # Changed type hint to float
     seed: int = 42,
-    **kwargs, # Allow extra unused kwargs if needed
+    **kwargs,  # Allow extra unused kwargs if needed
 ) -> Dict[int, List[int]]:
     """
     Partition a `torch.utils.data.Dataset` into `num_clients` chunks
@@ -793,29 +793,39 @@ def dirichlet_noniid_partition_indices(
     np.random.seed(seed)
     try:
         # Attempt to access .targets or .labels
-        if hasattr(dataset, 'targets'):
+        if hasattr(dataset, "targets"):
             targets = np.array(dataset.targets)
-        elif hasattr(dataset, 'labels'): # Common in HuggingFace datasets
-             targets = np.array(dataset.labels)
+        elif hasattr(dataset, "labels"):  # Common in HuggingFace datasets
+            targets = np.array(dataset.labels)
         else:
-             # Fallback: Iterate if standard attributes don't exist
-             print("Warning: Dataset has no '.targets' or '.labels' attribute, iterating to get labels (slower).")
-             targets = np.array([label for _, label in dataset]) # Assumes (data, label) structure
+            # Fallback: Iterate if standard attributes don't exist
+            print(
+                "Warning: Dataset has no '.targets' or '.labels' attribute, iterating to get labels (slower)."
+            )
+            targets = np.array(
+                [label for _, label in dataset]
+            )  # Assumes (data, label) structure
     except Exception as e:
-         print(f"Error accessing labels: {e}. Falling back to iteration.")
-         targets = np.array([label for _, label in dataset])
+        print(f"Error accessing labels: {e}. Falling back to iteration.")
+        targets = np.array([label for _, label in dataset])
 
     labels = sorted(np.unique(targets))
     num_classes = len(labels)
     # Ensure indices are integers
-    label_indices = {label: list(np.where(targets == label)[0].astype(int)) for label in labels}
+    label_indices = {
+        label: list(np.where(targets == label)[0].astype(int)) for label in labels
+    }
 
     for label in labels:
         np.random.shuffle(label_indices[label])
     p1 = np.ones(num_clients) / num_clients
     class_sizes = np.array([len(label_indices[label]) for label in labels])
     # Prevent division by zero if class_sizes sum is zero (empty dataset)
-    p2 = class_sizes / class_sizes.sum() if class_sizes.sum() > 0 else np.zeros_like(class_sizes, dtype=float)
+    p2 = (
+        class_sizes / class_sizes.sum()
+        if class_sizes.sum() > 0
+        else np.zeros_like(class_sizes, dtype=float)
+    )
 
     q1 = alpha1 * p1
     q2 = alpha2 * p2
@@ -826,11 +836,13 @@ def dirichlet_noniid_partition_indices(
         for j in range(num_classes):
             client_class_weight = weights[i] * individuals[i, j]
             total_class_j_weight = np.dot(weights, individuals[:, j])
-            if total_class_j_weight > 1e-9: # Prevent division by zero
-                 normalized_portions[i, j] = client_class_weight / total_class_j_weight
+            if total_class_j_weight > 1e-9:  # Prevent division by zero
+                normalized_portions[i, j] = client_class_weight / total_class_j_weight
             # else: normalized_portions[i, j] remains 0
 
-    target_sample_matrix = np.multiply(class_sizes[:, np.newaxis], normalized_portions.T)
+    target_sample_matrix = np.multiply(
+        class_sizes[:, np.newaxis], normalized_portions.T
+    )
     client_indices_map: Dict[int, List[int]] = {i: [] for i in range(num_clients)}
     current_index_in_class = {label: 0 for label in labels}
     for j, label in enumerate(labels):
@@ -841,35 +853,43 @@ def dirichlet_noniid_partition_indices(
             if i < num_clients - 1:
                 # Ensure target_sample_matrix[j, i] is finite before floor
                 target_samples = target_sample_matrix[j, i]
-                num_samples = int(np.floor(target_samples)) if np.isfinite(target_samples) else 0
+                num_samples = (
+                    int(np.floor(target_samples)) if np.isfinite(target_samples) else 0
+                )
             else:
                 # Last client gets the remainder
                 num_samples = num_available_for_class - total_assigned_for_class
-            
-            num_samples = max(0, num_samples) # Ensure non-negative count
-            
+
+            num_samples = max(0, num_samples)  # Ensure non-negative count
+
             start_idx = current_index_in_class[label]
             end_idx = start_idx + num_samples
-            
+
             if end_idx > num_available_for_class:
                 # Adjust if calculated end_idx exceeds available indices
                 # print(f"Warning: Adjusting sample count for client {i}, class {label} due to index limits.")
                 end_idx = num_available_for_class
-                num_samples = end_idx - start_idx # Update actual number taken
+                num_samples = end_idx - start_idx  # Update actual number taken
 
             # Assign integer indices
-            assigned_indices = [int(ind) for ind in indices_for_label[start_idx:end_idx]]
+            assigned_indices = [
+                int(ind) for ind in indices_for_label[start_idx:end_idx]
+            ]
             client_indices_map[i].extend(assigned_indices)
-            
+
             current_index_in_class[label] = end_idx
             total_assigned_for_class += num_samples
             # Store the actual integer count used
-            target_sample_matrix[j, i] = num_samples 
+            target_sample_matrix[j, i] = num_samples
 
     if visualization:
         final_sample_matrix = target_sample_matrix
         plot_distribution(
-            num_clients, class_sizes, final_sample_matrix, output_dirname, output_filename
+            num_clients,
+            class_sizes,
+            final_sample_matrix,
+            output_dirname,
+            output_filename,
         )
     for i in range(num_clients):
         np.random.shuffle(client_indices_map[i])

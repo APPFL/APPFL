@@ -532,7 +532,9 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
     def _update_spinup_time(self, task: ClientTask):
         """After receiving result we check if a spinup took place and if it does we update the spinup estimate time for client"""
         client_id = task.client_id
-        task.task_execution_time = int(task.task_execution_finish_time) - int(task.task_execution_start_time)
+        task.task_execution_time = int(task.task_execution_finish_time) - int(
+            task.task_execution_start_time
+        )
         nodes_info = state_api.list_nodes(detail=True)
         node_info = self.__get_current_client_node_info(nodes_info, client_id)
         if node_info is None:
