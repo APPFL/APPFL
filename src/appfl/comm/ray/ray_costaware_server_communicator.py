@@ -339,7 +339,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             )
         else:
             round_one_steps, round_one_train_res, train_metadata = (
-                self._get_warmup_training_res(min_data_client_id, 50, model)
+                self._get_warmup_training_res(min_data_client_id, 100, model)
             )
             self._update_epoch_est_after_warmup(
                 two_step_warmup,
@@ -356,7 +356,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_id:
         """
         max_task = max(
-            self.executing_tasks.values(),
+            (task for task in self.executing_tasks.values() if task.name == "train"),
             key=lambda task: task.est_finish_time,
             default=None,
         )
