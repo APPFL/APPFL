@@ -222,6 +222,9 @@ class VanillaTrainer(BaseTrainer):
                     # Update LR *after* potentially stepping
                     next_round_lr = optimizer.param_groups[0]["lr"]
                 per_epoch_time = time.time() - start_time
+                if hasattr(self.train_configs, "wait_multiplier"):
+                    time.sleep(per_epoch_time * self.train_configs.wait_multiplier)
+                    per_epoch_time = time.time() - start_time
                 if self.enabled_wandb:
                     wandb.log(
                         {
@@ -286,6 +289,9 @@ class VanillaTrainer(BaseTrainer):
                 self.val_results["val_loss"] = val_loss
                 self.val_results["val_accuracy"] = val_accuracy
             per_step_time = time.time() - start_time
+            if hasattr(self.train_configs, "wait_multiplier"):
+                time.sleep(per_step_time * self.train_configs.wait_multiplier)
+                per_step_time = time.time() - start_time
             if self.enabled_wandb:
                 wandb.log(
                     {
