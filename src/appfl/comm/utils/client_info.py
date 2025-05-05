@@ -17,6 +17,7 @@ class ClientInfo:
     spot_price_per_hr: float = 0.0
     est_spinup_time: float = -1
     est_time_per_epoch: float = -1
+    est_time_per_epoch_after_spinup: float = -1
     est_cost_per_epoch: float = 0
     alpha: float = 0.9
 

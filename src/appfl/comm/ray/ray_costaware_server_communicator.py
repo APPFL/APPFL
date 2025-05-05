@@ -541,14 +541,37 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 task.task_execution_finish_time - task.task_execution_start_time
             )
             alpha = self.clients_info[client_id].alpha
-            self.clients_info[client_id].est_time_per_epoch = (
-                1 - alpha
-            ) * self.clients_info[
-                client_id
-            ].est_time_per_epoch + alpha * total_execution_time
-            self.logger.info(
-                f"Updated est_time_per_epoch to {self.clients_info[client_id].est_time_per_epoch} for Client {client_id}"
-            )
+            if not task.is_instance_alive or (
+                len(self.clients_info[client_id].tasks) > 0
+                and self.clients_info[client_id].tasks[-1].task_name == "spinup"
+            ):
+                if self.clients_info[client_id].est_time_per_epoch_after_spinup == -1:
+                    self.clients_info[
+                        client_id
+                    ].est_time_per_epoch_after_spinup = total_execution_time
+                else:
+                    self.clients_info[client_id].est_time_per_epoch_after_spinup = (
+                        1 - alpha
+                    ) * self.clients_info[client_id].est_time_per_epoch_after_spinup + (
+                        alpha * total_execution_time
+                    )
+                self.logger.info(
+                    f"Updated est_time_per_epoch_after_spinup to {self.clients_info[client_id].est_time_per_epoch_after_spinup} for Client {client_id}"
+                )
+            else:
+                if self.clients_info[client_id].est_time_per_epoch == -1:
+                    self.clients_info[
+                        client_id
+                    ].est_time_per_epoch = total_execution_time
+                else:
+                    self.clients_info[client_id].est_time_per_epoch = (
+                        1 - alpha
+                    ) * self.clients_info[client_id].est_time_per_epoch + (
+                        alpha * total_execution_time
+                    )
+                self.logger.info(
+                    f"Updated est_time_per_epoch to {self.clients_info[client_id].est_time_per_epoch} for Client {client_id}"
+                )
 
     def _update_spinup_time(self, task: ClientTask):
         """After receiving result we check if a spinup took place and if it does we update the spinup estimate time for client"""
@@ -819,14 +842,14 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                             - (current_time - client_info.instance_triggered_at),
                             0,
                         )
-                        + client_info.est_time_per_epoch
+                        + client_info.est_time_per_epoch_after_spinup
                     )
                 elif not client_info.instance_alive:
                     client_info.instance_triggered = True
                     client_info.instance_triggered_at = current_time
                     task.est_finish_time = (
                         current_time
-                        + client_info.est_time_per_epoch
+                        + client_info.est_time_per_epoch_after_spinup
                         + client_info.est_spinup_time
                     )
                 elif client_info.instance_alive:
