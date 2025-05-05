@@ -409,7 +409,9 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                     self.spinup_queue.append(
                         (
                             client_id,
-                            max_time - self.clients_info[client_id].est_spinup_time,
+                            max_time
+                            - self.clients_info[client_id].est_spinup_time
+                            - self.TERMINATION_BUFFER_SEC,
                         )
                     )
 
