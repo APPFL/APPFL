@@ -302,7 +302,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             self.logger.info(f"Terminating instance of client {client_id}")
             resource_tag[client_id] = 1
         terminate_node_by_resource_tag(resource_tag)
-        time.sleep(45)
+        time.sleep(60)
 
     def warmup_clients(self, clients_sample_size_dict: Dict[str, int], model):
         """
