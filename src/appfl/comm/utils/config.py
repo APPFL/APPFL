@@ -20,3 +20,4 @@ class ClientTask:
     est_finish_time: float = -1
     spin_up_time: float = -1
     task_execution_time: float = -1
+    is_instance_alive: bool = False

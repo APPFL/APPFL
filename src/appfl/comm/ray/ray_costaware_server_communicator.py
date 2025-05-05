@@ -286,6 +286,16 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         self.executing_task_futs = {}
         self.executing_tasks = {}
 
+    def terminate_all_clients(self):
+        resource_tag = {}
+        for client_id in self.clients_info.keys():
+            client_info = self.clients_info[client_id]
+            client_info.instance_alive = False
+            self.logger.info(f"Terminating instance of client {client_id}")
+            resource_tag[client_id] = 1
+        terminate_node_by_resource_tag(resource_tag)
+        time.sleep(15)
+
     def warmup_clients(self, clients_sample_size_dict: Dict[str, int], model):
         """
         Estimates per epoch time by sending task with few steps to clients.
@@ -356,7 +366,11 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_id:
         """
         max_task = max(
-            (task for task in self.executing_tasks.values() if task.task_name == "train"),
+            (
+                task
+                for task in self.executing_tasks.values()
+                if task.task_name == "train"
+            ),
             key=lambda task: task.est_finish_time,
             default=None,
         )
@@ -515,6 +529,13 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         if (
             task.task_name == "train"
             and self.client_configs[client_id].train_configs["mode"] == "epoch"
+            and (
+                not task.is_instance_alive
+                or (
+                    len(self.clients_info[client_id].tasks) > 0
+                    and self.clients_info[client_id].tasks[-1].task_name == "spinup"
+                )
+            )
         ):
             total_execution_time = int(
                 task.task_execution_finish_time - task.task_execution_start_time
@@ -778,6 +799,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_id=client_id,
             start_time=time.time(),
         )
+        task.is_instance_alive = self.clients_info[client_id].instance_alive
         ref = None
         current_time = time.time()
         if task_name == "get_sample_size":
