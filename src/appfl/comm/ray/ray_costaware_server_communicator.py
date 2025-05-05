@@ -294,7 +294,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             self.logger.info(f"Terminating instance of client {client_id}")
             resource_tag[client_id] = 1
         terminate_node_by_resource_tag(resource_tag)
-        time.sleep(15)
+        time.sleep(45)
 
     def warmup_clients(self, clients_sample_size_dict: Dict[str, int], model):
         """
@@ -529,13 +529,6 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         if (
             task.task_name == "train"
             and self.client_configs[client_id].train_configs["mode"] == "epoch"
-            and (
-                not task.is_instance_alive
-                or (
-                    len(self.clients_info[client_id].tasks) > 0
-                    and self.clients_info[client_id].tasks[-1].task_name == "spinup"
-                )
-            )
         ):
             total_execution_time = int(
                 task.task_execution_finish_time - task.task_execution_start_time
