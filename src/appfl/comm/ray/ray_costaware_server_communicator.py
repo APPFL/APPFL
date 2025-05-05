@@ -32,7 +32,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         super().__init__(server_agent_config, client_agent_configs, logger, **kwargs)
         ray.init(address="auto")
         # TODO pick value from server config
-        self.TERMINATION_BUFFER_SEC = 15
+        self.TERMINATION_BUFFER_SEC = 30
         self.clients_info = clients_info
         self.client_actors = {}
         _client_id_check_set = set()
@@ -122,13 +122,14 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 client_metadata["local_model_key"] = local_model_key
                 client_metadata["local_model_url"] = local_model_url
-            self._check_actor_state(client_id)
+            is_actor_alive = self._check_actor_state(client_id)
             task_id, task_ref = self.__send_task(
                 self.client_actors[client_id],
                 task_name,
                 model,
                 client_metadata,
                 client_id,
+                is_actor_alive,
             )
             self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
@@ -161,9 +162,14 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
             metadata["local_model_key"] = local_model_key
             metadata["local_model_url"] = local_model_url
-        self._check_actor_state(client_id)
+        is_actor_alive = self._check_actor_state(client_id)
         task_id, task_ref = self.__send_task(
-            self.client_actors[client_id], task_name, model, metadata, client_id
+            self.client_actors[client_id],
+            task_name,
+            model,
+            metadata,
+            client_id,
+            is_actor_alive,
         )
         self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
@@ -176,6 +182,8 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             self.client_actors[client_id] = RayClientCommunicator.options(
                 resources={client_id: 1}, num_gpus=1
             ).remote(self.server_agent_config, self.client_configs[client_id])
+            return False
+        return True
 
     def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
         """
@@ -578,9 +586,14 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         #     return
         # node start after task was submitted, it means new node was needed
         if int(task.task_execution_start_time) - int(task.start_time) > 80:
-            # using execution_start_time instead of node start time as we need to take all overhead in consideration for pre start
             spinup_time = int(task.task_execution_start_time) - int(task.start_time)
             task.spin_up_time = spinup_time
+            if (
+                len(self.clients_info[client_id].tasks) > 0
+                and self.clients_info[client_id].tasks[-1].task_name == "spinup"
+            ):
+                return
+            # using execution_start_time instead of node start time as we need to take all overhead in consideration for pre start
             self.logger.info(
                 f"Updating spinup time for client {client_id} to {spinup_time}"
             )
@@ -617,10 +630,10 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         """Daemon process that updates the budget of the clients based on usage and also spins up the clients that are scheduled"""
         while not self.stop_event.is_set():
             await asyncio.to_thread(self._update_budget)
-            await asyncio.to_thread(self._spinup_clients)
             # TODO spin up clients
             for i in range(30):  # Check the stop_event every second
                 if i % 15 == 0:
+                    await asyncio.to_thread(self._spinup_clients)
                     await asyncio.to_thread(self._terminate_clients)
                 if self.stop_event.is_set():
                     return
@@ -777,6 +790,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                     client_task.parameters["model"],
                     client_task.parameters["metadata"],
                     client_id,
+                    is_actor_alive=False,
                 )
             # remove old tasks from the queue
             self.executing_tasks.pop(task_id)
@@ -806,7 +820,13 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             raise e
 
     def __send_task(
-        self, client: RayClientCommunicator, task_name, model, metadata, client_id
+        self,
+        client: RayClientCommunicator,
+        task_name,
+        model,
+        metadata,
+        client_id,
+        is_actor_alive,
     ):
         task_id = str(uuid.uuid4())
         task = ClientTask(
@@ -815,7 +835,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_id=client_id,
             start_time=time.time(),
         )
-        task.is_instance_alive = self.clients_info[client_id].instance_alive
+        task.is_instance_alive = is_actor_alive
         ref = None
         current_time = time.time()
         if task_name == "get_sample_size":
