@@ -302,7 +302,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             self.logger.info(f"Terminating instance of client {client_id}")
             resource_tag[client_id] = 1
         terminate_node_by_resource_tag(resource_tag)
-        time.sleep(60)
+        time.sleep(45)
 
     def warmup_clients(self, clients_sample_size_dict: Dict[str, int], model):
         """
@@ -649,8 +649,9 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             client_info.instance_alive = False
             self.logger.info(f"Terminating instance of client {client_id}")
             resource_tag[client_id] = 1
-        terminate_node_by_resource_tag(resource_tag)
-        self.clients_to_terminate = []
+        if len(resource_tag) > 0:
+            terminate_node_by_resource_tag(resource_tag)
+            self.clients_to_terminate = []
 
     def _update_budget(self):
         """It keeps the track of the time till which it has updated budget of the clients and then using the rays API checks uptime of instances and updates their respective budgets"""
