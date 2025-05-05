@@ -32,7 +32,7 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
         super().__init__(server_agent_config, client_agent_configs, logger, **kwargs)
         ray.init(address="auto")
         # TODO pick value from server config
-        self.TERMINATION_BUFFER_SEC = 0
+        self.TERMINATION_BUFFER_SEC = 15
         self.clients_info = clients_info
         self.client_actors = {}
         _client_id_check_set = set()
