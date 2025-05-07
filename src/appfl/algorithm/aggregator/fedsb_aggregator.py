@@ -67,9 +67,9 @@ class FedSBAggregator(BaseAggregator):
             client_models.append(new_weights)
             
         if agg_type == 'fed-sb':
-            global_model, tokenizer = self.load_model_with_lora_sb(aggregator_kwargs['model_name'], new_weights, local_models.values[0], aggregator_kwargs)
+            global_model, tokenizer = self.load_model_with_lora_sb(aggregator_kwargs['model_name'], new_weights, list(local_models.values())[0], aggregator_kwargs)
         else:
-            global_model, tokenizer = self.load_model_with_lora(aggregator_kwargs['model_name'], local_models.values[0], aggregator_kwargs)
+            global_model, tokenizer = self.load_model_with_lora(aggregator_kwargs['model_name'], list(local_models.values())[0], aggregator_kwargs)
 
         if agg_type == "fedex":
             global_model = aggregate_models_fedex(global_model, client_models, aggregator_kwargs)
@@ -83,8 +83,6 @@ class FedSBAggregator(BaseAggregator):
         if agg_type == "fed-sb":
             for param in global_model.parameters():
                 param.data = param.data.contiguous()
-        
-        
 
         save_directory_final_model = os.path.join(self.aggregator_configs.global_model_dir, "final_model")
         global_model.save_pretrained(save_directory_final_model)
@@ -165,8 +163,7 @@ class FedSBAggregator(BaseAggregator):
             
         adapter_name = "default"
         peft_config_dict = {adapter_name: lora_config}
-                
-        reconstr_config['svd']['rank'] = args.lora_r
+        reconstr_config['svd']['rank'] = args['lora_r']
 
         find_and_initialize(model, peft_config_dict, adapter_name=adapter_name, 
                             reconstr_type='svd', 

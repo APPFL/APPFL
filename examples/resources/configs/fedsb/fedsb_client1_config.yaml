@@ -13,3 +13,9 @@ train_configs:
     entity: zl52-university-of-illinois-urbana-champaign
     project: appfl
     exp_name: fed-sb-arithmetic-2
+
+comm_configs:
+  grpc_configs:
+    server_uri: localhost:50051
+    max_message_size: 1048576
+    use_ssl: False
