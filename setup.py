@@ -106,7 +106,6 @@ setuptools.setup(
             "tensorboard",
             "efficientnet-pytorch",
             "albumentations",
-            "flamby"
         ],
         "monai": ["monai[all]==1.2.0"],
         "mpi": ["mpi4py"],
