@@ -74,9 +74,18 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                     "assign_random", False
                 )
             ):
-                self.client_actors[client_id] = RayClientCommunicator.options(
-                    resources={client_config["client_id"]: 1}, num_gpus=1
-                ).remote(server_agent_config, client_config)
+                if (
+                    hasattr(client_config.train_config, "device")
+                    and "cuda" in client_config.train_config.device
+                ):
+                    self.client_actors[client_id] = RayClientCommunicator.options(
+                        resources={client_config["client_id"]: 1}, num_gpus=1
+                    ).remote(server_agent_config, client_config)
+                else:
+                    self.client_actors[client_id] = RayClientCommunicator.options(
+                        resources={client_config["client_id"]: 1}
+                    ).remote(server_agent_config, client_config)
+
             else:
                 self.client_actors[client_id] = RayClientCommunicator.remote(
                     server_agent_config, client_config
