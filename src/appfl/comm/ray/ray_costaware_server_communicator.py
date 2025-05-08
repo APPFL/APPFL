@@ -188,9 +188,14 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             self.client_actors[client_id]._ray_actor_id.hex()
         ]
         if ray_actor_details["State"] == "DEAD":
-            self.client_actors[client_id] = RayClientCommunicator.options(
-                resources={client_id: 1}, num_gpus=1
-            ).remote(self.server_agent_config, self.client_configs[client_id])
+            if "cuda" in self.client_configs[client_id].train_configs.get("device", "cpu"):
+                self.client_actors[client_id] = RayClientCommunicator.options(
+                    resources={client_id: 1}, num_gpus=1
+                ).remote(self.server_agent_config, self.client_configs[client_id])
+            else:
+                self.client_actors[client_id] = RayClientCommunicator.options(
+                    resources={client_id: 1}
+                ).remote(self.server_agent_config, self.client_configs[client_id])
             return False
         return True
 
@@ -757,9 +762,14 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
             return
         self.logger.info(f"Relaunching client {interrupted_client_id}")
         # re launch the ray client
-        self.client_actors[interrupted_client_id] = RayClientCommunicator.options(
-            resources={interrupted_client_id: 1}, num_gpus=1
-        ).remote(self.server_agent_config, self.client_configs[interrupted_client_id])
+        if "cuda" in self.client_configs[interrupted_client_id].train_configs.get("device", "cpu"):
+            self.client_actors[interrupted_client_id] = RayClientCommunicator.options(
+                resources={interrupted_client_id: 1}, num_gpus=1
+            ).remote(self.server_agent_config, self.client_configs[interrupted_client_id])
+        else:
+            self.client_actors[interrupted_client_id] = RayClientCommunicator.options(
+                resources={interrupted_client_id: 1}
+            ).remote(self.server_agent_config, self.client_configs[interrupted_client_id])
         # check all the ObjectRef which needs rerun on the new client
         self.__remove_old_tasks(interrupted_client_id, True)
 
