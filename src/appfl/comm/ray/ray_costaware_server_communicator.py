@@ -75,8 +75,8 @@ class RayCostAwareServerCommunicator(BaseServerCommunicator):
                 )
             ):
                 if (
-                    hasattr(client_config.train_config, "device")
-                    and "cuda" in client_config.train_config.device
+                    hasattr(client_config.train_configs, "device")
+                    and "cuda" in client_config.train_configs.device
                 ):
                     self.client_actors[client_id] = RayClientCommunicator.options(
                         resources={client_config["client_id"]: 1}, num_gpus=1
