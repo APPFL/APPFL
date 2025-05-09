@@ -2,7 +2,7 @@ import numpy as np
 from appfl.agent import ClientAgent
 
 
-class DRAgent(ClientAgent):
+class CADREModule(ClientAgent):
     def generate_mnist_readiness_report(self):
         if hasattr(self.client_agent_config, "dr_metrics"):
             dr_metrics = self.client_agent_config.dr_metrics

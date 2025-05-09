@@ -1,16 +1,16 @@
 import torch
 from typing import Any, Dict
-from appfl.misc.data_readiness import BaseDRAgent
+from appfl.misc.data_readiness import BaseCADREModule
 
 
-class DRAgentMem(BaseDRAgent):
+class CADREModuleMem(BaseCADREModule):
     """
-    DRAgent specializing in memory optimization with configurable parameters.
+    CADREModuleMem specializing in memory optimization with configurable parameters.
     """
 
     def __init__(self, train_dataset: Any, **kwargs: Any) -> None:
         """
-        Initialize the DRAgent with a training dataset and additional parameters.
+        Initialize the CADREModuleMem with a training dataset and additional parameters.
 
         Args:
             train_dataset (Any): The training dataset.

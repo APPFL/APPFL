@@ -1,7 +1,7 @@
 import argparse
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from resources.dr_agent import DRAgent
+from resources.cadre_module import CADREModule
 from appfl.agent import ServerAgent
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 
@@ -36,7 +36,7 @@ else:
         True if rank == 1 else False
     )
     # Create the client agent and communicator
-    client_agent = DRAgent(client_agent_config=client_agent_config)
+    client_agent = CADREModule(client_agent_config=client_agent_config)
     client_communicator = MPIClientCommunicator(comm, server_rank=0)
     # Load the configurations
     client_config = client_communicator.get_configuration()

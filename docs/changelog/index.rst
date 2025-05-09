@@ -7,7 +7,7 @@ appfl v1.5.0
 New Features
 ~~~~~~~~~~~~
 
-- Add data readiness agent to APPFL for the assurance of AI data readiness before FL training.
+- Add CADRE module to APPFL for the assurance of AI data readiness before FL training.
 - Support running APPFL tutorials on AWS SageMaker.
 - Integrate APPFL github workflow with ALCF Gitlab CI for testing on Polaris with GPUs.
 

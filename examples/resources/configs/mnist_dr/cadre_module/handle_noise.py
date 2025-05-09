@@ -1,11 +1,11 @@
 import torch
-from appfl.misc.data_readiness import BaseDRAgent
+from appfl.misc.data_readiness import BaseCADREModule
 
 
-class DRAgentNoise(BaseDRAgent):
+class CADREModuleNoise(BaseCADREModule):
     def __init__(self, train_dataset, **kwargs):
         """
-        Initialize the DRAgent class, specializing in noise detection with configurable parameters.
+        Initialize the CADREModuleNoise class, specializing in noise detection with configurable parameters.
 
         Args:
         - train_dataset: The dataset used for training.

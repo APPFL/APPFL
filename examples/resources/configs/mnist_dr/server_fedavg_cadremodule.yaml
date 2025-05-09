@@ -55,10 +55,10 @@ client_configs:
         class_variance_plot: False
       combine:
         feature_space_distribution: False
-      dragent_configs:
-        dragent_path: ./resources/configs/mnist_dr/dr_agent/handle_ci.py #choose from: handle_noise.py, handle_ci.py, handle_mem.py, handle_outliers.py, handle_duplicates.py
-        dragent_name: DRAgentCI # Optional, if not provided, the lass python class within the file will be used
-        remedy_action: true  #set true to perform remedy action defined in dragent_path
+      cadremodule_configs:
+        cadremodule_path: ./resources/configs/mnist_dr/cadre_module/handle_ci.py #choose from: handle_noise.py, handle_ci.py, handle_mem.py, handle_outliers.py, handle_duplicates.py
+        cadremodule_name: CADREModuleCI # Optional, if not provided, the lass python class within the file will be used
+        remedy_action: true  #set true to perform remedy action defined in cadremodule_path
 
   model_configs:
     model_path: "./resources/model/cnn.py"

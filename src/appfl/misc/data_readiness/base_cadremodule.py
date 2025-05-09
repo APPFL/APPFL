@@ -2,7 +2,7 @@ import abc
 from typing import Dict, Any
 
 
-class BaseDRAgent(abc.ABC):
+class BaseCADREModule(abc.ABC):
     def __init__(self, train_dataset: Any, **kwargs):
         """
         Base class for dataset analysis with customizable metric and rule methods.

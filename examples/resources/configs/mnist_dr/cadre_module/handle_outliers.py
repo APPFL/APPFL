@@ -1,17 +1,17 @@
 import torch
 import numpy as np
 from typing import Dict, Any
-from appfl.misc.data_readiness import BaseDRAgent
+from appfl.misc.data_readiness import BaseCADREModule
 
 
-class DRAgentOutliers(BaseDRAgent):
+class CADREModuleOutliers(BaseCADREModule):
     """
-    DRAgent specializing in outlier detection using the IQR method.
+    CADREModuleOutliers specializing in outlier detection using the IQR method.
     """
 
     def __init__(self, train_dataset, **kwargs):
         """
-        Initialize the DRAgent with a training dataset.
+        Initialize the CADREModuleOutliers with a training dataset.
 
         Args:
             train_dataset: The dataset used for training.

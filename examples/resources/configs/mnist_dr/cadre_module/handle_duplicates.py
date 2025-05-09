@@ -1,11 +1,11 @@
 import torch
-from appfl.misc.data_readiness import BaseDRAgent
+from appfl.misc.data_readiness import BaseCADREModule
 
 
-class DRAgentDuplicates(BaseDRAgent):
+class CADREModuleDuplicates(BaseCADREModule):
     def __init__(self, train_dataset, **kwargs):
         """
-        DRAgent specializing in noise detection with configurable parameters.
+        CADREModuleDuplicates specializing in duplicate detection with configurable parameters.
         """
         super().__init__(train_dataset, **kwargs)
 
