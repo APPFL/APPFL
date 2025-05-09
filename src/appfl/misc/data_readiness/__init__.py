@@ -1,3 +1,3 @@
-from .base_dragent import BaseDRAgent
+from .base_cadremodule import BaseCADREModule
 
-__all__ = ["BaseDRAgent"]
+__all__ = ["BaseCADREModule"]

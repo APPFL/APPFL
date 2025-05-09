@@ -1,6 +1,6 @@
 import argparse
 from omegaconf import OmegaConf
-from resources.dr_agent import DRAgent
+from resources.cadre_module import CADREModule
 from appfl.comm.grpc import GRPCClientCommunicator
 
 argparser = argparse.ArgumentParser()
@@ -14,7 +14,7 @@ args = argparser.parse_args()
 
 client_agent_config = OmegaConf.load(args.config)
 
-client_agent = DRAgent(client_agent_config=client_agent_config)
+client_agent = CADREModule(client_agent_config=client_agent_config)
 client_communicator = GRPCClientCommunicator(
     client_id=client_agent.get_id(),
     **client_agent_config.comm_configs.grpc_configs,

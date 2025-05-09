@@ -51,13 +51,14 @@ def globus_compute_client_entry_point(
         if (
             hasattr(client_agent_config, "data_readiness_configs")
             and hasattr(
-                client_agent_config.data_readiness_configs.dr_metrics, "dragent_configs"
+                client_agent_config.data_readiness_configs.dr_metrics,
+                "cadremodule_configs",
             )
             and hasattr(
-                client_agent_config.data_readiness_configs.dr_metrics.dragent_configs,
+                client_agent_config.data_readiness_configs.dr_metrics.cadremodule_configs,
                 "remedy_action",
             )
-            and client_agent_config.data_readiness_configs.dr_metrics.dragent_configs.remedy_action
+            and client_agent_config.data_readiness_configs.dr_metrics.cadremodule_configs.remedy_action
         ):
             client_agent.adapt_data(client_config=client_agent_config)
 

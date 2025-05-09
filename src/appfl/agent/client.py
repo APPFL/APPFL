@@ -184,18 +184,18 @@ class ClientAgent:
                 )
 
             if hasattr(
-                client_config.data_readiness_configs.dr_metrics, "dragent_configs"
+                client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
             ) and hasattr(
-                client_config.data_readiness_configs.dr_metrics.dragent_configs,
-                "dragent_kwargs",
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+                "cadremodule_kwargs",
             ):
-                dragent_kwargs = getattr(
-                    client_config.data_readiness_configs.dr_metrics.dragent_configs,
-                    "dragent_kwargs",
+                cadremodule_kwargs = getattr(
+                    client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+                    "cadremodule_kwargs",
                     {},
                 )
             else:
-                dragent_kwargs = {}
+                cadremodule_kwargs = {}
 
             # data_input, data_labels = balance_data(data_input, data_labels)
             # data_input, explained_variance = apply_pca(data_input)
@@ -286,17 +286,17 @@ class ClientAgent:
 
             results.update(to_combine_results)
 
-            # Handle data readiness agent metrics
+            # Handle CADRE module metrics
             if hasattr(
-                client_config.data_readiness_configs.dr_metrics, "dragent_configs"
+                client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
             ) and hasattr(
-                client_config.data_readiness_configs.dr_metrics.dragent_configs,
-                "dragent_path",
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+                "cadremodule_path",
             ):
                 self.specified_metrics = create_instance_from_file(
-                    client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_path,
-                    client_config.data_readiness_configs.dr_metrics.dragent_configs.get(
-                        "dragent_name", None
+                    client_config.data_readiness_configs.dr_metrics.cadremodule_configs.cadremodule_path,
+                    client_config.data_readiness_configs.dr_metrics.cadremodule_configs.get(
+                        "cadremodule_name", None
                     ),
                     self.train_dataset,
                 )
@@ -304,7 +304,9 @@ class ClientAgent:
                     [
                         next(
                             iter(
-                                self.specified_metrics.metric(**dragent_kwargs).items()
+                                self.specified_metrics.metric(
+                                    **cadremodule_kwargs
+                                ).items()
                             )
                         )
                     ]
@@ -320,37 +322,37 @@ class ClientAgent:
         """
 
         if hasattr(
-            client_config.data_readiness_configs.dr_metrics, "dragent_configs"
+            client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
         ) and hasattr(
-            client_config.data_readiness_configs.dr_metrics.dragent_configs,
-            "dragent_path",
+            client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+            "cadremodule_path",
         ):
             self.specified_metrics = create_instance_from_file(
-                client_config.data_readiness_configs.dr_metrics.dragent_configs.dragent_path,
-                client_config.data_readiness_configs.dr_metrics.dragent_configs.get(
-                    "dragent_name", None
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs.cadremodule_path,
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs.get(
+                    "cadremodule_name", None
                 ),
                 self.train_dataset,
             )
 
         if hasattr(
-            client_config.data_readiness_configs.dr_metrics, "dragent_configs"
+            client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
         ) and hasattr(
-            client_config.data_readiness_configs.dr_metrics.dragent_configs,
-            "dragent_kwargs",
+            client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+            "cadremodule_kwargs",
         ):
-            dragent_kwargs = getattr(
-                client_config.data_readiness_configs.dr_metrics.dragent_configs,
-                "dragent_kwargs",
+            cadremodule_kwargs = getattr(
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+                "cadremodule_kwargs",
                 {},
             )
         else:
-            dragent_kwargs = {}
+            cadremodule_kwargs = {}
 
         ai_ready_data = self.specified_metrics.remedy(
-            self.specified_metrics.metric(**dragent_kwargs),
+            self.specified_metrics.metric(**cadremodule_kwargs),
             self.logger,
-            **dragent_kwargs,
+            **cadremodule_kwargs,
         )
         self.train_dataset = ai_ready_data["ai_ready_dataset"]
         metadata = ai_ready_data["metadata"]

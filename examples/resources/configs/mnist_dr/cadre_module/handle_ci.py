@@ -1,19 +1,19 @@
 import torch
 import random
 import numpy as np
-from appfl.misc.data_readiness import BaseDRAgent
+from appfl.misc.data_readiness import BaseCADREModule
 
 
-class DRAgentCI(BaseDRAgent):
+class CADREModuleCI(BaseCADREModule):
     """
-    DRAgent specializing in noise detection with configurable parameters.
+    CADREModuleCI specializing in noise detection with configurable parameters.
     This agent provides methods to compute class imbalance metrics, apply rules,
     and remedy imbalances in binary classification datasets.
     """
 
     def __init__(self, train_dataset, **kwargs):
         """
-        Initialize the DRAgent.
+        Initialize the CADREModuleCI.
 
         Args:
         - train_dataset: The training dataset.

@@ -23,15 +23,15 @@ def get_mnist(
     # Get the download directory for dataset
     dir = os.getcwd() + "/datasets/RawData"
     server_agent_config = OmegaConf.load(
-        "./resources/configs/mnist_dr/server_fedavg_dragent.yaml"
+        "./resources/configs/mnist_dr/server_fedavg_cadremodule.yaml"
     )
 
-    # Load the server agent config to get the pollution method based on the DRAgent name
+    # Load the server agent config to get the pollution method based on the CADFEModule name
     if hasattr(server_agent_config, "data_readiness_configs") and hasattr(
-        server_agent_config.client_configs.data_readiness_configs.dr_metrics.dragent_configs,
-        "dragent_name",
+        server_agent_config.client_configs.data_readiness_configs.dr_metrics.cadre_module_configs,
+        "cadremodule_name",
     ):
-        pollution_method = server_agent_config.client_configs.data_readiness_configs.dr_metrics.dragent_configs.dragent_name
+        pollution_method = server_agent_config.client_configs.data_readiness_configs.dr_metrics.cadremodule_configs.cadremodule_name
     else:
         pollution_method = None
 
@@ -78,12 +78,18 @@ def get_mnist(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     # adding different pollution techniques to clients
-    if pollution_method == "DRAgentNoise" or pollution_method == "DRAgentOutliers":
+    if (
+        pollution_method == "CADREModuleNoise"
+        or pollution_method == "CADREModuleOutliers"
+    ):
         # adding noise to the dataset
         train_datasets[client_id] = add_noise_to_subset(
             train_datasets[client_id], scale=2, fraction=0.20
         )
-    elif pollution_method == "DRAgentDuplicates" or pollution_method == "DRAgentMemory":
+    elif (
+        pollution_method == "CADREModuleDuplicates"
+        or pollution_method == "CADREModuleMemory"
+    ):
         # adding duplicates to the dataset
         train_datasets[client_id] = add_duplicates(
             train_datasets[client_id], duplicate_ratio=0.5
