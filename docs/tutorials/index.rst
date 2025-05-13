@@ -18,6 +18,7 @@ We present a collection of tutorials for APPFL framework.
     examples_custom_action
     examples_batched_mpi
     examples_monai
+    examples_dr_integration
     examples_international
     appflx/index
     deprecated_tutorial

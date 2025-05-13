@@ -1,9 +1,11 @@
-Unified AIDRIN (AI Data Readiness Inspector) Framework in APPFL
-================================================================
+Data Readiness Assurance Framework in APPFL
+====================================================
 
-This guide provides a unified framework to enable **data readiness metrics**, **custom rules**, and **automated remedies** within the APPFL environment using **standard configurations** and **optional CADRE (Customizable Assurance of Data Readiness) modules**.
+This guide provides a unified framework to enable **data readiness metrics**, **custom rules**, and **automated remedies** within the APPFL environment using **standard configurations** and **CADRE (Customizable Assurance of Data Readiness) modules**.
 
 Users can choose either approach or combine both in a single experiment.
+
+.. _overview:
 
 Overview
 --------
@@ -14,6 +16,7 @@ APPFL supports two key mechanisms for evaluating data readiness:
 
 2. **CADRE Modules** – Customizable modules that define advanced metrics, rules, and remedies for specific datasets and tasks.
 
+.. _built-in-data-readiness-metrics:
 
 1. Built-in Data Readiness Metrics
 ----------------------------------
@@ -39,26 +42,30 @@ You can generate general metrics and visualizations like sample size, class imba
 
 **Output**:
 
-* `data_readiness_report.html` in the `output/` folder.
+* ``data_readiness_report.html`` in the ``output/`` folder.
 * Automatically generated **before training** during the experiment run.
 
-2. Defining custom data readiness functions with CADRE Modules
+.. _define-custom-cadre-modules:
+
+2. Defining Custom Data Readiness Functions with CADRE Modules
 --------------------------------------------------------------
 
 To implement **custom data readiness metrics, rules and remedies**, users can define **CADRE modules** in Python. These modules offer full flexibility for identifying issues in the data and can even apply remedies defined in the CADRE module when enabled.
 
+.. _writing-your-own-cadre-module:
+
 Writing Your Own CADRE Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A CADRE module is a Python class that **inherits from `BaseCADREModule`** in `appfl.misc.data_readiness.base_cadremodule`. You define your **custom metrics**, **rules**, and **remedies** inside it.
+A CADRE module is a Python class that **inherits from `BaseCADREModule`** in ``appfl.misc.data_readiness.base_cadremodule``. You define your **custom metrics**, **rules**, and **remedies** inside it.
 
 Each module implements three core functions:
 
-* `metric(self, **kwargs)` – Computes user-defined metrics based on the dataset.
-* `rule(self, metric_result, **kwargs)` – Determines if the computed metric indicates a data readiness issue.
-* `remedy(self, metric_result, **kwargs)` – Applies a fix to resolve the issue.
+* ``metric(self, **kwargs)`` – Computes user-defined metrics based on the dataset.
+* ``rule(self, metric_result, **kwargs)`` – Determines if the computed metric indicates a data readiness issue.
+* ``remedy(self, metric_result, **kwargs)`` – Applies a fix to resolve the issue.
 
-If the user is only interested in defining metrics, the `rule` and `remedy` functions can be omitted.
+If the user is only interested in defining metrics, the ``rule`` and ``remedy`` functions can be omitted.
 
 **Basic Template**:
 
@@ -91,9 +98,11 @@ If the user is only interested in defining metrics, the `rule` and `remedy` func
 **Real Example**:
 A sample CADRE module for **handling class imbalance** in the MNIST dataset is available here:
 
-`examples/resources/configs/mnist_dr/cadre_module/handle_ci.py`
+``examples/resources/configs/mnist_dr/cadre_module/handle_ci.py``
 
 It demonstrates both how to detect class imbalance and how to automatically balance the classes if remedies are enabled.
+
+.. _configuring-in-yaml:
 
 Configuring in YAML
 ~~~~~~~~~~~~~~~~~~~
@@ -111,14 +120,17 @@ Once your module is created, register it in the server config like this:
 
 This will activate your module before training begins.
 
-**Supported Issues (Sample Modules)**
-The following issues can be detected and remedied using CADRE modules for the MNIST dataset and they are available in the `examples/resources/configs/mnist_dr/cadre_module/` directory:
+**Sample Modules**
+
+The following issues can be detected and remedied using CADRE modules for the MNIST dataset and they are available in the ``examples/resources/configs/mnist_dr/cadre_module/`` directory. In APPFL repository it's available `here <https://github.com/APPFL/APPFL/tree/main/examples/resources/configs/mnist_dr>`_:
 
 * Class imbalance
 * Duplicate samples
 * Noisy data
 * Outliers
 * Memory usage
+
+.. _running-experiments:
 
 3. Running Experiments
 ----------------------
@@ -148,22 +160,28 @@ The following issues can be detected and remedied using CADRE modules for the MN
     python ./grpc/run_client.py --config ./resources/configs/mnist_dr/client_2_cadremodule.yaml
 
 
-4. Output Artifacts
--------------------
+.. _outputs:
+
+4. Outputs
+----------
 
 After execution, the following files will appear in the `output/` directory:
 
-* `data_readiness_report.html` – Data readiness report with general metrics, plots, and CADRE module results.
+* ``data_readiness_report.html`` – Data readiness report with general metrics, plots, and CADRE module results.
+
+.. _standalone-usage-of-data-readiness-in-appfl:
 
 5. Standalone Usage of Data Readiness in APPFL
 ------------------------------------------------
 
 APPFL provides both built-in data readiness metrics and the ability to define custom CADRE modules for issue detection and remediation. While these tools are integrated into APPFL workflows, they can also be used standalone for dataset readiness inspection and cleanup.
 
+.. _built-in-data-readiness-metrics-example:
+
 Built-in Data Readiness Metrics Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The `appfl.misc.data_readiness.metrics` module includes utility functions like `imbalance_degree` that can be used directly to evaluate the class imbalance of a dataset used for a classification task.
+The ``appfl.misc.data_readiness.metrics`` module includes utility functions like `imbalance_degree` that can be used directly to evaluate the class imbalance of a dataset used for a classification task.
 
 .. code-block:: python
 
@@ -192,10 +210,12 @@ The `appfl.misc.data_readiness.metrics` module includes utility functions like `
     imbalance = imbalance_degree(labels)
     print("Imbalance degree:", imbalance)
 
+.. _custom-cadre-module-example:
+
 Custom CADRE Module Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Users can define their own CADRE modules by subclassing `BaseCADREModule`. The following is a simple duplicate checker that removes repeated input samples.
+Users can define their own CADRE modules by subclassing ``BaseCADREModule``. The following is a simple duplicate checker that removes repeated input samples.
 
 .. code-block:: python
 
