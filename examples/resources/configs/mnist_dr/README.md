@@ -1,6 +1,6 @@
-# Running Experiments with Data Readiness (DR) Agents
+# Running Experiments with CADRE (Customizable Assurance of Data Readiness) Modules
 
-This directory contains **Data Readiness (DR) agents** designed to identify and handle various data quality issues in the **MNIST dataset**.
+This directory contains **CADRE Modules** designed to identify and handle various data readiness issues in the **MNIST dataset**.
 
 ## CADRE Module Overview
 
