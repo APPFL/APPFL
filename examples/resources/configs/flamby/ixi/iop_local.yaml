@@ -1,4 +1,4 @@
-client_id: "Client1"
+client_id: "IOP-Hospital"
 
 train_configs:
   # Local trainer
@@ -40,9 +40,3 @@ data_configs:
     dataset: "IXI"
     num_clients: 3
     client_id: 2
-
-comm_configs:
-  grpc_configs:
-    server_uri: localhost:50051
-    max_message_size: 1048576
-    use_ssl: False
