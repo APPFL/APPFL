@@ -144,8 +144,8 @@ class MPIServerCommunicator:
         model = self.server_agent.get_parameters(**meta_data, blocking=False)
         if not isinstance(model, Future):
             if isinstance(model, tuple):
-                model = model[0]
                 meta_data = yaml.dump(model[1])
+                model = model[0]
             else:
                 meta_data = yaml.dump({})
             model_serialized = model_to_byte(model)
