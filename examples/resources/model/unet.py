@@ -108,7 +108,7 @@ class Baseline(nn.Module):
         # Monte Carlo dropout
         self.monte_carlo_layer = None
         if monte_carlo_dropout:
-            dropout_class = getattr(nn, "Dropout{}d".format(dimensions))
+            dropout_class = getattr(nn, f"Dropout{dimensions}d")
             self.monte_carlo_layer = dropout_class(p=monte_carlo_dropout)
 
         # Classifier
@@ -158,7 +158,7 @@ class ConvolutionalBlock(nn.Module):
             total_padding = kernel_size + 2 * (dilation - 1) - 1
             padding = total_padding // 2
 
-        class_name = "Conv{}d".format(dimensions)
+        class_name = f"Conv{dimensions}d"
         conv_class = getattr(nn, class_name)
         no_bias = not preactivation and (normalization is not None)
         conv_layer = conv_class(
@@ -173,7 +173,7 @@ class ConvolutionalBlock(nn.Module):
 
         norm_layer = None
         if normalization is not None:
-            class_name = "{}Norm{}d".format(normalization.capitalize(), dimensions)
+            class_name = f"{normalization.capitalize()}Norm{dimensions}d"
             norm_class = getattr(nn, class_name)
             num_features = in_channels if preactivation else out_channels
             norm_layer = norm_class(num_features)
@@ -193,7 +193,7 @@ class ConvolutionalBlock(nn.Module):
 
         dropout_layer = None
         if dropout:
-            class_name = "Dropout{}d".format(dimensions)
+            class_name = f"Dropout{dimensions}d"
             dropout_class = getattr(nn, class_name)
             dropout_layer = dropout_class(p=dropout)
             self.add_if_not_none(block, dropout_layer)
@@ -358,7 +358,7 @@ class DecodingBlock(nn.Module):
 
 def get_upsampling_layer(upsampling_type: str) -> nn.Upsample:
     if upsampling_type not in UPSAMPLING_MODES:
-        message = 'Upsampling type is "{}"' " but should be one of the following: {}"
+        message = 'Upsampling type is "{}" but should be one of the following: {}'
         message = message.format(upsampling_type, UPSAMPLING_MODES)
         raise ValueError(message)
     upsample = nn.Upsample(scale_factor=2, mode=upsampling_type, align_corners=False)
@@ -366,7 +366,7 @@ def get_upsampling_layer(upsampling_type: str) -> nn.Upsample:
 
 
 def get_conv_transpose_layer(dimensions, in_channels, out_channels):
-    class_name = "ConvTranspose{}d".format(dimensions)
+    class_name = f"ConvTranspose{dimensions}d"
     conv_class = getattr(nn, class_name)
     conv_layer = conv_class(in_channels, out_channels, kernel_size=2, stride=2)
     return conv_layer
@@ -543,6 +543,6 @@ class EncodingBlock(nn.Module):
 def get_downsampling_layer(
     dimensions: int, pooling_type: str, kernel_size: int = 2
 ) -> nn.Module:
-    class_name = "{}Pool{}d".format(pooling_type.capitalize(), dimensions)
+    class_name = f"{pooling_type.capitalize()}Pool{dimensions}d"
     class_ = getattr(nn, class_name)
     return class_(kernel_size)
