@@ -1,9 +1,4 @@
-from typing import Optional
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
+# UNet
 """
 https://pypi.org/project/unet/0.7.7/
 PyTorch implementation of 2D and 3D U-Net (unet 0.7.7)
@@ -12,7 +7,10 @@ Author: Fernando Perez-Garcia
 Requires: Python >=3.6
 """
 
-# UNet
+from typing import Optional
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 class Baseline(nn.Module):
