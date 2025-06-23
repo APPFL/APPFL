@@ -410,7 +410,7 @@ def deserialize_yaml(
     :return: The serialized YAML object as a string.
     """
     try:
-        return yaml.safe_load(stream)
+        return yaml.load(stream, Loader=yaml.UnsafeLoader)
     except yaml.YAMLError as e:
         if trusted:
             return yaml.load(stream, Loader=yaml.UnsafeLoader)

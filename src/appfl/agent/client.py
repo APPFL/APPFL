@@ -170,11 +170,15 @@ class ClientAgent:
             to_combine_results = {"to_combine": {}}
 
             # Determine how to retrieve data input and labels based on dataset attributes
-            if hasattr(self.train_dataset, "data_label"):
+            if hasattr(self.train_dataset, 'data_label'):
                 data_labels = self.train_dataset.data_label.tolist()
             else:
-                data_labels = [label.item() for _, label in self.train_dataset]
-                # data_labels = [label for _, label in self.train_dataset]
+                try:
+
+                    data_labels = [label.item() for _, label in self.train_dataset]
+                except:
+
+                    data_labels = [label for _, label in self.train_dataset]
 
             if hasattr(self.train_dataset, "data_input"):
                 data_input = self.train_dataset.data_input
