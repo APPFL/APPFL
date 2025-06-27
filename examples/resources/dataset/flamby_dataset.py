@@ -1,3 +1,4 @@
+from appfl.misc.data_readiness.data_pollute import *
 def get_flamby(
     dataset: str,
     num_clients: int,
@@ -26,6 +27,10 @@ def get_flamby(
         assert num_clients <= 3, "IXI dataset can support at most three clients"
         test_dataset = FedIXITiny(train=False, pooled=True)
         train_dataset = FedIXITiny(train=True, center=client_id, pooled=False)
+        train_dataset = add_noise_to_subset(
+            train_dataset, scale=2, fraction=0.7
+        )
+
         return train_dataset, test_dataset
     elif dataset == "ISIC2019":
         from flamby.datasets.fed_isic2019 import FedIsic2019

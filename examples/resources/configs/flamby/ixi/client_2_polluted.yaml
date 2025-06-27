@@ -1,4 +1,4 @@
-client_id: "Client1"
+client_id: "Client2"
 train_configs:
   # Device
   device: "cpu"
@@ -8,12 +8,12 @@ train_configs:
 
 # Local dataset
 data_configs:
-  dataset_path: "./resources/dataset/flamby_dataset.py"
-  dataset_name: "get_flamby"
+  dataset_path: "./resources/dataset/flamby_ixi_polluted.py"
+  dataset_name: "get_flamby_ixi_polluted"
   dataset_kwargs:
     dataset: "IXI"
     num_clients: 3
-    client_id: 1
+    client_id: 2
 
 comm_configs:
   grpc_configs:
