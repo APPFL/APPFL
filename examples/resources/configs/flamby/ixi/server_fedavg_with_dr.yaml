@@ -51,8 +51,8 @@ client_configs:
       combine:
         feature_space_distribution: False
       cadremodule_configs:
-        cadremodule_path: ./resources/configs/flamby/ixi/cadre_modules/handle_noise.py 
-        cadremodule_name: CADREModuleNoise 
+        cadremodule_path: ./resources/configs/flamby/ixi/cadre_modules/handle_noise.py
+        cadremodule_name: CADREModuleNoise
         remedy_action: False  #set true to perform remedy action defined in cadremodule_pat
 
   model_configs:
