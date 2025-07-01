@@ -173,8 +173,10 @@ class ClientAgent:
             if hasattr(self.train_dataset, "data_label"):
                 data_labels = self.train_dataset.data_label.tolist()
             else:
-                data_labels = [label.item() for _, label in self.train_dataset]
-                # data_labels = [label for _, label in self.train_dataset]
+                try:
+                    data_labels = [label.item() for _, label in self.train_dataset]
+                except:  # noqa E722
+                    data_labels = [label for _, label in self.train_dataset]
 
             if hasattr(self.train_dataset, "data_input"):
                 data_input = self.train_dataset.data_input
