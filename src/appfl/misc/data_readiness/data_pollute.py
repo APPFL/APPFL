@@ -2,7 +2,7 @@ import random
 import torch
 
 
-def add_noise_to_subset(dataset, scale, fraction):
+def add_noise_to_subset(dataset, scale, fraction, seed=42):
     """
     Add random noise to a fraction of the input data in the dataset.
 
@@ -14,6 +14,11 @@ def add_noise_to_subset(dataset, scale, fraction):
     Returns:
     - modified_dataset: List with partially noisy input data and original labels.
     """
+    # Set random seed for reproducibility
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    
     # Convert dataset to list for easy manipulation
     dataset_list = list(dataset)
 
