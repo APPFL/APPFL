@@ -18,7 +18,7 @@ def add_noise_to_subset(dataset, scale, fraction, seed=42):
     random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    
+
     # Convert dataset to list for easy manipulation
     dataset_list = list(dataset)
 
