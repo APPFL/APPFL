@@ -16,6 +16,7 @@ from ..grpc_legacy import (
     grpc_serve,
     Job,
 )
+from .setup_ssl import setup_ssl
 
 __all__ = [
     "serve",
@@ -34,4 +35,5 @@ __all__ = [
     "GRPCCommunicator",
     "grpc_serve",
     "Job",
+    "setup_ssl",
 ]
