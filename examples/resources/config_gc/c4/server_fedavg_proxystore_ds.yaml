@@ -1,8 +1,8 @@
 client_configs:
   train_configs:
     # Local trainer
-    trainer: "LLMTrainer"
-    trainer_path: "./resources/trainer/LLM_trainer.py"
+    trainer: "LLMTrainer_ds"
+    trainer_path: "./resources/trainer/LLM_trainer_ds.py"
     mode: "epoch"
     num_local_epochs: 1
     optim: "Adam"
@@ -13,8 +13,8 @@ client_configs:
     loss_fn_path: "./resources/loss/celoss.py"
     loss_fn_name: "CELoss"
     # Client validation
-    do_validation: True
-    do_pre_validation: True
+    do_validation: False
+    do_pre_validation: False
     metric_path: "./resources/metric/acc.py"
     metric_name: "accuracy"
     # Differential privacy
@@ -26,6 +26,7 @@ client_configs:
     # Data loader
     train_batch_size: 2
     val_batch_size: 4
+    gradient_accumulation_steps: 1
     train_data_shuffle: True
     val_data_shuffle: False
 
@@ -48,7 +49,7 @@ client_configs:
       param_cutoff: 1024
 
 server_configs:
-  num_clients: 2
+  num_clients: 1
   scheduler: "SyncScheduler"
   scheduler_kwargs:
     same_init_model: True
@@ -56,10 +57,11 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 3
+  deepspeed: True
+  num_global_epochs: 1
   server_validation: False
   logging_output_dirname: "./output"
-  logging_output_filename: "opt125m_32samples_fedavg"
+  logging_output_filename: "ds_opt125m_32samples_fedavg"
   comm_configs:
     # proxystore_configs:
     #   enable_proxystore: True
@@ -80,5 +82,31 @@ server_configs:
       connector_configs:
         endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "05d2c76a-e867-4f67-aa57-76edeb0beda0"]
         endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/ParaLLMs/yijiang/.cache/proxystore-globus-transfer/"]
-        local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/eagle/projects/ParaLLMs/yijiang/.cache/proxystore-globus-transfer"]
-        host_regex: ['bdw-\d+', 'x30[a-zA-Z0-9]+']
+        local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/eagle/projects/ParaLLMs/yijiang/.cache/proxystore-globus-transfer/"]
+        # host_regex: ['gpu\d+', 'x3[a-zA-Z0-9]+']
+        host_regex: ['bdw-\d+', 'x3[a-zA-Z0-9]+']
+    # proxystore_configs:
+    #     enable_proxystore: True
+    #     connector_type: "GlobusConnector"
+    #     connector_configs:
+    #       endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "9d6d994a-6d04-11e5-ba46-22000b92c6ec"]
+    #       endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/global/homes/y/yli697/.cache/proxystore-globus-transfer/"]
+    #       local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/global/homes/y/yli697/.cache/proxystore-globus-transfer/"]
+    #       # host_regex: ['gpu\d+', 'nid\d+']
+    #       host_regex: ['bdw-\d+', 'nid\d+']
+    # proxystore_configs:
+    #     enable_proxystore: True
+    #     connector_type: "GlobusConnector"
+    #     connector_configs:
+    #       endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "15288284-7006-4041-ba1a-6b52501e49f1"]
+    #       endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/home/yijiang.li/.cache/proxystore-globus-transfer-1/"]
+    #       local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/home/yijiang.li/.cache/proxystore-globus-transfer-1/"]
+    #       host_regex: ['bdw-\d+', 'gpu\d+']
+    # proxystore_configs:
+    #     enable_proxystore: True
+    #     connector_type: "GlobusConnector"
+    #     connector_configs:
+    #       endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "36d521b3-c182-4071-b7d5-91db5d380d42"]
+    #       endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/ccs/home/yli697/.cache/proxystore-globus-transfer/"]
+    #       local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/ccs/home/yli697/.cache/proxystore-globus-transfer/"]
+    #       host_regex: ['gpu\d+', 'frontier\d+']

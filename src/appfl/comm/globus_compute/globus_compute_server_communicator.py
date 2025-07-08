@@ -1,5 +1,7 @@
 import os
 import time
+import json
+import pickle
 import uuid
 import pathlib
 import logging
@@ -76,6 +78,7 @@ class GlobusComputeServerCommunicator:
                 code_serialization_strategy=CombinedCode(),
             )
         self.gce = Executor(client=gcc)  # Globus Compute Executor
+        self.transfer_gce = Executor(client=gcc)
         self.logger = logger if logger is not None else self._default_logger()
         # Sanity check for configurations: Check for the number of clients
         num_clients = (
@@ -124,6 +127,7 @@ class GlobusComputeServerCommunicator:
             )
             _client_id_check_set.add(client_id)
             client_endpoint_id = client_config.endpoint_id
+            transfer_endpoint_id = client_config.transfer_endpoint_id
             client_config.experiment_id = experiment_id
             # Raise deprecation warning for logging_id
             if hasattr(client_config.train_configs, "logging_id"):
@@ -140,6 +144,7 @@ class GlobusComputeServerCommunicator:
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
                 client_endpoint_id=client_endpoint_id,
+                transfer_endpoint_id=transfer_endpoint_id,
                 client_config=OmegaConf.merge(client_config_from_server, client_config),
             )
         # Initialize the S3 bucket for large model transfer if necessary.
@@ -180,6 +185,8 @@ class GlobusComputeServerCommunicator:
         self.executing_tasks: Dict[str, ClientTask] = {}
         self.executing_task_futs: Dict[Future, str] = {}
 
+        self.deepspeed = server_agent_config.server_configs.deepspeed
+
     def send_task_to_all_clients(
         self,
         task_name: str,
@@ -216,6 +223,7 @@ class GlobusComputeServerCommunicator:
                 client_metadata["local_model_url"] = local_model_url
             task_id, task_future = self.client_endpoints[client_id].submit_task(
                 self.gce,
+                self.transfer_gce,
                 task_name,
                 model,
                 client_metadata,
@@ -259,6 +267,7 @@ class GlobusComputeServerCommunicator:
             metadata["local_model_url"] = local_model_url
         task_id, task_future = self.client_endpoints[client_id].submit_task(
             self.gce,
+            self.transfer_gce,
             task_name,
             model,
             metadata,
@@ -278,7 +287,20 @@ class GlobusComputeServerCommunicator:
             task_id = self.executing_task_futs[fut]
             client_id = self.executing_tasks[task_id].client_id
             try:
-                result = fut.result()
+                if self.deepspeed:
+                    fut.result()
+                    home = os.environ.get('HOME')
+                    model_path = os.path.join(home, f'model_{client_id}.pkl')
+                    with open(model_path, 'rb') as f:
+                        model = pickle.load(f)
+
+                    meta_data_path = os.path.join(home, f'meta_data_{client_id}.json')
+                    with open(meta_data_path, 'r') as f:
+                        meta_data = json.load(f)
+
+                    result = (model, meta_data)
+                else:
+                    result = fut.result()
                 client_model, client_metadata_local = (
                     self.__parse_globus_compute_result(result)
                 )
@@ -319,8 +341,21 @@ class GlobusComputeServerCommunicator:
         try:
             fut = next(as_completed(list(self.executing_task_futs)))
             task_id = self.executing_task_futs[fut]
-            result = fut.result()
             client_id = self.executing_tasks[task_id].client_id
+            if self.deepspeed:
+                fut.result()
+                home = os.environ.get('HOME')
+                model_path = os.path.join(home, f'model_{client_id}.pkl')
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+
+                meta_data_path = os.path.join(home, f'meta_data_{client_id}.json')
+                with open(meta_data_path, 'r') as f:
+                    meta_data = json.load(f)
+
+                result = (model, meta_data)
+            else: 
+                result = fut.result()
             client_model, client_metadata = self.__parse_globus_compute_result(result)
             client_metadata = self.__check_deprecation(client_id, client_metadata)
             # Set the status of the finished task
@@ -473,3 +508,22 @@ class GlobusComputeServerCommunicator:
             self.logger.info(
                 f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
             )
+
+def data_transfer(model, meta_data, client_id):
+    import os
+    import json
+    import pickle
+
+    home = os.environ.get('HOME')
+
+    model_path = os.path.join(home, f'model_{client_id}.pkl')
+    with open(model_path, "wb") as f:
+        pickle.dump(model, f)
+        f.flush()
+        os.fsync(f.fileno())
+
+    meta_data_path = os.path.join(home, f'meta_data_{client_id}.json')
+    with open(meta_data_path, "w") as f:
+        json.dump(meta_data, f)
+        f.flush()
+        os.fsync(f.fileno())

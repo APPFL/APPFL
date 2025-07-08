@@ -1,0 +1,160 @@
+clients:
+  # - endpoint_id: "9b8be05a-4859-455a-b945-0affeab2c617"
+  #   transfer_endpoint_id: "557d2916-2c0d-4c0f-b222-b38b2bc2bbbd"
+  #   server_endpoint_id: "35f3e8dd-c98c-4efb-84a2-eb6f8ea828db"
+  #   client_id: "Swing"
+  #   train_configs:
+  #     # Device [Optional]: default is "cpu"
+  #     device: "cuda"
+  #     # Logging [Optional]
+  #     logging_output_dirname: "./output"
+  #     logging_output_filename: "ds_opt125m_32samples_fedavg"
+
+  #   ds_configs:
+  #     num_nodes: 2
+  #     ranks_per_node: 8
+  #     zero_stages: 2
+
+  #   # Local dataset
+  #   data_configs:
+  #     dataset_path: "./resources/dataset/c4_dataset.py"
+  #     dataset_name: "get_c4"
+  #     dataset_kwargs:
+  #       model_name: "facebook/opt-125m"
+  #       nsamples: 32
+
+  #   # Communication configurations
+  #   comm_configs:
+  #     # proxystore_configs:
+  #     #   enable_proxystore: True
+  #     #   connector_type: "EndpointConnector"
+  #     #   connector_configs:
+  #     #     endpoints: ["16d04e0e-fd36-43c9-89b1-666e79feb39e", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+  #     proxystore_configs:
+  #       enable_proxystore: True
+  #       connector_type: "GlobusConnector"
+  #       connector_configs:
+  #         endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "15288284-7006-4041-ba1a-6b52501e49f1"]
+  #         endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/home/yijiang.li/.cache/proxystore-globus-transfer-1/"]
+  #         local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/home/yijiang.li/.cache/proxystore-globus-transfer-1/"]
+  #         host_regex: ['bdw-\d+', 'gpu\d+']
+
+  - endpoint_id: "76aadeb8-2852-452e-ae73-a9408f3cfbd9"
+    transfer_endpoint_id: "9b8d7b7a-bb1e-40da-a843-fb5e3f42dcf7"
+    server_endpoint_id: "35f3e8dd-c98c-4efb-84a2-eb6f8ea828db"
+    client_id: "Polaris"
+    train_configs:
+      # Device [Optional]: default is "cpu"
+      device: "cuda"
+      # Logging [Optional]
+      logging_output_dirname: "./output"
+      logging_output_filename: "ds_opt125m_32samples_fedavg"
+
+    ds_configs:
+      num_nodes: 2
+      ranks_per_node: 4
+      zero_stages: 2
+
+    # Local dataset
+    data_configs:
+      dataset_path: "./resources/dataset/c4_dataset.py"
+      dataset_name: "get_c4"
+      dataset_kwargs:
+        model_name: "facebook/opt-125m"
+        nsamples: 32
+
+    # Communication configurations
+    comm_configs:
+      # proxystore_configs:
+      #   enable_proxystore: True
+      #   connector_type: "EndpointConnector"
+      #   connector_configs:
+      #     endpoints: ["16d732a3-7221-45c2-bc8e-38e4414ebfd9", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+      proxystore_configs:
+        enable_proxystore: True
+        connector_type: "GlobusConnector"
+        connector_configs:
+          endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "05d2c76a-e867-4f67-aa57-76edeb0beda0"]
+          endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/ParaLLMs/yijiang/.cache/proxystore-globus-transfer/"]
+          local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/eagle/projects/ParaLLMs/yijiang/.cache/proxystore-globus-transfer"]
+          host_regex: ['bdw-\d+', 'x3[a-zA-Z0-9]+']
+
+  # - endpoint_id: "fedab150-fb9f-43c9-9ea9-038b17be1348"
+  #   transfer_endpoint_id: "521ad10c-0c1b-4708-aed1-db03b24ff9c5"
+  #   server_endpoint_id: "35f3e8dd-c98c-4efb-84a2-eb6f8ea828db"
+  #   client_id: "Perlmutter"
+  #   train_configs:
+  #     # Device [Optional]: default is "cpu"
+  #     device: "cuda"
+  #     # Logging [Optional]
+  #     logging_output_dirname: "./output"
+  #     logging_output_filename: "ds_opt125m_32samples_fedavg"
+
+  #   ds_configs:
+  #     num_nodes: 2
+  #     ranks_per_node: 4
+  #     zero_stages: 2
+
+  #   # Local dataset
+  #   data_configs:
+  #     dataset_path: "./resources/dataset/c4_dataset.py"
+  #     dataset_name: "get_c4"
+  #     dataset_kwargs:
+  #       model_name: "facebook/opt-125m"
+  #       nsamples: 32
+
+  #   # Communication configurations
+  #   comm_configs:
+  #     # proxystore_configs:
+  #     #   enable_proxystore: True
+  #     #   connector_type: "EndpointConnector"
+  #     #   connector_configs:
+  #     #     endpoints: ["16d04e0e-fd36-43c9-89b1-666e79feb39e", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+  #     proxystore_configs:
+  #       enable_proxystore: True
+  #       connector_type: "GlobusConnector"
+  #       connector_configs:
+  #         endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "9d6d994a-6d04-11e5-ba46-22000b92c6ec"]
+  #         endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/global/homes/y/yli697/.cache/proxystore-globus-transfer/"]
+  #         local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/global/homes/y/yli697/.cache/proxystore-globus-transfer/"]
+  #         host_regex: ['bdw-\d+', 'nid\d+']
+  
+  # - endpoint_id: "7af621d6-d761-450c-b955-0c9fed189cd8"
+  #   transfer_endpoint_id: "ccd88604-4995-405f-9a77-acada7383a3b"
+  #   server_endpoint_id: "557d2916-2c0d-4c0f-b222-b38b2bc2bbbd"
+  #   client_id: "Frontier"
+  #   train_configs:
+  #     # Device [Optional]: default is "cpu"
+  #     device: "cuda"
+  #     # Logging [Optional]
+  #     logging_output_dirname: "./output"
+  #     logging_output_filename: "opt125m_32samples_fedavg"
+
+  #   ds_configs:
+  #     num_nodes: 2
+  #     ranks_per_node: 4
+  #     zero_stages: 2
+
+  #   # Local dataset
+  #   data_configs:
+  #     dataset_path: "./resources/dataset/c4_dataset.py"
+  #     dataset_name: "get_c4"
+  #     dataset_kwargs:
+  #       model_name: "facebook/opt-125m"
+  #       nsamples: 32
+
+  #   # Communication configurations
+  #   comm_configs:
+  #     # proxystore_configs:
+  #     #   enable_proxystore: True
+  #     #   connector_type: "EndpointConnector"
+  #     #   connector_configs:
+  #     #     endpoints: ["86016ed5-1a1c-4335-8812-d72c8d3d5fce", "e75ae45d-404c-4f62-b0d9-52ca3ca5c330"]
+  #     proxystore_configs:
+  #       enable_proxystore: True
+  #       connector_type: "GlobusConnector"
+  #       connector_configs:
+  #         endpoints: ["15288284-7006-4041-ba1a-6b52501e49f1", "36d521b3-c182-4071-b7d5-91db5d380d42"]
+  #         endpoint_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/ccs/home/yli697/.cache/proxystore-globus-transfer/"]
+  #         local_paths: ["/home/yijiang.li/.cache/proxystore-globus-transfer/", "/ccs/home/yli697/.cache/proxystore-globus-transfer/"]
+  #         host_regex: ['gpu\d+', 'frontier\d+']
