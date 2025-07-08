@@ -49,5 +49,6 @@ def auth():
             f"Successfully logged in as a federated learning {'server' if is_fl_server else 'client'}\n"
         )
 
+
 def appfl_globus_auth():
     auth()

@@ -20,7 +20,7 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
-        exclude: 'examples/notebook_tutorials/flamby_ixi/.*\.ipynb'
+        exclude: 'examples/notebook_tutorials/.*\.ipynb'
   - repo: 'https://github.com/charliermarsh/ruff-pre-commit'
     rev: v0.12.1
     hooks:
