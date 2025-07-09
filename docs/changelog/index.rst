@@ -1,6 +1,13 @@
 Changelog
 =========
 
+appfl v1.6.0
+------------
+
+- Add documentation for CADRE (Customizable Assurance of Data Readiness) modules
+- Add tutorials for running APPFL on FLamby datasets, both on AWS and HPCs
+- Add tutorials for Globus-based authentication
+
 appfl v1.5.0
 ------------
 
