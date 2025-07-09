@@ -46,7 +46,7 @@ def get_cifar10(
         train_datasets = iid_partition(train_data_raw, num_clients)
     elif partition_strategy == "class_noniid":
         train_datasets = class_noniid_partition(train_data_raw, num_clients, **kwargs)
-    elif partition_strategy == "dirichlet_nomiid":
+    elif partition_strategy == "dirichlet_noniid":
         train_datasets = dirichlet_noniid_partition(
             train_data_raw, num_clients, **kwargs
         )
