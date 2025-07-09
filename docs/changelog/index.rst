@@ -1,7 +1,7 @@
 Changelog
 =========
 
-appfl v1.6.0
+appfl v1.6.1
 ------------
 
 - Add documentation for CADRE (Customizable Assurance of Data Readiness) modules

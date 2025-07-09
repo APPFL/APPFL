@@ -31,7 +31,7 @@ else:
 
 setuptools.setup(
     name="appfl",
-    version="1.5.0",
+    version="1.6.1",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
