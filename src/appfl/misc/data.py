@@ -55,7 +55,8 @@ def plot_distribution(
     :param num_clients: number of clients
     :param classes_samples: number of samples for each class
     :param sample_matrix: the number of samples for each class for each client with shape (num_classes, num_clients)
-    :param file_name: the filename to save the plot
+    :param output_dirname: the directory to save the plot
+    :param output_filename: the filename to save the plot
     """
     _, ax = plt.subplots(figsize=(20, num_clients / 2 + 3))
 
