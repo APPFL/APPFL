@@ -103,7 +103,7 @@ def run_serial(
             args=(
                 k,
                 weights[k],
-                # deepcopy the common model if there is no personalization, else use the the clients' own model
+                # deepcopy the common model if there is no personalization, else use the clients' own model
                 # the index is k+1, because the first model belongs to the server
                 copy.deepcopy(model) if not cfg.personalization else model[k + 1],
                 loss_fn,
