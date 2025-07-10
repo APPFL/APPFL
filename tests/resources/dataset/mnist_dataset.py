@@ -19,7 +19,7 @@ def get_mnist(
     :param client_id: the client id
     """
     # Get the download directory for dataset
-    dir = os.getcwd() + "_data"
+    dir = os.path.join(os.getcwd(), "_data")
 
     # Root download the data if not already available.
     test_data_raw = torchvision.datasets.MNIST(
@@ -46,7 +46,7 @@ def get_mnist(
         train_datasets = iid_partition(train_data_raw, num_clients)
     elif partition_strategy == "class_noniid":
         train_datasets = class_noniid_partition(train_data_raw, num_clients, **kwargs)
-    elif partition_strategy == "dirichlet_nomiid":
+    elif partition_strategy == "dirichlet_noniid":
         train_datasets = dirichlet_noniid_partition(
             train_data_raw, num_clients, **kwargs
         )
