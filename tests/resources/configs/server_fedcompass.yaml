@@ -4,6 +4,8 @@ client_configs:
     trainer: "VanillaTrainer"
     mode: "step"
     num_local_steps: 2
+    # Simulated local training time in seconds
+    train_time: 0
     optim: "Adam"
     optim_args:
       lr: 0.001
