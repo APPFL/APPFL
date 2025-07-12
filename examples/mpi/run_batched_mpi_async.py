@@ -80,7 +80,9 @@ else:
     if args.train_times is not None:
         times = [float(t) for t in args.train_times.split(",")]
         for idx, client_agent in enumerate(client_agents):
-            client_agent.trainer.train_configs.train_time = times[(client_batch[rank - 1][idx]) % len(times)]
+            client_agent.trainer.train_configs.train_time = times[
+                (client_batch[rank - 1][idx]) % len(times)
+            ]
     # Get and load the initial global model
     init_global_model = client_communicator.get_global_model(init_model=True)
     for client_agent in client_agents:

@@ -38,7 +38,11 @@ class CompassScheduler(BaseScheduler):
         super().__init__(scheduler_configs, aggregator, logger)
 
     def _current_time(self) -> float:
-        return self._virtual_time if self._use_virtual_time else time.time() - self.start_time
+        return (
+            self._virtual_time
+            if self._use_virtual_time
+            else time.time() - self.start_time
+        )
 
     def get_parameters(
         self, **kwargs
@@ -107,7 +111,9 @@ class CompassScheduler(BaseScheduler):
         for group_idx in self._timer_record:
             self._timer_record[group_idx].cancel()
 
-    def _record_info(self, client_id: Union[int, str], train_time: float | None = None) -> None:
+    def _record_info(
+        self, client_id: Union[int, str], train_time: float | None = None
+    ) -> None:
         """
         Record/update the client information for the coming client, including the client's
         - `timestamp`: the timestamp of the local model
@@ -422,7 +428,8 @@ class CompassScheduler(BaseScheduler):
         }
         if not self._use_virtual_time:
             group_timer = threading.Timer(
-                self.arrival_group[self.group_counter]["latest_arrival_time"] - curr_time,
+                self.arrival_group[self.group_counter]["latest_arrival_time"]
+                - curr_time,
                 self._group_aggregation,
                 args=(self.group_counter,),
                 kwargs=kwargs,
