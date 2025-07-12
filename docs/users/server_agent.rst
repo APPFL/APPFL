@@ -123,6 +123,7 @@ For client configurations that are shared among all clients, it is composed of t
         - ``trainer``: The class name of the trainer you would like to use for client local training. The trainer name should be defined in ``src/appfl/trainer``. For example, ``VanillaTrainer`` simply updates the model for a certain number of epochs or batches.
         - ``mode``: For ``VanillaTrainer``, mode is a required configuration to with allowable values ``epoch`` or ``step`` to specify whether you want to train for a certain number of epochs or only a certain number of steps/batches.
         - ``num_local_steps`` / ``num_local_epochs``: Number of steps (if ``mode=step``) or epochs (if ``mode=epoch``) for an FL client in each local training round.
+        - ``train_time``: Target duration (in seconds) for local training. The trainer will report this duration to the server without waiting, enabling fully virtual timing.
         - ``optim``: Name of the optimizer to use from the ``torch.optim`` module.
         - ``optim_args``: Keyword arguments for the selected optimizer.
         - ``do_validation``: Whether to perform client-side validation in each training round.

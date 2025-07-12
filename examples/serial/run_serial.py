@@ -15,6 +15,12 @@ argparser.add_argument(
     "--client_config", type=str, default="./resources/configs/mnist/client_1.yaml"
 )
 argparser.add_argument("--num_clients", type=int, default=10)
+argparser.add_argument(
+    "--train_times",
+    type=str,
+    default=None,
+    help="Comma separated virtual training time per client",
+)
 args = argparser.parse_args()
 
 # Load server agent configurations and set the number of clients
@@ -54,6 +60,12 @@ client_agents = [
 client_config_from_server = server_agent.get_client_configs()
 for client_agent in client_agents:
     client_agent.load_config(client_config_from_server)
+
+# Set heterogeneous virtual training times if provided
+if args.train_times is not None:
+    times = [float(t) for t in args.train_times.split(",")]
+    for idx, client_agent in enumerate(client_agents):
+        client_agent.trainer.train_configs.train_time = times[idx % len(times)]
 
 # Load initial global model from the server
 init_global_model = server_agent.get_parameters(serial_run=True)
