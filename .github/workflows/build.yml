@@ -12,6 +12,7 @@ on:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
 
     runs-on: ubuntu-latest
     strategy:
@@ -47,6 +48,7 @@ jobs:
         mpirun -n 2 python3 -m pytest --with-mpi
 
   polaris:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-22.04
     steps:
     - name: Trigger GitLab pipeline and monitor status
