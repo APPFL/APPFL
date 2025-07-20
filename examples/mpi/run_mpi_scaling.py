@@ -1,3 +1,4 @@
+import socket
 import argparse
 from mpi4py import MPI
 from omegaconf import OmegaConf
@@ -9,10 +10,24 @@ argparse = argparse.ArgumentParser()
 argparse.add_argument(
     "--server_config",
     type=str,
-    default="./resources/configs/mnist/server_fedcompass.yaml",
+    default="./resources/configs/cifar10/server_fedavg.yaml",
 )
 argparse.add_argument(
-    "--client_config", type=str, default="./resources/configs/mnist/client_1.yaml"
+    "--client_config",
+    type=str,
+    default="./resources/configs/cifar10/client_1.yaml",
+)
+argparse.add_argument(
+    "--clients_per_gpu",
+    type=int,
+    default=1,
+    help="Number of clients per GPU, used to set the device for each client.",
+)
+argparse.add_argument(
+    "--gpu_per_node",
+    type=int,
+    default=4,
+    help="Number of GPUs per node, used to set the device for each client. Default is 4 on Polaris.",
 )
 args = argparse.parse_args()
 
@@ -41,9 +56,13 @@ else:
     client_agent_config.data_configs.dataset_kwargs.visualization = (
         True if rank == 1 else False
     )
-    client_agent_config.train_configs.device = f"cuda:{rank-1}"
+    num_clients_per_node = args.clients_per_gpu * args.gpu_per_node
+    client_agent_config.train_configs.device = f"cuda:{(rank - 1) % num_clients_per_node % args.gpu_per_node}"        
     # Create the client agent and communicator
     client_agent = ClientAgent(client_agent_config=client_agent_config)
+    client_agent.logger.info(
+        f"Client {client_agent_config.client_id} is using device {client_agent_config.train_configs.device} on host {socket.gethostname()}"
+    )
     client_communicator = MPIClientCommunicator(
         comm, server_rank=0, client_id=client_agent_config.client_id
     )
@@ -52,34 +71,6 @@ else:
     client_agent.load_config(client_config)
     init_global_model = client_communicator.get_global_model(init_model=True)
     client_agent.load_parameters(init_global_model)
-    # Send the sample size to the server
-    sample_size = client_agent.get_sample_size()
-    client_communicator.invoke_custom_action(
-        action="set_sample_size", sample_size=sample_size
-    )
-
-    # Generate data readiness report
-    if (
-        hasattr(client_config, "data_readiness_configs")
-        and hasattr(client_config.data_readiness_configs, "generate_dr_report")
-        and client_config.data_readiness_configs.generate_dr_report
-    ):
-        # Check cadremodule availability and if the data needs remediation
-        if (
-            hasattr(
-                client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
-            )
-            and hasattr(
-                client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
-                "remedy_action",
-            )
-            and client_config.data_readiness_configs.dr_metrics.cadremodule_configs.remedy_action
-        ):
-            client_agent.adapt_data(client_config=client_config)
-        data_readiness = client_agent.generate_readiness_report(client_config)
-        client_communicator.invoke_custom_action(
-            action="get_data_readiness_report", **data_readiness
-        )
 
     # Local training and global model update iterations
     while True:
