@@ -1,4 +1,9 @@
+*.sh.o*
+*.sh.e*
+examples/hostfiles
+scaling_test
 local_tests
+**/experiments_log/
 src/appfl/service/resources
 wandb
 uploads*

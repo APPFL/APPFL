@@ -2,6 +2,7 @@ import time
 import yaml
 import logging
 import threading
+import numpy as np
 from mpi4py import MPI
 from omegaconf import OmegaConf
 from typing import Optional, Dict, OrderedDict
@@ -28,6 +29,12 @@ class MPIServerCommunicator:
         self._update_global_model_futures: Dict[int, Future] = {}
         self._sample_size_futures: Dict[int, Future] = {}
         self._client_id_to_client_rank = {}  # client_id to client_rank mapping
+        self._benchmarking = self.server_agent.server_agent_config.server_configs.get(
+            "benchmarking", False
+        )
+        if self._benchmarking:
+            self._communication_times = []
+            self._training_times = []
 
     def serve(self):
         """
@@ -144,15 +151,17 @@ class MPIServerCommunicator:
         model = self.server_agent.get_parameters(**meta_data, blocking=False)
         if not isinstance(model, Future):
             if isinstance(model, tuple):
-                meta_data = yaml.dump(model[1])
+                meta_data = model[1]         
                 model = model[0]
             else:
-                meta_data = yaml.dump({})
+                meta_data = {}
+            if self._benchmarking:
+                meta_data['send_time'] = time.time()
             model_serialized = model_to_byte(model)
             return MPITaskResponse(
                 status=MPIServerStatus.RUN.value,
                 payload=model_serialized,
-                meta_data=meta_data,
+                meta_data=yaml.dump(meta_data),
             )
         else:
             self._get_global_model_futures[client_rank] = model
@@ -199,6 +208,18 @@ class MPIServerCommunicator:
             client_metadata = (
                 meta_data[client_id] if client_id in meta_data else meta_data
             )
+            if self._benchmarking:
+                self._communication_times.append(
+                    client_metadata["communication_time"] + time.time() - client_metadata["send_time"]
+                )
+                self._training_times.append(client_metadata["training_time"])
+                # compute the average communication and training times and standard deviation
+                self.logger.info(
+                    f"Communication time: {sum(self._communication_times) / len(self._communication_times):.4f} ± {np.std(self._communication_times):.4f} seconds"
+                )
+                self.logger.info(
+                    f"Training time: {sum(self._training_times) / len(self._training_times):.4f} ± {np.std(self._training_times):.4f} seconds"
+                )
             client_local_model = (
                 local_model[client_id]
                 if (
@@ -220,6 +241,8 @@ class MPIServerCommunicator:
                     global_model = global_model[0]
                 else:
                     meta_data[client_id] = {}
+                if self._benchmarking:
+                    meta_data[client_id]['send_time'] = time.time()
                 global_model_serialized = model_to_byte(global_model)
                 status = (
                     MPIServerStatus.DONE.value
@@ -363,6 +386,8 @@ class MPIServerCommunicator:
                     global_model = global_model[0]
                 else:
                     meta_data = {}
+                if self._benchmarking:
+                    meta_data['send_time'] = time.time()
                 client_rank = self._client_id_to_client_rank[client_id]
                 global_model_serialized = model_to_byte(global_model)
                 response = MPITaskResponse(
@@ -396,6 +421,8 @@ class MPIServerCommunicator:
                     global_model = global_model[0]
                 else:
                     meta_data = {}
+                if self._benchmarking:
+                    meta_data['send_time'] = time.time()
                 client_rank = self._client_id_to_client_rank[client_id]
                 if client_rank not in model_responses:
                     global_model_serialized = model_to_byte(global_model)
