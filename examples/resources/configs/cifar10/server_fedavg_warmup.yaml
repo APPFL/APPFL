@@ -3,7 +3,7 @@ client_configs:
     # Local trainer
     trainer: "VanillaTrainer"
     mode: "step"
-    num_local_steps: 100
+    num_local_steps: 50
     optim: "Adam"
     optim_args:
       lr: 0.01
@@ -50,7 +50,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 5
+  num_global_epochs: 3
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
