@@ -17,6 +17,7 @@ We present a collection of tutorials for APPFL framework.
     examples_wandb
     examples_custom_action
     examples_batched_mpi
+    examples_scaling_test
     examples_monai
     examples_dr_integration
     examples_international
