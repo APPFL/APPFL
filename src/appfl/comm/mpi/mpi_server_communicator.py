@@ -151,12 +151,12 @@ class MPIServerCommunicator:
         model = self.server_agent.get_parameters(**meta_data, blocking=False)
         if not isinstance(model, Future):
             if isinstance(model, tuple):
-                meta_data = model[1]         
+                meta_data = model[1]
                 model = model[0]
             else:
                 meta_data = {}
             if self._benchmarking:
-                meta_data['send_time'] = time.time()
+                meta_data["send_time"] = time.time()
             model_serialized = model_to_byte(model)
             return MPITaskResponse(
                 status=MPIServerStatus.RUN.value,
@@ -210,7 +210,9 @@ class MPIServerCommunicator:
             )
             if self._benchmarking:
                 self._communication_times.append(
-                    client_metadata["communication_time"] + time.time() - client_metadata["send_time"]
+                    client_metadata["communication_time"]
+                    + time.time()
+                    - client_metadata["send_time"]
                 )
                 self._training_times.append(client_metadata["training_time"])
                 # compute the average communication and training times and standard deviation
@@ -242,7 +244,7 @@ class MPIServerCommunicator:
                 else:
                     meta_data[client_id] = {}
                 if self._benchmarking:
-                    meta_data[client_id]['send_time'] = time.time()
+                    meta_data[client_id]["send_time"] = time.time()
                 global_model_serialized = model_to_byte(global_model)
                 status = (
                     MPIServerStatus.DONE.value
@@ -387,7 +389,7 @@ class MPIServerCommunicator:
                 else:
                     meta_data = {}
                 if self._benchmarking:
-                    meta_data['send_time'] = time.time()
+                    meta_data["send_time"] = time.time()
                 client_rank = self._client_id_to_client_rank[client_id]
                 global_model_serialized = model_to_byte(global_model)
                 response = MPITaskResponse(
@@ -422,7 +424,7 @@ class MPIServerCommunicator:
                 else:
                     meta_data = {}
                 if self._benchmarking:
-                    meta_data['send_time'] = time.time()
+                    meta_data["send_time"] = time.time()
                 client_rank = self._client_id_to_client_rank[client_id]
                 if client_rank not in model_responses:
                     global_model_serialized = model_to_byte(global_model)

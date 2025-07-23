@@ -54,14 +54,16 @@ else:
     local_round_times = []
     # Set the client configurations
     client_agent_config = OmegaConf.load(args.client_config)
-    client_agent_config.client_id = f"Client{rank-1}"
+    client_agent_config.client_id = f"Client{rank - 1}"
     client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
     client_agent_config.data_configs.dataset_kwargs.visualization = (
         True if rank == 1 else False
     )
     num_clients_per_node = args.clients_per_gpu * args.gpu_per_node
-    client_agent_config.train_configs.device = f"cuda:{(rank - 1) % num_clients_per_node // args.clients_per_gpu}"        
+    client_agent_config.train_configs.device = (
+        f"cuda:{(rank - 1) % num_clients_per_node // args.clients_per_gpu}"
+    )
     # Create the client agent and communicator
     client_agent = ClientAgent(client_agent_config=client_agent_config)
     client_agent.logger.info(
@@ -75,7 +77,7 @@ else:
     client_agent.load_config(client_config)
     init_global_model, metadata = client_communicator.get_global_model(init_model=True)
     local_round_start_time = time.time()
-    send_time = metadata['send_time']
+    send_time = metadata["send_time"]
     recv_time = time.time()
     client_agent.load_parameters(init_global_model)
 

@@ -1,7 +1,7 @@
 Example: Scaling Test of APPFL on GPU cluster
 =============================================
 
-In this tutorial, we describe how to run federated learning (FL) experiments using APPFL on GPU clusters to simulate large-scale FL scenarios with hundreds or even thousands of clients. This is particularly useful for testing the scalability and performance of FL algorithms in a distributed environment. 
+In this tutorial, we describe how to run federated learning (FL) experiments using APPFL on GPU clusters to simulate large-scale FL scenarios with hundreds or even thousands of clients. This is particularly useful for testing the scalability and performance of FL algorithms in a distributed environment.
 
 MPI Simulation Scripts
 ----------------------
@@ -11,8 +11,8 @@ We provide an MPI-simulation launching script for running large-scale FL experim
 - ``gpu_per_node``: Number of GPUs available on each compute node (default is 4).
 - ``clients_per_gpu``: Number of clients sharing a single GPU (default is 1).
 
-Example Scrip to Launch MPI Simulation
---------------------------------------
+Example Script to Launch MPI Simulation
+---------------------------------------
 
 Below shows an example PBS script to launch a scaling test with 512 clients, where each GPU is shared by 8 clients. The script assumes that you have a GPU cluster with 17 nodes, each having 4 GPUs, and you want to run the simulation using MPI. Specifically,
 
@@ -25,8 +25,8 @@ Below shows an example PBS script to launch a scaling test with 512 clients, whe
 	:linenos:
 
 	#!/bin/bash
-	#PBS -A PPFL_FM
-	#PBS -q preemptable
+	#PBS -A <project_name>
+	#PBS -q <queue_name>
 	#PBS -l walltime=01:00:00
 	#PBS -l select=1:ncpus=64:mpiprocs=1+16:ncpus=64:mpiprocs=32
 	#PBS -l filesystems=home:eagle:grand

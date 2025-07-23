@@ -5,7 +5,7 @@ from .iceadmm_trainer import ICEADMMTrainer
 
 try:
     from .monai_trainer import MonaiTrainer
-except: # noqa: E722
+except:  # noqa: E722
     pass
 
 __all__ = [
