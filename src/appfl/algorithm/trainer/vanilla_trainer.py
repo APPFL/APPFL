@@ -82,6 +82,7 @@ class VanillaTrainer(BaseTrainer):
         if "round" in kwargs:
             self.round = kwargs["round"]
         self.val_results = {"round": self.round + 1}
+        round_start_time = time.time()
 
         # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
@@ -278,6 +279,13 @@ class VanillaTrainer(BaseTrainer):
             self.model = self.model.module.to(self.device)
 
         self.round += 1
+
+        # Record training time and simulate heterogeneous speeds virtually
+        actual_time = time.time() - round_start_time
+        target_time = self.train_configs.get("train_time", None)
+        self.val_results["train_time"] = (
+            float(target_time) if target_time is not None else actual_time
+        )
 
         # Differential privacy
         if self.train_configs.get("use_dp", False):

@@ -17,6 +17,12 @@ argparse.add_argument(
     "--client_config", type=str, default="./resources/configs/mnist/client_1.yaml"
 )
 argparse.add_argument("--num_clients", type=int, default=10)
+argparse.add_argument(
+    "--train_times",
+    type=str,
+    default=None,
+    help="Comma separated virtual training time per client",
+)
 args = argparse.parse_args()
 
 comm = MPI.COMM_WORLD
@@ -71,6 +77,12 @@ else:
     client_config = client_communicator.get_configuration()
     for client_agent in client_agents:
         client_agent.load_config(client_config)
+    if args.train_times is not None:
+        times = [float(t) for t in args.train_times.split(",")]
+        for idx, client_agent in enumerate(client_agents):
+            client_agent.trainer.train_configs.train_time = times[
+                (client_batch[rank - 1][idx]) % len(times)
+            ]
     # Get and load the initial global model
     init_global_model = client_communicator.get_global_model(init_model=True)
     for client_agent in client_agents:

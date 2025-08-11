@@ -7,6 +7,12 @@ APPFL scheduler is the interface between the communicator and the aggregator. Wh
 - :ref:`Vanilla Asynchronous Scheduler`
 - :ref:`Compass Asynchronous Scheduler`
 
+Clients may optionally provide ``train_time`` in their ``train_configs`` to
+simulate heterogeneous computing power. The trainer simply reports this
+configured duration to the scheduler without delaying execution so client
+arrival time is fully virtual. This works for both synchronous and
+asynchronous schedulers.
+
 All schedulers are inherited from the base class ``BaseScheduler``. If user wants to implement a new scheduler, the user needs to inherit the ``BaseScheduler`` and implement the ``schedule`` and ``get_num_global_epochs`` methods.
 
 .. note::

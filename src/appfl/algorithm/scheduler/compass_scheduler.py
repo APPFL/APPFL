@@ -33,7 +33,16 @@ class CompassScheduler(BaseScheduler):
         self._access_lock = threading.Lock()  # handle client requests as a queue
         self._timer_record = {}
         self.start_time = time.time()
+        self._virtual_time = 0.0
+        self._use_virtual_time = False
         super().__init__(scheduler_configs, aggregator, logger)
+
+    def _current_time(self) -> float:
+        return (
+            self._virtual_time
+            if self._use_virtual_time
+            else time.time() - self.start_time
+        )
 
     def get_parameters(
         self, **kwargs
@@ -53,6 +62,8 @@ class CompassScheduler(BaseScheduler):
                 )
                 if init_model_requests == 0:
                     self.start_time = time.time()
+                    if self._use_virtual_time:
+                        self._virtual_time = 0.0
             parameters = super().get_parameters(**kwargs)
             return parameters
 
@@ -73,7 +84,9 @@ class CompassScheduler(BaseScheduler):
             in next round or a `Future` object for the global model
         """
         with self._access_lock:
-            self._record_info(client_id)
+            if kwargs.get("train_time") is not None:
+                self._use_virtual_time = True
+            self._record_info(client_id, kwargs.get("train_time"))
             arrival_group_idx = (
                 self.client_info[client_id]["goa"]
                 if "goa" in self.client_info[client_id]
@@ -98,7 +111,9 @@ class CompassScheduler(BaseScheduler):
         for group_idx in self._timer_record:
             self._timer_record[group_idx].cancel()
 
-    def _record_info(self, client_id: Union[int, str]) -> None:
+    def _record_info(
+        self, client_id: Union[int, str], train_time: float | None = None
+    ) -> None:
         """
         Record/update the client information for the coming client, including the client's
         - `timestamp`: the timestamp of the local model
@@ -106,13 +121,18 @@ class CompassScheduler(BaseScheduler):
         - `local_steps`: the number of local steps for the client in current round
         :param `client_id`: the id of the client
         """
-        curr_time = time.time() - self.start_time
+        curr_time = self._current_time()
         client_start_time = (
             self.client_info[client_id]["start_time"]
             if client_id in self.client_info
             else 0
         )
-        client_update_time = curr_time - client_start_time
+        if train_time is not None:
+            client_update_time = train_time
+            curr_time = max(curr_time, client_start_time + train_time)
+            self._virtual_time = curr_time
+        else:
+            client_update_time = curr_time - client_start_time
         client_steps = (
             self.client_info[client_id]["local_steps"]
             if client_id in self.client_info
@@ -189,7 +209,7 @@ class CompassScheduler(BaseScheduler):
         :return: `global_model`: current global model or a `Future` object for the global model
         :return: `local_steps`: the number of local steps for the client in next round
         """
-        curr_time = time.time() - self.start_time
+        curr_time = self._current_time()
         if curr_time > self.arrival_group[group_idx]["latest_arrival_time"]:
             self.arrival_group[group_idx]["clients"].remove(client_id)
             if len(self.arrival_group[group_idx]["clients"]) == 0:
@@ -285,7 +305,7 @@ class CompassScheduler(BaseScheduler):
         Assign the client to an arrival group based on the client estimated speed.
         :param `client_id`: the id of the client
         """
-        curr_time = time.time() - self.start_time
+        curr_time = self._current_time()
         if len(self.arrival_group) == 0:
             self.arrival_group[self.group_counter] = {
                 "clients": [client_id],
@@ -326,7 +346,7 @@ class CompassScheduler(BaseScheduler):
         Try to join the client to an existing arrival group.
         :return: whether the client can join an existing group or not
         """
-        curr_time = time.time() - self.start_time
+        curr_time = self._current_time()
         assigned_group = -1
         assigned_steps = -1
         for group in self.arrival_group:
@@ -359,7 +379,7 @@ class CompassScheduler(BaseScheduler):
         Create a new group for the client.
         :param `client_id`: the id of the client
         """
-        curr_time = time.time() - self.start_time
+        curr_time = self._current_time()
         assigned_steps = -1
         for group in self.arrival_group:
             if curr_time < self.arrival_group[group]["latest_arrival_time"]:
@@ -406,14 +426,16 @@ class CompassScheduler(BaseScheduler):
                 * self.scheduler_configs.latest_time_factor
             ),
         }
-        group_timer = threading.Timer(
-            self.arrival_group[self.group_counter]["latest_arrival_time"] - curr_time,
-            self._group_aggregation,
-            args=(self.group_counter,),
-            kwargs=kwargs,
-        )
-        group_timer.start()
-        self._timer_record[self.group_counter] = group_timer
+        if not self._use_virtual_time:
+            group_timer = threading.Timer(
+                self.arrival_group[self.group_counter]["latest_arrival_time"]
+                - curr_time,
+                self._group_aggregation,
+                args=(self.group_counter,),
+                kwargs=kwargs,
+            )
+            group_timer.start()
+            self._timer_record[self.group_counter] = group_timer
         self.client_info[client_id]["goa"] = self.group_counter
         self.client_info[client_id]["local_steps"] = assigned_steps
         self.client_info[client_id]["start_time"] = curr_time
