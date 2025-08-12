@@ -1,3 +1,4 @@
+examples/memory_profiles
 *.sh.o*
 *.sh.e*
 examples/hostfiles
