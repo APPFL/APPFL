@@ -1,4 +1,5 @@
 import os
+import gc
 import uuid
 import torch
 import wandb
@@ -7,6 +8,7 @@ import warnings
 import importlib
 import torch.nn as nn
 from datetime import datetime
+from appfl.misc.memory_utils import log_optimization_status
 from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
@@ -71,6 +73,8 @@ class ClientAgent:
         self, client_agent_config: ClientAgentConfig = ClientAgentConfig(), **kwargs
     ) -> None:
         self.client_agent_config = client_agent_config
+        # Check for optimize_memory in client_agent_config, default to False
+        self.optimize_memory = getattr(client_agent_config, 'optimize_memory', False)
         self._create_logger()
         self._init_wandb()
         self._load_model()
@@ -79,6 +83,8 @@ class ClientAgent:
         self._load_data()
         self._load_trainer()
         self._load_compressor()
+        
+        log_optimization_status("ClientAgent", self.optimize_memory, self.logger if hasattr(self, 'logger') else None)
 
     def load_config(self, config: DictConfig) -> None:
         """Load additional configurations provided by the server."""
@@ -118,6 +124,13 @@ class ClientAgent:
     def train(self, **kwargs) -> None:
         """Train the model locally."""
         self.trainer.train(**kwargs)
+        
+        # Memory optimization: Garbage collection after training
+        if self.optimize_memory:
+            gc.collect()
+            # Clear CUDA cache if available
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
     def get_parameters(
         self,
@@ -130,11 +143,23 @@ class ClientAgent:
             metadata = None
         if self.enable_compression:
             params = self.compressor.compress_model(params)
+            # Memory optimization: Garbage collection after compression
+            if self.optimize_memory:
+                gc.collect()
+        
+        # Memory optimization: Final cleanup
+        if self.optimize_memory:
+            gc.collect()
+            
         return params if metadata is None else (params, metadata)
 
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
         self.trainer.load_parameters(params)
+        
+        # Memory optimization: Garbage collection after parameter loading
+        if self.optimize_memory:
+            gc.collect()
 
     def save_checkpoint(self, checkpoint_path: Optional[str] = None) -> None:
         """Save the model to a checkpoint file."""

@@ -11,6 +11,12 @@ from torch.utils.data import Dataset, DataLoader
 from appfl.privacy import laplace_mechanism_output_perturb
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 from appfl.misc.utils import parse_device_str, apply_model_device
+from appfl.misc.memory_utils import (
+    extract_model_state_optimized,
+    safe_inplace_operation,
+    optimize_memory_cleanup,
+    log_optimization_status
+)
 
 
 class VanillaTrainer(BaseTrainer):
@@ -43,6 +49,9 @@ class VanillaTrainer(BaseTrainer):
             logger=logger,
             **kwargs,
         )
+        # Check for optimize_memory in train_configs, default to False
+        self.optimize_memory = getattr(train_configs, 'optimize_memory', False)
+        
         if not hasattr(self.train_configs, "device"):
             self.train_configs.device = "cpu"
         self.train_dataloader = DataLoader(
@@ -73,6 +82,8 @@ class VanillaTrainer(BaseTrainer):
 
         # Extract train device, and configurations for possible DataParallel
         self.device_config, self.device = parse_device_str(self.train_configs.device)
+        
+        log_optimization_status("VanillaTrainer", self.optimize_memory, self.logger)
 
     def train(self, **kwargs):
         """
@@ -86,7 +97,12 @@ class VanillaTrainer(BaseTrainer):
         # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
         if send_gradient:
-            self.model_prev = copy.deepcopy(self.model.state_dict())
+            if self.optimize_memory:
+                self.model_prev = extract_model_state_optimized(
+                    self.model, include_buffers=True, cpu_transfer=False
+                )
+            else:
+                self.model_prev = copy.deepcopy(self.model.state_dict())
 
         # Configure model for possible DataParallel
         self.model = apply_model_device(self.model, self.device_config, self.device)
@@ -296,12 +312,23 @@ class VanillaTrainer(BaseTrainer):
                 self.train_configs.epsilon,
             )
         else:
-            self.model_state = copy.deepcopy(self.model.state_dict())
+            if self.optimize_memory:
+                self.model_state = extract_model_state_optimized(
+                    self.model, include_buffers=True, cpu_transfer=False
+                )
+            else:
+                self.model_state = copy.deepcopy(self.model.state_dict())
 
         # Move to CPU for communication
         if "cuda" in self.train_configs.device:
-            for k in self.model_state:
-                self.model_state[k] = self.model_state[k].cpu()
+            if self.optimize_memory:
+                for k in self.model_state:
+                    if self.model_state[k].device.type != 'cpu':
+                        self.model_state[k] = self.model_state[k].cpu()
+                optimize_memory_cleanup(force_gc=True)
+            else:
+                for k in self.model_state:
+                    self.model_state[k] = self.model_state[k].cpu()
 
         # Compute the gradient if needed
         if send_gradient:
@@ -309,7 +336,12 @@ class VanillaTrainer(BaseTrainer):
 
     def get_parameters(self) -> Dict:
         if not hasattr(self, "model_state"):
-            self.model_state = copy.deepcopy(self.model.state_dict())
+            if self.optimize_memory:
+                self.model_state = extract_model_state_optimized(
+                    self.model, include_buffers=True, cpu_transfer=False
+                )
+            else:
+                self.model_state = copy.deepcopy(self.model.state_dict())
         return (
             (self.model_state, self.val_results)
             if hasattr(self, "val_results")
@@ -400,8 +432,21 @@ class VanillaTrainer(BaseTrainer):
             self.named_parameters = set()
             for name, _ in self.model.named_parameters():
                 self.named_parameters.add(name)
-        for name in self.model_state:
-            if name in self.named_parameters:
-                self.model_state[name] = (
-                    self.model_prev[name].cpu() - self.model_state[name]
-                )
+                
+        if self.optimize_memory:
+            with torch.no_grad():
+                for name in self.model_state:
+                    if name in self.named_parameters:
+                        # In-place gradient computation to save memory
+                        prev_param = self.model_prev[name].cpu() if self.model_prev[name].device.type != 'cpu' else self.model_prev[name]
+                        self.model_state[name] = safe_inplace_operation(
+                            self.model_state[name], 'sub', prev_param, alpha=-1
+                        )
+            optimize_memory_cleanup(self.model_prev, force_gc=True)
+            del self.model_prev
+        else:
+            for name in self.model_state:
+                if name in self.named_parameters:
+                    self.model_state[name] = (
+                        self.model_prev[name].cpu() - self.model_state[name]
+                    )

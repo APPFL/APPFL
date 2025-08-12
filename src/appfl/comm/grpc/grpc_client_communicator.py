@@ -1,8 +1,11 @@
+import gc
+import io
 import os
 import uuid
 import grpc
 import time
 import yaml
+import torch
 import pathlib
 from datetime import datetime
 from appfl.comm.utils.s3_storage import CloudStorage
@@ -30,7 +33,11 @@ from appfl.comm.grpc import (
 from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
-
+from appfl.misc.memory_utils import (
+    efficient_bytearray_concatenation,
+    optimize_memory_cleanup,
+    log_optimization_status
+)
 
 class GRPCClientCommunicator:
     """
@@ -66,6 +73,8 @@ class GRPCClientCommunicator:
         self.client_id = client_id
         self.logger = logger
         self.max_message_size = max_message_size
+        # Check for optimize_memory in kwargs (from grpc_configs), default to False
+        self.optimize_memory = kwargs.get('optimize_memory', False)
         channel = create_grpc_channel(
             server_uri,
             use_ssl=use_ssl,
@@ -82,6 +91,8 @@ class GRPCClientCommunicator:
         self._load_proxystore()
         self._load_google_drive()
         self._s3_initalized = False
+        
+        log_optimization_status("GRPCClientCommunicator", self.optimize_memory, self.logger)
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -138,14 +149,35 @@ class GRPCClientCommunicator:
             header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
         )
-        byte_received = b""
-        for byte in self.stub.GetGlobalModel(request, timeout=3600):
-            byte_received += byte.data_bytes
+        # Collect byte chunks efficiently
+        data_chunks = []
+        chunk_count = 0
+        for byte_chunk in self.stub.GetGlobalModel(request, timeout=3600):
+            data_chunks.append(byte_chunk.data_bytes)
+            chunk_count += 1
+            # Periodic garbage collection for large models
+            if self.optimize_memory and chunk_count % 100 == 0:
+                gc.collect()
+        
+        # Efficiently concatenate and parse
+        byte_received = efficient_bytearray_concatenation(
+            data_chunks, optimize_memory=self.optimize_memory
+        )
         response = GetGlobalModelRespone()
         response.ParseFromString(byte_received)
+        
+        if self.optimize_memory:
+            optimize_memory_cleanup(data_chunks, byte_received, force_gc=True)
+            del data_chunks, byte_received
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
-        model = deserialize_model(response.global_model)
+            
+        # Memory optimization: Use optimized model deserialization
+        if self.optimize_memory:
+            model = self._deserialize_model_optimized(response.global_model)
+        else:
+            model = deserialize_model(response.global_model)
+            
         if isinstance(model, Proxy):
             model = extract(model)
         if isinstance(model, dict) and "model_drive_path" in model.keys():
@@ -199,29 +231,69 @@ class GRPCClientCommunicator:
             kwargs["model_url"] = local_model_url
             kwargs["_use_s3"] = True
         meta_data = yaml.dump(kwargs)
-        request = UpdateGlobalModelRequest(
-            header=ClientHeader(client_id=client_id),
-            local_model=(
+        
+        # Memory optimization: Use optimized model serialization
+        if self.optimize_memory:
+            if isinstance(local_model, Proxy) or (not isinstance(local_model, bytes)):
+                local_model_serialized = self._serialize_model_optimized(local_model)
+                # Clear original model from memory
+                del local_model
+                gc.collect()
+            else:
+                local_model_serialized = local_model
+        else:
+            local_model_serialized = (
                 serialize_model(local_model)
                 if (
                     isinstance(local_model, Proxy)
                     or (not isinstance(local_model, bytes))
                 )
                 else local_model
-            ),
+            )
+        
+        request = UpdateGlobalModelRequest(
+            header=ClientHeader(client_id=client_id),
+            local_model=local_model_serialized,
             meta_data=meta_data,
         )
-        byte_received = b""
-        for byte in self.stub.UpdateGlobalModel(
-            proto_to_databuffer(request, max_message_size=self.max_message_size),
-            timeout=3600,
-        ):
-            byte_received += byte.data_bytes
-        response = UpdateGlobalModelResponse()
-        response.ParseFromString(byte_received)
+        # Memory optimization: Use optimized streaming and response handling
+        if self.optimize_memory:
+            # Use optimized streaming for request
+            request_generator = self._proto_to_databuffer_optimized(
+                request, max_message_size=self.max_message_size
+            )
+            # Use bytearray for efficient response assembly
+            byte_received = bytearray()
+            chunk_count = 0
+            for byte_chunk in self.stub.UpdateGlobalModel(request_generator, timeout=3600):
+                byte_received.extend(byte_chunk.data_bytes)
+                chunk_count += 1
+                # Periodic garbage collection
+                if chunk_count % 100 == 0:
+                    gc.collect()
+            response = UpdateGlobalModelResponse()
+            response.ParseFromString(bytes(byte_received))
+            # Clear response bytes immediately
+            del byte_received
+            gc.collect()
+        else:
+            byte_received = b""
+            for byte_chunk in self.stub.UpdateGlobalModel(
+                proto_to_databuffer(request, max_message_size=self.max_message_size),
+                timeout=3600,
+            ):
+                byte_received += byte_chunk.data_bytes
+            response = UpdateGlobalModelResponse()
+            response.ParseFromString(byte_received)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
-        model = deserialize_model(response.global_model)
+            
+        # Memory optimization: Use optimized model deserialization
+        if self.optimize_memory:
+            model = self._deserialize_model_optimized(response.global_model)
+        else:
+            model = deserialize_model(response.global_model)
+            
         if isinstance(model, Proxy):
             model = extract(model)
         if isinstance(model, dict) and "model_drive_path" in model.keys():
@@ -367,3 +439,42 @@ class GRPCClientCommunicator:
             if not os.path.exists(s3_temp_dir):
                 pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
             CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
+
+    def _serialize_model_optimized(self, model):
+        """Memory-efficient model serialization."""
+        with io.BytesIO() as buffer:
+            torch.save(model, buffer)
+            serialized_data = buffer.getvalue()
+        gc.collect()
+        return serialized_data
+
+    def _deserialize_model_optimized(self, model_bytes):
+        """Memory-efficient model deserialization."""
+        with io.BytesIO(model_bytes) as buffer:
+            model = torch.load(buffer, map_location='cpu')  # Load to CPU first for memory efficiency
+        gc.collect()
+        return model
+
+    def _proto_to_databuffer_optimized(self, proto, max_message_size=(2 * 1024 * 1024)):
+        """Memory-optimized streaming with garbage collection."""
+        from .grpc_communicator_pb2 import DataBuffer
+        
+        max_message_size = int(0.9 * max_message_size)
+        data_bytes = proto.SerializeToString()
+        data_bytes_size = len(data_bytes)
+        message_size = min(max_message_size, data_bytes_size)
+        
+        chunk_count = 0
+        for i in range(0, data_bytes_size, message_size):
+            chunk = data_bytes[i : i + message_size]
+            msg = DataBuffer(data_bytes=chunk)
+            yield msg
+            
+            chunk_count += 1
+            # Periodic garbage collection for large requests
+            if chunk_count % 50 == 0:
+                gc.collect()
+        
+        # Final cleanup
+        del data_bytes
+        gc.collect()

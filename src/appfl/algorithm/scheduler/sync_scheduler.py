@@ -4,6 +4,10 @@ from concurrent.futures import Future
 from omegaconf import DictConfig
 from appfl.algorithm.scheduler import BaseScheduler
 from appfl.algorithm.aggregator import BaseAggregator
+from appfl.misc.memory_utils import (
+    optimize_memory_cleanup,
+    log_optimization_status
+)
 
 
 class SyncScheduler(BaseScheduler):
@@ -17,6 +21,11 @@ class SyncScheduler(BaseScheduler):
         self.num_clients = self.scheduler_configs.num_clients
         self._num_global_epochs = 0
         self._access_lock = threading.Lock()
+        
+        # Check for optimize_memory in scheduler_configs, default to False
+        self.optimize_memory = getattr(scheduler_configs, 'optimize_memory', False)
+        
+        log_optimization_status("SyncScheduler", self.optimize_memory, self.logger)
 
     def schedule(
         self,
@@ -35,22 +44,58 @@ class SyncScheduler(BaseScheduler):
         """
         with self._access_lock:
             future = Future()
-            self.local_models[client_id] = local_model
+            
+            # Memory optimization: Store models efficiently
+            if self.optimize_memory:
+                # For memory efficiency, avoid creating unnecessary copies
+                self.local_models[client_id] = local_model
+                # Force garbage collection after storing each model for large models
+                if len(self.local_models) > self.num_clients // 2:
+                    optimize_memory_cleanup(force_gc=True)
+            else:
+                self.local_models[client_id] = local_model
+                
             for key, value in kwargs.items():
                 if key not in self.aggregation_kwargs:
                     self.aggregation_kwargs[key] = {}
                 self.aggregation_kwargs[key][client_id] = value
             self.future[client_id] = future
+            
             if len(self.local_models) == self.num_clients:
-                aggregated_model = self.aggregator.aggregate(
-                    self.local_models, **self.aggregation_kwargs
-                )
-                while self.future:
-                    client_id, future = self.future.popitem()
-                    future.set_result(
-                        self._parse_aggregated_model(aggregated_model, client_id)
+                # Memory optimization: Process aggregation with cleanup
+                if self.optimize_memory:
+                    aggregated_model = self.aggregator.aggregate(
+                        self.local_models, **self.aggregation_kwargs
                     )
-                self.local_models.clear()
+                    
+                    # Immediate cleanup of local models after aggregation
+                    temp_futures = dict(self.future)  # Create copy before clearing
+                    self.local_models.clear()  # Clear immediately after aggregation
+                    self.aggregation_kwargs.clear()  # Clear aggregation kwargs
+                    optimize_memory_cleanup(force_gc=True)
+                    
+                    # Set results for all futures
+                    while temp_futures:
+                        client_id, client_future = temp_futures.popitem()
+                        client_future.set_result(
+                            self._parse_aggregated_model(aggregated_model, client_id)
+                        )
+                    self.future.clear()
+                    
+                    # Final cleanup after setting all results
+                    optimize_memory_cleanup(temp_futures, force_gc=True)
+                else:
+                    # Original behavior
+                    aggregated_model = self.aggregator.aggregate(
+                        self.local_models, **self.aggregation_kwargs
+                    )
+                    while self.future:
+                        client_id, future = self.future.popitem()
+                        future.set_result(
+                            self._parse_aggregated_model(aggregated_model, client_id)
+                        )
+                    self.local_models.clear()
+                    
                 self._num_global_epochs += 1
             return future
 

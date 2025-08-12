@@ -1,7 +1,10 @@
+import gc
+import io
 import copy
 import grpc
 import time
 import yaml
+import torch
 import random
 import string
 import pprint
@@ -29,7 +32,11 @@ from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 from .utils import proto_to_databuffer, serialize_model, deserialize_model
-
+from appfl.misc.memory_utils import (
+    efficient_bytearray_concatenation,
+    optimize_memory_cleanup,
+    log_optimization_status
+)
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
     def __init__(
@@ -41,6 +48,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
     ) -> None:
         self.server_agent = server_agent
         self.max_message_size = max_message_size
+        # Check for optimize_memory in kwargs (from grpc_configs), default to False
+        self.optimize_memory = kwargs.get('optimize_memory', False)
         self.logger = logger if logger is not None else self._default_logger()
         self.kwargs = kwargs
         self.experiment_id = (
@@ -51,6 +60,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         )
         self._load_proxystore(server_agent.server_agent_config)
         self._load_google_drive(server_agent.server_agent_config)
+        
+        log_optimization_status("GRPCServerCommunicator", self.optimize_memory, self.logger)
 
     def GetConfiguration(self, request, context):
         """
@@ -170,10 +181,26 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         """
         try:
             request = UpdateGlobalModelRequest()
-            bytes_received = b""
-            for bytes in request_iterator:
-                bytes_received += bytes.data_bytes
+            
+            # Collect byte chunks
+            data_chunks = []
+            chunk_count = 0
+            for bytes_chunk in request_iterator:
+                data_chunks.append(bytes_chunk.data_bytes)
+                chunk_count += 1
+                # Periodic garbage collection for large transfers
+                if self.optimize_memory and chunk_count % 100 == 0:
+                    gc.collect()
+            
+            # Efficiently concatenate and parse
+            bytes_received = efficient_bytearray_concatenation(
+                data_chunks, optimize_memory=self.optimize_memory
+            )
             request.ParseFromString(bytes_received)
+            
+            if self.optimize_memory:
+                optimize_memory_cleanup(data_chunks, bytes_received, force_gc=True)
+                del data_chunks, bytes_received
             self.logger.info(
                 f"Received UpdateGlobalModel request from client {request.header.client_id}"
             )
@@ -191,6 +218,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if meta_data.get("_use_proxystore", False):
                 local_model_proxy = deserialize_model(local_model)
                 local_model = extract(local_model_proxy)
+                
+                if self.optimize_memory:
+                    optimize_memory_cleanup(local_model_proxy, force_gc=True)
             if meta_data.get("_use_colab_connector", False):
                 local_model = deserialize_model(local_model)
                 local_model = self.colab_connector.load_model(
@@ -206,24 +236,43 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     "grpc",
                     deserialize_model(local_model),
                 )
+            # Memory optimization: Avoid deepcopy when possible
             if len(meta_data) > 0:
-                meta_data_print = copy.deepcopy(meta_data)
-                remove_keys = [
-                    "_use_proxystore",
-                    "_use_colab_connector",
-                    "_use_s3",
-                    "model_key",
-                    "model_url",
-                ]
-                for key in remove_keys:
-                    if key in meta_data_print:
-                        del meta_data_print[key]
-                self.logger.info(
-                    f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
-                )
+                if self.optimize_memory:
+                    # Create shallow copy with selective filtering to avoid full deepcopy
+                    meta_data_print = {k: v for k, v in meta_data.items() 
+                                     if k not in ["_use_proxystore", "_use_colab_connector", 
+                                                "_use_s3", "model_key", "model_url"]}
+                    if meta_data_print:  # Only log if there's something meaningful to show
+                        self.logger.info(
+                            f"Received meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
+                        )
+                    del meta_data_print  # Immediate cleanup
+                else:
+                    # Original behavior with deepcopy
+                    meta_data_print = copy.deepcopy(meta_data)
+                    remove_keys = [
+                        "_use_proxystore",
+                        "_use_colab_connector",
+                        "_use_s3",
+                        "model_key",
+                        "model_url",
+                    ]
+                    for key in remove_keys:
+                        if key in meta_data_print:
+                            del meta_data_print[key]
+                    self.logger.info(
+                        f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
+                    )
             global_model = self.server_agent.global_update(
                 client_id, local_model, blocking=True, **meta_data
             )
+            
+            # Memory optimization: Clear local model immediately after processing
+            if self.optimize_memory:
+                del local_model
+                gc.collect()
+                
             meta_data = {}
             if isinstance(global_model, tuple):
                 global_model, meta_data = global_model
@@ -246,7 +295,16 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 )
 
             meta_data = yaml.dump(meta_data)
-            global_model_serialized = serialize_model(global_model)
+            
+            # Memory optimization: Use optimized serialization
+            if self.optimize_memory:
+                global_model_serialized = self._serialize_model_optimized(global_model)
+                # Clear global model from memory before creating response
+                del global_model
+                gc.collect()
+            else:
+                global_model_serialized = serialize_model(global_model)
+                
             status = (
                 ServerStatus.DONE
                 if self.server_agent.training_finished()
@@ -257,10 +315,21 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 global_model=global_model_serialized,
                 meta_data=meta_data,
             )
-            for bytes in proto_to_databuffer(
-                response, max_message_size=self.max_message_size
-            ):
-                yield bytes
+            
+            # Memory optimization: Use optimized streaming with cleanup
+            if self.optimize_memory:
+                for bytes_chunk in self._proto_to_databuffer_optimized(
+                    response, max_message_size=self.max_message_size
+                ):
+                    yield bytes_chunk
+                # Final cleanup
+                del global_model_serialized, response
+                gc.collect()
+            else:
+                for bytes_chunk in proto_to_databuffer(
+                    response, max_message_size=self.max_message_size
+                ):
+                    yield bytes_chunk
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -432,3 +501,40 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     "model_path", "/content/drive/MyDrive/APPFL"
                 )
             )
+
+    def _serialize_model_optimized(self, model):
+        """
+        Memory-optimized model serialization using BytesIO with context manager.
+        """
+        with io.BytesIO() as buffer:
+            torch.save(model, buffer)
+            serialized_data = buffer.getvalue()
+        # Force garbage collection after serialization
+        gc.collect()
+        return serialized_data
+
+    def _proto_to_databuffer_optimized(self, proto, max_message_size=(2 * 1024 * 1024)):
+        """
+        Memory-optimized version of proto_to_databuffer with periodic garbage collection.
+        """
+        from .grpc_communicator_pb2 import DataBuffer
+        
+        max_message_size = int(0.9 * max_message_size)
+        data_bytes = proto.SerializeToString()
+        data_bytes_size = len(data_bytes)
+        message_size = min(max_message_size, data_bytes_size)
+        
+        chunk_count = 0
+        for i in range(0, data_bytes_size, message_size):
+            chunk = data_bytes[i : i + message_size]
+            msg = DataBuffer(data_bytes=chunk)
+            yield msg
+            
+            chunk_count += 1
+            # Periodic garbage collection for large responses
+            if chunk_count % 50 == 0:
+                gc.collect()
+                
+        # Final cleanup
+        del data_bytes
+        gc.collect()
