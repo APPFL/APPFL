@@ -9,9 +9,16 @@ This directory contains tools for memory profiling and optimization of APPFL's f
    pip install memray
    ```
 
-2. **Run memory profiling experiments**:
+2. **Run memory profiling experiments (Recommended)**:
    
-   **ResNet experiment** (recommended - focuses on training memory):
+   **CIFAR-10 experiment** (**recommended** - uses real CIFAR-10 configs):
+   ```bash
+   cd examples
+   chmod +x memory_profiling/run_cifar_experiment.sh
+   ./memory_profiling/run_cifar_experiment.sh
+   ```
+   
+   **ResNet experiment** (alternative - focuses on training memory with dummy data):
    ```bash
    cd examples
    chmod +x memory_profiling/run_resnet_experiment.sh
@@ -30,12 +37,15 @@ This directory contains tools for memory profiling and optimization of APPFL's f
    cd examples
    
    # Original version
-   python memory_profiling/run_server_memray.py --config ./memory_profiling/configs/server_resnet_dummy.yaml
-   python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_1_resnet_dummy.yaml
+   python memory_profiling/run_server_memray.py --config ./memory_profiling/configs/server_resnet_dummy.yaml &
+   python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_1_resnet_dummy.yaml &
+   python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_2_resnet_dummy.yaml
+    
    
    # Optimized version
-   python memory_profiling/run_server_memray.py --config ./memory_profiling/configs/server_resnet_dummy.yaml --use_optimized_version
-   python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_1_resnet_dummy.yaml --use_optimized_version
+   python memory_profiling/run_server_memray.py --config ./memory_profiling/configs/server_resnet_dummy.yaml --use_optimized_version &
+   python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_1_resnet_dummy.yaml --use_optimized_version &
+   python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_2_resnet_dummy.yaml --use_optimized_version
    ```
 
 4. **View results**: Open the generated HTML flamegraph files in your browser from the output directory.
@@ -44,10 +54,11 @@ This directory contains tools for memory profiling and optimization of APPFL's f
 
 - `run_server_memray.py` - Memory profiling wrapper for gRPC server
 - `run_client_memray.py` - Memory profiling wrapper for gRPC client  
-- `run_resnet_experiment.sh` - ResNet memory profiling experiment (recommended)
+- `run_cifar_experiment.sh` - CIFAR-10 memory profiling experiment (recommended)
+- `run_resnet_experiment.sh` - ResNet memory profiling experiment
 - `run_mnist_experiment.sh` - MNIST memory profiling experiment
 - `analyze_profiles.py` - Automatic analysis script for memory profiles
-- `dummy_cifar10_dataset.py` - Lightweight dataset for training memory isolation
+- `dummy_cifar10_dataset.py` - Lightweight dummy dataset for training memory isolation
 - `configs/` - Configuration files for ResNet experiments
 
 ## Memory Optimizations Implemented
