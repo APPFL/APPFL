@@ -1,9 +1,11 @@
+import gc
 import io
 import torch
 import pickle
 from dataclasses import fields
 from typing import Dict, OrderedDict, Union
 from .config import MPITaskRequest, MPITaskResponse
+from appfl.misc.memory_utils import memory_efficient_model_io
 
 
 def byte_to_request(byte_obj: bytes) -> MPITaskRequest:
@@ -51,3 +53,26 @@ def model_to_byte(model: Union[Dict, OrderedDict]) -> bytes:
 def byte_to_model(byte_obj: bytes) -> Union[Dict, OrderedDict]:
     """Deserialize a byte string to a model."""
     return torch.load(io.BytesIO(byte_obj))
+
+
+def model_to_byte_optimized(model: Union[Dict, OrderedDict], optimize_memory: bool = True) -> bytes:
+    """
+    Memory-optimized model serialization to a byte string using context manager.
+    """
+    with memory_efficient_model_io(optimize_memory=optimize_memory) as buffer:
+        torch.save(model, buffer)
+        serialized_data = buffer.getvalue()
+    return serialized_data
+
+
+def byte_to_model_optimized(byte_obj: bytes, optimize_memory: bool = True) -> Union[Dict, OrderedDict]:
+    """
+    Memory-optimized model deserialization from byte string with CPU loading and cleanup.
+    """
+    with memory_efficient_model_io(optimize_memory=optimize_memory) as buffer:
+        buffer.write(byte_obj)
+        buffer.seek(0)
+        model = torch.load(buffer, map_location='cpu')
+    if optimize_memory:
+        gc.collect()
+    return model

@@ -1,9 +1,16 @@
+import gc
 import yaml
+import torch
 from mpi4py import MPI
 from omegaconf import DictConfig, OmegaConf
 from typing import Dict, Union, Tuple, OrderedDict, Optional, List
 from .config import MPITaskRequest, MPITaskResponse, MPIServerStatus, MPITask
 from .serializer import request_to_byte, byte_to_response, byte_to_model, model_to_byte
+from appfl.misc.memory_utils import (
+    optimize_memory_cleanup,
+    log_optimization_status,
+    memory_efficient_model_io
+)
 
 
 class MPIClientCommunicator:
@@ -23,11 +30,15 @@ class MPIClientCommunicator:
         server_rank: int,
         client_id: Optional[Union[str, int]] = None,
         client_ids: Optional[List[Union[str, int]]] = None,
+        optimize_memory: bool = False,
+        **kwargs,
     ):
         self.comm = comm
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
         self.server_rank = server_rank
+        # Check for optimize_memory in kwargs or use parameter
+        self.optimize_memory = kwargs.get('optimize_memory', False) or optimize_memory
         assert not (client_id is not None and client_ids is not None), (
             "client_id and client_ids are mutually exclusive. Use client_id for one client and client_ids for multiple clients."
         )
@@ -38,6 +49,8 @@ class MPIClientCommunicator:
         else:
             self.client_ids = [self.comm_rank]
         self._default_batching = client_ids is not None
+        
+        log_optimization_status("MPIClientCommunicator", self.optimize_memory)
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -77,11 +90,28 @@ class MPIClientCommunicator:
         request_bytes = request_to_byte(request)
         tag = self.comm_rank + self.comm_size * MPITask.GET_GLOBAL_MODEL.value
         self.comm.Send(request_bytes, dest=self.server_rank, tag=tag)
+        
+        # Memory optimization: Clean up request bytes immediately
+        if self.optimize_memory:
+            del request_bytes
+            gc.collect()
+            
         response = self._recv_response()
         if response.status == MPIServerStatus.ERROR.value:
             raise Exception("Server returned an error, stopping the client.")
-        model = byte_to_model(response.payload)
+        
+        # Memory optimization: Use optimized deserialization
+        if self.optimize_memory:
+            model = self._byte_to_model_optimized(response.payload)
+        else:
+            model = byte_to_model(response.payload)
+            
         meta_data = yaml.unsafe_load(response.meta_data)
+        
+        # Memory optimization: Clean up response immediately
+        if self.optimize_memory:
+            optimize_memory_cleanup(response, force_gc=True)
+            
         if len(meta_data) == 0:
             return model
         else:
@@ -139,20 +169,46 @@ class MPIClientCommunicator:
             kwargs["_torch_serialized"] = False
         kwargs["_client_ids"] = self.client_ids if client_id is None else [client_id]
         meta_data = yaml.dump(kwargs)
+        
+        # Memory optimization: Use optimized serialization for models
+        if not isinstance(local_model, bytes):
+            if self.optimize_memory:
+                payload = self._model_to_byte_optimized(local_model)
+                # Clean up local model from memory after serialization
+                del local_model
+                gc.collect()
+            else:
+                payload = model_to_byte(local_model)
+        else:
+            payload = local_model
+            
         request = MPITaskRequest(
-            payload=model_to_byte(local_model)
-            if not isinstance(local_model, bytes)
-            else local_model,
+            payload=payload,
             meta_data=meta_data,
         )
         request_bytes = request_to_byte(request)
         tag = self.comm_rank + self.comm_size * MPITask.UPDATE_GLOBAL_MODEL.value
         self.comm.Send(request_bytes, dest=self.server_rank, tag=tag)
+        
+        # Memory optimization: Clean up intermediate data
+        if self.optimize_memory:
+            optimize_memory_cleanup(payload, request, request_bytes, force_gc=True)
+            
         response = self._recv_response()
         if response.status == MPIServerStatus.ERROR.value:
             raise Exception("Server returned an error, stopping the client.")
-        model = byte_to_model(response.payload)
+        
+        # Memory optimization: Use optimized deserialization
+        if self.optimize_memory:
+            model = self._byte_to_model_optimized(response.payload)
+        else:
+            model = byte_to_model(response.payload)
+            
         meta_data = yaml.unsafe_load(response.meta_data)
+        
+        # Memory optimization: Clean up response immediately
+        if self.optimize_memory:
+            optimize_memory_cleanup(response, force_gc=True)
         # post-process the results if the client has multiple clients
         status = "DONE" if response.status == MPIServerStatus.DONE.value else "RUNNING"
         if client_id is not None or (not self._default_batching):
@@ -228,4 +284,30 @@ class MPIClientCommunicator:
         response_buffer = bytearray(count)
         self.comm.Recv(response_buffer, source=self.server_rank, tag=self.comm_rank)
         response = byte_to_response(response_buffer)
+        
+        # Memory optimization: Clean up buffer immediately
+        if self.optimize_memory:
+            del response_buffer
+            gc.collect()
+        
         return response
+
+    def _model_to_byte_optimized(self, model):
+        """
+        Memory-optimized model serialization using context manager.
+        """
+        with memory_efficient_model_io(optimize_memory=self.optimize_memory) as buffer:
+            torch.save(model, buffer)
+            serialized_data = buffer.getvalue()
+        return serialized_data
+
+    def _byte_to_model_optimized(self, model_bytes: bytes):
+        """
+        Memory-optimized model deserialization with CPU loading and cleanup.
+        """
+        with memory_efficient_model_io(optimize_memory=self.optimize_memory) as buffer:
+            buffer.write(model_bytes)
+            buffer.seek(0)
+            model = torch.load(buffer, map_location='cpu')
+        gc.collect()
+        return model
