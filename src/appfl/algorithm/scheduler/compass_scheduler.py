@@ -1,3 +1,4 @@
+import gc
 import time
 import math
 import threading
@@ -7,6 +8,10 @@ from concurrent.futures import Future
 from typing import Any, Union, Dict, Tuple
 from appfl.algorithm.scheduler import BaseScheduler
 from appfl.algorithm.aggregator import BaseAggregator
+from appfl.misc.memory_utils import (
+    optimize_memory_cleanup,
+    log_optimization_status
+)
 
 
 class CompassScheduler(BaseScheduler):
@@ -33,7 +38,13 @@ class CompassScheduler(BaseScheduler):
         self._access_lock = threading.Lock()  # handle client requests as a queue
         self._timer_record = {}
         self.start_time = time.time()
+        
+        # Check for optimize_memory in scheduler_configs, default to False
+        self.optimize_memory = getattr(scheduler_configs, 'optimize_memory', False)
+        
         super().__init__(scheduler_configs, aggregator, logger)
+        
+        log_optimization_status("CompassScheduler", self.optimize_memory, self.logger)
 
     def get_parameters(
         self, **kwargs
@@ -97,6 +108,17 @@ class CompassScheduler(BaseScheduler):
         """Optional function to clean up the scheduler states."""
         for group_idx in self._timer_record:
             self._timer_record[group_idx].cancel()
+            
+        # Memory optimization: Clean up all buffers and state
+        if self.optimize_memory:
+            optimize_memory_cleanup(
+                self.client_info,
+                self.arrival_group,
+                self.group_buffer,
+                self.general_buffer,
+                self.future_record,
+                force_gc=True
+            )
 
     def _record_info(self, client_id: Union[int, str]) -> None:
         """
@@ -157,6 +179,10 @@ class CompassScheduler(BaseScheduler):
                 **kwargs,
             )
             self.global_timestamp += 1
+            
+            # Memory optimization: Clean up after single update
+            if self.optimize_memory:
+                optimize_memory_cleanup(local_model, force_gc=True)
         else:
             self.general_buffer["local_models"][client_id] = local_model
             self.general_buffer["local_steps"][client_id] = self.client_info[client_id][
@@ -166,6 +192,10 @@ class CompassScheduler(BaseScheduler):
                 "timestamp"
             ]
             global_model = self.aggregator.get_parameters(**kwargs)
+            
+            # Memory optimization: Clean up after buffering
+            if self.optimize_memory:
+                optimize_memory_cleanup(force_gc=False)
         self.client_info[client_id]["timestamp"] = self.global_timestamp
         self._assign_group(client_id, **kwargs)
         local_steps = self.client_info[client_id]["local_steps"]
@@ -215,6 +245,10 @@ class CompassScheduler(BaseScheduler):
             ]["timestamp"]
             future = Future()
             self.future_record[client_id] = future
+            
+            # Memory optimization: Clean up after group buffering
+            if self.optimize_memory:
+                optimize_memory_cleanup(force_gc=False)
             if len(self.arrival_group[group_idx]["clients"]) == 0:
                 self._group_aggregation(group_idx, **kwargs)
             return future
@@ -259,6 +293,13 @@ class CompassScheduler(BaseScheduler):
             )
             self.global_timestamp += 1
             self._num_global_epochs += len(local_models)
+            
+            # Memory optimization: Clean up after group aggregation
+            if self.optimize_memory:
+                optimize_memory_cleanup(local_models, local_steps, timestamp, staleness, force_gc=True)
+                # Clean up group buffer after aggregation
+                del self.group_buffer[group_idx]
+                gc.collect()
             client_speeds = []
             for client_id in self.arrival_group[group_idx]["arrived_clients"]:
                 self.client_info[client_id]["timestamp"] = self.global_timestamp
@@ -279,6 +320,10 @@ class CompassScheduler(BaseScheduler):
                 del self.future_record[client_id]
             if len(self.arrival_group[group_idx]["clients"]) == 0:
                 del self.arrival_group[group_idx]
+                
+            # Memory optimization: Final cleanup after group processing
+            if self.optimize_memory:
+                optimize_memory_cleanup(force_gc=True)
 
     def _assign_group(self, client_id: Union[int, str], **kwargs) -> None:
         """
@@ -317,6 +362,10 @@ class CompassScheduler(BaseScheduler):
             )
             self.client_info[client_id]["start_time"] = curr_time
             self.group_counter += 1
+            
+            # Memory optimization: Clean up after group assignment
+            if self.optimize_memory:
+                optimize_memory_cleanup(force_gc=False)
         else:
             if not self._join_group(client_id):
                 self._create_group(client_id, **kwargs)
@@ -418,3 +467,7 @@ class CompassScheduler(BaseScheduler):
         self.client_info[client_id]["local_steps"] = assigned_steps
         self.client_info[client_id]["start_time"] = curr_time
         self.group_counter += 1
+        
+        # Memory optimization: Clean up after group creation
+        if self.optimize_memory:
+            optimize_memory_cleanup(force_gc=False)

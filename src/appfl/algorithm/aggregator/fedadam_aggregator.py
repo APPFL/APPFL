@@ -1,7 +1,13 @@
+import gc
 import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import FedAvgAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
+from appfl.misc.memory_utils import (
+    safe_inplace_operation,
+    optimize_memory_cleanup,
+    log_optimization_status
+)
 
 
 class FedAdamAggregator(FedAvgAggregator):
@@ -26,6 +32,8 @@ class FedAdamAggregator(FedAvgAggregator):
         super().__init__(model, aggregator_configs, logger)
         self.m_vector = {}
         self.v_vector = {}
+        
+        log_optimization_status("FedAdamAggregator", self.optimize_memory, self.logger)
 
     def compute_steps(
         self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]
@@ -34,27 +42,65 @@ class FedAdamAggregator(FedAvgAggregator):
         Compute the changes to the global model after the aggregation.
         """
         super().compute_steps(local_models)
+        
+        # Memory optimization: Initialize vectors efficiently
         if len(self.m_vector) == 0:
-            for name in self.step:
-                self.m_vector[name] = torch.zeros_like(self.step[name])
-                self.v_vector[name] = (
-                    torch.zeros_like(self.step[name])
-                    + self.aggregator_configs.server_adapt_param**2
-                )
+            if self.optimize_memory:
+                with torch.no_grad():
+                    for name in self.step:
+                        self.m_vector[name] = torch.zeros_like(self.step[name])
+                        self.v_vector[name] = (
+                            torch.zeros_like(self.step[name])
+                            + self.aggregator_configs.server_adapt_param**2
+                        )
+                    gc.collect()
+            else:
+                for name in self.step:
+                    self.m_vector[name] = torch.zeros_like(self.step[name])
+                    self.v_vector[name] = (
+                        torch.zeros_like(self.step[name])
+                        + self.aggregator_configs.server_adapt_param**2
+                    )
 
-        for name in self.step:
-            self.m_vector[name] = (
-                self.aggregator_configs.server_momentum_param_1 * self.m_vector[name]
-                + (1 - self.aggregator_configs.server_momentum_param_1)
-                * self.step[name]
-            )
-            self.v_vector[name] = (
-                self.aggregator_configs.server_momentum_param_2 * self.v_vector[name]
-                + (1 - self.aggregator_configs.server_momentum_param_2)
-                * torch.square(self.step[name])
-            )
-            self.step[name] = torch.div(
-                self.aggregator_configs.server_learning_rate * self.m_vector[name],
-                torch.sqrt(self.v_vector[name])
-                + self.aggregator_configs.server_adapt_param,
-            )
+        # Memory optimization: Use safe in-place operations
+        if self.optimize_memory:
+            with torch.no_grad():
+                for name in self.step:
+                    # Momentum update (first moment) with safe operations
+                    momentum_term = self.m_vector[name] * self.aggregator_configs.server_momentum_param_1
+                    step_term = self.step[name] * (1 - self.aggregator_configs.server_momentum_param_1)
+                    self.m_vector[name] = safe_inplace_operation(momentum_term, 'add', step_term)
+                    
+                    # Variance update (second moment) with safe operations
+                    v_term = self.v_vector[name] * self.aggregator_configs.server_momentum_param_2
+                    step_squared = torch.square(self.step[name])
+                    squared_term = step_squared * (1 - self.aggregator_configs.server_momentum_param_2)
+                    self.v_vector[name] = safe_inplace_operation(v_term, 'add', squared_term)
+                    
+                    # Final step computation with safe operations
+                    numerator = self.aggregator_configs.server_learning_rate * self.m_vector[name]
+                    denominator = torch.sqrt(self.v_vector[name]) + self.aggregator_configs.server_adapt_param
+                    self.step[name] = safe_inplace_operation(numerator, 'div', denominator)
+                    
+                    # Cleanup intermediate tensors
+                    optimize_memory_cleanup(momentum_term, step_term, v_term, step_squared, squared_term, numerator, denominator, force_gc=False)
+                
+                optimize_memory_cleanup(force_gc=True)
+        else:
+            # Original behavior
+            for name in self.step:
+                self.m_vector[name] = (
+                    self.aggregator_configs.server_momentum_param_1 * self.m_vector[name]
+                    + (1 - self.aggregator_configs.server_momentum_param_1)
+                    * self.step[name]
+                )
+                self.v_vector[name] = (
+                    self.aggregator_configs.server_momentum_param_2 * self.v_vector[name]
+                    + (1 - self.aggregator_configs.server_momentum_param_2)
+                    * torch.square(self.step[name])
+                )
+                self.step[name] = torch.div(
+                    self.aggregator_configs.server_learning_rate * self.m_vector[name],
+                    torch.sqrt(self.v_vector[name])
+                    + self.aggregator_configs.server_adapt_param,
+                )

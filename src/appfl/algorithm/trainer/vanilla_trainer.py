@@ -437,10 +437,9 @@ class VanillaTrainer(BaseTrainer):
             with torch.no_grad():
                 for name in self.model_state:
                     if name in self.named_parameters:
-                        # In-place gradient computation to save memory
                         prev_param = self.model_prev[name].cpu() if self.model_prev[name].device.type != 'cpu' else self.model_prev[name]
                         self.model_state[name] = safe_inplace_operation(
-                            self.model_state[name], 'sub', prev_param, alpha=-1
+                            prev_param, 'sub', self.model_state[name], alpha=1
                         )
             optimize_memory_cleanup(self.model_prev, force_gc=True)
             del self.model_prev

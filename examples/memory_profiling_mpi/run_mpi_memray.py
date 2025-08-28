@@ -113,9 +113,6 @@ def run_client(client_config_path: str, comm, client_rank: int, size: int, use_o
         # Enable memory optimization in trainer
         if hasattr(client_agent_config, 'train_configs'):
             client_agent_config.train_configs.optimize_memory = True
-        # Enable memory optimization in communicator configs if present
-        if hasattr(client_agent_config, 'comm_configs') and hasattr(client_agent_config.comm_configs, 'mpi_configs'):
-            client_agent_config.comm_configs.mpi_configs.optimize_memory = True
     
     # Create client agent with customized configuration
     client_agent = ClientAgent(client_agent_config=client_agent_config)

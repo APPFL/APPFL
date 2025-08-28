@@ -1,3 +1,4 @@
+import gc
 import copy
 import torch
 import torch.nn as nn
@@ -5,6 +6,12 @@ from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Any, Dict, Union
 from appfl.algorithm.aggregator import BaseAggregator
+from appfl.misc.memory_utils import (
+    clone_state_dict_optimized,
+    safe_inplace_operation,
+    optimize_memory_cleanup,
+    log_optimization_status
+)
 
 
 class IIADMMAggregator(BaseAggregator):
@@ -23,6 +30,10 @@ class IIADMMAggregator(BaseAggregator):
         self.model = model
         self.logger = logger
         self.aggregator_configs = aggregator_configs
+        
+        # Check for optimize_memory in aggregator_configs, default to False
+        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', False)
+        
         self.named_parameters = set()
         for name, _ in self.model.named_parameters():
             self.named_parameters.add(name)
@@ -40,6 +51,8 @@ class IIADMMAggregator(BaseAggregator):
             if "device" in self.aggregator_configs
             else "cpu"
         )
+        
+        log_optimization_status("IIADMMAggregator", self.optimize_memory, self.logger)
 
     def aggregate(
         self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs
@@ -57,7 +70,10 @@ class IIADMMAggregator(BaseAggregator):
                         self.model.state_dict()[name]
                     )
 
-        global_state = copy.deepcopy(self.model.state_dict())
+        if self.optimize_memory:
+            global_state = clone_state_dict_optimized(self.model.state_dict())
+        else:
+            global_state = copy.deepcopy(self.model.state_dict())
 
         for client_id, model in local_models.items():
             if model is not None:
@@ -79,19 +95,42 @@ class IIADMMAggregator(BaseAggregator):
         # Calculate the dual residual
         dual_res = 0
         if self.is_first_iter:
-            for client_id in local_models:
-                for name in self.named_parameters:
-                    self.primal_states_curr[client_id][name] = copy.deepcopy(
-                        self.primal_states[client_id][name].to(self.device)
-                    )
+            if self.optimize_memory:
+                with torch.no_grad():
+                    for client_id in local_models:
+                        for name in self.named_parameters:
+                            self.primal_states_curr[client_id][name] = self.primal_states[client_id][name].to(self.device).clone().detach()
+                    gc.collect()
+            else:
+                for client_id in local_models:
+                    for name in self.named_parameters:
+                        self.primal_states_curr[client_id][name] = copy.deepcopy(
+                            self.primal_states[client_id][name].to(self.device)
+                        )
             self.is_first_iter = False
         else:
-            self.primal_states_prev = copy.deepcopy(self.primal_states_curr)
-            for client_id in local_models:
-                for name in self.named_parameters:
-                    self.primal_states_curr[client_id][name] = copy.deepcopy(
-                        self.primal_states[client_id][name].to(self.device)
-                    )
+            if self.optimize_memory:
+                with torch.no_grad():
+                    # Efficient copying of states
+                    temp_prev = OrderedDict()
+                    for client_id in self.primal_states_curr:
+                        temp_prev[client_id] = OrderedDict()
+                        for name in self.primal_states_curr[client_id]:
+                            temp_prev[client_id][name] = self.primal_states_curr[client_id][name].clone().detach()
+                    self.primal_states_prev = temp_prev
+                    
+                    for client_id in local_models:
+                        for name in self.named_parameters:
+                            self.primal_states_curr[client_id][name] = self.primal_states[client_id][name].to(self.device).clone().detach()
+                    
+                    optimize_memory_cleanup(temp_prev, force_gc=True)
+            else:
+                self.primal_states_prev = copy.deepcopy(self.primal_states_curr)
+                for client_id in local_models:
+                    for name in self.named_parameters:
+                        self.primal_states_curr[client_id][name] = copy.deepcopy(
+                            self.primal_states[client_id][name].to(self.device)
+                        )
             for name in self.named_parameters:
                 res = 0
                 for client_id in local_models:
@@ -119,4 +158,7 @@ class IIADMMAggregator(BaseAggregator):
         return global_state
 
     def get_parameters(self, **kwargs) -> Dict:
-        return copy.deepcopy(self.model.state_dict())
+        if self.optimize_memory:
+            return clone_state_dict_optimized(self.model.state_dict())
+        else:
+            return copy.deepcopy(self.model.state_dict())
