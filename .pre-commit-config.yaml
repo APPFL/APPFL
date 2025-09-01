@@ -1,7 +1,7 @@
 exclude: ^.*_pb2(_grpc)?\.py$  # Global exclude for all hooks
 repos:
   - repo: 'https://github.com/pre-commit/pre-commit-hooks'
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: mixed-line-ending
       - id: trailing-whitespace
@@ -22,7 +22,7 @@ repos:
       - id: codespell
         exclude: 'examples/notebook_tutorials/.*\.ipynb'
   - repo: 'https://github.com/charliermarsh/ruff-pre-commit'
-    rev: v0.12.4
+    rev: v0.12.11
     hooks:
       - id: ruff
         args:
