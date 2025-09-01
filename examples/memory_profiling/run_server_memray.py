@@ -45,6 +45,20 @@ def run_server_with_profiling(config_path: str, output_dir: str = "./memory_prof
             # Enable memory optimization in Aggregator
             server_agent_config.server_configs.aggregator_kwargs.optimize_memory = True
             print("Enabled memory optimizations for all components: Trainer, gRPC, Agents, Scheduler, and Aggregator")
+        else:
+            # Disable memory optimization in gRPC communicator
+            server_agent_config.server_configs.comm_configs.grpc_configs.optimize_memory = False
+            # Disable memory optimization in ServerAgent
+            server_agent_config.server_configs.optimize_memory = False
+            # Disable memory optimization in ClientAgent (passed to clients)
+            server_agent_config.client_configs.optimize_memory = False
+            # Disable memory optimization in Trainer
+            server_agent_config.client_configs.train_configs.optimize_memory = False
+            # Disable memory optimization in Scheduler
+            server_agent_config.server_configs.scheduler_kwargs.optimize_memory = False
+            # Disable memory optimization in Aggregator
+            server_agent_config.server_configs.aggregator_kwargs.optimize_memory = False
+            print("Disabled memory optimizations for all components: Trainer, gRPC, Agents, Scheduler, and Aggregator")
         
         # Create server agent with built-in optimization flags
         server_agent = ServerAgent(server_agent_config=server_agent_config)

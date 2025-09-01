@@ -40,6 +40,15 @@ def run_client_with_profiling(config_path: str, output_dir: str = "./memory_prof
                 client_agent_config.train_configs.optimize_memory = True
             if hasattr(client_agent_config, 'comm_configs') and hasattr(client_agent_config.comm_configs, 'grpc_configs'):
                 client_agent_config.comm_configs.grpc_configs.optimize_memory = True
+        else:
+            # Disable memory optimization in ClientAgent
+            client_agent_config.optimize_memory = False
+            # Disable memory optimization in trainer
+            if hasattr(client_agent_config, 'train_configs'):
+                client_agent_config.train_configs.optimize_memory = False
+            # Disable memory optimization in communicator configs if present
+            if hasattr(client_agent_config, 'comm_configs') and hasattr(client_agent_config.comm_configs, 'grpc_configs'):
+                client_agent_config.comm_configs.grpc_configs.optimize_memory = False
         
         # Create client agent with built-in optimization flags
         client_agent = ClientAgent(client_agent_config=client_agent_config)

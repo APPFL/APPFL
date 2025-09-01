@@ -60,6 +60,20 @@ def run_server(config_path: str, comm, use_optimized: bool):
         # Enable memory optimization in aggregator
         if hasattr(server_agent_config.server_configs, 'aggregator_kwargs'):
             server_agent_config.server_configs.aggregator_kwargs.optimize_memory = True
+    else:
+        # Disable memory optimization in ServerAgent
+        server_agent_config.server_configs.optimize_memory = False
+        # Disable memory optimization for clients (passed through config)
+        server_agent_config.client_configs.optimize_memory = False
+        # Disable memory optimization in trainer
+        if hasattr(server_agent_config.client_configs, 'train_configs'):
+            server_agent_config.client_configs.train_configs.optimize_memory = False
+        # Disable memory optimization in scheduler
+        if hasattr(server_agent_config.server_configs, 'scheduler_kwargs'):
+            server_agent_config.server_configs.scheduler_kwargs.optimize_memory = False
+        # Disable memory optimization in aggregator
+        if hasattr(server_agent_config.server_configs, 'aggregator_kwargs'):
+            server_agent_config.server_configs.aggregator_kwargs.optimize_memory = False
     
     # Create server agent
     server_agent = ServerAgent(server_agent_config=server_agent_config)
@@ -113,6 +127,12 @@ def run_client(client_config_path: str, comm, client_rank: int, size: int, use_o
         # Enable memory optimization in trainer
         if hasattr(client_agent_config, 'train_configs'):
             client_agent_config.train_configs.optimize_memory = True
+    else:
+        # Disable memory optimization in ClientAgent
+        client_agent_config.optimize_memory = False
+        # Disable memory optimization in trainer
+        if hasattr(client_agent_config, 'train_configs'):
+            client_agent_config.train_configs.optimize_memory = False
     
     # Create client agent with customized configuration
     client_agent = ClientAgent(client_agent_config=client_agent_config)
