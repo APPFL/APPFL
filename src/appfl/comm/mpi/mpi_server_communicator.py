@@ -15,7 +15,6 @@ from .config import MPITask, MPITaskRequest, MPITaskResponse, MPIServerStatus
 from .serializer import byte_to_request, response_to_byte, model_to_byte, byte_to_model
 from appfl.misc.memory_utils import (
     optimize_memory_cleanup,
-    log_optimization_status,
     memory_efficient_model_io
 )
 
@@ -26,7 +25,7 @@ class MPIServerCommunicator:
         comm,
         server_agent: ServerAgent,
         logger: Optional[ServerAgentFileLogger] = None,
-        optimize_memory: bool = False,
+        optimize_memory: bool = True,
         **kwargs,
     ) -> None:
         self.comm = comm
@@ -36,8 +35,8 @@ class MPIServerCommunicator:
         self.logger = logger if logger is not None else self._default_logger()
         # Check for optimize_memory in kwargs, server_agent configs, or use parameter
         self.optimize_memory = (
-            kwargs.get('optimize_memory', False) or
-            getattr(server_agent.server_agent_config.server_configs, 'optimize_memory', False) or
+            kwargs.get('optimize_memory', True) if 'optimize_memory' in kwargs else
+            getattr(server_agent.server_agent_config.server_configs, 'optimize_memory', True) if hasattr(server_agent.server_agent_config.server_configs, 'optimize_memory') else
             optimize_memory
         )
         self._get_global_model_futures: Dict[int, Future] = {}
@@ -50,8 +49,6 @@ class MPIServerCommunicator:
         if self._benchmarking:
             self._communication_times = []
             self._training_times = []
-        
-        log_optimization_status("MPIServerCommunicator", self.optimize_memory, self.logger)
 
     def serve(self):
         """

@@ -8,8 +8,7 @@ from typing import Any, Union, List, Dict, Optional
 from appfl.algorithm.aggregator import BaseAggregator
 from appfl.misc.utils import create_instance_from_file, run_function_from_file
 from appfl.misc.memory_utils import (
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -33,8 +32,8 @@ class VFLAggregator(BaseAggregator):
         self.logger = logger
         self.aggregator_configs = aggregator_configs
         
-        # Check for optimize_memory in aggregator_configs, default to False
-        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', False)
+        # Check for optimize_memory in aggregator_configs, default to True
+        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', True)
         
         self.device = self.aggregator_configs.get("device", "cpu")
         self.model.to(self.device)
@@ -48,8 +47,6 @@ class VFLAggregator(BaseAggregator):
         self._load_loss()
         self._load_data()
         self.train_losses, self.val_losses = [], []
-        
-        log_optimization_status("VFLAggregator", self.optimize_memory, self.logger)
 
     def aggregate(self, local_embeddings: Union[List[Dict], Dict[str, Dict]], **kwargs):
         # Prepare concatenated embeddings

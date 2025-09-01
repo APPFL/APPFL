@@ -9,8 +9,7 @@ from typing import Any, Union, Dict, Tuple
 from appfl.algorithm.scheduler import BaseScheduler
 from appfl.algorithm.aggregator import BaseAggregator
 from appfl.misc.memory_utils import (
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -39,12 +38,10 @@ class CompassScheduler(BaseScheduler):
         self._timer_record = {}
         self.start_time = time.time()
         
-        # Check for optimize_memory in scheduler_configs, default to False
-        self.optimize_memory = getattr(scheduler_configs, 'optimize_memory', False)
+        # Check for optimize_memory in scheduler_configs, default to True
+        self.optimize_memory = getattr(scheduler_configs, 'optimize_memory', True)
         
         super().__init__(scheduler_configs, aggregator, logger)
-        
-        log_optimization_status("CompassScheduler", self.optimize_memory, self.logger)
 
     def get_parameters(
         self, **kwargs

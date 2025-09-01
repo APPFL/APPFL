@@ -5,8 +5,7 @@ from appfl.algorithm.aggregator import FedAsyncAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -25,8 +24,6 @@ class FedBuffAggregator(FedAsyncAggregator):
         super().__init__(model, aggregator_configs, logger)
         self.buff_size = 0
         self.K = self.aggregator_configs.K
-        
-        log_optimization_status("FedBuffAggregator", self.optimize_memory, self.logger)
 
     def aggregate(
         self,

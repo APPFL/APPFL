@@ -5,8 +5,7 @@ from appfl.algorithm.aggregator import FedAvgAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import (
     safe_inplace_operation,
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -28,8 +27,6 @@ class FedAvgMAggregator(FedAvgAggregator):
     ):
         super().__init__(model, aggregator_configs, logger)
         self.v_vector = {}
-        
-        log_optimization_status("FedAvgMAggregator", self.optimize_memory, self.logger)
 
     def compute_steps(
         self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]

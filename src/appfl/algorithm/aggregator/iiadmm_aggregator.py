@@ -9,8 +9,7 @@ from appfl.algorithm.aggregator import BaseAggregator
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
     safe_inplace_operation,
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -31,8 +30,8 @@ class IIADMMAggregator(BaseAggregator):
         self.logger = logger
         self.aggregator_configs = aggregator_configs
         
-        # Check for optimize_memory in aggregator_configs, default to False
-        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', False)
+        # Check for optimize_memory in aggregator_configs, default to True
+        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', True)
         
         self.named_parameters = set()
         for name, _ in self.model.named_parameters():
@@ -51,8 +50,6 @@ class IIADMMAggregator(BaseAggregator):
             if "device" in self.aggregator_configs
             else "cpu"
         )
-        
-        log_optimization_status("IIADMMAggregator", self.optimize_memory, self.logger)
 
     def aggregate(
         self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs

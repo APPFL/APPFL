@@ -8,7 +8,6 @@ import threading
 import numpy as np
 import torch.nn as nn
 from appfl.config import ServerAgentConfig
-from appfl.misc.memory_utils import log_optimization_status
 from appfl.logger import ServerAgentFileLogger
 from appfl.algorithm.scheduler import BaseScheduler
 from appfl.algorithm.aggregator import BaseAggregator
@@ -45,8 +44,8 @@ class ServerAgent:
         self, server_agent_config: ServerAgentConfig = ServerAgentConfig()
     ) -> None:
         self.server_agent_config = server_agent_config
-        # Check for optimize_memory in server_configs, default to False
-        self.optimize_memory = getattr(server_agent_config.server_configs, 'optimize_memory', False)
+        # Check for optimize_memory in server_configs, default to True
+        self.optimize_memory = getattr(server_agent_config.server_configs, 'optimize_memory', True)
         if hasattr(self.server_agent_config.client_configs, "comm_configs"):
             self.server_agent_config.server_configs.comm_configs = (
                 OmegaConf.merge(
@@ -66,8 +65,6 @@ class ServerAgent:
         self._load_scheduler()
         self._load_compressor()
         self._load_val_data()
-        
-        log_optimization_status("ServerAgent", self.optimize_memory, self.logger)
 
     def get_num_clients(self) -> int:
         """

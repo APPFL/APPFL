@@ -7,8 +7,7 @@ from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
     safe_inplace_operation,
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -36,8 +35,8 @@ class FedAvgAggregator(BaseAggregator):
             "client_weights_mode", "equal"
         )
         
-        # Check for optimize_memory in aggregator_configs, default to False
-        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', False)
+        # Check for optimize_memory in aggregator_configs, default to True
+        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', True)
 
         if self.model is not None:
             self.named_parameters = set()
@@ -49,8 +48,6 @@ class FedAvgAggregator(BaseAggregator):
         self.global_state = None  # Models parameters that are used for aggregation, this is unknown at the beginning
 
         self.step = {}
-        
-        log_optimization_status("FedAvgAggregator", self.optimize_memory, self.logger)
 
     def get_parameters(self, **kwargs) -> Dict:
         """

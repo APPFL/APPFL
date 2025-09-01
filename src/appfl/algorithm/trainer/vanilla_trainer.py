@@ -14,8 +14,7 @@ from appfl.misc.utils import parse_device_str, apply_model_device
 from appfl.misc.memory_utils import (
     extract_model_state_optimized,
     safe_inplace_operation,
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -49,8 +48,8 @@ class VanillaTrainer(BaseTrainer):
             logger=logger,
             **kwargs,
         )
-        # Check for optimize_memory in train_configs, default to False
-        self.optimize_memory = getattr(train_configs, 'optimize_memory', False)
+        # Check for optimize_memory in train_configs, default to True
+        self.optimize_memory = getattr(train_configs, 'optimize_memory', True)
         
         if not hasattr(self.train_configs, "device"):
             self.train_configs.device = "cpu"
@@ -82,8 +81,6 @@ class VanillaTrainer(BaseTrainer):
 
         # Extract train device, and configurations for possible DataParallel
         self.device_config, self.device = parse_device_str(self.train_configs.device)
-        
-        log_optimization_status("VanillaTrainer", self.optimize_memory, self.logger)
 
     def train(self, **kwargs):
         """

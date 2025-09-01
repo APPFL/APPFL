@@ -8,7 +8,6 @@ from .config import MPITaskRequest, MPITaskResponse, MPIServerStatus, MPITask
 from .serializer import request_to_byte, byte_to_response, byte_to_model, model_to_byte
 from appfl.misc.memory_utils import (
     optimize_memory_cleanup,
-    log_optimization_status,
     memory_efficient_model_io
 )
 
@@ -30,7 +29,7 @@ class MPIClientCommunicator:
         server_rank: int,
         client_id: Optional[Union[str, int]] = None,
         client_ids: Optional[List[Union[str, int]]] = None,
-        optimize_memory: bool = False,
+        optimize_memory: bool = True,
         **kwargs,
     ):
         self.comm = comm
@@ -38,7 +37,7 @@ class MPIClientCommunicator:
         self.comm_size = comm.Get_size()
         self.server_rank = server_rank
         # Check for optimize_memory in kwargs or use parameter
-        self.optimize_memory = kwargs.get('optimize_memory', False) or optimize_memory
+        self.optimize_memory = kwargs.get('optimize_memory', True) if 'optimize_memory' in kwargs else optimize_memory
         assert not (client_id is not None and client_ids is not None), (
             "client_id and client_ids are mutually exclusive. Use client_id for one client and client_ids for multiple clients."
         )
@@ -49,8 +48,6 @@ class MPIClientCommunicator:
         else:
             self.client_ids = [self.comm_rank]
         self._default_batching = client_ids is not None
-        
-        log_optimization_status("MPIClientCommunicator", self.optimize_memory)
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """

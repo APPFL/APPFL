@@ -5,8 +5,7 @@ from omegaconf import DictConfig
 from appfl.algorithm.scheduler import BaseScheduler
 from appfl.algorithm.aggregator import BaseAggregator
 from appfl.misc.memory_utils import (
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -22,10 +21,8 @@ class SyncScheduler(BaseScheduler):
         self._num_global_epochs = 0
         self._access_lock = threading.Lock()
         
-        # Check for optimize_memory in scheduler_configs, default to False
-        self.optimize_memory = getattr(scheduler_configs, 'optimize_memory', False)
-        
-        log_optimization_status("SyncScheduler", self.optimize_memory, self.logger)
+        # Check for optimize_memory in scheduler_configs, default to True
+        self.optimize_memory = getattr(scheduler_configs, 'optimize_memory', True)
 
     def schedule(
         self,

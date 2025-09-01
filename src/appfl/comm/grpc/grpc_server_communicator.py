@@ -34,8 +34,7 @@ from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 from .utils import proto_to_databuffer, serialize_model, deserialize_model
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 class GRPCServerCommunicator(GRPCCommunicatorServicer):
@@ -48,8 +47,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
     ) -> None:
         self.server_agent = server_agent
         self.max_message_size = max_message_size
-        # Check for optimize_memory in kwargs (from grpc_configs), default to False
-        self.optimize_memory = kwargs.get('optimize_memory', False)
+        # Check for optimize_memory in kwargs (from grpc_configs), default to True
+        self.optimize_memory = kwargs.get('optimize_memory', True)
         self.logger = logger if logger is not None else self._default_logger()
         self.kwargs = kwargs
         self.experiment_id = (
@@ -60,8 +59,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         )
         self._load_proxystore(server_agent.server_agent_config)
         self._load_google_drive(server_agent.server_agent_config)
-        
-        log_optimization_status("GRPCServerCommunicator", self.optimize_memory, self.logger)
 
     def GetConfiguration(self, request, context):
         """

@@ -7,8 +7,7 @@ from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
     safe_inplace_operation,
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 
@@ -28,8 +27,8 @@ class FedCompassAggregator(BaseAggregator):
         self.logger = logger
         self.aggregator_configs = aggregator_configs
         
-        # Check for optimize_memory in aggregator_configs, default to False
-        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', False)
+        # Check for optimize_memory in aggregator_configs, default to True
+        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', True)
         
         self.staleness_fn = self.__staleness_fn_factory(
             staleness_fn_name=self.aggregator_configs.get("staleness_fn", "constant"),
@@ -45,8 +44,6 @@ class FedCompassAggregator(BaseAggregator):
                 self.named_parameters.add(name)
         else:
             self.named_parameters = None
-            
-        log_optimization_status("FedCompassAggregator", self.optimize_memory, self.logger)
 
     def aggregate(
         self,

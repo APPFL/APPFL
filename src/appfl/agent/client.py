@@ -8,7 +8,6 @@ import warnings
 import importlib
 import torch.nn as nn
 from datetime import datetime
-from appfl.misc.memory_utils import log_optimization_status
 from appfl.config import ClientAgentConfig
 from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
@@ -73,8 +72,8 @@ class ClientAgent:
         self, client_agent_config: ClientAgentConfig = ClientAgentConfig(), **kwargs
     ) -> None:
         self.client_agent_config = client_agent_config
-        # Check for optimize_memory in client_agent_config, default to False
-        self.optimize_memory = getattr(client_agent_config, 'optimize_memory', False)
+        # Check for optimize_memory in client_agent_config, default to True
+        self.optimize_memory = getattr(client_agent_config, 'optimize_memory', True)
         self._create_logger()
         self._init_wandb()
         self._load_model()
@@ -83,8 +82,6 @@ class ClientAgent:
         self._load_data()
         self._load_trainer()
         self._load_compressor()
-        
-        log_optimization_status("ClientAgent", self.optimize_memory, self.logger if hasattr(self, 'logger') else None)
 
     def load_config(self, config: DictConfig) -> None:
         """Load additional configurations provided by the server."""

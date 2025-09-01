@@ -35,8 +35,7 @@ from proxystore.proxy import Proxy, extract
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
-    optimize_memory_cleanup,
-    log_optimization_status
+    optimize_memory_cleanup
 )
 
 class GRPCClientCommunicator:
@@ -73,8 +72,8 @@ class GRPCClientCommunicator:
         self.client_id = client_id
         self.logger = logger
         self.max_message_size = max_message_size
-        # Check for optimize_memory in kwargs (from grpc_configs), default to False
-        self.optimize_memory = kwargs.get('optimize_memory', False)
+        # Check for optimize_memory in kwargs (from grpc_configs), default to True
+        self.optimize_memory = kwargs.get('optimize_memory', True)
         channel = create_grpc_channel(
             server_uri,
             use_ssl=use_ssl,
@@ -91,8 +90,6 @@ class GRPCClientCommunicator:
         self._load_proxystore()
         self._load_google_drive()
         self._s3_initalized = False
-        
-        log_optimization_status("GRPCClientCommunicator", self.optimize_memory, self.logger)
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
