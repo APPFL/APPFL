@@ -1,6 +1,14 @@
 Changelog
 =========
 
+appfl v1.7.0
+------------
+
+- Optimize the memory usage for FL server, FL client, and different communicators (experimental).
+- Add example scripts and documentations for scaling test for federated learning using APPFL among multiple nodes and GPUs.
+- Fix some minor bugs and typos.
+
+
 appfl v1.6.1
 ------------
 
