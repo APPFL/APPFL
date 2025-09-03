@@ -1,4 +1,4 @@
-# APPFL MPI Memory Profiling and Optimization
+# APPFL MPI Memory Profiling and Optimization [Experimental]
 
 This directory contains tools for memory profiling and optimization of APPFL's MPI-based federated learning components using memray.
 

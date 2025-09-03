@@ -1,4 +1,4 @@
-# APPFL Memory Profiling and Optimization
+# APPFL gRPC Memory Profiling and Optimization [Experimental]
 
 This directory contains tools for memory profiling and optimization of APPFL's federated learning components using memray.
 
