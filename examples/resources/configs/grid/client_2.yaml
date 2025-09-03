@@ -6,14 +6,13 @@ train_configs:
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 
-# Local dataloader
+# Local dataset
 data_configs:
-  dataset_path: "./resources/dataset/cifar10_dataset.py"
-  dataset_name: "get_cifar10"
+  dataset_path: "./resources/dataset/gridfm_graphkit_dataset.py"
+  dataset_name: "get_gridfm_graphkit_dataset"
   dataset_kwargs:
     num_clients: 2
     client_id: 1
-    partition_strategy: "class_noniid"
 
 comm_configs:
   grpc_configs:

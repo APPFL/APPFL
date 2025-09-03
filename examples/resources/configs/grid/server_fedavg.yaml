@@ -1,31 +1,24 @@
 client_configs:
   train_configs:
     # Local trainer
-    trainer: "VanillaTrainer" # customizable trainer class
-    mode: "step"
-    num_local_steps: 100
+    trainer: "GridFMTrainer" # customizable trainer class
+    trainer_path: "./resources/trainer/gridfm_graphkit_trainer.py"
+    mode: "epoch"
+    num_local_epochs: 1
     optim: "Adam"
     optim_args:
-      lr: 0.01
-    # Loss function
-    loss_fn_path: "./resources/loss/celoss.py"
-    loss_fn_name: "CELoss"
+      lr: 0.0001
     # Client validation
     do_validation: True
     do_pre_validation: True
-    metric_path: "./resources/metric/acc.py"
-    metric_name: "accuracy"
     # Differential privacy
     use_dp: False
-    # Data loader
-    train_batch_size: 64
-    val_batch_size: 64
-    train_data_shuffle: True
-    val_data_shuffle: False
+    train_batch_size: 16
+    eval_batch_size: 16
 
   model_configs:
-    model_path: "./resources/model/resnet.py"
-    model_name: "ResNet18"
+    model_path: "./resources/model/gridfm_graphkit_model.py"
+    model_name: "get_gridfm_graphkit_model"
 
 server_configs:
   num_clients: 2
@@ -36,7 +29,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 20
+  num_global_epochs: 5
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
