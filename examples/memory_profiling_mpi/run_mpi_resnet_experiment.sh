@@ -6,7 +6,7 @@
 set -e
 
 echo "=========================================="
-echo "APPFL MPI ResNet Memory Profiling"  
+echo "APPFL MPI ResNet Memory Profiling"
 echo "=========================================="
 
 # Configuration
@@ -46,11 +46,11 @@ echo ""
 run_experiment() {
     local use_optimized=$1
     local experiment_name=$2
-    
+
     echo "----------------------------------------"
     echo "Running $experiment_name experiment..."
     echo "----------------------------------------"
-    
+
     # Run the MPI experiment with timeout to prevent hanging
     if [ "$use_optimized" = true ]; then
         echo "Starting MPI ResNet experiment WITH memory optimizations..."
@@ -74,11 +74,11 @@ run_experiment() {
             echo "  ⚠ Experiment timed out or failed"
         fi
     fi
-    
+
     # Check if any profile files were generated
     profile_count=$(find "$OUTPUT_DIR" -name "*.bin" 2>/dev/null | wc -l)
     echo "Generated $profile_count profile files"
-    
+
     echo "$experiment_name experiment completed."
     echo ""
 }
@@ -88,7 +88,7 @@ generate_detailed_analysis() {
     echo "=========================================="
     echo "Generating Detailed Memory Analysis"
     echo "=========================================="
-    
+
     # Create analysis script on the fly
     cat > "$OUTPUT_DIR/mpi_analysis.py" << 'EOF'
 #!/usr/bin/env python3
@@ -99,38 +99,38 @@ import glob
 def analyze_profiles(output_dir):
     """Generate detailed analysis of MPI memory profiles"""
     profile_files = glob.glob(os.path.join(output_dir, "*.bin"))
-    
+
     if not profile_files:
         print("No profile files found")
         return
-    
+
     print(f"Found {len(profile_files)} profile files")
-    
+
     # Group profiles by rank and type
     profiles = {}
     for profile in profile_files:
         filename = os.path.basename(profile)
         parts = filename.replace('.bin', '').split('_')
-        
+
         if len(parts) >= 4:  # mpi_rank_X_type
             rank = parts[2]
             profile_type = parts[3]
-            
+
             if rank not in profiles:
                 profiles[rank] = {}
             profiles[rank][profile_type] = profile
-    
+
     # Generate comparison for each rank
     print("\n" + "="*60)
     print("MEMORY USAGE COMPARISON BY RANK")
     print("="*60)
-    
+
     for rank in sorted(profiles.keys()):
         print(f"\nRank {rank} ({'Server' if rank == '0' else f'Client {rank}'}):")
         print("-" * 40)
-        
+
         rank_profiles = profiles[rank]
-        
+
         for profile_type in ['original', 'optimized']:
             if profile_type in rank_profiles:
                 print(f"\n{profile_type.capitalize()} Version:")
@@ -138,7 +138,7 @@ def analyze_profiles(output_dir):
                     result = subprocess.run([
                         'python', '-m', 'memray', 'stats', rank_profiles[profile_type]
                     ], capture_output=True, text=True, timeout=30)
-                    
+
                     if result.returncode == 0:
                         lines = result.stdout.split('\n')
                         # Show summary stats
@@ -151,7 +151,7 @@ def analyze_profiles(output_dir):
                     print("  Analysis timed out")
                 except Exception as e:
                     print(f"  Error: {e}")
-        
+
         print()
 
 if __name__ == "__main__":
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     output_dir = sys.argv[1] if len(sys.argv) > 1 else "./memory_profiles"
     analyze_profiles(output_dir)
 EOF
-    
+
     chmod +x "$OUTPUT_DIR/mpi_analysis.py"
     python "$OUTPUT_DIR/mpi_analysis.py" "$OUTPUT_DIR"
 }
@@ -170,13 +170,13 @@ diagnose_profiles() {
     echo "=========================================="
     echo "Profile File Diagnostics"
     echo "=========================================="
-    
+
     for profile in "$OUTPUT_DIR"/*.bin; do
         if [ -f "$profile" ]; then
             echo "Profile: $(basename "$profile")"
             echo "  Size: $(ls -lh "$profile" | awk '{print $5}')"
             echo "  Permissions: $(ls -l "$profile" | awk '{print $1}')"
-            
+
             # Try to get basic stats
             if python -m memray stats "$profile" >/dev/null 2>&1; then
                 echo "  Status: ✓ Valid memray profile"
@@ -192,26 +192,26 @@ generate_flamegraphs() {
     echo "=========================================="
     echo "Generating Flamegraph Reports"
     echo "=========================================="
-    
+
     for profile in "$OUTPUT_DIR"/*.bin; do
         if [ -f "$profile" ]; then
             base_name=$(basename "$profile" .bin)
             html_file="$OUTPUT_DIR/${base_name}.html"
-            
+
             echo "Generating flamegraph for $(basename "$profile")..."
-            
+
             # Check if profile file is valid (not empty)
             if [ ! -s "$profile" ]; then
                 echo "  ✗ Profile file is empty: $profile"
                 continue
             fi
-            
+
             # Check if profile file is readable by memray
             if ! python -m memray stats "$profile" >/dev/null 2>&1; then
                 echo "  ✗ Profile file is corrupted or invalid: $profile"
                 continue
             fi
-            
+
             # Generate flamegraph with timeout and error capture
             if python -m memray flamegraph "$profile" -o "$html_file" 2>/tmp/memray_error_$$; then
                 echo "  ✓ Generated: $html_file"
@@ -223,7 +223,7 @@ generate_flamegraphs() {
             fi
         fi
     done
-    
+
     echo ""
     echo "Flamegraph generation completed!"
 }
@@ -266,31 +266,31 @@ main() {
         echo "Error: mpiexec not found. Please install MPI (e.g., OpenMPI or MPICH)"
         exit 1
     fi
-    
+
     if ! python -c "import memray" &> /dev/null; then
         echo "Error: memray not found. Please install: pip install memray"
         exit 1
     fi
-    
+
     if ! python -c "import mpi4py" &> /dev/null; then
         echo "Error: mpi4py not found. Please install: pip install mpi4py"
         exit 1
     fi
-    
+
     echo "All dependencies found ✓"
     echo ""
-    
+
     # Run experiments
     echo "Running ResNet memory profiling experiments..."
     run_experiment false "Original MPI ResNet"
     sleep 3  # Pause between experiments
     run_experiment true "Optimized MPI ResNet"
-    
+
     # Generate comprehensive analysis (similar to gRPC memory profiling)
     echo "=========================================="
     echo "Generating Comprehensive Analysis Report"
     echo "=========================================="
-    
+
     if python memory_profiling_mpi/generate_comprehensive_results.py "$OUTPUT_DIR" --output-dir "$OUTPUT_DIR/analysis" 2>/dev/null; then
         echo "  ✓ Comprehensive analysis completed successfully!"
         echo "  📊 Check $OUTPUT_DIR/analysis/ for detailed results"
@@ -301,9 +301,9 @@ main() {
         generate_flamegraphs
         generate_detailed_analysis
     fi
-    
+
     show_optimization_summary
-    
+
     echo "=========================================="
     echo "ResNet Experiment Complete!"
     echo "=========================================="

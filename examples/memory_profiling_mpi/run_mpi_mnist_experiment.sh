@@ -7,7 +7,7 @@
 set -e
 
 echo "=========================================="
-echo "APPFL MPI MNIST Memory Profiling"  
+echo "APPFL MPI MNIST Memory Profiling"
 echo "=========================================="
 
 # Configuration
@@ -53,11 +53,11 @@ echo ""
 run_experiment() {
     local use_optimized=$1
     local experiment_name=$2
-    
+
     echo "----------------------------------------"
     echo "Running $experiment_name experiment..."
     echo "----------------------------------------"
-    
+
     # Run the MPI experiment
     if [ "$use_optimized" = true ]; then
         echo "Starting MPI experiment WITH memory optimizations..."
@@ -73,7 +73,7 @@ run_experiment() {
             --client_config "$CLIENT_CONFIG_FILE" \
             --output-dir "$OUTPUT_DIR"
     fi
-    
+
     echo "$experiment_name experiment completed."
     echo ""
 }
@@ -83,38 +83,38 @@ generate_analysis() {
     echo "=========================================="
     echo "Generating Memory Analysis Reports"
     echo "=========================================="
-    
+
     # Check if we have profile files
     PROFILE_FILES=$(find "$OUTPUT_DIR" -name "*.bin" | wc -l)
     if [ "$PROFILE_FILES" -eq 0 ]; then
         echo "No profile files found in $OUTPUT_DIR"
         return 1
     fi
-    
+
     echo "Found $PROFILE_FILES profile files"
     echo ""
-    
+
     # Generate flamegraphs for each profile
     for profile in "$OUTPUT_DIR"/*.bin; do
         if [ -f "$profile" ]; then
             base_name=$(basename "$profile" .bin)
             html_file="$OUTPUT_DIR/${base_name}.html"
-            
+
             echo "Generating flamegraph for $(basename "$profile")..."
-            
+
             # Check if profile file is valid (not empty)
             if [ ! -s "$profile" ]; then
                 echo "  ✗ Profile file is empty: $profile"
                 continue
             fi
-            
+
             # Check if profile file is readable by memray
             if ! python -m memray stats "$profile" >/dev/null 2>&1; then
                 echo "  ✗ Profile file is corrupted or invalid: $profile"
                 continue
             fi
-            
-            # Generate flamegraph 
+
+            # Generate flamegraph
             if python -m memray flamegraph "$profile" -o "$html_file" 2>/tmp/memray_error_$$; then
                 echo "  ✓ Generated: $html_file"
             else
@@ -125,11 +125,11 @@ generate_analysis() {
             fi
         fi
     done
-    
+
     echo ""
     echo "Memory analysis report generation completed!"
     echo ""
-    
+
     # Show summary of generated files
     echo "Generated files:"
     ls -la "$OUTPUT_DIR"/*.html 2>/dev/null || echo "No HTML files generated"
@@ -141,15 +141,15 @@ show_comparison() {
     echo "=========================================="
     echo "Memory Usage Comparison"
     echo "=========================================="
-    
+
     echo "Comparing memory profiles..."
     echo ""
-    
+
     # Find matching original and optimized profiles
     for rank in 0 1 2; do
         original_profile="$OUTPUT_DIR/mpi_rank_${rank}_original_memory_profile.bin"
         optimized_profile="$OUTPUT_DIR/mpi_rank_${rank}_optimized_memory_profile.bin"
-        
+
         if [ -f "$original_profile" ] && [ -f "$optimized_profile" ]; then
             echo "Rank $rank Memory Statistics:"
             echo "  Original version:"
@@ -170,30 +170,30 @@ main() {
         echo "Error: mpiexec not found. Please install MPI (e.g., OpenMPI or MPICH)"
         exit 1
     fi
-    
+
     if ! python -c "import memray" &> /dev/null; then
         echo "Error: memray not found. Please install: pip install memray"
         exit 1
     fi
-    
+
     if ! python -c "import mpi4py" &> /dev/null; then
         echo "Error: mpi4py not found. Please install: pip install mpi4py"
         exit 1
     fi
-    
+
     echo "All dependencies found ✓"
     echo ""
-    
+
     # Run experiments
     run_experiment false "Original MPI"
     sleep 2  # Brief pause between experiments
-    run_experiment true "Optimized MPI" 
-    
-    # Generate comprehensive analysis (similar to gRPC memory profiling)  
+    run_experiment true "Optimized MPI"
+
+    # Generate comprehensive analysis (similar to gRPC memory profiling)
     echo "=========================================="
     echo "Generating Comprehensive Analysis Report"
     echo "=========================================="
-    
+
     if python memory_profiling_mpi/generate_comprehensive_results.py "$OUTPUT_DIR" --output-dir "$OUTPUT_DIR/analysis" 2>/dev/null; then
         echo "  ✓ Comprehensive analysis completed successfully!"
         echo "  📊 Check $OUTPUT_DIR/analysis/ for detailed results"
@@ -202,10 +202,10 @@ main() {
         # Fallback to basic analysis
         generate_analysis
     fi
-    
+
     # Show comparison if both profiles exist
     show_comparison
-    
+
     echo "=========================================="
     echo "MNIST Experiment Complete!"
     echo "=========================================="
@@ -226,7 +226,7 @@ main() {
     echo ""
     echo "Key files:"
     echo "  - mpi_rank_0_*.html: Server memory flamegraphs"
-    echo "  - mpi_rank_1_*.html: Client 1 memory flamegraphs"  
+    echo "  - mpi_rank_1_*.html: Client 1 memory flamegraphs"
     echo "  - mpi_rank_2_*.html: Client 2 memory flamegraphs"
     echo "  - analysis/: Complete analysis results with plots and reports"
     echo ""

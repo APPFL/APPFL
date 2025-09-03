@@ -15,15 +15,15 @@ run_experiment() {
     local VERSION=$1
     local USE_OPTIMIZED=$2
     local VERSION_FLAG=""
-    
+
     if [ "$USE_OPTIMIZED" = true ]; then
         VERSION_FLAG="--use_optimized_version"
     fi
-    
+
     echo "============================================"
     echo "Running $VERSION version experiment..."
     echo "============================================"
-    
+
     # Start server in background
     echo "Starting $VERSION server..."
     python memory_profiling/run_server_memray.py \
@@ -31,10 +31,10 @@ run_experiment() {
         --output-dir "$OUTPUT_DIR" \
         $VERSION_FLAG &
     SERVER_PID=$!
-    
+
     # Wait for server to start
     sleep 5
-    
+
     # Start two clients in parallel
     echo "Starting $VERSION client 1..."
     python memory_profiling/run_client_memray.py \
@@ -42,23 +42,23 @@ run_experiment() {
         --output-dir "$OUTPUT_DIR" \
         $VERSION_FLAG &
     CLIENT1_PID=$!
-    
+
     echo "Starting $VERSION client 2..."
     python memory_profiling/run_client_memray.py \
         --config ./resources/configs/mnist/client_2.yaml \
         --output-dir "$OUTPUT_DIR" \
         $VERSION_FLAG &
     CLIENT2_PID=$!
-    
+
     # Wait for clients to complete
     echo "Waiting for $VERSION clients to complete..."
     wait $CLIENT1_PID
     wait $CLIENT2_PID
-    
+
     # Stop server
     echo "Stopping $VERSION server..."
     kill $SERVER_PID 2>/dev/null || true
-    
+
     echo "$VERSION version experiment completed!"
     echo ""
 }

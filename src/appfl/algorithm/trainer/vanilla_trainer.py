@@ -14,7 +14,7 @@ from appfl.misc.utils import parse_device_str, apply_model_device
 from appfl.misc.memory_utils import (
     extract_model_state_optimized,
     safe_inplace_operation,
-    optimize_memory_cleanup
+    optimize_memory_cleanup,
 )
 
 
@@ -49,8 +49,8 @@ class VanillaTrainer(BaseTrainer):
             **kwargs,
         )
         # Check for optimize_memory in train_configs, default to True
-        self.optimize_memory = getattr(train_configs, 'optimize_memory', True)
-        
+        self.optimize_memory = getattr(train_configs, "optimize_memory", True)
+
         if not hasattr(self.train_configs, "device"):
             self.train_configs.device = "cpu"
         self.train_dataloader = DataLoader(
@@ -320,7 +320,7 @@ class VanillaTrainer(BaseTrainer):
         if "cuda" in self.train_configs.device:
             if self.optimize_memory:
                 for k in self.model_state:
-                    if self.model_state[k].device.type != 'cpu':
+                    if self.model_state[k].device.type != "cpu":
                         self.model_state[k] = self.model_state[k].cpu()
                 optimize_memory_cleanup(force_gc=True)
             else:
@@ -429,14 +429,18 @@ class VanillaTrainer(BaseTrainer):
             self.named_parameters = set()
             for name, _ in self.model.named_parameters():
                 self.named_parameters.add(name)
-                
+
         if self.optimize_memory:
             with torch.no_grad():
                 for name in self.model_state:
                     if name in self.named_parameters:
-                        prev_param = self.model_prev[name].cpu() if self.model_prev[name].device.type != 'cpu' else self.model_prev[name]
+                        prev_param = (
+                            self.model_prev[name].cpu()
+                            if self.model_prev[name].device.type != "cpu"
+                            else self.model_prev[name]
+                        )
                         self.model_state[name] = safe_inplace_operation(
-                            prev_param, 'sub', self.model_state[name], alpha=1
+                            prev_param, "sub", self.model_state[name], alpha=1
                         )
             optimize_memory_cleanup(self.model_prev, force_gc=True)
             del self.model_prev

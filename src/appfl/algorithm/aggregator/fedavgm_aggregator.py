@@ -3,10 +3,7 @@ import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import FedAvgAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
-from appfl.misc.memory_utils import (
-    safe_inplace_operation,
-    optimize_memory_cleanup
-)
+from appfl.misc.memory_utils import safe_inplace_operation, optimize_memory_cleanup
 
 
 class FedAvgMAggregator(FedAvgAggregator):
@@ -35,7 +32,7 @@ class FedAvgMAggregator(FedAvgAggregator):
         Compute the changes to the global model after the aggregation.
         """
         super().compute_steps(local_models)
-        
+
         # Memory optimization: Initialize vectors efficiently
         if len(self.v_vector) == 0:
             if self.optimize_memory:
@@ -52,21 +49,27 @@ class FedAvgMAggregator(FedAvgAggregator):
             with torch.no_grad():
                 for name in self.step:
                     # Momentum update with safe operations
-                    momentum_term = self.v_vector[name] * self.aggregator_configs.server_momentum_param_1
-                    self.v_vector[name] = safe_inplace_operation(momentum_term, 'add', self.step[name])
-                    
+                    momentum_term = (
+                        self.v_vector[name]
+                        * self.aggregator_configs.server_momentum_param_1
+                    )
+                    self.v_vector[name] = safe_inplace_operation(
+                        momentum_term, "add", self.step[name]
+                    )
+
                     # Use the momentum vector as the step
                     self.step[name] = self.v_vector[name].clone()
-                    
+
                     # Cleanup intermediate tensors
                     optimize_memory_cleanup(momentum_term, force_gc=False)
-                
+
                 optimize_memory_cleanup(force_gc=True)
         else:
             # Original behavior
             for name in self.step:
                 self.v_vector[name] = (
-                    self.aggregator_configs.server_momentum_param_1 * self.v_vector[name]
+                    self.aggregator_configs.server_momentum_param_1
+                    * self.v_vector[name]
                     + self.step[name]
                 )
                 self.step[name] = self.v_vector[name]

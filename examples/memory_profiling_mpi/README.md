@@ -10,21 +10,21 @@ This directory contains tools for memory profiling and optimization of APPFL's M
    ```
 
 2. **Run memory profiling experiments**:
-   
+
    **MPI MNIST experiment** (recommended - lightweight CNN model):
    ```bash
    cd examples
    chmod +x memory_profiling_mpi/run_mpi_mnist_experiment.sh
    ./memory_profiling_mpi/run_mpi_mnist_experiment.sh
    ```
-   
+
    **MPI CIFAR-10 experiment** (ResNet18 with real CIFAR-10 data):
    ```bash
    cd examples
    chmod +x memory_profiling_mpi/run_mpi_cifar_experiment.sh
    ./memory_profiling_mpi/run_mpi_cifar_experiment.sh
    ```
-   
+
    **MPI ResNet experiment** (alternative - ResNet with dummy data for training focus):
    ```bash
    cd examples
@@ -35,19 +35,19 @@ This directory contains tools for memory profiling and optimization of APPFL's M
 3. **Or run experiments manually**:
    ```bash
    cd examples
-   
+
    # MNIST experiment (CNN model)
    # Original version (without MPI memory optimizations)
    mpiexec -n 3 python memory_profiling_mpi/run_mpi_memray.py \
        --server_config ./resources/configs/mnist/server_fedavg.yaml \
        --client_config ./resources/configs/mnist/client_1.yaml
-   
+
    # Optimized version (with MPI memory optimizations)
    mpiexec -n 3 python memory_profiling_mpi/run_mpi_memray.py \
        --server_config ./resources/configs/mnist/server_fedavg.yaml \
        --client_config ./resources/configs/mnist/client_1.yaml \
        --use_optimized_version
-   
+
    # CIFAR-10 experiment (ResNet18 model)
    mpiexec -n 3 python memory_profiling_mpi/run_mpi_memray.py \
        --server_config ./resources/configs/cifar10/server_fedavg.yaml \
@@ -82,7 +82,7 @@ APPFL now includes built-in MPI memory optimizations that can be enabled with th
 - **Garbage Collection**: Periodic GC during message processing
 - **CPU-first Loading**: Reduces memory pressure during model operations
 
-#### 2. MPIClientCommunicator  
+#### 2. MPIClientCommunicator
 - **Optimized Model Transfer**: Memory-efficient model serialization before sending
 - **Resource Cleanup**: Automatic cleanup of communication buffers
 - **Memory-aware Deserialization**: CPU-first model loading with immediate cleanup
@@ -102,7 +102,7 @@ server_configs:
   optimize_memory: true
 
 # Or pass to communicator constructors
-# MPIServerCommunicator(..., optimize_memory=True)  
+# MPIServerCommunicator(..., optimize_memory=True)
 # MPIClientCommunicator(..., optimize_memory=True)
 ```
 
@@ -131,12 +131,12 @@ python memory_profiling_mpi/generate_comprehensive_results.py ./memory_profiles/
 **Automatically generates:**
 - 🔥 **Interactive flamegraphs** for each rank and version
 - 📊 **Comparison plots** showing optimization impact
-- 📈 **Statistical analysis** with percentage improvements  
+- 📈 **Statistical analysis** with percentage improvements
 - 📋 **Summary reports** for each profile
 - 🎯 **Role-based analysis** (server vs client memory usage)
 - 📝 **Comprehensive text report** with recommendations
 
-#### Advanced Statistical Analysis  
+#### Advanced Statistical Analysis
 Use the statistical analysis script for detailed visualizations and reports:
 
 ```bash
@@ -178,7 +178,7 @@ memory_profiles/
 ├── mpi_mnist_20240326_143022/          # MNIST experiment (CNN model)
 │   ├── mpi_rank_0_original_memory_profile.bin
 │   ├── mpi_rank_0_optimized_memory_profile.bin
-│   ├── mpi_rank_1_original_memory_profile.bin  
+│   ├── mpi_rank_1_original_memory_profile.bin
 │   ├── mpi_rank_1_optimized_memory_profile.bin
 │   ├── mpi_rank_2_original_memory_profile.bin
 │   ├── mpi_rank_2_optimized_memory_profile.bin
@@ -220,7 +220,7 @@ resources/configs/mnist/
 ├── server_fedavg.yaml      # Server configuration (CNN model, FedAvg aggregator)
 └── client_1.yaml           # Base client configuration (MNIST dataset, CPU device)
 
-# CIFAR-10 experiment  
+# CIFAR-10 experiment
 resources/configs/cifar10/
 ├── server_fedavg.yaml      # Server configuration (ResNet18 model, FedAvg aggregator)
 └── client_1.yaml           # Base client configuration (CIFAR-10 dataset, CUDA device)
@@ -259,21 +259,21 @@ ls -la ./memory_profiles/mpi_resnet_20250826_110512/*.bin
 
 **3. Memory profiling fails:**
 - **Cause**: Insufficient memory, MPI communication errors, or config issues
-- **Solution**: 
+- **Solution**:
   ```bash
   # Test basic MPI functionality first
   mpiexec -n 2 python -c "from mpi4py import MPI; print(f'Rank {MPI.COMM_WORLD.Get_rank()}')"
-  
+
   # Test memray functionality
   python -c "import memray; print('Memray working')"
-  
+
   # Run with minimal processes
   mpiexec -n 2 python memory_profiling_mpi/run_mpi_memray.py --server_config ... --client_config ...
   ```
 
 **4. Dependencies:**
 - Ensure MPI is properly installed: `pip install mpi4py`
-- Check that memray supports your system: `python -m memray --help`  
+- Check that memray supports your system: `python -m memray --help`
 - Verify configs exist: `ls examples/memory_profiling/configs/`
 - For large models, increase system memory limits if needed
 

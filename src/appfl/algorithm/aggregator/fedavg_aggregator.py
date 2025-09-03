@@ -7,7 +7,7 @@ from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
     safe_inplace_operation,
-    optimize_memory_cleanup
+    optimize_memory_cleanup,
 )
 
 
@@ -34,9 +34,9 @@ class FedAvgAggregator(BaseAggregator):
         self.client_weights_mode = aggregator_configs.get(
             "client_weights_mode", "equal"
         )
-        
+
         # Check for optimize_memory in aggregator_configs, default to True
-        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', True)
+        self.optimize_memory = getattr(aggregator_configs, "optimize_memory", True)
 
         if self.model is not None:
             self.named_parameters = set()
@@ -70,7 +70,7 @@ class FedAvgAggregator(BaseAggregator):
                     return copy.deepcopy(self.model.state_dict())
             else:
                 raise ValueError("Model is not provided to the aggregator.")
-                
+
         if self.optimize_memory:
             return clone_state_dict_optimized(self.global_state)
         else:
@@ -94,7 +94,9 @@ class FedAvgAggregator(BaseAggregator):
                         with torch.no_grad():
                             for name in first_model:
                                 if name in model_state:
-                                    self.global_state[name] = model_state[name].clone().detach()
+                                    self.global_state[name] = (
+                                        model_state[name].clone().detach()
+                                    )
                         gc.collect()
                     else:
                         self.global_state = {
@@ -135,22 +137,22 @@ class FedAvgAggregator(BaseAggregator):
                     if name in self.step:
                         # Use safe in-place operations with dtype checking
                         self.global_state[name] = safe_inplace_operation(
-                            self.global_state[name], 'add', self.step[name]
+                            self.global_state[name], "add", self.step[name]
                         )
                     else:
                         param_sum = torch.zeros_like(self.global_state[name])
                         # Efficiently sum parameters with dtype checking
                         for _, model in local_models.items():
                             param_sum = safe_inplace_operation(
-                                param_sum, 'add', model[name]
+                                param_sum, "add", model[name]
                             )
-                        
+
                         # Safe division with dtype handling
                         self.global_state[name] = safe_inplace_operation(
-                            param_sum, 'div', len(local_models)
+                            param_sum, "div", len(local_models)
                         )
                         optimize_memory_cleanup(param_sum, force_gc=False)
-            
+
             optimize_memory_cleanup(force_gc=True)
             self.step.clear()
         else:
@@ -163,13 +165,13 @@ class FedAvgAggregator(BaseAggregator):
                     for _, model in local_models.items():
                         param_sum += model[name]
                     # make sure global state have the same type as the local model
-                    self.global_state[name] = torch.div(param_sum, len(local_models)).type(
-                        param_sum.dtype
-                    )
+                    self.global_state[name] = torch.div(
+                        param_sum, len(local_models)
+                    ).type(param_sum.dtype)
 
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)
-            
+
         if self.optimize_memory:
             return clone_state_dict_optimized(self.global_state)
         else:
@@ -187,7 +189,8 @@ class FedAvgAggregator(BaseAggregator):
                 for name in self.global_state:
                     # Skip integer parameters by averaging them later in the `aggregate` method
                     if (
-                        self.named_parameters is not None and name not in self.named_parameters
+                        self.named_parameters is not None
+                        and name not in self.named_parameters
                     ) or (
                         self.global_state[name].dtype == torch.int64
                         or self.global_state[name].dtype == torch.int32
@@ -213,7 +216,7 @@ class FedAvgAggregator(BaseAggregator):
                             diff = model[name] - self.global_state[name]
                             weighted_diff = diff * weight
                             self.step[name] = safe_inplace_operation(
-                                self.step[name], 'add', weighted_diff
+                                self.step[name], "add", weighted_diff
                             )
                             optimize_memory_cleanup(diff, weighted_diff, force_gc=False)
         else:
@@ -221,7 +224,8 @@ class FedAvgAggregator(BaseAggregator):
             for name in self.global_state:
                 # Skip integer parameters by averaging them later in the `aggregate` method
                 if (
-                    self.named_parameters is not None and name not in self.named_parameters
+                    self.named_parameters is not None
+                    and name not in self.named_parameters
                 ) or (
                     self.global_state[name].dtype == torch.int64
                     or self.global_state[name].dtype == torch.int32
@@ -243,4 +247,6 @@ class FedAvgAggregator(BaseAggregator):
 
                 for name in model:
                     if name in self.step:
-                        self.step[name] += weight * (model[name] - self.global_state[name])
+                        self.step[name] += weight * (
+                            model[name] - self.global_state[name]
+                        )

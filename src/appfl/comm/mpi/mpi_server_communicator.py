@@ -13,10 +13,7 @@ from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from .config import MPITask, MPITaskRequest, MPITaskResponse, MPIServerStatus
 from .serializer import byte_to_request, response_to_byte, model_to_byte, byte_to_model
-from appfl.misc.memory_utils import (
-    optimize_memory_cleanup,
-    memory_efficient_model_io
-)
+from appfl.misc.memory_utils import optimize_memory_cleanup, memory_efficient_model_io
 
 
 class MPIServerCommunicator:
@@ -35,9 +32,15 @@ class MPIServerCommunicator:
         self.logger = logger if logger is not None else self._default_logger()
         # Check for optimize_memory in kwargs, server_agent configs, or use parameter
         self.optimize_memory = (
-            kwargs.get('optimize_memory', True) if 'optimize_memory' in kwargs else
-            getattr(server_agent.server_agent_config.server_configs, 'optimize_memory', True) if hasattr(server_agent.server_agent_config.server_configs, 'optimize_memory') else
-            optimize_memory
+            kwargs.get("optimize_memory", True)
+            if "optimize_memory" in kwargs
+            else getattr(
+                server_agent.server_agent_config.server_configs, "optimize_memory", True
+            )
+            if hasattr(
+                server_agent.server_agent_config.server_configs, "optimize_memory"
+            )
+            else optimize_memory
         )
         self._get_global_model_futures: Dict[int, Future] = {}
         self._update_global_model_futures: Dict[int, Future] = {}
@@ -68,19 +71,19 @@ class MPIServerCommunicator:
                 request_buffer = bytearray(count)
                 self.comm.Recv(request_buffer, source=source, tag=tag)
                 request = byte_to_request(request_buffer)
-                
+
                 # Memory optimization: Clean up request buffer immediately
                 if self.optimize_memory:
                     del request_buffer
                     gc.collect()
-                
+
                 response = self._request_handler(
                     client_rank=source, request_tag=tag, request=request
                 )
                 if response is not None:
                     response_bytes = response_to_byte(response)
                     self.comm.Send(response_bytes, dest=source, tag=source)
-                    
+
                     # Memory optimization: Clean up after sending
                     if self.optimize_memory:
                         optimize_memory_cleanup(response, response_bytes, force_gc=True)
@@ -181,7 +184,7 @@ class MPIServerCommunicator:
                 meta_data = {}
             if self._benchmarking:
                 meta_data["send_time"] = time.time()
-            
+
             # Memory optimization: Use optimized serialization
             if self.optimize_memory:
                 model_serialized = self._model_to_byte_optimized(model)
@@ -190,7 +193,7 @@ class MPIServerCommunicator:
                 gc.collect()
             else:
                 model_serialized = model_to_byte(model)
-                
+
             return MPITaskResponse(
                 status=MPIServerStatus.RUN.value,
                 payload=model_serialized,
@@ -273,12 +276,12 @@ class MPIServerCommunicator:
             global_model = self.server_agent.global_update(
                 client_id, client_local_model, blocking=False, **client_metadata
             )
-            
+
             # Memory optimization: Clean up client local model immediately after processing
             if self.optimize_memory:
                 del client_local_model
                 gc.collect()
-            
+
             if not isinstance(global_model, Future):
                 meta_data = {}
                 if isinstance(global_model, tuple):
@@ -288,16 +291,18 @@ class MPIServerCommunicator:
                     meta_data[client_id] = {}
                 if self._benchmarking:
                     meta_data[client_id]["send_time"] = time.time()
-                
+
                 # Memory optimization: Use optimized serialization
                 if self.optimize_memory:
-                    global_model_serialized = self._model_to_byte_optimized(global_model)
+                    global_model_serialized = self._model_to_byte_optimized(
+                        global_model
+                    )
                     # Clean up global model from memory before creating response
                     del global_model
                     gc.collect()
                 else:
                     global_model_serialized = model_to_byte(global_model)
-                
+
                 status = (
                     MPIServerStatus.DONE.value
                     if self.server_agent.training_finished()
@@ -443,16 +448,18 @@ class MPIServerCommunicator:
                 if self._benchmarking:
                     meta_data["send_time"] = time.time()
                 client_rank = self._client_id_to_client_rank[client_id]
-                
+
                 # Memory optimization: Use optimized serialization
                 if self.optimize_memory:
-                    global_model_serialized = self._model_to_byte_optimized(global_model)
+                    global_model_serialized = self._model_to_byte_optimized(
+                        global_model
+                    )
                     # Clean up global model from memory before creating response
                     del global_model
                     gc.collect()
                 else:
                     global_model_serialized = model_to_byte(global_model)
-                    
+
                 response = MPITaskResponse(
                     status=status,
                     payload=global_model_serialized,
@@ -460,11 +467,13 @@ class MPIServerCommunicator:
                 )
                 response_bytes = response_to_byte(response)
                 self.comm.Send(response_bytes, dest=client_rank, tag=client_rank)
-                
+
                 # Memory optimization: Clean up after sending
                 if self.optimize_memory:
-                    optimize_memory_cleanup(global_model_serialized, response, response_bytes, force_gc=True)
-                    
+                    optimize_memory_cleanup(
+                        global_model_serialized, response, response_bytes, force_gc=True
+                    )
+
                 delete_keys.append(client_id)
         for key in delete_keys:
             del self._get_global_model_futures[key]
@@ -495,7 +504,9 @@ class MPIServerCommunicator:
                 if client_rank not in model_responses:
                     # Memory optimization: Use optimized serialization
                     if self.optimize_memory:
-                        global_model_serialized = self._model_to_byte_optimized(global_model)
+                        global_model_serialized = self._model_to_byte_optimized(
+                            global_model
+                        )
                         # Clean up global model from memory before creating response
                         del global_model
                         gc.collect()
@@ -513,7 +524,7 @@ class MPIServerCommunicator:
             )
             response_bytes = response_to_byte(response)
             self.comm.Send(response_bytes, dest=client_rank, tag=client_rank)
-            
+
             # Memory optimization: Clean up after sending
             if self.optimize_memory:
                 optimize_memory_cleanup(response, response_bytes, force_gc=True)
@@ -547,6 +558,6 @@ class MPIServerCommunicator:
         with memory_efficient_model_io(optimize_memory=self.optimize_memory) as buffer:
             buffer.write(model_bytes)
             buffer.seek(0)
-            model = torch.load(buffer, map_location='cpu')
+            model = torch.load(buffer, map_location="cpu")
         gc.collect()
         return model

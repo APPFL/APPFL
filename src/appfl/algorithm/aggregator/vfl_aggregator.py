@@ -1,4 +1,3 @@
-import gc
 import torch
 import pathlib
 import importlib
@@ -7,9 +6,7 @@ from omegaconf import DictConfig
 from typing import Any, Union, List, Dict, Optional
 from appfl.algorithm.aggregator import BaseAggregator
 from appfl.misc.utils import create_instance_from_file, run_function_from_file
-from appfl.misc.memory_utils import (
-    optimize_memory_cleanup
-)
+from appfl.misc.memory_utils import optimize_memory_cleanup
 
 
 class VFLAggregator(BaseAggregator):
@@ -31,10 +28,10 @@ class VFLAggregator(BaseAggregator):
         self.model = model
         self.logger = logger
         self.aggregator_configs = aggregator_configs
-        
+
         # Check for optimize_memory in aggregator_configs, default to True
-        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', True)
-        
+        self.optimize_memory = getattr(aggregator_configs, "optimize_memory", True)
+
         self.device = self.aggregator_configs.get("device", "cpu")
         self.model.to(self.device)
         optim_module = importlib.import_module("torch.optim")
@@ -74,10 +71,14 @@ class VFLAggregator(BaseAggregator):
             )
         if self.optimize_memory:
             with torch.no_grad():
-                train_embedding = train_embedding.detach().requires_grad_().to(self.device)
+                train_embedding = (
+                    train_embedding.detach().requires_grad_().to(self.device)
+                )
                 val_embedding = val_embedding.to(self.device)
                 # Clean up intermediate lists
-                optimize_memory_cleanup(train_embedding_list, val_embedding_list, force_gc=False)
+                optimize_memory_cleanup(
+                    train_embedding_list, val_embedding_list, force_gc=False
+                )
         else:
             train_embedding = train_embedding.detach().requires_grad_().to(self.device)
             val_embedding = val_embedding.to(self.device)
@@ -129,10 +130,12 @@ class VFLAggregator(BaseAggregator):
             self.plot_loss(plot_file_path)
 
         grads = train_embedding.grad.split(embedding_lengths, dim=1)
-        
+
         # Memory optimization: Clean up intermediate tensors
         if self.optimize_memory:
-            optimize_memory_cleanup(train_embedding, val_embedding, y_train_pred, force_gc=True)
+            optimize_memory_cleanup(
+                train_embedding, val_embedding, y_train_pred, force_gc=True
+            )
 
         if isinstance(local_embeddings, dict):
             ret = {}

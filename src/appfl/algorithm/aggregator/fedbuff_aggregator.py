@@ -3,10 +3,7 @@ import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import FedAsyncAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
-from appfl.misc.memory_utils import (
-    clone_state_dict_optimized,
-    optimize_memory_cleanup
-)
+from appfl.misc.memory_utils import clone_state_dict_optimized, optimize_memory_cleanup
 
 
 class FedBuffAggregator(FedAsyncAggregator):
@@ -38,7 +35,8 @@ class FedBuffAggregator(FedAsyncAggregator):
                     if self.optimize_memory:
                         with torch.no_grad():
                             self.global_state = {
-                                name: self.model.state_dict()[name] for name in local_model
+                                name: self.model.state_dict()[name]
+                                for name in local_model
                             }
                         gc.collect()
                     else:
@@ -94,7 +92,7 @@ class FedBuffAggregator(FedAsyncAggregator):
 
             if self.model is not None:
                 self.model.load_state_dict(self.global_state, strict=False)
-                
+
             # Memory optimization: Clean up after buffer flush
             if self.optimize_memory:
                 optimize_memory_cleanup(force_gc=True)

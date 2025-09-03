@@ -10,21 +10,21 @@ This directory contains tools for memory profiling and optimization of APPFL's f
    ```
 
 2. **Run memory profiling experiments (Recommended)**:
-   
+
    **CIFAR-10 experiment** (**recommended** - uses real CIFAR-10 configs):
    ```bash
    cd examples
    chmod +x memory_profiling/run_cifar_experiment.sh
    ./memory_profiling/run_cifar_experiment.sh
    ```
-   
+
    **ResNet experiment** (alternative - focuses on training memory with dummy data):
    ```bash
    cd examples
    chmod +x memory_profiling/run_resnet_experiment.sh
    ./memory_profiling/run_resnet_experiment.sh
    ```
-   
+
    **MNIST experiment** (alternative - uses real MNIST data):
    ```bash
    cd examples
@@ -35,13 +35,13 @@ This directory contains tools for memory profiling and optimization of APPFL's f
 3. **Or run experiments manually**:
    ```bash
    cd examples
-   
+
    # Original version
    python memory_profiling/run_server_memray.py --config ./memory_profiling/configs/server_resnet_dummy.yaml &
    python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_1_resnet_dummy.yaml &
    python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_2_resnet_dummy.yaml
-    
-   
+
+
    # Optimized version
    python memory_profiling/run_server_memray.py --config ./memory_profiling/configs/server_resnet_dummy.yaml --use_optimized_version &
    python memory_profiling/run_client_memray.py --config ./memory_profiling/configs/client_1_resnet_dummy.yaml --use_optimized_version &
@@ -53,7 +53,7 @@ This directory contains tools for memory profiling and optimization of APPFL's f
 ## Files Overview
 
 - `run_server_memray.py` - Memory profiling wrapper for gRPC server
-- `run_client_memray.py` - Memory profiling wrapper for gRPC client  
+- `run_client_memray.py` - Memory profiling wrapper for gRPC client
 - `run_cifar_experiment.sh` - CIFAR-10 memory profiling experiment (recommended)
 - `run_resnet_experiment.sh` - ResNet memory profiling experiment
 - `run_mnist_experiment.sh` - MNIST memory profiling experiment
@@ -94,7 +94,7 @@ server_configs:
     grpc_configs:
       optimize_memory: true
 
-# Client configuration  
+# Client configuration
 client_configs:
   optimize_memory: true
   train_configs:
@@ -118,7 +118,7 @@ Use memray to analyze the generated profiles:
 # Generate flamegraph
 memray flamegraph memory_profiles/server_optimized_memory_profile.bin
 
-# View memory statistics  
+# View memory statistics
 memray stats memory_profiles/client_Client1_optimized_memory_profile.bin
 
 # Compare original vs optimized

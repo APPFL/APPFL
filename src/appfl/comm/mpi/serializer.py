@@ -55,7 +55,9 @@ def byte_to_model(byte_obj: bytes) -> Union[Dict, OrderedDict]:
     return torch.load(io.BytesIO(byte_obj))
 
 
-def model_to_byte_optimized(model: Union[Dict, OrderedDict], optimize_memory: bool = True) -> bytes:
+def model_to_byte_optimized(
+    model: Union[Dict, OrderedDict], optimize_memory: bool = True
+) -> bytes:
     """
     Memory-optimized model serialization to a byte string using context manager.
     """
@@ -65,14 +67,16 @@ def model_to_byte_optimized(model: Union[Dict, OrderedDict], optimize_memory: bo
     return serialized_data
 
 
-def byte_to_model_optimized(byte_obj: bytes, optimize_memory: bool = True) -> Union[Dict, OrderedDict]:
+def byte_to_model_optimized(
+    byte_obj: bytes, optimize_memory: bool = True
+) -> Union[Dict, OrderedDict]:
     """
     Memory-optimized model deserialization from byte string with CPU loading and cleanup.
     """
     with memory_efficient_model_io(optimize_memory=optimize_memory) as buffer:
         buffer.write(byte_obj)
         buffer.seek(0)
-        model = torch.load(buffer, map_location='cpu')
+        model = torch.load(buffer, map_location="cpu")
     if optimize_memory:
         gc.collect()
     return model

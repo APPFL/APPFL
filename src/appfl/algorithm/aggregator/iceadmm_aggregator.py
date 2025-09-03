@@ -6,11 +6,7 @@ from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Any, Dict, Union
 from appfl.algorithm.aggregator import BaseAggregator
-from appfl.misc.memory_utils import (
-    clone_state_dict_optimized,
-    safe_inplace_operation,
-    optimize_memory_cleanup
-)
+from appfl.misc.memory_utils import clone_state_dict_optimized, optimize_memory_cleanup
 
 
 class ICEADMMAggregator(BaseAggregator):
@@ -29,10 +25,10 @@ class ICEADMMAggregator(BaseAggregator):
         self.model = model
         self.logger = logger
         self.aggregator_configs = aggregator_configs
-        
+
         # Check for optimize_memory in aggregator_configs, default to True
-        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', True)
-        
+        self.optimize_memory = getattr(aggregator_configs, "optimize_memory", True)
+
         self.named_parameters = set()
         for name, _ in self.model.named_parameters():
             self.named_parameters.add(name)
@@ -92,7 +88,12 @@ class ICEADMMAggregator(BaseAggregator):
                 with torch.no_grad():
                     for client_id in local_models:
                         for name in self.named_parameters:
-                            self.primal_states_curr[client_id][name] = self.primal_states[client_id][name].to(self.device).clone().detach()
+                            self.primal_states_curr[client_id][name] = (
+                                self.primal_states[client_id][name]
+                                .to(self.device)
+                                .clone()
+                                .detach()
+                            )
                     gc.collect()
             else:
                 for client_id in local_models:
@@ -109,13 +110,22 @@ class ICEADMMAggregator(BaseAggregator):
                     for client_id in self.primal_states_curr:
                         temp_prev[client_id] = OrderedDict()
                         for name in self.primal_states_curr[client_id]:
-                            temp_prev[client_id][name] = self.primal_states_curr[client_id][name].clone().detach()
+                            temp_prev[client_id][name] = (
+                                self.primal_states_curr[client_id][name]
+                                .clone()
+                                .detach()
+                            )
                     self.primal_states_prev = temp_prev
-                    
+
                     for client_id in local_models:
                         for name in self.named_parameters:
-                            self.primal_states_curr[client_id][name] = self.primal_states[client_id][name].to(self.device).clone().detach()
-                    
+                            self.primal_states_curr[client_id][name] = (
+                                self.primal_states[client_id][name]
+                                .to(self.device)
+                                .clone()
+                                .detach()
+                            )
+
                     optimize_memory_cleanup(temp_prev, force_gc=True)
             else:
                 self.primal_states_prev = copy.deepcopy(self.primal_states_curr)

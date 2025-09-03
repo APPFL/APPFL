@@ -73,7 +73,7 @@ class ClientAgent:
     ) -> None:
         self.client_agent_config = client_agent_config
         # Check for optimize_memory in client_agent_config, default to True
-        self.optimize_memory = getattr(client_agent_config, 'optimize_memory', True)
+        self.optimize_memory = getattr(client_agent_config, "optimize_memory", True)
         self._create_logger()
         self._init_wandb()
         self._load_model()
@@ -121,7 +121,7 @@ class ClientAgent:
     def train(self, **kwargs) -> None:
         """Train the model locally."""
         self.trainer.train(**kwargs)
-        
+
         # Memory optimization: Garbage collection after training
         if self.optimize_memory:
             gc.collect()
@@ -143,17 +143,17 @@ class ClientAgent:
             # Memory optimization: Garbage collection after compression
             if self.optimize_memory:
                 gc.collect()
-        
+
         # Memory optimization: Final cleanup
         if self.optimize_memory:
             gc.collect()
-            
+
         return params if metadata is None else (params, metadata)
 
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
         self.trainer.load_parameters(params)
-        
+
         # Memory optimization: Garbage collection after parameter loading
         if self.optimize_memory:
             gc.collect()

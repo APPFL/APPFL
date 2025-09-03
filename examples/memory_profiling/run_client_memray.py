@@ -2,6 +2,7 @@
 """
 Memory profiling wrapper for gRPC client using memray
 """
+
 import argparse
 import sys
 import os
@@ -18,43 +19,51 @@ from appfl.comm.grpc import GRPCClientCommunicator
 # Optimizations are now built into the main classes via optimize_memory flags
 
 
-def run_client_with_profiling(config_path: str, output_dir: str = "./memory_profiles", use_optimized: bool = False):
+def run_client_with_profiling(
+    config_path: str, output_dir: str = "./memory_profiles", use_optimized: bool = False
+):
     """Run client with memray profiling enabled"""
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Load config to get client_id
     client_agent_config = OmegaConf.load(config_path)
     client_id = client_agent_config.client_id
-    
+
     # Choose profile file name based on version
     version_suffix = "_optimized" if use_optimized else "_original"
     profile_file = f"{output_dir}/client_{client_id}{version_suffix}_memory_profile.bin"
-    
+
     with memray.Tracker(profile_file):
         # Modify config to use optimizations if using optimized version
         if use_optimized:
             # Note: Client will receive optimization flags from server via get_configuration()
             # But we can also set them locally for initialization
             client_agent_config.optimize_memory = True
-            if hasattr(client_agent_config, 'train_configs'):
+            if hasattr(client_agent_config, "train_configs"):
                 client_agent_config.train_configs.optimize_memory = True
-            if hasattr(client_agent_config, 'comm_configs') and hasattr(client_agent_config.comm_configs, 'grpc_configs'):
+            if hasattr(client_agent_config, "comm_configs") and hasattr(
+                client_agent_config.comm_configs, "grpc_configs"
+            ):
                 client_agent_config.comm_configs.grpc_configs.optimize_memory = True
         else:
             # Disable memory optimization in ClientAgent
             client_agent_config.optimize_memory = False
             # Disable memory optimization in trainer
-            if hasattr(client_agent_config, 'train_configs'):
+            if hasattr(client_agent_config, "train_configs"):
                 client_agent_config.train_configs.optimize_memory = False
             # Disable memory optimization in communicator configs if present
-            if hasattr(client_agent_config, 'comm_configs') and hasattr(client_agent_config.comm_configs, 'grpc_configs'):
+            if hasattr(client_agent_config, "comm_configs") and hasattr(
+                client_agent_config.comm_configs, "grpc_configs"
+            ):
                 client_agent_config.comm_configs.grpc_configs.optimize_memory = False
-        
+
         # Create client agent with built-in optimization flags
         client_agent = ClientAgent(client_agent_config=client_agent_config)
-        optimization_status = "with memory optimizations" if use_optimized else "without optimizations"
+        optimization_status = (
+            "with memory optimizations" if use_optimized else "without optimizations"
+        )
         print(f"Client agent created {optimization_status} for client {client_id}")
-        
+
         # Create gRPC communicator with built-in optimization flags
         client_communicator = GRPCClientCommunicator(
             client_id=client_agent.get_id(),
@@ -83,7 +92,10 @@ def run_client_with_profiling(config_path: str, output_dir: str = "./memory_prof
         ):
             # Check CADREModule availability and if the data needs remediation
             if (
-                hasattr(client_config.data_readiness_configs.dr_metrics, "cadremodule_configs")
+                hasattr(
+                    client_config.data_readiness_configs.dr_metrics,
+                    "cadremodule_configs",
+                )
                 and hasattr(
                     client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
                     "remedy_action",
@@ -96,8 +108,10 @@ def run_client_with_profiling(config_path: str, output_dir: str = "./memory_prof
                 action="get_data_readiness_report", **data_readiness
             )
 
-        print(f"Starting client with memory profiling. Profile will be saved to: {profile_file}")
-        
+        print(
+            f"Starting client with memory profiling. Profile will be saved to: {profile_file}"
+        )
+
         while True:
             client_agent.train()
             local_model = client_agent.get_parameters()
@@ -111,7 +125,9 @@ def run_client_with_profiling(config_path: str, output_dir: str = "./memory_prof
             if metadata["status"] == "DONE":
                 break
             if "local_steps" in metadata:
-                client_agent.trainer.train_configs.num_local_steps = metadata["local_steps"]
+                client_agent.trainer.train_configs.num_local_steps = metadata[
+                    "local_steps"
+                ]
             client_agent.load_parameters(new_global_model)
         client_communicator.invoke_custom_action(action="close_connection")
 
@@ -136,5 +152,5 @@ if __name__ == "__main__":
         help="Use optimized memory-efficient versions of agents and communicators.",
     )
     args = argparser.parse_args()
-    
+
     run_client_with_profiling(args.config, args.output_dir, args.use_optimized_version)

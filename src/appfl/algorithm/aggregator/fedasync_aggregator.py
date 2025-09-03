@@ -7,7 +7,7 @@ from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
     safe_inplace_operation,
-    optimize_memory_cleanup
+    optimize_memory_cleanup,
 )
 
 
@@ -29,9 +29,9 @@ class FedAsyncAggregator(BaseAggregator):
         self.client_weights_mode = aggregator_configs.get(
             "client_weights_mode", "equal"
         )
-        
+
         # Check for optimize_memory in aggregator_configs, default to True
-        self.optimize_memory = getattr(aggregator_configs, 'optimize_memory', True)
+        self.optimize_memory = getattr(aggregator_configs, "optimize_memory", True)
 
         if model is not None:
             self.named_parameters = set()
@@ -75,7 +75,7 @@ class FedAsyncAggregator(BaseAggregator):
                     return copy.deepcopy(self.model.state_dict())
             else:
                 raise ValueError("Model is not provided to the aggregator.")
-        
+
         # Memory optimization: Use efficient state dict cloning
         if self.optimize_memory:
             return clone_state_dict_optimized(self.global_state)
@@ -95,7 +95,8 @@ class FedAsyncAggregator(BaseAggregator):
                     if self.optimize_memory:
                         with torch.no_grad():
                             self.global_state = {
-                                name: self.model.state_dict()[name] for name in local_model
+                                name: self.model.state_dict()[name]
+                                for name in local_model
                             }
                         gc.collect()
                     else:
@@ -137,7 +138,7 @@ class FedAsyncAggregator(BaseAggregator):
                 for name in self.global_state:
                     if name in self.step:
                         self.global_state[name] = safe_inplace_operation(
-                            self.global_state[name], 'add', self.step[name], alpha=1
+                            self.global_state[name], "add", self.step[name], alpha=1
                         )
                     else:
                         self.global_state[name] = local_model[name]
@@ -153,11 +154,11 @@ class FedAsyncAggregator(BaseAggregator):
 
         self.global_step += 1
         self.client_step[client_id] = self.global_step
-        
+
         # Memory optimization: Clean up after aggregation step
         if self.optimize_memory:
             optimize_memory_cleanup(local_model, force_gc=True)
-        
+
         # Memory optimization: Use efficient state dict cloning for return
         if self.optimize_memory:
             return clone_state_dict_optimized(self.global_state)
@@ -207,14 +208,17 @@ class FedAsyncAggregator(BaseAggregator):
                 with torch.no_grad():
                     if gradient_based:
                         self.step[name] = safe_inplace_operation(
-                            torch.zeros_like(local_model[name]), 'sub', local_model[name], alpha=alpha_t
+                            torch.zeros_like(local_model[name]),
+                            "sub",
+                            local_model[name],
+                            alpha=alpha_t,
                         )
                     else:
                         diff = safe_inplace_operation(
-                            local_model[name], 'sub', self.global_state[name], alpha=1
+                            local_model[name], "sub", self.global_state[name], alpha=1
                         )
                         self.step[name] = safe_inplace_operation(
-                            torch.zeros_like(diff), 'add', diff, alpha=alpha_t
+                            torch.zeros_like(diff), "add", diff, alpha=alpha_t
                         )
             else:
                 self.step[name] = (
