@@ -1,6 +1,6 @@
 seed: 42
 data:
-  networks: ["case30_ieee"]
+  networks: ["case30_ieee_small"]
   scenarios: [1023]
   normalization: "baseMVAnorm"
   baseMVA: 100
