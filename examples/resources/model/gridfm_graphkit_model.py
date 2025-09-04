@@ -4,7 +4,7 @@ from gridfm_graphkit.tasks.feature_reconstruction_task import FeatureReconstruct
 
 import yaml
 
-import os 
+import os
 
 def get_gridfm_graphkit_model():
     config_path = "./resources/configs/grid/gridfm_graphkit.yaml"
