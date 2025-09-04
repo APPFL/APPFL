@@ -22,3 +22,10 @@ model:
   output_dim: 6
   pe_dim: 20
   type: GPSTransformer
+training:
+  batch_size: 16
+  losses: ["MaskedMSE", "PBE"]
+  loss_weights: [0.01, 0.99]
+  accelerator: auto
+  devices: auto
+  strategy: auto

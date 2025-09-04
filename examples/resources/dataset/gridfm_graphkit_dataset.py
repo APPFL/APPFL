@@ -21,7 +21,7 @@ def get_gridfm_graphkit_dataset(
 
     config_args = NestedNamespace(**config_dict)
 
-    home_dir = os.envivron.get("HOME")
+    home_dir = os.environ.get("HOME")
 
     data_path = os.path.join(home_dir, "data")
 
