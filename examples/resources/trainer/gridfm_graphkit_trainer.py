@@ -12,7 +12,8 @@ from omegaconf import DictConfig
 
 from typing import Tuple, Dict, Optional, Any
 from torch_geometric.loader import DataLoader
-from torch.utils.data import Dataset
+# from torch.utils.data import Dataset
+from torch_geometric.data import Data, Dataset
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 from appfl.algorithm.trainer.vanilla_trainer import VanillaTrainer
 from appfl.misc.utils import parse_device_str, apply_model_device
