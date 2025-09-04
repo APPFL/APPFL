@@ -10,7 +10,7 @@ client_configs:
       lr: 0.0001
     # Client validation
     do_validation: True
-    do_pre_validation: True
+    do_pre_validation: False
     # Differential privacy
     use_dp: False
     train_batch_size: 16
