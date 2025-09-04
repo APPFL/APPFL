@@ -5,6 +5,8 @@ import yaml
 import numpy as np
 import random
 
+import os
+
 def get_gridfm_graphkit_dataset(
     num_clients: int,
     client_id: int,
@@ -19,7 +21,11 @@ def get_gridfm_graphkit_dataset(
 
     config_args = NestedNamespace(**config_dict)
 
-    data_module = LitGridDataModule(config_args, "data")
+    home_dir = os.envivron.get("HOME")
+
+    data_path = os.path.join(home_dir, "data")
+
+    data_module = LitGridDataModule(config_args, data_path)
     data_module.setup("train")
 
     train_dataset = data_module.train_dataset_multi
