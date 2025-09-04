@@ -11,7 +11,8 @@ from omegaconf import DictConfig
 # import yaml
 
 from typing import Tuple, Dict, Optional, Any
-from torch.utils.data import Dataset, DataLoader
+from torch_geometric.loader import DataLoader
+from torch.utils.data import Dataset
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 from appfl.algorithm.trainer.vanilla_trainer import VanillaTrainer
 from appfl.misc.utils import parse_device_str, apply_model_device
@@ -69,7 +70,7 @@ class GridFMTrainer(VanillaTrainer):
             shuffle=False,
             pin_memory=True,
         )
-        
+
         optim_module = importlib.import_module("torch.optim")
         assert hasattr(optim_module, self.train_configs.optim), (
             f"Optimizer {self.train_configs.optim} not found in torch.optim"
@@ -80,7 +81,8 @@ class GridFMTrainer(VanillaTrainer):
 
         self.loss_fn = PBELoss()
 
-        self.device_config, self.device = parse_device_str(self.train_configs.device)
+        # self.device_config, self.device = parse_device_str(self.train_configs.device)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def train(self, **kwargs):
 
@@ -155,6 +157,9 @@ class GridFMTrainer(VanillaTrainer):
 
             if do_validation:
                 val_loss, val_accuracy = self._validate()
+                if "val_loss" not in self.val_results:
+                    self.val_results["val_loss"] = []
+                    self.val_results["val_accuracy"] = []
                 self.val_results["val_loss"].append(val_loss)
                 self.val_results["val_accuracy"].append(val_accuracy)
 

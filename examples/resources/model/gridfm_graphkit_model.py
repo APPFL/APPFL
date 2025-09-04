@@ -4,6 +4,8 @@ from gridfm_graphkit.tasks.feature_reconstruction_task import FeatureReconstruct
 
 import yaml
 
+import os 
+
 def get_gridfm_graphkit_model():
     config_path = "./resources/configs/grid/gridfm_graphkit.yaml"
     with open(config_path, "r") as f:
@@ -11,7 +13,11 @@ def get_gridfm_graphkit_model():
 
     config_args = NestedNamespace(**config_dict)
 
-    data_module = LitGridDataModule(config_args, "data")
+    home_dir = os.environ.get("HOME")
+
+    data_path = os.path.join(home_dir, "data")
+
+    data_module = LitGridDataModule(config_args, data_path)
     data_module.setup("train")
 
     model = FeatureReconstructionTask(
