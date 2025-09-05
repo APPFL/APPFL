@@ -1,7 +1,7 @@
 seed: 42
 data:
-  networks: ["case30_ieee_small"]
-  scenarios: [1023]
+  networks: ["case30_ieee_large"]
+  scenarios: [275000]
   normalization: "baseMVAnorm"
   baseMVA: 100
   mask_type: "rnd"
