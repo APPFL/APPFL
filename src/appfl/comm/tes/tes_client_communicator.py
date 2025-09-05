@@ -12,7 +12,7 @@ class TESClientCommunicator:
     GA4GH TES client-side communicator for APPFL.
     
     This class handles the client-side execution within TES containers,
-    including loading models, running training, and preparing outputs.
+    following the same patterns as other APPFL client communicators.
     """
     
     def __init__(self, client_agent: ClientAgent):
@@ -69,7 +69,18 @@ class TESClientCommunicator:
         """
         Execute a federated learning task within the TES container.
         
-        Returns paths to the output model and logs files.
+        This method follows the same task execution patterns as Ray and Globus Compute
+        client communicators in APPFL.
+        
+        Args:
+            task_name: Name of the task to execute ('train', 'evaluate', etc.)
+            model_path: Path to input model file
+            metadata_path: Path to metadata JSON file
+            output_path: Path for output model
+            logs_path: Path for training logs
+            
+        Returns:
+            Tuple of (output_path, logs_path) for the results
         """
         try:
             # Load inputs
@@ -85,48 +96,82 @@ class TESClientCommunicator:
                 # Standard training task
                 trained_model, training_logs = self.client_agent.train()
                 
+                # Save trained model
+                if trained_model is not None:
+                    self.save_model_to_path(trained_model, output_path)
+                
+                # Prepare training logs
+                logs_data = {
+                    "task_name": task_name,
+                    "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
+                    "training_logs": training_logs,
+                    "timestamp": str(time.time()),
+                    "metadata": metadata
+                }
+                
             elif task_name == "evaluate":
                 # Evaluation task
                 eval_result = self.client_agent.evaluate()
-                trained_model = None  # No model update for evaluation
-                training_logs = {"evaluation_result": eval_result}
+                
+                # No model update for evaluation
+                self.save_model_to_path(None, output_path)
+                
+                # Prepare evaluation logs
+                logs_data = {
+                    "task_name": task_name,
+                    "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
+                    "evaluation_result": eval_result,
+                    "timestamp": str(time.time()),
+                    "metadata": metadata
+                }
                 
             elif task_name == "get_sample_size":
                 # Get dataset size
                 sample_size = self.client_agent.get_sample_size()
-                trained_model = None
-                training_logs = {"sample_size": sample_size}
+                
+                # No model update
+                self.save_model_to_path(None, output_path)
+                
+                # Prepare sample size logs
+                logs_data = {
+                    "task_name": task_name,
+                    "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
+                    "sample_size": sample_size,
+                    "timestamp": str(time.time()),
+                    "metadata": metadata
+                }
                 
             elif task_name == "get_parameters":
                 # Get current model parameters
-                trained_model = self.client_agent.get_parameters()
-                training_logs = {"message": "Model parameters retrieved"}
+                current_params = self.client_agent.get_parameters()
+                
+                # Save current parameters
+                self.save_model_to_path(current_params, output_path)
+                
+                # Prepare parameters logs
+                logs_data = {
+                    "task_name": task_name,
+                    "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
+                    "parameters_size": len(str(current_params)) if current_params else 0,
+                    "timestamp": str(time.time()),
+                    "metadata": metadata
+                }
                 
             else:
                 raise ValueError(f"Unknown task name: {task_name}")
             
-            # Prepare logs with metadata
-            output_logs = {
-                "task_name": task_name,
-                "client_id": self.client_agent.get_id(),
-                "timestamp": str(time.time()),
-                "training_logs": training_logs,
-                "metadata": metadata
-            }
-            
-            # Save outputs
-            if trained_model is not None:
-                self.save_model_to_path(trained_model, output_path)
-            
-            self.save_logs_to_path(output_logs, logs_path)
+            # Save logs
+            self.save_logs_to_path(logs_data, logs_path)
             
             return output_path, logs_path
             
         except Exception as e:
-            # Save error logs
+            import time
+            # Save error information
             error_logs = {
                 "task_name": task_name,
-                "client_id": self.client_agent.get_id(),
+                "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
+                "status": "error",
                 "timestamp": str(time.time()),
                 "error": str(e),
                 "metadata": metadata if 'metadata' in locals() else {}
@@ -138,6 +183,8 @@ class TESClientCommunicator:
 
 def main():
     """Main entry point for TES client execution."""
+    import time
+    
     parser = argparse.ArgumentParser(description="APPFL TES Client Runner")
     parser.add_argument("--task-name", required=True, help="Name of the task to execute")
     parser.add_argument("--client-id", required=True, help="Client ID")
@@ -159,8 +206,23 @@ def main():
             config = OmegaConf.load(args.config_path)
             client_config = ClientAgentConfig(**config)
         else:
-            # Use default configuration
-            client_config = ClientAgentConfig()
+            # Use minimal default configuration
+            default_config = {
+                "train_configs": {
+                    "trainer": "VanillaTrainer",
+                    "num_local_steps": 10,
+                    "optim": "SGD",
+                    "optim_args": {"lr": 0.01}
+                },
+                "model_configs": {
+                    "model": "CNN"
+                },
+                "data_configs": {
+                    "dataset": "MNIST",
+                    "batch_size": 32
+                }
+            }
+            client_config = ClientAgentConfig(**default_config)
             
         # Set client ID
         client_config.client_id = args.client_id
@@ -180,15 +242,18 @@ def main():
             logs_path=args.logs_path
         )
         
-        print(f"Task completed successfully.")
+        print(f"Task '{args.task_name}' completed successfully")
         print(f"Output model: {output_path}")
         print(f"Training logs: {logs_path}")
+        return 0
         
     except Exception as e:
-        print(f"Task failed: {e}")
-        exit(1)
+        print(f"Error executing TES client task: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
 
 if __name__ == "__main__":
-    import time
-    main()
+    import sys
+    sys.exit(main())

@@ -93,12 +93,14 @@ def test_mock_federated_learning():
             }
         }
         
-        server_config = ServerAgentConfig(**config_dict)
+        # Convert to OmegaConf structure
+        config_omega = OmegaConf.create(config_dict)
+        server_config = ServerAgentConfig(**config_omega)
         
         # Create client configurations
         client_configs = []
         for i in range(2):
-            client_config = ClientAgentConfig(**config_dict['client_configs'])
+            client_config = ClientAgentConfig(**config_omega['client_configs'])
             client_config.client_id = f"test_client_{i+1}"
             client_configs.append(client_config)
         
