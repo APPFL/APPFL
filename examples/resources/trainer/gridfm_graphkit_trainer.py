@@ -161,8 +161,10 @@ class GridFMTrainer(VanillaTrainer):
                 if "val_loss" not in self.val_results:
                     self.val_results["val_loss"] = []
                     self.val_results["val_accuracy"] = []
+                    self.val_results["train_loss"] = []
                 self.val_results["val_loss"].append(val_loss)
                 self.val_results["val_accuracy"].append(val_accuracy)
+                self.val_results["train_loss"].append(train_loss)
 
             per_epoch_time = time.time() - start_time
 
