@@ -52,24 +52,23 @@ cd examples/tes
 docker build -t appfl/client:latest .
 ```
 
-### 3. Run Integration Test
+### 3. Run Federated Learning
 ```bash
-python test_tes_integration.py
-```
+# Using default configuration files
+python run.py
 
-### 4. Run Federated Learning Test
-```bash
-python test_tes_federated.py
+# Using custom configuration files
+python run.py --server_config ./server.yaml --client_config ./clients.yaml
+
+# With authentication token
+python run.py --server_config ./server.yaml --client_config ./clients.yaml --auth_token "your_tes_token"
 ```
 
 ## Configuration
 
-### Server Configuration
+### Basic Configuration (Single TES Endpoint)
 ```yaml
 server_configs:
-  scheduler: "SyncScheduler"
-  aggregator: "FedAvgAggregator" 
-  num_global_epochs: 10
   comm_configs:
     tes_configs:
       tes_endpoint: "http://localhost:8000"
@@ -79,22 +78,76 @@ server_configs:
         cpu_cores: 2
         ram_gb: 4.0
         disk_gb: 20.0
-        preemptible: false
 ```
 
-### Client Configuration
+### Multi-Institute Configuration (Multiple TES Endpoints)
+```yaml
+server_configs:
+  comm_configs:
+    tes_configs:
+      # Default settings
+      tes_endpoint: "http://localhost:8000"
+      docker_image: "appfl/client:latest"
+
+client_configs:
+  - client_id: "institute_a_client"
+    # Override with Institute A's TES endpoint
+    tes_endpoint: "https://tes.institute-a.edu"
+    auth_token: "${INSTITUTE_A_TOKEN}"
+    docker_image: "institute-a.edu/appfl-client:v1.0"
+    
+  - client_id: "institute_b_client"  
+    # Override with Institute B's TES endpoint
+    tes_endpoint: "https://tes.institute-b.edu"
+    auth_token: "${INSTITUTE_B_TOKEN}"
+    docker_image: "institute-b.edu/appfl-client:v1.0"
+    
+  - client_id: "local_client"
+    # Uses default TES endpoint (localhost:8000)
+```
+
+See `multi_tes_example.yaml` for a complete multi-institute configuration example.
+
+### Data Access Configuration
+
+**Volume Mount (Local Data)**:
 ```yaml
 client_configs:
-  train_configs:
-    trainer: "VanillaTrainer"
-    num_local_steps: 100
-    optim: "Adam"
-  model_configs:
-    model: "CNN"
-  data_configs:
-    dataset: "MNIST"
-    batch_size: 64
+  - client_id: "hospital_client"
+    data_configs:
+      volume_mounts:
+        - name: "hospital_data"
+          host_path: "/secure/hospital/data"  # Host directory
+          container_path: "/data"             # Container mount
+          read_only: true                     # Security
+      environment:
+        DATA_PATH: "/data"
+        HOSPITAL_ID: "hospital_a"
 ```
+
+**Pre-built Data Container**:
+```yaml
+client_configs:
+  - client_id: "institute_client"
+    docker_image: "institute.edu/appfl-data:v1.0"  # Contains data
+    data_configs:
+      environment:
+        DATA_SOURCE: "embedded"
+        DATA_PATH: "/app/data"
+```
+
+**Cloud Storage Access**:
+```yaml
+client_configs:
+  - client_id: "cloud_client"
+    data_configs:
+      environment:
+        DATA_SOURCE: "s3"
+        S3_BUCKET: "private-fl-data"
+        AWS_ACCESS_KEY_ID: "${AWS_KEY}"
+```
+
+See `data_volume_example.yaml` for complete data access patterns.
 
 ## Usage
 
@@ -127,31 +180,30 @@ for epoch in range(num_epochs):
 
 ## Files
 
-- **`test_tes_integration.py`**: Basic integration test (no TES server required)
-- **`test_tes_federated.py`**: Complete federated learning test (requires TES server)
+- **`run.py`**: Main federated learning script (like examples/globus_compute/run.py)
+- **`server.yaml`**: Server configuration for TES federated learning
+- **`clients.yaml`**: Client configurations for TES federated learning
 - **`Dockerfile`**: APPFL client container definition
-- **`test_setup.sh`**: Automated setup script for Funnel
 
-## Testing
+## Usage
 
-### Phase 1: Basic Integration Test (No Dependencies)
+Run federated learning with TES:
+
 ```bash
-python test_tes_integration.py
-```
-Tests module imports, communicator creation, and task structure. **No TES server or Docker image required.**
-
-### Phase 2: Federated Learning Test (Full Setup Required)
-```bash
-# Start Funnel server
+# Start TES server (Funnel)
 funnel server run &
 
 # Build Docker image  
 docker build -t appfl/client:latest .
 
-# Run federated learning test
-python test_tes_federated.py
+# Run federated learning
+python run.py --server_config ./server.yaml --client_config ./clients.yaml
 ```
-Tests complete federated learning workflow with actual TES task submission.
+
+For different scenarios, just use different YAML files:
+- **Multi-TES endpoints**: Different `clients.yaml` with per-client TES endpoints
+- **Data mounting**: Modified `clients.yaml` with volume mount configurations  
+- **Different algorithms**: Modified `server.yaml` with different aggregators/schedulers
 
 ## Troubleshooting
 

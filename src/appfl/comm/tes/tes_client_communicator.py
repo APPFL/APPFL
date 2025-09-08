@@ -1,6 +1,7 @@
 import json
 import pickle
 import argparse
+import time
 from typing import Optional, Dict, Any, Tuple
 
 from appfl.agent import ClientAgent
@@ -24,9 +25,30 @@ class TESClientCommunicator:
             return None
         
         try:
+            # The model data might be hex-encoded and gzip compressed
+            import gzip
+            import pickle
+            
             with open(model_path, 'rb') as f:
-                model_data = pickle.load(f)
-            return model_data
+                file_data = f.read()
+                
+            # Try to decompress directly first
+            try:
+                decompressed_data = gzip.decompress(file_data)
+                model_data = pickle.loads(decompressed_data)
+                return model_data
+            except gzip.BadGzipFile:
+                # If that fails, it might be hex-encoded, so decode first
+                try:
+                    hex_decoded = bytes.fromhex(file_data.decode('utf-8'))
+                    decompressed_data = gzip.decompress(hex_decoded)
+                    model_data = pickle.loads(decompressed_data)
+                    return model_data
+                except:
+                    # If both fail, try loading as regular pickle
+                    model_data = pickle.loads(file_data)
+                    return model_data
+                    
         except Exception as e:
             raise RuntimeError(f"Failed to load model from {model_path}: {e}")
     
@@ -83,6 +105,7 @@ class TESClientCommunicator:
             Tuple of (output_path, logs_path) for the results
         """
         try:
+            import time
             # Load inputs
             model_data = self.load_model_from_path(model_path)
             metadata = self.load_metadata_from_path(metadata_path)
@@ -140,7 +163,7 @@ class TESClientCommunicator:
                     "timestamp": str(time.time()),
                     "metadata": metadata
                 }
-                
+                print(f'DEBUG: Logs data for get_sample_size: {logs_data}')
             elif task_name == "get_parameters":
                 # Get current model parameters
                 current_params = self.client_agent.get_parameters()
@@ -206,28 +229,56 @@ def main():
             config = OmegaConf.load(args.config_path)
             client_config = ClientAgentConfig(**config)
         else:
-            # Use minimal default configuration
+            # Use minimal default configuration matching server setup
+            print(f"DEBUG: Using default config (no config path provided)")
             default_config = {
                 "train_configs": {
                     "trainer": "VanillaTrainer",
-                    "num_local_steps": 10,
-                    "optim": "SGD",
-                    "optim_args": {"lr": 0.01}
+                    "mode": "step",
+                    "num_local_steps": 100,
+                    "optim": "Adam",
+                    "optim_args": {"lr": 0.001},
+                    "loss_fn_path": "/app/resources/loss/simple_loss.py",
+                    "loss_fn_name": "SimpleLoss",
+                    "do_validation": True,
+                    "do_pre_validation": True,
+                    "metric_path": "/app/resources/metric/acc.py",
+                    "metric_name": "accuracy",
+                    "use_dp": False,
+                    "train_batch_size": 64,
+                    "val_batch_size": 64,
+                    "train_data_shuffle": True,
+                    "val_data_shuffle": False
                 },
                 "model_configs": {
-                    "model": "CNN"
+                    "model_path": "/app/resources/model/simple_model.py",
+                    "model_name": "TinyNet",
+                    "model_kwargs": {
+                        "input_size": 8,
+                        "num_classes": 2
+                    }
                 },
                 "data_configs": {
-                    "dataset": "MNIST",
-                    "batch_size": 32
+                    "dataset_path": "/app/resources/dataset/simple_dataset.py",
+                    "dataset_name": "get_tiny_data",
+                    "dataset_kwargs": {
+                        "num_clients": 2,
+                        "client_id": 0,
+                        "num_samples": 100
+                    }
                 }
             }
-            client_config = ClientAgentConfig(**default_config)
+            from omegaconf import OmegaConf
+            config_omega = OmegaConf.create(default_config)
+            print(f"DEBUG: Default config created with keys: {list(config_omega.keys())}")
+            print(f"DEBUG: Data configs keys: {list(config_omega.data_configs.keys())}")
+            client_config = ClientAgentConfig(**config_omega)
             
         # Set client ID
         client_config.client_id = args.client_id
         
         # Create client agent
+        print(f'DEBUG: Client config: {client_config}')
         client_agent = ClientAgent(client_config)
         
         # Create TES communicator
