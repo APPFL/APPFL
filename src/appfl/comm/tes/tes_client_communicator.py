@@ -163,7 +163,6 @@ class TESClientCommunicator:
                     "timestamp": str(time.time()),
                     "metadata": metadata
                 }
-                print(f'DEBUG: Logs data for get_sample_size: {logs_data}')
             elif task_name == "get_parameters":
                 # Get current model parameters
                 current_params = self.client_agent.get_parameters()

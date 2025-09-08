@@ -75,6 +75,13 @@ class TESServerCommunicator(BaseServerCommunicator):
         # Thread pool for managing TES task submissions
         self.executor = ThreadPoolExecutor(max_workers=len(client_agent_configs))
         
+        # Set up Funnel workspace directory for file transfers
+        import os
+        self.funnel_workspace = "/tmp/funnel-workspace"
+        os.makedirs(self.funnel_workspace, exist_ok=True)
+        self.logger.info(f"Using Funnel workspace directory: {self.funnel_workspace}")
+        self.logger.info(f"Make sure to start Funnel with: cd {self.funnel_workspace} && funnel server run")
+        
         # Log initialization with multi-endpoint support
         self.logger.info(f"TES Server Communicator initialized")
         self.logger.info(f"Managing {len(self.client_endpoints)} client endpoints")
@@ -87,6 +94,7 @@ class TESServerCommunicator(BaseServerCommunicator):
         if (hasattr(self.server_agent_config.server_configs, "comm_configs") and 
             hasattr(self.server_agent_config.server_configs.comm_configs, "tes_configs")):
             tes_configs = self.server_agent_config.server_configs.comm_configs.tes_configs
+        print(f'DEBUG: Loaded TES configs: {tes_configs}')
         
         # Default TES configurations (can be overridden per client)
         self.default_tes_endpoint = tes_configs.get("tes_endpoint", "http://localhost:8000")
@@ -245,27 +253,29 @@ class TESServerCommunicator(BaseServerCommunicator):
             })
             command_args.extend(["--metadata-path", metadata_path])
         
-        # Prepare task outputs - use /tmp since /app might be read-only
-        output_model_path = f"/tmp/output_model_{task_id}.pkl"
-        output_logs_path = f"/tmp/training_logs_{task_id}.json"
+        # Use /tmp inside container (writable), transfer to shared directory on host
+        container_model_path = f"/tmp/output_model_{task_id}.pkl"
+        container_logs_path = f"/tmp/training_logs_{task_id}.json"
         
-        # Configure outputs so server can retrieve results
+        # Use Funnel workspace directory with absolute paths
         outputs = [
             {
-                "name": "trained_model", 
-                "path": output_model_path,
+                "name": "trained_model",
+                "path": container_model_path,
+                "url": f"file://{self.funnel_workspace}/model_{task_id}.pkl",
                 "type": "FILE"
             },
             {
-                "name": "training_logs",
-                "path": output_logs_path, 
+                "name": "training_logs", 
+                "path": container_logs_path,
+                "url": f"file://{self.funnel_workspace}/results_{task_id}.json",
                 "type": "FILE"
             }
         ]
         
         command_args.extend([
-            "--output-path", output_model_path,
-            "--logs-path", output_logs_path
+            "--output-path", container_model_path,
+            "--logs-path", container_logs_path
         ])
         
         # Get client-specific volumes and environment
@@ -344,8 +354,9 @@ class TESServerCommunicator(BaseServerCommunicator):
         if auth_token:
             headers["Authorization"] = f"Bearer {auth_token}"
         
+        # Add view=FULL to get complete task info including logs
         response = requests.get(
-            f"{tes_endpoint}/ga4gh/tes/v1/tasks/{tes_task_id}",
+            f"{tes_endpoint}/ga4gh/tes/v1/tasks/{tes_task_id}?view=FULL",
             headers=headers
         )
         
@@ -377,23 +388,78 @@ class TESServerCommunicator(BaseServerCommunicator):
         raise TimeoutError(f"TES task {tes_task_id} for {client_id} timed out after {timeout} seconds")
 
     def _extract_task_results(self, task_info: Dict) -> Tuple[Any, Dict]:
-        """Extract model and metadata from completed TES task."""
-        outputs = task_info.get("outputs", [])
-        
+        """Extract real results from TES task outputs."""
         model_result = None
         metadata_result = {}
         
-        for output in outputs:
-            if output["name"] == "trained_model":
-                # Download and deserialize model
+        # First, let's see what's actually in the task info
+        print(f"SERVER: Full task info keys: {list(task_info.keys())}")
+        if 'logs' in task_info:
+            print(f"SERVER: Task has {len(task_info['logs'])} log entries")
+        
+        # Check if outputs have been populated by Funnel
+        outputs = task_info.get("outputs", [])
+        print(f"SERVER: Processing {len(outputs)} TES outputs")
+        
+        if not outputs:
+            print("SERVER: No outputs found - Funnel may not have processed files yet")
+            return model_result, metadata_result
+        
+        # Try to read from outputs
+        for i, output in enumerate(outputs):
+            print(f"SERVER: Output {i}: {output}")
+            output_name = output.get("name", "")
+            file_url = output.get("url", "")
+            
+            if output_name == "training_logs":
+                # Check if Funnel put content directly in output
                 if "content" in output:
-                    import pickle
-                    model_bytes = bytes.fromhex(output["content"])
-                    model_result = pickle.loads(model_bytes)
-            elif output["name"] == "training_logs":
-                # Parse training logs
-                if "content" in output:
-                    metadata_result = json.loads(output["content"])
+                    try:
+                        metadata_result = json.loads(output["content"])
+                        print(f"SERVER: Successfully read data from output content: {metadata_result}")
+                    except Exception as e:
+                        print(f"SERVER: Failed to parse output content: {e}")
+                        
+                # Also check file path if available
+                if file_url.startswith("file://"):
+                    file_path = file_url[7:]  # Remove "file://" prefix
+                    try:
+                        import os
+                        if os.path.exists(file_path):
+                            with open(file_path, 'r') as f:
+                                metadata_result = json.load(f)
+                            print(f"SERVER: Successfully read data from file: {file_path}")
+                            
+                            # Clean up the file after reading
+                            os.remove(file_path)
+                            print(f"SERVER: Cleaned up result file: {file_path}")
+                        else:
+                            print(f"SERVER: File not found: {file_path}")
+                    except Exception as e:
+                        print(f"SERVER: Failed to read from file {file_path}: {e}")
+                        
+            elif output_name == "trained_model":
+                # Handle model file cleanup
+                if file_url.startswith("file://"):
+                    file_path = file_url[7:]
+                    try:
+                        import os
+                        if os.path.exists(file_path):
+                            with open(file_path, 'rb') as f:
+                                import pickle
+                                model_result = pickle.load(f)
+                            print(f"SERVER: Successfully loaded model from {file_path}")
+                            
+                            # Clean up the model file after reading
+                            os.remove(file_path)
+                            print(f"SERVER: Cleaned up model file: {file_path}")
+                        else:
+                            print(f"SERVER: Model file not found: {file_path}")
+                    except Exception as e:
+                        print(f"SERVER: Failed to load model from {file_path}: {e}")
+        
+        if not metadata_result:
+            print("SERVER: WARNING - No results found in any output!")
         
         return model_result, metadata_result
 
