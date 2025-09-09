@@ -1,12 +1,8 @@
 import json
 import pickle
 import argparse
-import time
-from typing import Optional, Dict, Any, Tuple
-
+from typing import Dict, Any, Tuple
 from appfl.agent import ClientAgent
-from appfl.config import ClientAgentConfig
-
 
 class TESClientCommunicator:
     """
@@ -16,39 +12,16 @@ class TESClientCommunicator:
     following the same patterns as other APPFL client communicators.
     """
     
-    def __init__(self, client_agent: ClientAgent):
-        self.client_agent = client_agent
+    def __init__(self, client_agent_config):
+        self.client_agent_config = client_agent_config
     
     def load_model_from_path(self, model_path: str) -> Any:
-        """Load serialized model from file path."""
+        """Load model directly from file using torch.load."""
         if not model_path:
             return None
-        
         try:
-            # The model data might be hex-encoded and gzip compressed
-            import gzip
-            import pickle
-            
-            with open(model_path, 'rb') as f:
-                file_data = f.read()
-                
-            # Try to decompress directly first
-            try:
-                decompressed_data = gzip.decompress(file_data)
-                model_data = pickle.loads(decompressed_data)
-                return model_data
-            except gzip.BadGzipFile:
-                # If that fails, it might be hex-encoded, so decode first
-                try:
-                    hex_decoded = bytes.fromhex(file_data.decode('utf-8'))
-                    decompressed_data = gzip.decompress(hex_decoded)
-                    model_data = pickle.loads(decompressed_data)
-                    return model_data
-                except:
-                    # If both fail, try loading as regular pickle
-                    model_data = pickle.loads(file_data)
-                    return model_data
-                    
+            import torch
+            return torch.load(model_path)       
         except Exception as e:
             raise RuntimeError(f"Failed to load model from {model_path}: {e}")
     
@@ -56,7 +29,6 @@ class TESClientCommunicator:
         """Load metadata from JSON file path."""
         if not metadata_path:
             return {}
-        
         try:
             with open(metadata_path, 'r') as f:
                 metadata = json.load(f)
@@ -106,85 +78,26 @@ class TESClientCommunicator:
         """
         try:
             import time
-            # Load inputs
-            model_data = self.load_model_from_path(model_path)
-            metadata = self.load_metadata_from_path(metadata_path)
+            from appfl.comm.utils.executor import (
+                get_sample_size_executor,
+                data_readiness_report_executor,
+                train_executor,
+            )
             
-            # Load model parameters if provided
-            if model_data is not None:
-                self.client_agent.load_parameters(model_data)
-            
-            # Execute the task based on task_name
-            if task_name == "train":
-                # Standard training task
-                trained_model, training_logs = self.client_agent.train()
-                
-                # Save trained model
-                if trained_model is not None:
-                    self.save_model_to_path(trained_model, output_path)
-                
-                # Prepare training logs
-                logs_data = {
-                    "task_name": task_name,
-                    "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
-                    "training_logs": training_logs,
-                    "timestamp": str(time.time()),
-                    "metadata": metadata
-                }
-                
-            elif task_name == "evaluate":
-                # Evaluation task
-                eval_result = self.client_agent.evaluate()
-                
-                # No model update for evaluation
-                self.save_model_to_path(None, output_path)
-                
-                # Prepare evaluation logs
-                logs_data = {
-                    "task_name": task_name,
-                    "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
-                    "evaluation_result": eval_result,
-                    "timestamp": str(time.time()),
-                    "metadata": metadata
-                }
-                
-            elif task_name == "get_sample_size":
-                # Get dataset size
-                sample_size = self.client_agent.get_sample_size()
-                
-                # No model update
-                self.save_model_to_path(None, output_path)
-                
-                # Prepare sample size logs
-                logs_data = {
-                    "task_name": task_name,
-                    "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
-                    "sample_size": sample_size,
-                    "timestamp": str(time.time()),
-                    "metadata": metadata
-                }
-            elif task_name == "get_parameters":
-                # Get current model parameters
-                current_params = self.client_agent.get_parameters()
-                
-                # Save current parameters
-                self.save_model_to_path(current_params, output_path)
-                
-                # Prepare parameters logs
-                logs_data = {
-                    "task_name": task_name,
-                    "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
-                    "parameters_size": len(str(current_params)) if current_params else 0,
-                    "timestamp": str(time.time()),
-                    "metadata": metadata
-                }
-                
+            if task_name == "get_sample_size":
+                model, metadata = get_sample_size_executor(client_agent_config=self.client_agent_config)
+            elif task_name == "data_readiness_report":
+                model, metadata = data_readiness_report_executor(client_agent_config=self.client_agent_config)
+            elif task_name == "train":
+                model, metadata = train_executor(
+                    client_agent_config=self.client_agent_config,
+                    model=self.load_model_from_path(model_path),
+                    meta_data=self.load_metadata_from_path(metadata_path)
+                )
             else:
-                raise ValueError(f"Unknown task name: {task_name}")
-            
-            # Save logs
-            self.save_logs_to_path(logs_data, logs_path)
-            
+                raise NotImplementedError(f"Task {task_name} is not implemented in TES client.")
+            self.save_model_to_path(model, output_path)
+            self.save_logs_to_path(metadata, logs_path)
             return output_path, logs_path
             
         except Exception as e:
@@ -192,7 +105,7 @@ class TESClientCommunicator:
             # Save error information
             error_logs = {
                 "task_name": task_name,
-                "client_id": getattr(self.client_agent.client_agent_config, 'client_id', 'unknown'),
+                "client_id": getattr(self.client_agent_config, 'client_id', 'unknown'),
                 "status": "error",
                 "timestamp": str(time.time()),
                 "error": str(e),
@@ -204,9 +117,7 @@ class TESClientCommunicator:
 
 
 def main():
-    """Main entry point for TES client execution."""
-    import time
-    
+    """Main entry point for TES client execution."""    
     parser = argparse.ArgumentParser(description="APPFL TES Client Runner")
     parser.add_argument("--task-name", required=True, help="Name of the task to execute")
     parser.add_argument("--client-id", required=True, help="Client ID")
@@ -222,11 +133,9 @@ def main():
     
     try:
         # Create client agent
+        from omegaconf import OmegaConf
         if args.config_path:
-            # Load configuration from file
-            from omegaconf import OmegaConf
-            config = OmegaConf.load(args.config_path)
-            client_config = ClientAgentConfig(**config)
+            client_config = OmegaConf.load(args.config_path)
         else:
             # Use minimal default configuration matching server setup
             print(f"DEBUG: Using default config (no config path provided)")
@@ -258,30 +167,20 @@ def main():
                     }
                 },
                 "data_configs": {
-                    "dataset_path": "/app/resources/dataset/simple_dataset.py",
-                    "dataset_name": "get_tiny_data",
+                    "dataset_path": "/app/resources/dataset/file_dataset.py",
+                    "dataset_name": "get_file_based_data",
                     "dataset_kwargs": {
-                        "num_clients": 2,
-                        "client_id": 0,
-                        "num_samples": 100
+                        "data_dir": "/data",
                     }
                 }
             }
-            from omegaconf import OmegaConf
-            config_omega = OmegaConf.create(default_config)
-            print(f"DEBUG: Default config created with keys: {list(config_omega.keys())}")
-            print(f"DEBUG: Data configs keys: {list(config_omega.data_configs.keys())}")
-            client_config = ClientAgentConfig(**config_omega)
+            client_config = OmegaConf.create(default_config)
             
         # Set client ID
         client_config.client_id = args.client_id
         
-        # Create client agent
-        print(f'DEBUG: Client config: {client_config}')
-        client_agent = ClientAgent(client_config)
-        
         # Create TES communicator
-        tes_client = TESClientCommunicator(client_agent)
+        tes_client = TESClientCommunicator(client_agent_config=client_config)
         
         # Execute the task
         output_path, logs_path = tes_client.execute_task(

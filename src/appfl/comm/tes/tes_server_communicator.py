@@ -2,12 +2,13 @@ import os
 import json
 import uuid
 import time
+import yaml
 import requests
+from omegaconf import OmegaConf
 from typing import Dict, List, Optional, Union, OrderedDict, Tuple, Any
 from concurrent.futures import ThreadPoolExecutor, Future, as_completed
 
 from appfl.comm.base import BaseServerCommunicator
-from appfl.comm.utils.config import ClientTask
 from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 from appfl.config import ClientAgentConfig, ServerAgentConfig
 from appfl.logger import ServerAgentFileLogger
@@ -61,12 +62,14 @@ class TESServerCommunicator(BaseServerCommunicator):
                 del client_config.data_configs.dataset_path
             
             client_config.experiment_id = self.experiment_id
-            client_config.comm_type = self.comm_type
+            client_config.comm_configs.comm_type = self.comm_type
             
             # Store client endpoint info with per-client TES settings
             self.client_endpoints[client_id] = {
                 "client_id": client_id,
-                "client_config": client_config,
+                "client_config": OmegaConf.merge(
+                    server_agent_config.client_configs, client_config
+                ),
                 "resource_requirements": self._get_client_resources(client_config, client_id),
                 "tes_endpoint": self._get_client_tes_endpoint(client_config, client_id),
                 "auth_token": self._get_client_auth_token(client_config, client_id),
@@ -185,25 +188,42 @@ class TESServerCommunicator(BaseServerCommunicator):
             "--client-id", client_id,
         ]
         
-        # Handle model input
+        # Add client configuration
+        client_config = client_info["client_config"]
+        client_config_path = f"/app/configs/client_config_{task_id}.yaml"
+        config_dict = OmegaConf.to_container(client_config, resolve=True) if hasattr(client_config, '_content') else client_config
+        
+        inputs.append({
+            "name": "client_config",
+            "description": "Client configuration file",
+            "path": client_config_path,
+            "type": "FILE",
+            "content": yaml.safe_dump(config_dict)
+        })
+        command_args.extend(["--config-path", client_config_path])
+        
+        # Handle model input using torch.save directly to file
         if model is not None:
             model_path = f"/app/configs/model_{task_id}.pkl"
-            if isinstance(model, bytes):
-                model_content = model
-            else:
-                import pickle
-                model_content = pickle.dumps(model)
             
-            # Compress model content to reduce size
-            import gzip
-            compressed_model = gzip.compress(model_content)
+            # Save model directly to shared workspace for TES to access
+            host_model_path = f"{self.funnel_workspace}/input_model_{task_id}.pkl"
+            
+            import torch
+            if isinstance(model, bytes):
+                # If already serialized, write directly
+                with open(host_model_path, "wb") as f:
+                    f.write(model)
+            else:
+                # Use torch.save directly to file
+                torch.save(model, host_model_path)
             
             inputs.append({
                 "name": "model_data",
-                "description": "Compressed serialized model parameters",
+                "description": "Serialized model parameters",
                 "path": model_path,
                 "type": "FILE",
-                "content": compressed_model.hex()  # TES expects hex-encoded content
+                "url": f"file://{host_model_path}"  # TES downloads from shared workspace
             })
             command_args.extend(["--model-path", model_path])
         
@@ -245,7 +265,6 @@ class TESServerCommunicator(BaseServerCommunicator):
         ])
         
         # Get client-specific volumes and environment
-        client_config = client_info["client_config"]
         volumes = self._get_client_volumes(client_config)
         environment = self._get_client_environment(client_config)
         
@@ -360,14 +379,8 @@ class TESServerCommunicator(BaseServerCommunicator):
         model_result = None
         metadata_result = {}
         
-        # First, let's see what's actually in the task info
-        print(f"SERVER: Full task info keys: {list(task_info.keys())}")
-        if 'logs' in task_info:
-            print(f"SERVER: Task has {len(task_info['logs'])} log entries")
-        
         # Check if outputs have been populated by Funnel
         outputs = task_info.get("outputs", [])
-        print(f"SERVER: Processing {len(outputs)} TES outputs")
         
         if not outputs:
             print("SERVER: No outputs found - Funnel may not have processed files yet")
@@ -375,7 +388,7 @@ class TESServerCommunicator(BaseServerCommunicator):
         
         # Try to read from outputs
         for i, output in enumerate(outputs):
-            print(f"SERVER: Output {i}: {output}")
+            # print(f"SERVER: Output {i}: {output}")
             output_name = output.get("name", "")
             file_url = output.get("url", "")
             
@@ -384,7 +397,7 @@ class TESServerCommunicator(BaseServerCommunicator):
                 if "content" in output:
                     try:
                         metadata_result = json.loads(output["content"])
-                        print(f"SERVER: Successfully read data from output content: {metadata_result}")
+                        # print(f"SERVER: Successfully read data from output content: {metadata_result}")
                     except Exception as e:
                         print(f"SERVER: Failed to parse output content: {e}")
                         
@@ -396,11 +409,11 @@ class TESServerCommunicator(BaseServerCommunicator):
                         if os.path.exists(file_path):
                             with open(file_path, 'r') as f:
                                 metadata_result = json.load(f)
-                            print(f"SERVER: Successfully read data from file: {file_path}")
+                            # print(f"SERVER: Successfully read data from file: {file_path}")
                             
                             # Clean up the file after reading
                             os.remove(file_path)
-                            print(f"SERVER: Cleaned up result file: {file_path}")
+                            # print(f"SERVER: Cleaned up result file: {file_path}")
                         else:
                             print(f"SERVER: File not found: {file_path}")
                     except Exception as e:
@@ -416,11 +429,11 @@ class TESServerCommunicator(BaseServerCommunicator):
                             with open(file_path, 'rb') as f:
                                 import pickle
                                 model_result = pickle.load(f)
-                            print(f"SERVER: Successfully loaded model from {file_path}")
+                            # print(f"SERVER: Successfully loaded model from {file_path}")
                             
                             # Clean up the model file after reading
                             os.remove(file_path)
-                            print(f"SERVER: Cleaned up model file: {file_path}")
+                            # print(f"SERVER: Cleaned up model file: {file_path}")
                         else:
                             print(f"SERVER: Model file not found: {file_path}")
                     except Exception as e:

@@ -44,7 +44,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 2
+  num_global_epochs: 10
   server_validation: False
   logging_output_dirname: "./output"
   logging_output_filename: "tes_result"
