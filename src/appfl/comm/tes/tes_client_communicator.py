@@ -1,8 +1,8 @@
 import json
 import pickle
 import argparse
+from omegaconf import OmegaConf
 from typing import Dict, Any, Tuple
-from appfl.agent import ClientAgent
 
 class TESClientCommunicator:
     """
@@ -111,79 +111,27 @@ class TESClientCommunicator:
                 "error": str(e),
                 "metadata": metadata if 'metadata' in locals() else {}
             }
-            
             self.save_logs_to_path(error_logs, logs_path)
             raise
 
 
-def main():
+def tes_client_entry_point():
     """Main entry point for TES client execution."""    
     parser = argparse.ArgumentParser(description="APPFL TES Client Runner")
     parser.add_argument("--task-name", required=True, help="Name of the task to execute")
     parser.add_argument("--client-id", required=True, help="Client ID")
-    parser.add_argument("--config-path", help="Path to client configuration file")
+    parser.add_argument("--config-path", required=True, help="Path to client configuration file")
     parser.add_argument("--model-path", help="Path to input model file")
     parser.add_argument("--metadata-path", help="Path to metadata JSON file")
-    parser.add_argument("--output-path", default="/tmp/output_model.pkl", 
-                        help="Path for output model")
-    parser.add_argument("--logs-path", default="/tmp/training_logs.json",
-                        help="Path for training logs")
-    
+    parser.add_argument("--output-path", default="/tmp/output_model.pkl", help="Path for output model")
+    parser.add_argument("--logs-path", default="/tmp/training_logs.json", help="Path for training logs")
     args = parser.parse_args()
     
     try:
-        # Create client agent
-        from omegaconf import OmegaConf
-        if args.config_path:
-            client_config = OmegaConf.load(args.config_path)
-        else:
-            # Use minimal default configuration matching server setup
-            print(f"DEBUG: Using default config (no config path provided)")
-            default_config = {
-                "train_configs": {
-                    "trainer": "VanillaTrainer",
-                    "mode": "step",
-                    "num_local_steps": 100,
-                    "optim": "Adam",
-                    "optim_args": {"lr": 0.001},
-                    "loss_fn_path": "/app/resources/loss/simple_loss.py",
-                    "loss_fn_name": "SimpleLoss",
-                    "do_validation": True,
-                    "do_pre_validation": True,
-                    "metric_path": "/app/resources/metric/acc.py",
-                    "metric_name": "accuracy",
-                    "use_dp": False,
-                    "train_batch_size": 64,
-                    "val_batch_size": 64,
-                    "train_data_shuffle": True,
-                    "val_data_shuffle": False
-                },
-                "model_configs": {
-                    "model_path": "/app/resources/model/simple_model.py",
-                    "model_name": "TinyNet",
-                    "model_kwargs": {
-                        "input_size": 8,
-                        "num_classes": 2
-                    }
-                },
-                "data_configs": {
-                    "dataset_path": "/app/resources/dataset/file_dataset.py",
-                    "dataset_name": "get_file_based_data",
-                    "dataset_kwargs": {
-                        "data_dir": "/data",
-                    }
-                }
-            }
-            client_config = OmegaConf.create(default_config)
-            
-        # Set client ID
-        client_config.client_id = args.client_id
-        
-        # Create TES communicator
-        tes_client = TESClientCommunicator(client_agent_config=client_config)
-        
-        # Execute the task
-        output_path, logs_path = tes_client.execute_task(
+        client_agent_config = OmegaConf.load(args.config_path)
+        client_agent_config.client_id = args.client_id
+        tes_client = TESClientCommunicator(client_agent_config=client_agent_config)
+        tes_client.execute_task(
             task_name=args.task_name,
             model_path=args.model_path,
             metadata_path=args.metadata_path,
@@ -192,8 +140,6 @@ def main():
         )
         
         print(f"Task '{args.task_name}' completed successfully")
-        print(f"Output model: {output_path}")
-        print(f"Training logs: {logs_path}")
         return 0
         
     except Exception as e:
@@ -201,8 +147,3 @@ def main():
         import traceback
         traceback.print_exc()
         return 1
-
-
-if __name__ == "__main__":
-    import sys
-    sys.exit(main())

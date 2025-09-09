@@ -183,7 +183,8 @@ class TESServerCommunicator(BaseServerCommunicator):
         # Prepare task inputs
         inputs = []
         command_args = [
-            "python", "-m", "appfl.run_tes_client",
+            "python", "-c", 
+            "from appfl.comm.tes.tes_client_communicator import tes_client_entry_point; tes_client_entry_point()",
             "--task-name", task_name,
             "--client-id", client_id,
         ]
@@ -369,9 +370,9 @@ class TESServerCommunicator(BaseServerCommunicator):
                 if logs:
                     error_msg += f"\nLogs: {logs}"
                 raise RuntimeError(error_msg)
-            
-            time.sleep(5)  # Poll every 5 seconds
-        
+
+            time.sleep(2)  # Poll every 2 seconds
+
         raise TimeoutError(f"TES task {tes_task_id} for {client_id} timed out after {timeout} seconds")
 
     def _extract_task_results(self, task_info: Dict) -> Tuple[Any, Dict]:

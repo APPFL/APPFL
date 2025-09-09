@@ -1,3 +1,5 @@
+funnel.db
+**/CLAUDE.md
 *.sh.o*
 *.sh.e*
 examples/hostfiles
