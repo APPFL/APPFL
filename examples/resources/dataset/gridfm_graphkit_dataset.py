@@ -7,6 +7,7 @@ import random
 
 import os
 
+
 def get_gridfm_graphkit_dataset(
     num_clients: int,
     client_id: int,
@@ -16,7 +17,7 @@ def get_gridfm_graphkit_dataset(
     np.random.seed(seed)
 
     config_path = "./resources/configs/grid/gridfm_graphkit.yaml"
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config_dict = yaml.safe_load(f)
 
     config_args = NestedNamespace(**config_dict)
@@ -45,8 +46,12 @@ def get_gridfm_graphkit_dataset(
     client_val_dataset_base_size = validation_dataset_size // num_clients
     client_val_dataset_remainder = validation_dataset_size % num_clients
 
-    start_idx = client_id * client_train_dataset_base_size + min(client_id, client_train_dataset_remainder)
-    subset_size = client_train_dataset_base_size + (1 if client_id < client_train_dataset_remainder else 0)
+    start_idx = client_id * client_train_dataset_base_size + min(
+        client_id, client_train_dataset_remainder
+    )
+    subset_size = client_train_dataset_base_size + (
+        1 if client_id < client_train_dataset_remainder else 0
+    )
     train_subset_indices = train_indices[start_idx : start_idx + subset_size]
 
     if isinstance(train_dataset, np.ndarray):
@@ -54,10 +59,14 @@ def get_gridfm_graphkit_dataset(
     else:
         client_train_dataset = [train_dataset[idx] for idx in train_subset_indices]
 
-    start_idx = client_id * client_val_dataset_base_size + min(client_id, client_val_dataset_remainder)
-    subset_size = client_val_dataset_base_size + (1 if client_id < client_val_dataset_remainder else 0)
+    start_idx = client_id * client_val_dataset_base_size + min(
+        client_id, client_val_dataset_remainder
+    )
+    subset_size = client_val_dataset_base_size + (
+        1 if client_id < client_val_dataset_remainder else 0
+    )
     val_subset_indices = val_indices[start_idx : start_idx + subset_size]
-    
+
     if isinstance(val_dataset, np.ndarray):
         client_val_dataset = val_dataset[val_subset_indices]
     else:

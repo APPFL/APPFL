@@ -6,9 +6,10 @@ import yaml
 
 import os
 
+
 def get_gridfm_graphkit_model():
     config_path = "./resources/configs/grid/gridfm_graphkit.yaml"
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config_dict = yaml.safe_load(f)
 
     config_args = NestedNamespace(**config_dict)

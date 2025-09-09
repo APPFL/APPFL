@@ -1,29 +1,22 @@
-import copy
 import time
 import torch
-import torch.nn.functional as F
-import torch.nn as nn
-import math
 import importlib
-import numpy as np
 from torch.nn import Module
 from omegaconf import DictConfig
 # import yaml
 
-from typing import Tuple, Dict, Optional, Any
+from typing import Optional, Any
 from torch_geometric.loader import DataLoader
-# from torch.utils.data import Dataset
-from torch_geometric.data import Data, Dataset
-from appfl.algorithm.trainer.base_trainer import BaseTrainer
-from appfl.algorithm.trainer.vanilla_trainer import VanillaTrainer
-from appfl.misc.utils import parse_device_str, apply_model_device
 
-from gridfm_graphkit.datasets.powergrid_datamodule import LitGridDataModule
-from gridfm_graphkit.io.param_handler import NestedNamespace
+# from torch.utils.data import Dataset
+from torch_geometric.data import Dataset
+from appfl.algorithm.trainer.vanilla_trainer import VanillaTrainer
+from appfl.misc.utils import apply_model_device
+
 from gridfm_graphkit.training.loss import PBELoss
 
-class GridFMTrainer(VanillaTrainer):
 
+class GridFMTrainer(VanillaTrainer):
     def __init__(
         self,
         model: Optional[Module] = None,
@@ -86,7 +79,6 @@ class GridFMTrainer(VanillaTrainer):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def train(self, **kwargs):
-
         if "round" in kwargs:
             self.round = kwargs["round"]
         self.val_results = {"round": self.round + 1}
@@ -142,7 +134,6 @@ class GridFMTrainer(VanillaTrainer):
             if self.train_configs.mode == "epoch":
                 content.insert(1, 0)
             self.logger.log_content(content)
-
 
         for epoch in range(self.train_configs.num_local_epochs):
             start_time = time.time()
@@ -221,18 +212,15 @@ class GridFMTrainer(VanillaTrainer):
         )
         loss = loss_dict["loss"]
 
-
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-
         return loss.item(), outputs
-    
+
     def _validate(self):
         self.model.eval()
         val_loss = 0.0
-
 
         with torch.no_grad():
             for batch in self.val_dataloader:
@@ -254,7 +242,6 @@ class GridFMTrainer(VanillaTrainer):
                 )
                 loss = loss_dict["loss"]
                 val_loss += loss.item()
-
 
         avg_val_loss = val_loss / len(self.val_dataloader)
         # print(f"Validation - Loss: {avg_val_loss:.4f}")
