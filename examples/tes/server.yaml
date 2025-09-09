@@ -30,15 +30,6 @@ client_configs:
       num_classes: 2
 
   comm_configs:
-    tes_configs:
-      tes_endpoint: "http://localhost:8000"
-      auth_token: ""
-      docker_image: "appfl/client:latest"
-      resource_requirements:
-        cpu_cores: 2
-        ram_gb: 4.0
-        disk_gb: 20.0
-        preemptible: false
     compressor_configs:
       enable_compression: False
     s3_configs:

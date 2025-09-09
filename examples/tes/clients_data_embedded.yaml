@@ -6,18 +6,16 @@ clients:
       logging_output_filename: "result"
 
     data_configs:
-      dataset_path: "./resources/dataset/simple_dataset.py"
-      dataset_name: "get_tiny_data"
+      dataset_path: "./resources/dataset/file_dataset.py"
+      dataset_name: "get_file_based_data"
       dataset_kwargs:
-        num_clients: 2
-        client_id: 0
-        num_samples: 100
+        data_dir: "/data"
 
     comm_configs:
       tes_configs:
         tes_endpoint: "http://localhost:8000"
         auth_token: ""
-        docker_image: "appfl/client:latest"
+        docker_image: "appfl/client1:data-embedded"
         resource_requirements:
           cpu_cores: 2
           ram_gb: 4.0
@@ -31,18 +29,16 @@ clients:
       logging_output_filename: "result"
 
     data_configs:
-      dataset_path: "./resources/dataset/simple_dataset.py"
-      dataset_name: "get_tiny_data"
+      dataset_path: "./resources/dataset/file_dataset.py"
+      dataset_name: "get_file_based_data"
       dataset_kwargs:
-        num_clients: 2
-        client_id: 1
-        num_samples: 100
+        data_dir: "/data"
 
     comm_configs:
       tes_configs:
         tes_endpoint: "http://localhost:8000"
         auth_token: ""
-        docker_image: "appfl/client:latest"
+        docker_image: "appfl/client2:data-embedded"
         resource_requirements:
           cpu_cores: 1
           ram_gb: 2.0

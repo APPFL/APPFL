@@ -1,3 +1,4 @@
+import os
 import json
 import uuid
 import time
@@ -31,9 +32,6 @@ class TESServerCommunicator(BaseServerCommunicator):
         self.comm_type = "tes"
         super().__init__(server_agent_config, client_agent_configs, logger, **kwargs)
         
-        # Load TES-specific configuration
-        self._load_tes_configs()
-        
         # Initialize TES client endpoints mapping
         self.client_endpoints: Dict[str, Dict] = {}
         _client_id_check_set = set()
@@ -44,8 +42,11 @@ class TESServerCommunicator(BaseServerCommunicator):
                 client_config.client_id
                 if hasattr(client_config, "client_id")
                 else client_config.train_configs.logging_id
-                if hasattr(client_config.train_configs, "logging_id")
-                else f"tes_client_{len(self.client_endpoints)}"
+                if (
+                    hasattr(client_config, "train_configs")
+                    and hasattr(client_config.train_configs, "logging_id")
+                )
+                else f"default_tes_client_id_{len(self.client_endpoints)}"
             )
             
             assert client_id not in _client_id_check_set, (
@@ -66,93 +67,58 @@ class TESServerCommunicator(BaseServerCommunicator):
             self.client_endpoints[client_id] = {
                 "client_id": client_id,
                 "client_config": client_config,
-                "resource_requirements": self._get_client_resources(client_config),
-                "tes_endpoint": self._get_client_tes_endpoint(client_config),
-                "auth_token": self._get_client_auth_token(client_config),
-                "docker_image": self._get_client_docker_image(client_config),
+                "resource_requirements": self._get_client_resources(client_config, client_id),
+                "tes_endpoint": self._get_client_tes_endpoint(client_config, client_id),
+                "auth_token": self._get_client_auth_token(client_config, client_id),
+                "docker_image": self._get_client_docker_image(client_config, client_id),
             }
         
         # Thread pool for managing TES task submissions
         self.executor = ThreadPoolExecutor(max_workers=len(client_agent_configs))
         
-        # Set up Funnel workspace directory for file transfers
-        import os
+        # Set up Funnel workspace directory for file transfers [TODO: check this for non-Funnel setups]
         self.funnel_workspace = "/tmp/funnel-workspace"
         os.makedirs(self.funnel_workspace, exist_ok=True)
         self.logger.info(f"Using Funnel workspace directory: {self.funnel_workspace}")
         self.logger.info(f"Make sure to start Funnel with: cd {self.funnel_workspace} && funnel server run")
         
         # Log initialization with multi-endpoint support
-        self.logger.info(f"TES Server Communicator initialized")
-        self.logger.info(f"Managing {len(self.client_endpoints)} client endpoints")
+        self.logger.info(f"TES Server Communicator manages {len(self.client_endpoints)} client endpoints")
         for client_id, endpoint_info in self.client_endpoints.items():
-            self.logger.info(f"  {client_id}: {endpoint_info['tes_endpoint']}")
+            self.logger.info(f"{client_id}: {endpoint_info['tes_endpoint']}")
 
-    def _load_tes_configs(self):
-        """Load TES-specific configuration from server config."""
-        tes_configs = {}
-        if (hasattr(self.server_agent_config.server_configs, "comm_configs") and 
-            hasattr(self.server_agent_config.server_configs.comm_configs, "tes_configs")):
-            tes_configs = self.server_agent_config.server_configs.comm_configs.tes_configs
-        print(f'DEBUG: Loaded TES configs: {tes_configs}')
-        
-        # Default TES configurations (can be overridden per client)
-        self.default_tes_endpoint = tes_configs.get("tes_endpoint", "http://localhost:8000")
-        self.default_auth_token = tes_configs.get("auth_token", None)
-        self.default_docker_image = tes_configs.get("docker_image", "appfl/client:latest")
-        
-        # Default resource requirements
-        default_resources = {
-            "cpu_cores": 1,
-            "ram_gb": 2.0,
-            "disk_gb": 10.0,
-            "preemptible": False
-        }
-        self.default_resource_requirements = {
-            **default_resources, 
-            **tes_configs.get("resource_requirements", {})
-        }
-
-    def _get_client_tes_endpoint(self, client_config: ClientAgentConfig) -> str:
+    def _get_client_tes_endpoint(self, client_config: ClientAgentConfig, client_id: str) -> str:
         """Get TES endpoint for a specific client."""
-        # Check for client-specific TES endpoint
-        if hasattr(client_config, "tes_endpoint"):
-            return client_config.tes_endpoint
         if (hasattr(client_config, "comm_configs") and 
             hasattr(client_config.comm_configs, "tes_configs") and
             hasattr(client_config.comm_configs.tes_configs, "tes_endpoint")):
             return client_config.comm_configs.tes_configs.tes_endpoint
-        return self.default_tes_endpoint
+        raise ValueError(f"Client {client_id} missing required comm_configs.tes_configs.tes_endpoint")
 
-    def _get_client_auth_token(self, client_config: ClientAgentConfig) -> Optional[str]:
+    def _get_client_auth_token(self, client_config: ClientAgentConfig, client_id: str) -> Optional[str]:
         """Get auth token for a specific client's TES endpoint."""
-        # Check for client-specific auth token
-        if hasattr(client_config, "auth_token"):
-            return client_config.auth_token
         if (hasattr(client_config, "comm_configs") and 
             hasattr(client_config.comm_configs, "tes_configs") and
             hasattr(client_config.comm_configs.tes_configs, "auth_token")):
-            return client_config.comm_configs.tes_configs.auth_token
-        return self.default_auth_token
+            auth_token = client_config.comm_configs.tes_configs.auth_token
+            return auth_token if auth_token else None
+        return None
 
-    def _get_client_docker_image(self, client_config: ClientAgentConfig) -> str:
+    def _get_client_docker_image(self, client_config: ClientAgentConfig, client_id: str) -> str:
         """Get Docker image for a specific client."""
-        # Check for client-specific Docker image
-        if hasattr(client_config, "docker_image"):
-            return client_config.docker_image
         if (hasattr(client_config, "comm_configs") and 
             hasattr(client_config.comm_configs, "tes_configs") and
             hasattr(client_config.comm_configs.tes_configs, "docker_image")):
             return client_config.comm_configs.tes_configs.docker_image
-        return self.default_docker_image
+        raise ValueError(f"Client {client_id} missing required comm_configs.tes_configs.docker_image")
 
-    def _get_client_resources(self, client_config: ClientAgentConfig) -> Dict:
+    def _get_client_resources(self, client_config: ClientAgentConfig, client_id: str) -> Dict:
         """Get resource requirements for a specific client."""
-        # Check if client has specific resource requirements
-        if (hasattr(client_config, "resource_configs") and 
-            hasattr(client_config.resource_configs, "tes_resources")):
-            return {**self.default_resource_requirements, **client_config.resource_configs.tes_resources}
-        return self.default_resource_requirements
+        if (hasattr(client_config, "comm_configs") and 
+            hasattr(client_config.comm_configs, "tes_configs") and
+            hasattr(client_config.comm_configs.tes_configs, "resource_requirements")):
+            return client_config.comm_configs.tes_configs.resource_requirements
+        raise ValueError(f"Client {client_id} missing required comm_configs.tes_configs.resource_requirements")
 
     def _get_client_volumes(self, client_config: ClientAgentConfig) -> List[Dict]:
         """Get volume mount configuration for a specific client's data access."""
@@ -294,10 +260,12 @@ class TESServerCommunicator(BaseServerCommunicator):
         if environment:
             executor["env"] = environment
         
-        # Add volume mounts if specified  
+        # Note: Volume mounts are not supported in standard TES/Funnel
+        # For now, skip volume mounting until we find the correct TES approach
         if volumes:
-            executor["volumes"] = [f"{vol['source']}:{vol['target']}:{'ro' if vol['readonly'] else 'rw'}" 
-                                 for vol in volumes]
+            self.logger.warning(f"Volume mounting requested but not supported by current TES implementation")
+            self.logger.warning(f"Requested volumes: {volumes}")
+            # TODO: Implement proper TES volume mounting or alternative data access
         
         # Create TES task
         tes_task = {
