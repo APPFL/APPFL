@@ -1,8 +1,14 @@
 import copy
+import gc
 import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
+from appfl.misc.memory_utils import (
+    clone_state_dict_optimized,
+    safe_inplace_operation,
+    optimize_memory_cleanup,
+)
 
 
 class FedAsyncAggregator(BaseAggregator):
@@ -23,6 +29,9 @@ class FedAsyncAggregator(BaseAggregator):
         self.client_weights_mode = aggregator_configs.get(
             "client_weights_mode", "equal"
         )
+
+        # Check for optimize_memory in aggregator_configs, default to True
+        self.optimize_memory = getattr(aggregator_configs, "optimize_memory", True)
 
         if model is not None:
             self.named_parameters = set()
@@ -57,10 +66,21 @@ class FedAsyncAggregator(BaseAggregator):
         """
         if self.global_state is None:
             if self.model is not None:
-                return copy.deepcopy(self.model.state_dict())
+                if self.optimize_memory:
+                    with torch.no_grad():
+                        result = copy.deepcopy(self.model.state_dict())
+                    gc.collect()
+                    return result
+                else:
+                    return copy.deepcopy(self.model.state_dict())
             else:
                 raise ValueError("Model is not provided to the aggregator.")
-        return {k: v.clone() for k, v in self.global_state.items()}
+
+        # Memory optimization: Use efficient state dict cloning
+        if self.optimize_memory:
+            return clone_state_dict_optimized(self.global_state)
+        else:
+            return {k: v.clone() for k, v in self.global_state.items()}
 
     def aggregate(
         self,
@@ -68,37 +88,82 @@ class FedAsyncAggregator(BaseAggregator):
         local_model: Union[Dict, OrderedDict],
         **kwargs,
     ) -> Dict:
+        # Memory optimization: Efficient global state initialization
         if self.global_state is None:
             if self.model is not None:
                 try:
-                    self.global_state = {
-                        name: self.model.state_dict()[name] for name in local_model
-                    }
+                    if self.optimize_memory:
+                        with torch.no_grad():
+                            self.global_state = {
+                                name: self.model.state_dict()[name]
+                                for name in local_model
+                            }
+                        gc.collect()
+                    else:
+                        self.global_state = {
+                            name: self.model.state_dict()[name] for name in local_model
+                        }
                 except:  # noqa E722
+                    if self.optimize_memory:
+                        with torch.no_grad():
+                            self.global_state = {
+                                name: tensor.detach().clone()
+                                for name, tensor in local_model.items()
+                            }
+                        gc.collect()
+                    else:
+                        self.global_state = {
+                            name: tensor.detach().clone()
+                            for name, tensor in local_model.items()
+                        }
+            else:
+                if self.optimize_memory:
+                    with torch.no_grad():
+                        self.global_state = {
+                            name: tensor.detach().clone()
+                            for name, tensor in local_model.items()
+                        }
+                    gc.collect()
+                else:
                     self.global_state = {
                         name: tensor.detach().clone()
                         for name, tensor in local_model.items()
                     }
-            else:
-                self.global_state = {
-                    name: tensor.detach().clone()
-                    for name, tensor in local_model.items()
-                }
 
         self.compute_steps(client_id, local_model)
 
-        for name in self.global_state:
-            if name in self.step:
-                self.global_state[name] += self.step[name]
-            else:
-                self.global_state[name] = local_model[name]
+        # Memory optimization: Use efficient operations for state updates
+        if self.optimize_memory:
+            with torch.no_grad():
+                for name in self.global_state:
+                    if name in self.step:
+                        self.global_state[name] = safe_inplace_operation(
+                            self.global_state[name], "add", self.step[name], alpha=1
+                        )
+                    else:
+                        self.global_state[name] = local_model[name]
+        else:
+            for name in self.global_state:
+                if name in self.step:
+                    self.global_state[name] += self.step[name]
+                else:
+                    self.global_state[name] = local_model[name]
 
         if self.model is not None:
             self.model.load_state_dict(self.global_state, strict=False)
 
         self.global_step += 1
         self.client_step[client_id] = self.global_step
-        return {k: v.clone() for k, v in self.global_state.items()}
+
+        # Memory optimization: Clean up after aggregation step
+        if self.optimize_memory:
+            optimize_memory_cleanup(local_model, force_gc=True)
+
+        # Memory optimization: Use efficient state dict cloning for return
+        if self.optimize_memory:
+            return clone_state_dict_optimized(self.global_state)
+        else:
+            return {k: v.clone() for k, v in self.global_state.items()}
 
     def compute_steps(
         self,
@@ -138,11 +203,29 @@ class FedAsyncAggregator(BaseAggregator):
                 or self.global_state[name].dtype == torch.int32
             ):
                 continue
-            self.step[name] = (
-                alpha_t * (-local_model[name])
-                if gradient_based
-                else alpha_t * (local_model[name] - self.global_state[name])
-            )
+            # Memory optimization: Use efficient operations for step computation
+            if self.optimize_memory:
+                with torch.no_grad():
+                    if gradient_based:
+                        self.step[name] = safe_inplace_operation(
+                            torch.zeros_like(local_model[name]),
+                            "sub",
+                            local_model[name],
+                            alpha=alpha_t,
+                        )
+                    else:
+                        diff = safe_inplace_operation(
+                            local_model[name], "sub", self.global_state[name], alpha=1
+                        )
+                        self.step[name] = safe_inplace_operation(
+                            torch.zeros_like(diff), "add", diff, alpha=alpha_t
+                        )
+            else:
+                self.step[name] = (
+                    alpha_t * (-local_model[name])
+                    if gradient_based
+                    else alpha_t * (local_model[name] - self.global_state[name])
+                )
 
     def __staleness_fn_factory(self, staleness_fn_name, **kwargs):
         if staleness_fn_name == "constant":

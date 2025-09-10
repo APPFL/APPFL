@@ -144,6 +144,7 @@ class BaseServerCommunicator:
             s3_bucket = server_agent_config.server_configs.comm_configs.s3_configs.get(
                 "s3_bucket", None
             )
+            self.use_s3bucket = self.use_s3bucket and s3_bucket is not None
         # backward compatibility for globus compute
         if (
             hasattr(server_agent_config.server_configs, "comm_configs")

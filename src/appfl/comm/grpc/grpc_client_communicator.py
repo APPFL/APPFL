@@ -1,6 +1,15 @@
+import gc
+import io
+import os
+import uuid
 import grpc
 import time
 import yaml
+import torch
+import pathlib
+from datetime import datetime
+from appfl.comm.utils.s3_storage import CloudStorage
+from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_s3
 from .grpc_communicator_pb2 import (
     ClientHeader,
     ConfigurationRequest,
@@ -24,6 +33,10 @@ from appfl.comm.grpc import (
 from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
+from appfl.misc.memory_utils import (
+    efficient_bytearray_concatenation,
+    optimize_memory_cleanup,
+)
 
 
 class GRPCClientCommunicator:
@@ -42,6 +55,7 @@ class GRPCClientCommunicator:
         authenticator: Optional[str] = None,
         authenticator_args: Dict[str, Any] = {},
         max_message_size: int = 2 * 1024 * 1024,
+        logger: Optional[Any] = None,
         **kwargs,
     ):
         """
@@ -57,7 +71,10 @@ class GRPCClientCommunicator:
         :param max_message_size: The maximum message size in bytes.
         """
         self.client_id = client_id
+        self.logger = logger
         self.max_message_size = max_message_size
+        # Check for optimize_memory in kwargs (from grpc_configs), default to True
+        self.optimize_memory = kwargs.get("optimize_memory", True)
         channel = create_grpc_channel(
             server_uri,
             use_ssl=use_ssl,
@@ -73,6 +90,7 @@ class GRPCClientCommunicator:
         self.kwargs = kwargs
         self._load_proxystore()
         self._load_google_drive()
+        self._s3_initalized = False
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -94,6 +112,10 @@ class GRPCClientCommunicator:
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
+        # initializing s3 here as we need experiment id so that we can keep track of the models
+        self._check_and_initialize_s3(
+            experiment_id=configuration.get("experiment_id", None)
+        )
         return configuration
 
     def get_global_model(
@@ -104,28 +126,62 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the global model with additional metadata (if any)
         """
+        self._check_and_initialize_s3()
         if "_client_id" in kwargs:
             client_id = str(kwargs["_client_id"])
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
+        if self.use_s3bucket:
+            local_model_key = (
+                f"{self.experiment_id}_{str(uuid.uuid4())}_server_state_{client_id}"
+            )
+            local_model_url = CloudStorage.presign_upload_object(
+                local_model_key, register_for_clean=True
+            )
+            kwargs["model_key"] = local_model_key
+            kwargs["model_url"] = local_model_url
+            kwargs["_use_s3"] = True
         meta_data = yaml.dump(kwargs)
         request = GetGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
         )
-        byte_received = b""
-        for byte in self.stub.GetGlobalModel(request, timeout=3600):
-            byte_received += byte.data_bytes
+        # Collect byte chunks efficiently
+        data_chunks = []
+        chunk_count = 0
+        for byte_chunk in self.stub.GetGlobalModel(request, timeout=3600):
+            data_chunks.append(byte_chunk.data_bytes)
+            chunk_count += 1
+            # Periodic garbage collection for large models
+            if self.optimize_memory and chunk_count % 100 == 0:
+                gc.collect()
+
+        # Efficiently concatenate and parse
+        byte_received = efficient_bytearray_concatenation(
+            data_chunks, optimize_memory=self.optimize_memory
+        )
         response = GetGlobalModelRespone()
         response.ParseFromString(byte_received)
+
+        if self.optimize_memory:
+            optimize_memory_cleanup(data_chunks, byte_received, force_gc=True)
+            del data_chunks, byte_received
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
-        model = deserialize_model(response.global_model)
+
+        # Memory optimization: Use optimized model deserialization
+        if self.optimize_memory:
+            model = self._deserialize_model_optimized(response.global_model)
+        else:
+            model = deserialize_model(response.global_model)
+
         if isinstance(model, Proxy):
             model = extract(model)
         if isinstance(model, dict) and "model_drive_path" in model.keys():
             model = self.colab_connector.load_model(model["model_drive_path"])
+        if self.use_s3bucket:
+            model = extract_model_from_s3(client_id, self.experiment_id, "grpc", model)
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -145,6 +201,7 @@ class GRPCClientCommunicator:
         :param kwargs: additional metadata to be sent to the server
         :return: the updated global model with additional metadata. Specifically, `meta_data["status"]` is either "RUNNING" or "DONE".
         """
+        self._check_and_initialize_s3()
         if self.use_proxystore:
             local_model = self.proxystore.proxy(local_model)
             kwargs["_use_proxystore"] = True
@@ -158,34 +215,91 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
+        if self.use_s3bucket:
+            local_model = send_model_by_s3(
+                self.experiment_id, "grpc", local_model, client_id
+            )
+            local_model_key = (
+                f"{self.experiment_id}_{str(uuid.uuid4())}_server_state_{client_id}"
+            )
+            local_model_url = CloudStorage.presign_upload_object(
+                local_model_key, register_for_clean=True
+            )
+            kwargs["model_key"] = local_model_key
+            kwargs["model_url"] = local_model_url
+            kwargs["_use_s3"] = True
         meta_data = yaml.dump(kwargs)
-        request = UpdateGlobalModelRequest(
-            header=ClientHeader(client_id=client_id),
-            local_model=(
+
+        # Memory optimization: Use optimized model serialization
+        if self.optimize_memory:
+            if isinstance(local_model, Proxy) or (not isinstance(local_model, bytes)):
+                local_model_serialized = self._serialize_model_optimized(local_model)
+                # Clear original model from memory
+                del local_model
+                gc.collect()
+            else:
+                local_model_serialized = local_model
+        else:
+            local_model_serialized = (
                 serialize_model(local_model)
                 if (
                     isinstance(local_model, Proxy)
                     or (not isinstance(local_model, bytes))
                 )
                 else local_model
-            ),
+            )
+
+        request = UpdateGlobalModelRequest(
+            header=ClientHeader(client_id=client_id),
+            local_model=local_model_serialized,
             meta_data=meta_data,
         )
-        byte_received = b""
-        for byte in self.stub.UpdateGlobalModel(
-            proto_to_databuffer(request, max_message_size=self.max_message_size),
-            timeout=3600,
-        ):
-            byte_received += byte.data_bytes
-        response = UpdateGlobalModelResponse()
-        response.ParseFromString(byte_received)
+        # Memory optimization: Use optimized streaming and response handling
+        if self.optimize_memory:
+            # Use optimized streaming for request
+            request_generator = self._proto_to_databuffer_optimized(
+                request, max_message_size=self.max_message_size
+            )
+            # Use bytearray for efficient response assembly
+            byte_received = bytearray()
+            chunk_count = 0
+            for byte_chunk in self.stub.UpdateGlobalModel(
+                request_generator, timeout=3600
+            ):
+                byte_received.extend(byte_chunk.data_bytes)
+                chunk_count += 1
+                # Periodic garbage collection
+                if chunk_count % 100 == 0:
+                    gc.collect()
+            response = UpdateGlobalModelResponse()
+            response.ParseFromString(bytes(byte_received))
+            # Clear response bytes immediately
+            del byte_received
+            gc.collect()
+        else:
+            byte_received = b""
+            for byte_chunk in self.stub.UpdateGlobalModel(
+                proto_to_databuffer(request, max_message_size=self.max_message_size),
+                timeout=3600,
+            ):
+                byte_received += byte_chunk.data_bytes
+            response = UpdateGlobalModelResponse()
+            response.ParseFromString(byte_received)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
-        model = deserialize_model(response.global_model)
+
+        # Memory optimization: Use optimized model deserialization
+        if self.optimize_memory:
+            model = self._deserialize_model_optimized(response.global_model)
+        else:
+            model = deserialize_model(response.global_model)
+
         if isinstance(model, Proxy):
             model = extract(model)
         if isinstance(model, dict) and "model_drive_path" in model.keys():
             model = self.colab_connector.load_model(model["model_drive_path"])
+        if self.use_s3bucket:
+            model = extract_model_from_s3(client_id, self.experiment_id, "grpc", model)
         meta_data = deserialize_yaml(
             response.meta_data,
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
@@ -235,6 +349,11 @@ class GRPCClientCommunicator:
 
             if self.colab_connector is not None:
                 self.colab_connector.cleanup()
+
+            if self.use_s3bucket:
+                CloudStorage.clean_up()
+                if self.logger is not None:
+                    self.logger.info("S3 bucket cleaned up.")
 
         if len(response.results) == 0:
             return {}
@@ -286,3 +405,78 @@ class GRPCClientCommunicator:
                     "model_path", "/content/drive/MyDrive/APPFL"
                 )
             )
+
+    def _check_and_initialize_s3(self, experiment_id=None):
+        if self._s3_initalized:
+            return
+        self.experiment_id = (
+            experiment_id
+            if experiment_id is not None
+            else datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        )
+        self._s3_initalized = True
+        # check if s3 enable
+        self.use_s3bucket = False
+        s3_bucket = None
+        if (
+            "s3_configs" in self.kwargs
+            and "enable_s3" in self.kwargs["s3_configs"]
+            and self.kwargs["s3_configs"]["enable_s3"]
+        ):
+            self.use_s3bucket = True
+            s3_bucket = self.kwargs["s3_configs"].get("s3_bucket", None)
+            self.use_s3bucket = self.use_s3bucket and s3_bucket is not None
+        if self.use_s3bucket:
+            if self.logger is not None:
+                self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
+            s3_creds_file = self.kwargs["s3_configs"].get("s3_creds_file", None)
+            s3_temp_dir_default = str(
+                pathlib.Path.home() / ".appfl" / "grpc" / "server" / self.experiment_id
+            )
+            s3_temp_dir = self.kwargs["s3_configs"].get(
+                "s3_temp_dir", s3_temp_dir_default
+            )
+            if not os.path.exists(s3_temp_dir):
+                pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
+            CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
+
+    def _serialize_model_optimized(self, model):
+        """Memory-efficient model serialization."""
+        with io.BytesIO() as buffer:
+            torch.save(model, buffer)
+            serialized_data = buffer.getvalue()
+        gc.collect()
+        return serialized_data
+
+    def _deserialize_model_optimized(self, model_bytes):
+        """Memory-efficient model deserialization."""
+        with io.BytesIO(model_bytes) as buffer:
+            model = torch.load(
+                buffer, map_location="cpu"
+            )  # Load to CPU first for memory efficiency
+        gc.collect()
+        return model
+
+    def _proto_to_databuffer_optimized(self, proto, max_message_size=(2 * 1024 * 1024)):
+        """Memory-optimized streaming with garbage collection."""
+        from .grpc_communicator_pb2 import DataBuffer
+
+        max_message_size = int(0.9 * max_message_size)
+        data_bytes = proto.SerializeToString()
+        data_bytes_size = len(data_bytes)
+        message_size = min(max_message_size, data_bytes_size)
+
+        chunk_count = 0
+        for i in range(0, data_bytes_size, message_size):
+            chunk = data_bytes[i : i + message_size]
+            msg = DataBuffer(data_bytes=chunk)
+            yield msg
+
+            chunk_count += 1
+            # Periodic garbage collection for large requests
+            if chunk_count % 50 == 0:
+                gc.collect()
+
+        # Final cleanup
+        del data_bytes
+        gc.collect()

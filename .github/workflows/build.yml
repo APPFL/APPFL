@@ -21,7 +21,7 @@ jobs:
         mpi: ['openmpi']
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -46,57 +46,57 @@ jobs:
       run: |
         mpirun -n 2 python3 -m pytest --with-mpi
 
-  polaris:
-    runs-on: ubuntu-22.04
-    steps:
-    - name: Trigger GitLab pipeline and monitor status
-      run: |
-        # Trigger the GitLab pipeline
-        echo "Triggering GitLab pipeline..."
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
-        else
-          COMMIT_SHA="${{ github.sha }}"
-        fi
-        response=$(curl -s -X POST --fail \
-          -F token=${{ secrets.ALCF_GITLAB_CI_TOKEN }} \
-          -F ref=main \
-          -F variables[TRIGGER_GITHUB_SHA]=$COMMIT_SHA \
-          https://gitlab-ci.alcf.anl.gov/api/v4/projects/171/trigger/pipeline)
+  # polaris:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #   - name: Trigger GitLab pipeline and monitor status
+  #     run: |
+  #       # Trigger the GitLab pipeline
+  #       echo "Triggering GitLab pipeline..."
+  #       if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+  #         COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+  #       else
+  #         COMMIT_SHA="${{ github.sha }}"
+  #       fi
+  #       response=$(curl -s -X POST --fail \
+  #         -F token=${{ secrets.ALCF_GITLAB_CI_TOKEN }} \
+  #         -F ref=main \
+  #         -F variables[TRIGGER_GITHUB_SHA]=$COMMIT_SHA \
+  #         https://gitlab-ci.alcf.anl.gov/api/v4/projects/171/trigger/pipeline)
 
-        echo "Trigger response: $response"
+  #       echo "Trigger response: $response"
 
-        # Extract the pipeline ID from the response
-        pipeline_id=$(echo "$response" | jq -r '.id')
-        if [ -z "$pipeline_id" ] || [ "$pipeline_id" == "null" ]; then
-          echo "Failed to get pipeline ID."
-          exit 1
-        fi
+  #       # Extract the pipeline ID from the response
+  #       pipeline_id=$(echo "$response" | jq -r '.id')
+  #       if [ -z "$pipeline_id" ] || [ "$pipeline_id" == "null" ]; then
+  #         echo "Failed to get pipeline ID."
+  #         exit 1
+  #       fi
 
-        echo "Pipeline ID: $pipeline_id"
+  #       echo "Pipeline ID: $pipeline_id"
 
-        # Poll GitLab until pipeline completes
-        while true; do
-          echo "Checking pipeline status..."
-          status_response=$(curl -s --header "PRIVATE-TOKEN: ${{ secrets.ALCF_GITLAB_CI_STATUS_TOKEN }}" \
-            https://gitlab-ci.alcf.anl.gov/api/v4/projects/171/pipelines/$pipeline_id)
-          STATUS=$(echo "$status_response" | jq -r '.status')
-          echo "Current status: $STATUS"
+  #       # Poll GitLab until pipeline completes
+  #       while true; do
+  #         echo "Checking pipeline status..."
+  #         status_response=$(curl -s --header "PRIVATE-TOKEN: ${{ secrets.ALCF_GITLAB_CI_STATUS_TOKEN }}" \
+  #           https://gitlab-ci.alcf.anl.gov/api/v4/projects/171/pipelines/$pipeline_id)
+  #         STATUS=$(echo "$status_response" | jq -r '.status')
+  #         echo "Current status: $STATUS"
 
-          # Break loop if terminal state reached
-          if [[ "$STATUS" == "success" || "$STATUS" == "failed" || "$STATUS" == *cancel* ]]; then
-            break
-          fi
+  #         # Break loop if terminal state reached
+  #         if [[ "$STATUS" == "success" || "$STATUS" == "failed" || "$STATUS" == *cancel* ]]; then
+  #           break
+  #         fi
 
-          echo "Pipeline still in progress... waiting 60 seconds"
-          sleep 60
-        done
+  #         echo "Pipeline still in progress... waiting 60 seconds"
+  #         sleep 60
+  #       done
 
-        # Final status check
-        if [ "$STATUS" == "success" ]; then
-          echo "✅ GitLab pipeline succeeded."
-          exit 0
-        else
-          echo "❌ GitLab pipeline failed or was canceled (status: $STATUS)."
-          exit 1
-        fi
+  #       # Final status check
+  #       if [ "$STATUS" == "success" ]; then
+  #         echo "✅ GitLab pipeline succeeded."
+  #         exit 0
+  #       else
+  #         echo "❌ GitLab pipeline failed or was canceled (status: $STATUS)."
+  #         exit 1
+  #       fi

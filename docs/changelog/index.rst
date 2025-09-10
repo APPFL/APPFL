@@ -1,6 +1,31 @@
 Changelog
 =========
 
+appfl v1.7.0
+------------
+
+- Optimize the memory usage for FL server, FL client, and different communicators (experimental).
+- Add example scripts and documentations for scaling test for federated learning using APPFL among multiple nodes and GPUs.
+- Fix some minor bugs and typos.
+
+
+appfl v1.6.1
+------------
+
+- Add documentation for CADRE (Customizable Assurance of Data Readiness) modules
+- Add tutorials for running APPFL on FLamby datasets, both on AWS and HPCs
+- Add tutorials for Globus-based authentication
+
+appfl v1.5.0
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add CADRE module to APPFL for the assurance of AI data readiness before FL training.
+- Support running APPFL tutorials on AWS SageMaker.
+- Integrate APPFL github workflow with ALCF Gitlab CI for testing on Polaris with GPUs.
+
 appfl v1.4.1
 ------------
 

@@ -67,4 +67,6 @@ Collaboration Institutions
         <img src="../_static/broad.png" alt="Broad Institute">
         <img src="../_static/uw.png" alt="University of Washington">
         <img src="../_static/monai.png" alt="MONAI">
+        <img src="../_static/sandia.png" alt="Sandia National Laboratories">
+        <img src="../_static/ornl.png" alt="Oak Ridge National Laboratory">
     </div>

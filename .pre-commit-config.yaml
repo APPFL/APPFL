@@ -1,7 +1,7 @@
 exclude: ^.*_pb2(_grpc)?\.py$  # Global exclude for all hooks
 repos:
   - repo: 'https://github.com/pre-commit/pre-commit-hooks'
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: mixed-line-ending
       - id: trailing-whitespace
@@ -12,7 +12,7 @@ repos:
       - id: check-yaml
       - id: check-merge-conflict
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.1
+    rev: v3.20.0
     hooks:
       - id: pyupgrade
         args: ["--py38-plus"]
@@ -20,8 +20,9 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
+        exclude: 'examples/notebook_tutorials/.*\.ipynb'
   - repo: 'https://github.com/charliermarsh/ruff-pre-commit'
-    rev: v0.11.5
+    rev: v0.12.11
     hooks:
       - id: ruff
         args:

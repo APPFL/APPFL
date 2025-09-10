@@ -1,7 +1,9 @@
+import gc
 import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import FedAsyncAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
+from appfl.misc.memory_utils import clone_state_dict_optimized, optimize_memory_cleanup
 
 
 class FedBuffAggregator(FedAsyncAggregator):
@@ -26,22 +28,47 @@ class FedBuffAggregator(FedAsyncAggregator):
         local_model: Union[Dict, OrderedDict],
         **kwargs,
     ) -> Dict:
+        # Memory optimization: Efficient global state initialization
         if self.global_state is None:
             if self.model is not None:
                 try:
-                    self.global_state = {
-                        name: self.model.state_dict()[name] for name in local_model
-                    }
+                    if self.optimize_memory:
+                        with torch.no_grad():
+                            self.global_state = {
+                                name: self.model.state_dict()[name]
+                                for name in local_model
+                            }
+                        gc.collect()
+                    else:
+                        self.global_state = {
+                            name: self.model.state_dict()[name] for name in local_model
+                        }
                 except:  # noqa E722
+                    if self.optimize_memory:
+                        with torch.no_grad():
+                            self.global_state = {
+                                name: tensor.detach().clone()
+                                for name, tensor in local_model.items()
+                            }
+                        gc.collect()
+                    else:
+                        self.global_state = {
+                            name: tensor.detach().clone()
+                            for name, tensor in local_model.items()
+                        }
+            else:
+                if self.optimize_memory:
+                    with torch.no_grad():
+                        self.global_state = {
+                            name: tensor.detach().clone()
+                            for name, tensor in local_model.items()
+                        }
+                    gc.collect()
+                else:
                     self.global_state = {
                         name: tensor.detach().clone()
                         for name, tensor in local_model.items()
                     }
-            else:
-                self.global_state = {
-                    name: tensor.detach().clone()
-                    for name, tensor in local_model.items()
-                }
 
         self.compute_steps(client_id, local_model)
         self.buff_size += 1
@@ -66,8 +93,16 @@ class FedBuffAggregator(FedAsyncAggregator):
             if self.model is not None:
                 self.model.load_state_dict(self.global_state, strict=False)
 
+            # Memory optimization: Clean up after buffer flush
+            if self.optimize_memory:
+                optimize_memory_cleanup(force_gc=True)
+
         self.client_step[client_id] = self.global_step
-        return {k: v.clone() for k, v in self.global_state.items()}
+        # Memory optimization: Use efficient state dict cloning for return
+        if self.optimize_memory:
+            return clone_state_dict_optimized(self.global_state)
+        else:
+            return {k: v.clone() for k, v in self.global_state.items()}
 
     def compute_steps(
         self,
@@ -77,9 +112,16 @@ class FedBuffAggregator(FedAsyncAggregator):
         """
         Compute changes to the global model after the aggregation.
         """
+        # Memory optimization: Efficient step initialization at buffer start
         if self.buff_size == 0:
-            for name in self.global_state:
-                self.step[name] = torch.zeros_like(self.global_state[name])
+            if self.optimize_memory:
+                with torch.no_grad():
+                    for name in self.global_state:
+                        self.step[name] = torch.zeros_like(self.global_state[name])
+                gc.collect()
+            else:
+                for name in self.global_state:
+                    self.step[name] = torch.zeros_like(self.global_state[name])
 
         if client_id not in self.client_step:
             self.client_step[client_id] = 0

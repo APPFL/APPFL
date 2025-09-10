@@ -1,4 +1,5 @@
 import os
+import gc
 import uuid
 import torch
 import wandb
@@ -71,6 +72,8 @@ class ClientAgent:
         self, client_agent_config: ClientAgentConfig = ClientAgentConfig(), **kwargs
     ) -> None:
         self.client_agent_config = client_agent_config
+        # Check for optimize_memory in client_agent_config, default to True
+        self.optimize_memory = getattr(client_agent_config, "optimize_memory", True)
         self._create_logger()
         self._init_wandb()
         self._load_model()
@@ -119,6 +122,13 @@ class ClientAgent:
         """Train the model locally."""
         self.trainer.train(**kwargs)
 
+        # Memory optimization: Garbage collection after training
+        if self.optimize_memory:
+            gc.collect()
+            # Clear CUDA cache if available
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
     def get_parameters(
         self,
     ) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
@@ -130,11 +140,23 @@ class ClientAgent:
             metadata = None
         if self.enable_compression:
             params = self.compressor.compress_model(params)
+            # Memory optimization: Garbage collection after compression
+            if self.optimize_memory:
+                gc.collect()
+
+        # Memory optimization: Final cleanup
+        if self.optimize_memory:
+            gc.collect()
+
         return params if metadata is None else (params, metadata)
 
     def load_parameters(self, params) -> None:
         """Load parameters from the server."""
         self.trainer.load_parameters(params)
+
+        # Memory optimization: Garbage collection after parameter loading
+        if self.optimize_memory:
+            gc.collect()
 
     def save_checkpoint(self, checkpoint_path: Optional[str] = None) -> None:
         """Save the model to a checkpoint file."""
@@ -162,7 +184,9 @@ class ClientAgent:
         """
         Generate data readiness report based on the configuration provided by the server.
         """
-        if hasattr(client_config.data_readiness_configs, "dr_metrics"):
+        if hasattr(client_config, "data_readiness_configs") and hasattr(
+            client_config.data_readiness_configs, "dr_metrics"
+        ):
             results = {}
             plot_results = {"plots": {}}
             to_combine_results = {"to_combine": {}}
@@ -171,8 +195,10 @@ class ClientAgent:
             if hasattr(self.train_dataset, "data_label"):
                 data_labels = self.train_dataset.data_label.tolist()
             else:
-                data_labels = [label.item() for _, label in self.train_dataset]
-                # data_labels = [label for _, label in self.train_dataset]
+                try:
+                    data_labels = [label.item() for _, label in self.train_dataset]
+                except:  # noqa E722
+                    data_labels = [label for _, label in self.train_dataset]
 
             if hasattr(self.train_dataset, "data_input"):
                 data_input = self.train_dataset.data_input
@@ -180,6 +206,20 @@ class ClientAgent:
                 data_input = torch.stack(
                     [input_data for input_data, _ in self.train_dataset]
                 )
+
+            if hasattr(
+                client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
+            ) and hasattr(
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+                "cadremodule_kwargs",
+            ):
+                cadremodule_kwargs = getattr(
+                    client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+                    "cadremodule_kwargs",
+                    {},
+                )
+            else:
+                cadremodule_kwargs = {}
 
             # data_input, data_labels = balance_data(data_input, data_labels)
             # data_input, explained_variance = apply_pca(data_input)
@@ -270,9 +310,78 @@ class ClientAgent:
 
             results.update(to_combine_results)
 
+            # Handle CADRE module metrics
+            if hasattr(
+                client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
+            ) and hasattr(
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+                "cadremodule_path",
+            ):
+                self.specified_metrics = create_instance_from_file(
+                    client_config.data_readiness_configs.dr_metrics.cadremodule_configs.cadremodule_path,
+                    client_config.data_readiness_configs.dr_metrics.cadremodule_configs.get(
+                        "cadremodule_name", None
+                    ),
+                    self.train_dataset,
+                )
+                results["specified_metrics"] = dict(
+                    [
+                        next(
+                            iter(
+                                self.specified_metrics.metric(
+                                    **cadremodule_kwargs
+                                ).items()
+                            )
+                        )
+                    ]
+                )
+
             return results
         else:
             return "Data readiness metrics not available in configuration"
+
+    def adapt_data(self, client_config):
+        """
+        Modify the data based on the configuration provided by the daragent configs
+        """
+
+        if hasattr(
+            client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
+        ) and hasattr(
+            client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+            "cadremodule_path",
+        ):
+            self.specified_metrics = create_instance_from_file(
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs.cadremodule_path,
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs.get(
+                    "cadremodule_name", None
+                ),
+                self.train_dataset,
+            )
+
+        if hasattr(
+            client_config.data_readiness_configs.dr_metrics, "cadremodule_configs"
+        ) and hasattr(
+            client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+            "cadremodule_kwargs",
+        ):
+            cadremodule_kwargs = getattr(
+                client_config.data_readiness_configs.dr_metrics.cadremodule_configs,
+                "cadremodule_kwargs",
+                {},
+            )
+        else:
+            cadremodule_kwargs = {}
+
+        ai_ready_data = self.specified_metrics.remedy(
+            self.specified_metrics.metric(**cadremodule_kwargs),
+            self.logger,
+            **cadremodule_kwargs,
+        )
+        self.train_dataset = ai_ready_data["ai_ready_dataset"]
+        metadata = ai_ready_data["metadata"]
+
+        return metadata
 
     def _create_logger(self):
         """

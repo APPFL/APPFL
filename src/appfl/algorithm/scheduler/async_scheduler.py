@@ -3,6 +3,7 @@ from omegaconf import DictConfig
 from appfl.algorithm.scheduler import BaseScheduler
 from appfl.algorithm.aggregator import BaseAggregator
 from typing import Any, Union, Dict, OrderedDict, Tuple
+from appfl.misc.memory_utils import optimize_memory_cleanup
 
 
 class AsyncScheduler(BaseScheduler):
@@ -12,6 +13,9 @@ class AsyncScheduler(BaseScheduler):
         super().__init__(scheduler_configs, aggregator, logger)
         self._num_global_epochs = 0
         self._access_lock = threading.Lock()
+
+        # Check for optimize_memory in scheduler_configs, default to True
+        self.optimize_memory = getattr(scheduler_configs, "optimize_memory", True)
 
     def schedule(
         self,
@@ -30,6 +34,11 @@ class AsyncScheduler(BaseScheduler):
         with self._access_lock:
             global_model = self.aggregator.aggregate(client_id, local_model, **kwargs)
             self._num_global_epochs += 1
+
+            # Memory optimization: Clean up after aggregation
+            if self.optimize_memory:
+                optimize_memory_cleanup(local_model, force_gc=True)
+
         return global_model
 
     def get_num_global_epochs(self) -> int:
