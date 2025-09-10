@@ -19,10 +19,7 @@ python generate_test_data.py
 
 ### 2. Build Client-Specific Images
 ```bash
-# Make script executable
 chmod +x build_client_images.sh
-
-# Build images with embedded data
 ./build_client_images.sh
 ```
 
@@ -67,46 +64,7 @@ FL Client: Different datasets per client
 
 ### Run with Data-Embedded Images
 ```bash
-cd ../../../tes
-python run.py --client_config ./resources/config_tes/simple_net_embedded/clients.yaml
+cd examples
+python tes/run.py --server_config ./resources/config_tes/simple_net_embedded/server.yaml \
+  --client_config ./resources/config_tes/simple_net_embedded/clients.yaml
 ```
-
-### Verify Data Loading
-```bash
-# Check what data is in each image
-docker run --rm appfl/client1:data-embedded ls -la /data
-docker run --rm appfl/client2:data-embedded ls -la /data
-
-# Check file contents
-docker run --rm appfl/client1:data-embedded head /data/metadata.json
-docker run --rm appfl/client2:data-embedded head /data/metadata.json
-```
-
-## Expected Results
-
-- **TESClient1**: Loads 100 samples from embedded client_0 data
-- **TESClient2**: Loads 150 samples from embedded client_1 data  
-- **Different sample sizes**: Server should receive different `sample_size` values
-- **No volume mounting errors**: Images contain data, no runtime mounting needed
-
-## Advantages
-
-✅ **Works with standard TES/Funnel** - no volume mounting needed  
-✅ **Data isolation** - each client has only their data  
-✅ **Portable** - images can run anywhere with data included  
-✅ **Secure** - data is read-only and isolated per client  
-
-## Disadvantages  
-
-❌ **Larger images** - data increases image size  
-❌ **Build-time dependency** - need data available during build  
-❌ **Less flexible** - changing data requires rebuilding images  
-❌ **Data duplication** - data exists in both host and image  
-
-## Production Considerations
-
-For production federated learning:
-- **Sensitive data**: Ensure proper image security and access controls
-- **Large datasets**: Consider hybrid approaches (small data embedded, large data via network)
-- **Dynamic data**: Use this for static datasets, alternative approaches for changing data
-- **Image management**: Implement proper versioning and cleanup of client images
