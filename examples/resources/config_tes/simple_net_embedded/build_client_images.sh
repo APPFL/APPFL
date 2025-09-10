@@ -34,12 +34,12 @@ cp -r /tmp/tes-data ./
 
 # Build client 1 image
 echo -e "${YELLOW}Building appfl/client1:data-embedded...${NC}"
-docker build -f Dockerfile.client1 -t appfl/client1:data-embedded . \
+docker build -f Dockerfile.client1 -t appfl/client1:data-embedded ../../../tes \
     --build-arg CLIENT_ID=TESClient1
 
 # Build client 2 image  
 echo -e "${YELLOW}Building appfl/client2:data-embedded...${NC}"
-docker build -f Dockerfile.client2 -t appfl/client2:data-embedded . \
+docker build -f Dockerfile.client2 -t appfl/client2:data-embedded ../../../tes \
     --build-arg CLIENT_ID=TESClient2
 
 # Clean up copied data from build context

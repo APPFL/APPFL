@@ -16,12 +16,12 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--server_config",
     type=str,
-    default="./tes/server.yaml",
+    default="./resources/config_tes/simple_net/server.yaml",
 )
 argparser.add_argument(
     "--client_config", 
     type=str, 
-    default="./tes/clients.yaml"
+    default="./resources/config_tes/simple_net/clients.yaml"
 )
 argparser.add_argument("--auth_token", required=False)
 args = argparser.parse_args()

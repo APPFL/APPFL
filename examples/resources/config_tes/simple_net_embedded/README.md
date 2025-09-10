@@ -13,7 +13,7 @@ Instead of mounting volumes at runtime, we:
 
 ### 1. Generate Test Datasets
 ```bash
-cd examples/tes
+cd examples/resources/config_tes/simple_net_embedded
 python generate_test_data.py
 ```
 
@@ -67,7 +67,8 @@ FL Client: Different datasets per client
 
 ### Run with Data-Embedded Images
 ```bash
-python run.py --client_config ./tes/clients_data_embedded.yaml
+cd ../../../tes
+python run.py --client_config ./resources/config_tes/simple_net_embedded/clients.yaml
 ```
 
 ### Verify Data Loading
