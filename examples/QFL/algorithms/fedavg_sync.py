@@ -3,15 +3,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from omegaconf import OmegaConf
 from appfl.algorithm.aggregator.fedavg_aggregator import FedAvgAggregator
 from .base import BaseFLAlgorithm
-from utils.state_ops import (
-    sd_from_tuple, state_sub, state_add, set_server_params
-)
+from utils.state_ops import sd_from_tuple, state_sub, state_add, set_server_params
 from utils.delays import make_queue_sampler
 from utils.io_logging import init_logs, append_round_row, append_applied_rows, log_line
 from builders.appfl_builders import ensure_client_ready
 
-class FedAvgSync(BaseFLAlgorithm):
 
+class FedAvgSync(BaseFLAlgorithm):
     def run(self):
         cfg = self.cfg
         outdir, csv_round, csv_applied, log_path = init_logs(cfg)
@@ -28,7 +26,9 @@ class FedAvgSync(BaseFLAlgorithm):
                 sizes[cid] = 1
 
         total = sum(sizes.values())
-        weight_mode = str(getattr(cfg.aggregation, "client_weight_mode", "equal")).lower()
+        weight_mode = str(
+            getattr(cfg.aggregation, "client_weight_mode", "equal")
+        ).lower()
 
         def client_weight(cid: str) -> float:
             if weight_mode == "data_size" and total > 0:
@@ -67,7 +67,9 @@ class FedAvgSync(BaseFLAlgorithm):
         client_weights_mode = "sample_size" if (weight_mode == "data_size") else "equal"
         appfl_agg = FedAvgAggregator(
             model=None,
-            aggregator_configs=OmegaConf.create({"client_weights_mode": client_weights_mode}),
+            aggregator_configs=OmegaConf.create(
+                {"client_weights_mode": client_weights_mode}
+            ),
             logger=None,
         )
         if client_weights_mode == "sample_size":
@@ -85,7 +87,6 @@ class FedAvgSync(BaseFLAlgorithm):
             slow_factor: float,
             q_recv: float,
         ):
-
             # Configure client
             c.load_parameters(g0_state)
             c.trainer.train_configs.mode = "step"
@@ -123,7 +124,7 @@ class FedAvgSync(BaseFLAlgorithm):
             delta_k = state_sub(w_k, g0_state)
 
             # Timings
-            dt_total = arrival_ts - t0   
+            dt_total = arrival_ts - t0
             dt_compute = dt_train + dt_slow
 
             return {
@@ -157,7 +158,10 @@ class FedAvgSync(BaseFLAlgorithm):
                     futs.append(
                         ex.submit(
                             _run_one,
-                            cid, i, c, g0,
+                            cid,
+                            i,
+                            c,
+                            g0,
                             steps_map[cid],
                             eta_base,
                             slowdown[i],
@@ -172,7 +176,9 @@ class FedAvgSync(BaseFLAlgorithm):
 
             # ------------------ aggregate via APPFL ------------------
             # Build local model states (w_k = g0 + delta_k)
-            local_models = {res["cid"]: state_add(g0, res["delta"], 1.0) for res in results}
+            local_models = {
+                res["cid"]: state_add(g0, res["delta"], 1.0) for res in results
+            }
             new_global = appfl_agg.aggregate(local_models)
 
             # Update server
@@ -185,12 +191,21 @@ class FedAvgSync(BaseFLAlgorithm):
                 append_round_row(
                     csv_round,
                     [
-                        r, cid, 1,                              # round, cid, admitted
-                        round(res["q_recv"], 6), "", "",        # q (recv), spare, spare
-                        "", int(steps_map[cid]), "",            # spare, steps, spare
-                        "", round(eta_base, 8),                 # spare, lr
-                        round(arrivals[cid] - B_r, 6),          # arrival offset
-                        "", "", ""                              # spare
+                        r,
+                        cid,
+                        1,  # round, cid, admitted
+                        round(res["q_recv"], 6),
+                        "",
+                        "",  # q (recv), spare, spare
+                        "",
+                        int(steps_map[cid]),
+                        "",  # spare, steps, spare
+                        "",
+                        round(eta_base, 8),  # spare, lr
+                        round(arrivals[cid] - B_r, 6),  # arrival offset
+                        "",
+                        "",
+                        "",  # spare
                     ],
                 )
 
@@ -202,7 +217,9 @@ class FedAvgSync(BaseFLAlgorithm):
             rows = []
             for w, res in zip(norm_weights, results):
                 cid = res["cid"]
-                rows.append([r, cid, r, 0, round(w, 8), round(client_weight(cid), 8), 0.0])
+                rows.append(
+                    [r, cid, r, 0, round(w, 8), round(client_weight(cid), 8), 0.0]
+                )
             append_applied_rows(csv_applied, rows)
 
             # ------------------ quick validation on Client1 ------------------
@@ -217,15 +234,33 @@ class FedAvgSync(BaseFLAlgorithm):
             round_wall = time.time() - t_round
             append_round_row(
                 csv_round,
-                [r, "Client1", "", "", "", "", "", "", "", "", "", "", round(round_wall, 6), float(vloss), float(vacc)],
+                [
+                    r,
+                    "Client1",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    round(round_wall, 6),
+                    float(vloss),
+                    float(vacc),
+                ],
             )
             log_line(
                 log_path,
-                f"[FedAvg Round {r}] steps={steps_map} wall={round_wall:.2f}s val: loss={vloss:.4f} acc={vacc:.4f}"
+                f"[FedAvg Round {r}] steps={steps_map} wall={round_wall:.2f}s val: loss={vloss:.4f} acc={vacc:.4f}",
             )
 
         # ------------------ save final ------------------
-        import os, torch
+        import os
+        import torch
+
         final_path = os.path.join(str(cfg.logging.output_dir), "final_global.pt")
         torch.save(sd_from_tuple(server.get_parameters(serial_run=True)), final_path)
         print("Saved:", final_path)

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class BaseFLAlgorithm(ABC):
     def __init__(self, cfg, server, clients, client_ids, override_steps=None):
         self.cfg = cfg
@@ -9,5 +10,4 @@ class BaseFLAlgorithm(ABC):
         self.override_steps = override_steps
 
     @abstractmethod
-    def run(self):
-        ...
+    def run(self): ...

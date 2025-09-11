@@ -39,7 +39,7 @@ algo:
 
 # Your existing case-2 controls (kept)
 case2:
-  Tsync: 10.0         
+  Tsync: 10.0
   q_init: 0.0
   quantile: 0.6
   alpha: 0.2           # admission slack

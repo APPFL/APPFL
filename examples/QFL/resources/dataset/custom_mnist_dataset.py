@@ -9,8 +9,12 @@ from appfl.misc.data import (
     dirichlet_noniid_partition,
 )
 
+
 def get_custom_mnist(
-    num_clients: int, client_id: int, partition_strategy: str = "dirichlet_noniid", **kwargs
+    num_clients: int,
+    client_id: int,
+    partition_strategy: str = "dirichlet_noniid",
+    **kwargs,
 ):
     """
     Return the MNIST dataset for a given client with custom partitioning.
@@ -19,11 +23,11 @@ def get_custom_mnist(
     :param partition_strategy: data partitioning strategy
     """
     # Read reproducibility seed if provided
-    seed = kwargs.get('seed', 42)
+    seed = kwargs.get("seed", 42)
 
     # Get the download directory for dataset
     dir = os.getcwd() + "/datasets/RawData"
-    
+
     # Ensure directory exists
     os.makedirs(dir, exist_ok=True)
 
@@ -55,7 +59,7 @@ def get_custom_mnist(
         train_datasets = class_noniid_partition(
             train_data_raw,
             num_clients,
-            classes_per_client=kwargs.get('classes_per_client', 2),
+            classes_per_client=kwargs.get("classes_per_client", 2),
             seed=seed,
         )
     elif partition_strategy == "dirichlet_noniid":
@@ -71,20 +75,22 @@ def get_custom_mnist(
         raise ValueError(f"Invalid partition strategy: {partition_strategy}")
 
     # Handle visualization if requested
-    if kwargs.get('visualization', False) and client_id == 0:
+    if kwargs.get("visualization", False) and client_id == 0:
         print(f"Dataset partitioned using {partition_strategy}")
         print(f"Number of clients: {num_clients}")
         if partition_strategy == "dirichlet_noniid":
             print(f"Dirichlet alpha: {kwargs.get('alpha', 0.1)}")
-        
+
         # Print client data distribution
         client_dataset = train_datasets[client_id]
-        if hasattr(client_dataset, 'targets'):
+        if hasattr(client_dataset, "targets"):
             targets = client_dataset.targets
         else:
             targets = [client_dataset[i][1] for i in range(len(client_dataset))]
-        
-        unique, counts = torch.unique(torch.tensor(targets), return_counts=True)
-        print(f"Client {client_id} class distribution: {dict(zip(unique.tolist(), counts.tolist()))}")
 
-    return train_datasets[client_id], test_dataset 
+        unique, counts = torch.unique(torch.tensor(targets), return_counts=True)
+        print(
+            f"Client {client_id} class distribution: {dict(zip(unique.tolist(), counts.tolist()))}"
+        )
+
+    return train_datasets[client_id], test_dataset

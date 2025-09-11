@@ -33,4 +33,3 @@ Examples:
 python main.py --config ./configs/queue_case2.yaml --algo fedavg_sync
 python main.py --config ./configs/queue_case2.yaml --algo queue_async --steps 5
 ```
-
