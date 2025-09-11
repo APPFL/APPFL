@@ -13,7 +13,9 @@ argparse.add_argument(
     default="./resources/configs/fedsb/fedsb_server_config.yaml",
 )
 argparse.add_argument(
-    "--client_config", type=str, default="./resources/configs/fedsb/fedsb_client1_config.yaml"
+    "--client_config",
+    type=str,
+    default="./resources/configs/fedsb/fedsb_client1_config.yaml",
 )
 args = argparse.parse_args()
 
@@ -23,10 +25,10 @@ size = comm.Get_size()
 num_clients = size - 1
 
 os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
-os.environ['MASTER_ADDR'] = 'x3005c0s37b0n0'  # or the hostname of rank 0
-os.environ['MASTER_PORT'] = '12355'      # ensure all processes agree on this port
-os.environ['RANK'] = str(rank)
-os.environ['WORLD_SIZE'] = str(size)
+os.environ["MASTER_ADDR"] = "x3005c0s37b0n0"  # or the hostname of rank 0
+os.environ["MASTER_PORT"] = "12355"  # ensure all processes agree on this port
+os.environ["RANK"] = str(rank)
+os.environ["WORLD_SIZE"] = str(size)
 
 if rank == 0:
     # Load and set the server configurations
@@ -52,10 +54,8 @@ else:
     # Load the configurations and initial global model
     client_config = client_communicator.get_configuration()
     client_agent.load_config(client_config)
-    
+
     client_agent.train()
     local_model, metadata = client_agent.get_parameters()
-    client_communicator.update_global_model(
-        local_model, **metadata
-    )
+    client_communicator.update_global_model(local_model, **metadata)
     client_communicator.invoke_custom_action(action="close_connection")
