@@ -1,0 +1,27 @@
+client_id: "Client1"
+
+train_configs:
+  # Device
+  device: "cuda"
+  # Logging and outputs
+  logging_output_dirname: "./output"
+  logging_output_filename: "custom_federated_result"
+
+# Local dataset
+data_configs:
+  dataset_path: "./resources/dataset/custom_mnist_dataset.py"
+  dataset_name: "get_custom_mnist"
+  dataset_kwargs:
+    num_clients: 20
+    client_id: 0
+    partition_strategy: "dirichlet_noniid"
+    alpha: 0.5
+    visualization: True
+    output_dirname: "./output"
+    output_filename: "data_visualization.pdf"
+
+comm_configs:
+  grpc_configs:
+    server_uri: localhost:50051
+    max_message_size: 1048576
+    use_ssl: False 

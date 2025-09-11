@@ -1,0 +1,77 @@
+system:
+  seed: 42
+  num_clients: 4
+  num_rounds: 50
+  gpus: "cuda:0,cuda:1,cuda:2,cuda:3"
+
+paths:
+  server_config: "./resources/configs/server_custom.yaml"
+  client_config: "./resources/configs/client_custom.yaml"
+
+logging:
+  output_dir: "./output_queue_case2"
+
+data:
+  partition: "iid"
+  alpha: 0.5
+
+# Generalized resources block so you can swap model/dataset without code edits
+resources:
+  model:
+    path: "./resources/model/simple_cnn.py"
+    name: "SimpleCNN"
+  loss:
+    path: "./resources/loss/celoss.py"
+    name: "CELoss"
+  metric:
+    path: "./resources/metric/acc.py"
+    name: "ACC"
+  dataset:
+    path: "./resources/dataset/custom_mnist_dataset.py"
+    name: "get_custom_mnist"
+
+# Algorithm selection + new toggles
+algo:
+  name: "queue_async"           # queue_async | fedavg_sync
+  broadcast_when: "next_round"  # next_round | immediate
+  # delay_mode: "sleep"        # simulate | sleep
+  validate_on_client_id: "Client1"
+
+# Your existing case-2 controls (kept)
+case2:
+  Tsync: 10.0         
+  q_init: 0.0
+  quantile: 0.6
+  alpha: 0.2           # admission slack
+  theta: 2.0           # safety buffer (sec) inside J_k
+  beta: 0.5            # EWMA smoothing for q_hat
+  warmup_steps: 10
+
+queue:
+  sim_queue: "fixed"         # off|fixed|lognormal|per_round_file
+  queue_fixed: "0.5,1.5,2.4,6"
+  queue_means: "0.3,1.5,0.8,8.5"
+  queue_sigma: 0.4
+  queue_file: ""
+  slowdown: "1.0,1.1,1.1,1.1"
+
+aggregation:
+  # staleness φ(s)
+  staleness_mode: "harmonic"     # harmonic | exp
+  staleness_gamma: 0.5
+  momentum_coeff: 0.0
+
+  # admission & runner-side aggregation
+  admission: "horizon"           # "horizon" | "all"  (kept for compatibility)
+  use_runner_agg: true
+  client_weight_mode: "equal"    # "equal" | "data_size"
+  max_staleness: 100000
+
+optim:
+  lr_base: 0.001
+  lr_clip_lo: 0.25
+  lr_clip_hi: 4.0
+
+# Optional FedAvg defaults (used if algo.name == "fedavg_sync")
+fedavg:
+  num_local_steps: 67,155,147,15
