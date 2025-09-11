@@ -60,6 +60,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         )
         self._load_proxystore(server_agent.server_agent_config)
         self._load_google_drive(server_agent.server_agent_config)
+        self._num_connected_clients = 0
+        self._total_num_clients = self.server_agent.get_num_clients()
 
     def GetConfiguration(self, request, context):
         """
@@ -69,9 +71,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :return `response.header.status`: Server status
         :return `response.configuration`: YAML serialized FL configurations
         """
+        self._num_connected_clients += 1
         try:
             self.logger.info(
-                f"Received GetConfiguration request from client {request.header.client_id}"
+                f"Received [{self._num_connected_clients}/{self._total_num_clients}] GetConfiguration request from client {request.header.client_id}"
             )
             if len(request.meta_data) == 0:
                 meta_data = {}

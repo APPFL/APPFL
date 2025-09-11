@@ -27,4 +27,5 @@ repos:
       - id: ruff
         args:
           - '--fix'
+          - '--per-file-ignores=examples/notebook_tutorials/**/*.ipynb:F821'
       - id: ruff-format
