@@ -10,6 +10,11 @@ from .fedcompass_aggregator import FedCompassAggregator
 from .iiadmm_aggregator import IIADMMAggregator
 from .iceadmm_aggregator import ICEADMMAggregator
 
+try:
+    from .fedsb_aggregator import FedSBAggregator
+except:  # noqa: E722
+    pass
+
 __all__ = [
     "BaseAggregator",
     "FedAvgAggregator",
@@ -22,4 +27,5 @@ __all__ = [
     "FedCompassAggregator",
     "IIADMMAggregator",
     "ICEADMMAggregator",
+    "FedSBAggregator",
 ]

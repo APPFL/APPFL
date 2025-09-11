@@ -8,10 +8,16 @@ try:
 except:  # noqa: E722
     pass
 
+try:
+    from .fedsb_trainer import FedSBTrainer
+except:  # noqa: E722
+    pass
+
 __all__ = [
     "BaseTrainer",
     "VanillaTrainer",
     "IIADMMTrainer",
     "ICEADMMTrainer",
     "MonaiTrainer",
+    "FedSBTrainer",
 ]
