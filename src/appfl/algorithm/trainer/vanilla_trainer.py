@@ -8,7 +8,10 @@ from torch.nn import Module
 from omegaconf import DictConfig
 from typing import Tuple, Dict, Optional, Any
 from torch.utils.data import Dataset, DataLoader
-from appfl.privacy import laplace_mechanism_output_perturb, gaussian_mechanism_output_perturb
+from appfl.privacy import (
+    laplace_mechanism_output_perturb,
+    gaussian_mechanism_output_perturb,
+)
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 from appfl.misc.utils import parse_device_str, apply_model_device
 from appfl.misc.memory_utils import (
@@ -173,18 +176,22 @@ class VanillaTrainer(BaseTrainer):
             self.model.parameters(), **self.train_configs.optim_args
         )
 
-        if self.train_configs.get("use_dp", False) and (self.train_configs.get("dp_mechanism", "none") == "opacus"):
+        if self.train_configs.get("use_dp", False) and (
+            self.train_configs.get("dp_mechanism", "none") == "opacus"
+        ):
             dp_cfg = self.train_configs.get("dp_config", {})
             noise_multiplier = dp_cfg.get("noise_multiplier", 1.0)
             max_grad_norm = dp_cfg.get("max_grad_norm", 1.0)
 
-            self.model, optimizer, self.train_dataloader, self.privacy_engine = make_private_with_opacus(
-                self.model,
-                optimizer,
-                self.train_dataloader,
-                noise_multiplier=noise_multiplier,
-                max_grad_norm=max_grad_norm,
-                device=self.train_configs.device,
+            self.model, optimizer, self.train_dataloader, self.privacy_engine = (
+                make_private_with_opacus(
+                    self.model,
+                    optimizer,
+                    self.train_dataloader,
+                    noise_multiplier=noise_multiplier,
+                    max_grad_norm=max_grad_norm,
+                    device=self.train_configs.device,
+                )
             )
 
         if self.train_configs.mode == "epoch":
@@ -248,11 +255,16 @@ class VanillaTrainer(BaseTrainer):
         else:
             start_time = time.time()
             train_loss, target_true, target_pred = 0, [], []
-            if self.train_configs.get("use_dp", False) and self.train_configs.get("dp_mechanism", "none") == "opacus":
+            if (
+                self.train_configs.get("use_dp", False)
+                and self.train_configs.get("dp_mechanism", "none") == "opacus"
+            ):
                 with BatchMemoryManager(
-                        data_loader=self.train_dataloader,
-                        max_physical_batch_size=self.train_configs.get("train_batch_size", 32),
-                        optimizer=optimizer,
+                    data_loader=self.train_dataloader,
+                    max_physical_batch_size=self.train_configs.get(
+                        "train_batch_size", 32
+                    ),
+                    optimizer=optimizer,
                 ) as memory_safe_data_loader:
                     step_count = 0
                     for data, target in memory_safe_data_loader:
@@ -332,7 +344,9 @@ class VanillaTrainer(BaseTrainer):
         self.round += 1
 
         # Differential privacy
-        if self.train_configs.get("use_dp", False) and (self.train_configs.get("dp_mechanism", "none") == "gaussian"):
+        if self.train_configs.get("use_dp", False) and (
+            self.train_configs.get("dp_mechanism", "none") == "gaussian"
+        ):
             assert hasattr(self.train_configs, "clip_value"), (
                 "Gradient clipping value must be specified"
             )
@@ -340,14 +354,16 @@ class VanillaTrainer(BaseTrainer):
                 "Privacy budget (epsilon) must be specified"
             )
             sensitivity = (
-                    2.0 * self.train_configs.clip_value * self.train_configs.optim_args.lr
+                2.0 * self.train_configs.clip_value * self.train_configs.optim_args.lr
             )
             self.model_state = gaussian_mechanism_output_perturb(
                 self.model,
                 sensitivity,
                 self.train_configs.epsilon,
             )
-        elif self.train_configs.get("use_dp", False) and (self.train_configs.get("dp_mechanism", "none") == "laplace"):
+        elif self.train_configs.get("use_dp", False) and (
+            self.train_configs.get("dp_mechanism", "none") == "laplace"
+        ):
             assert hasattr(self.train_configs, "clip_value"), (
                 "Gradient clipping value must be specified"
             )

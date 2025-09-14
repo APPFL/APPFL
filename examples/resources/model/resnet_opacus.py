@@ -37,7 +37,7 @@ class BasicBlock(nn.Module):
                     kernel_size=1,
                     stride=stride,
                     bias=False,
-                    ),
+                ),
                 nn.GroupNorm(32, self.expansion * planes),
                 # nn.BatchNorm2d(self.expansion * planes),
             )
@@ -77,7 +77,7 @@ class Bottleneck(nn.Module):
                     kernel_size=1,
                     stride=stride,
                     bias=False,
-                    ),
+                ),
                 nn.BatchNorm2d(self.expansion * planes),
             )
 
