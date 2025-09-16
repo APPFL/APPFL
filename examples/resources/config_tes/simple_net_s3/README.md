@@ -60,6 +60,6 @@ python tes/run.py --server_config ./resources/config_tes/simple_net_s3/server.ya
 ## Benefits
 
 - ✅ Works with remote TES endpoints across networks
-- ✅ Secure transfer using presigned URLs  
+- ✅ Secure transfer using presigned URLs
 - ✅ No AWS credentials needed in client containers
 - ✅ Automatic S3 cleanup after completion

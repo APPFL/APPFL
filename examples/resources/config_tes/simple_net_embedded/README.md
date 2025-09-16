@@ -5,7 +5,7 @@ This approach embeds client datasets directly into Docker images during build ti
 ## Approach
 
 Instead of mounting volumes at runtime, we:
-1. **Generate datasets** on the host filesystem  
+1. **Generate datasets** on the host filesystem
 2. **Build client-specific images** with data baked in
 3. **Use different images** for each client in TES tasks
 
@@ -44,16 +44,16 @@ ENV DATA_DIR=/data
 ```
 
 ### Runtime:
-- **TESClient1** uses `appfl/client1:data-embedded` 
+- **TESClient1** uses `appfl/client1:data-embedded`
 - **TESClient2** uses `appfl/client2:data-embedded`
 - Each container has `/data` with client-specific datasets
 
 ### Data Flow:
 ```
-Host: /tmp/tes-data/client_0/  
+Host: /tmp/tes-data/client_0/
   ↓ (COPY during build)
 Image: appfl/client1:data-embedded with /data
-  ↓ (TES container starts)  
+  ↓ (TES container starts)
 Container: /data/client_0_features.csv available
   ↓ (file_dataset.py loads)
 FL Client: Different datasets per client

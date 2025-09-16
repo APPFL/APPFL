@@ -29,6 +29,6 @@ data_configs:
 # Resource settings for the TES container
 resource_configs:
   device: "cpu"  # Use "cuda" if GPU resources are available
-  
+
 # Logging configuration
 logging_id: "mnist_tes_client"

@@ -37,7 +37,7 @@ echo -e "${YELLOW}Building appfl/client1:data-embedded...${NC}"
 docker build -f Dockerfile.client1 -t appfl/client1:data-embedded ../../../tes \
     --build-arg CLIENT_ID=TESClient1
 
-# Build client 2 image  
+# Build client 2 image
 echo -e "${YELLOW}Building appfl/client2:data-embedded...${NC}"
 docker build -f Dockerfile.client2 -t appfl/client2:data-embedded ../../../tes \
     --build-arg CLIENT_ID=TESClient2
@@ -57,5 +57,5 @@ echo "  docker run --rm appfl/client1:data-embedded ls -la /data"
 echo "  docker run --rm appfl/client2:data-embedded ls -la /data"
 echo ""
 echo "Update your client configs to use these images:"
-echo "  TESClient1: docker_image: appfl/client1:data-embedded"  
+echo "  TESClient1: docker_image: appfl/client1:data-embedded"
 echo "  TESClient2: docker_image: appfl/client2:data-embedded"

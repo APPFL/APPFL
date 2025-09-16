@@ -54,5 +54,5 @@ server_configs:
         s3_region: "us-east-1"
         presigned_url_expiry: 3600  # 1 hour
         # Optional: provide AWS credentials explicitly. Alternatively, you can use aws-cli to specify these information
-        # aws_access_key_id: "${AWS_ACCESS_KEY_ID}"  
+        # aws_access_key_id: "${AWS_ACCESS_KEY_ID}"
         # aws_secret_access_key: "${AWS_SECRET_ACCESS_KEY}"

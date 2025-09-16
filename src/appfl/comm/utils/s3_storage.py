@@ -52,7 +52,7 @@ class CloudStorage:
         if cls.instc is None:
             new_inst = cls.__new__(cls)
             new_inst.bucket = s3_bucket
-            
+
             # Set s3_tmp_dir with fallback for read-only containers
             if s3_tmp_dir is None:
                 try:

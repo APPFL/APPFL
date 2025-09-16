@@ -19,9 +19,9 @@ argparser.add_argument(
     default="./resources/config_tes/simple_net/server.yaml",
 )
 argparser.add_argument(
-    "--client_config", 
-    type=str, 
-    default="./resources/config_tes/simple_net/clients.yaml"
+    "--client_config",
+    type=str,
+    default="./resources/config_tes/simple_net/clients.yaml",
 )
 argparser.add_argument("--auth_token", required=False)
 args = argparser.parse_args()
@@ -46,15 +46,15 @@ server_communicator = TESServerCommunicator(
     server_agent_config=server_agent.server_agent_config,
     client_agent_configs=client_agent_configs["clients"],
     logger=server_agent.logger,
-    **(
-        {"auth_token": args.auth_token} if args.auth_token else {}
-    ),
+    **({"auth_token": args.auth_token} if args.auth_token else {}),
 )
 
 # Get sample size from clients
 server_communicator.send_task_to_all_clients(task_name="get_sample_size")
 sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
-server_agent.logger.info(f"Sample sizes from clients: {pprint.pformat(sample_size_ret)}")
+server_agent.logger.info(
+    f"Sample sizes from clients: {pprint.pformat(sample_size_ret)}"
+)
 for client_id, sample_size_data in sample_size_ret.items():
     if sample_size_data and "sample_size" in sample_size_data:
         server_agent.set_sample_size(client_id, sample_size_data["sample_size"])
@@ -76,7 +76,7 @@ while not server_agent.training_finished():
     server_agent.logger.info(
         f"Received model from client {client_id}, with metadata:\n{pprint.pformat(client_metadata)}"
     )
-    
+
     global_model = server_agent.global_update(
         client_id,
         client_model,
@@ -85,17 +85,16 @@ while not server_agent.training_finished():
     if isinstance(global_model, Future):
         model_futures[client_id] = global_model
     else:
-    
         if isinstance(global_model, tuple):
             global_model, metadata = global_model
         else:
             metadata = {}
-    
+
         if client_id not in client_rounds:
             client_rounds[client_id] = 0
         client_rounds[client_id] += 1
         metadata["round"] = client_rounds[client_id]
-    
+
         if not server_agent.training_finished():
             server_communicator.send_task_to_one_client(
                 client_id,
@@ -104,7 +103,7 @@ while not server_agent.training_finished():
                 metadata=metadata,
                 need_model_response=True,
             )
-    
+
     del_keys = []
     for client_id in model_futures:
         if model_futures[client_id].done():
