@@ -30,8 +30,7 @@ This creates:
 ### 3. Start Funnel
 ```bash
 mkdir -p /tmp/funnel-workspace
-cd /tmp/funnel-workspace
-funnel server run
+funnel server run --LocalStorage.AllowedDirs /tmp/funnel-workspace
 ```
 
 ## How It Works

@@ -23,17 +23,16 @@ client_configs:
     val_data_shuffle: False
 
   model_configs:
-    model_path: "./resources/model/simple_model.py"
-    model_name: "TinyNet"
+    model_path: "./resources/model/cnn.py"
+    model_name: "CNN"
     model_kwargs:
-      input_size: 8
-      num_classes: 2
+      num_channel: 1
+      num_classes: 10
+      num_pixel: 28
 
   comm_configs:
     compressor_configs:
       enable_compression: False
-    s3_configs:
-      enable_s3: False
 
 server_configs:
   num_clients: 2
@@ -47,9 +46,14 @@ server_configs:
   num_global_epochs: 10
   server_validation: False
   logging_output_dirname: "./output"
-  logging_output_filename: "tes_result"
+  logging_output_filename: "tes_s3_result"
   comm_configs:
     tes_configs:
-      file_storage: "local"
+      file_storage: "s3"
       file_storage_kwargs:
-        workspace_dir: "/tmp/funnel-workspace"
+        s3_bucket: "appfl-test-demo-bkt"
+        s3_region: "us-east-1"
+        presigned_url_expiry: 3600  # 1 hour
+        # Optional: provide AWS credentials explicitly. Alternatively, you can use aws-cli to specify these information
+        # aws_access_key_id: "${AWS_ACCESS_KEY_ID}"  
+        # aws_secret_access_key: "${AWS_SECRET_ACCESS_KEY}"

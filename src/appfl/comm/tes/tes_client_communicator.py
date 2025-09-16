@@ -52,6 +52,48 @@ class TESClientCommunicator:
         except Exception as e:
             raise RuntimeError(f"Failed to save logs to {logs_path}: {e}")
     
+    def upload_results_to_s3(self, model: Any, logs: Dict, s3_upload_info: Dict):
+        """Upload results directly to S3 using presigned URLs."""
+        try:
+            import requests
+            import tempfile
+            import torch
+            import os
+            
+            # Extract presigned URLs
+            model_upload_url = s3_upload_info["model_upload_url"]
+            logs_upload_url = s3_upload_info["logs_upload_url"]
+            
+            # Upload model using presigned URL
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as temp_model_file:
+                if isinstance(model, bytes):
+                    temp_model_file.write(model)
+                else:
+                    torch.save(model, temp_model_file.name)
+                temp_model_path = temp_model_file.name
+            
+            with open(temp_model_path, 'rb') as f:
+                response = requests.put(model_upload_url, data=f)
+                response.raise_for_status()
+            
+            print(f"CLIENT: Uploaded model to S3 via presigned URL")
+            os.remove(temp_model_path)
+            
+            # Upload logs using presigned URL
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp_logs_file:
+                json.dump(logs, temp_logs_file, indent=2)
+                temp_logs_path = temp_logs_file.name
+            
+            with open(temp_logs_path, 'rb') as f:
+                response = requests.put(logs_upload_url, data=f)
+                response.raise_for_status()
+            
+            print(f"CLIENT: Uploaded logs to S3 via presigned URL")
+            os.remove(temp_logs_path)
+            
+        except Exception as e:
+            raise RuntimeError(f"Failed to upload results to S3: {e}")
+    
     def execute_task(
         self, 
         task_name: str, 
@@ -96,8 +138,18 @@ class TESClientCommunicator:
                 )
             else:
                 raise NotImplementedError(f"Task {task_name} is not implemented in TES client.")
-            self.save_model_to_path(model, output_path)
-            self.save_logs_to_path(metadata, logs_path)
+            # Check if we need to upload to S3 instead of saving locally
+            loaded_metadata = self.load_metadata_from_path(metadata_path) if metadata_path else {}
+            s3_upload_info = loaded_metadata.get("s3_upload_info")
+            
+            if s3_upload_info:
+                # Upload results directly to S3
+                self.upload_results_to_s3(model, metadata, s3_upload_info)
+            else:
+                # Save locally (for local storage or when no S3 info provided)
+                self.save_model_to_path(model, output_path)
+                self.save_logs_to_path(metadata, logs_path)
+            
             return output_path, logs_path
             
         except Exception as e:

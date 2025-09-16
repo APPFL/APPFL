@@ -3,16 +3,16 @@ import json
 import uuid
 import time
 import yaml
+import boto3
 import requests
 from omegaconf import OmegaConf
-from typing import Dict, List, Optional, Union, OrderedDict, Tuple, Any
-from concurrent.futures import ThreadPoolExecutor, Future, as_completed
-
-from appfl.comm.base import BaseServerCommunicator
-from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
-from appfl.config import ClientAgentConfig, ServerAgentConfig
+from botocore.exceptions import ClientError
 from appfl.logger import ServerAgentFileLogger
-
+from appfl.comm.base import BaseServerCommunicator
+from appfl.config import ClientAgentConfig, ServerAgentConfig
+from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, List, Optional, Union, OrderedDict, Tuple, Any
 
 class TESServerCommunicator(BaseServerCommunicator):
     """
@@ -79,16 +79,75 @@ class TESServerCommunicator(BaseServerCommunicator):
         # Thread pool for managing TES task submissions
         self.executor = ThreadPoolExecutor(max_workers=len(client_agent_configs))
         
-        # Set up Funnel workspace directory for file transfers [TODO: check this for non-Funnel setups]
-        self.funnel_workspace = "/tmp/funnel-workspace"
-        os.makedirs(self.funnel_workspace, exist_ok=True)
-        self.logger.info(f"Using Funnel workspace directory: {self.funnel_workspace}")
-        self.logger.info(f"Make sure to start Funnel with: cd {self.funnel_workspace} && funnel server run")
+        # Set up file storage configuration
+        self._setup_file_storage(server_agent_config)
+        
+        # Set up Funnel workspace directory for local file transfers
+        if self.file_storage_type == "local":
+            self.funnel_workspace = self.file_storage_kwargs.get("workspace_dir", "/tmp/funnel-workspace")
+            os.makedirs(self.funnel_workspace, exist_ok=True)
+            self.logger.info(f"Using local file storage with workspace: {self.funnel_workspace}")
+            self.logger.info(f"Make sure to start Funnel with: --LocalStorage.AllowedDirs {self.funnel_workspace}")
+        else:
+            self.funnel_workspace = "/tmp/funnel-workspace"  # Still needed for temp operations
+            os.makedirs(self.funnel_workspace, exist_ok=True)
         
         # Log initialization with multi-endpoint support
         self.logger.info(f"TES Server Communicator manages {len(self.client_endpoints)} client endpoints")
         for client_id, endpoint_info in self.client_endpoints.items():
             self.logger.info(f"{client_id}: {endpoint_info['tes_endpoint']}")
+
+    def _setup_file_storage(self, server_agent_config: ServerAgentConfig):
+        """Set up file storage configuration from server config."""
+        # Get file storage configuration from server config
+        if (
+            hasattr(server_agent_config.server_configs, "comm_configs") and
+            hasattr(server_agent_config.server_configs.comm_configs, "tes_configs")
+        ):
+            tes_configs = server_agent_config.server_configs.comm_configs.tes_configs
+        else:
+            tes_configs = {}
+        self.file_storage_type = tes_configs.get('file_storage', 'local')
+        self.file_storage_kwargs = tes_configs.get('file_storage_kwargs', {})
+        
+        # Set up S3 client if using S3 storage
+        if self.file_storage_type == "s3":
+            self._setup_s3_client()
+            self.logger.info(f"Using S3 file storage with bucket: {self.file_storage_kwargs.get('s3_bucket')}")
+        
+        self.uploaded_files = set()  # Track uploaded files for cleanup
+        
+    def _setup_s3_client(self):
+        """Initialize S3 client for S3 file storage."""
+        s3_bucket = self.file_storage_kwargs.get('s3_bucket')
+        if not s3_bucket:
+            raise ValueError("s3_bucket is required to be provided in server_configs.comm_configs.tes_configs.file_storage_kwargs for S3 file storage")
+
+        s3_region = self.file_storage_kwargs.get('s3_region', 'us-east-1')
+        aws_access_key_id = self.file_storage_kwargs.get('aws_access_key_id')
+        aws_secret_access_key = self.file_storage_kwargs.get('aws_secret_access_key')
+        self.presigned_url_expiry = self.file_storage_kwargs.get('presigned_url_expiry', 3600)
+        
+        # Initialize S3 client
+        s3_kwargs = {"region_name": s3_region}
+        if aws_access_key_id and aws_secret_access_key:
+            s3_kwargs.update({
+                "aws_access_key_id": aws_access_key_id,
+                "aws_secret_access_key": aws_secret_access_key
+            })
+        
+        self.s3_client = boto3.client("s3", **s3_kwargs)
+        self.s3_bucket = s3_bucket
+        
+        # Verify bucket exists
+        try:
+            self.s3_client.head_bucket(Bucket=s3_bucket)
+        except ClientError as e:
+            error_code = int(e.response['Error']['Code'])
+            if error_code == 404:
+                raise ValueError(f"S3 bucket '{s3_bucket}' does not exist")
+            else:
+                raise ValueError(f"Cannot access S3 bucket '{s3_bucket}': {e}")
 
     def _get_client_tes_endpoint(self, client_config: ClientAgentConfig, client_id: str) -> str:
         """Get TES endpoint for a specific client."""
@@ -169,6 +228,102 @@ class TESServerCommunicator(BaseServerCommunicator):
         
         return env_vars
 
+    def _upload_model(self, model, storage_key: str) -> Dict:
+        """Upload model using configured file storage."""
+        if self.file_storage_type == "local":
+            return self._upload_model_local(model, storage_key)
+        elif self.file_storage_type == "s3":
+            return self._upload_model_s3(model, storage_key)
+        else:
+            raise ValueError(f"Unsupported file storage type: {self.file_storage_type}")
+    
+    def _upload_model_local(self, model, storage_key: str) -> Dict:
+        """Upload model to local workspace directory."""
+        import torch
+        workspace_file_path = os.path.join(self.funnel_workspace, storage_key)
+        
+        if isinstance(model, bytes):
+            with open(workspace_file_path, 'wb') as f:
+                f.write(model)
+        else:
+            torch.save(model, workspace_file_path)
+        
+        self.uploaded_files.add(workspace_file_path)
+        return {
+            "type": "file",
+            "url": f"file://{workspace_file_path}",
+            "storage_key": storage_key
+        }
+    
+    def _upload_model_s3(self, model, storage_key: str) -> Dict:
+        """Upload model to S3 and return presigned URL."""
+        import torch
+        import tempfile
+        from botocore.exceptions import ClientError
+        
+        s3_key = f"appfl-tes/{storage_key}"
+        
+        try:
+            # Save model to temporary file for S3 upload
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                if isinstance(model, bytes):
+                    temp_file.write(model)
+                else:
+                    torch.save(model, temp_file)
+                temp_file_path = temp_file.name
+            
+            # Upload file to S3
+            self.s3_client.upload_file(temp_file_path, self.s3_bucket, s3_key)
+            self.uploaded_files.add(s3_key)
+            
+            # Clean up temporary file
+            os.remove(temp_file_path)
+            
+            # Generate presigned download URL for client
+            download_url = self.s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': self.s3_bucket, 'Key': s3_key},
+                ExpiresIn=self.presigned_url_expiry
+            )
+            
+            return {
+                "type": "s3",
+                "url": download_url,
+                "storage_key": storage_key,
+                "s3_bucket": self.s3_bucket,
+                "s3_key": s3_key
+            }
+            
+        except ClientError as e:
+            raise RuntimeError(f"Failed to upload model to S3: {e}")
+
+
+    def _download_s3_result(self, s3_key: str, local_path: str):
+        """Download result file from S3 to local path."""
+        from botocore.exceptions import ClientError
+        try:
+            self.s3_client.download_file(self.s3_bucket, s3_key, local_path)
+        except ClientError as e:
+            raise RuntimeError(f"Failed to download {s3_key} from S3: {e}")
+
+    def _cleanup_storage(self):
+        """Clean up uploaded files."""
+        if self.file_storage_type == "local":
+            for file_path in self.uploaded_files:
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                except Exception as e:
+                    self.logger.warning(f"Failed to cleanup file {file_path}: {e}")
+        elif self.file_storage_type == "s3":
+            for s3_key in self.uploaded_files:
+                try:
+                    self.s3_client.delete_object(Bucket=self.s3_bucket, Key=s3_key)
+                    self.logger.info(f"Cleaned up S3 object: s3://{self.s3_bucket}/{s3_key}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to cleanup S3 object {s3_key}: {e}")
+        self.uploaded_files.clear()
+
     def _create_tes_task(
         self,
         client_id: str,
@@ -203,62 +358,102 @@ class TESServerCommunicator(BaseServerCommunicator):
         })
         command_args.extend(["--config-path", client_config_path])
         
-        # Handle model input using torch.save directly to file
+        # Handle model input using configured file storage
         if model is not None:
             model_path = f"/app/configs/model_{task_id}.pkl"
-            
-            # Save model directly to shared workspace for TES to access
-            host_model_path = f"{self.funnel_workspace}/input_model_{task_id}.pkl"
-            
-            import torch
-            if isinstance(model, bytes):
-                # If already serialized, write directly
-                with open(host_model_path, "wb") as f:
-                    f.write(model)
-            else:
-                # Use torch.save directly to file
-                torch.save(model, host_model_path)
+            storage_info = self._upload_model(model, f"input_model_{task_id}.pkl")
             
             inputs.append({
                 "name": "model_data",
                 "description": "Serialized model parameters",
                 "path": model_path,
                 "type": "FILE",
-                "url": f"file://{host_model_path}"  # TES downloads from shared workspace
+                "url": storage_info["url"]
             })
             command_args.extend(["--model-path", model_path])
         
+        # Use /tmp inside container (writable), configure outputs based on storage type
+        container_model_path = f"/tmp/output_model_{task_id}.pkl"
+        container_logs_path = f"/tmp/training_logs_{task_id}.json"
+        
+        outputs = []
+        s3_upload_info = None
+        
+        # Configure outputs based on file storage type
+        if self.file_storage_type == "s3":
+            # S3 storage - client will upload directly using presigned URLs
+            # No TES output URLs needed, client handles S3 upload
+            
+            # Store S3 info for client to use for direct upload
+            if not hasattr(self, '_upload_info'):
+                self._upload_info = {}
+            model_s3_key = f"appfl-tes/output_model_{task_id}.pkl"
+            logs_s3_key = f"appfl-tes/output_logs_{task_id}.json"
+            
+            # Generate presigned upload URLs for client
+            from botocore.exceptions import ClientError
+            try:
+                model_upload_url = self.s3_client.generate_presigned_url(
+                    'put_object',
+                    Params={'Bucket': self.s3_bucket, 'Key': model_s3_key},
+                    ExpiresIn=self.presigned_url_expiry
+                )
+                
+                logs_upload_url = self.s3_client.generate_presigned_url(
+                    'put_object', 
+                    Params={'Bucket': self.s3_bucket, 'Key': logs_s3_key},
+                    ExpiresIn=self.presigned_url_expiry
+                )
+                
+                s3_upload_info = {
+                    "model_upload_url": model_upload_url,
+                    "logs_upload_url": logs_upload_url,
+                    "model_s3_key": model_s3_key,
+                    "logs_s3_key": logs_s3_key
+                }
+                
+                self._upload_info[task_id] = s3_upload_info
+                
+                # Track S3 keys for cleanup
+                self.uploaded_files.add(model_s3_key)
+                self.uploaded_files.add(logs_s3_key)
+                
+            except ClientError as e:
+                raise RuntimeError(f"Failed to generate presigned upload URLs: {e}")
+        else:
+            # Local storage - use file URLs to funnel workspace
+            outputs.extend([
+                {
+                    "name": "trained_model",
+                    "path": container_model_path,
+                    "url": f"file://{self.funnel_workspace}/model_{task_id}.pkl",
+                    "type": "FILE"
+                },
+                {
+                    "name": "training_logs",
+                    "path": container_logs_path,
+                    "url": f"file://{self.funnel_workspace}/results_{task_id}.json",
+                    "type": "FILE"
+                }
+            ])
+        
         # Handle metadata input
-        if metadata is not None:
+        client_metadata = metadata.copy() if metadata else {}
+        
+        # Add S3 upload info to metadata if using S3 storage
+        if s3_upload_info:
+            client_metadata["s3_upload_info"] = s3_upload_info
+        
+        if client_metadata:
             metadata_path = f"/app/configs/metadata_{task_id}.json"
             inputs.append({
                 "name": "task_metadata",
                 "description": "Task metadata",
                 "path": metadata_path,
                 "type": "FILE",
-                "content": json.dumps(metadata)
+                "content": json.dumps(client_metadata)
             })
             command_args.extend(["--metadata-path", metadata_path])
-        
-        # Use /tmp inside container (writable), transfer to shared directory on host
-        container_model_path = f"/tmp/output_model_{task_id}.pkl"
-        container_logs_path = f"/tmp/training_logs_{task_id}.json"
-        
-        # Use Funnel workspace directory with absolute paths
-        outputs = [
-            {
-                "name": "trained_model",
-                "path": container_model_path,
-                "url": f"file://{self.funnel_workspace}/model_{task_id}.pkl",
-                "type": "FILE"
-            },
-            {
-                "name": "training_logs", 
-                "path": container_logs_path,
-                "url": f"file://{self.funnel_workspace}/results_{task_id}.json",
-                "type": "FILE"
-            }
-        ]
         
         command_args.extend([
             "--output-path", container_model_path,
@@ -377,10 +572,51 @@ class TESServerCommunicator(BaseServerCommunicator):
 
     def _extract_task_results(self, task_info: Dict) -> Tuple[Any, Dict]:
         """Extract real results from TES task outputs."""
+        import os
         model_result = None
         metadata_result = {}
+        task_id = task_info.get("tags", {}).get("appfl_task_id")
         
-        # Check if outputs have been populated by Funnel
+        # Handle S3 storage results
+        if self.file_storage_type == "s3" and hasattr(self, '_upload_info') and task_id in self._upload_info:
+            try:
+                # Download model result from S3
+                upload_info = self._upload_info[task_id]
+                model_s3_key = upload_info["model_s3_key"]
+                logs_s3_key = upload_info["logs_s3_key"]
+                
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as temp_file:
+                    temp_model_path = temp_file.name
+                
+                self._download_s3_result(model_s3_key, temp_model_path)
+                
+                # Load model from downloaded file
+                import torch
+                model_result = torch.load(temp_model_path)
+                os.remove(temp_model_path)  # Cleanup temp file
+                
+                # Download logs result from S3  
+                with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as temp_file:
+                    temp_logs_path = temp_file.name
+                
+                self._download_s3_result(logs_s3_key, temp_logs_path)
+                
+                # Load logs from downloaded file
+                with open(temp_logs_path, 'r') as f:
+                    metadata_result = json.load(f)
+                os.remove(temp_logs_path)  # Cleanup temp file
+                
+                # Clean up upload info
+                del self._upload_info[task_id]
+                
+                return model_result, metadata_result
+                
+            except Exception as e:
+                self.logger.error(f"Failed to download S3 results: {e}")
+                # Fall back to checking if files were somehow put in local outputs
+        
+        # Handle local storage results (original logic)
         outputs = task_info.get("outputs", [])
         
         if not outputs:
@@ -614,6 +850,9 @@ class TESServerCommunicator(BaseServerCommunicator):
         """Cancel all running TES tasks and shutdown the thread pool executor."""
         # Cancel all running tasks
         self.cancel_all_tasks()
+        
+        # Clean up uploaded files
+        self._cleanup_storage()
         
         # Shutdown thread pool
         self.executor.shutdown(wait=True)

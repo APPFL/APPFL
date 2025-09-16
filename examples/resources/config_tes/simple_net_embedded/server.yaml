@@ -32,8 +32,6 @@ client_configs:
   comm_configs:
     compressor_configs:
       enable_compression: False
-    s3_configs:
-      enable_s3: False
 
 server_configs:
   num_clients: 2
@@ -48,3 +46,8 @@ server_configs:
   server_validation: False
   logging_output_dirname: "./output"
   logging_output_filename: "tes_result"
+  comm_configs:
+    tes_configs:
+      file_storage: "local"
+      file_storage_kwargs:
+        workspace_dir: "/tmp/funnel-workspace"
