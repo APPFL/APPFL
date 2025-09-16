@@ -46,12 +46,22 @@ class CloudStorage:
         cls,
         s3_bucket: Optional[str] = None,
         s3_creds_file: Optional[str] = None,
-        s3_tmp_dir: str = str(pathlib.Path.home() / ".appfl" / "s3_tmp_dir"),
+        s3_tmp_dir: str = None,
         logger=None,
     ):
         if cls.instc is None:
             new_inst = cls.__new__(cls)
             new_inst.bucket = s3_bucket
+
+            # Set s3_tmp_dir with fallback for read-only containers
+            if s3_tmp_dir is None:
+                try:
+                    s3_tmp_dir = str(pathlib.Path.home() / ".appfl" / "s3_tmp_dir")
+                    pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
+                except OSError:
+                    # Fallback to /tmp/.appfl if home directory is read-only
+                    s3_tmp_dir = "/tmp/.appfl/s3_tmp_dir"
+                    pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
             s3_kwargs = {}
             if s3_creds_file is not None:
                 with open(s3_creds_file) as file:
