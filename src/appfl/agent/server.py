@@ -1,4 +1,5 @@
 import io
+import gc
 import os
 import torch
 import pathlib
@@ -43,6 +44,10 @@ class ServerAgent:
         self, server_agent_config: ServerAgentConfig = ServerAgentConfig()
     ) -> None:
         self.server_agent_config = server_agent_config
+        # Check for optimize_memory in server_configs, default to True
+        self.optimize_memory = getattr(
+            server_agent_config.server_configs, "optimize_memory", True
+        )
         if hasattr(self.server_agent_config.client_configs, "comm_configs"):
             self.server_agent_config.server_configs.comm_configs = (
                 OmegaConf.merge(
@@ -99,6 +104,11 @@ class ServerAgent:
             if isinstance(local_model, bytes):
                 local_model = self._bytes_to_model(local_model)
             global_model = self.scheduler.schedule(client_id, local_model, **kwargs)
+
+            # Memory optimization: Clean up local model after scheduling
+            if self.optimize_memory:
+                del local_model
+                gc.collect()
             if not isinstance(global_model, Future):
                 return global_model
             if blocking:
@@ -488,13 +498,24 @@ class ServerAgent:
     def _bytes_to_model(self, model_bytes: bytes) -> Union[Dict, OrderedDict]:
         """Deserialize the model from bytes."""
         if not self.enable_compression:
-            return torch.load(io.BytesIO(model_bytes))
+            # Memory optimization: Use context manager and load to CPU first
+            if self.optimize_memory:
+                with io.BytesIO(model_bytes) as buffer:
+                    model = torch.load(buffer, map_location="cpu")
+                gc.collect()
+                return model
+            else:
+                return torch.load(io.BytesIO(model_bytes))
         else:
             if self.model is None:
                 raise ValueError(
                     "Model is not provided to the server, so you cannot use compression."
                 )
-            return self.compressor.decompress_model(model_bytes, self.model)
+            model = self.compressor.decompress_model(model_bytes, self.model)
+            # Memory optimization: Garbage collection after decompression
+            if self.optimize_memory:
+                gc.collect()
+            return model
 
     def _load_val_data(self) -> None:
         if hasattr(self.server_agent_config.server_configs, "val_data_configs"):

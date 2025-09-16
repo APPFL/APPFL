@@ -9,7 +9,8 @@ This page presents the publications using the APPFL framework. You may also find
 - **[NAACL Main 2025]** G. Bai, Y. Li, Z. Li, L. Zhao, K. Kim, "FedSpaLLM: Federated Pruning of Large Language Models," in *The Main Conference of 2025 Annual Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics (NAACL 2025 Main)*, 2025. `[Paper] <https://arxiv.org/pdf/2410.14852>`_
 - **[CSBJ][Journal]** T.-H. Hoang, J. Fuhrman, R. Madduri, M. Li, P. Chaturvedi, Z. Li, K. Kim, M. Ryu, R. Chard, E. Huerta et al., "Enabling end-to-end secure federated learning in biomedical research on heterogeneous computing environments with appflx," in *Computational and Structural Biotechnology Journal*, 2025. `[Paper] <https://doi.org/10.1016/j.csbj.2024.12.001>`_
 - **[eScience 2025]** K. Hiniduma, Z. Li, A. Sinha, R. Madduri, S. Byna, "CADRE: Customizable Assurance of Data Readiness in Privacy-Preserving Federated Learning", to appear in *2025 IEEE 21st International Conference on e-Science (eScience)*, 2025. `[Paper] <https://arxiv.org/pdf/2505.23849>`_
-- **[Preprint]** A. Sinha, Z. Li, T. Liu, V. Kindratenko, K. Kim, R. Madduri, "FedCostAware: Enabling Cost-Aware Federated Learning on the Cloud", *arXiv preprint arXiv:2505.21727*, 2025. `[Paper] <https://arxiv.org/pdf/2505.21727>`_
+- **[Allerton 2025]** A. Sinha, Z. Li, T. Liu, V. Kindratenko, K. Kim, R. Madduri, "FedCostAware: Enabling Cost-Aware Federated Learning on the Cloud", to appear in *61st Allerton Conference on Communication, Control, and Computing*, 2025. `[Paper] <https://arxiv.org/pdf/2505.21727>`_
+- **[ApJS][Journal]** P. Patel, A. Corsi, E. A. Huerta, K. Merfeld, V. Tiki, Z. Li, et al., "RADAR-Radio Afterglow Detection and AI-driven Response: A Federated Framework for Gravitational Wave Event Follow-Up," to appear in *The Astrophysical Journal Supplement Series*, 2025. `[Paper] <https://arxiv.org/abs/2507.14827>`_
 
 
 2024
