@@ -1,7 +1,7 @@
 # This CITATION.cff file was generated with cffinit.
 # Visit https://bit.ly/cffinit to generate yours today!
 
-cff-version: 1.7.0
+cff-version: 1.8.0
 title: >-
   APPFL: Advanced Privacy-Preserving Federated
   Learning
