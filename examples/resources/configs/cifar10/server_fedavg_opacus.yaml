@@ -2,6 +2,10 @@ client_configs:
   train_configs:
     # Local trainer
     trainer: "VanillaTrainer"
+    dp_mechanism: "opacus"
+    dp_config:
+      noise_multiplier: 1.0
+      max_grad_norm: 1.0
     mode: "step"
     num_local_steps: 100
     optim: "Adam"
@@ -16,7 +20,7 @@ client_configs:
     metric_path: "./resources/metric/acc.py"
     metric_name: "accuracy"
     # Differential privacy
-    use_dp: False
+    use_dp: True
     epsilon: 1
     clip_grad: False
     clip_value: 1
