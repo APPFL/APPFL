@@ -9,5 +9,5 @@ APPFL is a privacy-preserving federated learning framework that allows users to 
 The framework is designed to run on a single machine (laptop or cluster) for simulation as well as multiple heterogeneous machines for real deployment.
 """
 
-__version__ = "1.7.0"
+__version__ = "1.8.0"
 __author__ = "Argonne National Laboratory"
