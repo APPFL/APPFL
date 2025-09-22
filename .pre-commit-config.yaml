@@ -22,7 +22,7 @@ repos:
       - id: codespell
         exclude: 'examples/notebook_tutorials/.*\.ipynb'
   - repo: 'https://github.com/charliermarsh/ruff-pre-commit'
-    rev: v0.13.0
+    rev: v0.13.1
     hooks:
       - id: ruff
         args:
