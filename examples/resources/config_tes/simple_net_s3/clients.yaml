@@ -17,7 +17,7 @@ clients:
       tes_configs:
         tes_endpoint: "http://localhost:8000"
         auth_token: ""
-        docker_image: "appfl/client:latest"
+        docker_image: "zilinghan/tes-client:latest"
         resource_requirements:
           cpu_cores: 2
           ram_gb: 4.0
@@ -40,9 +40,9 @@ clients:
 
     comm_configs:
       tes_configs:
-        tes_endpoint: "http://localhost:8000"
+        tes_endpoint: "http://54.84.237.219:8000"
         auth_token: ""
-        docker_image: "appfl/client:latest"
+        docker_image: "zilinghan/tes-client:latest"
         resource_requirements:
           cpu_cores: 1
           ram_gb: 2.0
