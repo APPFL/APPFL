@@ -77,6 +77,7 @@ setuptools.setup(
         "proxystore[all]",
         "ray[default]",
         "pandas",
+        "opacus",
     ],
     extras_require={
         "dev": [
