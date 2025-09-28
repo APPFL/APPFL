@@ -83,6 +83,7 @@ class FedAvgAggregator(BaseAggregator):
         """
         Take the weighted average of local models from clients and return the global model.
         """
+
         # detect masked payload format
         def _is_masked_payload(x):
             return isinstance(x, dict) and x.get("type") == "masked_update_flat"
@@ -110,11 +111,14 @@ class FedAvgAggregator(BaseAggregator):
                 else:
                     weighted_sum = weighted_sum + w * flat
             # unflatten into delta state
-            aggregated_state = SecureAggregator.unflatten_to_state_dict(weighted_sum, shapes, device)
+            aggregated_state = SecureAggregator.unflatten_to_state_dict(
+                weighted_sum, shapes, device
+            )
             # Initialize or update global_state
             if self.global_state is None:
                 self.global_state = {
-                    name: tensor.detach().clone() for name, tensor in aggregated_state.items()
+                    name: tensor.detach().clone()
+                    for name, tensor in aggregated_state.items()
                 }
             else:
                 if self.optimize_memory:

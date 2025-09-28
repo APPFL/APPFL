@@ -13,7 +13,13 @@ class SecureAggregator:
     from (round_id, client_i, client_j, secret). Masks cancel when summed.
     """
 
-    def __init__(self, client_id: str, all_client_ids: Iterable[str], secret: bytes, device: torch.device):
+    def __init__(
+        self,
+        client_id: str,
+        all_client_ids: Iterable[str],
+        secret: bytes,
+        device: torch.device,
+    ):
         self.client_id = str(client_id)
         self.all_client_ids = sorted([str(x) for x in all_client_ids])
         self.secret = secret
@@ -21,25 +27,35 @@ class SecureAggregator:
 
     # ---- helpers ----
     @staticmethod
-    def flatten_state_dict(sd: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, List[Tuple[str, Tuple[int, ...]]]]:
+    def flatten_state_dict(
+        sd: Dict[str, torch.Tensor],
+    ) -> Tuple[torch.Tensor, List[Tuple[str, Tuple[int, ...]]]]:
         parts = []
         shapes = []
         for k, v in sd.items():
             t = v.detach().to(torch.float32).reshape(-1)
             parts.append(t)
             shapes.append((k, tuple(v.shape)))
-        flat = torch.cat(parts) if len(parts) > 0 else torch.tensor([], dtype=torch.float32)
+        flat = (
+            torch.cat(parts)
+            if len(parts) > 0
+            else torch.tensor([], dtype=torch.float32)
+        )
         return flat, shapes
 
     @staticmethod
-    def unflatten_to_state_dict(flat: torch.Tensor, shapes: List[Tuple[str, Tuple[int, ...]]], device: torch.device) -> Dict[str, torch.Tensor]:
+    def unflatten_to_state_dict(
+        flat: torch.Tensor,
+        shapes: List[Tuple[str, Tuple[int, ...]]],
+        device: torch.device,
+    ) -> Dict[str, torch.Tensor]:
         out = {}
         idx = 0
         for name, shp in shapes:
             num = 1
             for d in shp:
                 num *= int(d)
-            seg = flat[idx: idx + num].reshape(shp).to(device)
+            seg = flat[idx : idx + num].reshape(shp).to(device)
             out[name] = seg
             idx += num
         return out
@@ -60,7 +76,7 @@ class SecureAggregator:
             for off in range(0, len(block), 8):
                 if len(vals) >= numel:
                     break
-                chunk = block[off:off+8]
+                chunk = block[off : off + 8]
                 if len(chunk) < 8:
                     break
                 u = struct.unpack(">Q", chunk)[0]  # 64-bit int
@@ -84,7 +100,9 @@ class SecureAggregator:
                 mask -= r
         return mask
 
-    def mask_update(self, delta_state: Dict[str, torch.Tensor], round_id: int) -> Tuple[torch.Tensor, List[Tuple[str, Tuple[int, ...]]]]:
+    def mask_update(
+        self, delta_state: Dict[str, torch.Tensor], round_id: int
+    ) -> Tuple[torch.Tensor, List[Tuple[str, Tuple[int, ...]]]]:
         """
         Input: delta_state (state_dict of local - global)
         Returns: (masked_flat_tensor, shapes)
@@ -93,4 +111,3 @@ class SecureAggregator:
         flat, shapes = self.flatten_state_dict(delta_state)
         mask = self.make_pairwise_mask(flat.numel(), round_id)
         return (flat + mask), shapes
-

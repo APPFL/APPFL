@@ -326,11 +326,18 @@ class VanillaTrainer(BaseTrainer):
 
         if self.train_configs.get("use_secure_agg", False):
             # Must have global_model_state injected
-            if not hasattr(self, "global_model_state") or self.global_model_state is None:
-                raise RuntimeError("global_model_state must be set on trainer for secure aggregation")
+            if (
+                not hasattr(self, "global_model_state")
+                or self.global_model_state is None
+            ):
+                raise RuntimeError(
+                    "global_model_state must be set on trainer for secure aggregation"
+                )
 
             # local_state = model.state_dict()
-            local_state = {k: v.detach().clone() for k, v in self.model.state_dict().items()}
+            local_state = {
+                k: v.detach().clone() for k, v in self.model.state_dict().items()
+            }
 
             # compute delta = local - global
             delta_state = {}
@@ -341,12 +348,20 @@ class VanillaTrainer(BaseTrainer):
 
             # optional weighting (e.g., sample_size). If you want weighted aggregation,
             # pre-scale delta_state here by client weight w_i.
-            client_weighting = self.train_configs.get("client_weighting", "equal")  # "equal" or "num_examples"
+            client_weighting = self.train_configs.get(
+                "client_weighting", "equal"
+            )  # "equal" or "num_examples"
             if client_weighting == "num_examples":
                 # requires runtime_context["global_num_examples_sum"]
                 if "global_num_examples_sum" not in self.runtime_context:
-                    raise RuntimeError("global_num_examples_sum required in runtime_context for num_examples weighting")
-                local_n = float(self.runtime_context.get("local_num_examples", len(self.train_dataset)))
+                    raise RuntimeError(
+                        "global_num_examples_sum required in runtime_context for num_examples weighting"
+                    )
+                local_n = float(
+                    self.runtime_context.get(
+                        "local_num_examples", len(self.train_dataset)
+                    )
+                )
                 total_n = float(self.runtime_context["global_num_examples_sum"])
                 w = local_n / total_n
                 for k in delta_state:
@@ -354,21 +369,35 @@ class VanillaTrainer(BaseTrainer):
 
             # prepare secure aggregator and mask
 
-            client_id = str(self.train_configs.get("client_id", self.client_id if hasattr(self, "client_id") else "client"))
+            client_id = str(
+                self.train_configs.get(
+                    "client_id",
+                    self.client_id if hasattr(self, "client_id") else "client",
+                )
+            )
             all_client_ids = self.runtime_context["all_client_ids"]
             round_id = int(self.runtime_context["round_id"])
             secret = self.runtime_context["secure_agg_secret"]  # bytes
             device = next(self.model.parameters()).device
 
-            sa = SecureAggregator(client_id=client_id, all_client_ids=all_client_ids, secret=secret, device=device)
+            sa = SecureAggregator(
+                client_id=client_id,
+                all_client_ids=all_client_ids,
+                secret=secret,
+                device=device,
+            )
             masked_flat, shapes = sa.mask_update(delta_state, round_id)
 
             # model_state now becomes a masked payload
             self.model_state = {
                 "type": "masked_update_flat",
-                "flat": masked_flat.cpu(),   # send CPU tensors to aggregator/orchestrator
+                "flat": masked_flat.cpu(),  # send CPU tensors to aggregator/orchestrator
                 "shapes": shapes,
-                "num_examples": int(self.runtime_context.get("local_num_examples", len(self.train_dataset))),
+                "num_examples": int(
+                    self.runtime_context.get(
+                        "local_num_examples", len(self.train_dataset)
+                    )
+                ),
             }
 
         # Move to CPU for communication
