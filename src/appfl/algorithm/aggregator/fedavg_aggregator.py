@@ -4,6 +4,7 @@ import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
+from appfl.privacy.secure_aggregator import SecureAggregator
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
     safe_inplace_operation,
@@ -82,6 +83,65 @@ class FedAvgAggregator(BaseAggregator):
         """
         Take the weighted average of local models from clients and return the global model.
         """
+        # detect masked payload format
+        def _is_masked_payload(x):
+            return isinstance(x, dict) and x.get("type") == "masked_update_flat"
+
+        secure_enabled = self.aggregator_configs.get("secure_agg", False)
+
+        if secure_enabled and all(_is_masked_payload(m) for m in local_models.values()):
+            payloads = list(local_models.items())  # list of (client_id, payload)
+            # assume all shapes identical and flat dtype identical
+            first_payload = payloads[0][1]
+            shapes = first_payload["shapes"]
+            device = torch.device(self.aggregator_configs.get("device", "cpu"))
+            total_examples = sum(p["num_examples"] for _, p in payloads)
+
+            # compute weighted sum of masked flats (weights = num_examples / total_examples or equal)
+            weighted_sum = None
+            for client_id, p in payloads:
+                flat = p["flat"].to(device)
+                if self.client_weights_mode == "sample_size":
+                    w = float(p["num_examples"]) / float(total_examples)
+                else:
+                    w = 1.0 / len(payloads)
+                if weighted_sum is None:
+                    weighted_sum = w * flat
+                else:
+                    weighted_sum = weighted_sum + w * flat
+            # unflatten into delta state
+            aggregated_state = SecureAggregator.unflatten_to_state_dict(weighted_sum, shapes, device)
+            # Initialize or update global_state
+            if self.global_state is None:
+                self.global_state = {
+                    name: tensor.detach().clone() for name, tensor in aggregated_state.items()
+                }
+            else:
+                if self.optimize_memory:
+                    with torch.no_grad():
+                        for name, tensor in aggregated_state.items():
+                            if name in self.global_state:
+                                self.global_state[name] = safe_inplace_operation(
+                                    self.global_state[name], "add", tensor
+                                )
+                            else:
+                                self.global_state[name] = tensor.detach().clone()
+                    optimize_memory_cleanup(force_gc=True)
+                else:
+                    for name, tensor in aggregated_state.items():
+                        if name in self.global_state:
+                            self.global_state[name] = self.global_state[name] + tensor
+                        else:
+                            self.global_state[name] = tensor.detach().clone()
+
+            if self.model is not None:
+                self.model.load_state_dict(self.global_state, strict=False)
+
+            if self.optimize_memory:
+                return clone_state_dict_optimized(self.global_state)
+            else:
+                return {k: v.clone() for k, v in self.global_state.items()}
+
         # Memory optimization: Initialize global state efficiently
         if self.global_state is None:
             if self.model is not None:

@@ -16,6 +16,7 @@ from appfl.misc.memory_utils import (
     safe_inplace_operation,
     optimize_memory_cleanup,
 )
+from appfl.privacy.secure_aggregator import SecureAggregator
 
 
 class VanillaTrainer(BaseTrainer):
@@ -146,20 +147,27 @@ class VanillaTrainer(BaseTrainer):
         self.logger.set_title(title)
 
         if do_pre_validation:
-            val_loss, val_accuracy = self._validate()
-            self.val_results["pre_val_loss"] = val_loss
-            self.val_results["pre_val_accuracy"] = val_accuracy
-            content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]
-            if self.train_configs.mode == "epoch":
-                content.insert(1, 0)
-            self.logger.log_content(content)
-            if self.enabled_wandb:
-                wandb.log(
-                    {
-                        f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
-                        f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
-                    }
+            if self.train_configs.get("use_secure_agg", False):
+                # Skip evaluation in secure aggregation mode
+                val_loss, val_acc = None, None
+                self.logger.info(
+                    f"Round {self.round} Pre-Validation skipped (secure aggregation enabled)"
                 )
+            else:
+                val_loss, val_accuracy = self._validate()
+                self.val_results["pre_val_loss"] = val_loss
+                self.val_results["pre_val_accuracy"] = val_accuracy
+                content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]
+                if self.train_configs.mode == "epoch":
+                    content.insert(1, 0)
+                self.logger.log_content(content)
+                if self.enabled_wandb:
+                    wandb.log(
+                        {
+                            f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
+                            f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
+                        }
+                    )
 
         # Start training
         optim_module = importlib.import_module("torch.optim")
@@ -315,6 +323,53 @@ class VanillaTrainer(BaseTrainer):
                 )
             else:
                 self.model_state = copy.deepcopy(self.model.state_dict())
+
+        if self.train_configs.get("use_secure_agg", False):
+            # Must have global_model_state injected
+            if not hasattr(self, "global_model_state") or self.global_model_state is None:
+                raise RuntimeError("global_model_state must be set on trainer for secure aggregation")
+
+            # local_state = model.state_dict()
+            local_state = {k: v.detach().clone() for k, v in self.model.state_dict().items()}
+
+            # compute delta = local - global
+            delta_state = {}
+            for k in local_state:
+                # ensure devices match
+                g = self.global_model_state[k].to(local_state[k].device)
+                delta_state[k] = (local_state[k] - g).detach().clone()
+
+            # optional weighting (e.g., sample_size). If you want weighted aggregation,
+            # pre-scale delta_state here by client weight w_i.
+            client_weighting = self.train_configs.get("client_weighting", "equal")  # "equal" or "num_examples"
+            if client_weighting == "num_examples":
+                # requires runtime_context["global_num_examples_sum"]
+                if "global_num_examples_sum" not in self.runtime_context:
+                    raise RuntimeError("global_num_examples_sum required in runtime_context for num_examples weighting")
+                local_n = float(self.runtime_context.get("local_num_examples", len(self.train_dataset)))
+                total_n = float(self.runtime_context["global_num_examples_sum"])
+                w = local_n / total_n
+                for k in delta_state:
+                    delta_state[k] = delta_state[k] * w
+
+            # prepare secure aggregator and mask
+
+            client_id = str(self.train_configs.get("client_id", self.client_id if hasattr(self, "client_id") else "client"))
+            all_client_ids = self.runtime_context["all_client_ids"]
+            round_id = int(self.runtime_context["round_id"])
+            secret = self.runtime_context["secure_agg_secret"]  # bytes
+            device = next(self.model.parameters()).device
+
+            sa = SecureAggregator(client_id=client_id, all_client_ids=all_client_ids, secret=secret, device=device)
+            masked_flat, shapes = sa.mask_update(delta_state, round_id)
+
+            # model_state now becomes a masked payload
+            self.model_state = {
+                "type": "masked_update_flat",
+                "flat": masked_flat.cpu(),   # send CPU tensors to aggregator/orchestrator
+                "shapes": shapes,
+                "num_examples": int(self.runtime_context.get("local_num_examples", len(self.train_dataset))),
+            }
 
         # Move to CPU for communication
         if "cuda" in self.train_configs.device:
