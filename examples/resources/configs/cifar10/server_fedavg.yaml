@@ -1,5 +1,9 @@
 client_configs:
   train_configs:
+    # Aggregator Encryption and Decryption
+    use_secure_agg: False
+    client_id: "Client1"                # set per-client
+    client_weighting: "equal"           # or "num_examples"
     # Local trainer
     trainer: "VanillaTrainer"
     mode: "step"
@@ -49,11 +53,13 @@ server_configs:
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:
     client_weights_mode: "equal"
+    secure_agg: False
   device: "cpu"
   num_global_epochs: 20
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
+    enable_secure_agg: False
     grpc_configs:
       server_uri: localhost:50051
       max_message_size: 1048576

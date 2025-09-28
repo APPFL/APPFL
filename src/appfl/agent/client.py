@@ -662,3 +662,11 @@ class ClientAgent:
         )
         self.client_agent_config.train_configs.enable_wandb = True
         self.client_agent_config.train_configs.wandb_logging_id = self.get_id()
+
+    @property
+    def runtime_context(self):
+        return getattr(self.trainer, "runtime_context", None)
+
+    @runtime_context.setter
+    def runtime_context(self, ctx):
+        self.trainer.runtime_context = ctx
