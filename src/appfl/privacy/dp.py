@@ -24,3 +24,22 @@ def laplace_mechanism_output_perturb(
         m = torch.distributions.laplace.Laplace(mean, scale)
         state_dict[name] += m.sample()
     return state_dict
+
+
+def gaussian_mechanism_output_perturb(
+    model: torch.nn.Module, sensitivity: float, epsilon: float, delta: float = 1e-5
+) -> Dict[str, Any]:
+    """
+    Gaussian mechanism for DP.
+    Adds Gaussian noise proportional to sensitivity/epsilon.
+    """
+    sigma = (
+        sensitivity * torch.sqrt(2 * torch.log(torch.tensor(1.25 / delta))) / epsilon
+    )
+    state_dict = copy.deepcopy(model.state_dict())
+    for name, param in model.named_parameters():
+        noise = torch.normal(
+            mean=0.0, std=sigma, size=param.data.size(), device=param.data.device
+        )
+        state_dict[name] += noise
+    return state_dict
