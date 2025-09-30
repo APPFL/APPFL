@@ -51,11 +51,3 @@ User and Developer Guide
    user_run
    ../developer/index
 
-[DEPRECATED] Guide for APPFL v0
--------------------------------
-
-.. toctree::
-   :maxdepth: 2
-   :titlesonly:
-
-   deprecated/index

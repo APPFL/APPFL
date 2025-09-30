@@ -22,4 +22,3 @@ We present a collection of tutorials for APPFL framework.
     examples_dr_integration
     examples_international
     appflx/index
-    deprecated_tutorial
