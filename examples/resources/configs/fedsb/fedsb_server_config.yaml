@@ -31,7 +31,7 @@ server_configs:
   aggregator: "FedSBAggregator"
   aggregator_kwargs:
     global_model_dir: experiments_log/instruction_tuning/final_model
-    device: "cuda"
+    device: "cpu" # "cuda" or "cpu"
     reconstruction_configs:
       reconstruction_type: "svd"
       reconstr_mode: "separated"

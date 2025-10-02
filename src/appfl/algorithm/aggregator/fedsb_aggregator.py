@@ -169,7 +169,7 @@ class FedSBAggregator(BaseAggregator):
         """
         # 1. Load the base model
         base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name, device_map={"": "cuda"}, torch_dtype=torch.bfloat16
+            base_model_name, device_map={"": self.aggregator_configs.device}, torch_dtype=torch.bfloat16
         )
 
         # 2. Load the tokenizer
@@ -178,19 +178,19 @@ class FedSBAggregator(BaseAggregator):
                 tokenizer = AutoTokenizer.from_pretrained(
                     base_model_name,
                     use_fast=True,
-                    device_map={"": "cuda"},
+                    device_map={"": self.aggregator_configs.device},
                 )
             else:
                 tokenizer = LlamaTokenizer.from_pretrained(
                     base_model_name,
                     use_fast=True,
-                    device_map={"": "cuda"},
+                    device_map={"": self.aggregator_configs.device},
                 )
         else:
             tokenizer = AutoTokenizer.from_pretrained(
                 base_model_name,
                 use_fast=True,
-                device_map={"": "cuda"},
+                device_map={"": self.aggregator_configs.device},
             )
 
         tokenizer.pad_token = tokenizer.eos_token
@@ -240,7 +240,7 @@ class FedSBAggregator(BaseAggregator):
         """
         # 1. Load the base model
         base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name, device_map={"": "cuda"}, torch_dtype=torch.bfloat16
+            base_model_name, device_map={"": self.aggregator_configs.device}, torch_dtype=torch.bfloat16
         )
 
         if "llama" in base_model_name:
@@ -248,19 +248,19 @@ class FedSBAggregator(BaseAggregator):
                 tokenizer = AutoTokenizer.from_pretrained(
                     base_model_name,
                     use_fast=True,
-                    device_map={"": "cuda"},
+                    device_map={"": self.aggregator_configs.device},
                 )
             else:
                 tokenizer = LlamaTokenizer.from_pretrained(
                     base_model_name,
                     use_fast=True,
-                    device_map={"": "cuda"},
+                    device_map={"": self.aggregator_configs.device},
                 )
         else:
             tokenizer = AutoTokenizer.from_pretrained(
                 base_model_name,
                 use_fast=True,
-                device_map={"": "cuda"},
+                device_map={"": self.aggregator_configs.device},
             )
 
         tokenizer.pad_token = tokenizer.eos_token
