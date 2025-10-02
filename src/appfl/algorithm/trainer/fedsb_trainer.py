@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Optional, Dict
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig, OmegaConf
+from safetensors.torch import load_file
 from appfl.algorithm.trainer import BaseTrainer
 from transformers import AdamW, TrainingArguments, Trainer
 from fed_sb.utils.initialization_utils import find_and_initialize_grad
@@ -171,9 +172,9 @@ class FedSBTrainer(BaseTrainer):
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
             self.saved_model_path = final_model_path
 
-            # Extract adapter weights for direct transfer
-            self.adapter_weights = self._extract_adapter_weights(client_model)
-            self.adapter_config = self._extract_adapter_config(final_model_path)
+            # Load adapter weights from safetensors for direct transfer
+            self.adapter_weights = self._load_adapter_safetensors(final_model_path)
+            self.adapter_config = self._load_adapter_config(final_model_path)
         else:
             # Create client dataset
             client_dataset = self.train_dataset.select(
@@ -250,21 +251,26 @@ class FedSBTrainer(BaseTrainer):
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
             self.saved_model_path = final_model_path
 
-            # Extract adapter weights for direct transfer
-            self.adapter_weights = self._extract_adapter_weights(client_model)
-            self.adapter_config = self._extract_adapter_config(final_model_path)
+            # Load adapter weights from safetensors for direct transfer
+            self.adapter_weights = self._load_adapter_safetensors(final_model_path)
+            self.adapter_config = self._load_adapter_config(final_model_path)
 
     def get_parameters(self):
-        return {
-            "adapter_weights": self.adapter_weights,
-            "adapter_config": self.adapter_config,
-        }, {
+        metadata = {
             "model_name": self.train_configs.model,
             "agg_type": self.train_configs.agg_type,
             "lora_r": self.train_configs.lora_r,
             "lora_alpha": self.train_configs.lora_alpha,
             "max_seq_length": self.train_configs.max_seq_length,
         }
+
+        if self.train_configs.get("local_debug", False):
+            return self.saved_model_path, metadata
+        else:
+            return {
+                "adapter_weights": self.adapter_weights,
+                "adapter_config": self.adapter_config,
+            }, metadata
 
     def _set_seed(self):
         """
@@ -301,30 +307,29 @@ class FedSBTrainer(BaseTrainer):
 
         return run_dir
 
-    def _extract_adapter_weights(self, model) -> Dict[str, torch.Tensor]:
+    def _load_adapter_safetensors(self, final_model_path: str) -> Dict[str, torch.Tensor]:
         """
-        Extract adapter weights from the PEFT model.
+        Load adapter weights from the saved safetensors file - exactly what the aggregator expects.
+        This ensures 100% compatibility with the file-based approach.
         """
-        adapter_weights = {}
-        state_dict = model.state_dict()
+        adapter_path = os.path.join(final_model_path, "adapter_model.safetensors")
 
-        # Extract only the adapter/LoRA weights
-        for key, value in state_dict.items():
-            if any(adapter_key in key for adapter_key in ["lora_A", "lora_B", "lora_latent"]):
-                # Convert to CPU and detach to avoid GPU memory issues during transfer
-                adapter_weights[key] = value.detach().cpu()
+        if os.path.exists(adapter_path):
+            return load_file(adapter_path, device="cpu")
+        else:
+            return {}
 
-        return adapter_weights
-
-    def _extract_adapter_config(self, model_path: str) -> Dict[str, Any]:
+    def _load_adapter_config(self, model_path: str) -> Dict[str, Any]:
         """
-        Extract adapter configuration from the saved model directory.
+        Extract adapter configuration from the saved adapter_config.json file.
         """
         adapter_config_path = os.path.join(model_path, "adapter_config.json")
+
         if os.path.exists(adapter_config_path):
             with open(adapter_config_path, "r") as f:
                 return json.load(f)
-        return {}
+        else:
+            return {}
 
     def _init_wandb(self):
         """
@@ -341,12 +346,3 @@ class FedSBTrainer(BaseTrainer):
             )
             with open(os.path.join(self.run_dir, "wandb_run_id.txt"), "w") as f:
                 f.write(wandb_run.id)
-
-
-if __name__ == "__main__":
-    from omegaconf import OmegaConf
-
-    config_path = "/eagle/tpc/zilinghan/appfl/APPFL/examples/resources/configs/fedsb/fedsb_config.yaml"
-    client_configs = OmegaConf.load(config_path)
-    trainer = FedSBTrainer(client_configs.train_configs)
-    trainer.train()
