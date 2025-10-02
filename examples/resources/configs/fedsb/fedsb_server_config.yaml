@@ -1,5 +1,6 @@
 client_configs:
   train_configs:
+    local_debug: False
     trainer: FedSBTrainer
     seed: 42
     agg_type: fed-sb
