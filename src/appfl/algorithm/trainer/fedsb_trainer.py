@@ -4,7 +4,7 @@ import torch
 import wandb
 import numpy as np
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig, OmegaConf
 from appfl.algorithm.trainer import BaseTrainer
@@ -170,6 +170,10 @@ class FedSBTrainer(BaseTrainer):
             client_model.save_pretrained(final_model_path)
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
             self.saved_model_path = final_model_path
+
+            # Extract adapter weights for direct transfer
+            self.adapter_weights = self._extract_adapter_weights(client_model)
+            self.adapter_config = self._extract_adapter_config(final_model_path)
         else:
             # Create client dataset
             client_dataset = self.train_dataset.select(
@@ -246,8 +250,15 @@ class FedSBTrainer(BaseTrainer):
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
             self.saved_model_path = final_model_path
 
+            # Extract adapter weights for direct transfer
+            self.adapter_weights = self._extract_adapter_weights(client_model)
+            self.adapter_config = self._extract_adapter_config(final_model_path)
+
     def get_parameters(self):
-        return self.saved_model_path, {
+        return {
+            "adapter_weights": self.adapter_weights,
+            "adapter_config": self.adapter_config,
+        }, {
             "model_name": self.train_configs.model,
             "agg_type": self.train_configs.agg_type,
             "lora_r": self.train_configs.lora_r,
@@ -289,6 +300,31 @@ class FedSBTrainer(BaseTrainer):
             json.dump(config_dict, f, indent=4)
 
         return run_dir
+
+    def _extract_adapter_weights(self, model) -> Dict[str, torch.Tensor]:
+        """
+        Extract adapter weights from the PEFT model.
+        """
+        adapter_weights = {}
+        state_dict = model.state_dict()
+
+        # Extract only the adapter/LoRA weights
+        for key, value in state_dict.items():
+            if any(adapter_key in key for adapter_key in ["lora_A", "lora_B", "lora_latent"]):
+                # Convert to CPU and detach to avoid GPU memory issues during transfer
+                adapter_weights[key] = value.detach().cpu()
+
+        return adapter_weights
+
+    def _extract_adapter_config(self, model_path: str) -> Dict[str, Any]:
+        """
+        Extract adapter configuration from the saved model directory.
+        """
+        adapter_config_path = os.path.join(model_path, "adapter_config.json")
+        if os.path.exists(adapter_config_path):
+            with open(adapter_config_path, "r") as f:
+                return json.load(f)
+        return {}
 
     def _init_wandb(self):
         """
