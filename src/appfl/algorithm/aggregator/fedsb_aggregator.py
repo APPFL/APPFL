@@ -16,6 +16,7 @@ from fed_sb.fed.fed_agg import (
 from fed_sb.utils.initialization_utils import find_and_initialize
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 
+
 class FedSBAggregator(BaseAggregator):
     def __init__(
         self,
@@ -30,13 +31,18 @@ class FedSBAggregator(BaseAggregator):
     def get_parameters(self, **kwargs):
         raise NotImplementedError("FedSB does not support get_parameters.")
 
-    def aggregate(self, local_models: Dict[Union[str, int], Union[str, Dict]], **kwargs) -> Dict:
+    def aggregate(
+        self, local_models: Dict[Union[str, int], Union[str, Dict]], **kwargs
+    ) -> Dict:
         client_ids = list(local_models.keys())
         first_client_data = list(local_models.values())[0]
 
         # Determine approach once with a flag
         is_file_based = isinstance(first_client_data, str)
-        is_direct_content = isinstance(first_client_data, dict) and "adapter_weights" in first_client_data
+        is_direct_content = (
+            isinstance(first_client_data, dict)
+            and "adapter_weights" in first_client_data
+        )
 
         if not (is_file_based or is_direct_content):
             raise ValueError(f"Unexpected data format: {type(first_client_data)}")
@@ -52,7 +58,9 @@ class FedSBAggregator(BaseAggregator):
         for client_data in local_models.values():
             if is_file_based:
                 adapter_path = os.path.join(client_data, "adapter_model.safetensors")
-                adapter_weights = load_file(adapter_path, device=self.aggregator_configs.device)
+                adapter_weights = load_file(
+                    adapter_path, device=self.aggregator_configs.device
+                )
             else:
                 adapter_weights = {
                     k: v.to(self.aggregator_configs.device)
@@ -81,16 +89,18 @@ class FedSBAggregator(BaseAggregator):
             client_models.append(new_weights)
 
         if is_file_based:
-            config_path = os.path.join(list(local_models.values())[0], "adapter_config.json")
+            config_path = os.path.join(
+                list(local_models.values())[0], "adapter_config.json"
+            )
             if os.path.exists(config_path):
-                with open(config_path, "r") as f:
+                with open(config_path) as f:
                     adapter_config = json.load(f)
             else:
                 adapter_config = {}
         else:
             adapter_config = list(local_models.values())[0].get("adapter_config", {})
 
-        if agg_type == "fed-sb":    
+        if agg_type == "fed-sb":
             global_model, tokenizer = self.load_model_with_lora_sb(
                 aggregator_kwargs["model_name"],
                 client_models[0],
@@ -98,12 +108,14 @@ class FedSBAggregator(BaseAggregator):
                 aggregator_kwargs,
             )
         else:
-            lora_weights_path = list(local_models.values())[0] if is_file_based else None
+            lora_weights_path = (
+                list(local_models.values())[0] if is_file_based else None
+            )
             global_model, tokenizer = self.load_model_with_lora(
                 aggregator_kwargs["model_name"],
                 adapter_config,
                 aggregator_kwargs,
-                lora_weights_path
+                lora_weights_path,
             )
 
         if agg_type == "fedex":
@@ -169,7 +181,9 @@ class FedSBAggregator(BaseAggregator):
         """
         # 1. Load the base model
         base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name, device_map={"": self.aggregator_configs.device}, torch_dtype=torch.bfloat16
+            base_model_name,
+            device_map={"": self.aggregator_configs.device},
+            torch_dtype=torch.bfloat16,
         )
 
         # 2. Load the tokenizer
@@ -240,7 +254,9 @@ class FedSBAggregator(BaseAggregator):
         """
         # 1. Load the base model
         base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name, device_map={"": self.aggregator_configs.device}, torch_dtype=torch.bfloat16
+            base_model_name,
+            device_map={"": self.aggregator_configs.device},
+            torch_dtype=torch.bfloat16,
         )
 
         if "llama" in base_model_name:

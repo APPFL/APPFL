@@ -307,7 +307,9 @@ class FedSBTrainer(BaseTrainer):
 
         return run_dir
 
-    def _load_adapter_safetensors(self, final_model_path: str) -> Dict[str, torch.Tensor]:
+    def _load_adapter_safetensors(
+        self, final_model_path: str
+    ) -> Dict[str, torch.Tensor]:
         """
         Load adapter weights from the saved safetensors file - exactly what the aggregator expects.
         This ensures 100% compatibility with the file-based approach.
@@ -326,7 +328,7 @@ class FedSBTrainer(BaseTrainer):
         adapter_config_path = os.path.join(model_path, "adapter_config.json")
 
         if os.path.exists(adapter_config_path):
-            with open(adapter_config_path, "r") as f:
+            with open(adapter_config_path) as f:
                 return json.load(f)
         else:
             return {}
