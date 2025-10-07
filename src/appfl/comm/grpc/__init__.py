@@ -9,13 +9,6 @@ from ._credentials import (
     SERVER_CERTIFICATE_KEY,
     SERVER_CERTIFICATE,
 )
-from ..grpc_legacy import (
-    APPFLgRPCClient,
-    APPFLgRPCServer,
-    GRPCCommunicator,
-    grpc_serve,
-    Job,
-)
 from .setup_ssl import setup_ssl
 
 __all__ = [
@@ -30,10 +23,5 @@ __all__ = [
     "ROOT_CERTIFICATE",
     "SERVER_CERTIFICATE_KEY",
     "SERVER_CERTIFICATE",
-    "APPFLgRPCClient",
-    "APPFLgRPCServer",
-    "GRPCCommunicator",
-    "grpc_serve",
-    "Job",
     "setup_ssl",
 ]
