@@ -29,6 +29,11 @@ if sys.version_info >= (3, 9):
 else:
     numpy_version = "numpy"  # Default numpy version for Python < 3.9
 
+if sys.version_info >= (3, 10):
+    wandb_version = "wandb"
+else:
+    wandb_version = "wandb==0.22.1"  # Default wandb version for Python >= 3.9
+
 setuptools.setup(
     name="appfl",
     version="2.0.0",
@@ -72,7 +77,7 @@ setuptools.setup(
         "seaborn",
         "piq",
         "scikit-learn",
-        "wandb",
+        wandb_version,
         "colorama",
         "proxystore[all]",
         "ray[default]",
