@@ -26,6 +26,7 @@ The build command for documentation is:
 ```shell
 cd appfl/docs
 make html
+# You can run `make clean` to clean previous build
 ```
 
 Note that `vscode` can preview the docs.

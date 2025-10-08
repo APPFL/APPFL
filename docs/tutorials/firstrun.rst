@@ -6,7 +6,7 @@ In this page, we present how to run an example federated learning script on the 
 Installation
 ------------
 
-First, we need to make sure that the APPFL package and its dependencies are installed.Then, change to ``examples`` directory.
+First, we need to make sure that the APPFL package and its dependencies are installed. Then, change to ``examples`` directory.
 
 .. code-block:: bash
 

@@ -51,7 +51,7 @@ APPFL, Advanced Privacy-Preserving Federated Learning, is an open-source and hig
 We highly recommend creating a new Conda virtual environment and install the required packages for APPFL.
 
 ```bash
-conda create -n appfl python=3.8
+conda create -n appfl python=3.10
 conda activate appfl
 ```
 

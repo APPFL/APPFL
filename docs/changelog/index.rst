@@ -1,6 +1,15 @@
 Changelog
 =========
 
+appfl v2.0.0
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Remove deprecated features, modules, and examples from previous versions.
+- Add Opacus and Gaussian mechanism for differential privacy training from `@aash-mohammad <https://github.com/aash-mohammad>`_.
+
 appfl v1.8.0
 ------------
 

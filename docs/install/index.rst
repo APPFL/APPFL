@@ -4,7 +4,7 @@ Installation
 This page describes how to install APPFL on a machine independent of operating systems.
 
 Conda environment
------------------
+~~~~~~~~~~~~~~~~~
 
 We highly recommend to create new conda environment and install the required packages for APPFL.
 
@@ -14,7 +14,7 @@ We highly recommend to create new conda environment and install the required pac
     conda activate APPFL
 
 User installation
------------------
+~~~~~~~~~~~~~~~~~
 
 For most users, including data scientists, this simple installation is sufficient for running the package.
 
@@ -38,7 +38,7 @@ If you want to even minimize the installation of package dependencies, you can u
     ``torch`` may need to be updated manually to support CUDA. Please check GPU support in `PyTorch <pytorch.org>`_.
 
 Developer installation
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 Code developers and contributors may want to work on the local repository.
 To set up the development environment,
@@ -53,9 +53,11 @@ To set up the development environment,
 
     If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install -e ".[dev,examples]"``.
 
+Verify installation
+~~~~~~~~~~~~~~~~~~~
 
-On Ubuntu, if the installation process failed, you can try:
+To verify the installation, you can run the following command to check the version of APPFL, which should print the installed version without error.
 
 .. code-block:: bash
 
-    sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
+    python -c "import appfl; print(appfl.__version__)"

@@ -70,8 +70,8 @@ Main Topics
    install/index
    tutorials/index
    users/index
+   developer/index
    community/index
-   contribution/index
    publication/index
    changelog/index
 

@@ -41,13 +41,12 @@ APPFL Components
 
    technical_components
 
-User and Developer Guide
-------------------------
+User Guide
+----------
 
 .. toctree::
    :maxdepth: 2
    :titlesonly:
 
    user_run
-   ../developer/index
 
