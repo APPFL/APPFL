@@ -1,7 +1,7 @@
 Changelog
 =========
 
-appfl v2.0.0
+appfl v1.9.0
 ------------
 
 New Features
