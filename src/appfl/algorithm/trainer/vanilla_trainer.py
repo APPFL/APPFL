@@ -477,9 +477,7 @@ class VanillaTrainer(BaseTrainer):
         output = self.model(data)
         loss = self.loss_fn(output, target)
         loss.backward()
-        if getattr(self.train_configs, "clip_grad", False) or getattr(
-            self.train_configs, "use_dp", False
-        ):
+        if getattr(self.train_configs, "clip_grad", False):
             assert hasattr(self.train_configs, "clip_value"), (
                 "Gradient clipping value must be specified"
             )
