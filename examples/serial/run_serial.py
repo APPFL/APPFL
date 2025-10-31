@@ -14,7 +14,7 @@ argparser.add_argument(
 argparser.add_argument(
     "--client_config", type=str, default="./resources/configs/mnist/client_1.yaml"
 )
-argparser.add_argument("--num_clients", type=int, default=10)
+argparser.add_argument("--num_clients", type=int, default=2)
 args = argparser.parse_args()
 
 # Load server agent configurations and set the number of clients
