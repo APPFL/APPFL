@@ -26,4 +26,4 @@ def make_private_with_opacus(
         noise_multiplier=noise_multiplier,
         max_grad_norm=max_grad_norm,
     )
-    return model.to(device), optimizer, data_loader 
+    return model.to(device), optimizer, data_loader

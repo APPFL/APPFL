@@ -92,7 +92,7 @@ class VanillaTrainer(BaseTrainer):
 
         # Extract train device, and configurations for possible DataParallel
         self.device_config, self.device = parse_device_str(self.train_configs.device)
-        
+
         # Differential privacy through Opacus
         if self.train_configs.get("use_dp", False) and (
             self.train_configs.get("dp_mechanism", "none") == "opacus"
@@ -194,17 +194,15 @@ class VanillaTrainer(BaseTrainer):
             noise_multiplier = dp_cfg.get("noise_multiplier", 1.0)
             max_grad_norm = dp_cfg.get("max_grad_norm", 1.0)
 
-            self.model, optimizer, self.train_dataloader = (
-                make_private_with_opacus(
-                    self.privacy_engine,
-                    self.model,
-                    optimizer,
-                    self.train_dataloader,
-                    noise_multiplier=noise_multiplier,
-                    max_grad_norm=max_grad_norm,
-                    device=self.train_configs.device,
-                )
-            ) 
+            self.model, optimizer, self.train_dataloader = make_private_with_opacus(
+                self.privacy_engine,
+                self.model,
+                optimizer,
+                self.train_dataloader,
+                noise_multiplier=noise_multiplier,
+                max_grad_norm=max_grad_norm,
+                device=self.train_configs.device,
+            )
 
         if self.train_configs.mode == "epoch":
             for epoch in range(self.train_configs.num_local_epochs):
@@ -345,7 +343,10 @@ class VanillaTrainer(BaseTrainer):
             )
 
         # --- Log DP budget ---
-        if self.train_configs.get("use_dp", False) and self.train_configs.get("dp_mechanism", "none") == "opacus":
+        if (
+            self.train_configs.get("use_dp", False)
+            and self.train_configs.get("dp_mechanism", "none") == "opacus"
+        ):
             epsilon = self.privacy_engine.get_epsilon(delta=1e-5)
             print(f"[DP] Training completed with (ε = {epsilon:.2f}, δ = 1e-5)")
 
