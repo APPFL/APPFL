@@ -1,7 +1,7 @@
 # This workflow publishes pre-release versions to PyPI when branches starting with 'pre-release' are updated.
 # It's designed to test changes potentially affecting the release process, including changes in dependencies updated by Dependabot.
 
-name: Publish Pre-release Package
+name: Manual Pre-Release to PyPI
 
 on:
   workflow_dispatch:
