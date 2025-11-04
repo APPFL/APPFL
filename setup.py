@@ -26,8 +26,15 @@ with open("README.md", encoding="utf-8") as fh:
 
 if sys.version_info >= (3, 9):
     numpy_version = "numpy==1.26.4"
+    zfpy_version = "zfpy"
 else:
     numpy_version = "numpy"  # Default numpy version for Python < 3.9
+    zfpy_version = "zfpy==1.0.0"
+
+if sys.version_info >= (3, 10):
+    wandb_version = "wandb"
+else:
+    wandb_version = "wandb==0.22.1"  # Default wandb version for Python >= 3.9
 
 setuptools.setup(
     name="appfl",
@@ -64,7 +71,7 @@ setuptools.setup(
         "boto3",
         "botocore",
         "lz4",
-        "zfpy",
+        zfpy_version,
         "zstd",
         "blosc",
         "python-xz",
@@ -72,7 +79,7 @@ setuptools.setup(
         "seaborn",
         "piq",
         "scikit-learn",
-        "wandb",
+        wandb_version,
         "colorama",
         "proxystore[all]",
         "ray[default]",
