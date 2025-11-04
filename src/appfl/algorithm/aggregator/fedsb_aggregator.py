@@ -3,18 +3,18 @@ import json
 import torch
 import shutil
 from omegaconf import DictConfig
-from peft import PeftModel, LoraConfig
 from safetensors.torch import load_file
-from appfl.algorithm.aggregator import BaseAggregator
+from peft import LoraConfig, get_peft_model
 from typing import Union, Dict, Any, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
+from appfl.algorithm.aggregator import BaseAggregator
 from fed_sb.fed.fed_agg import (
+    aggregate_models_ffa,
+    aggregate_models_fedex,
     aggregate_models_fed_it,
     aggregate_models_fed_sb,
-    aggregate_models_fedex,
-    aggregate_models_ffa,
 )
 from fed_sb.utils.initialization_utils import find_and_initialize
+from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 
 
 class FedSBAggregator(BaseAggregator):
@@ -31,25 +31,44 @@ class FedSBAggregator(BaseAggregator):
     def get_parameters(self, **kwargs):
         raise NotImplementedError("FedSB does not support get_parameters.")
 
-    def aggregate(self, local_models: Dict[Union[str, int], str], **kwargs) -> Dict:
+    def aggregate(
+        self, local_models: Dict[Union[str, int], Union[str, Dict]], **kwargs
+    ) -> Dict:
         client_ids = list(local_models.keys())
+        first_client_data = list(local_models.values())[0]
+
+        # Determine approach once with a flag
+        is_file_based = isinstance(first_client_data, str)
+        is_direct_content = (
+            isinstance(first_client_data, dict)
+            and "adapter_weights" in first_client_data
+        )
+
+        if not (is_file_based or is_direct_content):
+            raise ValueError(f"Unexpected data format: {type(first_client_data)}")
+
+        # Extract metadata from kwargs
         aggregator_kwargs = {
             key: value[client_ids[0]] for key, value in kwargs.items()
         }  # assume all clients have the same kwargs
         agg_type = aggregator_kwargs["agg_type"]
 
-        # Read through the local model adapters
-        adapter_state_dicts = []
-        for local_model_path in local_models.values():
-            adapter_path = os.path.join(local_model_path, "adapter_model.safetensors")
-            adapter = load_file(adapter_path, device=self.aggregator_configs.device)
-            adapter_state_dicts.append(adapter)
-
+        # Load adapter weights and apply transformations
         client_models = []
+        for client_data in local_models.values():
+            if is_file_based:
+                adapter_path = os.path.join(client_data, "adapter_model.safetensors")
+                adapter_weights = load_file(
+                    adapter_path, device=self.aggregator_configs.device
+                )
+            else:
+                adapter_weights = {
+                    k: v.to(self.aggregator_configs.device)
+                    for k, v in client_data["adapter_weights"].items()
+                }
 
-        for adapter_state_dict in adapter_state_dicts:
             new_weights = {}
-            for key, value in adapter_state_dict.items():
+            for key, value in adapter_weights.items():
                 if agg_type == "fed-sb":
                     if "lora_A" in key:
                         new_key = key.replace("lora_A", "lora_A.default")
@@ -66,22 +85,37 @@ class FedSBAggregator(BaseAggregator):
                         new_key = key.replace("lora_B", "lora_B.default")
                     else:
                         new_key = key
-
                 new_weights[new_key] = value
             client_models.append(new_weights)
+
+        if is_file_based:
+            config_path = os.path.join(
+                list(local_models.values())[0], "adapter_config.json"
+            )
+            if os.path.exists(config_path):
+                with open(config_path) as f:
+                    adapter_config = json.load(f)
+            else:
+                adapter_config = {}
+        else:
+            adapter_config = list(local_models.values())[0].get("adapter_config", {})
 
         if agg_type == "fed-sb":
             global_model, tokenizer = self.load_model_with_lora_sb(
                 aggregator_kwargs["model_name"],
-                new_weights,
-                list(local_models.values())[0],
+                client_models[0],
+                adapter_config,
                 aggregator_kwargs,
             )
         else:
+            lora_weights_path = (
+                list(local_models.values())[0] if is_file_based else None
+            )
             global_model, tokenizer = self.load_model_with_lora(
                 aggregator_kwargs["model_name"],
-                list(local_models.values())[0],
+                adapter_config,
                 aggregator_kwargs,
+                lora_weights_path,
             )
 
         if agg_type == "fedex":
@@ -104,11 +138,12 @@ class FedSBAggregator(BaseAggregator):
         )
         global_model.save_pretrained(save_directory_final_model)
 
-        # Clean up final model directories used for aggregation
-        for client_model in local_models.values():
-            if os.path.exists(client_model):
-                shutil.rmtree(client_model)
-                self.logger.info(f"Deleted {client_model}")
+        # Clean up files only if using file-based approach
+        if is_file_based:
+            for client_model in local_models.values():
+                if os.path.exists(client_model):
+                    shutil.rmtree(client_model)
+                    self.logger.info(f"Deleted {client_model}")
 
         global_model = global_model.merge_and_unload()
 
@@ -125,14 +160,20 @@ class FedSBAggregator(BaseAggregator):
         return {"merged_model_path": save_directory_merged_model}
 
     def load_model_with_lora_sb(
-        self, base_model_name, lora_weights, lora_weights_path, args
+        self,
+        base_model_name,
+        lora_weights,
+        adapter_config,
+        args,
     ):
         """
-        Load a base model with LoRA weights
+        Load a base model with LoRA weights for Fed-SB (unified function)
 
         Args:
             base_model_name (str): Hugging Face model name or path to base model
-            lora_weights_path (str): Path to saved LoRA weights directory
+            lora_weights (dict): LoRA weights dictionary (for direct approach)
+            adapter_config (dict): Adapter configuration dictionary
+            args: Arguments containing LoRA parameters
 
         Returns:
             model: Combined model with LoRA weights
@@ -140,7 +181,9 @@ class FedSBAggregator(BaseAggregator):
         """
         # 1. Load the base model
         base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name, device_map={"": "cuda"}, torch_dtype=torch.bfloat16
+            base_model_name,
+            device_map={"": self.aggregator_configs.device},
+            torch_dtype=torch.bfloat16,
         )
 
         # 2. Load the tokenizer
@@ -149,36 +192,27 @@ class FedSBAggregator(BaseAggregator):
                 tokenizer = AutoTokenizer.from_pretrained(
                     base_model_name,
                     use_fast=True,
-                    device_map={"": "cuda"},
+                    device_map={"": self.aggregator_configs.device},
                 )
             else:
                 tokenizer = LlamaTokenizer.from_pretrained(
                     base_model_name,
                     use_fast=True,
-                    device_map={"": "cuda"},
+                    device_map={"": self.aggregator_configs.device},
                 )
         else:
             tokenizer = AutoTokenizer.from_pretrained(
                 base_model_name,
                 use_fast=True,
-                device_map={"": "cuda"},
+                device_map={"": self.aggregator_configs.device},
             )
 
         tokenizer.pad_token = tokenizer.eos_token
 
-        # 3. Load and apply LoRA weights
-        model = PeftModel.from_pretrained(
-            base_model,
-            lora_weights_path,
-            device_map={"": "cuda"},
-        )
+        lora_config = LoraConfig(**adapter_config)
+        model = get_peft_model(base_model, lora_config)
 
         reconstr_config = self.aggregator_configs.reconstruction_configs
-
-        with open(os.path.join(lora_weights_path, "adapter_config.json")) as f:
-            lora_config_dict = json.load(f)
-            lora_config = LoraConfig(**lora_config_dict)
-
         adapter_name = "default"
         peft_config_dict = {adapter_name: lora_config}
         reconstr_config["svd"]["rank"] = args["lora_r"]
@@ -196,18 +230,23 @@ class FedSBAggregator(BaseAggregator):
         for key in model_state_dict.keys():
             if ("lora_A" in key) or ("lora_B" in key):
                 model_state_dict[key] = lora_weights[key]
-
         model.load_state_dict(model_state_dict)
 
         return model, tokenizer
 
-    def load_model_with_lora(self, base_model_name, lora_weights_path, args):
+    def load_model_with_lora(
+        self,
+        base_model_name,
+        adapter_config,
+        args,
+    ):
         """
-        Load a base model with LoRA weights
+        Load a base model with LoRA weights (unified function for both direct config and file path)
 
         Args:
             base_model_name (str): Hugging Face model name or path to base model
-            lora_weights_path (str): Path to saved LoRA weights directory
+            adapter_config (dict): Adapter configuration dictionary
+            args: Arguments containing LoRA parameters
 
         Returns:
             model: Combined model with LoRA weights
@@ -215,7 +254,9 @@ class FedSBAggregator(BaseAggregator):
         """
         # 1. Load the base model
         base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name, device_map={"": "cuda"}, torch_dtype=torch.bfloat16
+            base_model_name,
+            device_map={"": self.aggregator_configs.device},
+            torch_dtype=torch.bfloat16,
         )
 
         if "llama" in base_model_name:
@@ -223,28 +264,24 @@ class FedSBAggregator(BaseAggregator):
                 tokenizer = AutoTokenizer.from_pretrained(
                     base_model_name,
                     use_fast=True,
-                    device_map={"": "cuda"},
+                    device_map={"": self.aggregator_configs.device},
                 )
             else:
                 tokenizer = LlamaTokenizer.from_pretrained(
                     base_model_name,
                     use_fast=True,
-                    device_map={"": "cuda"},
+                    device_map={"": self.aggregator_configs.device},
                 )
         else:
             tokenizer = AutoTokenizer.from_pretrained(
                 base_model_name,
                 use_fast=True,
-                device_map={"": "cuda"},
+                device_map={"": self.aggregator_configs.device},
             )
 
         tokenizer.pad_token = tokenizer.eos_token
 
-        # 3. Load and apply LoRA weights
-        model = PeftModel.from_pretrained(
-            base_model,
-            lora_weights_path,
-            device_map={"": "cuda"},
-        )
+        lora_config = LoraConfig(**adapter_config)
+        model = get_peft_model(base_model, lora_config)
 
         return model, tokenizer
