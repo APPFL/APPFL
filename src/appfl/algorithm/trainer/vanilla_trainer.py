@@ -20,6 +20,7 @@ from appfl.misc.memory_utils import (
     safe_inplace_operation,
     optimize_memory_cleanup,
 )
+from opacus import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 import logging
 
@@ -91,6 +92,12 @@ class VanillaTrainer(BaseTrainer):
 
         # Extract train device, and configurations for possible DataParallel
         self.device_config, self.device = parse_device_str(self.train_configs.device)
+
+        # Differential privacy through Opacus
+        if self.train_configs.get("use_dp", False) and (
+            self.train_configs.get("dp_mechanism", "laplace") == "opacus"
+        ):
+            self.privacy_engine = PrivacyEngine()
 
     def train(self, **kwargs):
         """
@@ -187,15 +194,14 @@ class VanillaTrainer(BaseTrainer):
             noise_multiplier = dp_cfg.get("noise_multiplier", 1.0)
             max_grad_norm = dp_cfg.get("max_grad_norm", 1.0)
 
-            self.model, optimizer, self.train_dataloader, self.privacy_engine = (
-                make_private_with_opacus(
-                    self.model,
-                    optimizer,
-                    self.train_dataloader,
-                    noise_multiplier=noise_multiplier,
-                    max_grad_norm=max_grad_norm,
-                    device=self.train_configs.device,
-                )
+            self.model, optimizer, self.train_dataloader = make_private_with_opacus(
+                self.privacy_engine,
+                self.model,
+                optimizer,
+                self.train_dataloader,
+                noise_multiplier=noise_multiplier,
+                max_grad_norm=max_grad_norm,
+                device=self.train_configs.device,
             )
 
         if self.train_configs.mode == "epoch":
@@ -337,9 +343,14 @@ class VanillaTrainer(BaseTrainer):
             )
 
         # --- Log DP budget ---
-        # if self.train_configs.get("use_dp", False) and self.train_configs.get("dp_mechanism", "none") == "opacus":
-        #     epsilon = self.privacy_engine.get_epsilon(delta=1e-5)
-        #     print(f"[DP] Training completed with (ε = {epsilon:.2f}, δ = 1e-5)")
+        if (
+            self.train_configs.get("use_dp", False)
+            and self.train_configs.get("dp_mechanism", "laplace") == "opacus"
+        ):
+            epsilon = self.privacy_engine.get_epsilon(delta=1e-5)
+            self.logger.info(
+                f"[DP] Training completed with (ε = {epsilon:.2f}, δ = 1e-5)"
+            )
 
         # If model was wrapped in DataParallel, unload it
         if self.device_config["device_type"] == "gpu-multi":
@@ -477,9 +488,7 @@ class VanillaTrainer(BaseTrainer):
         output = self.model(data)
         loss = self.loss_fn(output, target)
         loss.backward()
-        if getattr(self.train_configs, "clip_grad", False) or getattr(
-            self.train_configs, "use_dp", False
-        ):
+        if getattr(self.train_configs, "clip_grad", False):
             assert hasattr(self.train_configs, "clip_value"), (
                 "Gradient clipping value must be specified"
             )

@@ -11,7 +11,7 @@ class CNN(nn.Module):
         )
         self.conv2 = nn.Conv2d(32, 64, kernel_size=5, padding=0, stride=1, bias=True)
         self.maxpool = nn.MaxPool2d(kernel_size=(2, 2))
-        self.act = nn.ReLU(inplace=True)
+        self.act = nn.ReLU(inplace=False)
 
         ###
         ### X_out = floor{ 1 + (X_in + 2*padding - dilation*(kernel_size-1) - 1)/stride }
