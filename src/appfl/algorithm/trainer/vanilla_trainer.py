@@ -95,7 +95,7 @@ class VanillaTrainer(BaseTrainer):
 
         # Differential privacy through Opacus
         if self.train_configs.get("use_dp", False) and (
-            self.train_configs.get("dp_mechanism", "none") == "opacus"
+            self.train_configs.get("dp_mechanism", "laplace") == "opacus"
         ):
             self.privacy_engine = PrivacyEngine()
 
@@ -188,7 +188,7 @@ class VanillaTrainer(BaseTrainer):
         )
 
         if self.train_configs.get("use_dp", False) and (
-            self.train_configs.get("dp_mechanism", "none") == "opacus"
+            self.train_configs.get("dp_mechanism", "laplace") == "opacus"
         ):
             dp_cfg = self.train_configs.get("dp_config", {})
             noise_multiplier = dp_cfg.get("noise_multiplier", 1.0)
@@ -345,10 +345,10 @@ class VanillaTrainer(BaseTrainer):
         # --- Log DP budget ---
         if (
             self.train_configs.get("use_dp", False)
-            and self.train_configs.get("dp_mechanism", "none") == "opacus"
+            and self.train_configs.get("dp_mechanism", "laplace") == "opacus"
         ):
             epsilon = self.privacy_engine.get_epsilon(delta=1e-5)
-            print(f"[DP] Training completed with (ε = {epsilon:.2f}, δ = 1e-5)")
+            self.logger.info(f"[DP] Training completed with (ε = {epsilon:.2f}, δ = 1e-5)")
 
         # If model was wrapped in DataParallel, unload it
         if self.device_config["device_type"] == "gpu-multi":
