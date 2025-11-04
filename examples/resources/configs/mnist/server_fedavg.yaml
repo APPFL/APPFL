@@ -16,7 +16,7 @@ client_configs:
     metric_path: "./resources/metric/acc.py"
     metric_name: "accuracy"
     # Differential privacy
-    use_dp: True
+    use_dp: False
     epsilon: 1
     # Mini-batch gradient clipping
     clip_grad: False
