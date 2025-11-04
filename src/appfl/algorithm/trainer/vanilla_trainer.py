@@ -348,7 +348,9 @@ class VanillaTrainer(BaseTrainer):
             and self.train_configs.get("dp_mechanism", "laplace") == "opacus"
         ):
             epsilon = self.privacy_engine.get_epsilon(delta=1e-5)
-            self.logger.info(f"[DP] Training completed with (ε = {epsilon:.2f}, δ = 1e-5)")
+            self.logger.info(
+                f"[DP] Training completed with (ε = {epsilon:.2f}, δ = 1e-5)"
+            )
 
         # If model was wrapped in DataParallel, unload it
         if self.device_config["device_type"] == "gpu-multi":
