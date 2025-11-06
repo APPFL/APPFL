@@ -1,4 +1,4 @@
-client_id: "Client2"
+client_id: "Argonne National Laboratory"
 train_configs:
   # Device
   device: "cpu"

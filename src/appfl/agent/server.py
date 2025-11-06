@@ -27,6 +27,7 @@ from appfl.misc.data_readiness.report import (
     get_unique_file_path,
     generate_html_content,
     save_html_report,
+    upload_html_report_to_s3,
 )
 
 
@@ -231,6 +232,13 @@ class ServerAgent:
         html_file_path = get_unique_file_path(output_dir, output_filename, "html")
         html_content = generate_html_content(readiness_report)
         save_html_report(html_file_path, html_content, self.logger)
+        
+        if self.server_agent_config.server_configs.get("upload_dr_report_to_s3", False):
+            s3_bucket = self.server_agent_config.server_configs.get("s3_bucket_name", None)
+            if s3_bucket is not None:
+                upload_html_report_to_s3(html_file_path, s3_bucket, self.logger)
+            else:
+                self.logger.error("S3 bucket name is not provided. Cannot upload the report to S3.")
 
         self._data_readiness_reports = {}
 
