@@ -17,6 +17,7 @@ RUN pip install torch==2.5.0 torchvision==0.20.0 torchaudio==2.5.0 --index-url h
 RUN pip install -e ".[examples]"
 RUN pip install globus-compute-sdk==2.26.0
 RUN pip install globus-compute-endpoint==2.26.0
+RUN pip install typing-extensions==4.12.0
 
 # Change directory to examples
 WORKDIR /app/src/appfl/service

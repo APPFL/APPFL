@@ -672,7 +672,7 @@ class ServerAgent:
         """
         Prepare the configurations for the server agent.
         """
-        if hasattr(
+        if hasattr(self.server_agent_config.client_configs, "train_configs") and hasattr(
             self.server_agent_config.client_configs.train_configs, "send_gradient"
         ):
             if hasattr(self.server_agent_config.server_configs, "aggregator_kwargs"):
