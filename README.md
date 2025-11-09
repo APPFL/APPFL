@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://discord.com/invite/bBW56EYGUS">
-      <img src="https://dcbadge.vercel.app/api/server/bBW56EYGUS?theme=default-inverted&style=flat" alt="discord">
+      <img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white" alt="discord">
   </a>
   <a href="https://zenodo.org/badge/latestdoi/414722606" target="_blank">
       <img src="https://zenodo.org/badge/414722606.svg" alt="DOI">

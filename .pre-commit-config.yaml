@@ -12,7 +12,7 @@ repos:
       - id: check-yaml
       - id: check-merge-conflict
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.20.0
+    rev: v3.21.0
     hooks:
       - id: pyupgrade
         args: ["--py38-plus"]
@@ -22,7 +22,7 @@ repos:
       - id: codespell
         exclude: 'examples/notebook_tutorials/.*\.ipynb'
   - repo: 'https://github.com/charliermarsh/ruff-pre-commit'
-    rev: v0.12.12
+    rev: v0.14.3
     hooks:
       - id: ruff
         args:

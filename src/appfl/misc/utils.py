@@ -299,8 +299,14 @@ def create_instance_from_file_source(source, class_name=None, *args, **kwargs):
     # Create a temporary file to store the source code
     _home = pathlib.Path.home()
     dirname = osp.join(_home, ".appfl", "tmp")
-    if not osp.exists(dirname):
-        pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+    try:
+        if not osp.exists(dirname):
+            pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+    except OSError:
+        # Fallback to /tmp/.appfl if home directory is read-only (e.g., in containers)
+        dirname = osp.join("/tmp", ".appfl", "tmp")
+        if not osp.exists(dirname):
+            pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
     file_path = osp.join(dirname, f"{id_generator()}.py")
     with open(file_path, "w") as file:
         file.write(source)
@@ -325,8 +331,14 @@ def get_function_from_file_source(source, function_name=None):
     # Create a temporary file to store the source code
     _home = pathlib.Path.home()
     dirname = osp.join(_home, ".appfl", "tmp")
-    if not osp.exists(dirname):
-        pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+    try:
+        if not osp.exists(dirname):
+            pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+    except OSError:
+        # Fallback to /tmp/.appfl if home directory is read-only (e.g., in containers)
+        dirname = osp.join("/tmp", ".appfl", "tmp")
+        if not osp.exists(dirname):
+            pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
     file_path = osp.join(dirname, f"{id_generator()}.py")
     with open(file_path, "w") as file:
         file.write(source)

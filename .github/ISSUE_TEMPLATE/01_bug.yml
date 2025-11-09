@@ -28,7 +28,7 @@ body:
       description: >
         Package version if installed via Pip or commit ID if installed
         from source.
-      placeholder: v1.7.0
+      placeholder: v1.8.0
     validations:
       required: true
 

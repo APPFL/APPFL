@@ -1,8 +1,21 @@
 Changelog
 =========
 
+appfl v1.8.0
+------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add support for GA4GH task execution service (TES) to APPFL communicators (experimental).
+- Integrate `Fed-SB <https://arxiv.org/pdf/2502.15436/>`_ into APPFL for efficient federated tuning of large foundation models.
+- Add tutorials for leveraging APPFL to training grid foundation models on real-world power grid datasets.
+
 appfl v1.7.0
 ------------
+
+New Features
+~~~~~~~~~~~~
 
 - Optimize the memory usage for FL server, FL client, and different communicators (experimental).
 - Add example scripts and documentations for scaling test for federated learning using APPFL among multiple nodes and GPUs.

@@ -1,31 +1,80 @@
 # This workflow publishes pre-release versions to PyPI when branches starting with 'pre-release' are updated.
 # It's designed to test changes potentially affecting the release process, including changes in dependencies updated by Dependabot.
 
-name: Publish Pre-release Package
+name: Manual Pre-Release to PyPI
 
 on:
-  push:
-    branches:
-      - 'pre-release*'
+  workflow_dispatch:
+    # Optional — lets you choose which branch to run on from the UI
+    inputs:
+      branch:
+        description: "Branch to run pre-release from"
+        required: true
+        default: "pre-release"
 
 jobs:
-  publish-prerelease:
+  pre-release:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v5
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
-    - name: Build package
-      run: python -m build
-    - name: Publish package to PyPI as a pre-release
-      uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Ensure branch name is pre-release*
+        id: branchcheck
+        run: |
+          BRANCH=${{ github.event.inputs.branch }}
+          echo "Running on branch: $BRANCH"
+          if [[ "$BRANCH" == pre-release* ]]; then
+            echo "ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "This workflow is restricted to pre-release* branches."
+            echo "ok=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop if branch is invalid
+        if: steps.branchcheck.outputs.ok == 'false'
+        run: exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(python setup.py --version)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check version is pre-release
+        id: check
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          echo "Version: $VERSION"
+          if [[ "$VERSION" == *".dev"* || "$VERSION" == *"a"* || "$VERSION" == *"b"* || "$VERSION" == *"rc"* ]]; then
+            echo "is_dev=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_dev=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish package to PyPI as a pre-release
+        if: steps.check.outputs.is_dev == 'true'
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Skip upload (not a pre-release version)
+        if: steps.check.outputs.is_dev == 'false'
+        run: echo "Version is not a pre-release. Skipping upload."

@@ -4,9 +4,10 @@ import torch
 import wandb
 import numpy as np
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig, OmegaConf
+from safetensors.torch import load_file
 from appfl.algorithm.trainer import BaseTrainer
 from transformers import AdamW, TrainingArguments, Trainer
 from fed_sb.utils.initialization_utils import find_and_initialize_grad
@@ -170,6 +171,10 @@ class FedSBTrainer(BaseTrainer):
             client_model.save_pretrained(final_model_path)
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
             self.saved_model_path = final_model_path
+
+            # Load adapter weights from safetensors for direct transfer
+            self.adapter_weights = self._load_adapter_safetensors(final_model_path)
+            self.adapter_config = self._load_adapter_config(final_model_path)
         else:
             # Create client dataset
             client_dataset = self.train_dataset.select(
@@ -246,14 +251,26 @@ class FedSBTrainer(BaseTrainer):
             print(f"Saved model {self.train_configs.client_idx} to {final_model_path}")
             self.saved_model_path = final_model_path
 
+            # Load adapter weights from safetensors for direct transfer
+            self.adapter_weights = self._load_adapter_safetensors(final_model_path)
+            self.adapter_config = self._load_adapter_config(final_model_path)
+
     def get_parameters(self):
-        return self.saved_model_path, {
+        metadata = {
             "model_name": self.train_configs.model,
             "agg_type": self.train_configs.agg_type,
             "lora_r": self.train_configs.lora_r,
             "lora_alpha": self.train_configs.lora_alpha,
             "max_seq_length": self.train_configs.max_seq_length,
         }
+
+        if self.train_configs.get("local_debug", False):
+            return self.saved_model_path, metadata
+        else:
+            return {
+                "adapter_weights": self.adapter_weights,
+                "adapter_config": self.adapter_config,
+            }, metadata
 
     def _set_seed(self):
         """
@@ -290,6 +307,32 @@ class FedSBTrainer(BaseTrainer):
 
         return run_dir
 
+    def _load_adapter_safetensors(
+        self, final_model_path: str
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Load adapter weights from the saved safetensors file - exactly what the aggregator expects.
+        This ensures 100% compatibility with the file-based approach.
+        """
+        adapter_path = os.path.join(final_model_path, "adapter_model.safetensors")
+
+        if os.path.exists(adapter_path):
+            return load_file(adapter_path, device="cpu")
+        else:
+            return {}
+
+    def _load_adapter_config(self, model_path: str) -> Dict[str, Any]:
+        """
+        Extract adapter configuration from the saved adapter_config.json file.
+        """
+        adapter_config_path = os.path.join(model_path, "adapter_config.json")
+
+        if os.path.exists(adapter_config_path):
+            with open(adapter_config_path) as f:
+                return json.load(f)
+        else:
+            return {}
+
     def _init_wandb(self):
         """
         Initialize Weights and Biases for logging.
@@ -305,12 +348,3 @@ class FedSBTrainer(BaseTrainer):
             )
             with open(os.path.join(self.run_dir, "wandb_run_id.txt"), "w") as f:
                 f.write(wandb_run.id)
-
-
-if __name__ == "__main__":
-    from omegaconf import OmegaConf
-
-    config_path = "/eagle/tpc/zilinghan/appfl/APPFL/examples/resources/configs/fedsb/fedsb_config.yaml"
-    client_configs = OmegaConf.load(config_path)
-    trainer = FedSBTrainer(client_configs.train_configs)
-    trainer.train()
