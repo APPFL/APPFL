@@ -694,3 +694,68 @@ class ServerAgent:
             ), (
                 "The gradient_based should be set in the client_configs.train_configs.send_gradient."
             )
+
+        if hasattr(
+            self.server_agent_config.server_configs, "aggregator_kwargs"
+        ) and hasattr(
+            self.server_agent_config.server_configs.aggregator_kwargs, "use_secure_agg"
+        ):
+            if hasattr(self.server_agent_config.client_configs, "train_configs"):
+                if hasattr(
+                    self.server_agent_config.client_configs.train_configs,
+                    "use_secure_agg",
+                ):
+                    warnings.warn(
+                        message="There is no need to specify the use_secure_agg in client_configs.train_configs. It is automatically set based on the use_secure_agg in the server_configs.aggregator_kwargs.",
+                        category=UserWarning,
+                    )
+                self.server_agent_config.client_configs.train_configs.use_secure_agg = self.server_agent_config.server_configs.aggregator_kwargs.use_secure_agg
+            else:
+                self.server_agent_config.client_configs.train_configs = OmegaConf.create(
+                    {
+                        "use_secure_agg": self.server_agent_config.server_configs.aggregator_kwargs.use_secure_agg
+                    }
+                )
+        else:
+            assert not (
+                hasattr(self.server_agent_config.client_configs, "train_configs")
+                and hasattr(
+                    self.server_agent_config.client_configs.train_configs,
+                    "use_secure_agg",
+                )
+            ), (
+                "The use_secure_agg should be set in the server_configs.aggregator_kwargs.use_secure_agg."
+            )
+
+        if hasattr(
+            self.server_agent_config.server_configs, "aggregator_kwargs"
+        ) and hasattr(
+            self.server_agent_config.server_configs.aggregator_kwargs,
+            "secure_agg_client_weights_mode",
+        ):
+            if hasattr(self.server_agent_config.client_configs, "train_configs"):
+                if hasattr(
+                    self.server_agent_config.client_configs.train_configs,
+                    "secure_agg_client_weights_mode",
+                ):
+                    warnings.warn(
+                        message="There is no need to specify the secure_agg_client_weights_mode in client_configs.train_configs. It is automatically set based on the secure_agg_client_weights_mode in the server_configs.aggregator_kwargs.",
+                        category=UserWarning,
+                    )
+                self.server_agent_config.client_configs.train_configs.secure_agg_client_weights_mode = self.server_agent_config.server_configs.aggregator_kwargs.secure_agg_client_weights_mode
+            else:
+                self.server_agent_config.client_configs.train_configs = OmegaConf.create(
+                    {
+                        "secure_agg_client_weights_mode": self.server_agent_config.server_configs.aggregator_kwargs.secure_agg_client_weights_mode
+                    }
+                )
+        else:
+            assert not (
+                hasattr(self.server_agent_config.client_configs, "train_configs")
+                and hasattr(
+                    self.server_agent_config.client_configs.train_configs,
+                    "secure_agg_client_weights_mode",
+                )
+            ), (
+                "The secure_agg_client_weights_mode should be set in the server_configs.aggregator_kwargs.secure_agg_client_weights_mode."
+            )

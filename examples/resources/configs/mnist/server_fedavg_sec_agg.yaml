@@ -6,7 +6,7 @@ client_configs:
     num_local_steps: 100
     optim: "Adam"
     optim_args:
-      lr: 0.01
+      lr: 0.001
     # Loss function
     loss_fn_path: "./resources/loss/celoss.py"
     loss_fn_name: "CELoss"
@@ -28,8 +28,12 @@ client_configs:
     val_data_shuffle: False
 
   model_configs:
-    model_path: "./resources/model/resnet.py"
-    model_name: "ResNet18"
+    model_path: "./resources/model/cnn.py"
+    model_name: "CNN"
+    model_kwargs:
+      num_channel: 1
+      num_classes: 10
+      num_pixel: 28
 
   comm_configs:
     compressor_configs:
@@ -49,8 +53,10 @@ server_configs:
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:
     client_weights_mode: "equal"
+    use_secure_agg: True
+    secure_agg_client_weights_mode: "equal" # or "num_examples"
   device: "cpu"
-  num_global_epochs: 20
+  num_global_epochs: 10
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:

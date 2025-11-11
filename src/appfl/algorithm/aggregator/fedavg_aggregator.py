@@ -88,7 +88,7 @@ class FedAvgAggregator(BaseAggregator):
         def _is_masked_payload(x):
             return isinstance(x, dict) and x.get("type") == "masked_update_flat"
 
-        secure_enabled = self.aggregator_configs.get("secure_agg", False)
+        secure_enabled = self.aggregator_configs.get("use_secure_agg", False)
 
         if secure_enabled and all(_is_masked_payload(m) for m in local_models.values()):
             payloads = list(local_models.items())  # list of (client_id, payload)

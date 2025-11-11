@@ -49,6 +49,8 @@ server_configs:
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:
     client_weights_mode: "equal"
+    use_secure_agg: True
+    secure_agg_client_weights_mode: "equal" # or "num_examples"
   device: "cpu"
   num_global_epochs: 20
   logging_output_dirname: "./output"

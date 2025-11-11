@@ -28,6 +28,7 @@ class BaseTrainer:
         val_dataset: Optional[Dataset] = None,
         train_configs: DictConfig = DictConfig({}),
         logger: Optional[Any] = None,
+        client_id: Optional[Any] = None,
         **kwargs,
     ):
         self.round = 0
@@ -38,6 +39,7 @@ class BaseTrainer:
         self.val_dataset = val_dataset
         self.train_configs = train_configs
         self.logger = logger
+        self.client_id = client_id
         self.__dict__.update(kwargs)
 
     @abc.abstractmethod

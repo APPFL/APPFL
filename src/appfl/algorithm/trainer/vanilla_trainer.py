@@ -104,7 +104,8 @@ class VanillaTrainer(BaseTrainer):
 
         # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
-        if send_gradient:
+        use_secure_agg = self.train_configs.get("use_secure_agg", False)
+        if send_gradient or use_secure_agg:
             if self.optimize_memory:
                 self.model_prev = extract_model_state_optimized(
                     self.model, include_buffers=True, cpu_transfer=False
@@ -157,9 +158,11 @@ class VanillaTrainer(BaseTrainer):
         self.logger.set_title(title)
 
         if do_pre_validation:
-            if self.train_configs.get("use_secure_agg", False):
+            if (
+                self.train_configs.get("use_secure_agg", False) and False
+            ):  # TODO: Check why skip evaluation in secure aggregation mode
                 # Skip evaluation in secure aggregation mode
-                val_loss, val_acc = None, None
+                val_loss, val_acc = None, None  # noqa F841
                 self.logger.info(
                     f"Round {self.round} Pre-Validation skipped (secure aggregation enabled)"
                 )
@@ -399,16 +402,6 @@ class VanillaTrainer(BaseTrainer):
                 self.model_state = copy.deepcopy(self.model.state_dict())
 
         if self.train_configs.get("use_secure_agg", False):
-            # Must have global_model_state injected
-            if (
-                not hasattr(self, "global_model_state")
-                or self.global_model_state is None
-            ):
-                raise RuntimeError(
-                    "global_model_state must be set on trainer for secure aggregation"
-                )
-
-            # local_state = model.state_dict()
             local_state = {
                 k: v.detach().clone() for k, v in self.model.state_dict().items()
             }
@@ -417,15 +410,15 @@ class VanillaTrainer(BaseTrainer):
             delta_state = {}
             for k in local_state:
                 # ensure devices match
-                g = self.global_model_state[k].to(local_state[k].device)
+                g = self.model_prev[k].to(local_state[k].device)
                 delta_state[k] = (local_state[k] - g).detach().clone()
 
             # optional weighting (e.g., sample_size). If you want weighted aggregation,
             # pre-scale delta_state here by client weight w_i.
-            client_weighting = self.train_configs.get(
-                "client_weighting", "equal"
+            secure_agg_client_weights_mode = self.train_configs.get(
+                "secure_agg_client_weights_mode", "equal"
             )  # "equal" or "num_examples"
-            if client_weighting == "num_examples":
+            if secure_agg_client_weights_mode == "num_examples":
                 # requires runtime_context["global_num_examples_sum"]
                 if "global_num_examples_sum" not in self.runtime_context:
                     raise RuntimeError(
@@ -443,12 +436,7 @@ class VanillaTrainer(BaseTrainer):
 
             # prepare secure aggregator and mask
 
-            client_id = str(
-                self.train_configs.get(
-                    "client_id",
-                    self.client_id if hasattr(self, "client_id") else "client",
-                )
-            )
+            client_id = self.client_id
             all_client_ids = self.runtime_context["all_client_ids"]
             round_id = int(self.runtime_context["round_id"])
             secret = self.runtime_context["secure_agg_secret"]  # bytes
@@ -473,21 +461,21 @@ class VanillaTrainer(BaseTrainer):
                     )
                 ),
             }
-
-        # Move to CPU for communication
-        if "cuda" in self.train_configs.device:
-            if self.optimize_memory:
-                for k in self.model_state:
-                    if self.model_state[k].device.type != "cpu":
+        else:
+            # Move to CPU for communication
+            if "cuda" in self.train_configs.device:
+                if self.optimize_memory:
+                    for k in self.model_state:
+                        if self.model_state[k].device.type != "cpu":
+                            self.model_state[k] = self.model_state[k].cpu()
+                    optimize_memory_cleanup(force_gc=True)
+                else:
+                    for k in self.model_state:
                         self.model_state[k] = self.model_state[k].cpu()
-                optimize_memory_cleanup(force_gc=True)
-            else:
-                for k in self.model_state:
-                    self.model_state[k] = self.model_state[k].cpu()
 
-        # Compute the gradient if needed
-        if send_gradient:
-            self._compute_gradient()
+            # Compute the gradient if needed
+            if send_gradient:
+                self._compute_gradient()
 
     def get_parameters(self) -> Dict:
         if not hasattr(self, "model_state"):
