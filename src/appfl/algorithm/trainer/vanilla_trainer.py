@@ -9,6 +9,7 @@ from omegaconf import DictConfig
 from typing import Tuple, Dict, Optional, Any
 from torch.utils.data import Dataset, DataLoader
 from appfl.privacy import (
+    SecureAggregator,
     laplace_mechanism_output_perturb,
     gaussian_mechanism_output_perturb,
     make_private_with_opacus,
@@ -110,7 +111,8 @@ class VanillaTrainer(BaseTrainer):
 
         # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
-        if send_gradient:
+        use_secure_agg = self.train_configs.get("use_secure_agg", False)
+        if send_gradient or use_secure_agg:
             if self.optimize_memory:
                 self.model_prev = extract_model_state_optimized(
                     self.model, include_buffers=True, cpu_transfer=False
@@ -163,20 +165,29 @@ class VanillaTrainer(BaseTrainer):
         self.logger.set_title(title)
 
         if do_pre_validation:
-            val_loss, val_accuracy = self._validate()
-            self.val_results["pre_val_loss"] = val_loss
-            self.val_results["pre_val_accuracy"] = val_accuracy
-            content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]
-            if self.train_configs.mode == "epoch":
-                content.insert(1, 0)
-            self.logger.log_content(content)
-            if self.enabled_wandb:
-                wandb.log(
-                    {
-                        f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
-                        f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
-                    }
+            if (
+                self.train_configs.get("use_secure_agg", False) and False
+            ):  # TODO: Check why skip evaluation in secure aggregation mode
+                # Skip evaluation in secure aggregation mode
+                val_loss, val_acc = None, None  # noqa F841
+                self.logger.info(
+                    f"Round {self.round} Pre-Validation skipped (secure aggregation enabled)"
                 )
+            else:
+                val_loss, val_accuracy = self._validate()
+                self.val_results["pre_val_loss"] = val_loss
+                self.val_results["pre_val_accuracy"] = val_accuracy
+                content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]
+                if self.train_configs.mode == "epoch":
+                    content.insert(1, 0)
+                self.logger.log_content(content)
+                if self.enabled_wandb:
+                    wandb.log(
+                        {
+                            f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
+                            f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
+                        }
+                    )
 
         # Start training
         optim_module = importlib.import_module("torch.optim")
@@ -401,20 +412,81 @@ class VanillaTrainer(BaseTrainer):
             else:
                 self.model_state = copy.deepcopy(self.model.state_dict())
 
-        # Move to CPU for communication
-        if "cuda" in self.train_configs.device:
-            if self.optimize_memory:
-                for k in self.model_state:
-                    if self.model_state[k].device.type != "cpu":
-                        self.model_state[k] = self.model_state[k].cpu()
-                optimize_memory_cleanup(force_gc=True)
-            else:
-                for k in self.model_state:
-                    self.model_state[k] = self.model_state[k].cpu()
+        if self.train_configs.get("use_secure_agg", False):
+            local_state = {
+                k: v.detach().clone() for k, v in self.model.state_dict().items()
+            }
 
-        # Compute the gradient if needed
-        if send_gradient:
-            self._compute_gradient()
+            # compute delta = local - global
+            delta_state = {}
+            for k in local_state:
+                # ensure devices match
+                g = self.model_prev[k].to(local_state[k].device)
+                delta_state[k] = (local_state[k] - g).detach().clone()
+
+            # optional weighting (e.g., sample_size). If you want weighted aggregation,
+            # pre-scale delta_state here by client weight w_i.
+            secure_agg_client_weights_mode = self.train_configs.get(
+                "secure_agg_client_weights_mode", "equal"
+            )  # "equal" or "num_examples"
+            if secure_agg_client_weights_mode == "num_examples":
+                # requires runtime_context["global_num_examples_sum"]
+                if "global_num_examples_sum" not in self.runtime_context:
+                    raise RuntimeError(
+                        "global_num_examples_sum required in runtime_context for num_examples weighting"
+                    )
+                local_n = float(
+                    self.runtime_context.get(
+                        "local_num_examples", len(self.train_dataset)
+                    )
+                )
+                total_n = float(self.runtime_context["global_num_examples_sum"])
+                w = local_n / total_n
+                for k in delta_state:
+                    delta_state[k] = delta_state[k] * w
+
+            # prepare secure aggregator and mask
+
+            client_id = self.client_id
+            all_client_ids = self.runtime_context["all_client_ids"]
+            round_id = int(self.runtime_context["round_id"])
+            secret = self.runtime_context["secure_agg_secret"]  # bytes
+            device = next(self.model.parameters()).device
+
+            sa = SecureAggregator(
+                client_id=client_id,
+                all_client_ids=all_client_ids,
+                secret=secret,
+                device=device,
+            )
+            masked_flat, shapes = sa.mask_update(delta_state, round_id)
+
+            # model_state now becomes a masked payload
+            self.model_state = {
+                "type": "masked_update_flat",
+                "flat": masked_flat.cpu(),  # send CPU tensors to aggregator/orchestrator
+                "shapes": shapes,
+                "num_examples": int(
+                    self.runtime_context.get(
+                        "local_num_examples", len(self.train_dataset)
+                    )
+                ),
+            }
+        else:
+            # Move to CPU for communication
+            if "cuda" in self.train_configs.device:
+                if self.optimize_memory:
+                    for k in self.model_state:
+                        if self.model_state[k].device.type != "cpu":
+                            self.model_state[k] = self.model_state[k].cpu()
+                    optimize_memory_cleanup(force_gc=True)
+                else:
+                    for k in self.model_state:
+                        self.model_state[k] = self.model_state[k].cpu()
+
+            # Compute the gradient if needed
+            if send_gradient:
+                self._compute_gradient()
 
     def get_parameters(self) -> Dict:
         if not hasattr(self, "model_state"):
