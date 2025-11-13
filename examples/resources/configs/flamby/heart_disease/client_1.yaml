@@ -1,4 +1,4 @@
-client_id: "University of Illinois at Chicago"
+client_id: "Client1"
 train_configs:
   # Device
   device: "cpu"

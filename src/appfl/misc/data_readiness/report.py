@@ -25,66 +25,6 @@ def save_html_report(file_path, html_content, logger):
         html_file.write(html_content)
     logger.info(f"Data readiness report saved as HTML: {file_path}")
 
-def upload_html_report_to_s3(file_path, s3_bucket, logger, s3_key=None, region="us-east-1"):
-    """Upload the HTML report to S3 and create a public link for download or access.
-
-    Args:
-        file_path: Local path to the HTML file to upload
-        s3_bucket: Name of the S3 bucket
-        logger: Logger instance for logging messages
-        s3_key: Optional S3 object key. If None, uses the filename from file_path
-        region: AWS region where the bucket is located (default: us-east-1)
-
-    Returns:
-        str: Public URL to access the uploaded HTML report, or None if upload failed
-    """
-    import boto3
-    from botocore.exceptions import NoCredentialsError, ClientError
-
-    try:
-        s3_client = boto3.client("s3", region_name=region)
-
-        # Use filename if s3_key is not provided
-        if s3_key is None:
-            s3_key = os.path.basename(file_path)
-
-        # Upload file with public-read ACL and HTML content type
-        logger.info(f"Uploading {file_path} to s3://{s3_bucket}/{s3_key}")
-        s3_client.upload_file(
-            file_path,
-            s3_bucket,
-            s3_key,
-            ExtraArgs={
-                'ContentType': 'text/html',
-                'ACL': 'public-read'
-            }
-        )
-
-        # Generate public URL
-        public_url = f"https://{s3_bucket}.s3.{region}.amazonaws.com/{s3_key}"
-        logger.info(f"HTML report successfully uploaded to S3: {public_url}")
-
-        return public_url
-
-    except NoCredentialsError:
-        logger.error("AWS credentials not found. Please configure your AWS credentials.")
-        return None
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == 'NoSuchBucket':
-            logger.error(f"S3 bucket '{s3_bucket}' does not exist.")
-        elif error_code == 'AccessDenied':
-            logger.error(f"Access denied when uploading to S3 bucket '{s3_bucket}'. Check your permissions.")
-        else:
-            logger.error(f"Failed to upload to S3: {e}")
-        return None
-    except FileNotFoundError:
-        logger.error(f"File not found: {file_path}")
-        return None
-    except Exception as e:
-        logger.error(f"Unexpected error while uploading to S3: {e}")
-        return None
-    
 
 def generate_html_content(readiness_report):
     html_content = get_html_header()
