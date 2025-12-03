@@ -290,6 +290,7 @@ def train_executor_ds(
         if torch.cuda.is_available():
             torch.cuda.set_device(local_rank)
     elif client_agent_config.train_configs.device == "xpu":
+        import intel_extension_for_pytorch as ipex # noqa F401
         if torch.xpu.is_available():
             torch.xpu.set_device(local_rank)
 
