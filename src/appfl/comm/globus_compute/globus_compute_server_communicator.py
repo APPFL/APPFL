@@ -199,13 +199,13 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             try:
                 if self.deepspeed:
                     fut.result()
-                    home = os.environ.get('HOME')
-                    model_path = os.path.join(home, f'model_{client_id}.pkl')
-                    with open(model_path, 'rb') as f:
+                    home = os.environ.get("HOME")
+                    model_path = os.path.join(home, f"model_{client_id}.pkl")
+                    with open(model_path, "rb") as f:
                         model = pickle.load(f)
 
-                    meta_data_path = os.path.join(home, f'meta_data_{client_id}.json')
-                    with open(meta_data_path, 'r') as f:
+                    meta_data_path = os.path.join(home, f"meta_data_{client_id}.json")
+                    with open(meta_data_path) as f:
                         meta_data = json.load(f)
 
                     result = (model, meta_data)
@@ -252,17 +252,17 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             client_id = self.executing_tasks[task_id].client_id
             if self.deepspeed:
                 fut.result()
-                home = os.environ.get('HOME')
-                model_path = os.path.join(home, f'model_{client_id}.pkl')
-                with open(model_path, 'rb') as f:
+                home = os.environ.get("HOME")
+                model_path = os.path.join(home, f"model_{client_id}.pkl")
+                with open(model_path, "rb") as f:
                     model = pickle.load(f)
 
-                meta_data_path = os.path.join(home, f'meta_data_{client_id}.json')
-                with open(meta_data_path, 'r') as f:
+                meta_data_path = os.path.join(home, f"meta_data_{client_id}.json")
+                with open(meta_data_path) as f:
                     meta_data = json.load(f)
 
                 result = (model, meta_data)
-            else: 
+            else:
                 result = fut.result()
             client_model, client_metadata = self._parse_result(result)
             client_metadata = self._check_deprecation(client_id, client_metadata)
@@ -354,15 +354,15 @@ def data_transfer(model, meta_data, client_id):
     import json
     import pickle
 
-    home = os.environ.get('HOME')
+    home = os.environ.get("HOME")
 
-    model_path = os.path.join(home, f'model_{client_id}.pkl')
+    model_path = os.path.join(home, f"model_{client_id}.pkl")
     with open(model_path, "wb") as f:
         pickle.dump(model, f)
         f.flush()
         os.fsync(f.fileno())
 
-    meta_data_path = os.path.join(home, f'meta_data_{client_id}.json')
+    meta_data_path = os.path.join(home, f"meta_data_{client_id}.json")
     with open(meta_data_path, "w") as f:
         json.dump(meta_data, f)
         f.flush()

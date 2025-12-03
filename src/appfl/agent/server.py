@@ -307,14 +307,16 @@ class ServerAgent:
                 del self.server_agent_config.client_configs.model_configs.model_path
 
             start_from_checkpoint = getattr(
-                self.server_agent_config.client_configs.start_from_checkpoint_configs, "start_from_checkpoint", False
+                self.server_agent_config.client_configs.start_from_checkpoint_configs,
+                "start_from_checkpoint",
+                False,
             )
             if start_from_checkpoint:
-               state_dict_path = self.server_agent_config.client_configs.start_from_checkpoint_configs.checkpoint_path
-               print(f"Loading checkpoint state dict from {state_dict_path}")
-               state_dict = torch.load(state_dict_path, map_location="cpu")
-               self.model.load_state_dict(state_dict)
-               print("Checkpoint state dict loaded successfully") 
+                state_dict_path = self.server_agent_config.client_configs.start_from_checkpoint_configs.checkpoint_path
+                print(f"Loading checkpoint state dict from {state_dict_path}")
+                state_dict = torch.load(state_dict_path, map_location="cpu")
+                self.model.load_state_dict(state_dict)
+                print("Checkpoint state dict loaded successfully")
         else:
             self.model = None
 

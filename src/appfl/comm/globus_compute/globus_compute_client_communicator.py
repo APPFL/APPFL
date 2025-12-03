@@ -103,6 +103,8 @@ def globus_compute_client_entry_point(
             raise NotImplementedError(
                 f"Task {task_name} is not implemented in the client endpoint."
             )
+
+
 def globus_compute_client_entry_point_ds(
     task_name="N/A",
     client_agent_config_file=None,
@@ -133,16 +135,19 @@ def globus_compute_client_entry_point_ds(
     from appfl.comm.globus_compute.globus_compute_server_communicator import (
         data_transfer,
     )
+
     # load in from local files
     client_agent_config = OmegaConf.load(client_agent_config_file)
 
-    with open(model_file, 'rb') as f:
+    with open(model_file, "rb") as f:
         model = pickle.load(f)
-    
-    with open(meta_data_file, 'r') as f:
+
+    with open(meta_data_file) as f:
         meta_data = json.load(f)
 
-    gcc = Client(code_serialization_strategy=CombinedCode(),)
+    gcc = Client(
+        code_serialization_strategy=CombinedCode(),
+    )
     gce = Executor(client=gcc)
     gce.endpoint_id = client_agent_config.server_endpoint_id
 
@@ -153,17 +158,22 @@ def globus_compute_client_entry_point_ds(
             client_agent_config=client_agent_config
         )
         if meta_data != None:
-            task_id = gcc.run(model, meta_data, client_agent_config.client_id, endpoint_id=gce.endpoint_id, function_id=data_transfer_uuid)
+            task_id = gcc.run(
+                model,
+                meta_data,
+                client_agent_config.client_id,
+                endpoint_id=gce.endpoint_id,
+                function_id=data_transfer_uuid,
+            )
             while True:
                 status = gcc.get_batch_result([task_id])[task_id]
 
-                if not status['pending']:
-                    if status['status'] == 'success':
+                if not status["pending"]:
+                    if status["status"] == "success":
                         break
                 else:
-                    time.sleep(5)  
+                    time.sleep(5)
 
-            
     elif task_name == "train_ds":
         model, meta_data = train_executor_ds(
             client_agent_config=client_agent_config,
@@ -171,12 +181,18 @@ def globus_compute_client_entry_point_ds(
             meta_data=meta_data,
         )
         if model != None:
-            task_id = gcc.run(model, meta_data, client_agent_config.client_id, endpoint_id=gce.endpoint_id, function_id=data_transfer_uuid)
+            task_id = gcc.run(
+                model,
+                meta_data,
+                client_agent_config.client_id,
+                endpoint_id=gce.endpoint_id,
+                function_id=data_transfer_uuid,
+            )
             while True:
                 status = gcc.get_batch_result([task_id])[task_id]
 
-                if not status['pending']:
-                    if status['status'] == 'success':
+                if not status["pending"]:
+                    if status["status"] == "success":
                         break
                 else:
                     time.sleep(5)
@@ -185,13 +201,14 @@ def globus_compute_client_entry_point_ds(
             f"Task {task_name} is not implemented in the client endpoint."
         )
 
+
 def data_transfer(client_agent_config, model, meta_data):
     import os
     import json
     import pickle
     from omegaconf import OmegaConf
 
-    home = os.environ.get('HOME')
+    home = os.environ.get("HOME")
 
     client_config_path = os.path.join(home, "client_config.yaml")
     with open(client_config_path, "w") as f:

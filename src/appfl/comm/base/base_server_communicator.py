@@ -237,15 +237,19 @@ class BaseServerCommunicator:
         else:
             model, metadata = result, {}
         # Download model from S3 bucket or ProxyStore if necessary
-        client_finish_time = metadata['end_time']
-        self.logger.info(f'client to server time is {time.time() - client_finish_time}')
-        self.logger.info(f'server to client time is {metadata["server_to_client_time"]}')
-        self.logger.info(f'Total model download time is {metadata["total_model_download_time"]}')
-        self.logger.info(f'Total execution time is {metadata["total_execution_time"]}')
-        self.logger.info(f'Total pre val time is {metadata["total_pre_val_time"]}')
-        self.logger.info(f'Total forward time is {metadata["total_forward_time"]}')
-        self.logger.info(f'Total backward time is {metadata["total_backward_time"]}')
-        self.logger.info(f'Total val time is {metadata["total_val_time"]}')
+        client_finish_time = metadata["end_time"]
+        self.logger.info(f"client to server time is {time.time() - client_finish_time}")
+        self.logger.info(
+            f"server to client time is {metadata['server_to_client_time']}"
+        )
+        self.logger.info(
+            f"Total model download time is {metadata['total_model_download_time']}"
+        )
+        self.logger.info(f"Total execution time is {metadata['total_execution_time']}")
+        self.logger.info(f"Total pre val time is {metadata['total_pre_val_time']}")
+        self.logger.info(f"Total forward time is {metadata['total_forward_time']}")
+        self.logger.info(f"Total backward time is {metadata['total_backward_time']}")
+        self.logger.info(f"Total val time is {metadata['total_val_time']}")
         if isinstance(model, Proxy):
             model = extract(model)
         if self.use_s3bucket:
