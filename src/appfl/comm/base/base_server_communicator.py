@@ -236,7 +236,6 @@ class BaseServerCommunicator:
             model, metadata = result
         else:
             model, metadata = result, {}
-        # Download model from S3 bucket or ProxyStore if necessary
         client_finish_time = metadata["end_time"]
         self.logger.info(f"client to server time is {time.time() - client_finish_time}")
         self.logger.info(
@@ -250,6 +249,7 @@ class BaseServerCommunicator:
         self.logger.info(f"Total forward time is {metadata['total_forward_time']}")
         self.logger.info(f"Total backward time is {metadata['total_backward_time']}")
         self.logger.info(f"Total val time is {metadata['total_val_time']}")
+        # Download model from S3 bucket or ProxyStore if necessary
         if isinstance(model, Proxy):
             model = extract(model)
         if self.use_s3bucket:
