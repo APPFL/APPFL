@@ -167,7 +167,7 @@ def globus_compute_client_entry_point_ds(
         model, meta_data = get_sample_size_executor_ds(
             client_agent_config=client_agent_config
         )
-        if meta_data != None:
+        if meta_data is not None:
             task_id = gcc.run(
                 model,
                 meta_data,
@@ -190,7 +190,7 @@ def globus_compute_client_entry_point_ds(
             model=model,
             meta_data=meta_data,
         )
-        if model != None:
+        if model is not None:
             task_id = gcc.run(
                 model,
                 meta_data,

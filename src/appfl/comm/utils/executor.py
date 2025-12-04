@@ -214,7 +214,7 @@ def get_ds_config(client_agent_config, world_size):
     }
 
     if (
-        client_agent_config.train_configs.clip_grad == True
+        client_agent_config.train_configs.clip_grad
         and client_agent_config.train_configs.clip_norm == 2.0
     ):
         ds_config["gradient_clipping"] = client_agent_config.train_configs.clip_value
