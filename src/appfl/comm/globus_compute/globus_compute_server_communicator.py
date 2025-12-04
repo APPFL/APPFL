@@ -105,7 +105,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
                 ),
             )
 
-            self.deepspeed = server_agent_config.server_configs.deepspeed
+            self.deepspeed = getattr(server_agent_config.server_configs, "deepspeed", False)
 
     def send_task_to_all_clients(
         self,
