@@ -113,9 +113,9 @@ def globus_compute_client_entry_point_ds(
 ):
     """
     Entry point for the Globus Compute client endpoint designed for DeepSpeed-based local training.
-    
+
     This function differs from `globus_compute_client_entry_point` in several key ways:
-    1. **DeepSpeed compatibility**: Supports multi-node distributed training via DeepSpeed, 
+    1. **DeepSpeed compatibility**: Supports multi-node distributed training via DeepSpeed,
        which requires MPI-based execution.
     2. **File-based I/O**: Takes file paths as inputs and loads configurations/models from disk,
        rather than receiving objects directly. This is necessary because MPIFunction that calls this function
@@ -123,7 +123,7 @@ def globus_compute_client_entry_point_ds(
     3. **No return values**: Does not return results directly. Instead, results are transferred
        back to the server via the `data_transfer` function executed on the server endpoint,
        as MPIFunction does not support return values.
-    
+
     :param `task_name`: The name of the task to be executed (e.g., "get_sample_size_ds", "train_ds").
     :param `client_agent_config_file`: Path to the file containing client agent configuration.
     :param `model_file`: Path to the pickle file containing the model (optional for some tasks).
