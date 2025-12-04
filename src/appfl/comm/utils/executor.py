@@ -128,7 +128,7 @@ def train_executor(
 def get_sample_size_executor_ds(
     client_agent_config=None,
     **kwargs,
-):  
+):
     import deepspeed
 
     local_rank_vars = [
@@ -287,7 +287,7 @@ def train_executor_ds(
     meta_data=None,
 ):
     import deepspeed
-    
+
     local_rank_vars = [
         "MPI_LOCALRANKID",
         "PALS_LOCAL_RANKID",
