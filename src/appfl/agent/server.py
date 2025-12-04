@@ -307,10 +307,11 @@ class ServerAgent:
                 del self.server_agent_config.client_configs.model_configs.model_path
 
             start_from_checkpoint = getattr(
-                self.server_agent_config.client_configs.start_from_checkpoint_configs,
+                getattr(self.server_agent_config.client_configs, "start_from_checkpoint_configs", None),
                 "start_from_checkpoint",
                 False,
             )
+
             if start_from_checkpoint:
                 state_dict_path = self.server_agent_config.client_configs.start_from_checkpoint_configs.checkpoint_path
                 print(f"Loading checkpoint state dict from {state_dict_path}")
