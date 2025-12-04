@@ -112,13 +112,23 @@ def globus_compute_client_entry_point_ds(
     meta_data_file=None,
 ):
     """
-    Entry point for the Globus Compute client endpoint for federated learning.
-    :param `task_name`: The name of the task to be executed.
-    :param `client_agent_config`: The configuration for the client agent.
-    :param `model`: [Optional] The model to be used for the task.
-    :param `meta_data`: [Optional] The metadata for the task.
-    :return `model_local`: The local model after the task is executed. [Return `None` if the task does not return a model.]
-    :return `meta_data_local`: The local metadata after the task is executed. [Return `{}` if the task does not return metadata.]
+    Entry point for the Globus Compute client endpoint designed for DeepSpeed-based local training.
+    
+    This function differs from `globus_compute_client_entry_point` in several key ways:
+    1. **DeepSpeed compatibility**: Supports multi-node distributed training via DeepSpeed, 
+       which requires MPI-based execution.
+    2. **File-based I/O**: Takes file paths as inputs and loads configurations/models from disk,
+       rather than receiving objects directly. This is necessary because MPIFunction that calls this function
+       only supports shell commands.
+    3. **No return values**: Does not return results directly. Instead, results are transferred
+       back to the server via the `data_transfer` function executed on the server endpoint,
+       as MPIFunction does not support return values.
+    
+    :param `task_name`: The name of the task to be executed (e.g., "get_sample_size_ds", "train_ds").
+    :param `client_agent_config_file`: Path to the file containing client agent configuration.
+    :param `model_file`: Path to the pickle file containing the model (optional for some tasks).
+    :param `meta_data_file`: Path to the JSON file containing task metadata (optional for some tasks).
+    :return: None. Results are transferred to the server endpoint via `data_transfer`.
     """
     # The new way to execute task for globus compute is to import the executor functions
     # from client's local appfl instead of sending the function logics within the function.
