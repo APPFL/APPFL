@@ -98,7 +98,7 @@ def train_executor(
         model = load_global_model(client_agent.client_agent_config, model)
         client_agent.load_parameters(model)
     total_model_download_time = time.time() - donwload_model_start_time
-    print(f"total donwload model time: {total_model_download_time}")
+    print(f"total download model time: {total_model_download_time}")
 
     client_agent.train(**meta_data)
     local_model = client_agent.get_parameters()
