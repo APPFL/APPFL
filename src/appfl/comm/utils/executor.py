@@ -1,6 +1,5 @@
 import time
 import os
-import deepspeed
 import torch
 from appfl.agent import ClientAgent
 from appfl.comm.utils.client_utils import (
@@ -129,16 +128,30 @@ def train_executor(
 def get_sample_size_executor_ds(
     client_agent_config=None,
     **kwargs,
-):
-    # local_rank = int(os.environ['MPI_LOCALRANKID'])
-    local_rank = int(
-        os.environ.get("PMIX_LOCAL_RANK", os.environ.get("SLURM_LOCALID", "0"))
-    )
-    # print(local_rank)
-    os.environ["LOCAL_RANK"] = str(local_rank)
+):  
+    import deepspeed
 
-    if torch.cuda.is_available():
-        torch.cuda.set_device(local_rank)
+    local_rank_vars = [
+        "MPI_LOCALRANKID",
+        "PALS_LOCAL_RANKID",
+        "PMIX_LOCAL_RANK",
+        "SLURM_LOCALID",
+    ]
+    for var in local_rank_vars:
+        if var in os.environ:
+            local_rank = int(os.environ[var])
+            os.environ["LOCAL_RANK"] = str(local_rank)
+            break
+
+    # set cuda or xpu according to the device type
+    if client_agent_config.train_configs.device == "cuda":
+        if torch.cuda.is_available():
+            torch.cuda.set_device(local_rank)
+    elif client_agent_config.train_configs.device == "xpu":
+        import intel_extension_for_pytorch as ipex  # noqa F401
+
+        if torch.xpu.is_available():
+            torch.xpu.set_device(local_rank)
 
     deepspeed.init_distributed()
     if torch.distributed.is_initialized():
@@ -273,6 +286,8 @@ def train_executor_ds(
     model=None,
     meta_data=None,
 ):
+    import deepspeed
+    
     local_rank_vars = [
         "MPI_LOCALRANKID",
         "PALS_LOCAL_RANKID",
