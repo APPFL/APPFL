@@ -307,7 +307,11 @@ class ServerAgent:
                 del self.server_agent_config.client_configs.model_configs.model_path
 
             start_from_checkpoint = getattr(
-                getattr(self.server_agent_config.client_configs, "start_from_checkpoint_configs", None),
+                getattr(
+                    self.server_agent_config.client_configs,
+                    "start_from_checkpoint_configs",
+                    None,
+                ),
                 "start_from_checkpoint",
                 False,
             )
