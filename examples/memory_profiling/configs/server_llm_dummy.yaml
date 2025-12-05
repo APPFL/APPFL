@@ -6,7 +6,7 @@ client_configs:
     model_path: "./resources/model/hf_llm.py"
     model_name: "load_hf_llm"
     model_kwargs:
-      model_name: "meta-llama/Llama-3.2-1B"
+      model_name: "openai-community/gpt2"
 
 server_configs:
   num_clients: 2

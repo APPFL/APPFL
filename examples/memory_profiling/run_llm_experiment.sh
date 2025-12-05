@@ -64,11 +64,11 @@ run_llm_experiment() {
     echo ""
 }
 
-# Run original version first
-run_llm_experiment "ORIGINAL" false
+# # Run original version first
+# run_llm_experiment "ORIGINAL" false
 
-# Wait a bit between experiments
-sleep 10
+# # Wait a bit between experiments
+# sleep 10
 
 # Run optimized version
 run_llm_experiment "OPTIMIZED" true
