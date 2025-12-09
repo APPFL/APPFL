@@ -147,33 +147,42 @@ class GRPCClientCommunicator:
             header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
         )
-        # Collect byte chunks efficiently
-        data_chunks = []
-        chunk_count = 0
-        for byte_chunk in self.stub.GetGlobalModel(request, timeout=3600):
-            data_chunks.append(byte_chunk.data_bytes)
-            chunk_count += 1
-            # Periodic garbage collection for large models
-            if self.optimize_memory and chunk_count % 100 == 0:
-                gc.collect()
-
-        # Efficiently concatenate and parse
-        byte_received = efficient_bytearray_concatenation(
-            data_chunks, optimize_memory=self.optimize_memory
-        )
-        response = GetGlobalModelRespone()
-        response.ParseFromString(byte_received)
-
+        # Use optimized protocol when optimize_memory is enabled
         if self.optimize_memory:
+            # New protocol: metadata and model data are separate
+            response, model_bytes = self._receive_metadata_and_model_optimized(
+                self.stub.GetGlobalModel(request, timeout=3600),
+                GetGlobalModelRespone
+            )
+
+            if response.header.status == ServerStatus.ERROR:
+                raise Exception("Server returned an error, stopping the client.")
+
+            # Load model directly from bytes
+            model = self._deserialize_model_optimized(model_bytes)
+            del model_bytes
+            gc.collect()
+        else:
+            # Original protocol: model embedded in protobuf
+            data_chunks = []
+            chunk_count = 0
+            for byte_chunk in self.stub.GetGlobalModel(request, timeout=3600):
+                data_chunks.append(byte_chunk.data_bytes)
+                chunk_count += 1
+
+            # Efficiently concatenate and parse
+            byte_received = efficient_bytearray_concatenation(
+                data_chunks, optimize_memory=False
+            )
+            response = GetGlobalModelRespone()
+            response.ParseFromString(byte_received)
+
             optimize_memory_cleanup(data_chunks, byte_received, force_gc=True)
             del data_chunks, byte_received
-        if response.header.status == ServerStatus.ERROR:
-            raise Exception("Server returned an error, stopping the client.")
 
-        # Memory optimization: Use optimized model deserialization
-        if self.optimize_memory:
-            model = self._deserialize_model_optimized(response.global_model)
-        else:
+            if response.header.status == ServerStatus.ERROR:
+                raise Exception("Server returned an error, stopping the client.")
+
             model = deserialize_model(response.global_model)
 
         if isinstance(model, Proxy):
@@ -230,53 +239,60 @@ class GRPCClientCommunicator:
             kwargs["_use_s3"] = True
         meta_data = yaml.dump(kwargs)
 
-        # Memory optimization: Use optimized model serialization
-        if self.optimize_memory:
-            if isinstance(local_model, Proxy) or (not isinstance(local_model, bytes)):
+        # Serialize the local model
+        if isinstance(local_model, Proxy) or (not isinstance(local_model, bytes)):
+            if self.optimize_memory:
                 local_model_serialized = self._serialize_model_optimized(local_model)
-                # Clear original model from memory
-                del local_model
-                gc.collect()
             else:
-                local_model_serialized = local_model
-        else:
-            local_model_serialized = (
-                serialize_model(local_model)
-                if (
-                    isinstance(local_model, Proxy)
-                    or (not isinstance(local_model, bytes))
-                )
-                else local_model
-            )
-
-        request = UpdateGlobalModelRequest(
-            header=ClientHeader(client_id=client_id),
-            local_model=local_model_serialized,
-            meta_data=meta_data,
-        )
-        # Memory optimization: Use optimized streaming and response handling
-        if self.optimize_memory:
-            # Use optimized streaming for request
-            request_generator = self._proto_to_databuffer_optimized(
-                request, max_message_size=self.max_message_size
-            )
-            # Use bytearray for efficient response assembly
-            byte_received = bytearray()
-            chunk_count = 0
-            for byte_chunk in self.stub.UpdateGlobalModel(
-                request_generator, timeout=3600
-            ):
-                byte_received.extend(byte_chunk.data_bytes)
-                chunk_count += 1
-                # Periodic garbage collection
-                if chunk_count % 100 == 0:
-                    gc.collect()
-            response = UpdateGlobalModelResponse()
-            response.ParseFromString(bytes(byte_received))
-            # Clear response bytes immediately
-            del byte_received
+                local_model_serialized = serialize_model(local_model)
+            del local_model
             gc.collect()
         else:
+            local_model_serialized = local_model
+
+        # Use optimized protocol when optimize_memory is enabled
+        if self.optimize_memory:
+            # New protocol: Send metadata and model separately, receive metadata and model separately
+            if self.logger:
+                self.logger.info("Using optimized protocol for UpdateGlobalModel")
+
+            # Create request with empty local_model (model will be sent separately)
+            request = UpdateGlobalModelRequest(
+                header=ClientHeader(client_id=client_id),
+                local_model=b"",  # Will be sent separately
+                meta_data=meta_data,
+            )
+
+            # Send request with model using optimized streaming
+            request_generator = self._send_request_with_model_optimized(
+                request, local_model_serialized, self.max_message_size
+            )
+
+            # Clear local model from memory after sending
+            del local_model_serialized
+            gc.collect()
+
+            # Receive response using optimized protocol
+            response, model_bytes = self._receive_metadata_and_model_optimized(
+                self.stub.UpdateGlobalModel(request_generator, timeout=3600),
+                UpdateGlobalModelResponse
+            )
+
+            if response.header.status == ServerStatus.ERROR:
+                raise Exception("Server returned an error, stopping the client.")
+
+            # Load model directly from bytes
+            model = self._deserialize_model_optimized(model_bytes)
+            del model_bytes
+            gc.collect()
+        else:
+            # Original protocol: Embed model in protobuf
+            request = UpdateGlobalModelRequest(
+                header=ClientHeader(client_id=client_id),
+                local_model=local_model_serialized,
+                meta_data=meta_data,
+            )
+
             byte_received = b""
             for byte_chunk in self.stub.UpdateGlobalModel(
                 proto_to_databuffer(request, max_message_size=self.max_message_size),
@@ -285,13 +301,10 @@ class GRPCClientCommunicator:
                 byte_received += byte_chunk.data_bytes
             response = UpdateGlobalModelResponse()
             response.ParseFromString(byte_received)
-        if response.header.status == ServerStatus.ERROR:
-            raise Exception("Server returned an error, stopping the client.")
 
-        # Memory optimization: Use optimized model deserialization
-        if self.optimize_memory:
-            model = self._deserialize_model_optimized(response.global_model)
-        else:
+            if response.header.status == ServerStatus.ERROR:
+                raise Exception("Server returned an error, stopping the client.")
+
             model = deserialize_model(response.global_model)
 
         if isinstance(model, Proxy):
@@ -474,9 +487,126 @@ class GRPCClientCommunicator:
 
             chunk_count += 1
             # Periodic garbage collection for large requests
-            if chunk_count % 50 == 0:
+            if chunk_count % 20 == 0:
                 gc.collect()
 
         # Final cleanup
         del data_bytes
         gc.collect()
+
+    def _send_request_with_model_optimized(self, request_proto, model_bytes, max_message_size):
+        """
+        Send request using optimized protocol: metadata first, then raw model bytes.
+        Yields DataBuffer chunks for streaming to server.
+        """
+        from .grpc_communicator_pb2 import DataBuffer
+
+        # Step 1: Send metadata-only request (with empty local_model field)
+        # Save original model data and replace with empty
+        original_model = request_proto.local_model
+        request_proto.local_model = b""  # Empty signals model data follows
+
+        # Stream metadata protobuf
+        yield from self._proto_to_databuffer_optimized(request_proto, max_message_size)
+
+        # Restore original (for cleanup if needed)
+        request_proto.local_model = original_model
+
+        # Step 2: Stream raw model bytes directly
+        if self.logger:
+            self.logger.info(f"Sending {len(model_bytes) / (1024**3):.2f} GB model data")
+
+        chunk_size = int(0.9 * max_message_size)
+        chunk_count = 0
+        for i in range(0, len(model_bytes), chunk_size):
+            chunk = model_bytes[i : i + chunk_size]
+            yield DataBuffer(data_bytes=chunk)
+
+            chunk_count += 1
+            if chunk_count % 20 == 0:
+                gc.collect()
+
+        if self.logger:
+            self.logger.info(f"Sent {len(model_bytes) / (1024**2):.2f} MB in {chunk_count} chunks")
+        gc.collect()
+
+    def _receive_metadata_and_model_optimized(self, stream_iterator, response_type):
+        """
+        Receive metadata and model data using optimized protocol.
+        Returns: (response_proto, model_bytes)
+        - response_proto: The protobuf message with metadata (global_model will be empty)
+        - model_bytes: Raw model bytes (to be loaded with torch.load)
+        """
+        # Collect all chunks first
+        all_chunks = []
+        chunk_count = 0
+        total_bytes = 0
+
+        for byte_chunk in stream_iterator:
+            all_chunks.append(byte_chunk.data_bytes)
+            total_bytes += len(byte_chunk.data_bytes)
+            chunk_count += 1
+            # Periodic garbage collection for large models
+            if chunk_count % 20 == 0:
+                gc.collect()
+
+        if self.logger:
+            self.logger.info(f"Received {chunk_count} chunks, total {total_bytes / (1024**2):.2f} MB")
+
+        # Parse metadata from first chunk(s)
+        response = response_type()
+        metadata_size = 0
+
+        # Try to parse protobuf from progressively more chunks
+        for i in range(1, min(len(all_chunks) + 1, 10)):  # Metadata should be in first few chunks
+            try:
+                metadata_bytes = b''.join(all_chunks[:i])
+                response.ParseFromString(metadata_bytes)
+                metadata_size = len(metadata_bytes)
+                if self.logger:
+                    self.logger.info(f"Parsed metadata from first {i} chunk(s), size: {metadata_size} bytes")
+                break
+            except Exception:
+                continue
+
+        if metadata_size == 0:
+            raise Exception("Failed to parse metadata from response")
+
+        # Check if model data follows (indicated by empty global_model field)
+        if response.global_model == b"":
+            # Model data follows as raw bytes
+            if self.logger:
+                self.logger.info("Detected optimized protocol: model data follows as raw bytes")
+
+            # Extract model bytes from remaining chunks
+            model_buffer = io.BytesIO()
+            bytes_consumed = 0
+
+            for chunk in all_chunks:
+                if bytes_consumed >= metadata_size:
+                    # This chunk is pure model data
+                    model_buffer.write(chunk)
+                elif bytes_consumed + len(chunk) > metadata_size:
+                    # This chunk is partially metadata, partially model
+                    offset = metadata_size - bytes_consumed
+                    model_buffer.write(chunk[offset:])
+                bytes_consumed += len(chunk)
+
+            # Cleanup
+            del all_chunks
+            gc.collect()
+
+            model_buffer.seek(0)
+            model_bytes = model_buffer.read()
+            del model_buffer
+
+            if self.logger:
+                self.logger.info(f"Extracted {len(model_bytes) / (1024**3):.2f} GB model data")
+
+            return response, model_bytes
+        else:
+            # Old protocol: model is embedded in protobuf
+            if self.logger:
+                self.logger.info("Detected original protocol: model embedded in protobuf")
+            del all_chunks
+            return response, response.global_model
