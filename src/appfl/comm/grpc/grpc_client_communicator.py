@@ -252,9 +252,6 @@ class GRPCClientCommunicator:
 
         # Use optimized protocol when optimize_memory is enabled
         if self.optimize_memory:
-            # New protocol: Send metadata and model separately, receive metadata and model separately
-            if self.logger:
-                self.logger.info("Using optimized protocol for UpdateGlobalModel")
 
             # Create request with empty local_model (model will be sent separately)
             request = UpdateGlobalModelRequest(
@@ -512,10 +509,6 @@ class GRPCClientCommunicator:
         # Restore original (for cleanup if needed)
         request_proto.local_model = original_model
 
-        # Step 2: Stream raw model bytes directly
-        if self.logger:
-            self.logger.info(f"Sending {len(model_bytes) / (1024**3):.2f} GB model data")
-
         chunk_size = int(0.9 * max_message_size)
         chunk_count = 0
         for i in range(0, len(model_bytes), chunk_size):
@@ -525,9 +518,6 @@ class GRPCClientCommunicator:
             chunk_count += 1
             if chunk_count % 20 == 0:
                 gc.collect()
-
-        if self.logger:
-            self.logger.info(f"Sent {len(model_bytes) / (1024**2):.2f} MB in {chunk_count} chunks")
         gc.collect()
 
     def _receive_metadata_and_model_optimized(self, stream_iterator, response_type):
@@ -550,9 +540,6 @@ class GRPCClientCommunicator:
             if chunk_count % 20 == 0:
                 gc.collect()
 
-        if self.logger:
-            self.logger.info(f"Received {chunk_count} chunks, total {total_bytes / (1024**2):.2f} MB")
-
         # Parse metadata from first chunk(s)
         response = response_type()
         metadata_size = 0
@@ -563,8 +550,6 @@ class GRPCClientCommunicator:
                 metadata_bytes = b''.join(all_chunks[:i])
                 response.ParseFromString(metadata_bytes)
                 metadata_size = len(metadata_bytes)
-                if self.logger:
-                    self.logger.info(f"Parsed metadata from first {i} chunk(s), size: {metadata_size} bytes")
                 break
             except Exception:
                 continue
@@ -574,10 +559,6 @@ class GRPCClientCommunicator:
 
         # Check if model data follows (indicated by empty global_model field)
         if response.global_model == b"":
-            # Model data follows as raw bytes
-            if self.logger:
-                self.logger.info("Detected optimized protocol: model data follows as raw bytes")
-
             # Extract model bytes from remaining chunks
             model_buffer = io.BytesIO()
             bytes_consumed = 0
@@ -600,13 +581,7 @@ class GRPCClientCommunicator:
             model_bytes = model_buffer.read()
             del model_buffer
 
-            if self.logger:
-                self.logger.info(f"Extracted {len(model_bytes) / (1024**3):.2f} GB model data")
-
             return response, model_bytes
         else:
-            # Old protocol: model is embedded in protobuf
-            if self.logger:
-                self.logger.info("Detected original protocol: model embedded in protobuf")
             del all_chunks
             return response, response.global_model
