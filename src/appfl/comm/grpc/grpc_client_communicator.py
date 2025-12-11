@@ -36,6 +36,9 @@ from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
     optimize_memory_cleanup,
+    get_state_dict_memory_info,
+    split_state_dict_by_size,
+    merge_state_dict_chunks
 )
 
 
@@ -75,6 +78,11 @@ class GRPCClientCommunicator:
         self.max_message_size = max_message_size
         # Check for optimize_memory in kwargs (from grpc_configs), default to True
         self.optimize_memory = kwargs.get("optimize_memory", True)
+
+        # Streamed aggregation configuration (works with any transport mechanism)
+        self.use_model_chunking = kwargs.get("use_model_chunking", False)
+        self.model_chunk_size = kwargs.get("model_chunk_size", 1 * 1024 * 1024 * 1024)  # 1GB default
+
         channel = create_grpc_channel(
             server_uri,
             use_ssl=use_ssl,
@@ -237,6 +245,21 @@ class GRPCClientCommunicator:
             kwargs["model_key"] = local_model_key
             kwargs["model_url"] = local_model_url
             kwargs["_use_s3"] = True
+        # Streamed aggregation: split model into chunks and aggregate incrementally
+        if (
+            self.use_model_chunking
+            and isinstance(local_model, (Dict, OrderedDict))
+        ):
+            from appfl.misc.memory_utils import get_state_dict_memory_info
+            mem_info = get_state_dict_memory_info(local_model)
+            if mem_info['total_bytes'] > self.model_chunk_size:
+                if self.logger:
+                    self.logger.info(
+                        f"Model size {mem_info['total_gb']:.2f} GB exceeds chunk size "
+                        f"{self.model_chunk_size / (1024**3):.2f} GB, using streamed aggregation"
+                    )
+                return self._streamed_aggregation(local_model, **kwargs)
+
         meta_data = yaml.dump(kwargs)
 
         # Serialize the local model
@@ -252,9 +275,6 @@ class GRPCClientCommunicator:
 
         # Use optimized protocol when optimize_memory is enabled
         if self.optimize_memory:
-            # New protocol: Send metadata and model separately, receive metadata and model separately
-            if self.logger:
-                self.logger.info("Using optimized protocol for UpdateGlobalModel")
 
             # Create request with empty local_model (model will be sent separately)
             request = UpdateGlobalModelRequest(
@@ -281,10 +301,15 @@ class GRPCClientCommunicator:
             if response.header.status == ServerStatus.ERROR:
                 raise Exception("Server returned an error, stopping the client.")
 
-            # Load model directly from bytes
-            model = self._deserialize_model_optimized(model_bytes)
-            del model_bytes
-            gc.collect()
+            # Load model directly from bytes (if not empty - empty means chunk acknowledgment)
+            if len(model_bytes) > 0:
+                model = self._deserialize_model_optimized(model_bytes)
+                del model_bytes
+                gc.collect()
+            else:
+                # Empty response (e.g., chunk acknowledgment)
+                model = {}
+                del model_bytes
         else:
             # Original protocol: Embed model in protobuf
             request = UpdateGlobalModelRequest(
@@ -322,6 +347,78 @@ class GRPCClientCommunicator:
             "DONE" if response.header.status == ServerStatus.DONE else "RUNNING"
         )
         return model, meta_data
+
+    def _streamed_aggregation(
+        self, local_model: Union[Dict, OrderedDict], **kwargs
+    ) -> Tuple[Union[Dict, OrderedDict], Dict]:
+        """
+        Streamed aggregation: send model in chunks, aggregate each chunk separately.
+        Works with any transport mechanism (S3, ProxyStore, optimized, regular).
+        """
+        from appfl.misc.memory_utils import split_state_dict_by_size, merge_state_dict_chunks
+
+        # Split model into chunks by size
+        chunks = split_state_dict_by_size(local_model, self.model_chunk_size)
+
+        if self.logger:
+            self.logger.info(
+                f"Starting streamed aggregation with {len(chunks)} chunks"
+            )
+
+        # Temporarily disable chunking to avoid recursion
+        old_use_chunking = self.use_model_chunking
+        self.use_model_chunking = False
+
+        try:
+            aggregated_chunks = []
+            final_metadata = None
+
+            # Loop through each chunk and aggregate
+            for chunk_idx, chunk_dict, chunk_keys in chunks:
+                if self.logger:
+                    chunk_size_mb = sum(
+                        t.numel() * t.element_size() for t in chunk_dict.values()
+                    ) / (1024 * 1024)
+                    self.logger.info(
+                        f"Sending chunk {chunk_idx + 1}/{len(chunks)} "
+                        f"({len(chunk_keys)} params, {chunk_size_mb:.2f} MB)"
+                    )
+
+                # Add chunk metadata for server-side streamed aggregation
+                chunk_kwargs = kwargs.copy()
+                chunk_kwargs["_chunk_idx"] = chunk_idx
+                chunk_kwargs["_total_chunks"] = len(chunks)
+                chunk_kwargs["_chunk_keys"] = chunk_keys
+
+                # Call existing update_global_model (uses whatever transport is configured)
+                aggregated_chunk, chunk_metadata = self.update_global_model(
+                    chunk_dict, **chunk_kwargs
+                )
+
+                aggregated_chunks.append((chunk_idx, aggregated_chunk, chunk_keys))
+                final_metadata = chunk_metadata
+
+                if self.logger:
+                    self.logger.info(
+                        f"Received aggregated chunk {chunk_idx + 1}/{len(chunks)}"
+                    )
+
+            # Reassemble full aggregated model
+            aggregated_chunks.sort(key=lambda x: x[0])
+            global_model = merge_state_dict_chunks(aggregated_chunks)
+
+            if self.logger:
+                from appfl.misc.memory_utils import get_state_dict_memory_info
+                mem_info = get_state_dict_memory_info(global_model)
+                self.logger.info(
+                    f"Completed streamed aggregation: {mem_info['total_mb']:.2f} MB"
+                )
+
+            return global_model, final_metadata
+
+        finally:
+            # Restore chunking setting
+            self.use_model_chunking = old_use_chunking
 
     def invoke_custom_action(self, action: str, **kwargs) -> Dict:
         """
@@ -512,10 +609,6 @@ class GRPCClientCommunicator:
         # Restore original (for cleanup if needed)
         request_proto.local_model = original_model
 
-        # Step 2: Stream raw model bytes directly
-        if self.logger:
-            self.logger.info(f"Sending {len(model_bytes) / (1024**3):.2f} GB model data")
-
         chunk_size = int(0.9 * max_message_size)
         chunk_count = 0
         for i in range(0, len(model_bytes), chunk_size):
@@ -525,9 +618,6 @@ class GRPCClientCommunicator:
             chunk_count += 1
             if chunk_count % 20 == 0:
                 gc.collect()
-
-        if self.logger:
-            self.logger.info(f"Sent {len(model_bytes) / (1024**2):.2f} MB in {chunk_count} chunks")
         gc.collect()
 
     def _receive_metadata_and_model_optimized(self, stream_iterator, response_type):
@@ -550,12 +640,11 @@ class GRPCClientCommunicator:
             if chunk_count % 20 == 0:
                 gc.collect()
 
-        if self.logger:
-            self.logger.info(f"Received {chunk_count} chunks, total {total_bytes / (1024**2):.2f} MB")
-
         # Parse metadata from first chunk(s)
         response = response_type()
         metadata_size = 0
+        
+        print(f"Total received bytes: {total_bytes} in {chunk_count} chunks.")
 
         # Try to parse protobuf from progressively more chunks
         for i in range(1, min(len(all_chunks) + 1, 10)):  # Metadata should be in first few chunks
@@ -563,10 +652,9 @@ class GRPCClientCommunicator:
                 metadata_bytes = b''.join(all_chunks[:i])
                 response.ParseFromString(metadata_bytes)
                 metadata_size = len(metadata_bytes)
-                if self.logger:
-                    self.logger.info(f"Parsed metadata from first {i} chunk(s), size: {metadata_size} bytes")
                 break
             except Exception:
+                self.logger.info(f"Metadata parsing failed with first {i} chunks, trying more.")
                 continue
 
         if metadata_size == 0:
@@ -574,10 +662,6 @@ class GRPCClientCommunicator:
 
         # Check if model data follows (indicated by empty global_model field)
         if response.global_model == b"":
-            # Model data follows as raw bytes
-            if self.logger:
-                self.logger.info("Detected optimized protocol: model data follows as raw bytes")
-
             # Extract model bytes from remaining chunks
             model_buffer = io.BytesIO()
             bytes_consumed = 0
@@ -600,13 +684,7 @@ class GRPCClientCommunicator:
             model_bytes = model_buffer.read()
             del model_buffer
 
-            if self.logger:
-                self.logger.info(f"Extracted {len(model_bytes) / (1024**3):.2f} GB model data")
-
             return response, model_bytes
         else:
-            # Old protocol: model is embedded in protobuf
-            if self.logger:
-                self.logger.info("Detected original protocol: model embedded in protobuf")
             del all_chunks
             return response, response.global_model

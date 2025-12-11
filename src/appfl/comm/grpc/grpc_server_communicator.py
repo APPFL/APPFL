@@ -36,6 +36,8 @@ from .utils import proto_to_databuffer, serialize_model, deserialize_model
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
     optimize_memory_cleanup,
+    split_state_dict_by_size,
+    merge_state_dict_chunks,
 )
 
 
@@ -61,6 +63,11 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         )
         self._load_proxystore(server_agent.server_agent_config)
         self._load_google_drive(server_agent.server_agent_config)
+
+        # Streamed aggregation configuration
+        self.use_model_chunking = kwargs.get("use_model_chunking", False)
+        if self.use_model_chunking:
+            self.logger.info("Streamed aggregation enabled on server")
 
     def GetConfiguration(self, request, context):
         """
@@ -153,8 +160,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
 
             # Optimized protocol: Stream metadata separately from model data
             if self.optimize_memory:
-                self.logger.info(f"Using optimized direct streaming for client {request.header.client_id}")
-
                 # Step 1: Send metadata-only message (no model bytes)
                 metadata_proto = GetGlobalModelRespone(
                     header=ServerHeader(status=ServerStatus.RUN),
@@ -167,7 +172,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
 
                 # Step 2: Serialize model and stream raw bytes directly (bypasses protobuf parsing)
                 model_serialized = serialize_model(model)
-                self.logger.info(f"Streaming {len(model_serialized) / (1024**3):.2f} GB model data")
 
                 yield from self._stream_raw_bytes(model_serialized, self.max_message_size)
 
@@ -217,8 +221,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     if chunk_count % 20 == 0:
                         gc.collect()
 
-                self.logger.info(f"Received {chunk_count} chunks, total {total_bytes / (1024**2):.2f} MB")
-
                 # Parse metadata from first chunk(s)
                 metadata_size = 0
                 for i in range(1, min(len(data_chunks) + 1, 10)):
@@ -226,7 +228,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                         metadata_bytes = b''.join(data_chunks[:i])
                         request.ParseFromString(metadata_bytes)
                         metadata_size = len(metadata_bytes)
-                        self.logger.info(f"Parsed request metadata from first {i} chunk(s)")
                         break
                     except Exception:
                         continue
@@ -239,9 +240,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
 
                 # Check if local model data follows as raw bytes
                 if request.local_model == b"":
-                    # Model data follows as raw bytes
-                    self.logger.info("Detected optimized protocol: extracting model from raw bytes")
-
                     # Extract model bytes from remaining chunks
                     model_buffer = io.BytesIO()
                     bytes_consumed = 0
@@ -261,11 +259,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     model_bytes = model_buffer.read()
                     del model_buffer
 
-                    self.logger.info(f"Extracted {len(model_bytes) / (1024**3):.2f} GB model data")
                     local_model = model_bytes
                 else:
-                    # Old protocol: model is embedded in protobuf
-                    self.logger.info("Detected original protocol: model embedded in protobuf")
                     local_model = request.local_model
                     del data_chunks
             else:
@@ -319,6 +314,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     "grpc",
                     deserialize_model(local_model),
                 )
+
             # Memory optimization: Avoid deepcopy when possible
             if len(meta_data) > 0:
                 if self.optimize_memory:
@@ -358,6 +354,14 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     self.logger.info(
                         f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
                     )
+
+            # Streamed aggregation: chunk metadata is passed through to aggregator
+            if self.use_model_chunking and "_chunk_idx" in meta_data:
+                self.logger.info(
+                    f"Streamed aggregation: processing chunk {meta_data['_chunk_idx'] + 1}/"
+                    f"{meta_data['_total_chunks']} from client {client_id}"
+                )
+
             global_model = self.server_agent.global_update(
                 client_id, local_model, blocking=True, **meta_data
             )
@@ -398,8 +402,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
 
             # Optimized protocol: Stream metadata separately from model data
             if self.optimize_memory:
-                self.logger.info(f"Using optimized direct streaming for UpdateGlobalModel response to client {request.header.client_id}")
-
                 # Step 1: Send metadata-only message (no model bytes)
                 metadata_proto = UpdateGlobalModelResponse(
                     header=ServerHeader(status=status),
@@ -416,7 +418,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 del global_model
                 gc.collect()
 
-                self.logger.info(f"Streaming {len(global_model_serialized) / (1024**3):.2f} GB updated model data")
                 yield from self._stream_raw_bytes(global_model_serialized, self.max_message_size)
 
                 # Final cleanup
@@ -661,5 +662,5 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if chunk_count % 20 == 0:
                 gc.collect()
 
-        self.logger.info(f"Streamed {total_size / (1024**2):.2f} MB in {chunk_count} chunks")
         gc.collect()
+

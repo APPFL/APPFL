@@ -312,3 +312,134 @@ def log_optimization_status(
 memory_efficient_clone = clone_state_dict_optimized
 memory_efficient_extract = extract_model_state_optimized
 safe_tensor_operation = safe_inplace_operation
+
+
+def split_state_dict_by_size(
+    state_dict: Union[Dict[str, torch.Tensor], "OrderedDict[str, torch.Tensor]"],
+    max_chunk_size: int = 1 * 1024 * 1024 * 1024,  # 1GB default
+) -> list:
+    """
+    Split a state_dict into chunks based on memory size.
+
+    Parameters are sorted by name and grouped into chunks where each chunk
+    is at most max_chunk_size bytes. If a single parameter exceeds max_chunk_size,
+    it becomes its own chunk.
+
+    Args:
+        state_dict: Model state dictionary to split
+        max_chunk_size: Maximum size per chunk in bytes (default: 1GB)
+
+    Returns:
+        List of tuples: [(chunk_idx, chunk_dict, chunk_keys), ...]
+        - chunk_idx: Index of this chunk (0-based)
+        - chunk_dict: Dictionary containing the parameters for this chunk
+        - chunk_keys: List of parameter names in this chunk
+    """
+    # Sort parameters by name for consistent ordering
+    sorted_keys = sorted(state_dict.keys())
+
+    chunks = []
+    current_chunk = {}
+    current_chunk_keys = []
+    current_size = 0
+
+    for key in sorted_keys:
+        tensor = state_dict[key]
+        tensor_size = tensor.numel() * tensor.element_size()
+
+        # If this single tensor exceeds max_chunk_size, put it in its own chunk
+        if tensor_size > max_chunk_size:
+            # First, save current chunk if not empty
+            if current_chunk:
+                chunks.append((len(chunks), current_chunk, current_chunk_keys))
+                current_chunk = {}
+                current_chunk_keys = []
+                current_size = 0
+
+            # Add large tensor as its own chunk
+            chunks.append((len(chunks), {key: tensor}, [key]))
+            continue
+
+        # If adding this tensor would exceed max_chunk_size, start new chunk
+        if current_size + tensor_size > max_chunk_size and current_chunk:
+            chunks.append((len(chunks), current_chunk, current_chunk_keys))
+            current_chunk = {}
+            current_chunk_keys = []
+            current_size = 0
+
+        # Add tensor to current chunk
+        current_chunk[key] = tensor
+        current_chunk_keys.append(key)
+        current_size += tensor_size
+
+    # Add remaining chunk if not empty
+    if current_chunk:
+        chunks.append((len(chunks), current_chunk, current_chunk_keys))
+
+    return chunks
+
+
+def merge_state_dict_chunks(chunks: list) -> Dict[str, torch.Tensor]:
+    """
+    Merge state_dict chunks back into a single state_dict.
+
+    Args:
+        chunks: List of chunk dictionaries or list of (chunk_idx, chunk_dict, chunk_keys) tuples
+
+    Returns:
+        Merged state dictionary
+    """
+    merged = {}
+
+    for chunk_item in chunks:
+        # Handle both formats: just dict or (idx, dict, keys) tuple
+        if isinstance(chunk_item, tuple):
+            _, chunk_dict, _ = chunk_item
+        else:
+            chunk_dict = chunk_item
+
+        merged.update(chunk_dict)
+
+    return merged
+
+
+def get_state_dict_memory_info(
+    state_dict: Union[Dict[str, torch.Tensor], "OrderedDict[str, torch.Tensor]"]
+) -> Dict[str, Any]:
+    """
+    Get detailed memory information about a state_dict.
+
+    Args:
+        state_dict: Model state dictionary
+
+    Returns:
+        Dictionary with memory statistics
+    """
+    total_params = 0
+    total_bytes = 0
+    param_info = {}
+
+    for name, tensor in state_dict.items():
+        numel = tensor.numel()
+        elem_size = tensor.element_size()
+        tensor_bytes = numel * elem_size
+
+        total_params += numel
+        total_bytes += tensor_bytes
+
+        param_info[name] = {
+            "shape": tuple(tensor.shape),
+            "dtype": str(tensor.dtype),
+            "numel": numel,
+            "bytes": tensor_bytes,
+            "mb": tensor_bytes / (1024 * 1024),
+        }
+
+    return {
+        "total_parameters": total_params,
+        "total_bytes": total_bytes,
+        "total_mb": total_bytes / (1024 * 1024),
+        "total_gb": total_bytes / (1024 * 1024 * 1024),
+        "num_tensors": len(state_dict),
+        "parameter_details": param_info,
+    }

@@ -81,7 +81,13 @@ class FedAvgAggregator(BaseAggregator):
     ) -> Dict:
         """
         Take the weighted average of local models from clients and return the global model.
+
+        Supports streamed aggregation: if _chunk_idx is in kwargs, only aggregates that chunk.
         """
+        # Check if this is streamed aggregation
+        self.logger.info(f"Kwargs received in aggregate: {kwargs}")
+        if "_chunk_idx" in kwargs:
+            return self._aggregate_chunk(local_models, **kwargs)
         # Memory optimization: Initialize global state efficiently
         if self.global_state is None:
             if self.model is not None:
@@ -250,3 +256,93 @@ class FedAvgAggregator(BaseAggregator):
                         self.step[name] += weight * (
                             model[name] - self.global_state[name]
                         )
+
+    def _aggregate_chunk(
+        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs
+    ) -> Dict:
+        """Memory-efficient chunk aggregation for streamed aggregation."""
+        # Extract chunk metadata (scheduler aggregates kwargs by client_id)
+        # All clients should have same chunk_idx/keys/total, so take from first client
+        chunk_keys_dict = kwargs["_chunk_keys"]
+        chunk_keys = list(chunk_keys_dict.values())[0]  # Get from first client
+
+        self.logger.info(
+            f"Aggregating chunk with keys: {chunk_keys} from {len(local_models)} clients."
+        )
+
+        # Initialize global state for chunk if needed
+        if self.global_state is None:
+            self.global_state = {}
+
+        with torch.no_grad():
+            first_model = list(local_models.values())[0]
+            for key in chunk_keys:
+                if key not in self.global_state and key in first_model:
+                    self.global_state[key] = first_model[key].detach().clone()
+
+        # Compute and apply aggregation for chunk
+        self._compute_chunk_steps(local_models, chunk_keys)
+
+        with torch.no_grad():
+            for key in chunk_keys:
+                if key in self.step:
+                    self.global_state[key] = safe_inplace_operation(
+                        self.global_state[key], "add", self.step[key]
+                    )
+                else:
+                    param_sum = torch.zeros_like(self.global_state[key])
+                    for model in local_models.values():
+                        param_sum = safe_inplace_operation(param_sum, "add", model[key])
+                    self.global_state[key] = safe_inplace_operation(
+                        param_sum, "div", len(local_models)
+                    )
+                    optimize_memory_cleanup(param_sum, force_gc=False)
+
+        optimize_memory_cleanup(force_gc=True)
+        self.step.clear()
+
+        # Update model (partial)
+        if self.model is not None:
+            current_state = self.model.state_dict()
+            for key in chunk_keys:
+                if key in self.global_state:
+                    current_state[key] = self.global_state[key]
+            self.model.load_state_dict(current_state, strict=False)
+
+        # Return aggregated chunk
+        return clone_state_dict_optimized({k: self.global_state[k] for k in chunk_keys})
+
+    def _compute_chunk_steps(
+        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], chunk_keys: list
+    ):
+        """Compute aggregation steps for chunk parameters."""
+        with torch.no_grad():
+            for key in chunk_keys:
+                if key in self.global_state:
+                    if (
+                        self.global_state[key].dtype == torch.int64
+                        or self.global_state[key].dtype == torch.int32
+                    ):
+                        continue
+                    self.step[key] = torch.zeros_like(self.global_state[key])
+
+            for client_id, model in local_models.items():
+                if (
+                    self.client_weights_mode == "sample_size"
+                    and hasattr(self, "client_sample_size")
+                    and client_id in self.client_sample_size
+                ):
+                    weight = self.client_sample_size[client_id] / sum(
+                        self.client_sample_size.values()
+                    )
+                else:
+                    weight = 1.0 / len(local_models)
+
+                for key in chunk_keys:
+                    if key in self.step and key in model:
+                        diff = model[key] - self.global_state[key]
+                        weighted_diff = diff * weight
+                        self.step[key] = safe_inplace_operation(
+                            self.step[key], "add", weighted_diff
+                        )
+                        optimize_memory_cleanup(diff, weighted_diff, force_gc=False)
