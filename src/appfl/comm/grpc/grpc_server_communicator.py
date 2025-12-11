@@ -36,6 +36,8 @@ from .utils import proto_to_databuffer, serialize_model, deserialize_model
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
     optimize_memory_cleanup,
+    split_state_dict_by_size,
+    merge_state_dict_chunks,
 )
 
 
@@ -61,6 +63,11 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         )
         self._load_proxystore(server_agent.server_agent_config)
         self._load_google_drive(server_agent.server_agent_config)
+
+        # Streamed aggregation configuration
+        self.use_model_chunking = kwargs.get("use_model_chunking", False)
+        if self.use_model_chunking:
+            self.logger.info("Streamed aggregation enabled on server")
 
     def GetConfiguration(self, request, context):
         """
@@ -307,6 +314,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     "grpc",
                     deserialize_model(local_model),
                 )
+
             # Memory optimization: Avoid deepcopy when possible
             if len(meta_data) > 0:
                 if self.optimize_memory:
@@ -346,6 +354,14 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     self.logger.info(
                         f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
                     )
+
+            # Streamed aggregation: chunk metadata is passed through to aggregator
+            if self.use_model_chunking and "_chunk_idx" in meta_data:
+                self.logger.info(
+                    f"Streamed aggregation: processing chunk {meta_data['_chunk_idx'] + 1}/"
+                    f"{meta_data['_total_chunks']} from client {client_id}"
+                )
+
             global_model = self.server_agent.global_update(
                 client_id, local_model, blocking=True, **meta_data
             )
@@ -647,3 +663,4 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 gc.collect()
 
         gc.collect()
+
