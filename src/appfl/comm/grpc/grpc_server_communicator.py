@@ -36,8 +36,6 @@ from .utils import proto_to_databuffer, serialize_model, deserialize_model
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
     optimize_memory_cleanup,
-    split_state_dict_by_size,
-    merge_state_dict_chunks,
 )
 
 
@@ -67,7 +65,23 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         # Streamed aggregation configuration
         self.use_model_chunking = kwargs.get("use_model_chunking", False)
         if self.use_model_chunking:
-            self.logger.info("Streamed aggregation enabled on server")
+            # Verify aggregator supports streamed aggregation
+            from appfl.algorithm.aggregator import FedAvgAggregator
+
+            supported_aggregators = [FedAvgAggregator]
+            aggregator = server_agent.aggregator
+
+            if not any(isinstance(aggregator, agg_type) for agg_type in supported_aggregators):
+                supported_names = [agg.__name__ for agg in supported_aggregators]
+                raise ValueError(
+                    f"Streamed aggregation (use_model_chunking=True) is only supported with "
+                    f"{', '.join(supported_names)}, but got {type(aggregator).__name__}. "
+                    f"Please use a supported aggregator or disable model chunking."
+                )
+
+            self.logger.debug(
+                f"Streamed aggregation enabled on server with {type(aggregator).__name__}"
+            )
 
     def GetConfiguration(self, request, context):
         """
@@ -314,6 +328,13 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     "grpc",
                     deserialize_model(local_model),
                 )
+                
+            # Streamed aggregation: chunk metadata is passed through to aggregator
+            if self.use_model_chunking and "_chunk_idx" in meta_data:
+                self.logger.info(
+                    f"Streamed aggregation: processing chunk [{meta_data['_chunk_idx'] + 1}/"
+                    f"{meta_data['_total_chunks']}] from client {client_id}"
+                )
 
             # Memory optimization: Avoid deepcopy when possible
             if len(meta_data) > 0:
@@ -329,14 +350,24 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                             "_use_s3",
                             "model_key",
                             "model_url",
+                            "_chunk_idx",
+                            "_total_chunks",
+                            "_chunk_keys",
                         ]
                     }
                     if (
                         meta_data_print
                     ):  # Only log if there's something meaningful to show
-                        self.logger.info(
-                            f"Received meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
-                        )
+                        # For chunked aggregation, only log for the final chunk
+                        if self.use_model_chunking and "_chunk_idx" in meta_data:
+                            if meta_data["_chunk_idx"] == meta_data["_total_chunks"] - 1:
+                                self.logger.info(
+                                    f"Received metadata from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
+                                )
+                        else:
+                            self.logger.info(
+                                f"Received metadata from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
+                            )
                     del meta_data_print  # Immediate cleanup
                 else:
                     # Original behavior with deepcopy
@@ -347,20 +378,26 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                         "_use_s3",
                         "model_key",
                         "model_url",
+                        "_chunk_keys",
+                        "_chunk_idx",
+                        "_total_chunks",
                     ]
                     for key in remove_keys:
                         if key in meta_data_print:
                             del meta_data_print[key]
-                    self.logger.info(
-                        f"Received the following meta data from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
-                    )
-
-            # Streamed aggregation: chunk metadata is passed through to aggregator
-            if self.use_model_chunking and "_chunk_idx" in meta_data:
-                self.logger.info(
-                    f"Streamed aggregation: processing chunk {meta_data['_chunk_idx'] + 1}/"
-                    f"{meta_data['_total_chunks']} from client {client_id}"
-                )
+                    # For chunked aggregation, only log for the final chunk
+                    if (
+                        meta_data_print
+                    ):
+                        if self.use_model_chunking and "_chunk_idx" in meta_data:
+                            if meta_data["_chunk_idx"] == meta_data["_total_chunks"] - 1:
+                                self.logger.info(
+                                    f"Received metadata from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
+                                )
+                        else:
+                            self.logger.info(
+                                f"Received metadata from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
+                            )
 
             global_model = self.server_agent.global_update(
                 client_id, local_model, blocking=True, **meta_data

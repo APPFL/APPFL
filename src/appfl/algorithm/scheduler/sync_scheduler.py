@@ -57,6 +57,13 @@ class SyncScheduler(BaseScheduler):
             self.future[client_id] = future
 
             if len(self.local_models) == self.num_clients:
+                is_final_chunk = True
+                if "_chunk_idx" in self.aggregation_kwargs and "_total_chunks" in self.aggregation_kwargs:
+                    # Extract from first client (all should be same)
+                    chunk_idx = list(self.aggregation_kwargs["_chunk_idx"].values())[0]
+                    total_chunks = list(self.aggregation_kwargs["_total_chunks"].values())[0]
+                    is_final_chunk = (chunk_idx == total_chunks - 1)
+
                 # Memory optimization: Process aggregation with cleanup
                 if self.optimize_memory:
                     aggregated_model = self.aggregator.aggregate(
@@ -90,8 +97,8 @@ class SyncScheduler(BaseScheduler):
                             self._parse_aggregated_model(aggregated_model, client_id)
                         )
                     self.local_models.clear()
-
-                self._num_global_epochs += 1
+                if is_final_chunk:
+                    self._num_global_epochs += 1
             return future
 
     def get_num_global_epochs(self) -> int:

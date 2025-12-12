@@ -91,7 +91,7 @@ else:
             server_communicator.recv_result_from_one_client()
         )
         server_agent.logger.info(
-            f"Received the following meta data from {client_endpoint_id}:\n{pprint.pformat(client_metadata)}"
+            f"Received the following metadata from {client_endpoint_id}:\n{pprint.pformat(client_metadata)}"
         )
         if client_endpoint_id not in training_metadata:
             training_metadata[client_endpoint_id] = []
