@@ -255,8 +255,8 @@ class GRPCClientCommunicator:
             if mem_info['total_bytes'] > self.model_chunk_size:
                 if self.logger:
                     self.logger.info(
-                        f"Model size {mem_info['total_gb']:.2f} GB exceeds chunk size "
-                        f"{self.model_chunk_size / (1024**3):.2f} GB, using streamed aggregation"
+                        f"Model size {mem_info['total_mb']:.2f} MB exceeds chunk size "
+                        f"{self.model_chunk_size / (1024**2):.2f} MB, using streamed aggregation"
                     )
                 return self._streamed_aggregation(local_model, **kwargs)
 
@@ -360,11 +360,6 @@ class GRPCClientCommunicator:
         # Split model into chunks by size
         chunks = split_state_dict_by_size(local_model, self.model_chunk_size)
 
-        if self.logger:
-            self.logger.info(
-                f"Starting streamed aggregation with {len(chunks)} chunks"
-            )
-
         # Temporarily disable chunking to avoid recursion
         old_use_chunking = self.use_model_chunking
         self.use_model_chunking = False
@@ -380,7 +375,7 @@ class GRPCClientCommunicator:
                         t.numel() * t.element_size() for t in chunk_dict.values()
                     ) / (1024 * 1024)
                     self.logger.info(
-                        f"Sending chunk {chunk_idx + 1}/{len(chunks)} "
+                        f"Chunked aggregation enabled: Sending chunk [{chunk_idx + 1}/{len(chunks)}] "
                         f"({len(chunk_keys)} params, {chunk_size_mb:.2f} MB)"
                     )
 
@@ -400,19 +395,12 @@ class GRPCClientCommunicator:
 
                 if self.logger:
                     self.logger.info(
-                        f"Received aggregated chunk {chunk_idx + 1}/{len(chunks)}"
+                        f"Chunked aggregation enabled: Received aggregated chunk [{chunk_idx + 1}/{len(chunks)}]"
                     )
 
             # Reassemble full aggregated model
             aggregated_chunks.sort(key=lambda x: x[0])
             global_model = merge_state_dict_chunks(aggregated_chunks)
-
-            if self.logger:
-                from appfl.misc.memory_utils import get_state_dict_memory_info
-                mem_info = get_state_dict_memory_info(global_model)
-                self.logger.info(
-                    f"Completed streamed aggregation: {mem_info['total_mb']:.2f} MB"
-                )
 
             return global_model, final_metadata
 
@@ -644,8 +632,6 @@ class GRPCClientCommunicator:
         response = response_type()
         metadata_size = 0
         
-        print(f"Total received bytes: {total_bytes} in {chunk_count} chunks.")
-
         # Try to parse protobuf from progressively more chunks
         for i in range(1, min(len(all_chunks) + 1, 10)):  # Metadata should be in first few chunks
             try:

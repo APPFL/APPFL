@@ -85,7 +85,6 @@ class FedAvgAggregator(BaseAggregator):
         Supports streamed aggregation: if _chunk_idx is in kwargs, only aggregates that chunk.
         """
         # Check if this is streamed aggregation
-        self.logger.info(f"Kwargs received in aggregate: {kwargs}")
         if "_chunk_idx" in kwargs:
             return self._aggregate_chunk(local_models, **kwargs)
         # Memory optimization: Initialize global state efficiently
@@ -265,10 +264,6 @@ class FedAvgAggregator(BaseAggregator):
         # All clients should have same chunk_idx/keys/total, so take from first client
         chunk_keys_dict = kwargs["_chunk_keys"]
         chunk_keys = list(chunk_keys_dict.values())[0]  # Get from first client
-
-        self.logger.info(
-            f"Aggregating chunk with keys: {chunk_keys} from {len(local_models)} clients."
-        )
 
         # Initialize global state for chunk if needed
         if self.global_state is None:
