@@ -34,7 +34,7 @@ server_thread = threading.Thread(
 )
 server_thread.start()
 
-# Connect to the neighbor nodels
+# Connect to the neighbor models
 connect_communicators = [
     GRPCDFLNodeConnectCommunicator(
         node_id=dfl_node_agent.get_id(),
