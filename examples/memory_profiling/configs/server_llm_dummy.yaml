@@ -6,14 +6,7 @@ client_configs:
     model_path: "./resources/model/hf_llm.py"
     model_name: "load_hf_llm"
     model_kwargs:
-      model_name: "Qwen/Qwen2.5-0.5B"
-
-  # model_configs:
-  #   model_path: "./resources/model/large_model.py"
-  #   model_name: "BigMLP"
-  #   model_kwargs:
-  #     hidden_dim: 16384
-  #     num_layers: 16
+      model_name: "meta-llama/Llama-3.1-8B"
 
 server_configs:
   num_clients: 2
@@ -24,7 +17,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 2  # Reduced for faster profiling
+  num_global_epochs: 3
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
@@ -32,3 +25,4 @@ server_configs:
       server_uri: localhost:50051
       max_message_size: 104857600  # 100MB for LLM parameters
       use_ssl: False
+      use_model_chunking: True
