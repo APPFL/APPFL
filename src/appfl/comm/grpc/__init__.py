@@ -9,6 +9,8 @@ from ._credentials import (
     SERVER_CERTIFICATE_KEY,
     SERVER_CERTIFICATE,
 )
+from .grpc_dfl_node_connect_communicator import GRPCDFLNodeConnectCommunicator
+from .grpc_dfl_node_server_communicator import GRPCDFLNodeServeCommunicator
 from ..grpc_legacy import (
     APPFLgRPCClient,
     APPFLgRPCServer,
@@ -36,4 +38,6 @@ __all__ = [
     "grpc_serve",
     "Job",
     "setup_ssl",
+    "GRPCDFLNodeConnectCommunicator",
+    "GRPCDFLNodeServeCommunicator",
 ]

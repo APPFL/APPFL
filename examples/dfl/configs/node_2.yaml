@@ -1,0 +1,65 @@
+train_configs:
+  # Local trainer
+  trainer: "VanillaTrainer"
+  mode: "step"
+  num_local_steps: 10
+  optim: "SGD"
+  optim_args:
+    lr: 0.1
+  # Loss function
+  loss_fn_path: "./losses/celoss.py"
+  loss_fn_name: "CELoss"
+  # Client validation
+  do_validation: True
+  do_pre_validation: True
+  metric_path: "./metrics/acc.py"
+  metric_name: "accuracy"
+  # Differential privacy
+  use_dp: False
+  # Data loader
+  train_batch_size: 32
+  val_batch_size: 64
+  train_data_shuffle: True
+  val_data_shuffle: False
+  # Device
+  device: "cuda"
+
+model_configs:
+  seed: 42
+  model_path: "./models/cnn.py"
+  model_name: "CNN"
+  model_kwargs:
+    num_channel: 1
+    num_classes: 10
+    num_pixel: 28
+
+data_configs:
+  dataset_path: "./data/mnist.py"
+  dataset_name: "get_mnist"
+  dataset_kwargs:
+    num_clients: 3
+    client_id: 2
+    partition_strategy: "class_noniid"
+    visualization: True
+    output_dirname: "./data_partition"
+    output_filename: "viz.pdf"
+
+node_id: "2"
+num_epochs: 10
+aggregator: "DFLNodeFedAvgAggregator"
+logging_id: "Node2"
+logging_output_dirname: "./log"
+logging_output_filename: "result"
+comm_configs:
+  grpc_configs:
+    server:
+      server_uri: localhost:50053
+      max_message_size: 1048576
+      use_ssl: False
+    connect:
+      - server_uri: localhost:50051
+        max_message_size: 1048576
+        use_ssl: False
+      - server_uri: localhost:50052
+        max_message_size: 1048576
+        use_ssl: False
