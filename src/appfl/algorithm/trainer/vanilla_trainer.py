@@ -274,7 +274,7 @@ class VanillaTrainer(BaseTrainer):
                     )
                 )
         else:
-            self.val_results["debuging_local_steps"] = (
+            self.val_results["current_local_steps"] = (
                 self.train_configs.num_local_steps
             )
             start_time = time.time()
