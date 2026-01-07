@@ -6,6 +6,7 @@ from .fedyogi_aggregator import FedYogiAggregator
 from .fedadagrad_aggregator import FedAdagradAggregator
 from .fedasync_aggregator import FedAsyncAggregator
 from .fedbuff_aggregator import FedBuffAggregator
+from .fedqueue_aggregator import FedQueueAggregator
 from .fedcompass_aggregator import FedCompassAggregator
 from .iiadmm_aggregator import IIADMMAggregator
 from .iceadmm_aggregator import ICEADMMAggregator
@@ -24,6 +25,7 @@ __all__ = [
     "FedAdagradAggregator",
     "FedAsyncAggregator",
     "FedBuffAggregator",
+    "FedQueueAggregator",
     "FedCompassAggregator",
     "IIADMMAggregator",
     "ICEADMMAggregator",

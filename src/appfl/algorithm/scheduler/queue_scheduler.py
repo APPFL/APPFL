@@ -1,3 +1,4 @@
+import time
 import math
 import threading
 from omegaconf import DictConfig
@@ -40,6 +41,7 @@ class QueueScheduler(BaseScheduler):
         self, **kwargs
     ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
         with self._access_lock:
+            kwargs['record_time'] = True
             return super().get_parameters(**kwargs)
 
     def schedule(
@@ -166,7 +168,8 @@ class QueueScheduler(BaseScheduler):
         client_metadata = {
             "job_budget": job_budget,
             "local_steps": local_steps,
-            "learning_rate": learning_rate
+            "learning_rate": learning_rate,
+            "job_start_time": time.time(),
         }
         self.client_steps_record[client_id] = local_steps
         return client_metadata

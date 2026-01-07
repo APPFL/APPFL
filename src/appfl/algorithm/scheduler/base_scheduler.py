@@ -1,4 +1,5 @@
 import abc
+import time
 from omegaconf import DictConfig
 from concurrent.futures import Future
 from typing import Union, Dict, Any, Tuple, OrderedDict
@@ -45,6 +46,9 @@ class BaseScheduler:
         :params `kwargs['init_model']` (default is `True`): whether to get the initial global model or not
         :return the global model or a `Future` object for the global model
         """
+        meta_data = {}
+        if kwargs.get("record_time", False):
+            meta_data["start_time"] = time.time()
         if (
             kwargs.get("init_model", True)
             and self.scheduler_configs.get("same_init_model", True)
@@ -63,7 +67,7 @@ class BaseScheduler:
                 init_model = self.aggregator.get_parameters(**kwargs)
                 while self.init_model_futures:
                     future = self.init_model_futures.pop()
-                    future.set_result(init_model)
+                    future.set_result(init_model if not meta_data else (init_model, meta_data))
             return future
         else:
-            return self.aggregator.get_parameters(**kwargs)
+            return self.aggregator.get_parameters(**kwargs) if len(meta_data) == 0 else (self.aggregator.get_parameters(**kwargs), meta_data)
