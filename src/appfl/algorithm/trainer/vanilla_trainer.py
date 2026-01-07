@@ -109,6 +109,9 @@ class VanillaTrainer(BaseTrainer):
             self.round = kwargs["round"]
         self.val_results = {"round": self.round + 1}
 
+        if "start_time" in kwargs:
+            self.val_results["queue_time"] = time.time() - kwargs["start_time"]
+
         # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
         use_secure_agg = self.train_configs.get("use_secure_agg", False)
@@ -319,6 +322,7 @@ class VanillaTrainer(BaseTrainer):
                 self.val_results["val_loss"] = val_loss
                 self.val_results["val_accuracy"] = val_accuracy
             per_step_time = time.time() - start_time
+            self.val_results["compute_second_per_step"] = per_step_time / self.train_configs.num_local_steps
             if self.enabled_wandb:
                 wandb.log(
                     {

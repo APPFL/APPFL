@@ -26,6 +26,10 @@ client_config = client_communicator.get_configuration()
 client_agent.load_config(client_config)
 
 init_global_model = client_communicator.get_global_model(init_model=True)
+if isinstance(init_global_model, tuple):
+    init_global_model, metadata = init_global_model[0], init_global_model[1]
+else:
+    metadata = {}
 client_agent.load_parameters(init_global_model)
 
 # Send the number of local data to the server
@@ -56,7 +60,7 @@ if (
     )
 
 while True:
-    client_agent.train()
+    client_agent.train(**metadata)
     local_model = client_agent.get_parameters()
     if isinstance(local_model, tuple):
         local_model, metadata = local_model[0], local_model[1]
@@ -67,6 +71,7 @@ while True:
     )
     if metadata["status"] == "DONE":
         break
+    print(metadata)
     if "local_steps" in metadata:
         client_agent.trainer.train_configs.num_local_steps = metadata["local_steps"]
     client_agent.load_parameters(new_global_model)

@@ -121,7 +121,7 @@ class FedQueueAggregator(BaseAggregator):
                     optimize_memory_cleanup(force_gc=True)         
              
         if self.model is not None:
-            self.model.load_state_dict(self.global_state, state_dict=False)
+            self.model.load_state_dict(self.global_state, strict=False)
             
         return clone_state_dict_optimized(self.global_state)
         

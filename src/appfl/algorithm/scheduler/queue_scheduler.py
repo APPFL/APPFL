@@ -20,6 +20,7 @@ class QueueScheduler(BaseScheduler):
     ):
         super().__init__(scheduler_configs, aggregator, logger)
         self.global_round = 0
+        self._num_global_epochs = 0
         self.num_clients = self.scheduler_configs.num_clients
         self.t_sync = self.scheduler_configs.get("t_sync", 3600)
         self.lr_base = self.scheduler_configs.get("lr_base", 0.01)
@@ -35,7 +36,7 @@ class QueueScheduler(BaseScheduler):
         self.client_steps_record = {}
         self.queue_time_estimation = {}
         self.compute_time_estimation = {}
-        self.client_model_buffer = self._reset_client_model_buffer()
+        self._reset_client_model_buffer()
 
     def get_parameters(
         self, **kwargs
@@ -43,6 +44,11 @@ class QueueScheduler(BaseScheduler):
         with self._access_lock:
             kwargs['record_time'] = True
             return super().get_parameters(**kwargs)
+
+    def get_num_global_epochs(self) -> int:
+        """Return the total number of global epochs for federated learning."""
+        with self._access_lock:
+            return self._num_global_epochs
 
     def schedule(
         self,
@@ -82,6 +88,7 @@ class QueueScheduler(BaseScheduler):
                 local_steps=self.client_model_buffer["local_steps"], # check this for computing p_k
             )
             self.global_round += 1
+            self._num_global_epochs += 1
             for client_id in all_clients:
                 client_metadata = self._get_client_metadata(client_id, all_clients)
                 self.future_record[client_id].set_result((global_model, client_metadata))
@@ -169,7 +176,7 @@ class QueueScheduler(BaseScheduler):
             "job_budget": job_budget,
             "local_steps": local_steps,
             "learning_rate": learning_rate,
-            "job_start_time": time.time(),
+            "start_time": time.time(),
         }
         self.client_steps_record[client_id] = local_steps
         return client_metadata
