@@ -67,7 +67,13 @@ class BaseScheduler:
                 init_model = self.aggregator.get_parameters(**kwargs)
                 while self.init_model_futures:
                     future = self.init_model_futures.pop()
-                    future.set_result(init_model if not meta_data else (init_model, meta_data))
+                    future.set_result(
+                        init_model if not meta_data else (init_model, meta_data)
+                    )
             return future
         else:
-            return self.aggregator.get_parameters(**kwargs) if len(meta_data) == 0 else (self.aggregator.get_parameters(**kwargs), meta_data)
+            return (
+                self.aggregator.get_parameters(**kwargs)
+                if len(meta_data) == 0
+                else (self.aggregator.get_parameters(**kwargs), meta_data)
+            )

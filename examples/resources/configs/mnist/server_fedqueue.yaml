@@ -46,7 +46,7 @@ server_configs:
     warm_up_steps: 20
     alpha_queue: 0.5
     alpha_compute: 0.5
-    safety_buffer: 0.3
+    safety_buffer: 0.5
     admission_tolerance: 0.15
 
   aggregator: "FedQueueAggregator"
