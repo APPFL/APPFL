@@ -50,7 +50,6 @@ server_configs:
     admission_tolerance: 0.15
   aggregator: "FedQueueAggregator"
   aggregator_kwargs:
-    weights: "equal"
     staleness_fn: "harmonic"
     staleness_fn_kwargs:
       beta: 0.5

@@ -106,7 +106,7 @@ class VanillaTrainer(BaseTrainer):
         (probably with perturbation for differential privacy) in `self.model_state`.
         """
         if "local_steps" in kwargs:
-            self.local_steps = kwargs["local_steps"]
+            self.train_configs.num_local_steps = kwargs["local_steps"]
         if "learning_rate" in kwargs:
             self.train_configs.optim_args.lr = kwargs["learning_rate"]
         if "round" in kwargs:
