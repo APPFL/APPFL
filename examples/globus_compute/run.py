@@ -9,19 +9,19 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "--server_config",
     type=str,
-    default="./resources/config_gc/mnist/server_fedcompass.yaml",
+    default="./resources/config_gc/mnist/server_fedqueue.yaml",
 )
 argparser.add_argument(
     "--client_config", type=str, default="./resources/config_gc/mnist/clients.yaml"
 )
 argparser.add_argument("--compute_token", required=False)
 argparser.add_argument("--openid_token", required=False)
+argparser.add_argument("--get_sample_size", action="store_true")
 args = argparser.parse_args()
 
 # Load server and client agents configurations
 server_agent_config = OmegaConf.load(args.server_config)
 client_agent_configs = OmegaConf.load(args.client_config)
-
 # Create server agent
 server_agent = ServerAgent(server_agent_config=server_agent_config)
 
@@ -41,10 +41,11 @@ server_communicator = GlobusComputeServerCommunicator(
 )
 
 # Get sample size from clients
-server_communicator.send_task_to_all_clients(task_name="get_sample_size")
-sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
-for client_endpoint_id, sample_size in sample_size_ret.items():
-    server_agent.set_sample_size(client_endpoint_id, sample_size["sample_size"])
+if args.get_sample_size:
+    server_communicator.send_task_to_all_clients(task_name="get_sample_size")
+    sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
+    for client_endpoint_id, sample_size in sample_size_ret.items():
+        server_agent.set_sample_size(client_endpoint_id, sample_size["sample_size"])
 
 if (
     hasattr(server_agent_config.client_configs, "data_readiness_configs")
@@ -76,9 +77,15 @@ if (
     server_agent.data_readiness_report(restructured_report)
 
 # Train the model
+init_model = server_agent.get_parameters(globus_compute_run=True)
+if isinstance(init_model, tuple):
+    init_model, metadata = init_model[0], init_model[1]
+else:
+    metadata = {}
 server_communicator.send_task_to_all_clients(
     task_name="train",
-    model=server_agent.get_parameters(globus_compute_run=True),
+    model=init_model,
+    metadata=metadata,
     need_model_response=True,
 )
 

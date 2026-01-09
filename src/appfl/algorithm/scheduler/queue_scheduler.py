@@ -137,6 +137,9 @@ class QueueScheduler(BaseScheduler):
             self.alpha_queue * queue_time
             + (1 - self.alpha_queue) * self.queue_time_estimation[client_id]
         )
+        self.logger.debug(
+            f"Updated queue time estimation for client {client_id}: {self.queue_time_estimation[client_id]}"
+        )
 
     def _update_compute_estimation(
         self,
@@ -177,11 +180,17 @@ class QueueScheduler(BaseScheduler):
         job_budget = (
             self.t_sync - self.queue_time_estimation[client_id] - self.safety_buffer
         )
-        local_steps = math.floor(job_budget / self.compute_time_estimation[client_id])
+        local_steps = max(
+            math.floor(job_budget / self.compute_time_estimation[client_id]),
+            self.warm_up_steps,
+        )
         all_local_steps = [
-            math.floor(
-                (self.t_sync - self.queue_time_estimation[cid] - self.safety_buffer)
-                / self.compute_time_estimation[cid]
+            max(
+                math.floor(
+                    (self.t_sync - self.queue_time_estimation[cid] - self.safety_buffer)
+                    / self.compute_time_estimation[cid]
+                ),
+                self.warm_up_steps,
             )
             for cid in all_clients
         ]
@@ -193,5 +202,6 @@ class QueueScheduler(BaseScheduler):
             "learning_rate": learning_rate,
             "start_time": time.time(),
         }
+        self.logger.debug(f"Client {client_id} metadata: {client_metadata}")
         self.client_steps_record[client_id] = local_steps
         return client_metadata

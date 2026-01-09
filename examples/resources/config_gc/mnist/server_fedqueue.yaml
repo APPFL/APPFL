@@ -37,16 +37,24 @@ client_configs:
       num_classes: 10
       num_pixel: 28
 
+  # comm_configs will be copied to server_configs as well
+  comm_configs:
+    s3_configs:
+      enable_s3: False
+      s3_bucket: "appflx-models"
+      s3_creds_file: "./resources/config_gc/creds/credential.csv"
+
 server_configs:
   num_clients: 2
   scheduler: "QueueScheduler"
   scheduler_kwargs:
-    t_sync: 6
+    same_init_model: True
+    t_sync: 23
     lr_base: 0.001
     warm_up_steps: 20
     alpha_queue: 0.5
     alpha_compute: 0.5
-    safety_buffer: 0.5
+    safety_buffer: 5
     admission_tolerance: 0.15
   aggregator: "FedQueueAggregator"
   aggregator_kwargs:
@@ -58,8 +66,3 @@ server_configs:
   num_global_epochs: 20
   logging_output_dirname: "./output"
   logging_output_filename: "result"
-  comm_configs:
-    grpc_configs:
-      server_uri: localhost:50051
-      max_message_size: 1048576
-      use_ssl: False
