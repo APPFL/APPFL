@@ -81,6 +81,10 @@ def globus_compute_client_entry_point(
             }
 
         elif task_name == "train":
+            if meta_data is not None and "local_steps" in meta_data:
+                client_agent.trainer.train_configs.num_local_steps = meta_data[
+                    "local_steps"
+                ]
             client_agent.train(**meta_data)
             local_model = client_agent.get_parameters()
             if isinstance(local_model, tuple):

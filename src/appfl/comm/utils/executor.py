@@ -53,6 +53,8 @@ def train_executor(
     meta_data=None,
 ):
     client_agent = ClientAgent(client_agent_config=client_agent_config)
+    if meta_data is not None and "local_steps" in meta_data:
+        client_agent.trainer.train_configs.num_local_steps = meta_data["local_steps"]
     if (
         hasattr(client_agent_config, "data_readiness_configs")
         and hasattr(

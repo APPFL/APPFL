@@ -274,6 +274,7 @@ class VanillaTrainer(BaseTrainer):
                     )
                 )
         else:
+            self.val_results["current_local_steps"] = self.train_configs.num_local_steps
             start_time = time.time()
             train_loss, target_true, target_pred = 0, [], []
             if (
