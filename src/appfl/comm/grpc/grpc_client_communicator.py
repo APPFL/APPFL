@@ -219,6 +219,24 @@ class GRPCClientCommunicator:
         :return: the updated global model with additional metadata. Specifically, `meta_data["status"]` is either "RUNNING" or "DONE".
         """
         self._check_and_initialize_s3()
+
+        # Streamed aggregation: Check BEFORE wrapping in ProxyStore/S3/Colab
+        # This ensures we chunk the raw model state_dict, not a Proxy or S3 reference
+        if (
+            self.use_model_chunking
+            and isinstance(local_model, (Dict, OrderedDict))
+        ):
+            from appfl.misc.memory_utils import get_state_dict_memory_info
+            mem_info = get_state_dict_memory_info(local_model)
+            if mem_info['total_bytes'] > self.model_chunk_size:
+                if self.logger:
+                    self.logger.info(
+                        f"Model size {mem_info['total_mb']:.2f} MB exceeds chunk size "
+                        f"{self.model_chunk_size / (1024**2):.2f} MB, using streamed aggregation"
+                    )
+                return self._streamed_aggregation(local_model, **kwargs)
+
+        # Apply transport wrappers (each chunk will go through these individually)
         if self.use_proxystore:
             local_model = self.proxystore.proxy(local_model)
             kwargs["_use_proxystore"] = True
@@ -245,20 +263,6 @@ class GRPCClientCommunicator:
             kwargs["model_key"] = local_model_key
             kwargs["model_url"] = local_model_url
             kwargs["_use_s3"] = True
-        # Streamed aggregation: split model into chunks and aggregate incrementally
-        if (
-            self.use_model_chunking
-            and isinstance(local_model, (Dict, OrderedDict))
-        ):
-            from appfl.misc.memory_utils import get_state_dict_memory_info
-            mem_info = get_state_dict_memory_info(local_model)
-            if mem_info['total_bytes'] > self.model_chunk_size:
-                if self.logger:
-                    self.logger.info(
-                        f"Model size {mem_info['total_mb']:.2f} MB exceeds chunk size "
-                        f"{self.model_chunk_size / (1024**2):.2f} MB, using streamed aggregation"
-                    )
-                return self._streamed_aggregation(local_model, **kwargs)
 
         meta_data = yaml.dump(kwargs)
 
