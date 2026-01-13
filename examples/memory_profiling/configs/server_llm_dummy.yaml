@@ -6,7 +6,7 @@ client_configs:
     model_path: "./resources/model/hf_llm.py"
     model_name: "load_hf_llm"
     model_kwargs:
-      model_name: "openai-community/gpt2"
+      model_name: "meta-llama/Llama-3.1-8B"
 
 server_configs:
   num_clients: 2
@@ -17,11 +17,12 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 5  # Reduced for faster profiling
+  num_global_epochs: 3
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
     grpc_configs:
       server_uri: localhost:50051
-      max_message_size: 10485760  # 10MB for ResNet parameters
+      max_message_size: 104857600  # 100MB for LLM parameters
       use_ssl: False
+      use_model_chunking: True

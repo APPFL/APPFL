@@ -4,8 +4,11 @@
 
 set -e
 
+# export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+
 # Create output directory
 OUTPUT_DIR="./memory_profiles/llm_$(date +%Y%m%d_%H%M%S)"
+# OUTPUT_DIR="./memory_profiles/llm_20251208_210641"
 mkdir -p "$OUTPUT_DIR"
 
 echo "Starting LLM memory profiling experiment with dummy data..."
