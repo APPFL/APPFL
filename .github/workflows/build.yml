@@ -22,6 +22,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+    - name: Free up disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        df -h
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
@@ -34,8 +41,8 @@ jobs:
       run: |
         sudo apt install libopenmpi-dev
         python -m pip install --upgrade pip
-        python -m pip install flake8
-        python -m pip install -e ".[dev,examples,mpi]"
+        python -m pip install --no-cache-dir flake8
+        python -m pip install --no-cache-dir -e ".[dev,examples,mpi]"
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors
