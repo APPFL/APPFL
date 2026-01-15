@@ -8,6 +8,8 @@ from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
     safe_inplace_operation,
     optimize_memory_cleanup,
+    split_state_dict_by_size,
+    get_state_dict_memory_info,
 )
 
 
@@ -49,6 +51,18 @@ class FedAvgAggregator(BaseAggregator):
 
         self.step = {}
 
+        # Chunking configuration for GetGlobalModel (set by communicator)
+        self.model_chunk_size = None  # Set by communicator via set_model_chunk_size()
+
+    def set_model_chunk_size(self, chunk_size: int):
+        """
+        Set the chunk size for GetGlobalModel chunking.
+        Called by the communicator to configure chunking behavior.
+
+        :param chunk_size: Size in bytes for each chunk
+        """
+        self.model_chunk_size = chunk_size
+
     def get_parameters(self, **kwargs) -> Dict:
         """
         The aggregator can deal with three general aggregation cases:
@@ -61,7 +75,59 @@ class FedAvgAggregator(BaseAggregator):
             and return the global state afterward.
         - The model is not provided to the aggregator:
             In this case, the aggregator will raise an error when it does not have the global state (i.e., at the beginning), and return the global state afterward.
+
+        Additionally supports chunked transfer:
+        - If `_request_chunked=True` and model is large, returns chunk 0 with metadata
+        - If `_chunk_id` is specified, returns that specific chunk with metadata
         """
+        request_chunked = kwargs.get("_request_chunked", False)
+        requested_chunk_id = kwargs.get("_chunk_id", None)
+
+        # Handle chunked requests (stateless - client specifies which chunk)
+        if self.model_chunk_size is not None and (request_chunked or requested_chunk_id is not None):  
+            if self.global_state is None:
+                if self.model is not None:
+                    param_source = self.model.state_dict()
+                else:
+                    raise ValueError("Model is not provided to the aggregator.")
+            else:
+                param_source = self.global_state
+            mem_info = get_state_dict_memory_info(param_source)
+            if mem_info['total_bytes'] > self.model_chunk_size:
+                chunks = list(split_state_dict_by_size(param_source, self.model_chunk_size))
+                total_chunks = len(chunks)
+                if requested_chunk_id is not None:
+                    chunk_idx = requested_chunk_id
+                else:
+                    # First request (_request_chunked=True, no _chunk_id) - return chunk 0
+                    chunk_idx = 0
+                    if self.logger:
+                        self.logger.info(
+                            f"GetGlobalModel: Model size {mem_info['total_mb']:.2f} MB will be sent in {total_chunks} chunks"
+                        )
+
+                _, chunk_dict, chunk_keys = chunks[chunk_idx]
+                chunk_result = {}
+                with torch.no_grad():
+                    for k in chunk_keys:
+                        if k in param_source:
+                            chunk_result[k] = param_source[k].clone().detach()
+
+                response_metadata = {
+                    '_chunk_idx': chunk_idx,
+                    '_total_chunks': total_chunks,
+                    '_chunk_keys': chunk_keys
+                }
+
+                if self.logger:
+                    chunk_size_mb = sum(
+                        t.numel() * t.element_size() for t in chunk_result.values()
+                    ) / (1024 * 1024)
+                    self.logger.info(
+                        f"GetGlobalModel: Returning global model chunk [{chunk_idx + 1}/{total_chunks}] ({chunk_size_mb:.2f} MB)"
+                    )
+                return (chunk_result, response_metadata)
+
         if self.global_state is None:
             if self.model is not None:
                 if self.optimize_memory:

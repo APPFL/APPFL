@@ -64,6 +64,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
 
         # Streamed aggregation configuration
         self.use_model_chunking = kwargs.get("use_model_chunking", False)
+        self.model_chunk_size = kwargs.get("model_chunk_size", 1 * 1024 * 1024 * 1024)
         if self.use_model_chunking:
             # Verify aggregator supports streamed aggregation
             from appfl.algorithm.aggregator import FedAvgAggregator
@@ -79,8 +80,12 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     f"Please use a supported aggregator or disable model chunking."
                 )
 
+            # Configure chunk size on the aggregator
+            aggregator.set_model_chunk_size(self.model_chunk_size)
+
             self.logger.debug(
-                f"Streamed aggregation enabled on server with {type(aggregator).__name__}"
+                f"Streamed aggregation enabled on server with {type(aggregator).__name__}, "
+                f"chunk size: {self.model_chunk_size / (1024**2):.2f} MB"
             )
 
     def GetConfiguration(self, request, context):
@@ -143,14 +148,16 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             use_s3 = meta_data.get("_use_s3", False)
+            model_key = None
+            model_url = None
             if use_s3:
                 model_key = meta_data.get("model_key", None)
                 model_url = meta_data.get("model_url", None)
 
             model = self.server_agent.get_parameters(**meta_data, blocking=True)
-            meta_data = {}
+            response_meta_data = {}
             if isinstance(model, tuple):
-                model, meta_data = model
+                model, response_meta_data = model
 
             if use_s3:
                 model = send_model_by_pre_signed_s3(
@@ -163,7 +170,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     logger=self.logger,
                 )
 
-            meta_data = yaml.dump(meta_data)
+            serialized_meta_data = yaml.dump(response_meta_data)
             if self.use_proxystore:
                 model = self.proxystore.proxy(model)
 
@@ -178,7 +185,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 metadata_proto = GetGlobalModelRespone(
                     header=ServerHeader(status=ServerStatus.RUN),
                     global_model=b"",  # Empty - signals that model data follows separately
-                    meta_data=meta_data,
+                    meta_data=serialized_meta_data,
                 )
                 yield from proto_to_databuffer(
                     metadata_proto, max_message_size=self.max_message_size
@@ -197,7 +204,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 response_proto = GetGlobalModelRespone(
                     header=ServerHeader(status=ServerStatus.RUN),
                     global_model=model_serialized,
-                    meta_data=meta_data,
+                    meta_data=serialized_meta_data,
                 )
                 yield from proto_to_databuffer(
                     response_proto, max_message_size=self.max_message_size

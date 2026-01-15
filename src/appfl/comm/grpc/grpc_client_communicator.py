@@ -38,7 +38,7 @@ from appfl.misc.memory_utils import (
     optimize_memory_cleanup,
     get_state_dict_memory_info,
     split_state_dict_by_size,
-    merge_state_dict_chunks
+    merge_state_dict_chunks,
 )
 
 
@@ -150,6 +150,11 @@ class GRPCClientCommunicator:
             kwargs["model_key"] = local_model_key
             kwargs["model_url"] = local_model_url
             kwargs["_use_s3"] = True
+
+        # Request chunked model if chunking is enabled
+        if self.use_model_chunking:
+            kwargs["_request_chunked"] = True
+
         meta_data = yaml.dump(kwargs)
         request = GetGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
@@ -204,6 +209,11 @@ class GRPCClientCommunicator:
             trusted=self.kwargs.get("trusted", False) or self._use_authenticator,
             warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
         )
+
+        # Handle chunked response - call helper to collect all chunks
+        if self.use_model_chunking and "_chunk_idx" in meta_data:
+            return self._streamed_get_global_model(model, meta_data, **kwargs)
+
         if len(meta_data) == 0:
             return model
         else:
@@ -226,7 +236,6 @@ class GRPCClientCommunicator:
             self.use_model_chunking
             and isinstance(local_model, (Dict, OrderedDict))
         ):
-            from appfl.misc.memory_utils import get_state_dict_memory_info
             mem_info = get_state_dict_memory_info(local_model)
             if mem_info['total_bytes'] > self.model_chunk_size:
                 if self.logger:
@@ -352,6 +361,56 @@ class GRPCClientCommunicator:
         )
         return model, meta_data
 
+    def _streamed_get_global_model(
+        self, first_chunk: Union[Dict, OrderedDict], first_meta: Dict, **kwargs
+    ) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
+        """
+        Streamed GetGlobalModel: receive model in chunks from server.
+        Client explicitly requests each chunk by passing `_chunk_id`.
+        """
+        total_chunks = first_meta["_total_chunks"]
+        if self.logger:
+            self.logger.info(f"GetGlobalModel: Receiving chunked model ({total_chunks} chunks total)")
+
+        chunks = [(first_meta["_chunk_idx"], first_chunk, first_meta["_chunk_keys"])]
+
+        # Temporarily disable chunking to avoid recursion when requesting remaining chunks
+        old_use_model_chunking = self.use_model_chunking
+        self.use_model_chunking = False
+
+        try:
+            for chunk_id in range(1, total_chunks):
+                chunk_kwargs = kwargs.copy()
+                chunk_kwargs["_chunk_id"] = chunk_id
+                result = self.get_global_model(**chunk_kwargs)
+                if isinstance(result, tuple):
+                    chunk_model, chunk_meta = result
+                else:
+                    chunk_model = result
+                    chunk_meta = {}
+                if "_chunk_idx" not in chunk_meta:
+                    raise Exception(f"Expected chunk metadata in response {chunk_id+1}/{total_chunks}")
+                chunks.append((chunk_meta["_chunk_idx"], chunk_model, chunk_meta["_chunk_keys"]))
+                if self.logger:
+                    self.logger.info(
+                        f"GetGlobalModel: Received global model chunk [{chunk_meta['_chunk_idx'] + 1}/{total_chunks}]"
+                    )
+        finally:
+            self.use_model_chunking = old_use_model_chunking
+
+        chunks.sort(key=lambda x: x[0])
+        model = merge_state_dict_chunks(chunks)
+
+        # Clean chunk metadata from response
+        for key in ["_chunk_idx", "_total_chunks", "_chunk_keys"]:
+            first_meta.pop(key, None)
+
+        # Return in same format as get_global_model
+        if len(first_meta) == 0:
+            return model
+        else:
+            return model, first_meta
+
     def _streamed_aggregation(
         self, local_model: Union[Dict, OrderedDict], **kwargs
     ) -> Tuple[Union[Dict, OrderedDict], Dict]:
@@ -359,8 +418,6 @@ class GRPCClientCommunicator:
         Streamed aggregation: send model in chunks, aggregate each chunk separately.
         Works with any transport mechanism (S3, ProxyStore, optimized, regular).
         """
-        from appfl.misc.memory_utils import split_state_dict_by_size, merge_state_dict_chunks
-
         # Split model into chunks by size
         chunks = split_state_dict_by_size(local_model, self.model_chunk_size)
 
