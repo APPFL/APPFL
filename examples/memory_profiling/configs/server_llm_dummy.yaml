@@ -26,3 +26,4 @@ server_configs:
       max_message_size: 104857600  # 100MB for LLM parameters
       use_ssl: False
       use_model_chunking: True
+      model_chunk_size: 1073741824  # 1GB
