@@ -21,4 +21,4 @@ comm_configs:
     max_message_size: 104857600  # 10MB for ResNet parameters
     use_ssl: False
     use_model_chunking: True
-    model_chunk_size: 4294967296  # 1GB
+    model_chunk_size: 4294967296  # 4GB

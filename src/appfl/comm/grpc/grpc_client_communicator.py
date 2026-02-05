@@ -367,12 +367,21 @@ class GRPCClientCommunicator:
         """
         Streamed GetGlobalModel: receive model in chunks from server.
         Client explicitly requests each chunk by passing `_chunk_id`.
+        Uses incremental merging to minimize memory usage.
         """
         total_chunks = first_meta["_total_chunks"]
         if self.logger:
             self.logger.info(f"GetGlobalModel: Receiving chunked model ({total_chunks} chunks total)")
 
-        chunks = [(first_meta["_chunk_idx"], first_chunk, first_meta["_chunk_keys"])]
+        # Incremental merging: start with first chunk instead of collecting all
+        model = OrderedDict(first_chunk)
+        del first_chunk
+        gc.collect()
+
+        if self.logger:
+            self.logger.info(
+                f"GetGlobalModel: Received and merged chunk [1/{total_chunks}]"
+            )
 
         # Temporarily disable chunking to avoid recursion when requesting remaining chunks
         old_use_model_chunking = self.use_model_chunking
@@ -390,16 +399,21 @@ class GRPCClientCommunicator:
                     chunk_meta = {}
                 if "_chunk_idx" not in chunk_meta:
                     raise Exception(f"Expected chunk metadata in response {chunk_id+1}/{total_chunks}")
-                chunks.append((chunk_meta["_chunk_idx"], chunk_model, chunk_meta["_chunk_keys"]))
+
+                # Incremental merge: update model immediately and free chunk memory
+                model.update(chunk_model)
+                del chunk_model
+                gc.collect()
+
                 if self.logger:
                     self.logger.info(
-                        f"GetGlobalModel: Received global model chunk [{chunk_meta['_chunk_idx'] + 1}/{total_chunks}]"
+                        f"GetGlobalModel: Received and merged chunk [{chunk_meta['_chunk_idx'] + 1}/{total_chunks}]"
                     )
         finally:
             self.use_model_chunking = old_use_model_chunking
 
-        chunks.sort(key=lambda x: x[0])
-        model = merge_state_dict_chunks(chunks)
+        if self.logger:
+            self.logger.info("GetGlobalModel: Completed incremental merge of all chunks")
 
         # Clean chunk metadata from response
         for key in ["_chunk_idx", "_total_chunks", "_chunk_keys"]:
@@ -417,16 +431,23 @@ class GRPCClientCommunicator:
         """
         Streamed aggregation: send model in chunks, aggregate each chunk separately.
         Works with any transport mechanism (S3, ProxyStore, optimized, regular).
+        Uses incremental merging to minimize memory usage.
         """
         # Split model into chunks by size
-        chunks = split_state_dict_by_size(local_model, self.model_chunk_size)
+        chunks = list(split_state_dict_by_size(local_model, self.model_chunk_size))
+        total_chunks = len(chunks)
+
+        # Delete local_model after splitting to free memory (chunks have copies)
+        del local_model
+        gc.collect()
 
         # Temporarily disable chunking to avoid recursion
         old_use_chunking = self.use_model_chunking
         self.use_model_chunking = False
 
         try:
-            aggregated_chunks = []
+            # Incremental merging: build global_model progressively
+            global_model = OrderedDict()
             final_metadata = None
 
             # Loop through each chunk and aggregate
@@ -436,14 +457,14 @@ class GRPCClientCommunicator:
                         t.numel() * t.element_size() for t in chunk_dict.values()
                     ) / (1024 * 1024)
                     self.logger.info(
-                        f"Chunked aggregation enabled: Sending chunk [{chunk_idx + 1}/{len(chunks)}] "
+                        f"Chunked aggregation: Sending chunk [{chunk_idx + 1}/{total_chunks}] "
                         f"({len(chunk_keys)} params, {chunk_size_mb:.2f} MB)"
                     )
 
                 # Add chunk metadata for server-side streamed aggregation
                 chunk_kwargs = kwargs.copy()
                 chunk_kwargs["_chunk_idx"] = chunk_idx
-                chunk_kwargs["_total_chunks"] = len(chunks)
+                chunk_kwargs["_total_chunks"] = total_chunks
                 chunk_kwargs["_chunk_keys"] = chunk_keys
 
                 # Call existing update_global_model (uses whatever transport is configured)
@@ -451,17 +472,24 @@ class GRPCClientCommunicator:
                     chunk_dict, **chunk_kwargs
                 )
 
-                aggregated_chunks.append((chunk_idx, aggregated_chunk, chunk_keys))
+                # Free local chunk memory after sending
+                del chunk_dict
+                gc.collect()
+
+                # Incremental merge: update global_model immediately and free aggregated chunk
+                global_model.update(aggregated_chunk)
                 final_metadata = chunk_metadata
+
+                del aggregated_chunk
+                gc.collect()
 
                 if self.logger:
                     self.logger.info(
-                        f"Chunked aggregation enabled: Received aggregated chunk [{chunk_idx + 1}/{len(chunks)}]"
+                        f"Chunked aggregation: Received and merged chunk [{chunk_idx + 1}/{total_chunks}]"
                     )
 
-            # Reassemble full aggregated model
-            aggregated_chunks.sort(key=lambda x: x[0])
-            global_model = merge_state_dict_chunks(aggregated_chunks)
+            if self.logger:
+                self.logger.info("Chunked aggregation: Completed incremental merge of all chunks")
 
             return global_model, final_metadata
 

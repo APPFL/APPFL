@@ -20,7 +20,11 @@ from appfl.comm.grpc import GRPCServerCommunicator, serve
 
 
 def run_server_with_profiling(
-    config_path: str, output_dir: str = "./memory_profiles", use_optimized: bool = False
+    config_path: str, 
+    output_dir: str = "./memory_profiles", 
+    use_optimized: bool = False, 
+    num_clients: int = 1, 
+    model_name: str = "meta-llama/Llama-3.1-8B"
 ):
     """Run server with memray profiling enabled"""
     os.makedirs(output_dir, exist_ok=True)
@@ -32,6 +36,8 @@ def run_server_with_profiling(
     with memray.Tracker(profile_file):
         # Load server configuration
         server_agent_config = OmegaConf.load(config_path)
+        server_agent_config.server_configs.num_clients = num_clients
+        server_agent_config.client_configs.model_configs.model_kwargs.model_name = model_name
 
         # Modify config to use optimizations if using optimized version
         if use_optimized:
@@ -113,6 +119,23 @@ if __name__ == "__main__":
         action="store_true",
         help="Use optimized memory-efficient versions of agents and communicators.",
     )
+    argparser.add_argument(
+        "--num_clients",
+        type=int,
+        default=2,
+        help="Number of clients to simulate.",
+    )
+    argparser.add_argument(
+        "--model_name",
+        type=str,
+        default="meta-llama/Llama-3.1-8B",
+    )
     args = argparser.parse_args()
 
-    run_server_with_profiling(args.config, args.output_dir, args.use_optimized_version)
+    run_server_with_profiling(
+        args.config, 
+        args.output_dir, 
+        args.use_optimized_version, 
+        args.num_clients, 
+        args.model_name
+    )

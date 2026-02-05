@@ -20,14 +20,23 @@ from appfl.comm.grpc import GRPCClientCommunicator
 
 
 def run_client_with_profiling(
-    config_path: str, output_dir: str = "./memory_profiles", use_optimized: bool = False
+    config_path: str, 
+    output_dir: str = "./memory_profiles", 
+    use_optimized: bool = False, 
+    num_clients: int = 1, 
+    client_idx: int = 0, 
+    server_uri: str = "localhost:50051"
 ):
     """Run client with memray profiling enabled"""
     os.makedirs(output_dir, exist_ok=True)
 
     # Load config to get client_id
     client_agent_config = OmegaConf.load(config_path)
-    client_id = client_agent_config.client_id
+    client_id = f"Client{client_idx+1}"
+    client_agent_config.client_id = client_id
+    client_agent_config.comm_configs.grpc_configs.server_uri = server_uri
+    client_agent_config.data_configs.dataset_kwargs.client_id = client_idx
+    client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
 
     # Choose profile file name based on version
     version_suffix = "_optimized" if use_optimized else "_original"
@@ -108,10 +117,6 @@ def run_client_with_profiling(
                 action="get_data_readiness_report", **data_readiness
             )
 
-        print(
-            f"Starting client with memory profiling. Profile will be saved to: {profile_file}"
-        )
-
         while True:
             client_agent.train()
             local_model = client_agent.get_parameters()
@@ -151,6 +156,31 @@ if __name__ == "__main__":
         action="store_true",
         help="Use optimized memory-efficient versions of agents and communicators.",
     )
+    argparser.add_argument(
+        "--num_clients",
+        type=int,
+        default=2,
+        help="Number of clients to simulate.",
+    )
+    argparser.add_argument(
+        "--client_idx",
+        type=int,
+        default=0,
+        help="Index of the client.",
+    )
+    argparser.add_argument(
+        "--server_uri",
+        type=str,
+        default="localhost:50051",
+        help="URI of the gRPC server.",
+    )
     args = argparser.parse_args()
 
-    run_client_with_profiling(args.config, args.output_dir, args.use_optimized_version)
+    run_client_with_profiling(
+        args.config, 
+        args.output_dir, 
+        args.use_optimized_version, 
+        args.num_clients, 
+        args.client_idx, 
+        args.server_uri
+    )

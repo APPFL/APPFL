@@ -1,5 +1,8 @@
 # APPFL gRPC Memory Profiling and Optimization [Experimental]
 
+
+## This README is Stale, please check README.md
+
 This directory contains tools for memory profiling and optimization of APPFL's federated learning components using memray.
 
 ## Quick Start
