@@ -33,7 +33,7 @@ clients:
   #     dataset_path: "./resources/dataset/cora_dataset.py"
   #     dataset_name: "get_cora"
   #     dataset_kwargs:
-  #       num_clients: 2
-  #       client_id: 1
+  #       num_clients: 1
+  #       client_id: 0
   #       partition_strategy: "random"
   #       visualization: False
