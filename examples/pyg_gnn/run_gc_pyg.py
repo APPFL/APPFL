@@ -11,13 +11,13 @@ argparser = argparse.ArgumentParser(
 argparser.add_argument(
     "--server_config",
     type=str,
-    default="./resources/configs/server_fedcompass_pyg.yaml",
+    default="./resources/config_gc/pyg/server_fedcompass_pyg.yaml",
     help="Path to server configuration file"
 )
 argparser.add_argument(
     "--client_config",
     type=str,
-    default="./resources/configs/clients_pyg.yaml",
+    default="./resources/config_gc/pyg/clients_pyg.yaml",
     help="Path to client configuration file"
 )
 argparser.add_argument(

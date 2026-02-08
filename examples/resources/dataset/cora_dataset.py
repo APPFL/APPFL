@@ -129,24 +129,14 @@ def get_cora(
     else:
         raise ValueError(f"Unknown partition strategy: {partition_strategy}")
     
-    # For validation/testing, we use the standard split
-    # In federated learning, all clients can validate on the same test set
-    # Or you can partition the validation set similarly to training
-    
-    # Option 1: Use full test set for all clients (standard approach)
+
     client_val_indices = test_indices
-    
-    # Option 2: Partition validation set (uncomment if needed)
-    # perm = torch.randperm(len(test_indices))
-    # test_indices = test_indices[perm]
-    # client_val_indices = torch.chunk(test_indices, num_clients)[client_id]
     
     # Create datasets for this client
     train_dataset = NodeSubgraphDataset(data, client_train_indices)
     val_dataset = NodeSubgraphDataset(data, client_val_indices)
     
     # Store the full graph data for GNN message passing
-    # This is important because GNNs need the full graph structure
     train_dataset.graph_data = data
     val_dataset.graph_data = data
     
