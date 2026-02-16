@@ -31,7 +31,7 @@ client_configs:
     send_gradient: False
 
     # Data loader
-    train_batch_size: 140  # Full batch for Cora (140 training nodes per client with 2 clients)
+    train_batch_size: 140  # Full-batch training on Cora: 140 labeled training nodes in the standard split
     val_batch_size: 1000   # Full test set
     train_data_shuffle: True
     val_data_shuffle: False

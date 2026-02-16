@@ -127,6 +127,16 @@ def get_cora(
     else:
         raise ValueError(f"Unknown partition strategy: {partition_strategy}")
 
+    # Guard against empty client training indices, which can cause downstream
+    # issues (e.g., DataLoader errors or division by zero in metrics).
+    if client_train_indices.numel() == 0:
+        raise ValueError(
+            f"Client {client_id} received zero training nodes. "
+            "This can happen if num_clients is greater than the number of "
+            "available training nodes, or if the label_skew partitioning "
+            "assigned no samples to this client. Please adjust num_clients "
+            "or partitioning parameters."
+        )
     client_val_indices = test_indices
 
     # Create datasets for this client
@@ -143,8 +153,13 @@ def get_cora(
     )
     print(f"Client {client_id} class distribution:")
     train_labels = data.y[client_train_indices].numpy()
+    total_train = len(train_labels)
     for c in range(dataset.num_classes):
         count = (train_labels == c).sum()
-        print(f"  Class {c}: {count} nodes ({100 * count / len(train_labels):.1f}%)")
+        if total_train > 0:
+            percentage = 100 * count / total_train
+        else:
+            percentage = 0.0
+        print(f"  Class {c}: {count} nodes ({percentage:.1f}%)")
 
     return train_dataset, val_dataset

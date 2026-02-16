@@ -301,16 +301,18 @@ class PyGTrainer(BaseTrainer):
             for batch in self.val_loader:
                 features, labels, node_indices = batch
 
+                # Move labels and node indices to the correct device
+                labels = labels.to(self.device)
+                node_indices = node_indices.to(self.device)
+
                 # Forward pass
                 output = self.model(self.graph_data.x, self.graph_data.edge_index)
 
                 # Compute loss and metric on validation nodes
-                loss = self.loss_fn(output[node_indices], labels.to(self.device))
+                loss = self.loss_fn(output[node_indices], labels)
 
                 if self.metric is not None:
-                    metric_val = self.metric(
-                        output[node_indices], labels.to(self.device)
-                    )
+                    metric_val = self.metric(output[node_indices], labels)
                     val_metric += metric_val
 
                 val_loss += loss.item()
@@ -344,4 +346,4 @@ class PyGTrainer(BaseTrainer):
         Args:
             params: Model state dict from server
         """
-        self.model.load_state_dict(params)
+        self.model.load_state_dict(params, strict=False)

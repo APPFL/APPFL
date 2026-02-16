@@ -78,7 +78,7 @@ if (
     and server_agent_config.client_configs.data_readiness_configs.generate_dr_report
 ):
     print("\n[Server] Generating data readiness report...")
-    readiness_reports_dict = {}
+
     server_communicator.send_task_to_all_clients(task_name="data_readiness_report")
     readiness_reports = server_communicator.recv_result_from_all_clients()[1]
 
