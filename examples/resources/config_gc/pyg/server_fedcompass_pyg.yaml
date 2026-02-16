@@ -9,27 +9,27 @@ client_configs:
     optim_args:
       lr: 0.01
       weight_decay: 5.0e-4
-    
+
     # Loss function
     loss_fn_path: "./resources/loss/nllloss.py"
     loss_fn_name: "NLLLoss"
-    
+
     # Client validation
     do_validation: True
     do_pre_validation: True
     metric_path: "./resources/metric/accuracy.py"
     metric_name: "accuracy"
-    
+
     # Differential privacy
     use_dp: False
     epsilon: 1
     clip_grad: False
     clip_value: 1
     clip_norm: 1
-    
+
     # Data format
     send_gradient: False
-    
+
     # Data loader
     train_batch_size: 140  # Full batch for Cora (140 training nodes per client with 2 clients)
     val_batch_size: 1000   # Full test set

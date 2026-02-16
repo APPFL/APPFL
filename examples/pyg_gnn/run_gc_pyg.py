@@ -12,23 +12,19 @@ argparser.add_argument(
     "--server_config",
     type=str,
     default="./resources/config_gc/pyg/server_fedcompass_pyg.yaml",
-    help="Path to server configuration file"
+    help="Path to server configuration file",
 )
 argparser.add_argument(
     "--client_config",
     type=str,
     default="./resources/config_gc/pyg/clients_pyg.yaml",
-    help="Path to client configuration file"
+    help="Path to client configuration file",
 )
 argparser.add_argument(
-    "--compute_token",
-    required=False,
-    help="Globus Compute authentication token"
+    "--compute_token", required=False, help="Globus Compute authentication token"
 )
 argparser.add_argument(
-    "--openid_token",
-    required=False,
-    help="Globus OpenID authentication token"
+    "--openid_token", required=False, help="Globus OpenID authentication token"
 )
 args = argparser.parse_args()
 
@@ -42,7 +38,9 @@ print(f"[Setup] Client config: {args.client_config}")
 # Create server agent
 print("\n[Server] Initializing server agent...")
 server_agent = ServerAgent(server_agent_config=server_agent_config)
-print(f"[Server] Will run for {server_agent_config.server_configs.num_global_epochs} global rounds")
+print(
+    f"[Server] Will run for {server_agent_config.server_configs.num_global_epochs} global rounds"
+)
 
 # Create server communicator
 print("\n[Communicator] Initializing Globus Compute server communicator...")
@@ -59,7 +57,9 @@ server_communicator = GlobusComputeServerCommunicator(
         else {}
     ),
 )
-print(f"[Communicator] Connected to {len(client_agent_configs['clients'])} client endpoints")
+print(
+    f"[Communicator] Connected to {len(client_agent_configs['clients'])} client endpoints"
+)
 
 # Get sample size from clients
 print("\n[Clients] Requesting sample sizes from all clients...")
@@ -81,7 +81,7 @@ if (
     readiness_reports_dict = {}
     server_communicator.send_task_to_all_clients(task_name="data_readiness_report")
     readiness_reports = server_communicator.recv_result_from_all_clients()[1]
-    
+
     # Restructure the data to match the function's expected input
     restructured_report = {}
     for client_endpoint_id, client_report in readiness_reports.items():
@@ -91,7 +91,7 @@ if (
             if attribute not in restructured_report:
                 restructured_report[attribute] = {}
             restructured_report[attribute][client_endpoint_id] = value
-    
+
     # Handle 'plots' separately if they exist
     if "plots" in restructured_report:
         plot_data = restructured_report.pop("plots")
@@ -99,7 +99,7 @@ if (
             client_id: plot_data.get(client_id, {})
             for client_id in readiness_reports.keys()
         }
-    
+
     # Call the data_readiness_report function
     server_agent.data_readiness_report(restructured_report)
     print("[Server] Data readiness report generated")
@@ -122,27 +122,31 @@ while not server_agent.training_finished():
     client_endpoint_id, client_model, client_metadata = (
         server_communicator.recv_result_from_one_client()
     )
-    
+
     # Track client round
     if client_endpoint_id not in client_rounds:
         client_rounds[client_endpoint_id] = 0
     client_rounds[client_endpoint_id] += 1
-    
+
     server_agent.logger.info(
         f"Received model from client {client_endpoint_id} (Round {client_rounds[client_endpoint_id]}), "
         f"with metadata:\n{pprint.pformat(client_metadata)}"
     )
-    
-    print(f"\n[Client {client_endpoint_id}] Received model update (Round {client_rounds[client_endpoint_id]})")
+
+    print(
+        f"\n[Client {client_endpoint_id}] Received model update (Round {client_rounds[client_endpoint_id]})"
+    )
     if "accuracy" in client_metadata:
-        print(f"[Client {client_endpoint_id}] Accuracy: {client_metadata['accuracy']:.4f}")
-    
+        print(
+            f"[Client {client_endpoint_id}] Accuracy: {client_metadata['accuracy']:.4f}"
+        )
+
     global_model = server_agent.global_update(
         client_endpoint_id,
         client_model,
         **client_metadata,
     )
-    
+
     if isinstance(global_model, Future):
         model_futures[client_endpoint_id] = global_model
     else:
@@ -150,9 +154,9 @@ while not server_agent.training_finished():
             global_model, metadata = global_model
         else:
             metadata = {}
-        
+
         metadata["round"] = client_rounds[client_endpoint_id]
-        
+
         if not server_agent.training_finished():
             server_communicator.send_task_to_one_client(
                 client_endpoint_id,
@@ -162,7 +166,7 @@ while not server_agent.training_finished():
                 need_model_response=True,
             )
             print(f"[Server] Sent updated global model to {client_endpoint_id}")
-    
+
     # Deal with the model futures
     del_keys = []
     for client_endpoint_id in model_futures:
@@ -172,9 +176,9 @@ while not server_agent.training_finished():
                 global_model, metadata = global_model
             else:
                 metadata = {}
-            
+
             metadata["round"] = client_rounds[client_endpoint_id]
-            
+
             if not server_agent.training_finished():
                 server_communicator.send_task_to_one_client(
                     client_endpoint_id,
@@ -185,7 +189,7 @@ while not server_agent.training_finished():
                 )
                 print(f"[Server] Sent updated global model to {client_endpoint_id}")
             del_keys.append(client_endpoint_id)
-    
+
     for key in del_keys:
         model_futures.pop(key)
 
@@ -197,4 +201,6 @@ server_communicator.shutdown_all_clients()
 
 print("Federated Learning Training Completed!")
 
-print(f"\nResults saved to: {server_agent_config.server_configs.logging_output_dirname}")
+print(
+    f"\nResults saved to: {server_agent_config.server_configs.logging_output_dirname}"
+)
