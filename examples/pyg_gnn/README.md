@@ -14,7 +14,7 @@ This simple example demonstrates how to perform federated learning within the AP
 
 ## Installation
 
-1. **APPFL Framework** 
+1. **APPFL Framework**
 
 2. **PyTorch Geometric**:
 ```bash
