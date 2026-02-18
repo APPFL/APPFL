@@ -61,7 +61,7 @@ client_configs:
       s3_creds_file: "./resources/config_gc/creds/credential.csv"
 
 server_configs:
-  num_clients: 1
+  num_clients: 2
   scheduler: "CompassScheduler"
   scheduler_kwargs:
     same_init_model: True
