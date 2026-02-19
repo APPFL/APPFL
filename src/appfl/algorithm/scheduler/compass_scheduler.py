@@ -33,6 +33,9 @@ class CompassScheduler(BaseScheduler):
         self.global_timestamp = 0
         self._num_global_epochs = 0
         self._access_lock = threading.Lock()  # handle client requests as a queue
+        self._group_aggregation_lock = (
+            threading.Lock()
+        )  # ensure only one group aggregation at a time
         self._timer_record = {}
         self.start_time = time.time()
 
@@ -216,9 +219,11 @@ class CompassScheduler(BaseScheduler):
         """
         curr_time = time.time() - self.start_time
         if curr_time > self.arrival_group[group_idx]["latest_arrival_time"]:
-            self.arrival_group[group_idx]["clients"].remove(client_id)
-            if len(self.arrival_group[group_idx]["clients"]) == 0:
-                del self.arrival_group[group_idx]
+            with self._group_aggregation_lock:
+                self.arrival_group[group_idx]["clients"].remove(client_id)
+                if len(self.arrival_group[group_idx]["clients"]) == 0:
+                    # self.logger.debug(f'[Debug]: Group {group_idx} has no clients left after a late arrival, cleaning up group state.')
+                    del self.arrival_group[group_idx]
             return self._single_update(
                 client_id=client_id, local_model=local_model, buffer=True, **kwargs
             )
@@ -255,72 +260,78 @@ class CompassScheduler(BaseScheduler):
         :param `group_idx`: the index of the client arrival group
         :param `kwargs`: additional keyword arguments for the scheduler
         """
-        if group_idx in self.arrival_group and group_idx in self.group_buffer:
-            if group_idx in self._timer_record:
-                del self._timer_record[group_idx]
-            # merge the general buffer and group buffer
-            local_models = {
-                **self.general_buffer["local_models"],
-                **self.group_buffer[group_idx]["local_models"],
-            }
-            local_steps = {
-                **self.general_buffer["local_steps"],
-                **self.group_buffer[group_idx]["local_steps"],
-            }
-            timestamp = {
-                **self.general_buffer["timestamp"],
-                **self.group_buffer[group_idx]["timestamp"],
-            }
-            staleness = {
-                client_id: self.global_timestamp - timestamp[client_id]
-                for client_id in timestamp
-            }
-            self.general_buffer = {
-                "local_models": {},
-                "local_steps": {},
-                "timestamp": {},
-            }
-            global_model = self.aggregator.aggregate(
-                local_models=local_models,
-                staleness=staleness,
-                local_steps=local_steps,
-                **kwargs,
-            )
-            self.global_timestamp += 1
-            self._num_global_epochs += len(local_models)
-
-            # Memory optimization: Clean up after group aggregation
-            if self.optimize_memory:
-                optimize_memory_cleanup(
-                    local_models, local_steps, timestamp, staleness, force_gc=True
+        with self._group_aggregation_lock:
+            if group_idx in self.arrival_group and group_idx in self.group_buffer:
+                # self.logger.debug(f'[Debug]: Starting group aggregation for group {group_idx} with clients {self.arrival_group[group_idx]["arrived_clients"]}.')
+                if group_idx in self._timer_record:
+                    del self._timer_record[group_idx]
+                # merge the general buffer and group buffer
+                local_models = {
+                    **self.general_buffer["local_models"],
+                    **self.group_buffer[group_idx]["local_models"],
+                }
+                local_steps = {
+                    **self.general_buffer["local_steps"],
+                    **self.group_buffer[group_idx]["local_steps"],
+                }
+                timestamp = {
+                    **self.general_buffer["timestamp"],
+                    **self.group_buffer[group_idx]["timestamp"],
+                }
+                staleness = {
+                    client_id: self.global_timestamp - timestamp[client_id]
+                    for client_id in timestamp
+                }
+                self.general_buffer = {
+                    "local_models": {},
+                    "local_steps": {},
+                    "timestamp": {},
+                }
+                global_model = self.aggregator.aggregate(
+                    local_models=local_models,
+                    staleness=staleness,
+                    local_steps=local_steps,
+                    **kwargs,
                 )
-                # Clean up group buffer after aggregation
-                del self.group_buffer[group_idx]
-                gc.collect()
-            client_speeds = []
-            for client_id in self.arrival_group[group_idx]["arrived_clients"]:
-                self.client_info[client_id]["timestamp"] = self.global_timestamp
-                client_speeds.append((client_id, self.client_info[client_id]["speed"]))
-            sorted_client_speeds = sorted(
-                client_speeds, key=lambda x: x[1], reverse=False
-            )
-            self.arrival_group[group_idx]["expected_arrival_time"] = 0
-            self.arrival_group[group_idx]["latest_arrival_time"] = 0
-            for client_id, _ in sorted_client_speeds:
-                self._assign_group(client_id, **kwargs)
-                self.future_record[client_id].set_result(
-                    (
-                        global_model,
-                        {"local_steps": self.client_info[client_id]["local_steps"]},
+                self.global_timestamp += 1
+                self._num_global_epochs += len(local_models)
+
+                # Memory optimization: Clean up after group aggregation
+                if self.optimize_memory:
+                    optimize_memory_cleanup(
+                        local_models, local_steps, timestamp, staleness, force_gc=True
                     )
+                    # Clean up group buffer after aggregation
+                    # self.logger.debug(f'[Debug]: Cleaning up group buffer for group {group_idx} after aggregation.')
+                    del self.group_buffer[group_idx]
+                    gc.collect()
+                client_speeds = []
+                for client_id in self.arrival_group[group_idx]["arrived_clients"]:
+                    self.client_info[client_id]["timestamp"] = self.global_timestamp
+                    client_speeds.append(
+                        (client_id, self.client_info[client_id]["speed"])
+                    )
+                sorted_client_speeds = sorted(
+                    client_speeds, key=lambda x: x[1], reverse=False
                 )
-                del self.future_record[client_id]
-            if len(self.arrival_group[group_idx]["clients"]) == 0:
-                del self.arrival_group[group_idx]
+                self.arrival_group[group_idx]["expected_arrival_time"] = 0
+                self.arrival_group[group_idx]["latest_arrival_time"] = 0
+                for client_id, _ in sorted_client_speeds:
+                    self._assign_group(client_id, **kwargs)
+                    self.future_record[client_id].set_result(
+                        (
+                            global_model,
+                            {"local_steps": self.client_info[client_id]["local_steps"]},
+                        )
+                    )
+                    del self.future_record[client_id]
+                if len(self.arrival_group[group_idx]["clients"]) == 0:
+                    # self.logger.debug(f'[Debug]: Group {group_idx} has no clients left after aggregation, cleaning up group state.')
+                    del self.arrival_group[group_idx]
 
-            # Memory optimization: Final cleanup after group processing
-            if self.optimize_memory:
-                optimize_memory_cleanup(force_gc=True)
+                # Memory optimization: Final cleanup after group processing
+                if self.optimize_memory:
+                    optimize_memory_cleanup(force_gc=True)
 
     def _assign_group(self, client_id: Union[int, str], **kwargs) -> None:
         """

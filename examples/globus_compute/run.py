@@ -5,27 +5,47 @@ from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 
-argparser = argparse.ArgumentParser()
+argparser = argparse.ArgumentParser(
+    description="Federated Learning using Globus Compute"
+)
 argparser.add_argument(
     "--server_config",
     type=str,
     default="./resources/config_gc/mnist/server_fedcompass.yaml",
+    help="Path to server configuration file",
 )
 argparser.add_argument(
-    "--client_config", type=str, default="./resources/config_gc/mnist/clients.yaml"
+    "--client_config",
+    type=str,
+    default="./resources/config_gc/mnist/clients.yaml",
+    help="Path to client configuration file",
 )
-argparser.add_argument("--compute_token", required=False)
-argparser.add_argument("--openid_token", required=False)
+argparser.add_argument(
+    "--compute_token", required=False, help="Globus Compute authentication token"
+)
+argparser.add_argument(
+    "--openid_token", required=False, help="Globus OpenID authentication token"
+)
 args = argparser.parse_args()
 
 # Load server and client agents configurations
+print("[Setup] Loading configurations...")
 server_agent_config = OmegaConf.load(args.server_config)
 client_agent_configs = OmegaConf.load(args.client_config)
+print(f"[Setup] Server config: {args.server_config}")
+print(f"[Setup] Client config: {args.client_config}")
 
 # Create server agent
+print("[Server] Initializing server agent...")
 server_agent = ServerAgent(server_agent_config=server_agent_config)
+server_agent.logger.info(
+    f"[Server] Will run for {server_agent_config.server_configs.num_global_epochs} global rounds"
+)
 
 # Create server communicator
+server_agent.logger.info(
+    "[Communicator] Initializing Globus Compute server communicator..."
+)
 server_communicator = GlobusComputeServerCommunicator(
     server_agent_config=server_agent.server_agent_config,
     client_agent_configs=client_agent_configs["clients"],
@@ -39,13 +59,21 @@ server_communicator = GlobusComputeServerCommunicator(
         else {}
     ),
 )
+server_agent.logger.info(
+    f"[Communicator] Connected to {len(client_agent_configs['clients'])} client endpoints"
+)
 
 # Get sample size from clients
+server_agent.logger.info("[Clients] Requesting sample sizes from all clients...")
 server_communicator.send_task_to_all_clients(task_name="get_sample_size")
 sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
 for client_endpoint_id, sample_size in sample_size_ret.items():
     server_agent.set_sample_size(client_endpoint_id, sample_size["sample_size"])
+    server_agent.logger.info(
+        f"[Client {client_endpoint_id}] Sample size: {sample_size['sample_size']}"
+    )
 
+# Data readiness report (if enabled)
 if (
     hasattr(server_agent_config.client_configs, "data_readiness_configs")
     and hasattr(
@@ -53,7 +81,7 @@ if (
     )
     and server_agent_config.client_configs.data_readiness_configs.generate_dr_report
 ):
-    readiness_reports_dict = {}
+    server_agent.logger.info("[Server] Generating data readiness report...")
     server_communicator.send_task_to_all_clients(task_name="data_readiness_report")
     readiness_reports = server_communicator.recv_result_from_all_clients()[1]
     # Restructure the data to match the function's expected input
@@ -74,8 +102,10 @@ if (
         }
     # Call the data_readiness_report function
     server_agent.data_readiness_report(restructured_report)
+    server_agent.logger.info("[Server] Data readiness report generated")
 
 # Train the model
+server_agent.logger.info("Starting Federated Learning Training")
 server_communicator.send_task_to_all_clients(
     task_name="train",
     model=server_agent.get_parameters(globus_compute_run=True),
@@ -84,12 +114,22 @@ server_communicator.send_task_to_all_clients(
 
 model_futures = {}
 client_rounds = {}
+
+server_agent.logger.info("[Training] Waiting for client updates...")
+
 while not server_agent.training_finished():
     client_endpoint_id, client_model, client_metadata = (
         server_communicator.recv_result_from_one_client()
     )
+
+    # Track client round
+    if client_endpoint_id not in client_rounds:
+        client_rounds[client_endpoint_id] = 0
+    client_rounds[client_endpoint_id] += 1
+
     server_agent.logger.info(
-        f"Received model from client {client_endpoint_id}, with metadata:\n{pprint.pformat(client_metadata)}"
+        f"Received model from client {client_endpoint_id} (Round {client_rounds[client_endpoint_id]}), "
+        f"with metadata:\n{pprint.pformat(client_metadata)}"
     )
     global_model = server_agent.global_update(
         client_endpoint_id,
@@ -103,9 +143,6 @@ while not server_agent.training_finished():
             global_model, metadata = global_model
         else:
             metadata = {}
-        if client_endpoint_id not in client_rounds:
-            client_rounds[client_endpoint_id] = 0
-        client_rounds[client_endpoint_id] += 1
         metadata["round"] = client_rounds[client_endpoint_id]
         if not server_agent.training_finished():
             server_communicator.send_task_to_one_client(
@@ -115,6 +152,10 @@ while not server_agent.training_finished():
                 metadata=metadata,
                 need_model_response=True,
             )
+            server_agent.logger.info(
+                f"[Server] Sent updated global model to {client_endpoint_id}"
+            )
+
     # Deal with the model futures
     del_keys = []
     for client_endpoint_id in model_futures:
@@ -124,9 +165,6 @@ while not server_agent.training_finished():
                 global_model, metadata = global_model
             else:
                 metadata = {}
-            if client_endpoint_id not in client_rounds:
-                client_rounds[client_endpoint_id] = 0
-            client_rounds[client_endpoint_id] += 1
             metadata["round"] = client_rounds[client_endpoint_id]
             if not server_agent.training_finished():
                 server_communicator.send_task_to_one_client(
@@ -136,9 +174,19 @@ while not server_agent.training_finished():
                     metadata=metadata,
                     need_model_response=True,
                 )
+                server_agent.logger.info(
+                    f"[Server] Sent updated global model to {client_endpoint_id}"
+                )
             del_keys.append(client_endpoint_id)
     for key in del_keys:
         model_futures.pop(key)
 
+# Cleanup
 server_communicator.cancel_all_tasks()
 server_communicator.shutdown_all_clients()
+
+# Finalize training
+server_agent.logger.info("Federated Learning Training Completed!")
+server_agent.logger.info(
+    f"Results saved to: {server_agent_config.server_configs.logging_output_dirname}"
+)
