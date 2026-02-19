@@ -11,13 +11,13 @@ argparser = argparse.ArgumentParser(
 argparser.add_argument(
     "--server_config",
     type=str,
-    default="./resources/config_gc/flamby/heart_disease/server_fedcompass.yaml",
+    default="./resources/config_gc/mnist/server_fedcompass.yaml",
     help="Path to server configuration file",
 )
 argparser.add_argument(
     "--client_config",
     type=str,
-    default="./resources/config_gc/flamby/heart_disease/clients.yaml",
+    default="./resources/config_gc/mnist/clients.yaml",
     help="Path to client configuration file",
 )
 argparser.add_argument(
