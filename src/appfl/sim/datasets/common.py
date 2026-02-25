@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 import logging
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Iterable
 
 import numpy as np
 import torch
@@ -55,7 +55,9 @@ def make_load_tag(dataset_name: str, benchmark: str | None = None) -> str:
 
 
 class BasicTensorDataset(Dataset):
-    def __init__(self, inputs: torch.Tensor, targets: torch.Tensor, name: str = "dataset"):
+    def __init__(
+        self, inputs: torch.Tensor, targets: torch.Tensor, name: str = "dataset"
+    ):
         self.inputs = inputs
         self.targets = targets.long()
         self.name = name
@@ -104,7 +106,7 @@ class DatasetArgs:
     ext_label_key: str = ""
     ext_config_name: str = ""
     custom_entrypoint: str = ""
-    custom_kwargs: Dict[str, Any] = field(default_factory=dict)
+    custom_kwargs: dict[str, Any] = field(default_factory=dict)
     logger: Any = None
 
 
@@ -133,7 +135,7 @@ def _coerce_num_clients(raw: Any, fallback: int = 0) -> int:
         return int(fallback)
 
 
-def _as_mapping(args: Any) -> Dict[str, Any]:
+def _as_mapping(args: Any) -> dict[str, Any]:
     if isinstance(args, dict):
         return dict(args)
     return dict(vars(args))
@@ -165,7 +167,9 @@ def to_namespace(args: Any) -> DatasetArgs:
 
     eval_dataset_ratio = _get_path(payload, "eval.configs.dataset_ratio", [80, 20])
     try:
-        test_size = float(eval_dataset_ratio[-1]) if len(eval_dataset_ratio) >= 2 else 0.2
+        test_size = (
+            float(eval_dataset_ratio[-1]) if len(eval_dataset_ratio) >= 2 else 0.2
+        )
         if test_size > 1.0:
             test_size = test_size / 100.0
     except Exception:
@@ -188,7 +192,9 @@ def to_namespace(args: Any) -> DatasetArgs:
         dirichlet_alpha=float(_get_path(split_cfg, "dirichlet_alpha", 0.3)),
         min_classes=int(_get_path(split_cfg, "min_classes", 2)),
         unbalanced_keep_min=float(_get_path(split_cfg, "unbalanced_keep_min", 0.5)),
-        pre_infer_num_clients=bool(_get_path(split_cfg, "pre_infer_num_clients", False)),
+        pre_infer_num_clients=bool(
+            _get_path(split_cfg, "pre_infer_num_clients", False)
+        ),
         pre_source=str(_get_path(split_cfg, "pre_source", "")),
         pre_index=int(_get_path(split_cfg, "pre_index", -1)),
         seq_len=int(_get_path(model_cfg, "seq_len", 128)),
@@ -199,7 +205,9 @@ def to_namespace(args: Any) -> DatasetArgs:
         audio_num_frames=int(_get_path(dataset_cfg, "audio_num_frames", 16000)),
         flamby_data_terms_accepted=bool(_get_path(dataset_cfg, "terms_accepted", True)),
         leaf_raw_data_fraction=float(_get_path(dataset_cfg, "raw_data_fraction", 1.0)),
-        leaf_min_samples_per_client=int(_get_path(dataset_cfg, "min_samples_per_client", 2)),
+        leaf_min_samples_per_client=int(
+            _get_path(dataset_cfg, "min_samples_per_client", 2)
+        ),
         leaf_image_root=str(_get_path(dataset_cfg, "image_root", "")),
         ext_source=str(_get_path(dataset_cfg, "source", "")),
         ext_dataset_name=str(_get_path(dataset_cfg, "dataset_name", "")),
@@ -236,10 +244,10 @@ def _safe_bool(value: Any, default: bool) -> bool:
 
 
 def resolve_fixed_pool_clients(
-    available_clients: List[Any],
+    available_clients: list[Any],
     args: DatasetArgs,
     prefix: str = "",
-) -> List[Any]:
+) -> list[Any]:
     """Resolve client subset for fixed-pool datasets (LEAF/FLamby/TFF)."""
     del prefix
     pool = list(available_clients)
@@ -254,7 +262,7 @@ def resolve_fixed_pool_clients(
     return pool[:requested_num]
 
 
-def infer_input_shape(dataset: Dataset) -> Tuple[int, ...]:
+def infer_input_shape(dataset: Dataset) -> tuple[int, ...]:
     x, _ = dataset[0]
     if not torch.is_tensor(x):
         x = torch.as_tensor(np.asarray(x))
@@ -350,7 +358,9 @@ def finalize_dataset_outputs(
     )
 
 
-def _iid_split(num_samples: int, num_clients: int, rng: np.random.Generator) -> dict[int, np.ndarray]:
+def _iid_split(
+    num_samples: int, num_clients: int, rng: np.random.Generator
+) -> dict[int, np.ndarray]:
     perm = rng.permutation(num_samples)
     chunks = np.array_split(perm, num_clients)
     return {cid: chunk.astype(np.int64) for cid, chunk in enumerate(chunks)}
@@ -393,12 +403,16 @@ def _pathological_split(
         )
 
     # Each client gets `cap` class slots; every class is assigned to at least one slot.
-    client_slots = rng.permutation(np.repeat(np.arange(num_clients, dtype=np.int64), cap))
+    client_slots = rng.permutation(
+        np.repeat(np.arange(num_clients, dtype=np.int64), cap)
+    )
     class_to_clients: dict[int, list[int]] = {int(cls): [] for cls in classes.tolist()}
     client_class_sets = [set() for _ in range(num_clients)]
 
     shuffled_classes = rng.permutation(classes)
-    for cls, cid in zip(shuffled_classes.tolist(), client_slots[: classes.size].tolist()):
+    for cls, cid in zip(
+        shuffled_classes.tolist(), client_slots[: classes.size].tolist()
+    ):
         c = int(cid)
         y = int(cls)
         client_class_sets[c].add(y)
@@ -406,7 +420,9 @@ def _pathological_split(
 
     for cid in client_slots[classes.size :].tolist():
         c = int(cid)
-        available = [int(cls) for cls in classes.tolist() if int(cls) not in client_class_sets[c]]
+        available = [
+            int(cls) for cls in classes.tolist() if int(cls) not in client_class_sets[c]
+        ]
         if not available:
             continue
         y = int(rng.choice(np.asarray(available, dtype=np.int64)))
@@ -420,14 +436,18 @@ def _pathological_split(
         rng.shuffle(cls_idx)
         owners = class_to_clients[y]
         if not owners:
-            raise RuntimeError(f"pathological split internal error: class {y} has no owner.")
+            raise RuntimeError(
+                f"pathological split internal error: class {y} has no owner."
+            )
         parts = np.array_split(cls_idx, len(owners))
         for cid, part in zip(owners, parts):
             if len(part) > 0:
                 out[int(cid)].append(part.astype(np.int64))
 
     result = {
-        cid: np.concatenate(parts).astype(np.int64) if parts else np.array([], dtype=np.int64)
+        cid: np.concatenate(parts).astype(np.int64)
+        if parts
+        else np.array([], dtype=np.int64)
         for cid, parts in out.items()
     }
 
@@ -442,9 +462,11 @@ def _pathological_split(
                 f"pathological split produced {len(uniq)} classes for client {cid}, cap={cap}."
             )
         covered.update(int(v) for v in uniq)
-    expected = set(int(v) for v in classes.tolist())
+    expected = {int(v) for v in classes.tolist()}
     if covered != expected:
-        raise RuntimeError("pathological split failed to cover all classes across clients.")
+        raise RuntimeError(
+            "pathological split failed to cover all classes across clients."
+        )
 
     return result
 
@@ -472,7 +494,9 @@ def _dirichlet_split(
                 splits[cid].append(part)
 
         result = {
-            cid: np.concatenate(parts).astype(np.int64) if parts else np.array([], dtype=np.int64)
+            cid: np.concatenate(parts).astype(np.int64)
+            if parts
+            else np.array([], dtype=np.int64)
             for cid, parts in enumerate(splits)
         }
         min_client_size = min(len(v) for v in result.values())
@@ -497,9 +521,13 @@ def simulate_split(
     if split_type == "iid":
         return _iid_split(len(labels), num_clients, rng)
     if split_type == "unbalanced":
-        return _unbalanced_split(len(labels), num_clients, rng, keep_min=unbalanced_keep_min)
+        return _unbalanced_split(
+            len(labels), num_clients, rng, keep_min=unbalanced_keep_min
+        )
     if split_type in {"patho", "pathological"}:
-        return _pathological_split(labels, num_clients, min_classes=min_classes, rng=rng)
+        return _pathological_split(
+            labels, num_clients, min_classes=min_classes, rng=rng
+        )
     if split_type in {"diri", "dirichlet"}:
         return _dirichlet_split(
             labels,
@@ -529,7 +557,9 @@ def split_subset_for_client(
         test_idx = np.asarray([], dtype=np.int64)
     else:
         # Class-aware split: keep at least one example per class in train when possible.
-        targets_all = raw_targets if raw_targets is not None else extract_targets(raw_train)
+        targets_all = (
+            raw_targets if raw_targets is not None else extract_targets(raw_train)
+        )
         local_targets = targets_all[sample_indices]
         train_parts = []
         test_parts = []
@@ -564,8 +594,16 @@ def split_subset_for_client(
         else Subset(raw_train, [])
     )
 
-    train_targets = extract_targets(train_subset) if len(train_subset) > 0 else np.array([], dtype=np.int64)
-    test_targets = extract_targets(test_subset) if len(test_subset) > 0 else np.array([], dtype=np.int64)
+    train_targets = (
+        extract_targets(train_subset)
+        if len(train_subset) > 0
+        else np.array([], dtype=np.int64)
+    )
+    test_targets = (
+        extract_targets(test_subset)
+        if len(test_subset) > 0
+        else np.array([], dtype=np.int64)
+    )
     train_subset.targets = torch.from_numpy(train_targets).long()
     test_subset.targets = torch.from_numpy(test_targets).long()
     return train_subset, test_subset
@@ -578,7 +616,9 @@ def clientize_raw_dataset(
     targets = extract_targets(raw_train)
     split_type = str(args.split_type).strip().lower()
     if split_type == "pre":
-        client_indices = _predefined_client_split_indices(raw_train=raw_train, args=args)
+        client_indices = _predefined_client_split_indices(
+            raw_train=raw_train, args=args
+        )
     else:
         client_indices = simulate_split(
             labels=targets,
@@ -712,8 +752,14 @@ def set_common_metadata(
 ):
     args.num_clients = len(client_datasets)
 
-    shape_source = raw_train if raw_train is not None and len(raw_train) > 0 else _first_nonempty_train_dataset(client_datasets)
-    args.input_shape = infer_input_shape(shape_source) if shape_source is not None else (1,)
+    shape_source = (
+        raw_train
+        if raw_train is not None and len(raw_train) > 0
+        else _first_nonempty_train_dataset(client_datasets)
+    )
+    args.input_shape = (
+        infer_input_shape(shape_source) if shape_source is not None else (1,)
+    )
 
     if raw_train is not None and len(raw_train) > 0:
         args.num_classes = infer_num_classes(raw_train)
@@ -725,7 +771,9 @@ def set_common_metadata(
             )
             if train_ds is not None
         )
-        args.num_classes = int(np.unique(train_targets).size) if train_targets.size > 0 else 0
+        args.num_classes = (
+            int(np.unique(train_targets).size) if train_targets.size > 0 else 0
+        )
 
     if getattr(args, "in_channels", None) is None:
         if len(args.input_shape) == 1:

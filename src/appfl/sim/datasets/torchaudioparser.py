@@ -3,7 +3,6 @@ from __future__ import annotations
 import inspect
 import logging
 from pathlib import Path
-from typing import Dict
 
 import numpy as np
 import torch
@@ -28,7 +27,7 @@ class GenericAudioDataset(Dataset):
         self.fixed_num_frames = fixed_num_frames
 
         self.targets = []
-        self.label_to_idx: Dict[str, int] = {}
+        self.label_to_idx: dict[str, int] = {}
         for i in range(len(self.base_dataset)):
             sample = self.base_dataset[i]
             label = self._extract_label(sample)
@@ -123,7 +122,11 @@ def _instantiate_dataset(ds_cls, root: str, split: str, download: bool):
         return ds_cls(**kwargs)
 
     if "split" in sig.parameters:
-        candidates = ["train", "training"] if split == "train" else ["test", "testing", "valid", "validation"]
+        candidates = (
+            ["train", "training"]
+            if split == "train"
+            else ["test", "testing", "valid", "validation"]
+        )
         for cand in candidates:
             try:
                 return ds_cls(split=cand, **kwargs)

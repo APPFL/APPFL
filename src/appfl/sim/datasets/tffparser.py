@@ -38,9 +38,7 @@ def fetch_tff_dataset(args):
     active_logger = resolve_dataset_logger(args, logger)
     split_type = str(getattr(args, "split_type", "pre")).strip().lower()
     if split_type != "pre":
-        raise ValueError(
-            "For dataset.backend=tff, split.type must be exactly `pre`."
-        )
+        raise ValueError("For dataset.backend=tff, split.type must be exactly `pre`.")
     try:
         import tensorflow_federated as tff
     except Exception as e:  # pragma: no cover
@@ -102,7 +100,9 @@ def fetch_tff_dataset(args):
         args.need_embedding = False
         args.seq_len = None
         args.num_embeddings = None
-        active_logger.info("[%s] finished loading (%d clients).", tag, int(args.num_clients))
+        active_logger.info(
+            "[%s] finished loading (%d clients).", tag, int(args.num_clients)
+        )
         return package_dataset_outputs(
             client_datasets=client_datasets,
             server_dataset=None,
@@ -157,7 +157,9 @@ def fetch_tff_dataset(args):
         args.need_embedding = False
         args.seq_len = None
         args.num_embeddings = None
-        active_logger.info("[%s] finished loading (%d clients).", tag, int(args.num_clients))
+        active_logger.info(
+            "[%s] finished loading (%d clients).", tag, int(args.num_clients)
+        )
         return package_dataset_outputs(
             client_datasets=client_datasets,
             server_dataset=None,
@@ -237,7 +239,9 @@ def fetch_tff_dataset(args):
         args.num_embeddings = vocab_size
         args.need_embedding = True
         args.seq_len = seq_len
-        active_logger.info("[%s] finished loading (%d clients).", tag, int(args.num_clients))
+        active_logger.info(
+            "[%s] finished loading (%d clients).", tag, int(args.num_clients)
+        )
         return package_dataset_outputs(
             client_datasets=client_datasets,
             server_dataset=None,

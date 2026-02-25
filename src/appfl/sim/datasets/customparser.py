@@ -5,7 +5,7 @@ import inspect
 import json
 import logging
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 import torch
@@ -26,7 +26,9 @@ from appfl.sim.datasets.common import (
 logger = logging.getLogger(__name__)
 
 
-def _to_basic_tensor_dataset(payload: Any, name: str, args: Any | None = None) -> Dataset:
+def _to_basic_tensor_dataset(
+    payload: Any, name: str, args: Any | None = None
+) -> Dataset:
     if isinstance(payload, Dataset):
         return payload
 
@@ -146,7 +148,7 @@ def _load_from_callable(args):
 
 def _load_train_test_from_directory(
     data_dir: Path, args: Any
-) -> Tuple[Dataset, Dataset | None]:
+) -> tuple[Dataset, Dataset | None]:
     train_candidates = [
         data_dir / "train.pt",
         data_dir / "train.pth",
@@ -255,7 +257,9 @@ def fetch_custom_dataset(args):
     """
     args = to_namespace(args)
     active_logger = resolve_dataset_logger(args, logger)
-    tag = make_load_tag(str(getattr(args, "dataset_name", "custom")), benchmark="CUSTOM")
+    tag = make_load_tag(
+        str(getattr(args, "dataset_name", "custom")), benchmark="CUSTOM"
+    )
 
     loader_spec = str(getattr(args, "custom_entrypoint", "")).strip()
     dataset_path = str(getattr(args, "data_dir", "")).strip()

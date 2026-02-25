@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from io import BytesIO
 import logging
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Iterable
 
 import numpy as np
 import torch
@@ -44,7 +44,7 @@ def _normalize_labels(raw_labels: Iterable[Any]) -> torch.Tensor:
     return torch.tensor([mapping[str(v)] for v in values], dtype=torch.long)
 
 
-def _pick_label_key(columns: List[str], args) -> str:
+def _pick_label_key(columns: list[str], args) -> str:
     user_key = str(getattr(args, "ext_label_key", "")).strip()
     if user_key:
         if user_key not in columns:
@@ -62,7 +62,7 @@ def _pick_label_key(columns: List[str], args) -> str:
     )
 
 
-def _pick_feature_key(columns: List[str], label_key: str, args) -> str:
+def _pick_feature_key(columns: list[str], label_key: str, args) -> str:
     user_key = str(getattr(args, "ext_feature_key", "")).strip()
     if user_key:
         if user_key not in columns:
@@ -111,7 +111,7 @@ def _tokenizer_from_args(args):
     return tokenizer
 
 
-def _encode_text_features(texts: List[str], args) -> Tuple[torch.Tensor, int]:
+def _encode_text_features(texts: list[str], args) -> tuple[torch.Tensor, int]:
     seq_len = int(getattr(args, "seq_len", 128))
     tokenizer = _tokenizer_from_args(args)
 
@@ -263,7 +263,13 @@ def _rows_to_tensor_dataset(rows, feature_key: str, label_key: str, args, name: 
     x_tensor = torch.as_tensor(x_np)
     if x_tensor.ndim == 1:
         x_tensor = x_tensor.unsqueeze(-1)
-    if x_tensor.dtype in {torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8}:
+    if x_tensor.dtype in {
+        torch.int8,
+        torch.int16,
+        torch.int32,
+        torch.int64,
+        torch.uint8,
+    }:
         x_tensor = x_tensor.long()
     else:
         x_tensor = x_tensor.float()
@@ -291,7 +297,7 @@ def _fetch_hf_dataset(args, dataset_name: str):
     train_split = str(getattr(args, "ext_train_split", "train")).strip()
     test_split = str(getattr(args, "ext_test_split", "test")).strip()
 
-    kwargs: Dict[str, Any] = {
+    kwargs: dict[str, Any] = {
         "cache_dir": str(getattr(args, "data_dir", "./data")),
     }
     try:
@@ -328,7 +334,9 @@ def _fetch_hf_dataset(args, dataset_name: str):
         train_hf, test_hf = split["train"], split["test"]
 
     if len(train_hf) == 0:
-        raise ValueError(f"External HF dataset '{dataset_name}' has empty training split.")
+        raise ValueError(
+            f"External HF dataset '{dataset_name}' has empty training split."
+        )
 
     columns = list(getattr(train_hf, "column_names", [])) or list(train_hf[0].keys())
     label_key = _pick_label_key(columns, args)
