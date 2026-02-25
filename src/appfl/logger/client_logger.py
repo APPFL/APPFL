@@ -2,20 +2,32 @@ import os
 import uuid
 import logging
 import pathlib
-from .utils import LevelFilter
-from datetime import datetime
-from colorama import Fore, Style
 from typing import List, Dict, Union
+from .utils import LevelFilter, _RoundAwareFormatter
+
+try:
+    from colorama import Fore, Style
+except Exception:  # pragma: no cover
+
+    class _ColorStub:
+        BLUE = ""
+        BRIGHT = ""
+        RESET_ALL = ""
+
+    Fore = _ColorStub()
+    Style = _ColorStub()
 
 
 class ClientAgentFileLogger:
     """
-    ClientAgentFileLogger is a class that logs FL client-side messages to the console and to a file.
+    ClientAgentFileLogger logs FL client-side messages to the console and to a file.
+
     :param logging_id: An optional string to identify the client.
     :param file_dir: The directory to save the log file.
     :param file_name: The name of the log file.
     :param experiment_id: An optional string to identify the experiment.
-        If not provided, the current date and time will be used.
+    :param title_every_n: Re-print the column header every N content rows (0 = never repeat).
+    :param show_titles: Whether to print column headers at all.
     """
 
     def __init__(
@@ -24,51 +36,63 @@ class ClientAgentFileLogger:
         file_dir: str = "",
         file_name: str = "",
         experiment_id: str = "",
+        title_every_n: int = 20,
+        show_titles: bool = True,
     ) -> None:
+        self.title_every_n = int(title_every_n)
+        self.show_titles = bool(show_titles)
+        self._content_count = 0
+        self._widths: List[int] = []
+        self._round_label = ""
+
         if file_name != "":
             file_name += f"_{logging_id}" if logging_id != "" else ""
-            file_name += f"_{experiment_id if experiment_id != '' else datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+            file_name += (
+                f"_{experiment_id if experiment_id != '' else uuid.uuid4().hex[:8]}"
+            )
 
-        self.logger = logging.getLogger(
-            __name__ + "_" + logging_id if logging_id != "" else str(uuid.uuid4())
+        if logging_id == "":
+            client_label = "Client"
+        else:
+            client_label = f"Client {logging_id}"
+
+        # Unique logger name prevents collisions across multiple client loggers
+        logger_name = (
+            __name__
+            + "_"
+            + (
+                f"{file_dir}/{file_name}".replace("/", "_")
+                if file_name
+                else (logging_id if logging_id != "" else str(uuid.uuid4()))
+            )
         )
+        self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logging.DEBUG)
-        info_fmt = (
-            logging.Formatter(
-                f"{Fore.BLUE}{Style.BRIGHT}appfl: ✅{Style.RESET_ALL}[%(asctime)s]: %(message)s"
-            )
-            if logging_id == ""
-            else logging.Formatter(
-                f"{Fore.BLUE}{Style.BRIGHT}appfl: ✅{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
-            )
-        )
-        debug_fmt = (
-            logging.Formatter(
-                f"{Fore.BLUE}{Style.BRIGHT}appfl: 💡{Style.RESET_ALL}[%(asctime)s]: %(message)s"
-            )
-            if logging_id == ""
-            else logging.Formatter(
-                f"{Fore.BLUE}{Style.BRIGHT}appfl: 💡{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
-            )
-        )
-        error_fmt = (
-            logging.Formatter(
-                f"{Fore.BLUE}{Style.BRIGHT}appfl: ❌{Style.RESET_ALL}[%(asctime)s]: %(message)s"
-            )
-            if logging_id == ""
-            else logging.Formatter(
-                f"{Fore.BLUE}{Style.BRIGHT}appfl: ❌{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
-            )
-        )
-        warning_fmt = (
-            logging.Formatter(
-                f"{Fore.BLUE}{Style.BRIGHT}appfl: ❗️{Style.RESET_ALL}[%(asctime)s]: %(message)s"
-            )
-            if logging_id == ""
-            else logging.Formatter(
-                f"{Fore.BLUE}{Style.BRIGHT}appfl: ❗️{Style.RESET_ALL}[%(asctime)s {logging_id}]: %(message)s"
-            )
-        )
+        self.logger.propagate = False
+
+        prefix = f"{Fore.BLUE}{Style.BRIGHT}appfl: "
+        reset = Style.RESET_ALL
+
+        def _make_fmt(icon: str, colored: bool) -> _RoundAwareFormatter:
+            if colored:
+                if logging_id == "":
+                    pat = f"{prefix}{icon}{reset}[%(asctime)s]: %(message)s"
+                else:
+                    pat = f"{prefix}{icon}{reset}[%(asctime)s | {client_label}%(round_part)s]: %(message)s"
+            else:
+                if logging_id == "":
+                    pat = f"appfl: {icon}[%(asctime)s]: %(message)s"
+                else:
+                    pat = f"appfl: {icon}[%(asctime)s | {client_label}%(round_part)s]: %(message)s"
+            return _RoundAwareFormatter(pat)
+
+        icons = {"info": "✅", "debug": "💡", "error": "❌", "warning": "❗️"}
+        levels = {
+            "info": logging.INFO,
+            "debug": logging.DEBUG,
+            "error": logging.ERROR,
+            "warning": logging.WARNING,
+        }
 
         num_s_handlers = len(
             [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
@@ -78,59 +102,37 @@ class ClientAgentFileLogger:
         )
 
         if num_s_handlers == 0:
-            s_handler_info = logging.StreamHandler()
-            s_handler_info.setFormatter(info_fmt)
-            s_handler_info.addFilter(LevelFilter(logging.INFO))
-            s_handler_debug = logging.StreamHandler()
-            s_handler_debug.setFormatter(debug_fmt)
-            s_handler_debug.addFilter(LevelFilter(logging.DEBUG))
-            s_handler_error = logging.StreamHandler()
-            s_handler_error.setFormatter(error_fmt)
-            s_handler_error.addFilter(LevelFilter(logging.ERROR))
-            s_handler_warning = logging.StreamHandler()
-            s_handler_warning.setFormatter(warning_fmt)
-            s_handler_warning.addFilter(LevelFilter(logging.WARNING))
-            self.logger.addHandler(s_handler_info)
-            self.logger.addHandler(s_handler_debug)
-            self.logger.addHandler(s_handler_error)
-            self.logger.addHandler(s_handler_warning)
+            for key, level in levels.items():
+                h = logging.StreamHandler()
+                h.setFormatter(_make_fmt(icons[key], colored=True))
+                h.addFilter(LevelFilter(level))
+                self.logger.addHandler(h)
 
         if file_dir != "" and file_name != "" and num_f_handlers == 0:
-            if not os.path.exists(file_dir):
-                pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
+            pathlib.Path(file_dir).mkdir(parents=True, exist_ok=True)
             real_file_name = f"{file_dir}/{file_name}.txt"
-            # check if the file exists
             file_exists = os.path.exists(real_file_name)
-            f_handler_info = logging.FileHandler(real_file_name)
-            f_handler_info.setFormatter(info_fmt)
-            f_handler_info.addFilter(LevelFilter(logging.INFO))
-            f_handler_debug = logging.FileHandler(real_file_name)
-            f_handler_debug.setFormatter(debug_fmt)
-            f_handler_debug.addFilter(LevelFilter(logging.DEBUG))
-            f_handler_error = logging.FileHandler(real_file_name)
-            f_handler_error.setFormatter(error_fmt)
-            f_handler_error.addFilter(LevelFilter(logging.ERROR))
-            f_handler_warning = logging.FileHandler(real_file_name)
-            f_handler_warning.setFormatter(warning_fmt)
-            f_handler_warning.addFilter(LevelFilter(logging.WARNING))
-            self.logger.addHandler(f_handler_info)
-            self.logger.addHandler(f_handler_debug)
-            self.logger.addHandler(f_handler_error)
-            self.logger.addHandler(f_handler_warning)
+            for key, level in levels.items():
+                h = logging.FileHandler(real_file_name)
+                h.setFormatter(_make_fmt(icons[key], colored=False))
+                h.addFilter(LevelFilter(level))
+                self.logger.addHandler(h)
             if not file_exists:
                 self.info(f"Logging to {real_file_name}")
 
     def log_title(self, titles: List) -> None:
         self.titles = titles
-        title = " ".join(["%10s" % t for t in titles])
-        self.info(title)
+        self._widths = [max(len(str(t)), 10) for t in titles]
 
     def set_title(self, titles: List) -> None:
         if not hasattr(self, "titles"):
             self.titles = titles
 
+    def set_round_label(self, round_label: str) -> None:
+        self._round_label = str(round_label)
+
     def log_content(self, contents: Union[Dict, List]) -> None:
-        if not isinstance(contents, dict) and not isinstance(contents, list):
+        if not isinstance(contents, (dict, list)):
             raise ValueError("Contents must be a dictionary or list")
         if not isinstance(contents, list):
             for key in contents.keys():
@@ -140,23 +142,38 @@ class ClientAgentFileLogger:
         else:
             if len(contents) != len(self.titles):
                 raise ValueError("Contents and titles must have the same length")
-        length = [max(len(str(t)), 10) for t in self.titles]
+        if not self._widths:
+            self._widths = [max(len(str(t)), 10) for t in self.titles]
+        if (
+            self.show_titles
+            and self.title_every_n > 0
+            and self._content_count % self.title_every_n == 0
+        ):
+            header = " ".join(
+                ["%*s" % (w, t) for w, t in zip(self._widths, self.titles)]
+            )
+            self.info(header)
         content = " ".join(
             [
-                "%*s" % (ln, cnt) if not isinstance(cnt, float) else "%*.4f" % (ln, cnt)
-                for ln, cnt in zip(length, contents)
+                "%*s" % (w, c) if not isinstance(c, float) else "%*.4f" % (w, c)
+                for w, c in zip(self._widths, contents)
             ]
         )
-        self.info(content)
+        self.info(content, round_label=self._round_label)
+        self._content_count += 1
 
-    def info(self, info: str) -> None:
-        self.logger.info(info)
+    def info(self, info: str, round_label: str = "") -> None:
+        label = round_label if round_label else self._round_label
+        self.logger.info(info, extra={"round_label": label})
 
-    def debug(self, debug: str) -> None:
-        self.logger.debug(debug)
+    def debug(self, debug: str, round_label: str = "") -> None:
+        label = round_label if round_label else self._round_label
+        self.logger.debug(debug, extra={"round_label": label})
 
-    def error(self, error: str) -> None:
-        self.logger.error(error)
+    def error(self, error: str, round_label: str = "") -> None:
+        label = round_label if round_label else self._round_label
+        self.logger.error(error, extra={"round_label": label})
 
-    def warning(self, warning: str) -> None:
-        self.logger.warning(warning)
+    def warning(self, warning: str, round_label: str = "") -> None:
+        label = round_label if round_label else self._round_label
+        self.logger.warning(warning, extra={"round_label": label})

@@ -11,7 +11,10 @@ from appfl.sim.misc.config_utils import _cfg_get
 from appfl.sim.misc.config_utils import build_loss_from_config
 from appfl.sim.metrics import parse_metric_names
 from appfl.sim.misc.data_utils import _resolve_client_eval_dataset
-from appfl.sim.misc.learning_utils import _aggregate_eval_stats, _evaluate_dataset_direct
+from appfl.sim.misc.learning_utils import (
+    _aggregate_eval_stats,
+    _evaluate_dataset_direct,
+)
 
 
 def _find_free_port() -> int:
@@ -24,7 +27,9 @@ def _resolve_distributed_world_size(config: DictConfig, backend: str) -> int:
     if backend == "nccl":
         gpus = int(torch.cuda.device_count())
         if gpus <= 0:
-            raise RuntimeError("backend=nccl requested, but no CUDA devices are available.")
+            raise RuntimeError(
+                "backend=nccl requested, but no CUDA devices are available."
+            )
         return gpus
     cpu_slots = max(1, (os.cpu_count() or 2) - 1)
     configured_clients = int(_cfg_get(config, "train.num_clients", 0))
@@ -94,7 +99,14 @@ def launch_or_run_distributed(
     for rank in range(world_size):
         proc = ctx.Process(
             target=_distributed_worker_entry,
-            args=(rank, world_size, backend, dict(OmegaConf.to_container(config, resolve=True)), master_port, entry_fn),
+            args=(
+                rank,
+                world_size,
+                backend,
+                dict(OmegaConf.to_container(config, resolve=True)),
+                master_port,
+                entry_fn,
+            ),
         )
         proc.start()
         processes.append(proc)
@@ -121,7 +133,9 @@ def launch_or_run_distributed(
                     failed_exit = int(proc.exitcode)
             if failed_exit is not None:
                 _terminate_processes(alive)
-                raise RuntimeError(f"Distributed worker exited with code {failed_exit}.")
+                raise RuntimeError(
+                    f"Distributed worker exited with code {failed_exit}."
+                )
             processes = alive
             if processes:
                 time.sleep(0.05)
@@ -131,6 +145,7 @@ def launch_or_run_distributed(
     except Exception:
         _terminate_processes(processes)
         raise
+
 
 def _load_dataset_distributed(
     config: DictConfig,
@@ -164,10 +179,14 @@ def _load_dataset_distributed(
     _set_download(cfg_other, False)
     return load_dataset(cfg_other)
 
-def _rank_client_span(total_clients: int, rank: int, world_size: int) -> tuple[int, int]:
+
+def _rank_client_span(
+    total_clients: int, rank: int, world_size: int
+) -> tuple[int, int]:
     start = (int(rank) * int(total_clients)) // int(world_size)
     end = ((int(rank) + 1) * int(total_clients)) // int(world_size)
     return start, end
+
 
 def _gather_to_rank0(payload, *, rank: int, world_size: int):
     import torch.distributed as dist
@@ -178,6 +197,7 @@ def _gather_to_rank0(payload, *, rank: int, world_size: int):
         return gathered
     dist.gather_object(payload, object_gather_list=None, dst=0)
     return None
+
 
 def _run_federated_eval_distributed(
     config: DictConfig,
@@ -202,7 +222,9 @@ def _run_federated_eval_distributed(
         eval_loss_fn = eval_loss_fn.to(device)
     eval_metric_names = parse_metric_names(_cfg_get(config, "eval.metrics", ["acc1"]))
     eval_batch_size = int(
-        _cfg_get(config, "train.eval_batch_size", _cfg_get(config, "train.batch_size", 32))
+        _cfg_get(
+            config, "train.eval_batch_size", _cfg_get(config, "train.batch_size", 32)
+        )
     )
     eval_workers = max(0, int(_cfg_get(config, "train.num_workers", 0)))
     start, end = _rank_client_span(
@@ -239,6 +261,7 @@ def _run_federated_eval_distributed(
         if isinstance(payload, dict):
             merged.update(payload)
     return _aggregate_eval_stats(merged)
+
 
 def _broadcast_model_state_inplace(model, *, src: int = 0) -> None:
     import torch.distributed as dist

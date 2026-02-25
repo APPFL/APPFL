@@ -32,7 +32,9 @@ def get_model_class(model_name: str):
             model_name = mapped
     if model_name not in MODEL_REGISTRY:
         available = ", ".join(sorted(MODEL_REGISTRY.keys()))
-        raise ValueError(f"Unsupported appfl model '{model_name}'. Available models: {available}")
+        raise ValueError(
+            f"Unsupported appfl model '{model_name}'. Available models: {available}"
+        )
 
     module_name, class_name = MODEL_REGISTRY[model_name]
     module = importlib.import_module(f"appfl.sim.models.{module_name}")

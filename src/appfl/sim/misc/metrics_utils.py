@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def _weighted_mean(stats: Dict[int, Dict], key: str) -> float:
+def _weighted_mean(stats: dict[int, dict], key: str) -> float:
     total = 0.0
     count = 0
     for values in stats.values():
@@ -17,8 +17,8 @@ def _weighted_mean(stats: Dict[int, Dict], key: str) -> float:
 
 
 def _attach_prefixed_metrics(
-    output: Dict[str, Any],
-    metrics: Optional[Dict[str, Any]],
+    output: dict[str, Any],
+    metrics: dict[str, Any] | None,
     prefix: str,
 ) -> None:
     if not isinstance(metrics, dict) or not metrics:

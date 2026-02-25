@@ -3,15 +3,15 @@ import torch
 from appfl.sim.models.model_utils import DANetBlock
 
 
-
 class DANet(torch.nn.Module):
     def __init__(self, in_features, num_layers, hidden_size, num_classes, dropout, B):
-        super(DANet, self).__init__()
+        super().__init__()
         params = {
-            'fix_input_dim': in_features, 'drop_rate': dropout,
-            'base_outdim': hidden_size, 
-            'k': 3, 
-            'virtual_batch_size': B
+            "fix_input_dim": in_features,
+            "drop_rate": dropout,
+            "base_outdim": hidden_size,
+            "k": 3,
+            "virtual_batch_size": B,
         }
         self.features = torch.nn.ModuleList([DANetBlock(in_features, **params)])
         for _ in range((num_layers // 2) - 1):
@@ -21,7 +21,7 @@ class DANet(torch.nn.Module):
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(hidden_size, hidden_size // 2),
             torch.nn.ReLU(),
-            torch.nn.Linear(hidden_size // 2, num_classes)
+            torch.nn.Linear(hidden_size // 2, num_classes),
         )
 
     def forward(self, x):

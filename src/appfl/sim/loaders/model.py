@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Mapping
 
 import torch
 
@@ -16,20 +16,20 @@ class ModelSpec:
     name: str
     num_classes: int
     in_channels: int
-    input_shape: Tuple[int, ...]
-    context: Dict[str, Any]
-    model_kwargs: Dict[str, Any]
+    input_shape: tuple[int, ...]
+    context: dict[str, Any]
+    model_kwargs: dict[str, Any]
     hf_task: str
     hf_pretrained: bool
     hf_local_files_only: bool
     hf_trust_remote_code: bool
     hf_gradient_checkpointing: bool
     cache_dir: str
-    hf_kwargs: Dict[str, Any]
-    hf_config_overrides: Dict[str, Any]
+    hf_kwargs: dict[str, Any]
+    hf_config_overrides: dict[str, Any]
 
 
-def _path_get(cfg: Dict[str, Any], path: str, default: Any = None) -> Any:
+def _path_get(cfg: dict[str, Any], path: str, default: Any = None) -> Any:
     parts = [p for p in str(path).split(".") if p]
     cur: Any = cfg
     for part in parts:
@@ -42,7 +42,7 @@ def _path_get(cfg: Dict[str, Any], path: str, default: Any = None) -> Any:
     return default if cur is None else cur
 
 
-def _as_dict(value: Any) -> Dict[str, Any]:
+def _as_dict(value: Any) -> dict[str, Any]:
     if value is None:
         return {}
     if isinstance(value, dict):
@@ -84,8 +84,8 @@ def _safe_bool(value: Any, default: bool) -> bool:
 
 
 def _default_model_context(
-    cfg: Dict[str, Any], input_shape: Tuple[int, ...], num_classes: int
-) -> Dict[str, Any]:
+    cfg: dict[str, Any], input_shape: tuple[int, ...], num_classes: int
+) -> dict[str, Any]:
     channels = int(input_shape[0]) if len(input_shape) >= 1 else 1
     spatial = input_shape[1:] if len(input_shape) >= 2 else (1,)
     if len(spatial) == 0:
@@ -130,20 +130,18 @@ def _default_model_context(
 
 
 def _parse_model_spec(
-    cfg: Dict[str, Any],
-    input_shape: Tuple[int, ...],
+    cfg: dict[str, Any],
+    input_shape: tuple[int, ...],
     num_classes: int,
 ) -> ModelSpec:
-    context = _default_model_context(cfg, input_shape=input_shape, num_classes=num_classes)
+    context = _default_model_context(
+        cfg, input_shape=input_shape, num_classes=num_classes
+    )
     source = str(_path_get(cfg, "model.backend", "auto")).lower()
     name = str(_path_get(cfg, "model.name", "SimpleCNN")).strip()
     model_configs = _as_dict(_path_get(cfg, "model.configs", {}))
     needs_embedding = _safe_bool(context.get("need_embedding", False), False)
-    if (
-        needs_embedding
-        and source in {"auto", "custom"}
-        and name.lower() == "simplecnn"
-    ):
+    if needs_embedding and source in {"auto", "custom"} and name.lower() == "simplecnn":
         # Default image model is incompatible with tokenized/text datasets.
         # Use a minimal local text model unless user explicitly selects one.
         name = "StackedLSTM"
@@ -167,11 +165,19 @@ def _parse_model_spec(
         input_shape=tuple(input_shape),
         context=context,
         model_kwargs=model_configs,
-        hf_task=str(model_configs.get("hf_task", "sequence_classification")).strip().lower(),
+        hf_task=str(model_configs.get("hf_task", "sequence_classification"))
+        .strip()
+        .lower(),
         hf_pretrained=_safe_bool(model_configs.get("pretrained", False), False),
-        hf_local_files_only=_safe_bool(model_configs.get("hf_local_files_only", False), False),
-        hf_trust_remote_code=_safe_bool(model_configs.get("hf_trust_remote_code", False), False),
-        hf_gradient_checkpointing=_safe_bool(model_configs.get("hf_gradient_checkpointing", False), False),
+        hf_local_files_only=_safe_bool(
+            model_configs.get("hf_local_files_only", False), False
+        ),
+        hf_trust_remote_code=_safe_bool(
+            model_configs.get("hf_trust_remote_code", False), False
+        ),
+        hf_gradient_checkpointing=_safe_bool(
+            model_configs.get("hf_gradient_checkpointing", False), False
+        ),
         cache_dir=str(
             model_configs.get(
                 "cache_dir",
@@ -200,7 +206,7 @@ def _load_appfl_model(spec: ModelSpec):
     context["in_channels"] = spec.in_channels
 
     signature = inspect.signature(model_class.__init__)
-    model_args: Dict[str, Any] = {}
+    model_args: dict[str, Any] = {}
     missing = []
     for name, param in signature.parameters.items():
         if name == "self":
@@ -221,7 +227,7 @@ def _load_appfl_model(spec: ModelSpec):
     return model_class(**model_args)
 
 
-def _filtered_model_kwargs(spec: ModelSpec) -> Dict[str, Any]:
+def _filtered_model_kwargs(spec: ModelSpec) -> dict[str, Any]:
     kwargs = dict(spec.model_kwargs)
     for reserved_key in (
         "pretrained",
@@ -245,17 +251,25 @@ class _HFAdapter(torch.nn.Module):
         self.task = task
 
     def forward(self, x):
-        kwargs: Dict[str, Any] = {}
+        kwargs: dict[str, Any] = {}
 
         if isinstance(x, dict):
             kwargs = x
-        elif isinstance(x, (list, tuple)) and len(x) == 2 and all(torch.is_tensor(v) for v in x):
+        elif (
+            isinstance(x, (list, tuple))
+            and len(x) == 2
+            and all(torch.is_tensor(v) for v in x)
+        ):
             kwargs = {
                 "input_ids": x[0].long(),
                 "attention_mask": x[1].long(),
             }
         elif torch.is_tensor(x):
-            if self.task in {"sequence_classification", "token_classification", "causal_lm"}:
+            if self.task in {
+                "sequence_classification",
+                "token_classification",
+                "causal_lm",
+            }:
                 if x.ndim >= 3 and x.shape[1] >= 2:
                     kwargs = {
                         "input_ids": x[:, 0].long(),
@@ -299,7 +313,9 @@ def _build_hf_scratch_config(model_id: str, spec: ModelSpec, task: str):
     overrides = dict(spec.hf_config_overrides)
     overrides.setdefault("num_labels", int(spec.num_classes))
     if task in {"sequence_classification", "token_classification", "causal_lm"}:
-        overrides.setdefault("vocab_size", int(spec.context.get("num_embeddings", 10000)))
+        overrides.setdefault(
+            "vocab_size", int(spec.context.get("num_embeddings", 10000))
+        )
     try:
         return AutoConfig.from_pretrained(
             model_id,
@@ -339,7 +355,7 @@ def _load_hf_model(spec: ModelSpec):
 
     # Do not forward generic local-model config keys (e.g., hidden_size, num_layers)
     # to HF model constructors; only forward explicit hf_kwargs.
-    common_kwargs: Dict[str, Any] = {}
+    common_kwargs: dict[str, Any] = {}
     common_kwargs.update(spec.hf_kwargs)
 
     if task == "sequence_classification":
@@ -390,7 +406,7 @@ def _load_torchvision_model(spec: ModelSpec):
     pretrained = bool(spec.model_kwargs.get("pretrained", False))
     model_name = str(spec.name).strip()
 
-    def _build_with_pruning(build_fn, init_kwargs: Dict[str, Any]):
+    def _build_with_pruning(build_fn, init_kwargs: dict[str, Any]):
         curr = dict(init_kwargs)
         while True:
             try:
@@ -505,9 +521,7 @@ def _load_torchaudio_model(spec: ModelSpec):
         )
     model_fn = getattr(ta_models, model_name)
     if not callable(model_fn):
-        raise ValueError(
-            f"torchaudio symbol '{model_name}' is not callable."
-        )
+        raise ValueError(f"torchaudio symbol '{model_name}' is not callable.")
     return model_fn(**kwargs)
 
 
@@ -577,8 +591,8 @@ def _resolve_source(spec: ModelSpec) -> str:
 
 
 def load_model(
-    cfg: Dict[str, Any],
-    input_shape: Tuple[int, ...],
+    cfg: dict[str, Any],
+    input_shape: tuple[int, ...],
     num_classes: int,
 ):
     """Unified model factory with explicit backend controls.

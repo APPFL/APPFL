@@ -1,7 +1,7 @@
 from __future__ import annotations
 import ast
 import random
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Sequence
 import numpy as np
 import torch
 from omegaconf import DictConfig
@@ -10,7 +10,7 @@ from appfl.sim.logger import ServerAgentFileLogger
 from appfl.sim.misc.config_utils import _cfg_get, _cfg_set
 
 
-def _parse_holdout_dataset_ratio(config: DictConfig) -> Optional[List[float]]:
+def _parse_holdout_dataset_ratio(config: DictConfig) -> list[float] | None:
     raw = _cfg_get(config, "eval.configs.dataset_ratio", None)
     if raw is None:
         return None
@@ -47,7 +47,8 @@ def _parse_holdout_dataset_ratio(config: DictConfig) -> Optional[List[float]]:
         )
     return ratios
 
-def _safe_split_lengths(n: int, ratios: List[float]) -> List[int]:
+
+def _safe_split_lengths(n: int, ratios: list[float]) -> list[int]:
     lengths = [int(float(n) * r) for r in ratios]
     remain = int(n) - int(sum(lengths))
     for i in range(remain):
@@ -64,8 +65,8 @@ def _safe_split_lengths(n: int, ratios: List[float]) -> List[int]:
     return lengths
 
 
-def _dataset_targets(dataset) -> Optional[np.ndarray]:
-    def _as_label_array(value) -> Optional[np.ndarray]:
+def _dataset_targets(dataset) -> np.ndarray | None:
+    def _as_label_array(value) -> np.ndarray | None:
         if value is None:
             return None
         if torch.is_tensor(value):
@@ -76,7 +77,7 @@ def _dataset_targets(dataset) -> Optional[np.ndarray]:
             return np.asarray([], dtype=np.int64)
         return arr.reshape(-1).astype(np.int64, copy=False)
 
-    def _subset_indices_array(indices, subset_len: int) -> Optional[np.ndarray]:
+    def _subset_indices_array(indices, subset_len: int) -> np.ndarray | None:
         if torch.is_tensor(indices):
             idx = indices.detach().cpu().numpy()
         else:
@@ -108,7 +109,7 @@ def _dataset_targets(dataset) -> Optional[np.ndarray]:
                     pass
 
     if isinstance(dataset, ConcatDataset):
-        parts: List[np.ndarray] = []
+        parts: list[np.ndarray] = []
         total = 0
         for child in dataset.datasets:
             child_labels = _dataset_targets(child)
@@ -143,7 +144,7 @@ def _dataset_targets(dataset) -> Optional[np.ndarray]:
 
 def _stratified_split_dataset(
     dataset,
-    ratios: List[float],
+    ratios: list[float],
     seed: int,
 ):
     total = int(len(dataset))
@@ -186,7 +187,10 @@ def _stratified_split_dataset(
         subsets.append(Subset(dataset, idx.tolist()))
     return subsets
 
-def _normalize_client_tuple(entry) -> Tuple[Optional[object], Optional[object], Optional[object]]:
+
+def _normalize_client_tuple(
+    entry,
+) -> tuple[object | None, object | None, object | None]:
     if not isinstance(entry, tuple):
         raise ValueError("Each client dataset entry must be a tuple.")
     if len(entry) == 1:
@@ -202,10 +206,11 @@ def _normalize_client_tuple(entry) -> Tuple[Optional[object], Optional[object], 
         "Each client dataset entry must be tuple(train), tuple(train,test), or tuple(train,val,test)."
     )
 
+
 def _apply_holdout_dataset_ratio(
     client_datasets,
     config: DictConfig,
-    logger: Optional[ServerAgentFileLogger] = None,
+    logger: ServerAgentFileLogger | None = None,
 ):
     ratios = _parse_holdout_dataset_ratio(config)
     if ratios is None:
@@ -258,6 +263,7 @@ def _apply_holdout_dataset_ratio(
     del logger
     return out
 
+
 def _dataset_has_eval_split(dataset) -> bool:
     """Return whether a dataset is present and plausibly non-empty for evaluation."""
     if dataset is None:
@@ -269,7 +275,8 @@ def _dataset_has_eval_split(dataset) -> bool:
         # Iterable/streaming datasets may not expose length; if object exists, allow eval path.
         return True
 
-def _validate_loader_output(client_datasets, runtime_cfg: Dict) -> None:
+
+def _validate_loader_output(client_datasets, runtime_cfg: dict) -> None:
     num_clients = int(runtime_cfg["num_clients"])
     if len(client_datasets) != num_clients:
         raise ValueError(
@@ -282,7 +289,10 @@ def _validate_loader_output(client_datasets, runtime_cfg: Dict) -> None:
                 f"client_datasets[{cid}] must be tuple(train), tuple(train,test), or tuple(train,val,test)."
             )
 
-def _build_client_groups(config: DictConfig, num_clients: int) -> Tuple[List[int], List[int]]:
+
+def _build_client_groups(
+    config: DictConfig, num_clients: int
+) -> tuple[list[int], list[int]]:
     all_clients = list(range(int(num_clients)))
     scheme = str(_cfg_get(config, "eval.configs.scheme", "dataset")).strip().lower()
     if scheme != "client":
@@ -305,12 +315,16 @@ def _build_client_groups(config: DictConfig, num_clients: int) -> Tuple[List[int
         return all_clients, []
     return train_clients, holdout
 
-def _sample_train_clients(train_client_ids: List[int], num_sampled_clients: int) -> List[int]:
+
+def _sample_train_clients(
+    train_client_ids: list[int], num_sampled_clients: int
+) -> list[int]:
     if not train_client_ids:
         return []
     n = max(1, int(num_sampled_clients))
     n = min(n, len(train_client_ids))
     return sorted(random.sample(train_client_ids, n))
+
 
 def _resolve_num_sampled_clients(config: DictConfig, num_clients: int) -> int:
     if int(num_clients) <= 0:
@@ -327,6 +341,7 @@ def _resolve_num_sampled_clients(config: DictConfig, num_clients: int) -> int:
 
     return int(num_clients)
 
+
 def _resolve_client_eval_dataset(
     client_datasets: Sequence,
     client_id: int,
@@ -338,6 +353,7 @@ def _resolve_client_eval_dataset(
     if chosen in {"val", "validation"}:
         return val_ds if val_ds is not None else test_ds
     return test_ds if test_ds is not None else val_ds
+
 
 ## Algorithm-specific methods
 def _validate_bandit_dataset_ratio(config: DictConfig) -> None:
@@ -360,6 +376,7 @@ def _validate_bandit_dataset_ratio(config: DictConfig) -> None:
             "For algorithm in {swucb, swts}, `eval.configs.dataset_ratio` must have "
             "three entries (train/val/test), e.g. [80,10,10]."
         )
+
 
 def _validate_algorithm_data_requirements(config: DictConfig) -> None:
     # Keep runner decoupled from algorithm-specific checks.

@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import random
 import warnings
-from typing import List, Optional, Sequence
+from typing import Sequence
 import gc
 import numpy as np
 import torch
@@ -18,7 +18,6 @@ from appfl.misc.memory_utils import (  # noqa: F401
 )
 
 
-
 def set_seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -28,7 +27,7 @@ def set_seed_everything(seed: int) -> None:
     torch.backends.cudnn.benchmark = False
 
 
-def _read_int_env(keys: List[str]) -> Optional[int]:
+def _read_int_env(keys: list[str]) -> int | None:
     for key in keys:
         value = os.environ.get(key, "")
         if value == "":
@@ -61,7 +60,7 @@ def resolve_rank_device(
     base_device: str,
     rank: int,
     world_size: int,
-    local_rank: Optional[int] = None,
+    local_rank: int | None = None,
 ) -> str:
     del world_size  # Reserved for future placement strategies.
 
@@ -88,7 +87,9 @@ def resolve_rank_device(
 
 def validate_backend_device_consistency(backend: str, config: DictConfig) -> None:
     device = str(_cfg_get(config, "experiment.device", "cpu")).strip().lower()
-    server_device = str(_cfg_get(config, "experiment.server_device", "cpu")).strip().lower()
+    server_device = (
+        str(_cfg_get(config, "experiment.server_device", "cpu")).strip().lower()
+    )
     cuda_available = bool(torch.cuda.is_available())
     visible_gpus = int(torch.cuda.device_count()) if cuda_available else 0
 
@@ -102,7 +103,9 @@ def validate_backend_device_consistency(backend: str, config: DictConfig) -> Non
         if not cuda_available:
             raise ValueError("backend=nccl requires CUDA, but CUDA is unavailable.")
         if not device.startswith("cuda"):
-            raise ValueError("backend=nccl requires `device` to be CUDA (e.g., `cuda`).")
+            raise ValueError(
+                "backend=nccl requires `device` to be CUDA (e.g., `cuda`)."
+            )
         if server_device.startswith("cuda"):
             if visible_gpus <= 2:
                 warnings.warn(
@@ -136,7 +139,7 @@ def validate_backend_device_consistency(backend: str, config: DictConfig) -> Non
 def _force_server_cpu_when_global_eval_disabled(
     config: DictConfig,
     enable_global_eval: bool,
-    logger: Optional[ServerAgentFileLogger] = None,
+    logger: ServerAgentFileLogger | None = None,
 ) -> None:
     if enable_global_eval:
         return
@@ -190,7 +193,9 @@ def _client_processing_chunk_size(
         except Exception:
             free_bytes = 0
         model_bytes = _model_bytes(model) if model is not None else 64 * 1024 * 1024
-        per_client = max(256 * 1024 * 1024, model_bytes * (10 if phase_name == "train" else 4))
+        per_client = max(
+            256 * 1024 * 1024, model_bytes * (10 if phase_name == "train" else 4)
+        )
         budget = int(float(free_bytes) * 0.35) if free_bytes > 0 else 0
         auto_chunk = int(budget // per_client) if budget > 0 else 1
         auto_chunk = max(1, min(64, auto_chunk))

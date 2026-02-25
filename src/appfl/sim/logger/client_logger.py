@@ -8,10 +8,11 @@ from typing import List, Dict, Union
 try:
     from colorama import Fore, Style
 except Exception:  # pragma: no cover
+
     class _ColorStub:
-        BLUE = ''
-        BRIGHT = ''
-        RESET_ALL = ''
+        BLUE = ""
+        BRIGHT = ""
+        RESET_ALL = ""
 
     Fore = _ColorStub()
     Style = _ColorStub()
@@ -59,10 +60,14 @@ class ClientAgentFileLogger:
             except Exception:
                 client_label = f"Client {logging_id}"
 
-        logger_name = __name__ + "_" + (
-            f"{file_dir}/{file_name}".replace("/", "_")
-            if file_name
-            else (logging_id if logging_id != "" else str(uuid.uuid4()))
+        logger_name = (
+            __name__
+            + "_"
+            + (
+                f"{file_dir}/{file_name}".replace("/", "_")
+                if file_name
+                else (logging_id if logging_id != "" else str(uuid.uuid4()))
+            )
         )
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logging.DEBUG)

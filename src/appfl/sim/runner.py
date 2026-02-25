@@ -7,7 +7,7 @@ import time
 import torch
 import numpy as np
 
-from typing import Any, List, Optional
+from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
 from appfl.sim.agent import ClientAgent
@@ -77,8 +77,8 @@ from appfl.sim.misc.dist_utils import (
 
 
 def _assert_stateful_dataloaders_unchanged(
-    persistent_clients: Optional[List[ClientAgent]],
-    stateful_dataloader_ids: Optional[dict[int, tuple[int, int, int]]],
+    persistent_clients: list[ClientAgent] | None,
+    stateful_dataloader_ids: dict[int, tuple[int, int, int]] | None,
 ) -> None:
     if stateful_dataloader_ids is None or persistent_clients is None:
         return
@@ -101,12 +101,12 @@ def _assert_stateful_dataloaders_unchanged(
 def _adapt_and_track_gen_reward(
     *,
     server,
-    round_pre_val_error: Optional[float],
-    prev_pre_val_error: Optional[float],
+    round_pre_val_error: float | None,
+    prev_pre_val_error: float | None,
     track_gen_rewards: bool,
     cumulative_gen_reward: float,
-) -> tuple[Optional[float], Optional[float], float]:
-    round_gen_reward: Optional[float] = None
+) -> tuple[float | None, float | None, float]:
+    round_gen_reward: float | None = None
     next_prev = prev_pre_val_error
     next_cumulative = float(cumulative_gen_reward)
     if round_pre_val_error is None:
@@ -126,15 +126,15 @@ def _log_round_metrics(
     selected_count: int,
     train_client_count: int,
     stats: dict,
-    round_local_steps: Optional[int],
-    round_wall_time_sec: Optional[float],
-    round_gen_error: Optional[float],
+    round_local_steps: int | None,
+    round_wall_time_sec: float | None,
+    round_gen_error: float | None,
     global_eval_metrics,
     federated_eval_metrics,
     federated_eval_out_metrics,
     track_gen_rewards: bool,
-    round_gen_reward: Optional[float],
-    cumulative_gen_reward: Optional[float],
+    round_gen_reward: float | None,
+    cumulative_gen_reward: float | None,
     server_logger,
     tracker,
 ) -> None:
@@ -168,7 +168,7 @@ def _run_federated_eval_serial_round(
     num_rounds: int,
     train_client_ids: list[int],
     holdout_client_ids: list[int],
-    persistent_clients: Optional[List[ClientAgent]],
+    persistent_clients: list[ClientAgent] | None,
     server,
     on_demand_model,
     model,
@@ -349,9 +349,9 @@ def run_serial(config) -> None:
     )
     base_workers = max(0, int(_cfg_get(config, "train.num_workers", 0)))
     on_demand_workers = {"train": base_workers, "eval": base_workers}
-    enable_global_eval = _cfg_bool(config, "eval.enable_global_eval", True) and _dataset_has_eval_split(
-        server_dataset
-    )
+    enable_global_eval = _cfg_bool(
+        config, "eval.enable_global_eval", True
+    ) and _dataset_has_eval_split(server_dataset)
     _force_server_cpu_when_global_eval_disabled(
         config, enable_global_eval, logger=server_logger
     )
@@ -359,7 +359,7 @@ def run_serial(config) -> None:
     track_gen_rewards = _cfg_bool(config, "logging.configs.track_gen_rewards", False)
     num_rounds = int(_cfg_get(config, "train.num_rounds", 20))
     eval_every = int(_cfg_get(config, "eval.every", 1))
-    prev_pre_val_error: Optional[float] = None
+    prev_pre_val_error: float | None = None
     cumulative_gen_reward: float = 0.0
 
     model = load_model(
@@ -387,7 +387,7 @@ def run_serial(config) -> None:
         phase="train",
     )
     persistent_clients = None
-    worker_pool: Optional[List[ClientAgent]] = None
+    worker_pool: list[ClientAgent] | None = None
     stateful_mode = bool(state_policy["stateful"])
     on_demand_model = None if stateful_mode else copy.deepcopy(model)
 
@@ -429,8 +429,12 @@ def run_serial(config) -> None:
         stateful_dataloader_ids = {
             int(client.id): (
                 id(client.trainer.train_dataloader),
-                id(client.trainer.val_dataloader) if client.trainer.val_dataloader is not None else -1,
-                id(client.trainer.test_dataloader) if client.trainer.test_dataloader is not None else -1,
+                id(client.trainer.val_dataloader)
+                if client.trainer.val_dataloader is not None
+                else -1,
+                id(client.trainer.test_dataloader)
+                if client.trainer.test_dataloader is not None
+                else -1,
             )
             for client in persistent_clients
         }
@@ -519,20 +523,22 @@ def run_serial(config) -> None:
             ):
                 global_eval_metrics = server.evaluate(round_idx=round_idx)
 
-            federated_eval_metrics, federated_eval_out_metrics = _run_federated_eval_serial_round(
-                config=config,
-                enable_federated_eval=enable_federated_eval,
-                round_idx=round_idx,
-                num_rounds=num_rounds,
-                train_client_ids=train_client_ids,
-                holdout_client_ids=holdout_client_ids,
-                persistent_clients=persistent_clients,
-                server=server,
-                on_demand_model=on_demand_model,
-                model=model,
-                client_datasets=client_datasets,
-                client_device=client_device,
-                on_demand_workers=on_demand_workers,
+            federated_eval_metrics, federated_eval_out_metrics = (
+                _run_federated_eval_serial_round(
+                    config=config,
+                    enable_federated_eval=enable_federated_eval,
+                    round_idx=round_idx,
+                    num_rounds=num_rounds,
+                    train_client_ids=train_client_ids,
+                    holdout_client_ids=holdout_client_ids,
+                    persistent_clients=persistent_clients,
+                    server=server,
+                    on_demand_model=on_demand_model,
+                    model=model,
+                    client_datasets=client_datasets,
+                    client_device=client_device,
+                    on_demand_workers=on_demand_workers,
+                )
             )
 
             _log_round_metrics(
@@ -624,9 +630,9 @@ def run_distributed(config, backend: str) -> None:
     logging_policy = policy["logging_policy"]
     base_workers = max(0, int(_cfg_get(config, "train.num_workers", 0)))
     on_demand_workers = {"train": base_workers, "eval": base_workers}
-    enable_global_eval = _cfg_bool(config, "eval.enable_global_eval", True) and _dataset_has_eval_split(
-        server_dataset
-    )
+    enable_global_eval = _cfg_bool(
+        config, "eval.enable_global_eval", True
+    ) and _dataset_has_eval_split(server_dataset)
     enable_federated_eval = _cfg_bool(config, "eval.enable_federated_eval", True)
     track_gen_rewards = _cfg_bool(config, "logging.configs.track_gen_rewards", False)
     num_rounds = int(_cfg_get(config, "train.num_rounds", 20))
@@ -658,7 +664,7 @@ def run_distributed(config, backend: str) -> None:
         phase="train",
     )
     persistent_clients = None
-    worker_pool: Optional[List[ClientAgent]] = None
+    worker_pool: list[ClientAgent] | None = None
     stateful_mode = bool(state_policy["stateful"])
     on_demand_model = None if stateful_mode else copy.deepcopy(model)
     local_client_logging_enabled = bool(logging_policy["client_logging_enabled"])
@@ -701,8 +707,12 @@ def run_distributed(config, backend: str) -> None:
         stateful_dataloader_ids = {
             int(client.id): (
                 id(client.trainer.train_dataloader),
-                id(client.trainer.val_dataloader) if client.trainer.val_dataloader is not None else -1,
-                id(client.trainer.test_dataloader) if client.trainer.test_dataloader is not None else -1,
+                id(client.trainer.val_dataloader)
+                if client.trainer.val_dataloader is not None
+                else -1,
+                id(client.trainer.test_dataloader)
+                if client.trainer.test_dataloader is not None
+                else -1,
             )
             for client in persistent_clients
         }
@@ -710,7 +720,7 @@ def run_distributed(config, backend: str) -> None:
     tracker = None
     server = None
     server_logger = bootstrap_logger if rank == 0 else None
-    prev_pre_val_error: Optional[float] = None
+    prev_pre_val_error: float | None = None
     cumulative_gen_reward: float = 0.0
     if rank == 0:
         _force_server_cpu_when_global_eval_disabled(
@@ -789,8 +799,10 @@ def run_distributed(config, backend: str) -> None:
             if on_demand_model is not None and sync_model is not on_demand_model:
                 on_demand_model.load_state_dict(sync_model.state_dict())
             global_state = sync_model.state_dict()
-    
-            selected_local_ids = sorted(int(cid) for cid in selected_ids if int(cid) in local_client_set)
+
+            selected_local_ids = sorted(
+                int(cid) for cid in selected_ids if int(cid) in local_client_set
+            )
             _assert_stateful_dataloaders_unchanged(
                 persistent_clients=persistent_clients,
                 stateful_dataloader_ids=stateful_dataloader_ids,
@@ -813,7 +825,7 @@ def run_distributed(config, backend: str) -> None:
                 chunk_size=chunk_size,
                 num_workers_override=on_demand_workers["train"],
             )
-    
+
             if rank == 0:
                 gathered = [None] * world_size
                 dist.gather_object(local_payload, object_gather_list=gathered, dst=0)
@@ -830,7 +842,9 @@ def run_distributed(config, backend: str) -> None:
                 for payload_map in gathered or []:
                     if not isinstance(payload_map, dict):
                         continue
-                    part_updates, part_sizes, part_stats = _payload_to_updates(payload_map)
+                    part_updates, part_sizes, part_stats = _payload_to_updates(
+                        payload_map
+                    )
                     updates.update(part_updates)
                     sample_sizes.update(part_sizes)
                     stats.update(part_stats)
@@ -858,21 +872,25 @@ def run_distributed(config, backend: str) -> None:
                         cumulative_gen_reward=float(cumulative_gen_reward),
                     )
                 )
-    
+
             sync_model = server.model if rank == 0 else model
             _broadcast_model_state_inplace(sync_model, src=0)
             if on_demand_model is not None and sync_model is not on_demand_model:
                 on_demand_model.load_state_dict(sync_model.state_dict())
             next_global_state = sync_model.state_dict()
-    
+
             global_eval_metrics = None
-            if rank == 0 and enable_global_eval and _should_eval_round(
-                round_idx,
-                eval_every,
-                num_rounds,
+            if (
+                rank == 0
+                and enable_global_eval
+                and _should_eval_round(
+                    round_idx,
+                    eval_every,
+                    num_rounds,
+                )
             ):
                 global_eval_metrics = server.evaluate(round_idx=round_idx)
-    
+
             federated_eval_metrics, federated_eval_out_metrics = (
                 _run_federated_eval_distributed_round(
                     dist=dist,
@@ -973,18 +991,20 @@ def main(argv: list[str] | None = None) -> None:
     if backend == "serial":
         run_serial(config)
     else:
-        launch_or_run_distributed(backend=backend, config=config, entry_fn=run_distributed)
+        launch_or_run_distributed(
+            backend=backend, config=config, entry_fn=run_distributed
+        )
 
 
 if __name__ == "__main__":
     welcome_message = r"""
-                  _____  _____  ______ _          _____ _____ __  __ 
+                  _____  _____  ______ _          _____ _____ __  __
             /\   |  __ \|  __ \|  ____| |        / ____|_   _|  \/  |
            /  \  | |__) | |__) | |__  | |  _____| (___   | | | \  / |
           / /\ \ |  ___/|  ___/|  __| | | |______\___ \  | | | |\/| |
          / ____ \| |    | |    | |    | |____    ____) |_| |_| |  | |
         /_/    \_\_|    |_|    |_|    |______|  |_____/|_____|_|  |_|
-                                                                    
+
     Copyright © 2022-2026, UChicago Argonne, LLC and the APPFL Development Team
     """
     print(welcome_message)

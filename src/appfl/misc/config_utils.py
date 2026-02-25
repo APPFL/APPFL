@@ -3,6 +3,7 @@ appfl.misc.config_utils: shared config navigation and component builder utilitie
 
 Ported from appfl.sim.misc.config_utils for use across the full APPFL package.
 """
+
 from __future__ import annotations
 
 import ast
@@ -13,7 +14,7 @@ import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Iterable
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -23,7 +24,8 @@ from omegaconf import DictConfig, OmegaConf
 # Config navigation
 # ---------------------------------------------------------------------------
 
-def _cfg_to_dict(cfg) -> Dict:
+
+def _cfg_to_dict(cfg) -> dict:
     if isinstance(cfg, DictConfig):
         return dict(OmegaConf.to_container(cfg, resolve=True))
     if isinstance(cfg, SimpleNamespace):
@@ -81,14 +83,15 @@ def _cfg_set(config: DictConfig | dict, path: str, value: Any) -> None:
 # Dynamic component loading
 # ---------------------------------------------------------------------------
 
-def _get_last_class_name_from_file(file_path: str) -> Optional[str]:
+
+def _get_last_class_name_from_file(file_path: str) -> str | None:
     with open(file_path) as f:
         tree = ast.parse(f.read())
     classes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
     return classes[-1].name if classes else None
 
 
-def _get_last_function_name_from_file(file_path: str) -> Optional[str]:
+def _get_last_function_name_from_file(file_path: str) -> str | None:
     with open(file_path) as f:
         tree = ast.parse(f.read())
     functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
@@ -123,12 +126,15 @@ def _load_named_symbol(path: str, name: str):
     spec.loader.exec_module(module)
     if str(name).strip() == "":
         exported = [
-            obj for obj in module.__dict__.values()
+            obj
+            for obj in module.__dict__.values()
             if (inspect.isclass(obj) or inspect.isfunction(obj))
             and getattr(obj, "__module__", "") == module.__name__
         ]
         if not exported:
-            raise ValueError(f"No class/function found in custom component file: {file_path}")
+            raise ValueError(
+                f"No class/function found in custom component file: {file_path}"
+            )
         return exported[-1]
     if not hasattr(module, name):
         raise ValueError(f"Custom component `{name}` not found in {file_path}")
@@ -147,6 +153,7 @@ def _resolve_component_backend(kind: str, backend: str, path: str) -> str:
 # ---------------------------------------------------------------------------
 # Loss and optimizer builders
 # ---------------------------------------------------------------------------
+
 
 def build_loss_from_config(config: DictConfig | dict):
     """Build a loss function from a config dict with a `loss` key."""

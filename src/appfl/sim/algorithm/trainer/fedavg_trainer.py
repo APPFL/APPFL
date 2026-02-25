@@ -28,6 +28,7 @@ from appfl.misc.utils import parse_device_str, apply_model_device
 try:
     import wandb
 except Exception:  # pragma: no cover
+
     class _WandbStub:
         run = None
 
@@ -36,6 +37,7 @@ except Exception:  # pragma: no cover
             return None
 
     wandb = _WandbStub()
+
 
 def _make_dataloader(
     dataset,
@@ -57,6 +59,7 @@ def _make_dataloader(
         kwargs["persistent_workers"] = bool(persistent_workers)
         kwargs["prefetch_factor"] = max(2, int(prefetch_factor))
     return DataLoader(dataset, **kwargs)
+
 
 class FedavgTrainer(BaseTrainer):
     """
@@ -95,7 +98,7 @@ class FedavgTrainer(BaseTrainer):
         self.train_configs = self._normalize_train_configs(train_configs)
         self._validate_train_config()
 
-        # Build local dataloaders 
+        # Build local dataloaders
         if self.train_dataset is None:
             raise ValueError("train_dataset must be provided for FedavgTrainer.")
         self.test_dataset = kwargs.get("test_dataset", None)
@@ -133,7 +136,9 @@ class FedavgTrainer(BaseTrainer):
     def _normalize_train_configs(train_configs: DictConfig) -> DictConfig:
         train_configs.mode = str(train_configs.get("mode", "epoch"))
         if train_configs.mode == "epoch":
-            train_configs.num_local_epochs = int(train_configs.get("num_local_epochs", 1))
+            train_configs.num_local_epochs = int(
+                train_configs.get("num_local_epochs", 1)
+            )
         else:
             train_configs.num_local_steps = int(train_configs.get("num_local_steps", 1))
         max_grad_norm = float(train_configs.get("max_grad_norm", 0.0))
@@ -142,7 +147,7 @@ class FedavgTrainer(BaseTrainer):
             train_configs.clip_value = float(max_grad_norm)
             train_configs.clip_norm = float(train_configs.get("clip_norm", 2.0))
         return train_configs
-            
+
     @staticmethod
     def _instantiate_dataloaders(
         train_dataset: Dataset,
@@ -153,7 +158,9 @@ class FedavgTrainer(BaseTrainer):
         num_workers = int(train_configs.get("num_workers", 0))
         train_pin_memory = bool(train_configs.get("train_pin_memory", False))
         eval_pin_memory = bool(train_configs.get("eval_pin_memory", train_pin_memory))
-        persistent_workers = bool(train_configs.get("dataloader_persistent_workers", False))
+        persistent_workers = bool(
+            train_configs.get("dataloader_persistent_workers", False)
+        )
         prefetch_factor = int(train_configs.get("dataloader_prefetch_factor", 2))
         train_loader = _make_dataloader(
             train_dataset,
@@ -200,14 +207,14 @@ class FedavgTrainer(BaseTrainer):
                 )
             else:
                 self.model_state = {
-                    k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()
+                    k: v.detach().cpu().clone()
+                    for k, v in self.model.state_dict().items()
                 }
         return (
             (self.model_state, self.eval_results)
             if self.eval_results is not None
             else self.model_state
         )
-
 
     def _validate_train_config(self):
         """
@@ -223,7 +230,7 @@ class FedavgTrainer(BaseTrainer):
         else:
             if "num_local_steps" not in self.train_configs:
                 raise ValueError("Number of local steps must be specified.")
-            
+
     def _new_metrics_manager(self) -> MetricsManager:
         return MetricsManager(eval_metrics=self.eval_metric_names)
 
@@ -333,9 +340,13 @@ class FedavgTrainer(BaseTrainer):
             return
         loss_key = f"{phase}_{split}_loss" if phase == "pre" else f"{split}_loss"
         metric_key = (
-            f"{phase}_{split}_metric_value" if phase == "pre" else f"{split}_metric_value"
+            f"{phase}_{split}_metric_value"
+            if phase == "pre"
+            else f"{split}_metric_value"
         )
-        metrics_key = f"{phase}_{split}_metrics" if phase == "pre" else f"{split}_metrics"
+        metrics_key = (
+            f"{phase}_{split}_metrics" if phase == "pre" else f"{split}_metrics"
+        )
 
         loss_value = float(stats["loss"])
         metric_value = float(self._metric_from_stats(stats))
@@ -382,7 +393,9 @@ class FedavgTrainer(BaseTrainer):
             return None, None, None
 
         loss_value = float(raw_loss)
-        metric_value = float(raw_metric) if isinstance(raw_metric, (int, float)) else None
+        metric_value = (
+            float(raw_metric) if isinstance(raw_metric, (int, float)) else None
+        )
         metrics_value = raw_metrics if isinstance(raw_metrics, dict) else None
         return loss_value, metric_value, metrics_value
 
@@ -400,7 +413,9 @@ class FedavgTrainer(BaseTrainer):
             src_base = split
             dst_base = f"post_{split}"
 
-        loss_value, metric_value, metrics_value = self._extract_split_eval_values(src_base)
+        loss_value, metric_value, metrics_value = self._extract_split_eval_values(
+            src_base
+        )
         if loss_value is None:
             return
         result[f"{dst_base}_loss"] = float(loss_value)
@@ -477,7 +492,7 @@ class FedavgTrainer(BaseTrainer):
             )
         optimizer.step()
         return loss.item(), output.detach().cpu().numpy(), target.detach().cpu().numpy()
-        
+
     def train(self, **kwargs):
         """
         Train the model for a certain number of local epochs or steps and store model state.
@@ -520,12 +535,12 @@ class FedavgTrainer(BaseTrainer):
         self.logger.log_title(title)
 
         # Evaluation scheme
-        do_post_evaluation = bool(self.train_configs.get("do_post_evaluation", True)) and (
-            has_any_eval_split
-        )
-        do_pre_evaluation = bool(self.train_configs.get("do_pre_evaluation", True)) and (
-            has_any_eval_split
-        )
+        do_post_evaluation = bool(
+            self.train_configs.get("do_post_evaluation", True)
+        ) and (has_any_eval_split)
+        do_pre_evaluation = bool(
+            self.train_configs.get("do_pre_evaluation", True)
+        ) and (has_any_eval_split)
 
         ## Pre-evaluation
         if do_pre_evaluation:
@@ -834,9 +849,7 @@ class FedavgTrainer(BaseTrainer):
         if dataloader is None:
             fallback = self.test_dataloader if chosen == "val" else self.val_dataloader
             dataloader = fallback
-        return self._evaluate_metrics_on_loader(
-            dataloader, offload_after=offload_after
-        )
+        return self._evaluate_metrics_on_loader(dataloader, offload_after=offload_after)
 
     def _evaluate_metrics_on_loader(
         self,

@@ -4,7 +4,7 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Callable, TypedDict
 import numpy as np
 from omegaconf import DictConfig
 from appfl.sim.logger.server_logger import ServerAgentFileLogger
@@ -12,45 +12,52 @@ from appfl.metrics import parse_metric_names
 from appfl.sim.misc.config_utils import _cfg_bool, _cfg_get
 from appfl.logger.utils import _remap_server_wandb_payload  # noqa: F401
 
+
 class _AvgStdMetric(TypedDict):
     avg: float
     std: float
+
 
 class _ClientsSummary(TypedDict):
     selected: int
     total: int
 
+
 class _PolicySummary(TypedDict):
     tau_t: int
+
 
 class _TimingSummary(TypedDict):
     round_wall_time_sec: float
 
+
 class _GenRewardSummary(TypedDict):
-    round: Optional[float]
-    cumulative: Optional[float]
+    round: float | None
+    cumulative: float | None
+
 
 class _MinMaxMetric(TypedDict):
     min: float
     max: float
 
+
 class _RoundMetricsPayload(TypedDict, total=False):
     clients: _ClientsSummary
     policy: _PolicySummary
     timing: _TimingSummary
-    training: Dict[str, _AvgStdMetric]
-    local_pre_val: Dict[str, _AvgStdMetric]
-    local_post_val: Dict[str, _AvgStdMetric]
-    local_pre_test: Dict[str, _AvgStdMetric]
-    local_post_test: Dict[str, _AvgStdMetric]
+    training: dict[str, _AvgStdMetric]
+    local_pre_val: dict[str, _AvgStdMetric]
+    local_post_val: dict[str, _AvgStdMetric]
+    local_pre_test: dict[str, _AvgStdMetric]
+    local_post_test: dict[str, _AvgStdMetric]
     local_gen_error: _AvgStdMetric
     global_gen_error: float
     gen_reward: _GenRewardSummary
-    global_eval: Dict[str, float | _AvgStdMetric]
-    fed_eval: Dict[str, float | _AvgStdMetric]
-    fed_eval_in: Dict[str, float | _AvgStdMetric]
-    fed_eval_out: Dict[str, float | _AvgStdMetric]
-    fed_extrema: Dict[str, _MinMaxMetric]
+    global_eval: dict[str, float | _AvgStdMetric]
+    fed_eval: dict[str, float | _AvgStdMetric]
+    fed_eval_in: dict[str, float | _AvgStdMetric]
+    fed_eval_out: dict[str, float | _AvgStdMetric]
+    fed_extrema: dict[str, _MinMaxMetric]
 
 
 try:
@@ -65,7 +72,7 @@ def _sanitize_wandb_token(token: str) -> str:
     return text.lower()
 
 
-def _format_wandb_panel_key(panel: str, parts: List[str]) -> str:
+def _format_wandb_panel_key(panel: str, parts: list[str]) -> str:
     tokens = [_sanitize_wandb_token(p) for p in parts if str(p).strip()]
     tokens = [t for t in tokens if t]
     leaf = "_".join(tokens) if tokens else "metric"
@@ -73,12 +80,12 @@ def _format_wandb_panel_key(panel: str, parts: List[str]) -> str:
 
 
 def _set_unique_wandb_metric(
-    payload: Dict[str, float],
+    payload: dict[str, float],
     *,
     key: str,
     value: float,
     source: str,
-    source_by_key: Dict[str, str],
+    source_by_key: dict[str, str],
 ) -> str:
     candidate = str(key)
     existing_source = source_by_key.get(candidate, None)
@@ -102,7 +109,9 @@ def _orchestration_client_wandb_key(client_id: str, metric: str) -> str:
 
 def _resolve_run_dir_path(config: DictConfig, run_id: str) -> Path:
     run_name = str(
-        _cfg_get(config, "logging.name", _cfg_get(config, "experiment.name", "appfl-sim"))
+        _cfg_get(
+            config, "logging.name", _cfg_get(config, "experiment.name", "appfl-sim")
+        )
     )
     return (
         Path(str(_cfg_get(config, "logging.path", "./logs")))
@@ -111,52 +120,6 @@ def _resolve_run_dir_path(config: DictConfig, run_id: str) -> Path:
         / str(run_id).strip()
     )
 
-
-def _remap_server_wandb_payload(flat_payload: Dict[str, float]) -> Dict[str, float]:
-    remapped: Dict[str, float] = {}
-    remap_sources: Dict[str, str] = {}
-    eval_roots = {
-        "global_eval",
-        "fed_eval",
-        "fed_eval_in",
-        "fed_eval_out",
-        "fed_extrema",
-        "local_pre_val",
-        "local_post_val",
-        "local_pre_test",
-        "local_post_test",
-    }
-    orchestration_roots = {
-        "clients",
-        "policy",
-        "timing",
-        "gen_reward",
-        "local_gen_error",
-    }
-    for raw_key, raw_value in flat_payload.items():
-        parts = [p for p in str(raw_key).split("/") if p]
-        if not parts:
-            continue
-        if len(parts) == 2 and parts[0] == "clients" and parts[1] in {"selected", "total"}:
-            continue
-
-        root = parts[0]
-        if root == "training":
-            dst = _format_wandb_panel_key("training", parts[1:])
-        elif root in eval_roots:
-            dst = _format_wandb_panel_key("evaluation", parts)
-        elif root in orchestration_roots or root in {"global_gen_error", "round"}:
-            dst = _format_wandb_panel_key("orchestration", parts)
-        else:
-            dst = _format_wandb_panel_key("orchestration", parts)
-        _set_unique_wandb_metric(
-            remapped,
-            key=dst,
-            value=float(raw_value),
-            source=str(raw_key),
-            source_by_key=remap_sources,
-        )
-    return remapped
 
 def _new_progress(total: int, desc: str, enabled: bool):
     if not enabled or _tqdm is None or int(total) <= 0:
@@ -170,10 +133,11 @@ def _new_progress(total: int, desc: str, enabled: bool):
         bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
     )
 
+
 def _emit_logging_policy_message(
-    policy: Dict[str, object],
+    policy: dict[str, object],
     num_clients: int,
-    logger: Optional[ServerAgentFileLogger] = None,
+    logger: ServerAgentFileLogger | None = None,
 ) -> None:
     requested = str(policy["requested_scheme"])
     effective = str(policy["effective_scheme"])
@@ -201,9 +165,7 @@ def _emit_logging_policy_message(
         return
 
     if requested == "auto" and effective == "server_only":
-        _info(
-            "Client logging auto-switched to `server_only` for this run."
-        )
+        _info("Client logging auto-switched to `server_only` for this run.")
         return
     if requested == "server_only":
         _info("Using `logging_scheme`=`server_only` (server-side metrics only).")
@@ -214,9 +176,10 @@ def _emit_logging_policy_message(
             f"(total_clients={total_clients}). This may produce large I/O overhead."
         )
 
+
 def _emit_client_state_policy_message(
-    policy: Dict[str, object],
-    logger: Optional[ServerAgentFileLogger] = None,
+    policy: dict[str, object],
+    logger: ServerAgentFileLogger | None = None,
 ) -> None:
     stateful = bool(policy.get("stateful", False))
     mode = "stateful/persistent" if stateful else "stateless/sporadic"
@@ -226,11 +189,12 @@ def _emit_client_state_policy_message(
     else:
         print(msg)
 
+
 def _emit_federated_eval_policy_message(
     config: DictConfig,
     train_client_count: int,
     holdout_client_count: int,
-    logger: Optional[ServerAgentFileLogger] = None,
+    logger: ServerAgentFileLogger | None = None,
 ) -> None:
     if not _cfg_bool(config, "eval.enable_federated_eval", True):
         return
@@ -258,10 +222,11 @@ def _emit_federated_eval_policy_message(
     else:
         print(msg)
 
+
 def _warn_if_workers_pinned_to_single_device(
     config: DictConfig,
     world_size: int,
-    logger: Optional[ServerAgentFileLogger] = None,
+    logger: ServerAgentFileLogger | None = None,
 ) -> None:
     if world_size <= 1:
         return
@@ -289,7 +254,7 @@ def _trainer_metric_title(metric_name: str) -> str:
 
 
 def _trainer_metric_value(
-    stats_obj: Optional[Dict[str, Any]],
+    stats_obj: dict[str, Any] | None,
     metric_name: str,
 ) -> float:
     if not isinstance(stats_obj, dict):
@@ -312,15 +277,15 @@ def _build_trainer_log_row(
     has_any_eval_split: bool,
     has_val_split: bool,
     has_test_split: bool,
-    metric_names_for_log: List[str],
-    epoch_idx: Optional[int],
+    metric_names_for_log: list[str],
+    epoch_idx: int | None,
     pre_eval_flag: str,
     elapsed: Any,
-    train_stats_obj: Optional[Dict[str, Any]],
-    val_stats_obj: Optional[Dict[str, Any]],
-    test_stats_obj: Optional[Dict[str, Any]],
-) -> List[Any]:
-    row: List[Any] = []
+    train_stats_obj: dict[str, Any] | None,
+    val_stats_obj: dict[str, Any] | None,
+    test_stats_obj: dict[str, Any] | None,
+) -> list[Any]:
+    row: list[Any] = []
     if str(mode).strip().lower() == "epoch":
         row.append(epoch_idx if epoch_idx is not None else "-")
     if bool(has_any_eval_split):
@@ -358,9 +323,9 @@ def _build_trainer_log_title(
     has_any_eval_split: bool,
     has_val_split: bool,
     has_test_split: bool,
-    metric_names_for_log: List[str],
-) -> List[str]:
-    title: List[str] = []
+    metric_names_for_log: list[str],
+) -> list[str]:
+    title: list[str] = []
     if str(mode).strip().lower() == "epoch":
         title.append("Epoch")
     if bool(has_any_eval_split):
@@ -378,25 +343,29 @@ def _build_trainer_log_title(
             title.append(f"Test {_trainer_metric_title(metric_name)}")
     return title
 
+
 def _entity_line(title: str, body: str) -> str:
     return f"  {title:<18} {body}"
 
-def _join_metric_parts(parts: List[str]) -> str:
+
+def _join_metric_parts(parts: list[str]) -> str:
     if not parts:
         return ""
     return " | ".join(f"{part:<24}" for part in parts).rstrip()
 
-def _pick_numeric(d: Dict[str, Any], candidates: List[str]) -> Optional[Tuple[str, float]]:
+
+def _pick_numeric(d: dict[str, Any], candidates: list[str]) -> tuple[str, float] | None:
     for key in candidates:
         if key in d and isinstance(d[key], (int, float)):
             return key, float(d[key])
     return None
 
+
 def _collect_client_values(
-    all_stats: Dict[int, Dict[str, Any]],
-    candidates: List[str],
-) -> List[float]:
-    values: List[float] = []
+    all_stats: dict[int, dict[str, Any]],
+    candidates: list[str],
+) -> list[float]:
+    values: list[float] = []
     for row in all_stats.values():
         hit = _pick_numeric(row, candidates)
         if hit is None:
@@ -405,16 +374,17 @@ def _collect_client_values(
         values.append(float(value))
     return values
 
+
 def _summarize_client_metric_block(
-    stats: Dict[int, Dict[str, Any]],
-    eval_metric_order: List[str],
+    stats: dict[int, dict[str, Any]],
+    eval_metric_order: list[str],
     *,
-    loss_candidates: List[str],
-    metric_candidates_for: Callable[[str], List[str]],
-) -> Tuple[Dict[str, Dict[str, float]], List[str]]:
-    section: Dict[str, Dict[str, float]] = {}
-    parts: List[str] = []
-    items: List[Tuple[str, List[str]]] = [("loss", list(loss_candidates))]
+    loss_candidates: list[str],
+    metric_candidates_for: Callable[[str], list[str]],
+) -> tuple[dict[str, dict[str, float]], list[str]]:
+    section: dict[str, dict[str, float]] = {}
+    parts: list[str] = []
+    items: list[tuple[str, list[str]]] = [("loss", list(loss_candidates))]
     items.extend(
         (metric_name, metric_candidates_for(metric_name))
         for metric_name in eval_metric_order
@@ -429,16 +399,17 @@ def _summarize_client_metric_block(
         parts.append(f"{label}: {avg_value:.4f}/{std_value:.4f}")
     return section, parts
 
+
 def _summarize_eval_metric_block(
-    metrics: Dict[str, Any],
-    eval_metric_order: List[str],
+    metrics: dict[str, Any],
+    eval_metric_order: list[str],
     *,
     with_client_std: bool,
-) -> Tuple[Dict[str, object], List[str]]:
-    section_metrics: Dict[str, object] = {}
-    parts: List[str] = []
+) -> tuple[dict[str, object], list[str]]:
+    section_metrics: dict[str, object] = {}
+    parts: list[str] = []
     used_raw_keys: set[str] = set()
-    items: List[Tuple[str, List[str]]] = [("loss", ["loss"])]
+    items: list[tuple[str, list[str]]] = [("loss", ["loss"])]
     items.extend(
         (metric_name, [f"metric_{metric_name}", metric_name])
         for metric_name in eval_metric_order
@@ -462,11 +433,12 @@ def _summarize_eval_metric_block(
         parts.append(f"{label}: {float(value):.4f}")
     return section_metrics, parts
 
+
 def _federated_extrema_payload(
-    metrics: Dict[str, Any],
-    eval_metric_order: List[str],
-) -> Dict[str, Dict[str, float]]:
-    extrema: Dict[str, Dict[str, float]] = {}
+    metrics: dict[str, Any],
+    eval_metric_order: list[str],
+) -> dict[str, dict[str, float]]:
+    extrema: dict[str, dict[str, float]] = {}
     raw = {}
     for key, value in metrics.items():
         if (
@@ -484,7 +456,7 @@ def _federated_extrema_payload(
         }
     if not raw:
         return extrema
-    ordered_keys: List[str] = []
+    ordered_keys: list[str] = []
     if "loss" in raw:
         ordered_keys.append("loss")
     for metric_name in eval_metric_order:
@@ -502,21 +474,22 @@ def _federated_extrema_payload(
         }
     return extrema
 
+
 def _build_round_metrics_payload(
     config: DictConfig,
     selected_count: int,
     total_train_clients: int,
     stats,
-    round_local_steps: Optional[int],
-    round_wall_time_sec: Optional[float],
-    global_gen_error: Optional[float],
-    global_eval_metrics: Optional[Dict[str, float]],
-    federated_eval_metrics: Optional[Dict[str, float]],
-    federated_eval_in_metrics: Optional[Dict[str, float]],
-    federated_eval_out_metrics: Optional[Dict[str, float]],
+    round_local_steps: int | None,
+    round_wall_time_sec: float | None,
+    global_gen_error: float | None,
+    global_eval_metrics: dict[str, float] | None,
+    federated_eval_metrics: dict[str, float] | None,
+    federated_eval_in_metrics: dict[str, float] | None,
+    federated_eval_out_metrics: dict[str, float] | None,
     track_gen_rewards: bool,
-    round_gen_reward: Optional[float],
-    cumulative_gen_reward: Optional[float],
+    round_gen_reward: float | None,
+    cumulative_gen_reward: float | None,
 ) -> _RoundMetricsPayload:
     eval_metric_order = parse_metric_names(_cfg_get(config, "eval.metrics", None))
     if not eval_metric_order:
@@ -550,7 +523,10 @@ def _build_round_metrics_payload(
                 stats,
                 eval_metric_order,
                 loss_candidates=[f"{prefix}loss"],
-                metric_candidates_for=lambda name: [f"{prefix}metric_{name}", f"{prefix}{name}"],
+                metric_candidates_for=lambda name: [
+                    f"{prefix}metric_{name}",
+                    f"{prefix}{name}",
+                ],
             )
             if parts:
                 round_metrics[json_key] = section
@@ -584,7 +560,7 @@ def _build_round_metrics_payload(
 
     def _maybe_add_eval_block(
         json_key: str,
-        metrics: Optional[Dict[str, float]],
+        metrics: dict[str, float] | None,
         with_client_std: bool,
     ) -> None:
         if not isinstance(metrics, dict):
@@ -599,8 +575,12 @@ def _build_round_metrics_payload(
 
     _maybe_add_eval_block("global_eval", global_eval_metrics, with_client_std=False)
     _maybe_add_eval_block("fed_eval", federated_eval_metrics, with_client_std=True)
-    _maybe_add_eval_block("fed_eval_in", federated_eval_in_metrics, with_client_std=True)
-    _maybe_add_eval_block("fed_eval_out", federated_eval_out_metrics, with_client_std=True)
+    _maybe_add_eval_block(
+        "fed_eval_in", federated_eval_in_metrics, with_client_std=True
+    )
+    _maybe_add_eval_block(
+        "fed_eval_out", federated_eval_out_metrics, with_client_std=True
+    )
 
     extrema_source = (
         federated_eval_metrics
@@ -615,11 +595,12 @@ def _build_round_metrics_payload(
             round_metrics["fed_extrema"] = extrema
     return round_metrics
 
-def _render_round_summary_lines(round_metrics: _RoundMetricsPayload) -> List[str]:
+
+def _render_round_summary_lines(round_metrics: _RoundMetricsPayload) -> list[str]:
     clients = round_metrics.get("clients", {})
     selected = int(clients.get("selected", 0)) if isinstance(clients, dict) else 0
     total = int(clients.get("total", 0)) if isinstance(clients, dict) else 0
-    pct = (100.0 * float(selected) / float(max(1, total)))
+    pct = 100.0 * float(selected) / float(max(1, total))
     lines = [
         "--- Round Summary ---",
         _entity_line("Clients:", f"selected={selected}/{total} ({pct:.2f}%)"),
@@ -629,18 +610,22 @@ def _render_round_summary_lines(round_metrics: _RoundMetricsPayload) -> List[str
     if isinstance(policy, dict) and "tau_t" in policy:
         lines.append(_entity_line("Policy:", f"tau_t={int(policy['tau_t'])}"))
     timing = round_metrics.get("timing", {})
-    if isinstance(timing, dict) and isinstance(timing.get("round_wall_time_sec"), (int, float)):
+    if isinstance(timing, dict) and isinstance(
+        timing.get("round_wall_time_sec"), (int, float)
+    ):
         lines.append(
             _entity_line("Round Time:", f"{float(timing['round_wall_time_sec']):.3f}s")
         )
 
-    def _section_parts(section: object) -> List[str]:
+    def _section_parts(section: object) -> list[str]:
         if not isinstance(section, dict):
             return []
-        parts: List[str] = []
+        parts: list[str] = []
         for label, value in section.items():
             if isinstance(value, dict) and all(k in value for k in ("avg", "std")):
-                parts.append(f"{label}: {float(value['avg']):.4f}/{float(value['std']):.4f}")
+                parts.append(
+                    f"{label}: {float(value['avg']):.4f}/{float(value['std']):.4f}"
+                )
             elif isinstance(value, (int, float)):
                 parts.append(f"{label}: {float(value):.4f}")
         return parts
@@ -677,7 +662,9 @@ def _render_round_summary_lines(round_metrics: _RoundMetricsPayload) -> List[str
         lines.append(
             _entity_line(
                 "Global Gen. Error:",
-                _join_metric_parts([f"err.: {float(round_metrics['global_gen_error']):.4f}"]),
+                _join_metric_parts(
+                    [f"err.: {float(round_metrics['global_gen_error']):.4f}"]
+                ),
             )
         )
     gen_reward = round_metrics.get("gen_reward", {})
@@ -723,22 +710,23 @@ def _render_round_summary_lines(round_metrics: _RoundMetricsPayload) -> List[str
         lines.append(_entity_line("Federated Extrema:", _join_metric_parts(parts)))
     return lines
 
+
 def _log_round(
     config: DictConfig,
     round_idx: int,
     selected_count: int,
     total_train_clients: int,
     stats,
-    round_local_steps: Optional[int] = None,
-    round_wall_time_sec: Optional[float] = None,
-    global_gen_error: Optional[float] = None,
-    global_eval_metrics: Optional[Dict[str, float]] = None,
-    federated_eval_metrics: Optional[Dict[str, float]] = None,
-    federated_eval_in_metrics: Optional[Dict[str, float]] = None,
-    federated_eval_out_metrics: Optional[Dict[str, float]] = None,
+    round_local_steps: int | None = None,
+    round_wall_time_sec: float | None = None,
+    global_gen_error: float | None = None,
+    global_eval_metrics: dict[str, float] | None = None,
+    federated_eval_metrics: dict[str, float] | None = None,
+    federated_eval_in_metrics: dict[str, float] | None = None,
+    federated_eval_out_metrics: dict[str, float] | None = None,
     track_gen_rewards: bool = False,
-    round_gen_reward: Optional[float] = None,
-    cumulative_gen_reward: Optional[float] = None,
+    round_gen_reward: float | None = None,
+    cumulative_gen_reward: float | None = None,
     logger: ServerAgentFileLogger | None = None,
     tracker=None,
 ):
@@ -767,7 +755,10 @@ def _log_round(
     if tracker is not None:
         tracker.log_metrics(step=round_idx, metrics=round_metrics)
 
-def _new_server_logger(config: DictConfig, mode: str, run_id: str) -> ServerAgentFileLogger:
+
+def _new_server_logger(
+    config: DictConfig, mode: str, run_id: str
+) -> ServerAgentFileLogger:
     run_dir = _resolve_run_dir_path(config, run_id)
     mode_text = str(mode).strip().lower()
     file_name = "server.log"
@@ -781,11 +772,14 @@ def _new_server_logger(config: DictConfig, mode: str, run_id: str) -> ServerAgen
         experiment_id=str(_cfg_get(config, "experiment.name", "appfl-sim")),
     )
 
+
 def _resolve_run_log_dir(config: DictConfig, run_id: str) -> str:
     return str(_resolve_run_dir_path(config, run_id))
 
+
 def _resolve_run_id() -> str:
     return f"{datetime.now().strftime('%y%m%d%H%M%S')}_{os.getpid()}"
+
 
 def _start_summary_lines(
     mode: str,
@@ -795,10 +789,10 @@ def _start_summary_lines(
     holdout_client_count: int,
     num_sampled_clients: int,
 ) -> str:
-    sampled_pct = (
-        100.0 * float(num_sampled_clients) / float(max(1, train_client_count))
+    sampled_pct = 100.0 * float(num_sampled_clients) / float(max(1, train_client_count))
+    eval_scheme = (
+        str(_cfg_get(config, "eval.configs.scheme", "dataset")).strip().lower()
     )
-    eval_scheme = str(_cfg_get(config, "eval.configs.scheme", "dataset")).strip().lower()
     lines = [
         f"Start {mode.upper()} simulation",
         f"  * Experiment: {_cfg_get(config, 'experiment.name', 'appfl-sim')}",

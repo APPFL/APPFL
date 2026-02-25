@@ -16,7 +16,9 @@ class SwtsScheduler(FedavgScheduler):
     def __init__(
         self, scheduler_configs: DictConfig, aggregator: BaseAggregator, logger: Any
     ):
-        super().__init__(scheduler_configs=scheduler_configs, aggregator=aggregator, logger=logger)
+        super().__init__(
+            scheduler_configs=scheduler_configs, aggregator=aggregator, logger=logger
+        )
         self.action_space: List[int] = sorted(
             {
                 int(x)
@@ -30,7 +32,9 @@ class SwtsScheduler(FedavgScheduler):
         self.likelihood_variance = max(
             1e-8, float(scheduler_configs.get("likelihood_variance", 1.0))
         )
-        self.prior_variance = max(1e-8, float(scheduler_configs.get("prior_variance", 1.0)))
+        self.prior_variance = max(
+            1e-8, float(scheduler_configs.get("prior_variance", 1.0))
+        )
         self.history: Deque[Tuple[int, float]] = deque(maxlen=self.window_size)
         self.pending_actions: Deque[int] = deque()
         self.prev_pre_val_error: Optional[float] = None
@@ -47,9 +51,13 @@ class SwtsScheduler(FedavgScheduler):
             rewards = [float(r) for a, r in self.history if int(a) == int(action)]
             n = len(rewards)
             reward_sum = float(sum(rewards))
-            post_var = 1.0 / ((1.0 / self.prior_variance) + (n / self.likelihood_variance))
+            post_var = 1.0 / (
+                (1.0 / self.prior_variance) + (n / self.likelihood_variance)
+            )
             post_mean = (post_var / self.likelihood_variance) * reward_sum
-            samples[action] = float(self._rng.normal(loc=post_mean, scale=np.sqrt(post_var)))
+            samples[action] = float(
+                self._rng.normal(loc=post_mean, scale=np.sqrt(post_var))
+            )
 
         chosen = max(self.action_space, key=lambda a: samples[int(a)])
         chosen = int(chosen)

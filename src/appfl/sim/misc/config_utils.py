@@ -1,8 +1,7 @@
 from __future__ import annotations
 import re
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -27,11 +26,12 @@ def _default_config_path() -> Path:
     package_root = Path(__file__).resolve().parent.parent
     return package_root / "config" / "examples" / "simulation.yaml"
 
+
 def _resolve_config_path(config_path: str) -> Path:
     raw = Path(config_path).expanduser()
     package_root = Path(__file__).resolve().parent.parent
 
-    candidates: List[Path] = []
+    candidates: list[Path] = []
     candidates.append(raw)
     if not raw.is_absolute():
         candidates.append(Path.cwd() / raw)
@@ -47,7 +47,7 @@ def _resolve_config_path(config_path: str) -> Path:
             candidates.append(package_root / raw_posix)
 
     seen = set()
-    unique_candidates: List[Path] = []
+    unique_candidates: list[Path] = []
     for path in candidates:
         key = str(path.resolve(strict=False))
         if key in seen:
@@ -63,6 +63,7 @@ def _resolve_config_path(config_path: str) -> Path:
     raise FileNotFoundError(
         f"Config file not found for '{config_path}'. Tried:\n{tried}"
     )
+
 
 def _create_instance_from_file(file_path, class_name=None, *args, **kwargs):
     if class_name is None:
@@ -102,6 +103,7 @@ def _ensure_model_cfg(cfg: DictConfig) -> None:
     if _cfg_get(cfg, "privacy.kwargs", None) is None:
         _cfg_set(cfg, "privacy.kwargs", OmegaConf.create({}))
 
+
 def _cfg_bool(config: DictConfig, key: str, default: bool) -> bool:
     value = _cfg_get(config, key, default)
     if isinstance(value, bool):
@@ -120,8 +122,8 @@ def _build_train_cfg(
     config: DictConfig,
     device: str,
     run_log_dir: str,
-    num_workers_override: Optional[int] = None,
-) -> Dict:
+    num_workers_override: int | None = None,
+) -> dict:
     if num_workers_override is None:
         num_workers = int(_cfg_get(config, "train.num_workers", 0))
     else:
@@ -129,7 +131,9 @@ def _build_train_cfg(
     device_text = str(device).strip().lower()
     default_pin_memory = device_text.startswith("cuda")
     pin_memory = _cfg_bool(config, "train.pin_memory", default_pin_memory)
-    update_base_raw = str(_cfg_get(config, "train.update_base", "epoch")).strip().lower()
+    update_base_raw = (
+        str(_cfg_get(config, "train.update_base", "epoch")).strip().lower()
+    )
     if update_base_raw == "iter":
         mode = "step"
         local_iters = int(_cfg_get(config, "train.local_iters", 1))
@@ -146,7 +150,11 @@ def _build_train_cfg(
         "batch_size": int(_cfg_get(config, "train.batch_size", 32)),
         "train_data_shuffle": _cfg_bool(config, "train.shuffle", True),
         "eval_batch_size": int(
-            _cfg_get(config, "train.eval_batch_size", _cfg_get(config, "train.batch_size", 32))
+            _cfg_get(
+                config,
+                "train.eval_batch_size",
+                _cfg_get(config, "train.batch_size", 32),
+            )
         ),
         "num_workers": int(num_workers),
         "train_pin_memory": _cfg_bool(config, "train.train_pin_memory", pin_memory),
@@ -154,7 +162,9 @@ def _build_train_cfg(
         "dataloader_persistent_workers": _cfg_bool(
             config, "train.dataloader_persistent_workers", False
         ),
-        "dataloader_prefetch_factor": int(_cfg_get(config, "train.dataloader_prefetch_factor", 2)),
+        "dataloader_prefetch_factor": int(
+            _cfg_get(config, "train.dataloader_prefetch_factor", 2)
+        ),
         "optimizer": {
             "name": str(_cfg_get(config, "optimizer.name", "SGD")),
             "backend": str(_cfg_get(config, "optimizer.backend", "auto")),
@@ -192,17 +202,16 @@ def _build_train_cfg(
         train_cfg["num_local_steps"] = local_iters
     return train_cfg
 
+
 def _resolve_client_logging_policy(
     config: DictConfig,
     num_clients: int,
     num_sampled_clients: int,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     scheme = str(_cfg_get(config, "logging.type", "auto")).strip().lower()
 
     if scheme not in {"auto", "both", "server_only"}:
-        raise ValueError(
-            "logging.type must be one of: auto, both, server_only"
-        )
+        raise ValueError("logging.type must be one of: auto, both, server_only")
 
     basis_clients = max(1, int(num_sampled_clients))
 
@@ -224,6 +233,7 @@ def _resolve_client_logging_policy(
         "forced_server_only": bool(forced_server_only),
     }
 
+
 def _to_pascal_case(name: str) -> str:
     text = str(name or "").strip()
     if text == "":
@@ -234,10 +244,13 @@ def _to_pascal_case(name: str) -> str:
         return text
     return "".join(c[:1].upper() + c[1:] for c in chunks)
 
+
 def _module_has_class(module_path: str, class_name: str) -> bool:
     if str(class_name).strip() == "":
         return False
     try:
+        import importlib
+
         mod = importlib.import_module(module_path)
     except Exception:
         return False
@@ -283,7 +296,8 @@ def _module_has_class(module_path: str, class_name: str) -> bool:
             return True
     return False
 
-def _resolve_algorithm_components(config: DictConfig) -> Dict[str, Any]:
+
+def _resolve_algorithm_components(config: DictConfig) -> dict[str, Any]:
     algorithm = str(_cfg_get(config, "algorithm.name", "fedavg")).strip().lower()
     explicit_aggregator = str(_cfg_get(config, "algorithm.aggregator", "")).strip()
     explicit_scheduler = str(_cfg_get(config, "algorithm.scheduler", "")).strip()
@@ -314,8 +328,12 @@ def _resolve_algorithm_components(config: DictConfig) -> Dict[str, Any]:
     aggregator_kwargs = (
         _cfg_to_dict(agg_kwargs_raw) if agg_kwargs_raw is not None else {}
     )
-    scheduler_kwargs = _cfg_to_dict(sched_kwargs_raw) if sched_kwargs_raw is not None else {}
-    trainer_kwargs = _cfg_to_dict(trainer_kwargs_raw) if trainer_kwargs_raw is not None else {}
+    scheduler_kwargs = (
+        _cfg_to_dict(sched_kwargs_raw) if sched_kwargs_raw is not None else {}
+    )
+    trainer_kwargs = (
+        _cfg_to_dict(trainer_kwargs_raw) if trainer_kwargs_raw is not None else {}
+    )
 
     if aggregator_name == "FedavgAggregator":
         aggregator_kwargs.setdefault("client_weights_mode", "sample_ratio")
@@ -330,6 +348,7 @@ def _resolve_algorithm_components(config: DictConfig) -> Dict[str, Any]:
         "trainer_kwargs": trainer_kwargs,
     }
 
+
 def _allow_reusable_on_demand_pool(
     config: DictConfig,
     *,
@@ -340,12 +359,15 @@ def _allow_reusable_on_demand_pool(
     if _cfg_bool(config, "secure_aggregation.use_sec_agg", False):
         return False
     if _cfg_bool(config, "privacy.use_dp", False):
-        mechanism = str(_cfg_get(config, "privacy.mechanism", "laplace")).strip().lower()
+        mechanism = (
+            str(_cfg_get(config, "privacy.mechanism", "laplace")).strip().lower()
+        )
         if mechanism == "opacus":
             return False
     return True
 
-def _merge_runtime_cfg(config: DictConfig, loader_args: Any) -> Dict:
+
+def _merge_runtime_cfg(config: DictConfig, loader_args: Any) -> dict:
     runtime_cfg = _cfg_to_dict(config)
     if isinstance(loader_args, dict):
         runtime_cfg.update(loader_args)
@@ -355,6 +377,7 @@ def _merge_runtime_cfg(config: DictConfig, loader_args: Any) -> Dict:
         _cfg_get(config, "train.num_clients", runtime_cfg.get("num_clients", 0))
     )
     return runtime_cfg
+
 
 def _parse_cli_tokens(argv: list[str]) -> tuple[str | None, str | None, list[str]]:
     config_path = None

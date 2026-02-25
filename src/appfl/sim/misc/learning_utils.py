@@ -1,6 +1,5 @@
 from __future__ import annotations
 import logging
-from typing import Dict, List, Optional
 import numpy as np
 import torch
 from omegaconf import DictConfig
@@ -22,6 +21,7 @@ def _should_eval_round(round_idx: int, every: int, num_rounds: int) -> bool:
         # Non-positive cadence disables periodic checkpoints and keeps only final-round eval.
         return round_idx == int(num_rounds)
     return round_idx % every_i == 0 or round_idx == int(num_rounds)
+
 
 def _weighted_global_stat(
     stats: dict,
@@ -55,8 +55,11 @@ def _adapt_bandit_policy(server, pre_val_error: float):
     try:
         return scheduler.adapt(pre_val_error=float(pre_val_error))
     except (TypeError, ValueError, AttributeError) as exc:
-        LOGGER.debug("Scheduler.adapt failed for pre_val_error=%s: %s", pre_val_error, exc)
+        LOGGER.debug(
+            "Scheduler.adapt failed for pre_val_error=%s: %s", pre_val_error, exc
+        )
         return None
+
 
 def _resolve_model_output(output):
     if torch.is_tensor(output):
@@ -75,15 +78,16 @@ def _resolve_model_output(output):
                 return value
     raise TypeError("Model output is not a tensor-like object.")
 
+
 def _evaluate_dataset_direct(
     model,
     dataset,
     device: str,
     loss_fn,
-    eval_metric_names: List[str],
+    eval_metric_names: list[str],
     batch_size: int,
     num_workers: int,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     if dataset is None:
         return {"loss": -1.0, "num_examples": 0, "metrics": {}}
     try:
@@ -116,13 +120,14 @@ def _evaluate_dataset_direct(
     stats = manager.aggregate(total_len=total_examples)
     return stats
 
+
 def _build_federated_eval_plan(
     config: DictConfig,
     round_idx: int,
     num_rounds: int,
-    train_client_ids: List[int],
-    holdout_client_ids: List[int],
-) -> Dict[str, List[int] | str | bool]:
+    train_client_ids: list[int],
+    holdout_client_ids: list[int],
+) -> dict[str, list[int] | str | bool]:
     scheme = str(_cfg_get(config, "eval.configs.scheme", "dataset")).strip().lower()
     checkpoint = _should_eval_round(
         round_idx,
@@ -157,7 +162,8 @@ def _build_federated_eval_plan(
         "out_ids": [],
     }
 
-def _aggregate_eval_stats(stats: Dict[int, Dict]) -> Optional[Dict[str, float]]:
+
+def _aggregate_eval_stats(stats: dict[int, dict]) -> dict[str, float] | None:
     if not stats:
         return None
     total_examples = sum(int(v.get("num_examples", 0)) for v in stats.values())
@@ -174,7 +180,7 @@ def _aggregate_eval_stats(stats: Dict[int, Dict]) -> Optional[Dict[str, float]]:
         }
     )
 
-    result: Dict[str, float] = {
+    result: dict[str, float] = {
         "num_examples": int(max(total_examples, 0)),
         "num_clients": int(len(stats)),
     }
@@ -212,24 +218,27 @@ def _aggregate_eval_stats(stats: Dict[int, Dict]) -> Optional[Dict[str, float]]:
     result.setdefault("loss_max", result["loss"])
     return result
 
+
 def _run_federated_eval_serial(
     config: DictConfig,
     model,
     client_datasets,
     device: str,
     global_state,
-    eval_client_ids: List[int],
+    eval_client_ids: list[int],
     round_idx: int,
     eval_tag: str = "federated",
     eval_split: str = "test",
-    eval_num_workers_override: Optional[int] = None,
-) -> Optional[Dict[str, float]]:
+    eval_num_workers_override: int | None = None,
+) -> dict[str, float] | None:
     if not eval_client_ids:
         return None
     eval_loss_fn = build_loss_from_config(config)
     eval_metric_names = parse_metric_names(_cfg_get(config, "eval.metrics", ["acc1"]))
     eval_batch_size = int(
-        _cfg_get(config, "train.eval_batch_size", _cfg_get(config, "train.batch_size", 32))
+        _cfg_get(
+            config, "train.eval_batch_size", _cfg_get(config, "train.batch_size", 32)
+        )
     )
     eval_workers = (
         int(_cfg_get(config, "train.num_workers", 0))
@@ -249,7 +258,7 @@ def _run_federated_eval_serial(
         total_clients=len(eval_client_ids),
         phase="eval",
     )
-    eval_stats: Dict[int, Dict] = {}
+    eval_stats: dict[int, dict] = {}
     progress = _new_progress(
         total=len(eval_client_ids),
         desc=f"Server (Round {int(round_idx):04d}) | Evaluation ({str(eval_tag).replace('-', ' ').title()}.)",

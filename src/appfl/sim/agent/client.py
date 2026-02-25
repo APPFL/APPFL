@@ -6,7 +6,7 @@ import torch
 import importlib
 from appfl.sim.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
-from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
+from typing import OrderedDict, Any
 from appfl.sim.logger import ClientAgentFileLogger
 from appfl.sim.misc.config_utils import (
     _create_instance_from_file,
@@ -40,6 +40,7 @@ class _NullClientLogger:
 try:
     import wandb
 except Exception:  # pragma: no cover
+
     class _WandbStub:
         run = None
 
@@ -76,7 +77,7 @@ class ClientAgent:
     """
 
     def __init__(
-        self, client_agent_config: Optional[DictConfig | Dict[str, Any]] = None, **kwargs
+        self, client_agent_config: DictConfig | dict[str, Any] | None = None, **kwargs
     ) -> None:
         del kwargs
         if client_agent_config is None:
@@ -86,7 +87,7 @@ class ClientAgent:
         else:
             self.client_agent_config = OmegaConf.create(client_agent_config)
         if "client_id" in self.client_agent_config:
-            self.client_id: Optional[str] = str(self.client_agent_config.client_id)
+            self.client_id: str | None = str(self.client_agent_config.client_id)
         else:
             self.client_id = str(uuid.uuid4())
         self.logger = None
@@ -98,7 +99,9 @@ class ClientAgent:
         self.val_dataset = None
         self.test_dataset = None
         self._ensure_config_contract()
-        self.optimize_memory = bool(self.client_agent_config.get("optimize_memory", True))
+        self.optimize_memory = bool(
+            self.client_agent_config.get("optimize_memory", True)
+        )
         self._create_logger()
         self._init_wandb()
         self._load_model()
@@ -108,7 +111,11 @@ class ClientAgent:
         self._load_trainer()
 
     def _ensure_config_contract(self) -> None:
-        missing = [name for name in ("train_configs", "model_configs", "data_configs") if name not in self.client_agent_config]
+        missing = [
+            name
+            for name in ("train_configs", "model_configs", "data_configs")
+            if name not in self.client_agent_config
+        ]
         if missing:
             raise ValueError(
                 f"ClientAgentConfig is missing required sections: {', '.join(missing)}"
@@ -134,7 +141,7 @@ class ClientAgent:
 
     def get_parameters(
         self,
-    ) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
+    ) -> dict | OrderedDict | bytes | tuple[dict | OrderedDict | bytes, dict]:
         """Return parameters for communication"""
         params = self.trainer.get_parameters()
         if isinstance(params, tuple):
@@ -156,7 +163,7 @@ class ClientAgent:
         if self.optimize_memory:
             gc.collect()
 
-    def evaluate(self, split: str = "test", **kwargs) -> Dict:
+    def evaluate(self, split: str = "test", **kwargs) -> dict:
         if self.trainer is None:
             return {"loss": -1.0, "num_examples": 0, "metrics": {}}
         if not hasattr(self.trainer, "evaluate"):
@@ -176,12 +183,8 @@ class ClientAgent:
         if not train_cfg.get("client_logging_enabled", True):
             self.logger = _NullClientLogger()
             return
-        kwargs["file_dir"] = train_cfg.get(
-            "logging_output_dirname", "./logs"
-        )
-        kwargs["file_name"] = train_cfg.get(
-            "logging_output_filename", "log"
-        )
+        kwargs["file_dir"] = train_cfg.get("logging_output_dirname", "./logs")
+        kwargs["file_name"] = train_cfg.get("logging_output_filename", "log")
         self.logger = ClientAgentFileLogger(**kwargs)
 
     def _load_data(self) -> None:

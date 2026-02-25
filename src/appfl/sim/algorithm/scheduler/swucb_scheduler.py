@@ -17,7 +17,9 @@ class SwucbScheduler(FedavgScheduler):
     def __init__(
         self, scheduler_configs: DictConfig, aggregator: BaseAggregator, logger: Any
     ):
-        super().__init__(scheduler_configs=scheduler_configs, aggregator=aggregator, logger=logger)
+        super().__init__(
+            scheduler_configs=scheduler_configs, aggregator=aggregator, logger=logger
+        )
         self.action_space: List[int] = sorted(
             {
                 int(x)
@@ -55,13 +57,15 @@ class SwucbScheduler(FedavgScheduler):
             for action in self.action_space:
                 n = max(1, counts[action])
                 mean_reward = sums[action] / n
-                ucb = self.exploration_alpha * math.sqrt(max(0.0, math.log(float(self.current_round))) / n)
+                ucb = self.exploration_alpha * math.sqrt(
+                    max(0.0, math.log(float(self.current_round))) / n
+                )
                 score = mean_reward + ucb
                 if score > best_score:
                     best_score = score
                     chosen = int(action)
             if chosen is None:
-               chosen = self._rng.choice(self.action_space)
+                chosen = self._rng.choice(self.action_space)
 
         self.pending_actions.append(chosen)
         self.last_selected_action = int(chosen)

@@ -34,7 +34,11 @@ class FedavgAggregator(BaseAggregator):
         self.model = model
         self.logger = logger
         self.aggregator_configs = aggregator_configs
-        raw_mode = str(aggregator_configs.get("client_weights_mode", "sample_ratio")).strip().lower()
+        raw_mode = (
+            str(aggregator_configs.get("client_weights_mode", "sample_ratio"))
+            .strip()
+            .lower()
+        )
         if raw_mode not in {"uniform", "sample_ratio", "adaptive"}:
             raw_mode = "sample_ratio"
         self.client_weights_mode = raw_mode
@@ -121,7 +125,10 @@ class FedavgAggregator(BaseAggregator):
             weighted_sum = None
             for client_id, p in payloads:
                 flat = p["flat"].to(device)
-                if self.client_weights_mode in {"sample_ratio", "adaptive"} and total_examples > 0:
+                if (
+                    self.client_weights_mode in {"sample_ratio", "adaptive"}
+                    and total_examples > 0
+                ):
                     w = float(p["num_examples"]) / float(total_examples)
                 else:
                     w = 1.0 / len(payloads)

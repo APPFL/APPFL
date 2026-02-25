@@ -2,7 +2,7 @@ from __future__ import annotations
 import copy
 import importlib
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
@@ -27,6 +27,7 @@ LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from appfl.sim.agent import ClientAgent, ServerAgent
 
+
 def _select_round_local_steps(server, round_idx: int):
     scheduler = getattr(server, "scheduler", None)
     if scheduler is None or not hasattr(scheduler, "pull"):
@@ -37,20 +38,19 @@ def _select_round_local_steps(server, round_idx: int):
         LOGGER.debug("Scheduler.pull failed to provide integer local steps: %s", exc)
         return None
 
+
 def _run_local_client_update(
     client,
     *,
     global_state,
     round_idx: int,
-    round_local_steps: Optional[int],
+    round_local_steps: int | None,
 ):
     client.load_parameters(global_state)
     if round_local_steps is None:
         train_result = client.train(round=round_idx)
     else:
-        train_result = client.train(
-            round=round_idx, local_steps=int(round_local_steps)
-        )
+        train_result = client.train(round=round_idx, local_steps=int(round_local_steps))
     uploaded = client.get_parameters()
     state = uploaded[0] if isinstance(uploaded, tuple) else uploaded
     return train_result, state
@@ -59,8 +59,8 @@ def _run_local_client_update(
 def _collect_local_training_payload(
     *,
     selected_client_ids: Sequence[int],
-    persistent_clients: Optional[Sequence],
-    worker_pool: Optional[Sequence],
+    persistent_clients: Sequence | None,
+    worker_pool: Sequence | None,
     config: DictConfig,
     model,
     on_demand_model,
@@ -70,12 +70,12 @@ def _collect_local_training_payload(
     client_logging_enabled: bool,
     trainer_name: str,
     round_idx: int,
-    round_local_steps: Optional[int],
+    round_local_steps: int | None,
     global_state,
     chunk_size: int,
-    num_workers_override: Optional[int],
-) -> Dict[int, Dict[str, Any]]:
-    local_payload: Dict[int, Dict[str, Any]] = {}
+    num_workers_override: int | None,
+) -> dict[int, dict[str, Any]]:
+    local_payload: dict[int, dict[str, Any]] = {}
     if persistent_clients is not None:
         selected_set = {int(cid) for cid in selected_client_ids}
         for client in persistent_clients:
@@ -134,10 +134,10 @@ def _collect_local_training_payload(
     return local_payload
 
 
-def _payload_to_updates(local_payload: Dict[int, Dict[str, Any]]):
-    updates: Dict[int, Any] = {}
-    sample_sizes: Dict[int, int] = {}
-    stats: Dict[int, Dict[str, Any]] = {}
+def _payload_to_updates(local_payload: dict[int, dict[str, Any]]):
+    updates: dict[int, Any] = {}
+    sample_sizes: dict[int, int] = {}
+    stats: dict[int, dict[str, Any]] = {}
     for cid, payload_item in local_payload.items():
         state = payload_item.get("state")
         if isinstance(state, tuple):
@@ -148,7 +148,9 @@ def _payload_to_updates(local_payload: Dict[int, Dict[str, Any]]):
     return updates, sample_sizes, stats
 
 
-def _resolve_runtime_policies(config: DictConfig, runtime_cfg: Dict[str, Any]) -> Dict[str, Any]:
+def _resolve_runtime_policies(
+    config: DictConfig, runtime_cfg: dict[str, Any]
+) -> dict[str, Any]:
     num_clients = int(runtime_cfg["num_clients"])
     algorithm_components = _resolve_algorithm_components(config)
     state_policy = {
@@ -174,11 +176,12 @@ def _resolve_runtime_policies(config: DictConfig, runtime_cfg: Dict[str, Any]) -
         "logging_policy": logging_policy,
     }
 
+
 def _create_aggregator_instance(
     aggregator_name: str,
-    model: Optional[Any],
+    model: Any | None,
     aggregator_config: DictConfig,
-    logger: Optional[Any] = None,
+    logger: Any | None = None,
 ):
     try:
         appfl_module = importlib.import_module("appfl.sim.algorithm.aggregator")
@@ -187,11 +190,12 @@ def _create_aggregator_instance(
     except AttributeError:
         raise ValueError(f"Invalid aggregator name: {aggregator_name}")
 
+
 def _create_scheduler_instance(
     scheduler_name: str,
     scheduler_config: DictConfig,
-    aggregator: Optional[Any] = None,
-    logger: Optional[Any] = None,
+    aggregator: Any | None = None,
+    logger: Any | None = None,
 ):
     try:
         appfl_module = importlib.import_module("appfl.sim.algorithm.scheduler")
@@ -200,12 +204,13 @@ def _create_scheduler_instance(
     except AttributeError:
         raise ValueError(f"Invalid scheduler name: {scheduler_name}")
 
+
 def _rebind_client_for_on_demand_job(
     client: ClientAgent,
     *,
     client_id: int,
     client_datasets: Sequence,
-    num_workers_override: Optional[int] = None,
+    num_workers_override: int | None = None,
 ) -> None:
     train_ds, val_ds, test_ds = _normalize_client_tuple(client_datasets[int(client_id)])
 
@@ -276,6 +281,7 @@ def _rebind_client_for_on_demand_job(
         else None
     )
 
+
 def _build_on_demand_worker_pool(
     config: DictConfig,
     model,
@@ -286,15 +292,15 @@ def _build_on_demand_worker_pool(
     client_logging_enabled: bool,
     trainer_name: str,
     pool_size: int,
-    trainer_kwargs: Optional[Dict[str, Any]] = None,
-    num_workers_override: Optional[int] = None,
-) -> List[ClientAgent]:
+    trainer_kwargs: dict[str, Any] | None = None,
+    num_workers_override: int | None = None,
+) -> list[ClientAgent]:
     if int(pool_size) <= 0:
         return []
     available_ids = [int(cid) for cid in local_client_ids]
     if not available_ids:
         return []
-    ids: List[int] = []
+    ids: list[int] = []
     for idx in range(int(pool_size)):
         ids.append(int(available_ids[idx % len(available_ids)]))
     return _build_clients(
@@ -311,6 +317,7 @@ def _build_on_demand_worker_pool(
         num_workers_override=num_workers_override,
     )
 
+
 def _build_clients(
     config: DictConfig,
     model,
@@ -320,9 +327,9 @@ def _build_clients(
     run_log_dir: str,
     client_logging_enabled: bool = True,
     trainer_name: str = "FedavgTrainer",
-    trainer_kwargs: Optional[Dict[str, Any]] = None,
+    trainer_kwargs: dict[str, Any] | None = None,
     share_model: bool = False,
-    num_workers_override: Optional[int] = None,
+    num_workers_override: int | None = None,
 ):
     from appfl.sim.agent import ClientAgent
 
@@ -360,17 +367,16 @@ def _build_clients(
         client.trainer = None
         client._load_trainer()
         client.id = int(cid)
-        clients.append(
-            client
-        )
+        clients.append(client)
     return clients
+
 
 def _build_server(
     config: DictConfig,
-    runtime_cfg: Dict,
+    runtime_cfg: dict,
     model,
     server_dataset,
-    algorithm_components: Optional[Dict[str, Any]] = None,
+    algorithm_components: dict[str, Any] | None = None,
 ) -> ServerAgent:
     from appfl.sim.agent import ServerAgent
 
@@ -397,10 +403,14 @@ def _build_server(
                 "num_clients": num_clients,
                 "num_sampled_clients": int(num_sampled_clients),
                 "device": str(_cfg_get(config, "experiment.server_device", "cpu")),
-                "eval_show_progress": _cfg_bool(config, "eval.show_eval_progress", True),
+                "eval_show_progress": _cfg_bool(
+                    config, "eval.show_eval_progress", True
+                ),
                 "eval_batch_size": int(
                     _cfg_get(
-                        config, "train.eval_batch_size", _cfg_get(config, "train.batch_size", 32)
+                        config,
+                        "train.eval_batch_size",
+                        _cfg_get(config, "train.batch_size", 32),
                     )
                 ),
                 "num_workers": int(_cfg_get(config, "train.num_workers", 0)),

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from omegaconf import DictConfig
 
@@ -13,7 +13,7 @@ class PrivacyFutureTrainer(BaseTrainer):
     def __init__(
         self,
         *args,
-        train_configs: Optional[DictConfig] = None,
+        train_configs: DictConfig | None = None,
         **kwargs,
     ) -> None:
         del args, kwargs, train_configs
@@ -21,6 +21,6 @@ class PrivacyFutureTrainer(BaseTrainer):
             "PrivacyFutureTrainer is a placeholder. DP/Secure Aggregation paths are intentionally excluded from FedavgTrainer."
         )
 
-    def train(self, **kwargs) -> Dict[str, Any]:
+    def train(self, **kwargs) -> dict[str, Any]:
         del kwargs
         raise NotImplementedError("PrivacyFutureTrainer is not implemented yet.")

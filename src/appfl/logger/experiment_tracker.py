@@ -4,7 +4,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 from appfl.logger.utils import _remap_server_wandb_payload
@@ -55,9 +55,7 @@ def _extract_tracker_config(config: DictConfig | dict) -> TrackerConfig:
         wandb_tags = [str(tag).strip() for tag in wandb_tags_cfg if str(tag).strip()]
     elif isinstance(wandb_tags_cfg, str):
         wandb_tags = [
-            token.strip()
-            for token in wandb_tags_cfg.split(",")
-            if token.strip()
+            token.strip() for token in wandb_tags_cfg.split(",") if token.strip()
         ]
     else:
         wandb_tags = None
@@ -190,12 +188,16 @@ class ExperimentTracker:
         return str(value)
 
     @staticmethod
-    def _flatten_numeric_metrics(metrics: Dict[str, Any], prefix: str = "") -> Dict[str, float]:
-        flat: Dict[str, float] = {}
+    def _flatten_numeric_metrics(
+        metrics: dict[str, Any], prefix: str = ""
+    ) -> dict[str, float]:
+        flat: dict[str, float] = {}
         for key, val in metrics.items():
             name = f"{prefix}/{key}" if prefix else str(key)
             if isinstance(val, dict):
-                flat.update(ExperimentTracker._flatten_numeric_metrics(val, prefix=name))
+                flat.update(
+                    ExperimentTracker._flatten_numeric_metrics(val, prefix=name)
+                )
                 continue
             if isinstance(val, (int, float)):
                 flat[name] = float(val)
@@ -209,7 +211,7 @@ class ExperimentTracker:
                     continue
         return flat
 
-    def log_metrics(self, step: int, metrics: Dict[str, Any]) -> None:
+    def log_metrics(self, step: int, metrics: dict[str, Any]) -> None:
         if not metrics:
             return
         if self.backend in {"none", "file", "console"}:

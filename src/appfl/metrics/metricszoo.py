@@ -64,13 +64,14 @@ class Acc1(BaseMetric):
             labels = scores.argmax(-1).numpy()
         else:
             scores = _binary_probs_from_logits(scores)
-            if self._use_youdenj: # binary - use Youden's J to determine a label
+            if self._use_youdenj:  # binary - use Youden's J to determine a label
                 fpr, tpr, thresholds = roc_curve(answers, scores)
                 cutoff = thresholds[np.argmax(tpr - fpr)]
             else:
                 cutoff = 0.5
             labels = np.where(scores > cutoff, 1, 0)
         return accuracy_score(answers, labels)
+
 
 class Acc5(BaseMetric):
     def __init__(self):
@@ -89,6 +90,7 @@ class Acc5(BaseMetric):
         num_classes = scores.shape[-1]
         k = min(5, num_classes)
         return top_k_accuracy_score(answers, scores, k=k, labels=np.arange(num_classes))
+
 
 class Auroc(BaseMetric):
     def __init__(self):
@@ -116,7 +118,8 @@ class Auroc(BaseMetric):
         probs = _binary_probs_from_logits(scores)
         return roc_auc_score(answers, probs)
 
-class Auprc(BaseMetric): # only for binary classification
+
+class Auprc(BaseMetric):  # only for binary classification
     def __init__(self):
         self.scores = []
         self.answers = []
@@ -129,7 +132,8 @@ class Auprc(BaseMetric): # only for binary classification
     def summarize(self):
         scores = _binary_probs_from_logits(torch.cat(self.scores))
         answers = _flatten_targets(torch.cat(self.answers))
-        return average_precision_score(answers, scores, average='weighted')
+        return average_precision_score(answers, scores, average="weighted")
+
 
 class Youdenj(BaseMetric):  # only for binary classification
     def __init__(self):
@@ -146,6 +150,7 @@ class Youdenj(BaseMetric):  # only for binary classification
         answers = _flatten_targets(torch.cat(self.answers))
         fpr, tpr, thresholds = roc_curve(answers, scores)
         return float(thresholds[np.argmax(tpr - fpr)])
+
 
 class F1(BaseMetric):
     def __init__(self):
@@ -166,13 +171,14 @@ class F1(BaseMetric):
             labels = scores.argmax(-1).numpy()
         else:
             scores = _binary_probs_from_logits(scores)
-            if self._use_youdenj: # binary - use Youden's J to determine a label
+            if self._use_youdenj:  # binary - use Youden's J to determine a label
                 fpr, tpr, thresholds = roc_curve(answers, scores)
                 cutoff = thresholds[np.argmax(tpr - fpr)]
             else:
                 cutoff = 0.5
             labels = np.where(scores >= cutoff, 1, 0)
-        return f1_score(answers, labels, average='weighted', zero_division=0)
+        return f1_score(answers, labels, average="weighted", zero_division=0)
+
 
 class Precision(BaseMetric):
     def __init__(self):
@@ -193,13 +199,14 @@ class Precision(BaseMetric):
             labels = scores.argmax(-1).numpy()
         else:
             scores = _binary_probs_from_logits(scores)
-            if self._use_youdenj: # binary - use Youden's J to determine a label
+            if self._use_youdenj:  # binary - use Youden's J to determine a label
                 fpr, tpr, thresholds = roc_curve(answers, scores)
                 cutoff = thresholds[np.argmax(tpr - fpr)]
             else:
                 cutoff = 0.5
             labels = np.where(scores >= cutoff, 1, 0)
-        return precision_score(answers, labels, average='weighted', zero_division=0)
+        return precision_score(answers, labels, average="weighted", zero_division=0)
+
 
 class Recall(BaseMetric):
     def __init__(self):
@@ -220,13 +227,14 @@ class Recall(BaseMetric):
             labels = scores.argmax(-1).numpy()
         else:
             scores = _binary_probs_from_logits(scores)
-            if self._use_youdenj: # binary - use Youden's J to determine a label
+            if self._use_youdenj:  # binary - use Youden's J to determine a label
                 fpr, tpr, thresholds = roc_curve(answers, scores)
                 cutoff = thresholds[np.argmax(tpr - fpr)]
             else:
                 cutoff = 0.5
             labels = np.where(scores >= cutoff, 1, 0)
-        return recall_score(answers, labels, average='weighted', zero_division=0)
+        return recall_score(answers, labels, average="weighted", zero_division=0)
+
 
 class Seqacc(BaseMetric):
     def __init__(self):
@@ -262,6 +270,7 @@ class Seqacc(BaseMetric):
             return 0.0
         return np.nan_to_num(accuracy_score(answers, labels))
 
+
 class Mse(BaseMetric):
     def __init__(self):
         self.scores = []
@@ -277,14 +286,16 @@ class Mse(BaseMetric):
         answers = torch.cat(self.answers).numpy()
         return mean_squared_error(answers, scores)
 
+
 class Rmse(Mse):
     def __init__(self):
-        super(Rmse, self).__init__()
+        super().__init__()
 
     def summarize(self):
         scores = torch.cat(self.scores).numpy()
         answers = torch.cat(self.answers).numpy()
         return mean_squared_error(answers, scores, squared=False)
+
 
 class Mae(BaseMetric):
     def __init__(self):
@@ -301,6 +312,7 @@ class Mae(BaseMetric):
         answers = torch.cat(self.answers).numpy()
         return mean_absolute_error(answers, scores)
 
+
 class Mape(BaseMetric):
     def __init__(self):
         self.scores = []
@@ -315,6 +327,7 @@ class Mape(BaseMetric):
         scores = torch.cat(self.scores).numpy()
         answers = torch.cat(self.answers).numpy()
         return mean_absolute_percentage_error(answers, scores)
+
 
 class R2(BaseMetric):
     def __init__(self):
@@ -331,6 +344,7 @@ class R2(BaseMetric):
         answers = torch.cat(self.answers).numpy()
         return r2_score(answers, scores)
 
+
 class D2(BaseMetric):
     def __init__(self):
         self.scores = []
@@ -345,6 +359,7 @@ class D2(BaseMetric):
         scores = torch.cat(self.scores).numpy()
         answers = torch.cat(self.answers).numpy()
         return d2_pinball_score(answers, scores)
+
 
 class Dice(BaseMetric):
     def __init__(self):
@@ -364,8 +379,9 @@ class Dice(BaseMetric):
         fp = scores.mul(1 - answers).sum(dim=SPATIAL_DIMENSIONS)
         fn = (1 - scores).mul(answers).sum(dim=SPATIAL_DIMENSIONS)
         dice = (tp.mul(2)).div(tp.mul(2).add(fp.add(fn).add(epsilon))).mean()
-        return torch.nan_to_num(dice, 0.).item()
-        
+        return torch.nan_to_num(dice, 0.0).item()
+
+
 class Balacc(BaseMetric):
     def __init__(self):
         self.scores = []
@@ -385,7 +401,7 @@ class Balacc(BaseMetric):
             labels = scores.argmax(dim=1).numpy()
         else:
             scores = _binary_probs_from_logits(scores)
-            if self._use_youdenj: # binary - use Youden's J to determine a label
+            if self._use_youdenj:  # binary - use Youden's J to determine a label
                 fpr, tpr, thresholds = roc_curve(answers, scores)
                 cutoff = thresholds[np.argmax(tpr - fpr)]
             else:

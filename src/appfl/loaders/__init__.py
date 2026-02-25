@@ -3,8 +3,8 @@ appfl.loaders: unified dataset loading for APPFL simulations.
 
 Requires appfl[sim] to be installed.
 
-Supported backends: torchvision, torchtext, torchaudio, medmnist,
-huggingface (hf), flamby, leaf, tff, custom, auto.
+Supported dataset backends:
+torchvision, torchtext, torchaudio, medmnist, huggingface (hf), flamby, leaf, tff, custom, auto.
 
 Usage::
 

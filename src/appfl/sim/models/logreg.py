@@ -1,10 +1,9 @@
 import torch
 
 
-
 class LogReg(torch.nn.Module):
     def __init__(self, in_features, num_layers, hidden_size, dropout, num_classes):
-        super(LogReg, self).__init__()
+        super().__init__()
         self.in_features = in_features
         self.num_classes = num_classes
 

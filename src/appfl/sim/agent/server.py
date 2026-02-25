@@ -53,20 +53,30 @@ class ServerAgent:
 
     def _ensure_config_contract(self) -> None:
         if "server_configs" not in self.server_agent_config:
-            raise ValueError("ServerAgentConfig is missing required section: server_configs")
+            raise ValueError(
+                "ServerAgentConfig is missing required section: server_configs"
+            )
         if "client_configs" not in self.server_agent_config:
-            raise ValueError("ServerAgentConfig is missing required section: client_configs")
+            raise ValueError(
+                "ServerAgentConfig is missing required section: client_configs"
+            )
         client_cfg = self.server_agent_config.client_configs
         for name in ("train_configs", "model_configs"):
             if name not in client_cfg:
-                raise ValueError(f"ServerAgentConfig.client_configs is missing required section: {name}")
+                raise ValueError(
+                    f"ServerAgentConfig.client_configs is missing required section: {name}"
+                )
             if client_cfg.get(name) is None:
-                raise ValueError(f"ServerAgentConfig.client_configs.{name} must not be None.")
+                raise ValueError(
+                    f"ServerAgentConfig.client_configs.{name} must not be None."
+                )
         if self.server_agent_config.server_configs is None:
             raise ValueError("ServerAgentConfig.server_configs must not be None.")
         for name in ("num_clients", "aggregator", "scheduler"):
             if name not in self.server_agent_config.server_configs:
-                raise ValueError(f"ServerAgentConfig.server_configs.{name} is required.")
+                raise ValueError(
+                    f"ServerAgentConfig.server_configs.{name} is required."
+                )
 
     def get_parameters(self, **kwargs):
         """
@@ -115,10 +125,7 @@ class ServerAgent:
         )
         if isinstance(aggregated, tuple):
             aggregated = aggregated[0]
-        if (
-            isinstance(aggregated, dict)
-            and self.model is not None
-        ):
+        if isinstance(aggregated, dict) and self.model is not None:
             self.model.load_state_dict(aggregated, strict=False)
         return weights
 
@@ -219,11 +226,17 @@ class ServerAgent:
 
     def _create_logger(self) -> None:
         kwargs = {}
-        if self.server_agent_config.server_configs.get("logging_output_dirname", None) is not None:
+        if (
+            self.server_agent_config.server_configs.get("logging_output_dirname", None)
+            is not None
+        ):
             kwargs["file_dir"] = (
                 self.server_agent_config.server_configs.logging_output_dirname
             )
-        if self.server_agent_config.server_configs.get("logging_output_filename", None) is not None:
+        if (
+            self.server_agent_config.server_configs.get("logging_output_filename", None)
+            is not None
+        ):
             kwargs["file_name"] = (
                 self.server_agent_config.server_configs.logging_output_filename
             )
@@ -316,9 +329,13 @@ class ServerAgent:
             self.num_clients = self.server_agent_config.server_configs.num_clients
             # Set num_clients for aggregator and scheduler
             if "scheduler_kwargs" not in self.server_agent_config.server_configs:
-                self.server_agent_config.server_configs.scheduler_kwargs = OmegaConf.create({})
+                self.server_agent_config.server_configs.scheduler_kwargs = (
+                    OmegaConf.create({})
+                )
             if "aggregator_kwargs" not in self.server_agent_config.server_configs:
-                self.server_agent_config.server_configs.aggregator_kwargs = OmegaConf.create({})
+                self.server_agent_config.server_configs.aggregator_kwargs = (
+                    OmegaConf.create({})
+                )
             self.server_agent_config.server_configs.scheduler_kwargs.num_clients = (
                 self.num_clients
             )
