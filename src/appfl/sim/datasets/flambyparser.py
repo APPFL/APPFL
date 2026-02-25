@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-from appfl.sim.datasets.common import make_load_tag, resolve_dataset_logger, resolve_fixed_pool_clients, to_namespace
+from appfl.sim.datasets.common import (
+    make_load_tag,
+    resolve_dataset_logger,
+    resolve_fixed_pool_clients,
+    to_namespace,
+)
 
 
 # Keep FLamby dataset scope aligned with AAggFF parser support.
-_SUPPORTED_FLAMBY: Dict[str, Dict[str, Any]] = {
+_SUPPORTED_FLAMBY: dict[str, dict[str, Any]] = {
     "HEART": {
         "module": "flamby.datasets.fed_heart_disease",
         "class": "FedHeartDisease",
@@ -47,7 +52,9 @@ def _canonical_flamby_key(dataset_name: str) -> str:
     return aliases.get(key, "")
 
 
-def _instantiate_flamby_dataset(ds_class, *, train: bool, center: int | None, pooled: bool):
+def _instantiate_flamby_dataset(
+    ds_class, *, train: bool, center: int | None, pooled: bool
+):
     sig = inspect.signature(ds_class.__init__)
     kwargs = {}
     if "train" in sig.parameters:
@@ -112,7 +119,7 @@ def fetch_flamby(args):
         )
     active_logger.info("[%s] selected %d centers.", tag, len(selected_centers))
 
-    client_datasets: List[Tuple[Any, Any]] = []
+    client_datasets: list[tuple[Any, Any]] = []
     for cid, center_id in enumerate(selected_centers):
         train_ds = _instantiate_flamby_dataset(
             ds_class, train=True, center=int(center_id), pooled=False
@@ -153,6 +160,8 @@ def fetch_flamby(args):
         args.input_shape = (1,)
         args.in_channels = 1
 
-    active_logger.info("[%s] finished loading (%d clients).", tag, int(args.num_clients))
+    active_logger.info(
+        "[%s] finished loading (%d clients).", tag, int(args.num_clients)
+    )
 
     return client_datasets, server_dataset, args

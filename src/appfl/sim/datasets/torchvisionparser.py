@@ -76,7 +76,11 @@ def _instantiate_dataset(dataset_cls, root: str, split: str, download: bool, tra
         return dataset_cls(**kwargs)
 
     if "split" in sig.parameters:
-        candidates = ["train", "training", "trainval"] if split == "train" else ["test", "valid", "val"]
+        candidates = (
+            ["train", "training", "trainval"]
+            if split == "train"
+            else ["test", "valid", "val"]
+        )
         for cand in candidates:
             try:
                 return dataset_cls(split=cand, **kwargs)

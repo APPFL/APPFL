@@ -100,7 +100,9 @@ def fetch_torchtext_dataset(args):
     tr_labels_raw, tr_texts = _unpack_rows(train_rows)
     te_labels_raw, te_texts = _unpack_rows(test_rows)
 
-    label_vocab = {l: i for i, l in enumerate(sorted(set(tr_labels_raw + te_labels_raw)))}
+    label_vocab = {
+        l: i for i, l in enumerate(sorted(set(tr_labels_raw + te_labels_raw)))
+    }
     tr_labels = torch.tensor([label_vocab[l] for l in tr_labels_raw], dtype=torch.long)
     te_labels = torch.tensor([label_vocab[l] for l in te_labels_raw], dtype=torch.long)
 
@@ -143,7 +145,9 @@ def fetch_torchtext_dataset(args):
         te_ids = torch.tensor([encode(t) for t in te_texts], dtype=torch.long)
         args.num_embeddings = len(vocab)
 
-    raw_train = BasicTensorDataset(tr_ids, tr_labels, name=f"[{args.dataset_name}] TRAIN")
+    raw_train = BasicTensorDataset(
+        tr_ids, tr_labels, name=f"[{args.dataset_name}] TRAIN"
+    )
     raw_test = BasicTensorDataset(te_ids, te_labels, name=f"[{args.dataset_name}] TEST")
     active_logger.info("[%s] building federated client splits.", tag)
 
@@ -157,7 +161,9 @@ def fetch_torchtext_dataset(args):
     )
     dataset_meta.num_classes = int(infer_num_classes(raw_train))
     dataset_meta.input_shape = tuple(tr_ids.shape[1:])
-    dataset_meta.seq_len = int(tr_ids.shape[1]) if tr_ids.ndim >= 2 else int(dataset_meta.seq_len)
+    dataset_meta.seq_len = (
+        int(tr_ids.shape[1]) if tr_ids.ndim >= 2 else int(dataset_meta.seq_len)
+    )
     dataset_meta.need_embedding = True
     active_logger.info(
         "[%s] finished loading (%d clients).", tag, int(dataset_meta.num_clients)
