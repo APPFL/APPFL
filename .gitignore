@@ -26,6 +26,7 @@ examples/config_gc/creds/credential.csv
 examples/resources/monai
 note
 datasets
+!src/appfl/sim/datasets/
 *output*
 trials
 examples/output*
