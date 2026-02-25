@@ -4,7 +4,7 @@ import torch
 from omegaconf import DictConfig
 from appfl.sim.algorithm.aggregator.base_aggregator import BaseAggregator
 from typing import Union, Dict, OrderedDict, Any, Optional
-from appfl.sim.privacy.secure_aggregator import SecureAggregator
+from appfl.privacy import SecureAggregator
 from appfl.sim.misc.system_utils import (
     clone_state_dict_optimized,
     safe_inplace_operation,

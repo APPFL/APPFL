@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from omegaconf import DictConfig
 from torch.utils.data import ConcatDataset, Subset, random_split
-from appfl.sim.logger import ServerAgentFileLogger
+from appfl.logger import ServerAgentFileLogger
 from appfl.sim.misc.config_utils import _cfg_get, _cfg_set
 
 

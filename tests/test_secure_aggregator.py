@@ -5,7 +5,7 @@ Tests: determinism, distribution properties, and mask cancellation.
 
 import torch
 import numpy as np
-from appfl.sim.privacy import SecureAggregator
+from appfl.privacy import SecureAggregator
 
 
 def test_determinism():

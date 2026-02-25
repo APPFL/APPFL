@@ -9,7 +9,7 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 from appfl.sim.misc.config_utils import _cfg_get
 from appfl.sim.misc.config_utils import build_loss_from_config
-from appfl.sim.metrics import parse_metric_names
+from appfl.metrics import parse_metric_names
 from appfl.sim.misc.data_utils import _resolve_client_eval_dataset
 from appfl.sim.misc.learning_utils import (
     _aggregate_eval_stats,

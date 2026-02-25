@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 from typing import Tuple, Dict, Optional, Any, List
 from torch.utils.data import Dataset, DataLoader
 from appfl.sim.algorithm.trainer.base_trainer import BaseTrainer
-from appfl.sim.metrics import MetricsManager, parse_metric_names
+from appfl.metrics import MetricsManager, parse_metric_names
 from appfl.sim.misc.config_utils import build_optimizer_from_train_cfg
 from appfl.sim.misc.metrics_utils import _attach_prefixed_metrics
 from appfl.sim.misc.logging_utils import (

@@ -1,8 +1,8 @@
 import torch
-from appfl.sim.logger import ServerAgentFileLogger
+from appfl.logger import ServerAgentFileLogger
 from appfl.sim.algorithm.scheduler import BaseScheduler
 from appfl.sim.algorithm.aggregator import BaseAggregator
-from appfl.sim.metrics import MetricsManager, parse_metric_names
+from appfl.metrics import MetricsManager, parse_metric_names
 from appfl.sim.misc.runtime_utils import (
     _create_aggregator_instance,
     _create_scheduler_instance,
@@ -240,6 +240,7 @@ class ServerAgent:
             kwargs["file_name"] = (
                 self.server_agent_config.server_configs.logging_output_filename
             )
+        kwargs["prefix"] = "appfl-sim"
         self.logger = ServerAgentFileLogger(**kwargs)
 
     def _load_model(self) -> None:

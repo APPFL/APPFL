@@ -7,7 +7,7 @@ import gc
 import numpy as np
 import torch
 from omegaconf import DictConfig
-from appfl.sim.logger import ServerAgentFileLogger
+from appfl.logger import ServerAgentFileLogger
 from appfl.sim.misc.config_utils import _cfg_get, _cfg_set
 
 # Memory utilities are shared with the main appfl package.

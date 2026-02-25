@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Callable, TypedDict
 import numpy as np
 from omegaconf import DictConfig
-from appfl.sim.logger.server_logger import ServerAgentFileLogger
+from appfl.logger import ServerAgentFileLogger
 from appfl.metrics import parse_metric_names
 from appfl.sim.misc.config_utils import _cfg_bool, _cfg_get
 from appfl.logger.utils import _remap_server_wandb_payload  # noqa: F401

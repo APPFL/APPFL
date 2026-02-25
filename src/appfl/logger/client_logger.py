@@ -38,6 +38,7 @@ class ClientAgentFileLogger:
         experiment_id: str = "",
         title_every_n: int = 20,
         show_titles: bool = True,
+        prefix: str = "appfl",
     ) -> None:
         self.title_every_n = int(title_every_n)
         self.show_titles = bool(show_titles)
@@ -70,20 +71,20 @@ class ClientAgentFileLogger:
         self.logger.setLevel(logging.DEBUG)
         self.logger.propagate = False
 
-        prefix = f"{Fore.BLUE}{Style.BRIGHT}appfl: "
+        colored_prefix = f"{Fore.BLUE}{Style.BRIGHT}{prefix}: "
         reset = Style.RESET_ALL
 
         def _make_fmt(icon: str, colored: bool) -> _RoundAwareFormatter:
             if colored:
                 if logging_id == "":
-                    pat = f"{prefix}{icon}{reset}[%(asctime)s]: %(message)s"
+                    pat = f"{colored_prefix}{icon}{reset}[%(asctime)s]: %(message)s"
                 else:
-                    pat = f"{prefix}{icon}{reset}[%(asctime)s | {client_label}%(round_part)s]: %(message)s"
+                    pat = f"{colored_prefix}{icon}{reset}[%(asctime)s | {client_label}%(round_part)s]: %(message)s"
             else:
                 if logging_id == "":
-                    pat = f"appfl: {icon}[%(asctime)s]: %(message)s"
+                    pat = f"{prefix}: {icon}[%(asctime)s]: %(message)s"
                 else:
-                    pat = f"appfl: {icon}[%(asctime)s | {client_label}%(round_part)s]: %(message)s"
+                    pat = f"{prefix}: {icon}[%(asctime)s | {client_label}%(round_part)s]: %(message)s"
             return _RoundAwareFormatter(pat)
 
         icons = {"info": "✅", "debug": "💡", "error": "❌", "warning": "❗️"}

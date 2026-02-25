@@ -7,7 +7,7 @@ import importlib
 from appfl.sim.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
 from typing import OrderedDict, Any
-from appfl.sim.logger import ClientAgentFileLogger
+from appfl.logger import ClientAgentFileLogger
 from appfl.sim.misc.config_utils import (
     _create_instance_from_file,
     _run_function_from_file,
@@ -185,6 +185,7 @@ class ClientAgent:
             return
         kwargs["file_dir"] = train_cfg.get("logging_output_dirname", "./logs")
         kwargs["file_name"] = train_cfg.get("logging_output_filename", "log")
+        kwargs["prefix"] = "appfl-sim"
         self.logger = ClientAgentFileLogger(**kwargs)
 
     def _load_data(self) -> None:

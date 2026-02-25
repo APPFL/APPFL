@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import torch
 from omegaconf import DictConfig
-from appfl.sim.metrics import MetricsManager, parse_metric_names
+from appfl.metrics import MetricsManager, parse_metric_names
 from appfl.sim.misc.config_utils import _cfg_bool
 from appfl.sim.misc.config_utils import build_loss_from_config
 from appfl.sim.misc.data_utils import _resolve_client_eval_dataset

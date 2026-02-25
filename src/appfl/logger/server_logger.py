@@ -28,7 +28,11 @@ class ServerAgentFileLogger:
     """
 
     def __init__(
-        self, file_dir: str = "", file_name: str = "", experiment_id: str = ""
+        self,
+        file_dir: str = "",
+        file_name: str = "",
+        experiment_id: str = "",
+        prefix: str = "appfl",
     ) -> None:
         if file_name != "":
             file_name += (
@@ -51,33 +55,33 @@ class ServerAgentFileLogger:
         self.logger.setLevel(logging.DEBUG)
         self.logger.propagate = False
 
-        prefix = f"{Fore.BLUE}{Style.BRIGHT}appfl: "
+        colored_prefix = f"{Fore.BLUE}{Style.BRIGHT}{prefix}: "
         reset = Style.RESET_ALL
         info_fmt = _RoundAwareFormatter(
-            f"{prefix}✅{reset}[%(asctime)s server%(round_part)s]: %(message)s"
+            f"{colored_prefix}✅{reset}[%(asctime)s server%(round_part)s]: %(message)s"
         )
         debug_fmt = _RoundAwareFormatter(
-            f"{prefix}💡{reset}[%(asctime)s server%(round_part)s]: %(message)s"
+            f"{colored_prefix}💡{reset}[%(asctime)s server%(round_part)s]: %(message)s"
         )
         error_fmt = _RoundAwareFormatter(
-            f"{prefix}❌{reset}[%(asctime)s server%(round_part)s]: %(message)s"
+            f"{colored_prefix}❌{reset}[%(asctime)s server%(round_part)s]: %(message)s"
         )
         warning_fmt = _RoundAwareFormatter(
-            f"{prefix}❗️{reset}[%(asctime)s server%(round_part)s]: %(message)s"
+            f"{colored_prefix}❗️{reset}[%(asctime)s server%(round_part)s]: %(message)s"
         )
 
         # Plain formatters for file output (no ANSI color codes)
         info_fmt_file = _RoundAwareFormatter(
-            "appfl: ✅[%(asctime)s server%(round_part)s]: %(message)s"
+            f"{prefix}: ✅[%(asctime)s server%(round_part)s]: %(message)s"
         )
         debug_fmt_file = _RoundAwareFormatter(
-            "appfl: 💡[%(asctime)s server%(round_part)s]: %(message)s"
+            f"{prefix}: 💡[%(asctime)s server%(round_part)s]: %(message)s"
         )
         error_fmt_file = _RoundAwareFormatter(
-            "appfl: ❌[%(asctime)s server%(round_part)s]: %(message)s"
+            f"{prefix}: ❌[%(asctime)s server%(round_part)s]: %(message)s"
         )
         warning_fmt_file = _RoundAwareFormatter(
-            "appfl: ❗️[%(asctime)s server%(round_part)s]: %(message)s"
+            f"{prefix}: ❗️[%(asctime)s server%(round_part)s]: %(message)s"
         )
 
         num_s_handlers = len(

@@ -11,7 +11,7 @@ from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
 from appfl.sim.agent import ClientAgent
-from appfl.sim.logger import create_experiment_tracker
+from appfl.logger import create_experiment_tracker
 from appfl.sim.loaders import load_dataset, load_model
 from appfl.sim.misc.system_utils import (
     _client_processing_chunk_size,
