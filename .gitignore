@@ -1,3 +1,5 @@
+data/
+logs/
 examples/memory_profiles
 funnel.db
 **/CLAUDE.md

@@ -15,6 +15,7 @@ from appfl.privacy import (
     make_private_with_opacus,
 )
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
+from appfl.metrics import MetricsManager, parse_metric_names
 from appfl.misc.utils import parse_device_str, apply_model_device
 from appfl.misc.memory_utils import (
     extract_model_state_optimized,
@@ -90,6 +91,18 @@ class VanillaTrainer(BaseTrainer):
         else:
             self.enabled_wandb = False
         self._sanity_check()
+
+        # MetricsManager for structured metric computation (optional).
+        # Enabled when train_configs.eval_metrics is set (e.g. ["acc1", "f1"]).
+        # Falls back to the legacy self.metric callable when not set.
+        _eval_metric_names = self.train_configs.get("eval_metrics", None)
+        if _eval_metric_names:
+            _names = parse_metric_names(_eval_metric_names)
+            self.train_metrics_manager = MetricsManager(_names)
+            self.val_metrics_manager = MetricsManager(_names)
+        else:
+            self.train_metrics_manager = None
+            self.val_metrics_manager = None
 
         # Extract train device, and configurations for possible DataParallel
         self.device_config, self.device = parse_device_str(self.train_configs.device)
@@ -174,20 +187,25 @@ class VanillaTrainer(BaseTrainer):
                     f"Round {self.round} Pre-Validation skipped (secure aggregation enabled)"
                 )
             else:
-                val_loss, val_accuracy = self._validate()
+                val_loss, val_accuracy, val_metrics = self._validate()
                 self.val_results["pre_val_loss"] = val_loss
                 self.val_results["pre_val_accuracy"] = val_accuracy
+                if val_metrics:
+                    self.val_results["pre_val_metrics"] = val_metrics
                 content = [self.round, "Y", " ", " ", " ", val_loss, val_accuracy]
                 if self.train_configs.mode == "epoch":
                     content.insert(1, 0)
                 self.logger.log_content(content)
                 if self.enabled_wandb:
-                    wandb.log(
-                        {
-                            f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
-                            f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
-                        }
-                    )
+                    wandb_payload = {
+                        f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
+                        f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
+                    }
+                    for mname, mval in val_metrics.items():
+                        wandb_payload[
+                            f"{self.wandb_logging_id}/val-{mname} (before train)"
+                        ] = mval
+                    wandb.log(wandb_payload)
 
         # Start training
         optim_module = importlib.import_module("torch.optim")
@@ -222,31 +240,54 @@ class VanillaTrainer(BaseTrainer):
                 for data, target in self.train_dataloader:
                     loss, pred, label = self._train_batch(optimizer, data, target)
                     train_loss += loss
-                    target_true.append(label)
-                    target_pred.append(pred)
+                    if self.train_metrics_manager is not None:
+                        self.train_metrics_manager.track(loss, pred, label)
+                    else:
+                        target_true.append(label)
+                        target_pred.append(pred)
                 train_loss /= len(self.train_dataloader)
-                target_true, target_pred = (
-                    np.concatenate(target_true),
-                    np.concatenate(target_pred),
-                )
-                train_accuracy = float(self.metric(target_true, target_pred))
+                if self.train_metrics_manager is not None:
+                    _tm = self.train_metrics_manager.aggregate()
+                    train_accuracy = float(
+                        _tm["metrics"][self.train_metrics_manager.metric_names[0]]
+                    )
+                    train_metrics = _tm["metrics"]
+                else:
+                    target_true, target_pred = (
+                        np.concatenate(target_true),
+                        np.concatenate(target_pred),
+                    )
+                    train_accuracy = float(self.metric(target_true, target_pred))
+                    train_metrics = {}
+                val_metrics = {}
                 if do_validation:
-                    val_loss, val_accuracy = self._validate()
+                    val_loss, val_accuracy, val_metrics = self._validate()
                     if "val_loss" not in self.val_results:
                         self.val_results["val_loss"] = []
                         self.val_results["val_accuracy"] = []
                     self.val_results["val_loss"].append(val_loss)
                     self.val_results["val_accuracy"].append(val_accuracy)
+                    if val_metrics:
+                        if "val_metrics" not in self.val_results:
+                            self.val_results["val_metrics"] = []
+                        self.val_results["val_metrics"].append(val_metrics)
                 per_epoch_time = time.time() - start_time
                 if self.enabled_wandb:
-                    wandb.log(
-                        {
-                            f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
-                            f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
-                            f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
-                            f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
-                        }
-                    )
+                    wandb_payload = {
+                        f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
+                        f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
+                        f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
+                        f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
+                    }
+                    for mname, mval in train_metrics.items():
+                        wandb_payload[
+                            f"{self.wandb_logging_id}/train-{mname} (during train)"
+                        ] = mval
+                    for mname, mval in val_metrics.items():
+                        wandb_payload[
+                            f"{self.wandb_logging_id}/val-{mname} (during train)"
+                        ] = mval
+                    wandb.log(wandb_payload)
                 self.logger.log_content(
                     [self.round, epoch, per_epoch_time, train_loss, train_accuracy]
                     if (not do_validation) and (not do_pre_validation)
@@ -292,8 +333,11 @@ class VanillaTrainer(BaseTrainer):
                     for data, target in memory_safe_data_loader:
                         loss, pred, label = self._train_batch(optimizer, data, target)
                         train_loss += loss
-                        target_true.append(label)
-                        target_pred.append(pred)
+                        if self.train_metrics_manager is not None:
+                            self.train_metrics_manager.track(loss, pred, label)
+                        else:
+                            target_true.append(label)
+                            target_pred.append(pred)
                         step_count += 1
                         if step_count >= self.train_configs.num_local_steps:
                             break
@@ -307,28 +351,49 @@ class VanillaTrainer(BaseTrainer):
                         data, target = next(data_iter)
                     loss, pred, label = self._train_batch(optimizer, data, target)
                     train_loss += loss
-                    target_true.append(label)
-                    target_pred.append(pred)
+                    if self.train_metrics_manager is not None:
+                        self.train_metrics_manager.track(loss, pred, label)
+                    else:
+                        target_true.append(label)
+                        target_pred.append(pred)
             train_loss /= len(self.train_dataloader)
-            target_true, target_pred = (
-                np.concatenate(target_true),
-                np.concatenate(target_pred),
-            )
-            train_accuracy = float(self.metric(target_true, target_pred))
+            if self.train_metrics_manager is not None:
+                _tm = self.train_metrics_manager.aggregate()
+                train_accuracy = float(
+                    _tm["metrics"][self.train_metrics_manager.metric_names[0]]
+                )
+                train_metrics = _tm["metrics"]
+            else:
+                target_true, target_pred = (
+                    np.concatenate(target_true),
+                    np.concatenate(target_pred),
+                )
+                train_accuracy = float(self.metric(target_true, target_pred))
+                train_metrics = {}
+            val_metrics = {}
             if do_validation:
-                val_loss, val_accuracy = self._validate()
+                val_loss, val_accuracy, val_metrics = self._validate()
                 self.val_results["val_loss"] = val_loss
                 self.val_results["val_accuracy"] = val_accuracy
+                if val_metrics:
+                    self.val_results["val_metrics"] = val_metrics
             per_step_time = time.time() - start_time
             if self.enabled_wandb:
-                wandb.log(
-                    {
-                        f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
-                        f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
-                        f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
-                        f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
-                    }
-                )
+                wandb_payload = {
+                    f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
+                    f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
+                    f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
+                    f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
+                }
+                for mname, mval in train_metrics.items():
+                    wandb_payload[
+                        f"{self.wandb_logging_id}/train-{mname} (during train)"
+                    ] = mval
+                for mname, mval in val_metrics.items():
+                    wandb_payload[
+                        f"{self.wandb_logging_id}/val-{mname} (during train)"
+                    ] = mval
+                wandb.log(wandb_payload)
             self.logger.log_content(
                 [self.round, per_step_time, train_loss, train_accuracy]
                 if (not do_validation) and (not do_pre_validation)
@@ -521,28 +586,43 @@ class VanillaTrainer(BaseTrainer):
                 "Number of local steps must be specified"
             )
 
-    def _validate(self) -> Tuple[float, float]:
+    def _validate(self) -> Tuple[float, float, Dict[str, float]]:
         """
-        Validate the model
-        :return: loss, accuracy
+        Validate the model.
+        :return: (loss, primary_accuracy, metrics_dict)
+            metrics_dict is non-empty only when MetricsManager is active.
         """
         device = self.device
         self.model.eval()
         val_loss = 0
+        target_pred, target_true = [], []
         with torch.no_grad():
-            target_pred, target_true = [], []
             for data, target in self.val_dataloader:
                 data, target = data.to(device), target.to(device)
                 output = self.model(data)
-                val_loss += self.loss_fn(output, target).item()
-                target_true.append(target.detach().cpu().numpy())
-                target_pred.append(output.detach().cpu().numpy())
+                batch_loss = self.loss_fn(output, target).item()
+                val_loss += batch_loss
+                pred_np = output.detach().cpu().numpy()
+                true_np = target.detach().cpu().numpy()
+                if self.val_metrics_manager is not None:
+                    self.val_metrics_manager.track(batch_loss, pred_np, true_np)
+                else:
+                    target_true.append(true_np)
+                    target_pred.append(pred_np)
         val_loss /= len(self.val_dataloader)
-        val_accuracy = float(
-            self.metric(np.concatenate(target_true), np.concatenate(target_pred))
-        )
+        if self.val_metrics_manager is not None:
+            _vm = self.val_metrics_manager.aggregate()
+            val_accuracy = float(
+                _vm["metrics"][self.val_metrics_manager.metric_names[0]]
+            )
+            val_metrics = _vm["metrics"]
+        else:
+            val_accuracy = float(
+                self.metric(np.concatenate(target_true), np.concatenate(target_pred))
+            )
+            val_metrics = {}
         self.model.train()
-        return val_loss, val_accuracy
+        return val_loss, val_accuracy, val_metrics
 
     def _train_batch(
         self, optimizer: torch.optim.Optimizer, data, target

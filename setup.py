@@ -57,6 +57,7 @@ setuptools.setup(
     include_package_data=True,
     package_data={
         "": ["*.sh", "*.crt", "*.key"],
+        "appfl.sim": ["config/**/*.yaml", "config/**/*.md"],
     },
     python_requires=">=3.8",
     install_requires=[
@@ -115,12 +116,36 @@ setuptools.setup(
         ],
         "monai": ["monai[all]==1.2.0"],
         "mpi": ["mpi4py"],
+        "sim": [
+            "hydra-core>=1.3",
+            "einops>=0.8",
+            "tqdm>=4.66",
+            "torchvision>=0.16",
+            "requests>=2.31",
+            "PyYAML>=6.0",
+        ],
+        "sim-all": [
+            "hydra-core>=1.3",
+            "einops>=0.8",
+            "tqdm>=4.66",
+            "torchvision>=0.16",
+            "requests>=2.31",
+            "PyYAML>=6.0",
+            "Pillow>=10.0",
+            "tensorboard>=2.16",
+            "huggingface-hub>=0.24",
+            "medmnist>=3.0",
+            "torchaudio>=2.1",
+            "datasets>=2.19",
+            "transformers>=4.40",
+        ],
     },
     entry_points={
         "console_scripts": [
             "appfl-auth=appfl.login_manager.globus.cli:auth",
             "appfl-install-compressor=appfl.compressor.install:install_compressor",
             "appfl-setup-ssl=appfl.comm.grpc.setup_ssl:setup_ssl",
+            "appfl-sim=appfl.sim.runner:main",
         ],
     },
 )

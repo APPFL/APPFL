@@ -3,6 +3,9 @@ from typing import Dict, Union, OrderedDict, Tuple
 
 
 class BaseAggregator:
+    def __init__(self) -> None:
+        self.client_sample_size: Dict[Union[str, int], int] = {}
+
     def set_client_sample_size(self, client_id: Union[str, int], sample_size: int):
         """Set the sample size of a client"""
         if not hasattr(self, "client_sample_size"):
