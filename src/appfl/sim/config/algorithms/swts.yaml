@@ -1,0 +1,86 @@
+experiment:
+  name: alg-swts
+  seed: 42
+  device: cuda
+  server_device: cuda
+  backend: nccl
+  stateful: false
+dataset:
+  path: ./data
+  name: MNIST
+  backend: auto
+  download: true
+split:
+  type: pathological
+  configs:
+    min_classes: 2
+model:
+  path: ./models
+  name: LeNet
+  backend: custom
+train:
+  num_rounds: 500
+  num_clients: 10
+  num_sampled_clients: 10
+  update_base: iter
+  local_iters: 1
+  batch_size: 32
+  shuffle: true
+  eval_batch_size: 256
+algorithm:
+  name: swts
+  mix_coefs: sample_ratio
+  optimize_memory: true
+  aggregator: SwtsAggregator
+  scheduler: SwtsScheduler
+  trainer: SwtsTrainer
+  aggregator_kwargs:
+    client_weights_mode: sample_ratio
+  scheduler_kwargs:
+    action_space: [50, 100, 500, 1000]
+    window_size: 10
+    likelihood_variance: 1.0
+    prior_variance: 1.0
+    seed: 42
+  trainer_kwargs: {}
+loss:
+  name: CrossEntropyLoss
+  backend: auto
+  path: ""
+  configs: {}
+
+optimizer:
+  name: SGD
+  backend: auto
+  path: ""
+  lr: 0.01
+  lr_decay:
+    enable: true
+    type: exponential
+    gamma: 0.995
+  clip_grad_norm: 0.0
+  configs:
+    weight_decay: 0.0
+    momentum: 0.0
+eval:
+  every: 10
+  metrics:
+  - acc1
+  do_pre_evaluation: true
+  do_post_evaluation: true
+  show_eval_progress: true
+  enable_global_eval: true
+  enable_federated_eval: true
+  configs:
+    scheme: dataset
+    dataset_ratio:
+    - 80
+    - 10
+    - 10
+logging:
+  path: ./logs
+  name: genfl_swts
+  backend: file
+  type: both
+  configs:
+    track_gen_rewards: true

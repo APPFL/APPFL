@@ -1,0 +1,295 @@
+import gc
+import copy
+import torch
+from omegaconf import DictConfig
+from appfl.sim.algorithm.aggregator.base_aggregator import BaseAggregator
+from typing import Union, Dict, OrderedDict, Any, Optional
+from appfl.sim.privacy.secure_aggregator import SecureAggregator
+from appfl.sim.misc.system_utils import (
+    clone_state_dict_optimized,
+    safe_inplace_operation,
+)
+
+
+class FedavgAggregator(BaseAggregator):
+    """
+    :param `model`: An optional instance of the model to be trained in the federated learning setup.
+        This can be useful for aggregating parameters that does requires gradient, such as the batch
+        normalization layers. If not provided, the aggregator will only aggregate the parameters
+        sent by the clients.
+    :param `aggregator_configs`: Configuration for the aggregator. It should be specified in the YAML
+        configuration file under `aggregator_kwargs`.
+    :param `logger`: An optional instance of the logger to be used for logging.
+    """
+
+    def __init__(
+        self,
+        model: Optional[torch.nn.Module] = None,
+        aggregator_configs: Optional[DictConfig] = None,
+        logger: Optional[Any] = None,
+    ):
+        super().__init__()
+        if aggregator_configs is None:
+            aggregator_configs = DictConfig({})
+        self.model = model
+        self.logger = logger
+        self.aggregator_configs = aggregator_configs
+        raw_mode = str(aggregator_configs.get("client_weights_mode", "sample_ratio")).strip().lower()
+        if raw_mode not in {"uniform", "sample_ratio", "adaptive"}:
+            raw_mode = "sample_ratio"
+        self.client_weights_mode = raw_mode
+
+        self.optimize_memory = bool(aggregator_configs.get("optimize_memory", True))
+
+        if self.model is not None:
+            self.named_parameters = set()
+            for name, _ in self.model.named_parameters():
+                self.named_parameters.add(name)
+        else:
+            self.named_parameters = None
+
+        self.global_state = None  # Models parameters that are used for aggregation, this is unknown at the beginning
+
+        self.step = {}
+
+    def _client_weight(self, client_id, total_clients: int) -> float:
+        mode = str(self.client_weights_mode).strip().lower()
+        if mode == "uniform":
+            return 1.0 / max(1, int(total_clients))
+
+        if mode in {"sample_ratio", "adaptive"}:
+            if client_id in self.client_sample_size:
+                total = float(sum(self.client_sample_size.values()))
+                if total > 0.0:
+                    return float(self.client_sample_size[client_id]) / total
+            if mode == "adaptive":
+                return 1.0 / max(1, int(total_clients))
+
+        return 1.0 / max(1, int(total_clients))
+
+    def get_parameters(self, **kwargs) -> Dict:
+        """
+        The aggregator can deal with three general aggregation cases:
+
+        - The model is provided to the aggregator and it has the same state as the global state
+        [**Note**: By global state, it means the state of the model that is used for aggregation]:
+            In this case, the aggregator will always return the global state of the model.
+        - The model is provided to the aggregator, but it has a different global state (e.g., part of the model is shared for aggregation):
+            In this case, the aggregator will return the whole state of the model at the beginning (i.e., when it does not have the global state),
+            and return the global state afterward.
+        - The model is not provided to the aggregator:
+            In this case, the aggregator will raise an error when it does not have the global state (i.e., at the beginning), and return the global state afterward.
+        """
+        if self.global_state is None:
+            if self.model is not None:
+                if self.optimize_memory:
+                    return clone_state_dict_optimized(self.model.state_dict())
+                else:
+                    return copy.deepcopy(self.model.state_dict())
+            else:
+                raise ValueError("Model is not provided to the aggregator.")
+
+        if self.optimize_memory:
+            return clone_state_dict_optimized(self.global_state)
+        else:
+            return {k: v.clone() for k, v in self.global_state.items()}
+
+    def aggregate(
+        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs
+    ) -> Dict:
+        """
+        Take the weighted average of local models from clients and return the global model.
+        """
+        if not local_models:
+            return self.get_parameters()
+
+        # detect masked payload format
+        def _is_masked_payload(x):
+            return isinstance(x, dict) and x.get("type") == "masked_update_flat"
+
+        secure_enabled = self.aggregator_configs.get("use_secure_agg", False)
+
+        if secure_enabled and all(_is_masked_payload(m) for m in local_models.values()):
+            payloads = list(local_models.items())  # list of (client_id, payload)
+            # assume all shapes identical and flat dtype identical
+            first_payload = payloads[0][1]
+            shapes = first_payload["shapes"]
+            device = torch.device(self.aggregator_configs.get("device", "cpu"))
+            total_examples = sum(p["num_examples"] for _, p in payloads)
+
+            # compute weighted sum of masked flats (weights = num_examples / total_examples or uniform)
+            weighted_sum = None
+            for client_id, p in payloads:
+                flat = p["flat"].to(device)
+                if self.client_weights_mode in {"sample_ratio", "adaptive"} and total_examples > 0:
+                    w = float(p["num_examples"]) / float(total_examples)
+                else:
+                    w = 1.0 / len(payloads)
+                if weighted_sum is None:
+                    weighted_sum = w * flat
+                else:
+                    weighted_sum = weighted_sum + w * flat
+            # unflatten into delta state
+            aggregated_state = SecureAggregator.unflatten_to_state_dict(
+                weighted_sum, shapes, device
+            )
+            # Initialize or update global_state
+            if self.global_state is None:
+                self.global_state = {
+                    name: tensor.detach().clone()
+                    for name, tensor in aggregated_state.items()
+                }
+            else:
+                if self.optimize_memory:
+                    with torch.no_grad():
+                        for name, tensor in aggregated_state.items():
+                            if name in self.global_state:
+                                self.global_state[name] = safe_inplace_operation(
+                                    self.global_state[name], "add", tensor
+                                )
+                            else:
+                                self.global_state[name] = tensor.detach().clone()
+                    gc.collect()
+                else:
+                    for name, tensor in aggregated_state.items():
+                        if name in self.global_state:
+                            self.global_state[name] = self.global_state[name] + tensor
+                        else:
+                            self.global_state[name] = tensor.detach().clone()
+
+            if self.model is not None:
+                self.model.load_state_dict(self.global_state, strict=False)
+
+            if self.optimize_memory:
+                return clone_state_dict_optimized(self.global_state)
+            else:
+                return {k: v.clone() for k, v in self.global_state.items()}
+
+        # Memory optimization: Initialize global state efficiently
+        if self.global_state is None:
+            if self.model is not None:
+                self.global_state = {}
+                model_state = self.model.state_dict()
+                first_model = list(local_models.values())[0]
+                with torch.no_grad():
+                    for name, tensor in first_model.items():
+                        source = model_state[name] if name in model_state else tensor
+                        self.global_state[name] = source.detach().clone()
+                gc.collect()
+            else:
+                if self.optimize_memory:
+                    self.global_state = {}
+                    with torch.no_grad():
+                        for name, tensor in list(local_models.values())[0].items():
+                            self.global_state[name] = tensor.detach().clone()
+                    gc.collect()
+                else:
+                    self.global_state = {
+                        name: tensor.detach().clone()
+                        for name, tensor in list(local_models.values())[0].items()
+                    }
+
+        self.compute_steps(local_models)
+
+        # Memory optimization: More efficient aggregation with cleanup
+        if self.optimize_memory:
+            with torch.no_grad():
+                for name in self.global_state:
+                    if name in self.step:
+                        # Use safe in-place operations with dtype checking
+                        self.global_state[name] = safe_inplace_operation(
+                            self.global_state[name], "add", self.step[name]
+                        )
+                    else:
+                        param_sum = torch.zeros_like(self.global_state[name])
+                        # Efficiently sum parameters with dtype checking
+                        for _, model in local_models.items():
+                            param_sum = safe_inplace_operation(
+                                param_sum, "add", model[name]
+                            )
+
+                        # Safe division with dtype handling
+                        self.global_state[name] = safe_inplace_operation(
+                            param_sum, "div", len(local_models)
+                        )
+                        del param_sum
+
+            gc.collect()
+            self.step.clear()
+        else:
+            # Original behavior
+            for name in self.global_state:
+                if name in self.step:
+                    self.global_state[name] = self.global_state[name] + self.step[name]
+                else:
+                    param_sum = torch.zeros_like(self.global_state[name])
+                    for _, model in local_models.items():
+                        param_sum += model[name]
+                    # make sure global state have the same type as the local model
+                    self.global_state[name] = torch.div(
+                        param_sum, len(local_models)
+                    ).type(param_sum.dtype)
+
+        if self.model is not None:
+            self.model.load_state_dict(self.global_state, strict=False)
+
+        if self.optimize_memory:
+            return clone_state_dict_optimized(self.global_state)
+        else:
+            return {k: v.clone() for k, v in self.global_state.items()}
+
+    def compute_steps(
+        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]
+    ):
+        """
+        Compute the changes to the global model after the aggregation.
+        """
+        # Memory optimization: More efficient step computation
+        if self.optimize_memory:
+            with torch.no_grad():
+                for name in self.global_state:
+                    # Skip integer parameters by averaging them later in the `aggregate` method
+                    if (
+                        self.named_parameters is not None
+                        and name not in self.named_parameters
+                    ) or (
+                        self.global_state[name].dtype == torch.int64
+                        or self.global_state[name].dtype == torch.int32
+                    ):
+                        continue
+                    self.step[name] = torch.zeros_like(self.global_state[name])
+
+                for client_id, model in local_models.items():
+                    weight = self._client_weight(client_id, len(local_models))
+
+                    for name in model:
+                        if name in self.step:
+                            # Safe in-place gradient accumulation
+                            diff = model[name] - self.global_state[name]
+                            weighted_diff = diff * weight
+                            self.step[name] = safe_inplace_operation(
+                                self.step[name], "add", weighted_diff
+                            )
+                            del diff, weighted_diff
+        else:
+            # Original behavior
+            for name in self.global_state:
+                # Skip integer parameters by averaging them later in the `aggregate` method
+                if (
+                    self.named_parameters is not None
+                    and name not in self.named_parameters
+                ) or (
+                    self.global_state[name].dtype == torch.int64
+                    or self.global_state[name].dtype == torch.int32
+                ):
+                    continue
+                self.step[name] = torch.zeros_like(self.global_state[name])
+
+            for client_id, model in local_models.items():
+                weight = self._client_weight(client_id, len(local_models))
+
+                for name in model:
+                    if name in self.step:
+                        self.step[name] += weight * (
+                            model[name] - self.global_state[name]
+                        )

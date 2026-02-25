@@ -1,0 +1,109 @@
+experiment:
+  name: cifar10-dirichlet-acc1-acc5
+  seed: 42
+  device: cpu
+  server_device: cpu
+  backend: serial
+  stateful: false
+dataset:
+  path: ./data
+  name: CIFAR10
+  backend: torchvision
+  download: true
+  configs:
+    raw_data_fraction: 1.0
+    min_samples_per_client: 2
+    terms_accepted: true
+split:
+  type: dirichlet
+  configs:
+    unbalanced_keep_min: 0.5
+    dirichlet_alpha: 0.3
+    min_classes: 2
+model:
+  path: ./models
+  name: SimpleCNN
+  backend: auto
+  configs:
+    hidden_size: 64
+    dropout: 0.0
+    num_layers: 2
+    num_embeddings: 10000
+    embedding_size: 128
+    seq_len: 128
+    use_model_tokenizer: false
+train:
+  num_rounds: 2
+  num_clients: 6
+  num_sampled_clients: 3
+  update_base: epoch
+  local_epochs: 1
+  local_iters: 1
+  batch_size: 32
+  shuffle: true
+  eval_batch_size: 128
+  num_workers: 0
+  pin_memory: false
+  train_pin_memory: false
+  eval_pin_memory: false
+  dataloader_persistent_workers: false
+  dataloader_prefetch_factor: 2
+algorithm:
+  name: fedavg
+  mix_coefs: sample_ratio
+  optimize_memory: true
+  aggregator: ''
+  scheduler: ''
+  trainer: ''
+  aggregator_kwargs: {}
+  scheduler_kwargs: {}
+  trainer_kwargs: {}
+loss:
+  name: CrossEntropyLoss
+  backend: auto
+  path: ""
+  configs: {}
+
+optimizer:
+  name: SGD
+  backend: auto
+  path: ""
+  lr: 0.01
+  clip_grad_norm: 0.0
+  configs:
+    weight_decay: 0.0
+    momentum: 0.0
+eval:
+  every: 1
+  metrics:
+  - acc1
+  - acc5
+  do_pre_evaluation: true
+  do_post_evaluation: true
+  show_eval_progress: true
+  enable_global_eval: true
+  enable_federated_eval: true
+  configs:
+    scheme: dataset
+    dataset_ratio:
+    - 80
+    - 20
+    client_ratio: 0.0
+    client_counts: 0
+logging:
+  path: ./logs
+  name: metrics-examples
+  backend: file
+  type: auto
+  configs:
+    wandb_mode: online
+    wandb_entity: ''
+privacy:
+  use_dp: false
+  mechanism: laplace
+  clip_grad_norm: 0.0
+  clip_norm_type: 2.0
+  kwargs: {}
+secure_aggregation:
+  use_sec_agg: false
+  mix_coefs: uniform
