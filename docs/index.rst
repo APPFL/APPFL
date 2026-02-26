@@ -70,6 +70,7 @@ Main Topics
    install/index
    tutorials/index
    users/index
+   sim/index
    community/index
    contribution/index
    publication/index
