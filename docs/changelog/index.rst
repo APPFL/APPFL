@@ -1,6 +1,14 @@
 Changelog
 =========
 
+appfl v1.9.1
+------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Include support for ``globus-sdk`` version 4.x for Globus-based authentication in gRPC.
+
 appfl v1.9.0
 ------------
 
