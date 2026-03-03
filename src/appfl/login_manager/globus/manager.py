@@ -82,7 +82,7 @@ class GlobusLoginManager:
         scopes = [s for _, rs_scopes in self.login_requirements for s in rs_scopes]
         token_response = self._start_auth_flow(scopes=scopes)
         with self._access_lock:
-            self._token_storage.store(token_response)
+            self._token_storage.store_token_response(token_response)
 
     def ensure_logged_in(self) -> bool:
         """
@@ -90,7 +90,7 @@ class GlobusLoginManager:
         Return `True` if the user has logged in, and `False` if the user just logged in.
         """
         with self._access_lock:
-            token_data = self._token_storage.get_by_resource_server()
+            token_data = self._token_storage.get_token_data_by_resource_server()
         for rs, _ in self.login_requirements:
             if rs not in token_data:
                 self.run_login_flow()
@@ -104,11 +104,10 @@ class GlobusLoginManager:
         with self._access_lock:
             auth_client = self._get_auth_client()
             tokens_revoked = False
-            for rs, token_data in self._token_storage.get_by_resource_server().items():
-                for token_key in ["access_token", "refresh_token"]:
-                    token = token_data[token_key]
-                    auth_client.oauth2_revoke_token(token)
-                self._token_storage.remove_tokens_for_resource_server(rs)
+            for rs, token_data in self._token_storage.get_token_data_by_resource_server().items():
+                auth_client.oauth2_revoke_token(token_data.refresh_token)
+                auth_client.oauth2_revoke_token(token_data.access_token)
+                self._token_storage.remove_token_data(rs)
                 tokens_revoked = True
             return tokens_revoked
 
@@ -130,13 +129,13 @@ class GlobusLoginManager:
         return {
             "access_token": self._token_storage.get_token_data(
                 AuthScopes.resource_server
-            )["access_token"],
+            ).access_token,
             "expires_at": self._token_storage.get_token_data(
                 AuthScopes.resource_server
-            )["expires_at_seconds"],
+            ).expires_at_seconds,
             "refresh_token": self._token_storage.get_token_data(
                 AuthScopes.resource_server
-            )["refresh_token"],
+            ).refresh_token,
         }
 
     def get_identity_client_with_tokens(
@@ -153,7 +152,7 @@ class GlobusLoginManager:
                 auth_client=self._get_auth_client(),
                 access_token=access_token,
                 expires_at=expires_at,
-                on_refresh=self._token_storage.on_refresh,
+                on_refresh=self._token_storage.store_token_response,
             )
             return AuthClient(authorizer=authorizer)
         except Exception:
@@ -167,9 +166,9 @@ class GlobusLoginManager:
             )
         with self._access_lock:
             return RefreshTokenAuthorizer(
-                tokens["refresh_token"],
+                tokens.refresh_token,
                 self._get_auth_client(),
-                access_token=tokens["access_token"],
-                expires_at=tokens["expires_at_seconds"],
-                on_refresh=self._token_storage.on_refresh,
+                access_token=tokens.access_token,
+                expires_at=tokens.expires_at_seconds,
+                on_refresh=self._token_storage.store_token_response,
             )

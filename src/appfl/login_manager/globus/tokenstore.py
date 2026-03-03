@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import os
 import pathlib
-from globus_sdk.tokenstorage import SQLiteAdapter
+try:
+    from globus_sdk.token_storage import SQLiteTokenStorage # globus-sdk v4 and above
+except ImportError:
+    from globus_sdk.tokenstorage import SQLiteTokenStorage # globus-sdk v3
 
 
 def _home() -> pathlib.Path:
@@ -54,7 +57,7 @@ def _resolve_namespace(is_fl_server: bool) -> str:
         return "appfl_client"
 
 
-def get_token_storage_adapter(*, is_fl_server: bool) -> SQLiteAdapter:
+def get_token_storage_adapter(*, is_fl_server: bool) -> SQLiteTokenStorage:
     """
     Return the SQLite token storage adapter.
 
@@ -62,7 +65,7 @@ def get_token_storage_adapter(*, is_fl_server: bool) -> SQLiteAdapter:
     """
     filename = _get_storage_filename()
     namespace = _resolve_namespace(is_fl_server)
-    return SQLiteAdapter(
+    return SQLiteTokenStorage(
         filename,
         namespace=namespace,
         connect_params={"check_same_thread": False},
