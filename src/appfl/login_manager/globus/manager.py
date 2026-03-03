@@ -104,7 +104,10 @@ class GlobusLoginManager:
         with self._access_lock:
             auth_client = self._get_auth_client()
             tokens_revoked = False
-            for rs, token_data in self._token_storage.get_token_data_by_resource_server().items():
+            for (
+                rs,
+                token_data,
+            ) in self._token_storage.get_token_data_by_resource_server().items():
                 auth_client.oauth2_revoke_token(token_data.refresh_token)
                 auth_client.oauth2_revoke_token(token_data.access_token)
                 self._token_storage.remove_token_data(rs)

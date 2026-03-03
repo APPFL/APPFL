@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import os
 import pathlib
+
 try:
-    from globus_sdk.token_storage import SQLiteTokenStorage # globus-sdk v4 and above
+    from globus_sdk.token_storage import SQLiteTokenStorage  # globus-sdk v4 and above
 except ImportError:
-    from globus_sdk.tokenstorage import SQLiteTokenStorage # globus-sdk v3
+    from globus_sdk.tokenstorage import SQLiteTokenStorage  # globus-sdk v3
 
 
 def _home() -> pathlib.Path:
