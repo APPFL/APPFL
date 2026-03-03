@@ -55,7 +55,7 @@ class GlobusAuthenticator(BaseAuthenticator):
         )
         if identity_client is None:
             return False
-        user_info = identity_client.oauth2_userinfo()
+        user_info = identity_client.userinfo()
         for identity in user_info["identity_set"]:
             if identity["sub"] in self.identities:
                 return True
