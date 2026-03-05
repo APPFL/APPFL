@@ -73,5 +73,5 @@ if (
     with Executor(endpoint_id=args.endpoint_id, client=gc) as gce:
         fut = gce.submit(double, 7)
         print(fut.result())
-    
+
     print("Endpoint Token Test Successful!")

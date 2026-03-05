@@ -113,7 +113,7 @@ python appflx_entry_point.py --base_dir <s3-base-dir> --run_aidr_only
 
 Run from the **repository root** (the Dockerfile copies the entire repo into the image):
 
-> **💡 Note: Make sure you changed the token within src/appfl/service/sample_configs/appfl_config.yaml before buidling the docker image. If you forget, follow [this section](#mount-updated-sample-configs-at-runtime) to mount updated configuration.**
+> **💡 Note: Make sure you changed the token within src/appfl/service/sample_configs/appfl_config.yaml before building the docker image. If you forget, follow [this section](#mount-updated-sample-configs-at-runtime) to mount updated configuration.**
 
 ```bash
 cd /path/to/appfl   # repo root
