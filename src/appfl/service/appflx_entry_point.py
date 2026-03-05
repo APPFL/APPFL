@@ -16,7 +16,11 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--run_aidr_only", action="store_true")
-argparser.add_argument("--local_test", action="store_true", help="Run in local test mode using sample configs without S3 access")
+argparser.add_argument(
+    "--local_test",
+    action="store_true",
+    help="Run in local test mode using sample configs without S3 access",
+)
 argparser.add_argument("--base_dir", type=str, required=False, default=None)
 args = argparser.parse_args()
 
@@ -26,23 +30,37 @@ if not args.local_test and args.base_dir is None:
 if args.local_test:
     _sample_dir = os.path.join(os.path.dirname(__file__), "sample_configs")
     server_agent_config = OmegaConf.load(os.path.join(_sample_dir, "appfl_config.yaml"))
-    server_agent_config.client_configs.model_configs.model_path = os.path.join(_sample_dir, "model.py")
-    server_agent_config.client_configs.train_configs.loss_fn_path = os.path.join(_sample_dir, "loss.py")
-    server_agent_config.client_configs.train_configs.metric_path = os.path.join(_sample_dir, "metric.py")
+    server_agent_config.client_configs.model_configs.model_path = os.path.join(
+        _sample_dir, "model.py"
+    )
+    server_agent_config.client_configs.train_configs.loss_fn_path = os.path.join(
+        _sample_dir, "loss.py"
+    )
+    server_agent_config.client_configs.train_configs.metric_path = os.path.join(
+        _sample_dir, "metric.py"
+    )
     _client_config = OmegaConf.load(os.path.join(_sample_dir, "client.yaml"))
-    _client_config.data_configs.dataset_path = os.path.join(_sample_dir, "dataloader.py")
-    _client_config.data_configs.dataset_name = get_last_function_name(_client_config.data_configs.dataset_path)
+    _client_config.data_configs.dataset_path = os.path.join(
+        _sample_dir, "dataloader.py"
+    )
+    _client_config.data_configs.dataset_name = get_last_function_name(
+        _client_config.data_configs.dataset_path
+    )
     client_agent_configs = [_client_config]
     num_clients = len(client_agent_configs)
     server_agent_config.server_configs.num_clients = num_clients
     if hasattr(server_agent_config.server_configs, "aggregator_kwargs"):
         server_agent_config.server_configs.aggregator_kwargs.num_clients = num_clients
     else:
-        server_agent_config.server_configs.aggregator_kwargs = OmegaConf.create({"num_clients": num_clients})
+        server_agent_config.server_configs.aggregator_kwargs = OmegaConf.create(
+            {"num_clients": num_clients}
+        )
     if hasattr(server_agent_config.server_configs, "scheduler_kwargs"):
         server_agent_config.server_configs.scheduler_kwargs.num_clients = num_clients
     else:
-        server_agent_config.server_configs.scheduler_kwargs = OmegaConf.create({"num_clients": num_clients})
+        server_agent_config.server_configs.scheduler_kwargs = OmegaConf.create(
+            {"num_clients": num_clients}
+        )
     data_exchanger = None
 else:
     data_exchanger = APPFLxDataExchanger(base_dir=args.base_dir)
