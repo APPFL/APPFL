@@ -14,6 +14,11 @@ try:
 except:  # noqa: E722
     pass
 
+try:
+    from .dimat_trainer import DIMATTrainer
+except:  # noqa: E722
+    pass
+
 __all__ = [
     "BaseTrainer",
     "VanillaTrainer",
@@ -22,4 +27,5 @@ __all__ = [
     "MonaiTrainer",
     "FedSBTrainer",
     "LLMDummyTrainer",
+    "DIMATTrainer",
 ]
