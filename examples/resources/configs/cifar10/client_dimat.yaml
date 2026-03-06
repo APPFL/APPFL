@@ -1,16 +1,15 @@
 client_id: "Client1"
-
 train_configs:
   # Device
-  device: "cuda"
+  device: "cpu"
   # Logging and outputs
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 
 # Local dataset
 data_configs:
-  dataset_path: "./resources/dataset/mnist_dataset.py"
-  dataset_name: "get_mnist"
+  dataset_path: "./resources/dataset/cifar10_dataset.py"
+  dataset_name: "get_cifar10"
   dataset_kwargs:
     num_clients: 2
     client_id: 0
