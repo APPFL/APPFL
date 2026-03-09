@@ -38,10 +38,10 @@ if sys.version_info >= (3, 10):
     globus_compute_endpoint_version = "globus-compute-endpoint>=4.7.0"
 else:
     wandb_version = "wandb==0.22.1"  # Default wandb version for Python >= 3.9
-    globus_sdk_version = "globus-sdk==3.65.0"
-    globus_compute_sdk_version = "globus-compute-sdk==3.16.1"
-    globus_compute_endpoint_version = "globus-compute-endpoint==3.16.1"
-    
+    globus_sdk_version = "globus-sdk"
+    globus_compute_sdk_version = "globus-compute-sdk"
+    globus_compute_endpoint_version = "globus-compute-endpoint"
+
 
 setuptools.setup(
     name="appfl",
