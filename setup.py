@@ -38,7 +38,7 @@ else:
 
 setuptools.setup(
     name="appfl",
-    version="1.9.1",
+    version="1.10.0.dev0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -65,9 +65,9 @@ setuptools.setup(
         "grpcio",
         "grpcio-tools",
         "omegaconf",
-        "globus-sdk",
-        "globus-compute-sdk",
-        "globus-compute-endpoint",
+        "globus-sdk>=4.4.1",
+        "globus-compute-sdk>=4.7.0",
+        "globus-compute-endpoint>=4.7.0",
         "boto3",
         "botocore",
         "lz4",
