@@ -1,7 +1,7 @@
 appflx_configs:
-  compute_token: <compute_token>
+  compute_token: AgVOqrN3xwV0J4DxwxqoB0WdrMJWwDq3D5rBqbKP7XavXmV56rhbCp5myx79m7jP8PrprKbnaxbVaaivyNwgvHgw6q0
   experiment_name: APPFLx-Local-Test
-  openid_token: <openid_token>
+  openid_token: AgB9q3j7BdlNV7voQQXxw8pYWBOgqy0yVdzBm0JOMkOmmadXg5FyC4YMMQGk1aeQqBkN4poOJxkWX4FQv6XGQSzQo4g
   upload_folder: ./data/uploads
 client_configs:
   model_configs:

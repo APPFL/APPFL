@@ -63,9 +63,9 @@ server_configs:
       server_uri: localhost:50051
       max_message_size: 1048576
       use_ssl: True
-      server_certificate_key: "/your-home/.appfl/ssl/server.key"
-      server_certificate: "/your-home/.appfl/ssl/server.pem"
-      ca_certificate: "/your-home/.appfl/ssl/ca.crt"
+      server_certificate_key: "/Users/zilinghan/.appfl/ssl/server.key"
+      server_certificate: "/Users/zilinghan/.appfl/ssl/server.pem"
+      ca_certificate: "/Users/zilinghan/.appfl/ssl/ca.crt"
       use_authenticator: True
       authenticator: "GlobusAuthenticator"
       authenticator_args:
