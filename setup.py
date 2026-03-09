@@ -33,8 +33,15 @@ else:
 
 if sys.version_info >= (3, 10):
     wandb_version = "wandb"
+    globus_sdk_version = "globus-sdk>=4.4.1"
+    globus_compute_sdk_version = "globus-compute-sdk>=4.7.0"
+    globus_compute_endpoint_version = "globus-compute-endpoint>=4.7.0"
 else:
     wandb_version = "wandb==0.22.1"  # Default wandb version for Python >= 3.9
+    globus_sdk_version = "globus-sdk==3.65.0"
+    globus_compute_sdk_version = "globus-compute-sdk==3.16.1"
+    globus_compute_endpoint_version = "globus-compute-endpoint==3.16.1"
+    
 
 setuptools.setup(
     name="appfl",
@@ -65,9 +72,9 @@ setuptools.setup(
         "grpcio",
         "grpcio-tools",
         "omegaconf",
-        "globus-sdk>=4.4.1",
-        "globus-compute-sdk>=4.7.0",
-        "globus-compute-endpoint>=4.7.0",
+        globus_sdk_version,
+        globus_compute_sdk_version,
+        globus_compute_endpoint_version,
         "boto3",
         "botocore",
         "lz4",
