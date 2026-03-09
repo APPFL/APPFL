@@ -41,7 +41,7 @@ else:
     globus_sdk_version = "globus-sdk==3.65.0"
     globus_compute_sdk_version = "globus-compute-sdk==3.16.1"
     globus_compute_endpoint_version = "globus-compute-endpoint==3.16.1"
-    
+
 
 setuptools.setup(
     name="appfl",
