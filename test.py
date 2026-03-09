@@ -13,17 +13,22 @@
 # with Executor(endpoint_id=tutorial_endpoint_id) as fxe:
 #     future = fxe.submit(get_flamby)
 #     print(future.result())
-    
+
 from globus_compute_sdk import Executor
+
 
 # First, define the function ...
 def hello_world():
     return "Hello World!"
 
+
 def add(x):
     return x + 7
 
-tutorial_endpoint_id = '984b0f9e-a2eb-42ec-a0d3-413b3ca92833' # Public tutorial endpoint
+
+tutorial_endpoint_id = (
+    "984b0f9e-a2eb-42ec-a0d3-413b3ca92833"  # Public tutorial endpoint
+)
 # ... then create the executor, ...
 with Executor(endpoint_id=tutorial_endpoint_id) as gce:
     # ... then submit for execution, ...
@@ -31,6 +36,6 @@ with Executor(endpoint_id=tutorial_endpoint_id) as gce:
 
     # ... and finally, wait for the result
     print(future.result())
-    
+
     future = gce.submit(add, 1)
     print(future.result())
