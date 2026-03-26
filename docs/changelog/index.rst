@@ -1,6 +1,24 @@
 Changelog
 =========
 
+appfl v1.10.0
+-------------
+
+New Features
+~~~~~~~~~~~~
+
+- Bump the version requirements of ``globus-sdk``, ``globus-compute-sdk``, and ``globus-compute-endpoint`` to the latest versions.
+- Add a tutorial for creating multi-user Globus Compute endpoints on Cloud at `here <https://appfl.ai/en/latest/tutorials/examples_multi_user_gcep.html>`_.
+- Update the tutorial for local testing APPFLx server at `here <https://github.com/APPFL/APPFL/tree/main/src/appfl/service#appfl-as-a-service-appflx>`_.
+
+appfl v1.9.1
+------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Include support for ``globus-sdk`` version 4.x for Globus-based authentication in gRPC.
+
 appfl v1.9.0
 ------------
 

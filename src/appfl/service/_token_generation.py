@@ -1,11 +1,10 @@
 import argparse
 import platform
 import globus_sdk
-from globus_sdk.scopes import AuthScopes
 from globus_sdk import NativeAppAuthClient
+from globus_sdk.scopes import AuthScopes, ComputeScopes
 from globus_compute_sdk import Executor, Client
 from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
-from globus_compute_sdk.sdk.login_manager.manager import ComputeScopeBuilder
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--login", action="store_true")
@@ -14,7 +13,6 @@ argparser.add_argument("--openid_token", required=False)
 argparser.add_argument("--endpoint_id", required=False)
 args = argparser.parse_args()
 
-ComputeScopes = ComputeScopeBuilder()
 
 if args.login:
     auth_client = NativeAppAuthClient(
@@ -75,3 +73,5 @@ if (
     with Executor(endpoint_id=args.endpoint_id, client=gc) as gce:
         fut = gce.submit(double, 7)
         print(fut.result())
+
+    print("Endpoint Token Test Successful!")
