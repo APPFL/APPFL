@@ -5,10 +5,9 @@ IID partitioning matching the original DIMAT codebase.
 """
 
 import numpy as np
-import torch
 import torchvision
 import torchvision.transforms as transforms
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Subset
 
 
 def get_cifar100(

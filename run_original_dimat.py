@@ -15,7 +15,6 @@ import time
 import random
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import json
@@ -25,7 +24,7 @@ DIMAT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "DIMAT")
 sys.path.insert(0, DIMAT_DIR)
 
 # Patch out unused imports before importing DIMAT modules
-import types
+import types  # noqa: E402
 
 # Create stub modules for clip, fvcore, einops
 for mod_name in ["clip", "fvcore", "fvcore.nn", "fvcore.nn.flop_count", "einops"]:
@@ -35,14 +34,14 @@ for mod_name in ["clip", "fvcore", "fvcore.nn", "fvcore.nn.flop_count", "einops"
             sys.modules[mod_name].flop_count = lambda *a, **kw: None
 
 # Now import DIMAT modules
-from Models.resnetzip import resnet20
-from data import Data_Loader
-from dataloader import get_partition_dataloader
-from utils.am_utils import reset_bn_stats, SpaceInterceptor
-from utils.model_merger import ModelMerge
-from graphs.resnet_graph import resnet20 as resnet20_graph
-from utils.matching_functions import match_tensors_permute
-from utils.metric_calculators import CovarianceMetric, MeanMetric
+from Models.resnetzip import resnet20  # noqa: E402
+from data import Data_Loader  # noqa: E402
+from dataloader import get_partition_dataloader  # noqa: E402
+from utils.am_utils import reset_bn_stats  # noqa: E402
+from utils.model_merger import ModelMerge  # noqa: E402
+from graphs.resnet_graph import resnet20 as resnet20_graph  # noqa: E402
+from utils.matching_functions import match_tensors_permute  # noqa: E402
+from utils.metric_calculators import CovarianceMetric, MeanMetric  # noqa: E402
 
 
 def seed_everything(seed):
@@ -84,8 +83,10 @@ def train_model(model, epochs, train_loader, device, optimizer_type="adam"):
             total += target.size(0)
 
         if (epoch + 1) % 10 == 0 or epoch == 0:
-            print(f"  Epoch {epoch+1}/{epochs}: loss={running_loss/(batch_idx+1):.4f}, "
-                  f"train_acc={100.*correct/total:.2f}%")
+            print(
+                f"  Epoch {epoch + 1}/{epochs}: loss={running_loss / (batch_idx + 1):.4f}, "
+                f"train_acc={100.0 * correct / total:.2f}%"
+            )
 
 
 def test_accuracy(model, dataloader, device):
@@ -186,7 +187,7 @@ def main():
     trainset, testset, trainloader, testloader, num_classes = data_loader.load_data()
 
     # Load ring connectivity (exp=2)
-    with open("Connectivity/5_2.json", "r") as f:
+    with open("Connectivity/5_2.json") as f:
         cdict = json.load(f)
     print(f"Topology: {cdict['graph_type']}")
     print(f"Agents: {args.num_models}, Ring, IID")
@@ -195,9 +196,11 @@ def main():
     os.makedirs(save_dir, exist_ok=True)
 
     # ===== Phase 1: Pre-train =====
-    print(f"\n{'='*60}")
-    print(f"Phase 1: Pre-training {args.num_models} models for {args.pretrain_epochs} epochs")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print(
+        f"Phase 1: Pre-training {args.num_models} models for {args.pretrain_epochs} epochs"
+    )
+    print(f"{'=' * 60}")
 
     models = []
     for i in range(args.num_models):
@@ -215,16 +218,18 @@ def main():
         models.append(model)
 
     # ===== Phase 2: Merge-Train =====
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Phase 2: Merge-Train for {args.merge_rounds} rounds")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     for round_idx in range(args.merge_rounds):
         print(f"\n--- Round {round_idx + 1}/{args.merge_rounds} ---")
         t0 = time.time()
 
         # Merge
-        models = DIMAT_merge(models, cdict, resnet20_graph, device, trainloader, save_dir)
+        models = DIMAT_merge(
+            models, cdict, resnet20_graph, device, trainloader, save_dir
+        )
 
         # Evaluate after merge (pre-validation)
         accs = []
@@ -232,13 +237,21 @@ def main():
             acc, loss = test_accuracy(model, testloader, device)
             accs.append(acc)
         avg_acc = np.mean(accs)
-        print(f"  [Post-merge] Avg accuracy: {avg_acc:.2f}% (individual: {[f'{a:.1f}' for a in accs]})")
+        print(
+            f"  [Post-merge] Avg accuracy: {avg_acc:.2f}% (individual: {[f'{a:.1f}' for a in accs]})"
+        )
 
         # Train
         if round_idx < args.merge_rounds - 1 or round_idx == 0:
             for i, model in enumerate(models):
                 agent_trainloader = get_partition_dataloader(
-                    trainset, "iid", args.batch_size, args.num_models, "cifar100", i, "finetune"
+                    trainset,
+                    "iid",
+                    args.batch_size,
+                    args.num_models,
+                    "cifar100",
+                    i,
+                    "finetune",
                 )
                 train_model(model, args.train_epochs, agent_trainloader, device)
 
@@ -253,9 +266,9 @@ def main():
         elapsed = time.time() - t0
         print(f"  Round time: {elapsed:.1f}s")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Done!")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

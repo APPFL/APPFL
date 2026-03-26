@@ -4,7 +4,6 @@ Same architecture as resnet.py but uses nn.AdaptiveAvgPool2d module
 (instead of F.avg_pool2d) so DIMAT's graph can hook into it.
 """
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 

@@ -199,17 +199,13 @@ class BIGGraph(ABC):
                     if succ_info["type"] == NodeType.MODULE:
 
                         def prehook(m, x, this_node=node, this_info=succ_info):
-                            self.intermediates[this_node] = (
-                                FeatureReshapeHandler(
-                                    m.__class__.__name__, this_info
-                                ).reshape(x[0].detach().to(device))
-                            )
+                            self.intermediates[this_node] = FeatureReshapeHandler(
+                                m.__class__.__name__, this_info
+                            ).reshape(x[0].detach().to(device))
                             return None
 
                         module = self.get_module(succ_info["layer"])
-                        self.hooks.append(
-                            module.register_forward_pre_hook(prehook)
-                        )
+                        self.hooks.append(module.register_forward_pre_hook(prehook))
                         break
                 else:
                     raise RuntimeError(
@@ -223,17 +219,13 @@ class BIGGraph(ABC):
                     if pred_info["type"] == NodeType.MODULE:
 
                         def posthook(m, x, y, this_node=node, this_info=pred_info):
-                            self.intermediates[this_node] = (
-                                FeatureReshapeHandler(
-                                    m.__class__.__name__, this_info
-                                ).reshape(y.detach().to(device))
-                            )
+                            self.intermediates[this_node] = FeatureReshapeHandler(
+                                m.__class__.__name__, this_info
+                            ).reshape(y.detach().to(device))
                             return None
 
                         module = self.get_module(pred_info["layer"])
-                        self.hooks.append(
-                            module.register_forward_hook(posthook)
-                        )
+                        self.hooks.append(module.register_forward_hook(posthook))
                         break
                 else:
                     raise RuntimeError(

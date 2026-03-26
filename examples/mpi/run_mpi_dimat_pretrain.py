@@ -90,10 +90,7 @@ else:
         t0 = time.time()
         client_agent.train()
         dt = time.time() - t0
-        print(
-            f"[{client_agent_config.client_id}] "
-            f"Pre-training done in {dt:.1f}s"
-        )
+        print(f"[{client_agent_config.client_id}] Pre-training done in {dt:.1f}s")
 
         # Restore original num_local_epochs for merge-train phase
         client_agent.trainer.train_configs.num_local_epochs = original_epochs
@@ -114,8 +111,6 @@ else:
         if metadata["status"] == "DONE":
             break
         if "local_steps" in metadata:
-            client_agent.trainer.train_configs.num_local_steps = metadata[
-                "local_steps"
-            ]
+            client_agent.trainer.train_configs.num_local_steps = metadata["local_steps"]
         client_agent.load_parameters(new_global_model)
     client_communicator.invoke_custom_action(action="close_connection")

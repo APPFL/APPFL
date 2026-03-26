@@ -41,7 +41,7 @@ def reset_bn_stats(model, loader, reset=True):
     device = get_device(model)
     has_bn = False
     for m in model.modules():
-        if type(m) == nn.BatchNorm2d:
+        if isinstance(m, nn.BatchNorm2d):
             if reset:
                 m.momentum = None  # use simple average
                 m.reset_running_stats()

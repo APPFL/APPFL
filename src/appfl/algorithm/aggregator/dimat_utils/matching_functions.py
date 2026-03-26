@@ -5,7 +5,6 @@ Ported from DIMAT/utils/matching_functions.py.
 
 import torch
 import scipy
-import numpy as np
 import networkx as nx
 
 
@@ -58,16 +57,16 @@ def match_tensors_zipit(
         sims = compute_correlation(metric["covariance"], corrsave_path, node)
     elif "cossim" in metric:
         sims = metric["cossim"]
-    O = sims.shape[0]
-    remainder = int(O * (1 - r) + 1e-4)
-    permutation_matrix = torch.eye(O, O)
+    out_dim = sims.shape[0]
+    remainder = int(out_dim * (1 - r) + 1e-4)
+    permutation_matrix = torch.eye(out_dim, out_dim)
 
     torch.diagonal(sims)[:] = -torch.inf
 
     num_models = int(1 / (1 - r) + 0.5)
-    Om = O // num_models
+    Om = out_dim // num_models
 
-    original_model = torch.zeros(O, device=sims.device).long()
+    original_model = torch.zeros(out_dim, device=sims.device).long()
     for i in range(num_models):
         original_model[i * Om : (i + 1) * Om] = i
 
@@ -154,14 +153,14 @@ def match_tensors_optimal(metric, corrsave_path, node, r=0.5, add_bias=False, **
     corr_mtx_a = compute_correlation(correlation, corrsave_path, node).cpu().numpy()
     min_num = corr_mtx_a[corr_mtx_a != -torch.inf].min() - 1
     G = nx.Graph()
-    O = corr_mtx_a.shape[0] // 2
-    for i in range(2 * O):
+    out_dim = corr_mtx_a.shape[0] // 2
+    for i in range(2 * out_dim):
         G.add_node(i)
-    for i in range(2 * O):
+    for i in range(2 * out_dim):
         for j in range(0, i):
             G.add_edge(i, j, weight=(corr_mtx_a[i, j] - min_num))
     matches = nx.max_weight_matching(G)
-    matches_matrix = torch.zeros(2 * O, O, device=correlation.device)
+    matches_matrix = torch.zeros(2 * out_dim, out_dim, device=correlation.device)
     for i, (a, b) in enumerate(matches):
         matches_matrix[a, i] = 1
         matches_matrix[b, i] = 1
@@ -185,10 +184,10 @@ def match_tensors_permute(
     Mimics Rebasin methods using the Hungarian algorithm.
     """
     correlation = compute_correlation(metric["covariance"], corrsave_path, node)
-    O = correlation.shape[0]
+    out_dim = correlation.shape[0]
 
     num_models = int(1 / (1 - r) + 0.5)
-    Om = O // num_models
+    Om = out_dim // num_models
     device = correlation.device
 
     mats = [torch.eye(Om, device=device)]
@@ -211,7 +210,10 @@ def match_tensors_permute(
 
     if get_merge_value:
         merge_value = (
-            correlation[:Om, Om * i : Om * (i + 1)].cpu().numpy()[row_ind, col_ind].mean()
+            correlation[:Om, Om * i : Om * (i + 1)]
+            .cpu()
+            .numpy()[row_ind, col_ind]
+            .mean()
         )
         return merge.T, unmerge, merge_value
     return merge.T, unmerge
@@ -222,10 +224,10 @@ def match_tensors_identity(metric, r=0.5, add_bias=False, **kwargs):
     Match feature spaces from different models by simple weight averaging.
     """
     correlation = metric["covariance"]
-    O = correlation.shape[0]
+    out_dim = correlation.shape[0]
 
     N = int(1 / (1 - r) + 0.5)
-    Om = O // N
+    Om = out_dim // N
     device = correlation.device
 
     mats = [torch.eye(Om, device=device) for _ in range(N)]

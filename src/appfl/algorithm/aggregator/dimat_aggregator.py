@@ -59,9 +59,7 @@ class DIMATaggregator(BaseAggregator):
         )
         self.device = aggregator_configs.get("device", "cpu")
         self.proxy_batch_size = aggregator_configs.get("proxy_batch_size", 64)
-        self.transform_kwargs = dict(
-            aggregator_configs.get("transform_kwargs", {})
-        )
+        self.transform_kwargs = dict(aggregator_configs.get("transform_kwargs", {}))
 
         # Global state dict after aggregation
         self.global_state = None
@@ -127,12 +125,8 @@ class DIMATaggregator(BaseAggregator):
     def _get_proxy_dataloader(self):
         """Lazy-load the proxy dataset and create a DataLoader."""
         if self._proxy_dataloader is None:
-            proxy_dataset_path = self.aggregator_configs.get(
-                "proxy_dataset_path", None
-            )
-            proxy_dataset_name = self.aggregator_configs.get(
-                "proxy_dataset_name", None
-            )
+            proxy_dataset_path = self.aggregator_configs.get("proxy_dataset_path", None)
+            proxy_dataset_name = self.aggregator_configs.get("proxy_dataset_name", None)
             proxy_dataset_kwargs = dict(
                 self.aggregator_configs.get("proxy_dataset_kwargs", {})
             )
@@ -166,9 +160,7 @@ class DIMATaggregator(BaseAggregator):
         elif self.model is not None:
             return self.model.state_dict()
         else:
-            raise ValueError(
-                "DIMATaggregator has no model or global state to return."
-            )
+            raise ValueError("DIMATaggregator has no model or global state to return.")
 
     def aggregate(self, local_models, **kwargs) -> Dict:
         """

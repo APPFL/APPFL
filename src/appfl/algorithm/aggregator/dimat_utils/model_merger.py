@@ -3,10 +3,8 @@ Model merging orchestration for DIMAT algorithm.
 Ported from DIMAT/utils/model_merger.py.
 """
 
-import math
 import torch
 from torch import nn
-from copy import deepcopy
 from time import time
 from tqdm.auto import tqdm
 
@@ -77,9 +75,9 @@ class MergeHandler:
             for succ in self.graph.succs(node):
                 self.prop_forward(succ)
         else:
-            assert (
-                len(self.graph.preds(node)) == 1
-            ), "Function node expects one predecessor"
+            assert len(self.graph.preds(node)) == 1, (
+                "Function node expects one predecessor"
+            )
             self.prop_back(self.graph.preds(node)[0])
 
     def handle_conv2d(self, forward, node, module):
@@ -129,7 +127,7 @@ class MergeHandler:
 
         if info["type"] in (NodeType.OUTPUT, NodeType.INPUT):
             raise RuntimeError(
-                f'Unexpectedly reached node type {info["type"]} when merging.'
+                f"Unexpectedly reached node type {info['type']} when merging."
             )
         elif info["type"] == NodeType.CONCAT:
             merge = self.merge.chunk(len(self.graph.preds(node)), dim=1)
@@ -156,7 +154,7 @@ class MergeHandler:
 
         if info["type"] in (NodeType.OUTPUT, NodeType.INPUT):
             raise RuntimeError(
-                f'Unexpectedly reached node type {info["type"]} when unmerging.'
+                f"Unexpectedly reached node type {info['type']} when unmerging."
             )
         elif info["type"] == NodeType.MODULE:
             module = self.graph.get_module(info["layer"])
@@ -390,11 +388,9 @@ def _get_merging_fn(name):
 
     from inspect import getmembers, isfunction
 
-    matching_fns = dict(
-        [
-            (k, v)
-            for (k, v) in getmembers(matching_functions, isfunction)
-            if "match_tensors" in k
-        ]
-    )
+    matching_fns = {
+        k: v
+        for (k, v) in getmembers(matching_functions, isfunction)
+        if "match_tensors" in k
+    }
     return matching_fns[name]

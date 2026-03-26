@@ -30,9 +30,7 @@ class ResNetGraph(BIGGraph):
             and len(self.get_module(shortcut_prefix)) > 0
         ):
             # There's a break in the skip connection here, so add a new prefix
-            input_node = self.add_nodes_from_sequence(
-                "", [NodeType.PREFIX], input_node
-            )
+            input_node = self.add_nodes_from_sequence("", [NodeType.PREFIX], input_node)
 
             shortcut_output_node = self.add_nodes_from_sequence(
                 name_prefix=shortcut_prefix,
@@ -64,9 +62,7 @@ class ResNetGraph(BIGGraph):
             shortcut_prefix in self.named_modules
             and len(self.get_module(shortcut_prefix)) > 0
         ):
-            input_node = self.add_nodes_from_sequence(
-                "", [NodeType.PREFIX], input_node
-            )
+            input_node = self.add_nodes_from_sequence("", [NodeType.PREFIX], input_node)
 
             shortcut_output_node = self.add_nodes_from_sequence(
                 name_prefix=shortcut_prefix,
@@ -137,9 +133,7 @@ def resnet20(model):
 
 
 def resnet50(model):
-    return ResNetGraph(
-        model, shortcut_name="downsample", head_name="fc", num_layers=4
-    )
+    return ResNetGraph(model, shortcut_name="downsample", head_name="fc", num_layers=4)
 
 
 def resnet18(model):
