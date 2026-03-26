@@ -33,12 +33,18 @@ else:
 
 if sys.version_info >= (3, 10):
     wandb_version = "wandb"
+    globus_sdk_version = "globus-sdk>=4.4.1"
+    globus_compute_sdk_version = "globus-compute-sdk>=4.7.0"
+    globus_compute_endpoint_version = "globus-compute-endpoint>=4.7.0"
 else:
     wandb_version = "wandb==0.22.1"  # Default wandb version for Python >= 3.9
+    globus_sdk_version = "globus-sdk"
+    globus_compute_sdk_version = "globus-compute-sdk"
+    globus_compute_endpoint_version = "globus-compute-endpoint"
 
 setuptools.setup(
     name="appfl",
-    version="1.9.0",
+    version="1.10.0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -65,9 +71,9 @@ setuptools.setup(
         "grpcio",
         "grpcio-tools",
         "omegaconf",
-        "globus-sdk",
-        "globus-compute-sdk",
-        "globus-compute-endpoint",
+        globus_sdk_version,
+        globus_compute_sdk_version,
+        globus_compute_endpoint_version,
         "boto3",
         "botocore",
         "lz4",
