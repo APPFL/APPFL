@@ -4,14 +4,8 @@ DIMATaggregator: Server-side aggregator implementing the DIMAT algorithm
 
 DIMAT aligns neural network feature spaces via activation matching before
 merging models, solving the permutation symmetry problem. This aggregator
-adapts the originally decentralized algorithm to APPFL's server-client
-architecture by having the server perform the activation-matching merge
-centrally using all client models simultaneously.
-
-Supports two topologies:
-  - "fc" (fully connected): All models merged into one global model.
-  - "ring": Each agent merges only with its ring neighbors (self + 2 adjacent).
-    Returns per-client models via dict keyed by client_id.
+performs the activation-matching merge on the server using all client models,
+producing a single global model broadcast to all clients.
 
 Reference:
     DIMAT: Decentralized Iterative Merging-And-Training for Deep Learning Models
@@ -23,7 +17,7 @@ import importlib
 import torch
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional, Any
 
 from appfl.algorithm.aggregator import BaseAggregator
 
@@ -46,8 +40,6 @@ class DIMATaggregator(BaseAggregator):
                      "match_tensors_optimal", "match_tensors_identity".
         transform_kwargs (dict): Extra kwargs for the matching function.
             Default: {} (use matching function defaults).
-        topology (str): Network topology. Default: "fc".
-            Options: "fc" (fully connected), "ring".
     """
 
     def __init__(
@@ -70,9 +62,8 @@ class DIMATaggregator(BaseAggregator):
         self.transform_kwargs = dict(
             aggregator_configs.get("transform_kwargs", {})
         )
-        self.topology = aggregator_configs.get("topology", "fc")
 
-        # Global state (single dict for FC, or dict of dicts for ring)
+        # Global state dict after aggregation
         self.global_state = None
 
         # Lazy-loaded proxy dataloader and function references
@@ -90,6 +81,7 @@ class DIMATaggregator(BaseAggregator):
                 resnet18_appfl,
             )
             from appfl.algorithm.aggregator.dimat_utils.vgg_graph import vgg11, vgg16
+            from appfl.algorithm.aggregator.dimat_utils.cnn_graph import cnn
 
             graph_registry = {
                 "resnet20": resnet20,
@@ -98,6 +90,7 @@ class DIMATaggregator(BaseAggregator):
                 "resnet18_appfl": resnet18_appfl,
                 "vgg11": vgg11,
                 "vgg16": vgg16,
+                "cnn": cnn,
             }
             if self.graph_func_name not in graph_registry:
                 raise ValueError(
@@ -177,42 +170,19 @@ class DIMATaggregator(BaseAggregator):
                 "DIMATaggregator has no model or global state to return."
             )
 
-    def _build_ring_adjacency(self, num_agents):
-        """
-        Build ring topology adjacency and mixing weights for num_agents.
-        Each agent is connected to itself and its 2 adjacent neighbors (wrap-around).
-        Mixing weight = 1/3 for each of the 3 neighbors.
-        Returns: (connectivity, pi) — both are lists of lists.
-        """
-        connectivity = [[0.0] * num_agents for _ in range(num_agents)]
-        pi = [[0.0] * num_agents for _ in range(num_agents)]
-        for i in range(num_agents):
-            neighbors = [i, (i - 1) % num_agents, (i + 1) % num_agents]
-            for j in neighbors:
-                connectivity[i][j] = 1.0
-                pi[i][j] = 1.0 / len(neighbors)
-        return connectivity, pi
-
-    def aggregate(
-        self, local_models, **kwargs
-    ) -> Union[Dict, Dict[str, Dict]]:
+    def aggregate(self, local_models, **kwargs) -> Dict:
         """
         Aggregate local models using DIMAT activation-matching merge.
+
+        All client models are merged into a single global model using
+        activation matching to align feature spaces before averaging.
 
         Args:
             local_models: dict mapping client_id -> state_dict
 
         Returns:
-            - FC topology: single merged state dict (broadcast to all clients).
-            - Ring topology: dict mapping client_id -> per-client merged state dict.
+            Single merged state dict (broadcast to all clients).
         """
-        if self.topology == "ring":
-            return self._aggregate_ring(local_models, **kwargs)
-        else:
-            return self._aggregate_fc(local_models, **kwargs)
-
-    def _aggregate_fc(self, local_models, **kwargs) -> Dict:
-        """Fully connected merge: all models merged into one global model."""
         from appfl.algorithm.aggregator.dimat_utils.model_merger import ModelMerge
         from appfl.algorithm.aggregator.dimat_utils.am_utils import reset_bn_stats
 
@@ -232,7 +202,7 @@ class DIMATaggregator(BaseAggregator):
 
         if self.logger:
             self.logger.info(
-                f"[DIMAT-FC] Merging {len(models)} client models using "
+                f"[DIMAT] Merging {len(models)} client models using "
                 f"graph={self.graph_func_name}, match={self.match_func_name}"
             )
 
@@ -275,105 +245,3 @@ class DIMATaggregator(BaseAggregator):
             torch.cuda.empty_cache()
 
         return self.global_state
-
-    def _aggregate_ring(self, local_models, **kwargs) -> Dict[str, Dict]:
-        """
-        Ring topology merge: each agent merges only with its ring neighbors.
-        Returns a dict keyed by client_id so each client gets its own model.
-        """
-        from appfl.algorithm.aggregator.dimat_utils.model_merger import ModelMerge
-        from appfl.algorithm.aggregator.dimat_utils.am_utils import reset_bn_stats
-
-        if self.model is None:
-            raise ValueError("DIMATaggregator requires a model to be provided.")
-
-        graph_func = self._get_graph_func()
-        match_func = self._get_match_func()
-        proxy_dataloader = self._get_proxy_dataloader()
-
-        # Build ordered list of (client_id, model) pairs
-        client_ids = list(local_models.keys())
-        num_agents = len(client_ids)
-
-        # Reconstruct full models from state dicts
-        all_models = []
-        for cid in client_ids:
-            model_copy = copy.deepcopy(self.model)
-            model_copy.load_state_dict(local_models[cid], strict=False)
-            model_copy.to(self.device)
-            all_models.append(model_copy)
-
-        if self.logger:
-            self.logger.info(
-                f"[DIMAT-Ring] Merging {num_agents} client models "
-                f"(ring topology) using graph={self.graph_func_name}, "
-                f"match={self.match_func_name}"
-            )
-
-        # Reset BN stats on all models
-        for model in all_models:
-            reset_bn_stats(model, proxy_dataloader)
-
-        # Build ring adjacency
-        _, pi = self._build_ring_adjacency(num_agents)
-
-        # For each agent, merge with its ring neighbors
-        per_client_states = {}
-        for agent_idx in range(num_agents):
-            # Identify neighbors (indices with nonzero pi weight)
-            neighbor_indices = [
-                j for j in range(num_agents) if pi[agent_idx][j] > 0
-            ]
-            interp_w = [pi[agent_idx][j] for j in neighbor_indices]
-
-            # Collect neighbor models (deep copies to avoid mutation)
-            neighbor_models = [
-                copy.deepcopy(all_models[j]) for j in neighbor_indices
-            ]
-
-            # Create graphs for neighbor models
-            graphs = [graph_func(m).graphify() for m in neighbor_models]
-
-            # Create merged model template
-            merged_model = copy.deepcopy(self.model).to(self.device)
-
-            # Run DIMAT merge pipeline on this subset
-            merger = ModelMerge(*graphs, device=self.device)
-            merger.transform(
-                merged_model,
-                proxy_dataloader,
-                transform_fn=match_func,
-                interp_w=interp_w,
-                **self.transform_kwargs,
-            )
-
-            # Reset BN stats on merged model
-            reset_bn_stats(merger.merged_model, proxy_dataloader)
-
-            # Extract state dict
-            cid = client_ids[agent_idx]
-            per_client_states[cid] = {
-                k: v.cpu()
-                for k, v in merger.merged_model.state_dict().items()
-            }
-
-            if self.logger:
-                neighbor_names = [client_ids[j] for j in neighbor_indices]
-                self.logger.info(
-                    f"[DIMAT-Ring] Agent {cid} merged with neighbors "
-                    f"{neighbor_names} (weights {interp_w})"
-                )
-
-            # Clean up this iteration
-            merger.clear_hooks()
-            del merger, graphs, neighbor_models, merged_model
-
-        # Store first client's state as global_state for get_parameters()
-        self.global_state = per_client_states[client_ids[0]]
-
-        # Clean up
-        del all_models
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-        return per_client_states

@@ -60,7 +60,7 @@ def get_cifar10(
     )
 
     train_data_raw = torchvision.datasets.CIFAR10(
-        dir, download=False, train=True, transform=train_transform
+        dir, download=True, train=True, transform=train_transform
     )
 
     # Non-IID partition: exactly num_classes_per_client classes per client

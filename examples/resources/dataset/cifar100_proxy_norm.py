@@ -9,12 +9,14 @@ import torchvision
 import torchvision.transforms as transforms
 
 
-def get_cifar100_proxy(**kwargs):
+def get_cifar100_proxy(num_samples: int = None, **kwargs):
     """
-    Return the full CIFAR-100 training set as proxy data.
-    Matches the original DIMAT code which uses all 50,000 training images
-    with random augmentation applied lazily on each access.
+    Return CIFAR-100 training set as proxy data.
+    If num_samples is None, returns the full 50k dataset (matching original DIMAT).
+    If num_samples is set, returns a subset of that size.
     """
+    from torch.utils.data import Subset
+
     dir = os.getcwd() + "/datasets/RawData"
 
     cifar_mean = [0.4914, 0.4822, 0.4465]
@@ -29,6 +31,10 @@ def get_cifar100_proxy(**kwargs):
         ]
     )
 
-    return torchvision.datasets.CIFAR100(
+    dataset = torchvision.datasets.CIFAR100(
         dir, download=True, train=True, transform=train_transform
     )
+
+    if num_samples is not None and num_samples < len(dataset):
+        return Subset(dataset, list(range(num_samples)))
+    return dataset

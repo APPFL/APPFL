@@ -1,6 +1,8 @@
 examples/memory_profiles
 funnel.db
 **/CLAUDE.md
+DIMAT_INTEGRATION.md
+pull_request.md
 *.sh.o*
 *.sh.e*
 examples/hostfiles
