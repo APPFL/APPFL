@@ -1,6 +1,6 @@
 client_id: "Client1"
 train_configs:
-  device: "cuda"
+  device: "cpu"
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 data_configs:

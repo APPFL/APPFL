@@ -53,8 +53,8 @@ server_configs:
     proxy_dataset_kwargs:
       num_samples: 500
     proxy_batch_size: 64
-    device: "cuda"
-  num_global_epochs: 50
+    device: "cpu"
+  num_global_epochs: 10
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
