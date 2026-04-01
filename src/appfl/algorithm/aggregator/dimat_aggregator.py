@@ -72,14 +72,14 @@ class DIMATaggregator(BaseAggregator):
     def _get_graph_func(self):
         """Lazy-load the graph function."""
         if self._graph_func is None:
-            from appfl.algorithm.aggregator.dimat_utils.resnet_graph import (
+            from appfl.misc.dimat_utils.resnet_graph import (
                 resnet20,
                 resnet50,
                 resnet18,
                 resnet18_appfl,
             )
-            from appfl.algorithm.aggregator.dimat_utils.vgg_graph import vgg11, vgg16
-            from appfl.algorithm.aggregator.dimat_utils.cnn_graph import cnn
+            from appfl.misc.dimat_utils.vgg_graph import vgg11, vgg16
+            from appfl.misc.dimat_utils.cnn_graph import cnn
 
             graph_registry = {
                 "resnet20": resnet20,
@@ -101,7 +101,7 @@ class DIMATaggregator(BaseAggregator):
     def _get_match_func(self):
         """Lazy-load the matching function."""
         if self._match_func is None:
-            from appfl.algorithm.aggregator.dimat_utils.matching_functions import (
+            from appfl.misc.dimat_utils.matching_functions import (
                 match_tensors_permute,
                 match_tensors_zipit,
                 match_tensors_optimal,
@@ -175,8 +175,8 @@ class DIMATaggregator(BaseAggregator):
         Returns:
             Single merged state dict (broadcast to all clients).
         """
-        from appfl.algorithm.aggregator.dimat_utils.model_merger import ModelMerge
-        from appfl.algorithm.aggregator.dimat_utils.am_utils import reset_bn_stats
+        from appfl.misc.dimat_utils.model_merger import ModelMerge
+        from appfl.misc.dimat_utils.am_utils import reset_bn_stats
 
         if self.model is None:
             raise ValueError("DIMATaggregator requires a model to be provided.")
