@@ -40,7 +40,7 @@ client_configs:
       param_cutoff: 1024
 
 server_configs:
-  num_clients: 5
+  num_clients: 2
   scheduler: "SyncScheduler"
   scheduler_kwargs:
     same_init_model: True
@@ -53,8 +53,8 @@ server_configs:
     proxy_dataset_kwargs:
       num_samples: 500
     proxy_batch_size: 64
-    device: "cuda"
-  num_global_epochs: 50
+    device: "cpu"
+  num_global_epochs: 10
   logging_output_dirname: "./output"
   logging_output_filename: "result"
   comm_configs:
