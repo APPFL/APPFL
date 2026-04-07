@@ -4,7 +4,7 @@ gRPC run script for DIMAT with pre-training phase.
 Matches the paper setup:
   1. Pre-train each agent independently for N epochs (default 10)
   2. Run merge-train iterations via the standard FL loop
-  
+
 launch server first:
 python grpc/run_server.py --config ./resources/configs/mnist/server_dimat.yaml
 
@@ -76,7 +76,7 @@ if (
     client_communicator.invoke_custom_action(
         action="get_data_readiness_report", **data_readiness
     )
-    
+
 # =========================================================
 # Phase 1: Local pre-training (independent, no communication)
 # =========================================================
