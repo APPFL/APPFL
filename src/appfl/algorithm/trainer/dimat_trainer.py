@@ -6,8 +6,6 @@ the merged global model parameters, which is important for convergence
 after DIMAT's feature-space alignment.
 """
 
-import torch
-import torch.nn as nn
 from typing import Union, Dict, OrderedDict, Any
 from appfl.algorithm.trainer.vanilla_trainer import VanillaTrainer
 
@@ -30,26 +28,3 @@ class DIMATTrainer(VanillaTrainer):
         overwrite the server's higher-quality statistics and degrade accuracy.
         """
         super().load_parameters(params)
-
-    def _reset_bn_stats(self):
-        """Reset and recompute BatchNorm running statistics."""
-        has_bn = False
-        for m in self.model.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                m.momentum = None  # use simple average
-                m.reset_running_stats()
-                has_bn = True
-
-        if not has_bn:
-            return
-
-        device = self.train_configs.get("device", "cpu")
-        self.model.to(device)
-        self.model.train()
-        with torch.no_grad():
-            for data in self.train_dataloader:
-                if isinstance(data, (list, tuple)):
-                    x = data[0].to(device)
-                else:
-                    x = data.to(device)
-                self.model(x)
