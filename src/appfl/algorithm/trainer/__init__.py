@@ -19,6 +19,11 @@ try:
 except:  # noqa: E722
     pass
 
+try:
+    from .sklearn_trainer import SklearnTrainer
+except:  # noqa: E722
+    pass
+
 __all__ = [
     "BaseTrainer",
     "VanillaTrainer",
@@ -28,4 +33,5 @@ __all__ = [
     "FedSBTrainer",
     "LLMDummyTrainer",
     "DIMATTrainer",
+    "SklearnTrainer",
 ]

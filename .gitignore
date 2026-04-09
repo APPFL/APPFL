@@ -5,6 +5,7 @@ funnel.db
 **/CLAUDE.md
 *.sh.o*
 *.sh.e*
+*.joblib
 examples/hostfiles
 scaling_test
 local_tests
