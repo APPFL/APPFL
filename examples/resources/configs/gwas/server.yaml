@@ -17,14 +17,14 @@ server_configs:
   aggregator: MetaAnalysisAggregator
   aggregator_kwargs:
     output_dir: ./GA4GH_Demo/server/output
-    variant_bim_path: /grand/GeomicVar/mjoel/APPFL_GWAS/GA4GH_Demo/data_sim/input/EUR.synthetic.100k.ld.maf.bim
+    variant_bim_path: /grand/GeomicVar/mjoel/APPFL_GWAS/GA4GH_Demo/sites/Site1/data/EUR.synthetic.100k.ld.maf.bim
     qq_max_points: 250000
-  num_global_epochs: 1
+  num_global_epochs: 4
   logging_output_dirname: ./GA4GH_Demo/server/output/logs
   logging_output_filename: appfl_meta_server
   comm_configs:
     grpc_configs:
-      server_uri: 127.0.0.1:50051
+      server_uri: localhost:50051
       max_message_size: 1073741824
       use_ssl: false
       use_model_chunking: false

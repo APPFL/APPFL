@@ -8,14 +8,18 @@ os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
-# Add GA4GH_Demo/ to path so gwas_config is importable.
-# APPFL copies this file to a temp path, so __file__-relative lookup breaks.
-# Use GWAS_PROJECT_DIR env var (set by PBS scripts) as the authoritative anchor.
+# Add the gwas config directory to path so gwas_config is importable.
+# When loaded directly from file, __file__ points to the gwas config directory and
+# Path(__file__).parent resolves correctly.
+# When APPFL sends this file to gRPC clients as source text, it is written to a
+# temp path (~/.appfl/tmp/), so __file__-relative lookup breaks.
+# In that case, set the GWAS_PROJECT_DIR env var to the directory containing gwas_config.py
+# (e.g. export GWAS_PROJECT_DIR=/path/to/examples/resources/configs/gwas).
 _gwas_demo_dir = os.environ.get("GWAS_PROJECT_DIR")
 if _gwas_demo_dir:
     sys.path.insert(0, _gwas_demo_dir)
 else:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gwas_config import USE_CUML, HIT_P_THRESHOLD, get_linear_regression, get_logistic_regression, apply_variant_scaling  # noqa: E402
 
 import matplotlib

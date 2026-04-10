@@ -7,11 +7,14 @@ os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
+# gwas_config.py lives in the same directory as this file.
+# If loaded from a non-standard path, set GWAS_PROJECT_DIR to the directory
+# containing gwas_config.py (e.g. examples/resources/configs/gwas).
 _gwas_demo_dir = os.environ.get("GWAS_PROJECT_DIR")
 if _gwas_demo_dir:
     sys.path.insert(0, _gwas_demo_dir)
 else:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gwas_config import HIT_P_THRESHOLD, apply_variant_scaling  # noqa: E402
 
 import matplotlib
