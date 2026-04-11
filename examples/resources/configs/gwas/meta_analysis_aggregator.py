@@ -15,8 +15,9 @@ if _gwas_demo_dir:
     sys.path.insert(0, _gwas_demo_dir)
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gwas_config import HIT_P_THRESHOLD, apply_variant_scaling  # noqa: E402
+from gwas_config import HIT_P_THRESHOLD  # noqa: E402
 
+import json
 import matplotlib
 
 matplotlib.use("Agg")
@@ -141,15 +142,8 @@ class MetaAnalysisAggregator(BaseAggregator):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.graphs_dir.mkdir(parents=True, exist_ok=True)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
-        self.variant_df, _ = apply_variant_scaling(self._load_variant_metadata(
-            aggregator_configs.get(
-                "variant_bim_path",
-                "GA4GH_Demo/data_sim/input/EUR.synthetic.100k.ld.maf.bim",
-            )
-        ))
         self.global_state = {
             "meta_ready": torch.tensor([0], dtype=torch.int64),
-            "num_variants": torch.tensor([len(self.variant_df)], dtype=torch.int64),
         }
 
     def get_parameters(self, **kwargs):
@@ -158,6 +152,9 @@ class MetaAnalysisAggregator(BaseAggregator):
     def aggregate(self, local_models, **kwargs):
         client_ids = list(local_models.keys())
         self.logger.info(f"Running fixed-effect meta-analysis across {len(client_ids)} APPFL sites.")
+
+        _meta_bytes = _to_numpy(local_models[client_ids[0]]["variant_meta"]).tobytes()
+        variant_df = pd.DataFrame(json.loads(_meta_bytes.decode("utf-8")))
 
         bmi_beta_stack = np.vstack([_to_numpy(local_models[cid]["bmi_beta"]) for cid in client_ids])
         bmi_se_stack = np.vstack([_to_numpy(local_models[cid]["bmi_se"]) for cid in client_ids])
@@ -169,15 +166,17 @@ class MetaAnalysisAggregator(BaseAggregator):
         bmi_r2 = np.array([float(_to_numpy(local_models[cid]["local_bmi_r2"])[0]) for cid in client_ids], dtype=np.float64)
         t2d_auc = np.array([float(_to_numpy(local_models[cid]["local_t2d_auc"])[0]) for cid in client_ids], dtype=np.float64)
 
-        if bmi_beta_stack.shape[1] != len(self.variant_df):
+        n_variants = len(variant_df)
+        if bmi_beta_stack.shape[1] != n_variants:
             raise ValueError(
-                f"Client payload variant count ({bmi_beta_stack.shape[1]}) does not match BIM ({len(self.variant_df)})."
+                f"Client payload variant count ({bmi_beta_stack.shape[1]}) does not match "
+                f"variant metadata from {client_ids[0]} ({n_variants})."
             )
 
         total_n = int(gwas_n.sum())
         meta_maf = np.average(maf_stack, axis=0, weights=gwas_n)
-        bmi_df = self._meta_analyze_trait(bmi_beta_stack, bmi_se_stack, meta_maf, "BMI", total_n)
-        t2d_df = self._meta_analyze_trait(t2d_beta_stack, t2d_se_stack, meta_maf, "T2D", total_n)
+        bmi_df = self._meta_analyze_trait(bmi_beta_stack, bmi_se_stack, meta_maf, "BMI", total_n, variant_df)
+        t2d_df = self._meta_analyze_trait(t2d_beta_stack, t2d_se_stack, meta_maf, "T2D", total_n, variant_df)
 
         bmi_path = self.data_dir / "appfl_meta_gwas_bmi.csv.gz"
         t2d_path = self.data_dir / "appfl_meta_gwas_t2d.csv.gz"
@@ -220,7 +219,7 @@ class MetaAnalysisAggregator(BaseAggregator):
         self.global_state = {
             "meta_ready": torch.tensor([1], dtype=torch.int64),
             "num_clients": torch.tensor([len(client_ids)], dtype=torch.int64),
-            "num_variants": torch.tensor([len(self.variant_df)], dtype=torch.int64),
+            "num_variants": torch.tensor([n_variants], dtype=torch.int64),
             "bmi_hits": torch.tensor([int((bmi_df["P"] < self.hit_threshold).sum())], dtype=torch.int64),
             "t2d_hits": torch.tensor([int((t2d_df["P"] < self.hit_threshold).sum())], dtype=torch.int64),
             "weighted_local_bmi_r2": torch.tensor([float(np.average(bmi_r2, weights=eval_n))], dtype=torch.float64),
@@ -229,22 +228,7 @@ class MetaAnalysisAggregator(BaseAggregator):
         self.logger.info(f"APPFL meta-analysis outputs written to {self.output_dir}/{{data,graphs}}")
         return self.global_state
 
-    def _load_variant_metadata(self, bim_path):
-        bim_path = Path(bim_path).resolve()
-        if not bim_path.exists():
-            raise FileNotFoundError(f"Server BIM metadata not found: {bim_path}")
-        bim = pd.read_csv(
-            bim_path,
-            sep=r"\s+",
-            header=None,
-            usecols=[0, 1, 3, 4, 5],
-            names=["CHR", "SNP", "BP", "NEA", "EA"],
-            dtype={"CHR": str, "SNP": str, "BP": np.int64, "NEA": str, "EA": str},
-        )
-        bim["CHR"] = _normalize_chr(bim["CHR"])
-        return bim
-
-    def _meta_analyze_trait(self, beta_stack, se_stack, maf, trait, total_n):
+    def _meta_analyze_trait(self, beta_stack, se_stack, maf, trait, total_n, variant_df):
         with np.errstate(divide="ignore", invalid="ignore"):
             weights = np.where(np.isfinite(se_stack) & (se_stack > 0), 1.0 / np.square(se_stack), 0.0)
         weight_sum = weights.sum(axis=0)
@@ -274,7 +258,7 @@ class MetaAnalysisAggregator(BaseAggregator):
             1.0,
         )
 
-        out_df = self.variant_df.copy()
+        out_df = variant_df.copy()
         out_df["TRAIT"] = trait
         out_df["BETA"] = beta
         out_df["SE"] = se

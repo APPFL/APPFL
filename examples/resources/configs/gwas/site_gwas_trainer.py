@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -304,6 +305,14 @@ class SiteGWASTrainer(BaseTrainer):
             self.graphs_dir / f"{self.client_id}_local_gwas_t2d_qq.png",
         )
 
+        _variant_meta = json.dumps({
+            "CHR": variant_df["CHR"].tolist(),
+            "SNP": variant_df["SNP"].tolist(),
+            "BP": variant_df["BP"].tolist(),
+            "EA": variant_df["EA"].tolist(),
+            "NEA": variant_df["NEA"].tolist(),
+        }).encode("utf-8")
+
         self.model_state = {
             "bmi_beta": torch.from_numpy(bmi_df["BETA"].to_numpy(dtype=np.float64)),
             "bmi_se": torch.from_numpy(bmi_df["SE"].to_numpy(dtype=np.float64)),
@@ -314,6 +323,7 @@ class SiteGWASTrainer(BaseTrainer):
             "eval_n": torch.tensor([len(y_bmi_eval)], dtype=torch.int64),
             "local_bmi_r2": torch.tensor([float(pgs_metrics.loc[0, "VALUE"])], dtype=torch.float64),
             "local_t2d_auc": torch.tensor([float(pgs_metrics.loc[1, "VALUE"])], dtype=torch.float64),
+            "variant_meta": torch.frombuffer(bytearray(_variant_meta), dtype=torch.uint8),
         }
 
         self._has_run = True

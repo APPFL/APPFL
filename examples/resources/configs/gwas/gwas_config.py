@@ -36,7 +36,7 @@ if _env_path.exists():
                 _cfg[_k.strip()] = _v.strip()
 
 USE_CUML: bool = _cfg.get("Use_cuML", "false").lower() == "true"
-VARIANT_SCALING: float = float(_cfg.get("Variant_Scaling", "0.001"))
+VARIANT_SCALING: float = float(_cfg.get("Variant_Scaling", "1.0"))
 VARIANT_SCALING_SEED: int = 42
 HIT_P_THRESHOLD: float = float(_cfg.get("Hit_P_Threshold", "5e-8"))
 DATA_SIM_SCALING: float = float(_cfg.get("Data_Sim_Scaling", "1.0"))
