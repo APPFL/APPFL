@@ -7,7 +7,7 @@ data_configs:
   dataset_path: ./resources/configs/gwas/site_data.py
   dataset_name: get_site_gwas_dataset
   dataset_kwargs:
-    data_dir: /grand/GeomicVar/mjoel/APPFL_GWAS/GA4GH_Demo/sites/Site3/data
+    data_dir: ./resources/configs/gwas/sites-data/Site3/data
     site_id: Site3
 comm_configs:
   grpc_configs:

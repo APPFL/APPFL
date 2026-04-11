@@ -17,7 +17,7 @@ server_configs:
   aggregator: MetaAnalysisAggregator
   aggregator_kwargs:
     output_dir: ./GA4GH_Demo/server/output
-    variant_bim_path: /grand/GeomicVar/mjoel/APPFL_GWAS/GA4GH_Demo/data_sim/input/EUR.synthetic.100k.ld.maf.bim
+    variant_bim_path: ./resources/configs/gwas/sites-data/EUR.synthetic.100k.ld.maf.bim
     qq_max_points: 250000
   num_global_epochs: 4
   logging_output_dirname: ./GA4GH_Demo/server/output/logs

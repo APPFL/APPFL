@@ -1,5 +1,6 @@
 logs
 data
+examples/resources/configs/gwas/sites-data
 examples/memory_profiles
 funnel.db
 **/CLAUDE.md
