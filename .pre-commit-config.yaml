@@ -22,7 +22,7 @@ repos:
       - id: codespell
         exclude: 'examples/notebook_tutorials/.*\.ipynb|examples/memory_profiling/batch_submission_large\.sh'
   - repo: 'https://github.com/charliermarsh/ruff-pre-commit'
-    rev: v0.15.8
+    rev: v0.15.10
     hooks:
       - id: ruff
         args:
