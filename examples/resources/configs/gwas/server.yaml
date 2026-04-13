@@ -19,7 +19,7 @@ server_configs:
     output_dir: ./GA4GH_Demo/server/output
     variant_bim_path: ./resources/configs/gwas/sites-data/EUR.synthetic.100k.ld.maf.bim
     qq_max_points: 250000
-  num_global_epochs: 4
+  num_global_epochs: 10
   logging_output_dirname: ./GA4GH_Demo/server/output/logs
   logging_output_filename: appfl_meta_server
   comm_configs:

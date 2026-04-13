@@ -14,7 +14,7 @@ clients:
 
     comm_configs:
       tes_configs:
-        tes_endpoint: "http://3.95.234.120:8000"
+        tes_endpoint: "http://54.251.133.79:8000"
         auth_token: ""
         docker_image: "zilinghan/client-gwas:latest"
         resource_requirements:
@@ -38,7 +38,7 @@ clients:
 
     comm_configs:
       tes_configs:
-        tes_endpoint: "http://13.58.145.73:8000"
+        tes_endpoint: "http://18.175.200.201:8000"
         auth_token: ""
         docker_image: "zilinghan/client-gwas:latest"
         resource_requirements:
@@ -86,7 +86,7 @@ clients:
 
     comm_configs:
       tes_configs:
-        tes_endpoint: "http://44.249.147.172:8000"
+        tes_endpoint: "http://54.233.53.1:8000"
         auth_token: ""
         docker_image: "zilinghan/client-gwas:latest"
         resource_requirements:
