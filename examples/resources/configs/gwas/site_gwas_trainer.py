@@ -1,8 +1,16 @@
-import json
-import logging
 import os
 import sys
+import json
+import torch
+import matplotlib
+import numpy as np
+import pandas as pd
 from pathlib import Path
+import matplotlib.pyplot as plt
+from scipy.stats import chi2, t
+from pandas_plink import read_plink1_bin
+from appfl.algorithm.trainer.base_trainer import BaseTrainer
+
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -21,35 +29,27 @@ if _gwas_demo_dir:
     sys.path.insert(0, _gwas_demo_dir)
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gwas_config import USE_CUML, HIT_P_THRESHOLD, get_linear_regression, get_logistic_regression, apply_variant_scaling  # noqa: E402
+from gwas_config import (  # noqa: E402
+    USE_CUML,
+    HIT_P_THRESHOLD,
+    get_linear_regression,
+    get_logistic_regression,
+    apply_variant_scaling,
+)
 
-import matplotlib
 
 matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import torch
-from appfl.algorithm.trainer.base_trainer import BaseTrainer
-from pandas_plink import read_plink1_bin
-from scipy.stats import chi2, t
 if not USE_CUML:
-    from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import r2_score, roc_auc_score, roc_curve
+    pass
+from sklearn.metrics import r2_score, roc_auc_score, roc_curve  # noqa: E402
 
 
 CHROM_MAP = {"X": 23, "Y": 24, "XY": 25, "MT": 26, "M": 26}
 
 
 def _normalize_chr(chrom):
-    return (
-        chrom.astype(str)
-        .str.strip()
-        .str.upper()
-        .replace(CHROM_MAP)
-        .astype(int)
-    )
+    return chrom.astype(str).str.strip().str.upper().replace(CHROM_MAP).astype(int)
 
 
 def _fit_binary_model(X, y):
@@ -73,8 +73,7 @@ def _load_genotype_chunk(G, start, end):
     chunk = (
         G.isel(variant=slice(start, end))
         .compute(scheduler="single-threaded")
-        .values
-        .astype(np.float64, copy=False)
+        .values.astype(np.float64, copy=False)
     )
     observed = np.isfinite(chunk)
     counts = observed.sum(axis=0)
@@ -185,10 +184,18 @@ def _plot_bmi_scatter(y_true, y_pred, r2_value, out_path):
 
 
 def _plot_t2d_roc(y_true, probs, auc_value, out_path):
-    fpr, tpr, _ = roc_curve(y_true, probs)
+    fpr, tpr, _ = roc_curve(y_true, probs)  # codespell:ignore fpr
     fig, ax = plt.subplots(figsize=(7, 7))
-    ax.plot(fpr, tpr, color="#1f5a96", linewidth=2.0, label=f"PGS + covariates (AUROC = {auc_value:.4f})")
-    ax.plot([0, 1], [0, 1], color="#9b1c31", linestyle="--", linewidth=1.2, label="Chance")
+    ax.plot(
+        fpr,  # codespell:ignore fpr
+        tpr,
+        color="#1f5a96",
+        linewidth=2.0,
+        label=f"PGS + covariates (AUROC = {auc_value:.4f})",
+    )
+    ax.plot(
+        [0, 1], [0, 1], color="#9b1c31", linestyle="--", linewidth=1.2, label="Chance"
+    )
     ax.set_xlabel("False positive rate")
     ax.set_ylabel("True positive rate")
     ax.set_title("Local T2D PGS ROC")
@@ -223,9 +230,13 @@ class SiteGWASTrainer(BaseTrainer):
             client_id=client_id,
             **kwargs,
         )
-        self.client_id = str(client_id) if client_id is not None else str(train_dataset.site_id)
+        self.client_id = (
+            str(client_id) if client_id is not None else str(train_dataset.site_id)
+        )
         self.chunk_size = int(self.train_configs.get("gwas_chunk_size", 256))
-        self.hit_threshold = float(self.train_configs.get("hit_p_threshold", HIT_P_THRESHOLD))
+        self.hit_threshold = float(
+            self.train_configs.get("hit_p_threshold", HIT_P_THRESHOLD)
+        )
         self.qq_max_points = int(self.train_configs.get("qq_max_points", 250000))
         _default_out = str(self.train_dataset.data_dir.parent / "output")
         self.output_dir = Path(
@@ -248,15 +259,23 @@ class SiteGWASTrainer(BaseTrainer):
         self.global_state = params if isinstance(params, dict) else {}
 
     def get_parameters(self):
+        if hasattr(self, "_train_metadata"):
+            return (self.model_state, self._train_metadata)
         return self.model_state
 
     def train(self, **kwargs):
-        if self._has_run:
-            return
+        if "round" in kwargs:
+            self.round = kwargs["round"]
+        # if self._has_run:
+        #     return
 
-        self.logger.info(f"{self.client_id}: loading local site data from {self.train_dataset.data_dir}")
+        self.logger.info(
+            f"{self.client_id}: loading local site data from {self.train_dataset.data_dir}"
+        )
         G = read_plink1_bin(str(self.train_dataset.plink_bed), verbose=False, ref="a1")
-        sample_df, variant_df, X_cov, y_bmi_gwas, y_t2d_gwas, y_bmi_eval, y_t2d_eval = self._load_site_tables(G)
+        sample_df, variant_df, X_cov, y_bmi_gwas, y_t2d_gwas, y_bmi_eval, y_t2d_eval = (
+            self._load_site_tables(G)
+        )
         n_variants_total = len(variant_df)
         variant_df, G = apply_variant_scaling(variant_df, G)
         if len(variant_df) < n_variants_total:
@@ -266,7 +285,9 @@ class SiteGWASTrainer(BaseTrainer):
 
         bmi_df = self._run_bmi_gwas(G, variant_df, X_cov, y_bmi_gwas)
         t2d_df = self._run_t2d_gwas(G, variant_df, X_cov, y_t2d_gwas)
-        pgs_metrics = self._run_local_pgs(G, sample_df[["FID", "IID"]], X_cov, y_bmi_eval, y_t2d_eval, bmi_df, t2d_df)
+        pgs_metrics = self._run_local_pgs(
+            G, sample_df[["FID", "IID"]], X_cov, y_bmi_eval, y_t2d_eval, bmi_df, t2d_df
+        )
 
         bmi_path = self.data_dir / f"{self.client_id}_local_gwas_bmi.csv.gz"
         t2d_path = self.data_dir / f"{self.client_id}_local_gwas_t2d.csv.gz"
@@ -305,13 +326,15 @@ class SiteGWASTrainer(BaseTrainer):
             self.graphs_dir / f"{self.client_id}_local_gwas_t2d_qq.png",
         )
 
-        _variant_meta = json.dumps({
-            "CHR": variant_df["CHR"].tolist(),
-            "SNP": variant_df["SNP"].tolist(),
-            "BP": variant_df["BP"].tolist(),
-            "EA": variant_df["EA"].tolist(),
-            "NEA": variant_df["NEA"].tolist(),
-        }).encode("utf-8")
+        _variant_meta = json.dumps(
+            {
+                "CHR": variant_df["CHR"].tolist(),
+                "SNP": variant_df["SNP"].tolist(),
+                "BP": variant_df["BP"].tolist(),
+                "EA": variant_df["EA"].tolist(),
+                "NEA": variant_df["NEA"].tolist(),
+            }
+        ).encode("utf-8")
 
         self.model_state = {
             "bmi_beta": torch.from_numpy(bmi_df["BETA"].to_numpy(dtype=np.float64)),
@@ -321,9 +344,23 @@ class SiteGWASTrainer(BaseTrainer):
             "maf": torch.from_numpy(bmi_df["MAF"].to_numpy(dtype=np.float64)),
             "gwas_n": torch.tensor([len(y_bmi_gwas)], dtype=torch.int64),
             "eval_n": torch.tensor([len(y_bmi_eval)], dtype=torch.int64),
-            "local_bmi_r2": torch.tensor([float(pgs_metrics.loc[0, "VALUE"])], dtype=torch.float64),
-            "local_t2d_auc": torch.tensor([float(pgs_metrics.loc[1, "VALUE"])], dtype=torch.float64),
-            "variant_meta": torch.frombuffer(bytearray(_variant_meta), dtype=torch.uint8),
+            "local_bmi_r2": torch.tensor(
+                [float(pgs_metrics.loc[0, "VALUE"])], dtype=torch.float64
+            ),
+            "local_t2d_auc": torch.tensor(
+                [float(pgs_metrics.loc[1, "VALUE"])], dtype=torch.float64
+            ),
+            "variant_meta": torch.frombuffer(
+                bytearray(_variant_meta), dtype=torch.uint8
+            ),
+        }
+        self._train_metadata = {
+            "round": self.round,
+            "Local BMI PGS R²": round(float(pgs_metrics.loc[0, "VALUE"]), 4),
+            "Local T2D PGS AUROC": round(float(pgs_metrics.loc[1, "VALUE"]), 4),
+            "GWAS Sample Size": len(y_bmi_gwas),
+            "PGS Eval Sample Size": len(y_bmi_eval),
+            "Num Variants": len(variant_df),
         }
 
         self._has_run = True
@@ -351,7 +388,9 @@ class SiteGWASTrainer(BaseTrainer):
         required_cols = ["BMI_gwas", "T2D_gwas", "BMI_eval", "T2D_eval", "age", "sex"]
         missing = sample_df[required_cols].isna().sum()
         if missing.any():
-            raise ValueError(f"{self.client_id}: missing local phenotype/covariate values: {missing.to_dict()}")
+            raise ValueError(
+                f"{self.client_id}: missing local phenotype/covariate values: {missing.to_dict()}"
+            )
 
         age = sample_df["age"].to_numpy(dtype=np.float64)
         age_sd = age.std(ddof=0)
@@ -397,7 +436,9 @@ class SiteGWASTrainer(BaseTrainer):
         for start in range(0, n_variants, self.chunk_size):
             end = min(start + self.chunk_size, n_variants)
             if start == 0 or start % (20 * self.chunk_size) == 0:
-                self.logger.info(f"{self.client_id}: BMI GWAS chunk {start + 1}-{end} / {n_variants}")
+                self.logger.info(
+                    f"{self.client_id}: BMI GWAS chunk {start + 1}-{end} / {n_variants}"
+                )
 
             G_chunk, maf = _load_genotype_chunk(G, start, end)
             g_model = get_linear_regression(fit_intercept=False)
@@ -460,7 +501,9 @@ class SiteGWASTrainer(BaseTrainer):
         for start in range(0, n_variants, self.chunk_size):
             end = min(start + self.chunk_size, n_variants)
             if start == 0 or start % (20 * self.chunk_size) == 0:
-                self.logger.info(f"{self.client_id}: T2D GWAS chunk {start + 1}-{end} / {n_variants}")
+                self.logger.info(
+                    f"{self.client_id}: T2D GWAS chunk {start + 1}-{end} / {n_variants}"
+                )
 
             G_chunk, maf = _load_genotype_chunk(G, start, end)
             g_model = get_linear_regression(fit_intercept=False)
@@ -488,7 +531,9 @@ class SiteGWASTrainer(BaseTrainer):
                 out=np.zeros(end - start, dtype=np.float64),
                 where=np.isfinite(se) & (se > 0),
             )
-            p_value = np.clip(chi2.sf(stat * stat, df=1), np.finfo(np.float64).tiny, 1.0)
+            p_value = np.clip(
+                chi2.sf(stat * stat, df=1), np.finfo(np.float64).tiny, 1.0
+            )
 
             chunk_df = variant_df.iloc[start:end].copy()
             chunk_df["TRAIT"] = "T2D"
@@ -504,8 +549,12 @@ class SiteGWASTrainer(BaseTrainer):
 
         return pd.concat(out_chunks, ignore_index=True)
 
-    def _run_local_pgs(self, G, sample_df, X_cov, y_bmi_eval, y_t2d_eval, bmi_df, t2d_df):
-        self.logger.info(f"{self.client_id}: scoring local BMI/T2D PGS in one genotype pass")
+    def _run_local_pgs(
+        self, G, sample_df, X_cov, y_bmi_eval, y_t2d_eval, bmi_df, t2d_df
+    ):
+        self.logger.info(
+            f"{self.client_id}: scoring local BMI/T2D PGS in one genotype pass"
+        )
         beta_matrix = np.column_stack(
             [
                 bmi_df["BETA"].fillna(0.0).to_numpy(dtype=np.float64),
@@ -549,7 +598,9 @@ class SiteGWASTrainer(BaseTrainer):
         pgs_df["BMI_predicted"] = y_bmi_pred
         pgs_df["T2D_observed"] = y_t2d_eval
         pgs_df["T2D_probability"] = y_t2d_prob
-        pgs_df.to_csv(self.data_dir / f"{self.client_id}_local_pgs_scores.csv", index=False)
+        pgs_df.to_csv(
+            self.data_dir / f"{self.client_id}_local_pgs_scores.csv", index=False
+        )
 
         _plot_bmi_scatter(
             y_bmi_eval,

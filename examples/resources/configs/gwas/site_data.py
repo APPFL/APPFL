@@ -21,7 +21,8 @@ class SiteGWASDataset:
         missing = [str(path) for path in required if not path.exists()]
         if missing:
             raise FileNotFoundError(
-                f"{self.site_id} missing required inputs:\n  - " + "\n  - ".join(missing)
+                f"{self.site_id} missing required inputs:\n  - "
+                + "\n  - ".join(missing)
             )
 
         with self.plink_bed.with_suffix(".fam").open("r", encoding="utf-8") as handle:

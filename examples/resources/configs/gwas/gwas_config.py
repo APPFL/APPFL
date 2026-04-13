@@ -47,6 +47,7 @@ DATA_SIM_SCALING_SEED: int = 7  # distinct from VARIANT_SCALING_SEED=42
 # Model factories
 # ---------------------------------------------------------------------------
 
+
 def get_linear_regression(**kwargs):
     """Return a LinearRegression instance (cuML or sklearn based on Use_cuML)."""
     if USE_CUML:
@@ -66,8 +67,10 @@ def get_logistic_regression(**kwargs):
     """
     if USE_CUML:
         from cuml.linear_model import LogisticRegression
-        cuml_kwargs = {k: v for k, v in kwargs.items()
-                       if k not in ("solver",)}  # cuML ignores 'solver'
+
+        cuml_kwargs = {
+            k: v for k, v in kwargs.items() if k not in ("solver",)
+        }  # cuML ignores 'solver'
         # cuML does not accept penalty=None; use a large C to approximate no regularization
         if cuml_kwargs.get("penalty") is None:
             cuml_kwargs.pop("penalty", None)
@@ -75,12 +78,14 @@ def get_logistic_regression(**kwargs):
         return LogisticRegression(**cuml_kwargs)
     else:
         from sklearn.linear_model import LogisticRegression
+
         return LogisticRegression(**kwargs)
 
 
 # ---------------------------------------------------------------------------
 # Variant subsampling
 # ---------------------------------------------------------------------------
+
 
 def apply_data_sim_scaling(variant_df, G=None):
     """Deterministically subsample variants to DATA_SIM_SCALING fraction (data-sim stage).

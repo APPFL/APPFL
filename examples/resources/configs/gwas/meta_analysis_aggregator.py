@@ -1,6 +1,14 @@
 import os
 import sys
+import json
+import torch
+import matplotlib
+import numpy as np
+import pandas as pd
 from pathlib import Path
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+from appfl.algorithm.aggregator import BaseAggregator
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -17,30 +25,14 @@ else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gwas_config import HIT_P_THRESHOLD  # noqa: E402
 
-import json
-import matplotlib
-
 matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import torch
-from appfl.algorithm.aggregator import BaseAggregator
-from scipy.stats import norm
 
 
 CHROM_MAP = {"X": 23, "Y": 24, "XY": 25, "MT": 26, "M": 26}
 
 
 def _normalize_chr(chrom):
-    return (
-        chrom.astype(str)
-        .str.strip()
-        .str.upper()
-        .replace(CHROM_MAP)
-        .astype(int)
-    )
+    return chrom.astype(str).str.strip().str.upper().replace(CHROM_MAP).astype(int)
 
 
 def _to_numpy(value):
@@ -51,7 +43,11 @@ def _to_numpy(value):
 
 def _plot_manhattan(gwas_df, trait, threshold, out_path, label="APPFL"):
     n_snps = len(gwas_df)
-    n_col = "N_META" if "N_META" in gwas_df.columns else ("N" if "N" in gwas_df.columns else None)
+    n_col = (
+        "N_META"
+        if "N_META" in gwas_df.columns
+        else ("N" if "N" in gwas_df.columns else None)
+    )
     n_samples = int(gwas_df[n_col].iloc[0]) if n_col else 0
 
     plot_df = gwas_df[["CHR", "BP", "P"]].copy()
@@ -133,9 +129,13 @@ class MetaAnalysisAggregator(BaseAggregator):
         self.model = model
         self.logger = logger
         self.aggregator_configs = aggregator_configs
-        self.hit_threshold = float(aggregator_configs.get("hit_p_threshold", HIT_P_THRESHOLD))
+        self.hit_threshold = float(
+            aggregator_configs.get("hit_p_threshold", HIT_P_THRESHOLD)
+        )
         self.qq_max_points = int(aggregator_configs.get("qq_max_points", 250000))
-        self.output_dir = Path(aggregator_configs.get("output_dir", "GA4GH_Demo/server/output")).resolve()
+        self.output_dir = Path(
+            aggregator_configs.get("output_dir", "GA4GH_Demo/server/output")
+        ).resolve()
         self.data_dir = self.output_dir / "data"
         self.graphs_dir = self.output_dir / "graphs"
         self.logs_dir = self.output_dir / "logs"
@@ -151,20 +151,50 @@ class MetaAnalysisAggregator(BaseAggregator):
 
     def aggregate(self, local_models, **kwargs):
         client_ids = list(local_models.keys())
-        self.logger.info(f"Running fixed-effect meta-analysis across {len(client_ids)} APPFL sites.")
+        self.logger.info(
+            f"Running fixed-effect meta-analysis across {len(client_ids)} APPFL sites."
+        )
 
         _meta_bytes = _to_numpy(local_models[client_ids[0]]["variant_meta"]).tobytes()
         variant_df = pd.DataFrame(json.loads(_meta_bytes.decode("utf-8")))
 
-        bmi_beta_stack = np.vstack([_to_numpy(local_models[cid]["bmi_beta"]) for cid in client_ids])
-        bmi_se_stack = np.vstack([_to_numpy(local_models[cid]["bmi_se"]) for cid in client_ids])
-        t2d_beta_stack = np.vstack([_to_numpy(local_models[cid]["t2d_beta"]) for cid in client_ids])
-        t2d_se_stack = np.vstack([_to_numpy(local_models[cid]["t2d_se"]) for cid in client_ids])
-        maf_stack = np.vstack([_to_numpy(local_models[cid]["maf"]) for cid in client_ids])
-        gwas_n = np.array([int(_to_numpy(local_models[cid]["gwas_n"])[0]) for cid in client_ids], dtype=np.float64)
-        eval_n = np.array([int(_to_numpy(local_models[cid]["eval_n"])[0]) for cid in client_ids], dtype=np.float64)
-        bmi_r2 = np.array([float(_to_numpy(local_models[cid]["local_bmi_r2"])[0]) for cid in client_ids], dtype=np.float64)
-        t2d_auc = np.array([float(_to_numpy(local_models[cid]["local_t2d_auc"])[0]) for cid in client_ids], dtype=np.float64)
+        bmi_beta_stack = np.vstack(
+            [_to_numpy(local_models[cid]["bmi_beta"]) for cid in client_ids]
+        )
+        bmi_se_stack = np.vstack(
+            [_to_numpy(local_models[cid]["bmi_se"]) for cid in client_ids]
+        )
+        t2d_beta_stack = np.vstack(
+            [_to_numpy(local_models[cid]["t2d_beta"]) for cid in client_ids]
+        )
+        t2d_se_stack = np.vstack(
+            [_to_numpy(local_models[cid]["t2d_se"]) for cid in client_ids]
+        )
+        maf_stack = np.vstack(
+            [_to_numpy(local_models[cid]["maf"]) for cid in client_ids]
+        )
+        gwas_n = np.array(
+            [int(_to_numpy(local_models[cid]["gwas_n"])[0]) for cid in client_ids],
+            dtype=np.float64,
+        )
+        eval_n = np.array(
+            [int(_to_numpy(local_models[cid]["eval_n"])[0]) for cid in client_ids],
+            dtype=np.float64,
+        )
+        bmi_r2 = np.array(
+            [
+                float(_to_numpy(local_models[cid]["local_bmi_r2"])[0])
+                for cid in client_ids
+            ],
+            dtype=np.float64,
+        )
+        t2d_auc = np.array(
+            [
+                float(_to_numpy(local_models[cid]["local_t2d_auc"])[0])
+                for cid in client_ids
+            ],
+            dtype=np.float64,
+        )
 
         n_variants = len(variant_df)
         if bmi_beta_stack.shape[1] != n_variants:
@@ -175,8 +205,12 @@ class MetaAnalysisAggregator(BaseAggregator):
 
         total_n = int(gwas_n.sum())
         meta_maf = np.average(maf_stack, axis=0, weights=gwas_n)
-        bmi_df = self._meta_analyze_trait(bmi_beta_stack, bmi_se_stack, meta_maf, "BMI", total_n, variant_df)
-        t2d_df = self._meta_analyze_trait(t2d_beta_stack, t2d_se_stack, meta_maf, "T2D", total_n, variant_df)
+        bmi_df = self._meta_analyze_trait(
+            bmi_beta_stack, bmi_se_stack, meta_maf, "BMI", total_n, variant_df
+        )
+        t2d_df = self._meta_analyze_trait(
+            t2d_beta_stack, t2d_se_stack, meta_maf, "T2D", total_n, variant_df
+        )
 
         bmi_path = self.data_dir / "appfl_meta_gwas_bmi.csv.gz"
         t2d_path = self.data_dir / "appfl_meta_gwas_t2d.csv.gz"
@@ -187,7 +221,9 @@ class MetaAnalysisAggregator(BaseAggregator):
         bmi_df.to_csv(bmi_path, index=False)
         t2d_df.to_csv(t2d_path, index=False)
         self._write_hits_table(bmi_df, t2d_df, hits_path)
-        self._write_site_metrics(client_ids, gwas_n, eval_n, bmi_r2, t2d_auc, metrics_path, summary_path)
+        self._write_site_metrics(
+            client_ids, gwas_n, eval_n, bmi_r2, t2d_auc, metrics_path, summary_path
+        )
 
         _plot_manhattan(
             bmi_df,
@@ -220,17 +256,31 @@ class MetaAnalysisAggregator(BaseAggregator):
             "meta_ready": torch.tensor([1], dtype=torch.int64),
             "num_clients": torch.tensor([len(client_ids)], dtype=torch.int64),
             "num_variants": torch.tensor([n_variants], dtype=torch.int64),
-            "bmi_hits": torch.tensor([int((bmi_df["P"] < self.hit_threshold).sum())], dtype=torch.int64),
-            "t2d_hits": torch.tensor([int((t2d_df["P"] < self.hit_threshold).sum())], dtype=torch.int64),
-            "weighted_local_bmi_r2": torch.tensor([float(np.average(bmi_r2, weights=eval_n))], dtype=torch.float64),
-            "weighted_local_t2d_auc": torch.tensor([float(np.average(t2d_auc, weights=eval_n))], dtype=torch.float64),
+            "bmi_hits": torch.tensor(
+                [int((bmi_df["P"] < self.hit_threshold).sum())], dtype=torch.int64
+            ),
+            "t2d_hits": torch.tensor(
+                [int((t2d_df["P"] < self.hit_threshold).sum())], dtype=torch.int64
+            ),
+            "weighted_local_bmi_r2": torch.tensor(
+                [float(np.average(bmi_r2, weights=eval_n))], dtype=torch.float64
+            ),
+            "weighted_local_t2d_auc": torch.tensor(
+                [float(np.average(t2d_auc, weights=eval_n))], dtype=torch.float64
+            ),
         }
-        self.logger.info(f"APPFL meta-analysis outputs written to {self.output_dir}/{{data,graphs}}")
+        self.logger.info(
+            f"APPFL meta-analysis outputs written to {self.output_dir}/{{data,graphs}}"
+        )
         return self.global_state
 
-    def _meta_analyze_trait(self, beta_stack, se_stack, maf, trait, total_n, variant_df):
+    def _meta_analyze_trait(
+        self, beta_stack, se_stack, maf, trait, total_n, variant_df
+    ):
         with np.errstate(divide="ignore", invalid="ignore"):
-            weights = np.where(np.isfinite(se_stack) & (se_stack > 0), 1.0 / np.square(se_stack), 0.0)
+            weights = np.where(
+                np.isfinite(se_stack) & (se_stack > 0), 1.0 / np.square(se_stack), 0.0
+            )
         weight_sum = weights.sum(axis=0)
         beta = np.divide(
             np.sum(weights * beta_stack, axis=0),
@@ -283,7 +333,9 @@ class MetaAnalysisAggregator(BaseAggregator):
             hit_tables.append(hits)
         pd.concat(hit_tables, ignore_index=True).to_csv(out_path, index=False)
 
-    def _write_site_metrics(self, client_ids, gwas_n, eval_n, bmi_r2, t2d_auc, metrics_path, summary_path):
+    def _write_site_metrics(
+        self, client_ids, gwas_n, eval_n, bmi_r2, t2d_auc, metrics_path, summary_path
+    ):
         site_metrics = pd.DataFrame(
             {
                 "CLIENT_ID": client_ids,
@@ -302,7 +354,9 @@ class MetaAnalysisAggregator(BaseAggregator):
                     "TOTAL_GWAS_N": int(gwas_n.sum()),
                     "TOTAL_EVAL_N": int(eval_n.sum()),
                     "WEIGHTED_LOCAL_BMI_R2": float(np.average(bmi_r2, weights=eval_n)),
-                    "WEIGHTED_LOCAL_T2D_AUROC": float(np.average(t2d_auc, weights=eval_n)),
+                    "WEIGHTED_LOCAL_T2D_AUROC": float(
+                        np.average(t2d_auc, weights=eval_n)
+                    ),
                 }
             ]
         )
