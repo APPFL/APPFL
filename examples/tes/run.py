@@ -73,9 +73,10 @@ while not server_agent.training_finished():
     client_id, client_model, client_metadata = (
         server_communicator.recv_result_from_one_client()
     )
-    server_agent.logger.info(
-        f"Received model from client {client_id}, with metadata:\n{pprint.pformat(client_metadata)}"
-    )
+    if len(client_metadata) > 0:
+        server_agent.logger.info(
+            f"Received model from client {client_id}, with metadata:\n{pprint.pformat(client_metadata)}"
+        )
 
     global_model = server_agent.global_update(
         client_id,
