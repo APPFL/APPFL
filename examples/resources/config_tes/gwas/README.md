@@ -1,6 +1,6 @@
 # Federated Genome-Wide Association Study (GWAS) using TES
 
-This example demonstrates how to run a federated Genome-Wide Association Study (GWAS) using APPFL with the GA4GH Task Execution Service (TES) as the compute backend. 
+This example demonstrates how to run a federated Genome-Wide Association Study (GWAS) using APPFL with the GA4GH Task Execution Service (TES) as the compute backend.
 
 ## APPFL Installation
 
