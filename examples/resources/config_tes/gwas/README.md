@@ -43,6 +43,7 @@ A successful response lists the bucket contents (or an empty list). An error res
 > **💡 Note:** Update the `tes_endpoint` for each client in `clients-template.yaml` before running.
 
 ```bash
+cd examples # navigate to the examples directory before running
 python tes/run.py --server_config ./resources/config_tes/gwas/server.yaml --client_config ./resources/config_tes/gwas/clients-template.yaml
 ```
 
@@ -64,10 +65,11 @@ pip install -e .
 ### Run with Visualization
 
 ```bash
+cd examples # navigate to the examples directory before running
 python tes/run_viz.py --server_config ./resources/config_tes/gwas/server.yaml --client_config ./resources/config_tes/gwas/clients-template.yaml
 ```
 
-The map visualization will be available at `http://localhost:7070` while the server is running. Once training finishes, you can replay the run at any time with:
+The map visualization will be available at `http://localhost:7070` while the server is running. Once training finishes, you can replay the run at any time in the same folder with the command:
 
 ```bash
 hivewatch map run --runs-dir runs --port 7070
