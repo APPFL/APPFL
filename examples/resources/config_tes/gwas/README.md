@@ -10,7 +10,7 @@ Each site runs GWAS locally and transmits only summary statistics (beta, SE, MAF
 
 The pipeline is built on two custom APPFL classes in `resources/configs/gwas/`:
 
-**`SiteGWASTrainer`** ([`site_gwas_trainer.py`](../configs/gwas/site_gwas_trainer.py)) extends `BaseTrainer`. At each site it:
+**`SiteGWASTrainer`** ([`site_gwas_trainer.py`](../../configs/gwas/site_gwas_trainer.py)) extends `BaseTrainer`. At each site it:
 
 1. Loads PLINK binary genotypes and phenotype/covariate CSVs via `SiteGWASDataset`
 2. Runs **BMI GWAS** - chunked OLS per variant (`BMI ~ beta*dosage + gamma*covariates + epsilon`), reporting beta, SE, t-stat, p-value
@@ -18,7 +18,7 @@ The pipeline is built on two custom APPFL classes in `resources/configs/gwas/`:
 4. Scores local PGS on a held-out evaluation set and computes R-squared (BMI) and AUROC (T2D)
 5. Returns all summary statistics as PyTorch tensors for transmission to the server
 
-**`MetaAnalysisAggregator`** ([`meta_analysis_aggregator.py`](../configs/gwas/meta_analysis_aggregator.py)) extends `BaseAggregator`. On the server it:
+**`MetaAnalysisAggregator`** ([`meta_analysis_aggregator.py`](../../configs/gwas/meta_analysis_aggregator.py)) extends `BaseAggregator`. On the server it:
 
 1. Receives beta and SE stacks from all sites
 2. Applies inverse-variance weighted fixed-effect meta-analysis: `beta_meta = sum(w_i * beta_i) / sum(w_i)`, where `w_i = 1 / SE_i^2`, and `SE_meta = 1 / sqrt(sum(w_i))`
@@ -47,7 +47,7 @@ The demo uses synthetic European-ancestry genotype data: 100,000 samples, ~240,0
 
 ## APPFL Installation
 
-Install APPFL in a clean conda environment:
+To run the example, first install APPFL in a clean conda environment:
 
 ```bash
 conda create -n appfl-env python=3.10 -y
