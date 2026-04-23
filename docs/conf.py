@@ -68,10 +68,7 @@ autodoc_mock_imports = [
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-# templates_path = [
-#         os.path.join(sphinx_book_theme.get_html_theme_path(), "_templates"),
-#         '_templates'
-# ]
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -117,6 +114,19 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
+html_sidebars = {
+    "**": [
+        "sidebar/brand.html",
+        "github-link.html",
+        "sidebar/search.html",
+        "sidebar/scroll-start.html",
+        "sidebar/navigation.html",
+        "sidebar/ethical-ads.html",
+        "sidebar/scroll-end.html",
+        "sidebar/variant-selector.html",
+    ]
+}
+
 html_static_path = ["_static"]
 html_css_files = [
     "css/custom.css",
