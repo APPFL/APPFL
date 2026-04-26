@@ -39,7 +39,12 @@ def get_proxystore_connector(
     connector_name: str,
     connector_args: Dict[str, Any],
 ):
-    assert connector_name in ["RedisConnector", "FileConnector", "EndpointConnector"], (
+    assert connector_name in [
+        "RedisConnector",
+        "FileConnector",
+        "EndpointConnector",
+        "GlobusConnector",
+    ], (
         f"Invalid connector name: {connector_name}, only RedisConnector, FileConnector, and EndpointConnector are supported"
     )
     if connector_name == "RedisConnector":
@@ -54,6 +59,23 @@ def get_proxystore_connector(
         from proxystore.connectors.endpoint import EndpointConnector
 
         connector = EndpointConnector(**connector_args)
+    elif connector_name == "GlobusConnector":
+        from proxystore.connectors.globus import GlobusConnector, GlobusEndpoint
+
+        endpoint_ids = connector_args["endpoints"]
+        endpoint_paths = connector_args["endpoint_paths"]
+        local_paths = connector_args["local_paths"]
+        host_regex = connector_args["host_regex"]
+
+        globus_endpoint_list = []
+
+        for i in range(len(endpoint_ids)):
+            globus_endpoint = GlobusEndpoint(
+                endpoint_ids[i], endpoint_paths[i], local_paths[i], host_regex[i]
+            )
+            globus_endpoint_list.append(globus_endpoint)
+
+        connector = GlobusConnector(globus_endpoint_list, timeout=600)
     return connector
 
 
@@ -540,6 +562,8 @@ def parse_device_str(devices_str: str):
             return ({"device_type": "cpu", "device_ids": []}, "cpu")
         elif dev == "cuda":
             return ({"device_type": "gpu-single", "device_ids": []}, "cuda")
+        elif dev == "xpu":
+            return ({"device_type": "gpu-single", "device_ids": []}, "xpu")
         elif dev.startswith("cuda:"):
             match = re.match(r"cuda:(\d+)$", dev)
             if not match:
