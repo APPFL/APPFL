@@ -70,6 +70,7 @@ class VanillaTrainer(BaseTrainer):
             batch_size=self.train_configs.get("train_batch_size", 32),
             shuffle=self.train_configs.get("train_data_shuffle", True),
             num_workers=self.train_configs.get("num_workers", 0),
+            drop_last=self.train_configs.get("train_drop_last", False),
         )
         self.val_dataloader = (
             DataLoader(

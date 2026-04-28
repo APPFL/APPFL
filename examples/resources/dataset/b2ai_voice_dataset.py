@@ -3,10 +3,8 @@ import numpy as np
 import torch
 from appfl.misc.data import Dataset
 
-PARTITIONED_DATA_DIR = "/lus/grand/projects/GeomicVar/zilinghan/b2ai-voice/physionet.org/files/b2ai-voice/2.0.1/data/partitioned_data"
 
-
-def get_b2ai_voice(client_id: int, **kwargs):
+def get_b2ai_voice(client_id: int, dataset_path: str, **kwargs):
     """
     Load pre-partitioned B2AI-Voice spectrogram features for a given FL client.
 
@@ -27,13 +25,13 @@ def get_b2ai_voice(client_id: int, **kwargs):
         (train_dataset, val_dataset) as appfl.misc.data.Dataset objects
     """
     # Load training data for this client (all recordings used for training)
-    train_path = os.path.join(PARTITIONED_DATA_DIR, f"client_{client_id}", "data.npz")
+    train_path = os.path.join(dataset_path, f"client_{client_id}", "data.npz")
     train_cache = np.load(train_path, allow_pickle=True)
     X_train = train_cache["X"].astype(np.float32)   # (N, 402)
     y_train = train_cache["y"].astype(np.int64)     # (N,)
 
     # Load shared validation set from multi-cohort / controls (client_4)
-    val_path = os.path.join(PARTITIONED_DATA_DIR, "client_4", "data.npz")
+    val_path = os.path.join(dataset_path, "client_4", "data.npz")
     val_cache = np.load(val_path, allow_pickle=True)
     X_val = val_cache["X"].astype(np.float32)
     y_val = val_cache["y"].astype(np.int64)
