@@ -89,12 +89,16 @@ def _pathological_partition(
             f"< num_classes({int(classes.size)})."
         )
 
-    client_slots = rng.permutation(np.repeat(np.arange(num_clients, dtype=np.int64), cap))
+    client_slots = rng.permutation(
+        np.repeat(np.arange(num_clients, dtype=np.int64), cap)
+    )
     class_to_clients: dict[int, list[int]] = {int(cls): [] for cls in classes.tolist()}
     client_class_sets = [set() for _ in range(num_clients)]
 
     shuffled_classes = rng.permutation(classes)
-    for cls, cid in zip(shuffled_classes.tolist(), client_slots[: classes.size].tolist()):
+    for cls, cid in zip(
+        shuffled_classes.tolist(), client_slots[: classes.size].tolist()
+    ):
         c = int(cid)
         y = int(cls)
         client_class_sets[c].add(y)
@@ -102,7 +106,9 @@ def _pathological_partition(
 
     for cid in client_slots[classes.size :].tolist():
         c = int(cid)
-        available = [int(cls) for cls in classes.tolist() if int(cls) not in client_class_sets[c]]
+        available = [
+            int(cls) for cls in classes.tolist() if int(cls) not in client_class_sets[c]
+        ]
         if not available:
             continue
         y = int(rng.choice(np.asarray(available, dtype=np.int64)))
@@ -116,14 +122,18 @@ def _pathological_partition(
         rng.shuffle(cls_idx)
         owners = class_to_clients[y]
         if not owners:
-            raise RuntimeError(f"pathological partition internal error: class {y} has no owner.")
+            raise RuntimeError(
+                f"pathological partition internal error: class {y} has no owner."
+            )
         parts = np.array_split(cls_idx, len(owners))
         for cid, part in zip(owners, parts):
             if len(part) > 0:
                 out[int(cid)].append(part.astype(np.int64))
 
     result = {
-        cid: np.concatenate(parts).astype(np.int64) if parts else np.array([], dtype=np.int64)
+        cid: np.concatenate(parts).astype(np.int64)
+        if parts
+        else np.array([], dtype=np.int64)
         for cid, parts in out.items()
     }
 
@@ -137,9 +147,11 @@ def _pathological_partition(
                 f"pathological partition produced {len(uniq)} classes for client {cid}, cap={cap}."
             )
         covered.update(int(v) for v in uniq)
-    expected = set(int(v) for v in classes.tolist())
+    expected = {int(v) for v in classes.tolist()}
     if covered != expected:
-        raise RuntimeError("pathological partition failed to cover all classes across clients.")
+        raise RuntimeError(
+            "pathological partition failed to cover all classes across clients."
+        )
 
     return result
 
@@ -209,7 +221,9 @@ def simulate_partition(
     if partition_type == "iid":
         return _iid_partition(len(labels), num_clients, rng)
     if partition_type == "unbalanced":
-        return _unbalanced_partition(len(labels), num_clients, rng, keep_min=unbalanced_keep_min)
+        return _unbalanced_partition(
+            len(labels), num_clients, rng, keep_min=unbalanced_keep_min
+        )
     if partition_type in {"patho", "pathological"}:
         return _pathological_partition(
             labels,
@@ -245,7 +259,9 @@ def split_client_dataset(
         train_idx = sample_indices
         test_idx = np.asarray([], dtype=np.int64)
     else:
-        targets_all = raw_targets if raw_targets is not None else extract_targets(raw_train)
+        targets_all = (
+            raw_targets if raw_targets is not None else extract_targets(raw_train)
+        )
         if _is_classification_targets(targets_all):
             local_targets = targets_all[sample_indices]
             train_parts = []
@@ -287,10 +303,14 @@ def split_client_dataset(
     )
 
     train_targets = (
-        extract_targets(train_subset) if len(train_subset) > 0 else np.array([], dtype=np.int64)
+        extract_targets(train_subset)
+        if len(train_subset) > 0
+        else np.array([], dtype=np.int64)
     )
     test_targets = (
-        extract_targets(test_subset) if len(test_subset) > 0 else np.array([], dtype=np.int64)
+        extract_targets(test_subset)
+        if len(test_subset) > 0
+        else np.array([], dtype=np.int64)
     )
     train_subset.targets = _coerce_target_tensor(train_targets)
     test_subset.targets = _coerce_target_tensor(test_targets)
@@ -302,11 +322,15 @@ def partition_raw_dataset(
     config,
 ):
     targets = extract_targets(raw_train)
-    partition_type = str(
-        getattr(config, "partition_type", getattr(config, "split_type", "iid"))
-    ).strip().lower()
+    partition_type = (
+        str(getattr(config, "partition_type", getattr(config, "split_type", "iid")))
+        .strip()
+        .lower()
+    )
     if partition_type == "pre":
-        client_indices = _predefined_client_partition_indices(raw_train=raw_train, config=config)
+        client_indices = _predefined_client_partition_indices(
+            raw_train=raw_train, config=config
+        )
     else:
         client_indices = simulate_partition(
             labels=targets,
@@ -384,9 +408,7 @@ def _predefined_client_partition_indices(
         if key in selected_set:
             index_bins[key].append(int(idx))
 
-    min_samples = max(
-        0, _safe_int(getattr(config, "pre_min_samples_per_client", 0), 0)
-    )
+    min_samples = max(0, _safe_int(getattr(config, "pre_min_samples_per_client", 0), 0))
     non_empty_keys = [
         k for k, arr in index_bins.items() if len(arr) >= max(1, min_samples or 1)
     ]

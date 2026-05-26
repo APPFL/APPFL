@@ -123,6 +123,7 @@ RESOURCE_MAP = {
     ],
 }
 
+
 def _get_confirm_token(response):
     for key, value in response.cookies.items():
         if key.startswith("download_warning"):
@@ -193,7 +194,9 @@ def _download_from_source(download_root: Path, source: str, resource):
             md5=md5,
         )
         if extract and filename.endswith(".zip"):
-            with zipfile.ZipFile(download_root / filename, "r", compression=zipfile.ZIP_STORED) as zf:
+            with zipfile.ZipFile(
+                download_root / filename, "r", compression=zipfile.ZIP_STORED
+            ) as zf:
                 zf.extractall(download_root)
             if remove_archive:
                 try:
@@ -219,7 +222,9 @@ def _download_from_source(download_root: Path, source: str, resource):
         )
 
 
-def _ensure_resource(download_root: Path, dataset_name: str, resource, logger_override=None):
+def _ensure_resource(
+    download_root: Path, dataset_name: str, resource, logger_override=None
+):
     active_logger = logger_override or logger
     if _resource_ready(download_root, resource):
         return

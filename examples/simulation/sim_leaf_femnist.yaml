@@ -2,7 +2,7 @@ log_configs:
   logging_output_dirname: "./log"
   logging_output_filename: "result"
   client_logging_output_filename: ""
-  
+
 data_configs:
   dataset_name: "femnist"
   dataset_backend: "leaf"
@@ -62,7 +62,7 @@ algorithm_configs:
 
     loss_fn_path: "./celoss.py"
     loss_fn_name: "CELoss"
-    
+
 
 server_configs:
   optimizer_memory: True

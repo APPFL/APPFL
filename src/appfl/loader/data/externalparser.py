@@ -6,7 +6,7 @@ from io import BytesIO
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Iterable
 
 import numpy as np
 import torch
@@ -70,7 +70,7 @@ def _load_hf_dataset_with_cache_preference(
     load_dataset_fn,
     dataset_name: str,
     config_name: str,
-    load_kwargs: Dict[str, Any],
+    load_kwargs: dict[str, Any],
     active_logger,
     tag: str,
 ):
@@ -111,7 +111,9 @@ def _as_text(value: Any) -> str:
     return str(value)
 
 
-def _normalize_labels(raw_labels: Iterable[Any], regression: bool = False) -> torch.Tensor:
+def _normalize_labels(
+    raw_labels: Iterable[Any], regression: bool = False
+) -> torch.Tensor:
     values = list(raw_labels)
     if not values:
         dtype = torch.float32 if regression else torch.long
@@ -119,7 +121,9 @@ def _normalize_labels(raw_labels: Iterable[Any], regression: bool = False) -> to
         return empty.unsqueeze(-1) if regression else empty
 
     if regression:
-        return torch.tensor([float(v) for v in values], dtype=torch.float32).unsqueeze(-1)
+        return torch.tensor([float(v) for v in values], dtype=torch.float32).unsqueeze(
+            -1
+        )
 
     if all(isinstance(v, (int, np.integer)) for v in values):
         return torch.tensor([int(v) for v in values], dtype=torch.long)
@@ -129,7 +133,7 @@ def _normalize_labels(raw_labels: Iterable[Any], regression: bool = False) -> to
 
 
 def _resolve_column_selector(
-    columns: List[str],
+    columns: list[str],
     selector: str,
     field_name: str,
     *,
@@ -154,9 +158,7 @@ def _resolve_column_selector(
     if text in special_indices:
         index = int(special_indices[text])
         if index < 0 or index >= len(columns):
-            raise ValueError(
-                f"{field_name}='{text}' is invalid for columns: {columns}"
-            )
+            raise ValueError(f"{field_name}='{text}' is invalid for columns: {columns}")
         return columns[index]
 
     if text in columns:
@@ -170,12 +172,10 @@ def _resolve_column_selector(
             f"{field_name}='{raw_text}' matched multiple dataset columns after "
             f"whitespace normalization: {normalized_matches}"
         )
-    raise ValueError(
-        f"{field_name}='{text}' not found in dataset columns: {columns}"
-    )
+    raise ValueError(f"{field_name}='{text}' not found in dataset columns: {columns}")
 
 
-def _pick_label_key(columns: List[str], config) -> str:
+def _pick_label_key(columns: list[str], config) -> str:
     user_key = str(getattr(config, "ext_label_key", ""))
     if user_key.strip():
         return _resolve_column_selector(columns, user_key, "dataset.configs.label_key")
@@ -189,10 +189,12 @@ def _pick_label_key(columns: List[str], config) -> str:
     )
 
 
-def _pick_feature_key(columns: List[str], label_key: str, config) -> str:
+def _pick_feature_key(columns: list[str], label_key: str, config) -> str:
     user_key = str(getattr(config, "ext_feature_key", ""))
     if user_key.strip():
-        return _resolve_column_selector(columns, user_key, "dataset.configs.feature_key")
+        return _resolve_column_selector(
+            columns, user_key, "dataset.configs.feature_key"
+        )
 
     preferred = [
         "image",
@@ -234,7 +236,7 @@ def _tokenizer_from_config(config):
     return tokenizer
 
 
-def _encode_text_features(texts: List[str], config) -> Tuple[torch.Tensor, int]:
+def _encode_text_features(texts: list[str], config) -> tuple[torch.Tensor, int]:
     seq_len = int(getattr(config, "seq_len", 128))
     tokenizer = _tokenizer_from_config(config)
 
@@ -316,10 +318,12 @@ def _to_audio_tensor(value: Any, num_frames: int) -> torch.Tensor:
     return torch.from_numpy(arr).unsqueeze(0)
 
 
-def _resolve_pre_source(columns: List[str], config) -> str:
+def _resolve_pre_source(columns: list[str], config) -> str:
     source = str(getattr(config, "pre_source", ""))
     if source.strip():
-        resolved = _resolve_column_selector(columns, source, "partition_kwargs.pre_source")
+        resolved = _resolve_column_selector(
+            columns, source, "partition_kwargs.pre_source"
+        )
         config.pre_source = resolved
         return resolved
 
@@ -337,9 +341,11 @@ def _resolve_pre_source(columns: List[str], config) -> str:
 
 def _rows_to_tensor_dataset(rows, feature_key: str, label_key: str, config, name: str):
     row_count = len(rows)
-    partition_type = str(
-        getattr(config, "partition_type", getattr(config, "split_type", ""))
-    ).strip().lower()
+    partition_type = (
+        str(getattr(config, "partition_type", getattr(config, "split_type", "")))
+        .strip()
+        .lower()
+    )
     pre_source = str(getattr(config, "pre_source", "")).strip()
     pre_values = [] if (partition_type == "pre" and pre_source != "") else None
     if row_count == 0:
@@ -408,7 +414,13 @@ def _rows_to_tensor_dataset(rows, feature_key: str, label_key: str, config, name
     x_tensor = torch.as_tensor(x_np)
     if x_tensor.ndim == 1:
         x_tensor = x_tensor.unsqueeze(-1)
-    if x_tensor.dtype in {torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8}:
+    if x_tensor.dtype in {
+        torch.int8,
+        torch.int16,
+        torch.int32,
+        torch.int64,
+        torch.uint8,
+    }:
         x_tensor = x_tensor.long()
     else:
         x_tensor = x_tensor.float()
@@ -440,7 +452,7 @@ def fetch_hf_dataset(config):
     train_split = str(getattr(config, "ext_train_split", "train")).strip()
     test_split = str(getattr(config, "ext_test_split", "test")).strip()
 
-    kwargs: Dict[str, Any] = {
+    kwargs: dict[str, Any] = {
         "cache_dir": str(getattr(config, "data_dir", "./data")),
     }
     try:
@@ -481,14 +493,18 @@ def fetch_hf_dataset(config):
         train_hf, test_hf = split["train"], split["test"]
 
     if len(train_hf) == 0:
-        raise ValueError(f"External HF dataset '{dataset_name}' has empty training split.")
+        raise ValueError(
+            f"External HF dataset '{dataset_name}' has empty training split."
+        )
 
     columns = list(getattr(train_hf, "column_names", [])) or list(train_hf[0].keys())
     label_key = _pick_label_key(columns, config)
     feature_key = _pick_feature_key(columns, label_key, config)
-    partition_type = str(
-        getattr(config, "partition_type", getattr(config, "split_type", ""))
-    ).strip().lower()
+    partition_type = (
+        str(getattr(config, "partition_type", getattr(config, "split_type", "")))
+        .strip()
+        .lower()
+    )
     if partition_type == "pre":
         pre_source = _resolve_pre_source(columns, config)
         if pre_source == "":

@@ -26,14 +26,18 @@ data_config = config.data_configs
 server_agent = SimServerAgent(server_agent_config=config)
 
 # Load dataset
-client_datasets, server_dataset, dataset_meta = load_and_split_dataset(data_config, num_clients)
-sample_sizes = {str(client_id): len(data[0]) for client_id, data in enumerate(client_datasets)}
+client_datasets, server_dataset, dataset_meta = load_and_split_dataset(
+    data_config, num_clients
+)
+sample_sizes = {
+    str(client_id): len(data[0]) for client_id, data in enumerate(client_datasets)
+}
 
-## TODO: `dataset_meta` will be used for model loading; 
-## e.g., for model initialization and training. 
+## TODO: `dataset_meta` will be used for model loading;
+## e.g., for model initialization and training.
 ## For example, the number of classes in the dataset
-## can be used to determine the output dimension of the model. 
-## The input dimension can also be determined by 
+## can be used to determine the output dimension of the model.
+## The input dimension can also be determined by
 ##the dataset meta information.
 
 # Store the meta information and server-side evaluation set
@@ -43,10 +47,11 @@ server_agent._load_val_data(server_dataset)
 # Create client agents and assign datasets to clients
 client_agents = [
     SimClientAgent(
-        client_agent_config=config, 
+        client_agent_config=config,
         client_id=client_id,
-        client_dataset=client_datasets[client_id]
-    ) for client_id in range(num_clients)
+        client_dataset=client_datasets[client_id],
+    )
+    for client_id in range(num_clients)
 ]
 
 # Load initial global model from the server
@@ -63,9 +68,7 @@ num_clients_per_round = min(
 # Sychrnonous simulation of FL
 for r in range(config.algorithm_configs.num_global_epochs):
     new_global_models = []
-    sampled_client_ids = sorted(
-        rng.sample(range(num_clients), k=num_clients_per_round)
-    )
+    sampled_client_ids = sorted(rng.sample(range(num_clients), k=num_clients_per_round))
     sampled_clients = [client_agents[client_id] for client_id in sampled_client_ids]
     selected_sample_sizes = {
         str(client_id): sample_sizes[str(client_id)] for client_id in sampled_client_ids
@@ -87,7 +90,7 @@ for r in range(config.algorithm_configs.num_global_epochs):
         local_model = client.get_parameters()
 
         # Need to check if `client.get_parameters()` returns a tuple of (model, metadata)
-        # or just the model itself, depending on the implementation of the client agent. 
+        # or just the model itself, depending on the implementation of the client agent.
         if isinstance(local_model, tuple):
             local_model, metadata = local_model[0], local_model[1]
         else:
@@ -111,4 +114,4 @@ for r in range(config.algorithm_configs.num_global_epochs):
 # Evaluate global model on the server-side evaluation set
 if server_agent._val_dataloader is not None:
     test_loss, test_acc = server_agent.server_validate()
-    print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.2f}%')
+    print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.2f}%")

@@ -5,7 +5,7 @@ import inspect
 import json
 import logging
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 import torch
@@ -26,7 +26,9 @@ from appfl.loader.data.partition_utils import partition_raw_dataset
 logger = logging.getLogger(__name__)
 
 
-def _to_basic_tensor_dataset(payload: Any, name: str, config: Any | None = None) -> Dataset:
+def _to_basic_tensor_dataset(
+    payload: Any, name: str, config: Any | None = None
+) -> Dataset:
     if isinstance(payload, Dataset):
         return payload
 
@@ -146,7 +148,7 @@ def _load_from_callable(config):
 
 def _load_train_test_from_directory(
     data_dir: Path, config: Any
-) -> Tuple[Dataset, Dataset | None]:
+) -> tuple[Dataset, Dataset | None]:
     train_candidates = [
         data_dir / "train.pt",
         data_dir / "train.pth",
@@ -206,7 +208,9 @@ def _load_from_path(config):
         try:
             return _normalize_loader_result(payload, config)
         except (TypeError, ValueError, KeyError):
-            train_ds = _to_basic_tensor_dataset(payload, "[CUSTOM] TRAIN", config=config)
+            train_ds = _to_basic_tensor_dataset(
+                payload, "[CUSTOM] TRAIN", config=config
+            )
             client_datasets = partition_raw_dataset(train_ds, config)
             return finalize_dataset_outputs(
                 client_datasets=client_datasets,
@@ -254,7 +258,9 @@ def fetch_custom_dataset(config):
     - `dataset.path=/path/to/data_or_artifact` local artifact contract.
     """
     active_logger = resolve_dataset_logger(config, logger)
-    tag = make_load_tag(str(getattr(config, "dataset_name", "custom")), benchmark="CUSTOM")
+    tag = make_load_tag(
+        str(getattr(config, "dataset_name", "custom")), benchmark="CUSTOM"
+    )
 
     loader_spec = str(getattr(config, "custom_entrypoint", "")).strip()
     dataset_path = str(getattr(config, "data_dir", "")).strip()

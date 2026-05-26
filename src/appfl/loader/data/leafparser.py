@@ -6,7 +6,7 @@ import json
 import logging
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 import torch
@@ -14,16 +14,34 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from appfl.loader.data.leaf import download_data, postprocess_leaf
-from appfl.loader.data.data_utils import resolve_dataset_logger, resolve_fixed_pool_clients
+from appfl.loader.data.data_utils import (
+    resolve_dataset_logger,
+    resolve_fixed_pool_clients,
+)
 
 
 _TEXT_DATASETS = {"shakespeare", "sent140", "reddit"}
 _DEFAULT_LEAF_META = {
     "femnist": {"num_classes": 62, "need_embedding": False},
-    "shakespeare": {"num_classes": 80, "need_embedding": True, "seq_len": 80, "num_embeddings": 80},
-    "sent140": {"num_classes": 2, "need_embedding": True, "seq_len": 25, "num_embeddings": 400001},
+    "shakespeare": {
+        "num_classes": 80,
+        "need_embedding": True,
+        "seq_len": 80,
+        "num_embeddings": 80,
+    },
+    "sent140": {
+        "num_classes": 2,
+        "need_embedding": True,
+        "seq_len": 25,
+        "num_embeddings": 400001,
+    },
     "celeba": {"num_classes": 2, "need_embedding": False},
-    "reddit": {"num_classes": 10000, "need_embedding": True, "seq_len": 10, "num_embeddings": 10000},
+    "reddit": {
+        "num_classes": 10000,
+        "need_embedding": True,
+        "seq_len": 10,
+        "num_embeddings": 10000,
+    },
 }
 _LEAF_SUPPORTED = set(_DEFAULT_LEAF_META.keys())
 
@@ -84,7 +102,9 @@ def _prepare_leaf_data(config, dataset_key: str) -> Path:
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     if not any(raw_dir.iterdir()):
-        leaf_logger.info("[LEAF-%s] raw artifacts missing; downloading.", dataset_key.upper())
+        leaf_logger.info(
+            "[LEAF-%s] raw artifacts missing; downloading.", dataset_key.upper()
+        )
         download_data(
             download_root=str(raw_dir),
             dataset_name=dataset_key,
@@ -115,7 +135,9 @@ def _prepare_leaf_data(config, dataset_key: str) -> Path:
         _has_json_files(dataset_root / "train")
         and _has_json_files(dataset_root / "test")
     ):
-        leaf_logger.info("[LEAF-%s] building train/test client splits.", dataset_key.upper())
+        leaf_logger.info(
+            "[LEAF-%s] building train/test client splits.", dataset_key.upper()
+        )
         postprocess_leaf(
             dataset_name=dataset_key,
             root=str(data_root),
@@ -141,8 +163,8 @@ class LeafClientDataset(Dataset):
         dataset_key: str,
         split: str,
         user: str,
-        records: Dict[str, List[Any]],
-        label_to_idx: Dict[str, int],
+        records: dict[str, list[Any]],
+        label_to_idx: dict[str, int],
         seq_len: int | None,
         num_embeddings: int | None,
         image_root: Path | None,
@@ -155,7 +177,9 @@ class LeafClientDataset(Dataset):
             [label_to_idx[str(v)] for v in raw_y], dtype=torch.long
         )
         self.seq_len = int(seq_len) if seq_len is not None else None
-        self.num_embeddings = int(num_embeddings) if num_embeddings is not None else None
+        self.num_embeddings = (
+            int(num_embeddings) if num_embeddings is not None else None
+        )
         self.image_root = image_root
         self._text_inputs: torch.Tensor | None = None
 
@@ -163,9 +187,8 @@ class LeafClientDataset(Dataset):
         if self.dataset_key in _TEXT_DATASETS:
             if self.x:
                 first = self.x[0]
-                if (
-                    isinstance(first, (list, tuple))
-                    and all(isinstance(v, (int, np.integer)) for v in first)
+                if isinstance(first, (list, tuple)) and all(
+                    isinstance(v, (int, np.integer)) for v in first
                 ):
                     self._text_inputs = torch.tensor(self.x, dtype=torch.long)
                 else:
@@ -186,8 +209,10 @@ class LeafClientDataset(Dataset):
         seq_len = int(self.seq_len or 32)
         vocab = max(8, int(self.num_embeddings or 256))
 
-        if isinstance(value, (list, tuple)) and value and all(
-            isinstance(v, (int, np.integer)) for v in value
+        if (
+            isinstance(value, (list, tuple))
+            and value
+            and all(isinstance(v, (int, np.integer)) for v in value)
         ):
             ids = [int(v) % vocab for v in value]
         else:
@@ -264,12 +289,12 @@ class LeafClientDataset(Dataset):
         return x, yi
 
 
-def _load_json(path: Path) -> Dict[str, Any]:
+def _load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def _merge_leaf_json_dir(folder: Path) -> Dict[str, Any]:
+def _merge_leaf_json_dir(folder: Path) -> dict[str, Any]:
     files = sorted([p for p in folder.glob("*.json") if p.is_file()])
     if not files:
         raise FileNotFoundError(f"No JSON files found in {folder}")
@@ -294,7 +319,9 @@ def _merge_leaf_json_dir(folder: Path) -> Dict[str, Any]:
     return merged
 
 
-def _sample_users_by_fraction(all_obj: Dict[str, Any], fraction: float, seed: int) -> List[str]:
+def _sample_users_by_fraction(
+    all_obj: dict[str, Any], fraction: float, seed: int
+) -> list[str]:
     users = list(all_obj.get("users", []))
     if fraction >= 1.0 or not users:
         return users
@@ -317,12 +344,12 @@ def _sample_users_by_fraction(all_obj: Dict[str, Any], fraction: float, seed: in
 
 def _split_from_all_data(
     dataset_key: str,
-    all_obj: Dict[str, Any],
+    all_obj: dict[str, Any],
     test_size: float,
     seed: int,
     raw_data_fraction: float,
     min_samples_per_client: int,
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     rng = random.Random(seed)
     users = _sample_users_by_fraction(all_obj, raw_data_fraction, seed)
 
@@ -407,7 +434,9 @@ def _resolve_image_root(dataset_root: Path, dataset_key: str) -> Path | None:
     return None
 
 
-def _build_label_vocab(train_obj: Dict[str, Any], test_obj: Dict[str, Any]) -> Dict[str, int]:
+def _build_label_vocab(
+    train_obj: dict[str, Any], test_obj: dict[str, Any]
+) -> dict[str, int]:
     labels = []
     for obj in [train_obj, test_obj]:
         for user in obj.get("users", []):
@@ -422,10 +451,12 @@ def _text_to_token_ids(
     dataset_key: str,
     seq_len: int,
     num_embeddings: int,
-) -> List[int]:
+) -> list[int]:
     vocab = max(8, int(num_embeddings))
-    if isinstance(value, (list, tuple)) and value and all(
-        isinstance(v, (int, np.integer)) for v in value
+    if (
+        isinstance(value, (list, tuple))
+        and value
+        and all(isinstance(v, (int, np.integer)) for v in value)
     ):
         ids = [int(v) % vocab for v in value]
     else:
@@ -447,9 +478,9 @@ def _text_to_token_ids(
 def _pretokenize_leaf_text_data(
     *,
     dataset_key: str,
-    train_obj: Dict[str, Any],
-    test_obj: Dict[str, Any],
-    users: List[str],
+    train_obj: dict[str, Any],
+    test_obj: dict[str, Any],
+    users: list[str],
     seq_len: int,
     num_embeddings: int,
 ) -> None:
@@ -476,13 +507,13 @@ def _pretokenize_leaf_text_data(
 def fetch_leaf(config):
     """LEAF parser adapted from AAggFF processing flow with compact implementation."""
     leaf_logger = resolve_dataset_logger(config, logger)
-    partition_type = str(
-        getattr(config, "partition_type", getattr(config, "split_type", "pre"))
-    ).strip().lower()
+    partition_type = (
+        str(getattr(config, "partition_type", getattr(config, "split_type", "pre")))
+        .strip()
+        .lower()
+    )
     if partition_type != "pre":
-        raise ValueError(
-            "For dataset_backend='leaf', partition must be exactly `pre`."
-        )
+        raise ValueError("For dataset_backend='leaf', partition must be exactly `pre`.")
     dataset_key = str(config.dataset_name).strip().lower()
     leaf_logger.info("[LEAF-%s] load processed dataset.", dataset_key.upper())
     dataset_root = _prepare_leaf_data(config, dataset_key)
@@ -550,7 +581,9 @@ def fetch_leaf(config):
         len(label_to_idx) if label_to_idx else int(defaults.get("num_classes", 0))
     )
 
-    config.need_embedding = bool(defaults.get("need_embedding", dataset_key in _TEXT_DATASETS))
+    config.need_embedding = bool(
+        defaults.get("need_embedding", dataset_key in _TEXT_DATASETS)
+    )
     if config.need_embedding:
         config.seq_len = seq_len
         config.num_embeddings = num_embeddings

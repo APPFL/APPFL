@@ -4,7 +4,7 @@ import importlib
 import logging
 import random
 import traceback
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, Sequence
 import numpy as np
 import torch
 from omegaconf import DictConfig
@@ -75,7 +75,9 @@ def make_load_tag(dataset_name: str, benchmark: str | None = None) -> str:
 
 
 class BasicTensorDataset(Dataset):
-    def __init__(self, inputs: torch.Tensor, targets: torch.Tensor, name: str = "dataset"):
+    def __init__(
+        self, inputs: torch.Tensor, targets: torch.Tensor, name: str = "dataset"
+    ):
         self.inputs = inputs
         self.targets = _coerce_target_tensor(targets)
         self.name = name
@@ -98,7 +100,7 @@ def _coerce_target_tensor(targets: Any) -> torch.Tensor:
     return tensor.float() if tensor.dtype.is_floating_point else tensor.long()
 
 
-def infer_input_shape(dataset: Dataset) -> Tuple[int, ...]:
+def infer_input_shape(dataset: Dataset) -> tuple[int, ...]:
     x, _ = dataset[0]
     if not torch.is_tensor(x):
         x = torch.as_tensor(np.asarray(x))
@@ -200,8 +202,14 @@ def set_common_metadata(
 ):
     config.num_clients = len(client_datasets)
 
-    shape_source = raw_train if raw_train is not None and len(raw_train) > 0 else _first_nonempty_train_dataset(client_datasets)
-    config.input_shape = infer_input_shape(shape_source) if shape_source is not None else (1,)
+    shape_source = (
+        raw_train
+        if raw_train is not None and len(raw_train) > 0
+        else _first_nonempty_train_dataset(client_datasets)
+    )
+    config.input_shape = (
+        infer_input_shape(shape_source) if shape_source is not None else (1,)
+    )
 
     if raw_train is not None and len(raw_train) > 0:
         config.num_classes = infer_num_classes(raw_train)
@@ -213,7 +221,9 @@ def set_common_metadata(
             )
             if train_ds is not None
         )
-        config.num_classes = int(np.unique(train_targets).size) if train_targets.size > 0 else 0
+        config.num_classes = (
+            int(np.unique(train_targets).size) if train_targets.size > 0 else 0
+        )
 
     if getattr(config, "in_channels", None) is None:
         if len(config.input_shape) == 1:
@@ -276,10 +286,10 @@ def _safe_bool(value: Any, default: bool) -> bool:
 
 
 def resolve_fixed_pool_clients(
-    available_clients: List[Any],
+    available_clients: list[Any],
     config,
     prefix: str = "",
-) -> List[Any]:
+) -> list[Any]:
     """Resolve client subset for fixed-pool datasets such as LEAF."""
     del prefix
     pool = list(available_clients)
@@ -294,7 +304,7 @@ def resolve_fixed_pool_clients(
     return pool[:requested_num]
 
 
-def _resolve_algorithm_components(config) -> Dict[str, str]:
+def _resolve_algorithm_components(config) -> dict[str, str]:
     return {
         "scheduler_name": str(
             _cfg_get(
@@ -306,7 +316,7 @@ def _resolve_algorithm_components(config) -> Dict[str, str]:
     }
 
 
-def _parse_holdout_dataset_ratio(config: DictConfig) -> Optional[List[float]]:
+def _parse_holdout_dataset_ratio(config: DictConfig) -> list[float] | None:
     raw = _cfg_get(config, "eval.configs.dataset_ratio", None)
     if raw is None:
         return None
@@ -343,7 +353,8 @@ def _parse_holdout_dataset_ratio(config: DictConfig) -> Optional[List[float]]:
         )
     return ratios
 
-def _safe_split_lengths(n: int, ratios: List[float]) -> List[int]:
+
+def _safe_split_lengths(n: int, ratios: list[float]) -> list[int]:
     lengths = [int(float(n) * r) for r in ratios]
     remain = int(n) - int(sum(lengths))
     for i in range(remain):
@@ -372,8 +383,8 @@ def _splits_have_nonempty_parts(splits, expected_parts: int) -> bool:
     return True
 
 
-def _dataset_targets(dataset) -> Optional[np.ndarray]:
-    def _as_label_array(value) -> Optional[np.ndarray]:
+def _dataset_targets(dataset) -> np.ndarray | None:
+    def _as_label_array(value) -> np.ndarray | None:
         if value is None:
             return None
         if torch.is_tensor(value):
@@ -384,7 +395,7 @@ def _dataset_targets(dataset) -> Optional[np.ndarray]:
             return np.asarray([], dtype=np.int64)
         return arr.reshape(-1).astype(np.int64, copy=False)
 
-    def _subset_indices_array(indices, subset_len: int) -> Optional[np.ndarray]:
+    def _subset_indices_array(indices, subset_len: int) -> np.ndarray | None:
         if torch.is_tensor(indices):
             idx = indices.detach().cpu().numpy()
         else:
@@ -416,7 +427,7 @@ def _dataset_targets(dataset) -> Optional[np.ndarray]:
                     pass
 
     if isinstance(dataset, ConcatDataset):
-        parts: List[np.ndarray] = []
+        parts: list[np.ndarray] = []
         total = 0
         for child in dataset.datasets:
             child_labels = _dataset_targets(child)
@@ -451,7 +462,7 @@ def _dataset_targets(dataset) -> Optional[np.ndarray]:
 
 def _stratified_split_dataset(
     dataset,
-    ratios: List[float],
+    ratios: list[float],
     seed: int,
 ):
     total = int(len(dataset))
@@ -494,7 +505,10 @@ def _stratified_split_dataset(
         subsets.append(Subset(dataset, idx.tolist()))
     return subsets
 
-def _normalize_client_tuple(entry) -> Tuple[Optional[object], Optional[object], Optional[object]]:
+
+def _normalize_client_tuple(
+    entry,
+) -> tuple[object | None, object | None, object | None]:
     if not isinstance(entry, tuple):
         raise ValueError("Each client dataset entry must be a tuple.")
     if len(entry) == 1:
@@ -510,10 +524,11 @@ def _normalize_client_tuple(entry) -> Tuple[Optional[object], Optional[object], 
         "Each client dataset entry must be tuple(train), tuple(train,test), or tuple(train,val,test)."
     )
 
+
 def _apply_holdout_dataset_ratio(
     client_datasets,
     config: DictConfig,
-    logger: Optional[ServerAgentFileLogger] = None,
+    logger: ServerAgentFileLogger | None = None,
 ):
     ratios = _parse_holdout_dataset_ratio(config)
     if ratios is None:
@@ -554,7 +569,8 @@ def _apply_holdout_dataset_ratio(
             seed=split_seed,
         )
         if splits is None or (
-            total >= len(ratios) and not _splits_have_nonempty_parts(splits, len(ratios))
+            total >= len(ratios)
+            and not _splits_have_nonempty_parts(splits, len(ratios))
         ):
             lengths = _safe_split_lengths(total, ratios)
             generator = torch.Generator().manual_seed(split_seed)
@@ -568,6 +584,7 @@ def _apply_holdout_dataset_ratio(
     del logger
     return out
 
+
 def _dataset_has_eval_split(dataset) -> bool:
     """Return whether a dataset is present and plausibly non-empty for evaluation."""
     if dataset is None:
@@ -579,7 +596,8 @@ def _dataset_has_eval_split(dataset) -> bool:
         # Iterable/streaming datasets may not expose length; if object exists, allow eval path.
         return True
 
-def _validate_loader_output(client_datasets, runtime_cfg: Dict) -> None:
+
+def _validate_loader_output(client_datasets, runtime_cfg: dict) -> None:
     num_clients = int(runtime_cfg["num_clients"])
     if len(client_datasets) != num_clients:
         raise ValueError(
@@ -592,7 +610,10 @@ def _validate_loader_output(client_datasets, runtime_cfg: Dict) -> None:
                 f"client_datasets[{cid}] must be tuple(train), tuple(train,test), or tuple(train,val,test)."
             )
 
-def _build_client_groups(config: DictConfig, num_clients: int) -> Tuple[List[int], List[int]]:
+
+def _build_client_groups(
+    config: DictConfig, num_clients: int
+) -> tuple[list[int], list[int]]:
     all_clients = list(range(int(num_clients)))
     scheme = str(_cfg_get(config, "eval.configs.scheme", "dataset")).strip().lower()
     if scheme != "client":
@@ -617,12 +638,16 @@ def _build_client_groups(config: DictConfig, num_clients: int) -> Tuple[List[int
         return all_clients, []
     return train_clients, holdout
 
-def _sample_train_clients(train_client_ids: List[int], num_sampled_clients: int) -> List[int]:
+
+def _sample_train_clients(
+    train_client_ids: list[int], num_sampled_clients: int
+) -> list[int]:
     if not train_client_ids:
         return []
     n = max(1, int(num_sampled_clients))
     n = min(n, len(train_client_ids))
     return sorted(random.sample(train_client_ids, n))
+
 
 def _resolve_num_sampled_clients(config: DictConfig, num_clients: int) -> int:
     if int(num_clients) <= 0:
@@ -639,6 +664,7 @@ def _resolve_num_sampled_clients(config: DictConfig, num_clients: int) -> int:
 
     return int(num_clients)
 
+
 def _resolve_client_eval_dataset(
     client_datasets: Sequence,
     client_id: int,
@@ -650,6 +676,7 @@ def _resolve_client_eval_dataset(
     if chosen in {"val", "validation"}:
         return val_ds if val_ds is not None else test_ds
     return test_ds if test_ds is not None else val_ds
+
 
 def _validate_required_dataset_ratio(config: DictConfig) -> None:
     ratios = _parse_holdout_dataset_ratio(config)

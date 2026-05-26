@@ -6,6 +6,7 @@ from .server import ServerAgent
 
 class SimServerAgent(ServerAgent):
     """Simulation-oriented server agent backed by the standard ServerAgent."""
+
     def __init__(self, server_agent_config, num_clients=None, **kwargs):
         config = OmegaConf.create(server_agent_config)
 
@@ -59,9 +60,7 @@ class SimServerAgent(ServerAgent):
                             "aggregator": algorithm.get(
                                 "aggregator", "FedAvgAggregator"
                             ),
-                            "aggregator_kwargs": algorithm.get(
-                                "aggregator_kwargs", {}
-                            ),
+                            "aggregator_kwargs": algorithm.get("aggregator_kwargs", {}),
                         },
                     ),
                 }
@@ -75,10 +74,7 @@ class SimServerAgent(ServerAgent):
             return
         self._val_dataset = server_dataset
         self._val_dataloader = torch.utils.data.DataLoader(
-            self._val_dataset,
-            batch_size=1,
-            shuffle=False,
-            num_workers=0
+            self._val_dataset, batch_size=1, shuffle=False, num_workers=0
         )
 
     def set_sample_size(self, sample_sizes):

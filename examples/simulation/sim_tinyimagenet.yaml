@@ -2,7 +2,7 @@ log_configs:
   logging_output_dirname: "./log"
   logging_output_filename: "result"
   client_logging_output_filename: ""
-  
+
 data_configs:
   dataset_name: "zh-plus/tiny-imagenet"
   dataset_backend: "hf"
@@ -62,7 +62,7 @@ algorithm_configs:
     # Loss function
     loss_fn_path: "./celoss.py"
     loss_fn_name: "CELoss"
-  
+
 # Backward compatibility
 server_configs:
   optimizer_memory: True

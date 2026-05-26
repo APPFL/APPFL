@@ -56,9 +56,9 @@ class SimClientAgent(ClientAgent):
             config.client_id = str(client_id)
         else:
             warnings.warn(
-                    message="Client ID (client_id) not specified. Generating a random one.",
-                    category=UserWarning,
-                )
+                message="Client ID (client_id) not specified. Generating a random one.",
+                category=UserWarning,
+            )
             config.client_id = str(uuid.uuid4())
         self.client_id = config.client_id
 
@@ -70,7 +70,10 @@ class SimClientAgent(ClientAgent):
 
     def _load_data(self):
         if self._dataset is not None:
-            train_dataset, val_dataset = self._dataset[0], self._dataset[1] if len(self._dataset) > 1 else None
+            train_dataset, val_dataset = (
+                self._dataset[0],
+                self._dataset[1] if len(self._dataset) > 1 else None,
+            )
             self.train_dataset, self.val_dataset = train_dataset, val_dataset
             return
         super()._load_data()
