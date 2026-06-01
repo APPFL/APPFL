@@ -127,6 +127,7 @@ setuptools.setup(
             "appfl-auth=appfl.login_manager.globus.cli:auth",
             "appfl-install-compressor=appfl.compressor.install:install_compressor",
             "appfl-setup-ssl=appfl.comm.grpc.setup_ssl:setup_ssl",
+            "appfl-install-skill=appfl.cli.install_skill:main",
         ],
     },
 )
