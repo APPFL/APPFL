@@ -10,7 +10,6 @@ from typing import Any, Iterable
 
 import numpy as np
 import torch
-from PIL import Image
 
 from appfl.loader.data.data_utils import (
     BasicTensorDataset,
@@ -269,6 +268,13 @@ def _encode_text_features(texts: list[str], config) -> tuple[torch.Tensor, int]:
 
 
 def _to_image_tensor(value: Any) -> torch.Tensor:
+    try:
+        from PIL import Image
+    except ImportError:
+        raise ImportError(
+            "Pillow is required for image datasets. "
+            "Install it with: pip install 'appfl[examples]' or pip install -e '.[examples]'"
+        )
     if isinstance(value, Image.Image):
         arr = np.array(value, copy=True)
     elif isinstance(value, dict) and "bytes" in value:
@@ -387,7 +393,12 @@ def _rows_to_tensor_dataset(rows, feature_key: str, label_key: str, config, name
             setattr(ds, pre_source, np.asarray(pre_values, dtype=object))
         return ds
 
-    if isinstance(first, Image.Image) or (
+    try:
+        from PIL import Image as _Image
+        _is_pil = isinstance(first, _Image.Image)
+    except ImportError:
+        _is_pil = False
+    if _is_pil or (
         isinstance(first, np.ndarray) and np.asarray(first).ndim in {2, 3}
     ):
         x_tensor = torch.stack([_to_image_tensor(v) for v in features], dim=0)

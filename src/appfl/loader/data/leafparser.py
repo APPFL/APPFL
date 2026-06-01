@@ -10,7 +10,6 @@ from typing import Any
 
 import numpy as np
 import torch
-from PIL import Image
 from torch.utils.data import Dataset
 
 from appfl.loader.data.leaf import download_data, postprocess_leaf
@@ -259,6 +258,13 @@ class LeafClientDataset(Dataset):
         if not p.exists():
             raise FileNotFoundError(f"LEAF image file not found: {p}")
 
+        try:
+            from PIL import Image
+        except ImportError:
+            raise ImportError(
+                "Pillow is required for image datasets. "
+                "Install it with: pip install 'appfl[examples]' or pip install -e '.[examples]'"
+            )
         img = Image.open(p)
         img = img.convert("RGB" if rgb else "L")
         return self._to_chw_float(np.asarray(img))
