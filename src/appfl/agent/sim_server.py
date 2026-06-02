@@ -77,6 +77,9 @@ class SimServerAgent(ServerAgent):
             self._val_dataset, batch_size=1, shuffle=False, num_workers=0
         )
 
-    def set_sample_size(self, sample_sizes):
-        for client_id, sample_size in sample_sizes.items():
-            self.aggregator.set_client_sample_size(client_id, sample_size)
+    def set_sample_size(self, client_id=None, sample_size=None, sample_sizes=None, **kwargs):
+        if sample_sizes is not None:
+            for cid, sz in sample_sizes.items():
+                self.aggregator.set_client_sample_size(cid, sz)
+        else:
+            super().set_sample_size(client_id, sample_size, **kwargs)
