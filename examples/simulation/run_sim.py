@@ -42,7 +42,7 @@ sample_sizes = {
 
 # Store the meta information and server-side evaluation set
 server_agent.set_sample_size(sample_sizes=sample_sizes)
-server_agent._load_val_data(server_dataset)
+server_agent.load_server_val_dataset(server_dataset)
 
 # Create client agents and assign datasets to clients
 client_agents = [
