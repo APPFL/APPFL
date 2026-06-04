@@ -78,7 +78,7 @@ for r in range(config.algorithm_configs.num_global_epochs):
 
     for client in sampled_clients:
         # Client local training
-        client.train()
+        client.train(round=r)
         local_model = client.get_parameters()
 
         # Need to check if `client.get_parameters()` returns a tuple of (model, metadata)
