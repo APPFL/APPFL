@@ -88,8 +88,6 @@ for r in range(config.algorithm_configs.num_global_epochs):
         else:
             metadata = {}
 
-        # Maybe it assumes that `get_parameters()` acts like ThreadPool or ProcessPool object
-        # Needs to be checked
         new_global_model_future = server_agent.global_update(
             client_id=client.get_id(),
             local_model=local_model,

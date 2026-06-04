@@ -162,13 +162,26 @@ def _dirichlet_partition(
     alpha: float,
     min_size: int,
     rng: np.random.Generator,
+    max_retries: int = 100,
 ) -> dict[int, np.ndarray]:
+    import warnings
+
     classes = np.unique(labels)
     alpha = max(alpha, 1e-3)
     total = int(labels.shape[0])
     avg_client_size = float(total) / float(num_clients)
 
-    while True:
+    if total < num_clients * min_size:
+        raise ValueError(
+            f"Dataset too small for Dirichlet partition: {total} samples cannot satisfy "
+            f"min_size={min_size} for {num_clients} clients (need at least {num_clients * min_size}). "
+            f"Reduce dirichlet_min_size or num_clients."
+        )
+
+    best_result = None
+    best_min_size = -1
+
+    for _ in range(max_retries):
         partitions = [[] for _ in range(num_clients)]
         for cls in classes:
             cls_idx = np.where(labels == cls)[0]
@@ -203,6 +216,18 @@ def _dirichlet_partition(
         min_client_size = min(len(v) for v in result.values())
         if min_client_size >= min_size:
             return result
+
+        if min_client_size > best_min_size:
+            best_min_size = min_client_size
+            best_result = result
+
+    warnings.warn(
+        f"Dirichlet partition could not satisfy min_size={min_size} after {max_retries} attempts. "
+        f"Returning best partition found (min_client_size={best_min_size}). "
+        f"Consider reducing dirichlet_min_size or increasing the dataset size.",
+        UserWarning,
+    )
+    return best_result
 
 
 def simulate_partition(

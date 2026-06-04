@@ -278,7 +278,12 @@ def _to_image_tensor(value: Any) -> torch.Tensor:
     if isinstance(value, Image.Image):
         arr = np.array(value, copy=True)
     elif isinstance(value, dict) and "bytes" in value:
-        arr = np.array(Image.open(BytesIO(value["bytes"])), copy=True)
+        if value["bytes"] is not None:
+            arr = np.array(Image.open(BytesIO(value["bytes"])), copy=True)
+        elif value.get("path") is not None:
+            arr = np.array(Image.open(value["path"]), copy=True)
+        else:
+            raise ValueError("HuggingFace image entry has neither 'bytes' nor 'path'.")
     else:
         arr = np.array(value, copy=True)
 

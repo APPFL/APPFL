@@ -164,8 +164,8 @@ def _load_train_test_from_directory(
     for path in train_candidates:
         if path.exists():
             if path.suffix == ".npz":
-                npz = np.load(path)
-                train_obj = {"x": npz["x"], "y": npz["y"]}
+                with np.load(path) as npz:
+                    train_obj = {"x": npz["x"], "y": npz["y"]}
             else:
                 train_obj = torch.load(path, map_location="cpu")
             break
@@ -179,8 +179,8 @@ def _load_train_test_from_directory(
     for path in test_candidates:
         if path.exists():
             if path.suffix == ".npz":
-                npz = np.load(path)
-                test_obj = {"x": npz["x"], "y": npz["y"]}
+                with np.load(path) as npz:
+                    test_obj = {"x": npz["x"], "y": npz["y"]}
             else:
                 test_obj = torch.load(path, map_location="cpu")
             break
@@ -201,8 +201,8 @@ def _load_from_path(config):
 
     if custom_path.is_file():
         if custom_path.suffix == ".npz":
-            npz = np.load(custom_path)
-            payload = {"x": npz["x"], "y": npz["y"]}
+            with np.load(custom_path) as npz:
+                payload = {"x": npz["x"], "y": npz["y"]}
         else:
             payload = torch.load(custom_path, map_location="cpu")
         try:
