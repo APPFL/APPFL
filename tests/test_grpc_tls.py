@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import datetime
 import ipaddress
-from typing import List, Optional, Tuple
+from typing import Tuple
 
 import pytest
 
@@ -189,9 +189,9 @@ def test_insecure_channel_path_unchanged(fake_grpc):
 
 def _mint_cert(
     *,
-    issuer: Optional["Tuple"] = None,
-    dns_names: List[str] = None,
-    ip_addresses: List[str] = None,
+    issuer: Tuple | None = None,
+    dns_names: list[str] = None,
+    ip_addresses: list[str] = None,
     is_ca: bool = False,
     common_name: str = "test",
 ):
@@ -234,7 +234,7 @@ def _mint_cert(
             x509.BasicConstraints(ca=True, path_length=0), critical=True
         )
 
-    sans: List[x509.GeneralName] = []
+    sans: list[x509.GeneralName] = []
     for d in dns_names or []:
         sans.append(x509.DNSName(d))
     for ip in ip_addresses or []:

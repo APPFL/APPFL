@@ -29,7 +29,6 @@ import pathlib
 import re
 import stat
 import sys
-from typing import List, Optional, Tuple
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -159,12 +158,12 @@ def _prompt_validated(prompt: str, default: str, validator) -> str:
             print(f"  {e}. Please try again.")
 
 
-def _split_csv(raw: str) -> List[str]:
+def _split_csv(raw: str) -> list[str]:
     """Split a comma-separated input into trimmed non-empty parts."""
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
-def _prompt_san_dns(default: str) -> List[str]:
+def _prompt_san_dns(default: str) -> list[str]:
     while True:
         raw = (
             input(
@@ -182,7 +181,7 @@ def _prompt_san_dns(default: str) -> List[str]:
             print(f"  {e}. Please try again.")
 
 
-def _prompt_san_ip(default: str) -> List[str]:
+def _prompt_san_ip(default: str) -> list[str]:
     while True:
         raw = (
             input(
@@ -200,7 +199,7 @@ def _prompt_san_ip(default: str) -> List[str]:
             print(f"  {e}. Please try again.")
 
 
-def _acquire_ca_passphrase() -> Optional[bytes]:
+def _acquire_ca_passphrase() -> bytes | None:
     """Return the CA private-key passphrase as bytes, or ``None`` if the
     operator explicitly opted out of encryption.
 
@@ -298,9 +297,9 @@ def _build_name(country: str, state: str, org: str, common_name: str) -> x509.Na
 
 
 def _build_san(
-    dns_names: List[str], ip_addresses: List[str]
+    dns_names: list[str], ip_addresses: list[str]
 ) -> x509.SubjectAlternativeName:
-    entries: List[x509.GeneralName] = [x509.DNSName(d) for d in dns_names]
+    entries: list[x509.GeneralName] = [x509.DNSName(d) for d in dns_names]
     entries.extend(x509.IPAddress(ipaddress.ip_address(ip)) for ip in ip_addresses)
     return x509.SubjectAlternativeName(entries)
 
@@ -313,7 +312,7 @@ def _utcnow() -> datetime.datetime:
 
 def _generate_ca(
     name: x509.Name, key_size: int = 4096
-) -> Tuple[rsa.RSAPrivateKey, x509.Certificate]:
+) -> tuple[rsa.RSAPrivateKey, x509.Certificate]:
     key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
     now = _utcnow()
     cert = (
@@ -355,7 +354,7 @@ def _generate_server_cert(
     subject: x509.Name,
     san: x509.SubjectAlternativeName,
     key_size: int = 4096,
-) -> Tuple[rsa.RSAPrivateKey, x509.Certificate]:
+) -> tuple[rsa.RSAPrivateKey, x509.Certificate]:
     key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
     now = _utcnow()
     cert = (
@@ -404,7 +403,7 @@ def _generate_server_cert(
 
 
 def _write_private_key(
-    path: str, key: rsa.RSAPrivateKey, passphrase: Optional[bytes]
+    path: str, key: rsa.RSAPrivateKey, passphrase: bytes | None
 ) -> None:
     if passphrase:
         encryption: serialization.KeySerializationEncryption = (
