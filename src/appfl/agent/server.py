@@ -19,6 +19,7 @@ from appfl.misc.utils import (
     get_appfl_compressor,
     get_appfl_scheduler,
 )
+from appfl.comm.utils.state_dict_validation import validate_state_dict
 from concurrent.futures import Future
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
@@ -496,16 +497,33 @@ class ServerAgent:
             )
 
     def _bytes_to_model(self, model_bytes: bytes) -> Union[Dict, OrderedDict]:
-        """Deserialize the model from bytes."""
+        """Deserialize and validate the model from bytes.
+
+        Two layers of defence:
+
+        1. ``torch.load(..., weights_only=True)`` — refuses any payload that
+           is not torch's pickle subset, so a gadget cannot execute Python
+           during deserialisation.
+        2. :func:`validate_state_dict` — enforces APPFL's actual schema: the
+           payload must be a ``Mapping[str, torch.Tensor]`` whose keys and
+           per-tensor shape/dtype match ``self.model.state_dict()``. Anything
+           else is rejected before it reaches the aggregator.
+        """
         if not self.enable_compression:
             # Memory optimization: Use context manager and load to CPU first
             if self.optimize_memory:
                 with io.BytesIO(model_bytes) as buffer:
-                    model = torch.load(buffer, map_location="cpu")
+                    model = torch.load(buffer, map_location="cpu", weights_only=True)
                 gc.collect()
-                return model
             else:
-                return torch.load(io.BytesIO(model_bytes))
+                model = torch.load(io.BytesIO(model_bytes), weights_only=True)
+            reference = (
+                self.model.state_dict()
+                if getattr(self, "model", None) is not None
+                else None
+            )
+            validate_state_dict(model, reference=reference)
+            return model
         else:
             if self.model is None:
                 raise ValueError(
