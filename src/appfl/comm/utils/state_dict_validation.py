@@ -21,7 +21,7 @@ payload is at least a mapping of strings to tensors.
 
 from __future__ import annotations
 
-from typing import Mapping, Optional
+from typing import Mapping
 
 import torch
 
@@ -36,7 +36,7 @@ class InvalidStateDictPayload(ValueError):
 def validate_state_dict(
     payload: object,
     *,
-    reference: Optional[Mapping[str, torch.Tensor]] = None,
+    reference: Mapping[str, torch.Tensor] | None = None,
     allow_subset: bool = True,
 ) -> Mapping[str, torch.Tensor]:
     """Validate that ``payload`` is a state dict compatible with ``reference``.
