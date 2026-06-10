@@ -5,6 +5,7 @@ import numpy as np
 from appfl.algorithm import BaseServer
 from collections import OrderedDict
 from .grpc_communicator_old_pb2 import Job
+from .grpc_utils import parse_tensor_dtype
 from torch.utils.data import DataLoader
 from appfl.misc.utils import (
     create_custom_logger,
@@ -195,13 +196,13 @@ class APPFLgRPCServer:
         for tensor in primal:
             name = tensor.name
             shape = tuple(tensor.data_shape)
-            flat = np.frombuffer(tensor.data_bytes, dtype=eval(tensor.data_dtype))
+            flat = np.frombuffer(tensor.data_bytes, dtype=parse_tensor_dtype(tensor.data_dtype))
             nparray = np.reshape(flat, newshape=shape, order="C")
             primal_tensors[name] = torch.from_numpy(nparray)
         for tensor in dual:
             name = tensor.name
             shape = tuple(tensor.data_shape)
-            flat = np.frombuffer(tensor.data_bytes, dtype=eval(tensor.data_dtype))
+            flat = np.frombuffer(tensor.data_bytes, dtype=parse_tensor_dtype(tensor.data_dtype))
             nparray = np.reshape(flat, newshape=shape, order="C")
             dual_tensors[name] = torch.from_numpy(nparray)
         self.client_states[client_id]["primal"] = primal_tensors
