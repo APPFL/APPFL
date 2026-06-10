@@ -49,7 +49,7 @@ def test_roundtrip_with_construct_tensor_record():
     "payload",
     [
         '__import__("os").system("touch /tmp/appfl_pwned")',
-        'exec("import os; os.system(\'id\')")',
+        "exec(\"import os; os.system('id')\")",
         "np.float32 if open('/etc/passwd') else np.int8",
         "[].__class__.__base__",
         "lambda: 1",

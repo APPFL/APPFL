@@ -196,13 +196,17 @@ class APPFLgRPCServer:
         for tensor in primal:
             name = tensor.name
             shape = tuple(tensor.data_shape)
-            flat = np.frombuffer(tensor.data_bytes, dtype=parse_tensor_dtype(tensor.data_dtype))
+            flat = np.frombuffer(
+                tensor.data_bytes, dtype=parse_tensor_dtype(tensor.data_dtype)
+            )
             nparray = np.reshape(flat, newshape=shape, order="C")
             primal_tensors[name] = torch.from_numpy(nparray)
         for tensor in dual:
             name = tensor.name
             shape = tuple(tensor.data_shape)
-            flat = np.frombuffer(tensor.data_bytes, dtype=parse_tensor_dtype(tensor.data_dtype))
+            flat = np.frombuffer(
+                tensor.data_bytes, dtype=parse_tensor_dtype(tensor.data_dtype)
+            )
             nparray = np.reshape(flat, newshape=shape, order="C")
             dual_tensors[name] = torch.from_numpy(nparray)
         self.client_states[client_id]["primal"] = primal_tensors

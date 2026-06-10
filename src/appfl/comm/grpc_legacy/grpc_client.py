@@ -83,7 +83,9 @@ class APPFLgRPCClient:
         if round_number > 1:
             self.time_get_tensor += end - start
         shape = tuple(response.data_shape)
-        flat = np.frombuffer(response.data_bytes, dtype=parse_tensor_dtype(response.data_dtype))
+        flat = np.frombuffer(
+            response.data_bytes, dtype=parse_tensor_dtype(response.data_dtype)
+        )
         nparray = np.reshape(flat, newshape=shape, order="C")
 
         return nparray
