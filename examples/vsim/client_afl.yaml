@@ -1,0 +1,12 @@
+# Client config for S9c: load AFL-Lib's npz shards (run_vsim overrides the kwargs).
+client_id: "Client1"
+train_configs:
+  device: "cpu"
+data_configs:
+  dataset_path: "./vsim/afl_data.py"
+  dataset_name: "get_afl_data"
+  dataset_kwargs:
+    num_clients: 10
+    client_id: 0
+    afl_dir: "/Users/sungminkang/Desktop/ANL/AFL-Lib"
+    dataset: "mnist10"
