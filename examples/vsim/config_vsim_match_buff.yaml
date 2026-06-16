@@ -1,0 +1,52 @@
+# Matched-comparison config (vs AFL-Lib) — FedBuff (buffer K=4).
+# Aligns model (MLP, same as AFL-Lib), optimizer (SGD), heterogeneity (afl_lib preset),
+# dirichlet partition (set via CLI --partition dirichlet_noniid --alpha 0.1), no dropout.
+client_configs:
+  train_configs:
+    trainer: "VanillaTrainer"
+    mode: "step"
+    num_local_steps: 50
+    optim: "SGD"
+    optim_args: { lr: 0.01, momentum: 0.9, weight_decay: 0.0001 }
+    loss_fn_path: "./resources/loss/celoss.py"
+    loss_fn_name: "CELoss"
+    do_validation: True
+    do_pre_validation: False
+    metric_path: "./resources/metric/acc.py"
+    metric_name: "accuracy"
+    send_gradient: True
+    train_batch_size: 64
+    val_batch_size: 64
+  model_configs:
+    model_path: "./resources/model/mlp_afl.py"
+    model_name: "MLP"
+    model_kwargs: { num_classes: 10 }
+  comm_configs:
+    compressor_configs: { enable_compression: False }
+
+server_configs:
+  num_clients: 10
+  scheduler: "AsyncScheduler"
+  scheduler_kwargs: { same_init_model: True }
+  aggregator: "FedBuffAggregator"
+  aggregator_kwargs:
+    client_weights_mode: "equal"
+    staleness_fn: "hinge"
+    staleness_fn_kwargs: { a: 1, b: 4 }
+    alpha: 0.3
+    K: 4
+  device: "cpu"
+  num_global_epochs: 80
+  val_data_configs:
+    dataset_path: "./vsim/server_val_mnist.py"
+    dataset_name: "get_mnist_test"
+    batch_size: 256
+  simulator:
+    seed: 42
+    max_concurrency: 4
+    eval_every: 8
+    time_model: { base_step_time: 0.01 }
+    heterogeneity:
+      preset: "afl_lib"        # TX2/Nano/Pi x50 compute + WiFi/4G/5G bandwidth (= AFL-Lib)
+      dev_prop: [1, 1, 1]
+      comm_prop: [1, 1, 1]

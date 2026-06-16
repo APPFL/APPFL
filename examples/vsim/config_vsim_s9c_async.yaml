@@ -1,0 +1,57 @@
+# S9c — APPFL configured to behave IDENTICALLY to AFL-Lib fedasync.
+# Data/partition/normalization: load AFL-Lib's npz shards (afl_data.py).
+# System heterogeneity: from AFL's exported het JSON (--het_json).
+# Local work: 20 steps. Param-based update (send_gradient False) to match AFL.
+# Aggregation: FedAsync alpha=0.3 + hinge(a1,b4) == AFL (AFL patched to APPFL's formula).
+# Time: measured per-step (base_step_time null) == AFL's measured execution x delay.
+client_configs:
+  train_configs:
+    trainer: "VanillaTrainer"
+    mode: "step"
+    num_local_steps: 20
+    optim: "SGD"
+    optim_args: { lr: 0.01, momentum: 0.9, weight_decay: 0.0001 }
+    loss_fn_path: "./resources/loss/celoss.py"
+    loss_fn_name: "CELoss"
+    do_validation: True
+    do_pre_validation: False
+    metric_path: "./resources/metric/acc.py"
+    metric_name: "accuracy"
+    send_gradient: False           # full params (AFL aggregates full model tensors)
+    train_batch_size: 64
+    val_batch_size: 64
+  model_configs:
+    model_path: "./resources/model/mlp_afl.py"
+    model_name: "MLP"
+    model_kwargs: { num_classes: 10 }
+  comm_configs:
+    compressor_configs: { enable_compression: False }
+
+server_configs:
+  num_clients: 10
+  scheduler: "AsyncScheduler"
+  scheduler_kwargs: { same_init_model: True }
+  aggregator: "FedAsyncAggregator"
+  aggregator_kwargs:
+    client_weights_mode: "equal"   # no num_clients key -> weight = 1.0 (matches AFL)
+    staleness_fn: "hinge"
+    staleness_fn_kwargs: { a: 1, b: 4 }
+    alpha: 0.3                      # == AFL decay
+  device: "cpu"
+  num_global_epochs: 80
+  # server-side global eval on AFL's FULL test set (same data AFL's test_all uses)
+  val_data_configs:
+    dataset_path: "./vsim/afl_data.py"
+    dataset_name: "get_afl_test_all"
+    dataset_kwargs: { afl_dir: "/Users/sungminkang/Desktop/ANL/AFL-Lib", dataset: "mnist10", num_clients: 10 }
+    batch_size: 256
+  simulator:
+    backend: "virtual_time"
+    seed: 42
+    max_concurrency: 4
+    staleness_mode: "round"
+    eval_every: 4                  # match AFL test cadence (every K aggregations)
+    time_model: { base_step_time: null }   # measured per-step time (== AFL approach)
+
+# client data = AFL-Lib's npz shards (identical data/partition/normalization)
+# (client_config below is the base; run_vsim sets client_id/num_clients/afl_dir/dataset)
