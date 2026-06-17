@@ -13,11 +13,12 @@ client_configs:
     optim_args: { lr: 0.01, momentum: 0.9, weight_decay: 0.0001 }
     loss_fn_path: "./resources/loss/celoss.py"
     loss_fn_name: "CELoss"
-    do_validation: True
+    do_validation: False           # off: per-completion val not needed (global eval used); faster
     do_pre_validation: False
     metric_path: "./resources/metric/acc.py"
     metric_name: "accuracy"
     send_gradient: False           # full params (AFL aggregates full model tensors)
+    optimize_memory: False         # off: skip per-step gc.collect() -> faster (small model)
     train_batch_size: 64
     val_batch_size: 64
   model_configs:
