@@ -124,7 +124,8 @@ class AsyncSimDriver:
             return
 
         # Downlink: load the latest global model right before training.
-        client.load_parameters(self.server.get_parameters(serial_run=True))
+        global_params = self.server.get_parameters(serial_run=True)
+        client.load_parameters(global_params)
         epoch_dispatch = self._cur_epoch()
 
         # Real local training (black-box). Time is modeled separately.
@@ -167,8 +168,10 @@ class AsyncSimDriver:
         meta["virtual_time"] = completion_time
         meta["dispatch_time"] = p["dispatch_time"]
 
+        local_model = {k: v.cpu() if hasattr(v, 'cpu') else v for k, v in p["local_model"].items()}
+
         global_model = self.server.global_update(
-            client_id=cid, local_model=p["local_model"], blocking=False, **meta
+            client_id=cid, local_model=local_model, blocking=False, **meta
         )
         if hasattr(global_model, "result"):  # buffered scheduler -> resolves instantly (serial)
             global_model = global_model.result()
@@ -216,7 +219,7 @@ class AsyncSimDriver:
         except Exception as e:  # noqa: BLE001
             self.logger.warning(f"global eval: load_state_dict failed: {e}")
             return None
-        return self.server.server_validate()  # None if no val dataset configured
+        return self.server.server_validate()
 
     def verify(self, target_epochs):
         """Post-run invariant checks proving the virtual-time async bookkeeping is

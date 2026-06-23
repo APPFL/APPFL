@@ -186,9 +186,11 @@ class FedAsyncAggregator(BaseAggregator):
             )
         else:
             weight = 1.0 / self.aggregator_configs.get("num_clients", 1)
+        staleness = self.global_step - self.client_step[client_id]
+        staleness_val = self.staleness_fn(staleness)
         alpha_t = (
             self.alpha
-            * self.staleness_fn(self.global_step - self.client_step[client_id])
+            * staleness_val
             * weight
         )
 
