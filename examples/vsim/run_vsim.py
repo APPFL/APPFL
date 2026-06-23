@@ -109,13 +109,18 @@ def main():
     parser.add_argument("--partition", type=str, default=None,
                         help="override data partition_strategy (e.g. dirichlet_noniid)")
     parser.add_argument("--alpha", type=float, default=None,
-                        help="dirichlet alpha (when --partition dirichlet_noniid)")
+                        help="dirichlet alpha: Dir(alpha,...,alpha). Internally "
+                             "mapped to APPFL's alpha2 = alpha * num_classes.")
+    parser.add_argument("--num_classes", type=int, default=10,
+                        help="number of classes (for alpha -> alpha2 scaling)")
     parser.add_argument("--verify", action="store_true",
                         help="run virtual-time invariant checks after the simulation")
     parser.add_argument("--num_global_epochs", type=int, default=None,
                         help="override server_configs.num_global_epochs")
     parser.add_argument("--max_concurrency", type=int, default=None,
                         help="override simulator.max_concurrency (K)")
+    parser.add_argument("--num_local_steps", type=int, default=None,
+                        help="override client_configs.train_configs.num_local_steps")
     parser.add_argument("--het_json", type=str, default=None,
                         help="AFL-Lib exported per-client (delay,bandwidth) JSON to match exactly")
     parser.add_argument("--eval_every", type=int, default=None,
@@ -143,6 +148,8 @@ def main():
     server_config.server_configs.device = args.device
     if args.num_global_epochs is not None:
         server_config.server_configs.num_global_epochs = args.num_global_epochs
+    if args.num_local_steps is not None:
+        server_config.client_configs.train_configs.num_local_steps = args.num_local_steps
     sim_cfg = server_config.server_configs.get("simulator", {})
     seed = args.seed if args.seed is not None else sim_cfg.get("seed", 42)
     max_conc = args.max_concurrency if args.max_concurrency is not None \
@@ -157,7 +164,10 @@ def main():
     # keep server-side global-eval dataset in sync (AFL full test set) BEFORE ServerAgent
     # loads it during __init__.
     if hasattr(server_config.server_configs, "val_data_configs"):
-        vdk = server_config.server_configs.val_data_configs.dataset_kwargs
+        vdc = server_config.server_configs.val_data_configs
+        if not hasattr(vdc, "dataset_kwargs") or vdc.dataset_kwargs is None:
+            vdc.dataset_kwargs = {}
+        vdk = vdc.dataset_kwargs
         vdk.num_clients = args.num_clients
         if args.afl_dir is not None:
             vdk.afl_dir = args.afl_dir
@@ -176,7 +186,7 @@ def main():
         if args.partition is not None:
             client_configs[i].data_configs.dataset_kwargs.partition_strategy = args.partition
         if args.alpha is not None:
-            client_configs[i].data_configs.dataset_kwargs.alpha = args.alpha
+            client_configs[i].data_configs.dataset_kwargs.alpha2 = args.alpha * args.num_classes
         if args.afl_dir is not None:
             client_configs[i].data_configs.dataset_kwargs.afl_dir = args.afl_dir
         if args.afl_dataset is not None:
