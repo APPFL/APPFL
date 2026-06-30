@@ -8,9 +8,10 @@ trainer metadata (`compute_second_per_step`), so we do not time `train()` oursel
     comm_time    = model_bytes * 8 / (1024**2) / bandwidth * 2   # downlink + uplink
     duration     = compute_time + comm_time
 
-This mirrors AFL-Lib's `@time_record` (execution_time * delay + comm) while reusing
-APPFL's native measurement. Heterogeneity knobs (data/model-dependent compute,
-time-varying bandwidth, availability) are intentionally deferred to v2 (see note 03).
+v2 additions:
+  - Optional CommModel (asymmetric BW, jitter, congestion, compression, TCP overhead).
+  - Optional ComputeModel (device profiles, FLOPs-based, multiple modes).
+  - `available()` remains always-True; dropout is via driver-level AvailabilityModel.
 """
 
 from dataclasses import dataclass
@@ -18,23 +19,40 @@ from dataclasses import dataclass
 
 @dataclass
 class ClientProfile:
-    compute_factor: float = 1.0  # device slowdown multiplier (AFL-Lib `delay`)
-    bandwidth: float = 300.0     # Mbps, fixed in v1
+    compute_factor: float = 1.0   # device slowdown multiplier (AFL-Lib `delay`)
+    bandwidth: float = 300.0      # Mbps, v1 legacy (used when comm is None)
+    comm: object = None           # Optional CommModel (v2)
+    compute: object = None        # Optional ComputeModel (v2)
 
-    def compute_time(self, compute_second_per_step: float, num_steps: int) -> float:
-        """Simulated local-compute time for this (slower/faster) device."""
+    def compute_time(self, compute_second_per_step: float, num_steps: int, **kwargs) -> float:
+        if self.compute is not None:
+            return self.compute.compute_time(compute_second_per_step, num_steps, **kwargs)
         return compute_second_per_step * num_steps * self.compute_factor
 
-    def comm_time(self, model_bytes: float) -> float:
-        """Round-trip (downlink + uplink) communication time in seconds."""
+    def download_time(self, model_bytes: float, **kwargs) -> float:
+        if self.comm is not None:
+            return self.comm.download_time(model_bytes, **kwargs)
+        if self.bandwidth <= 0:
+            return 0.0
+        return model_bytes * 8 / (1024 * 1024) / self.bandwidth
+
+    def upload_time(self, model_bytes: float, **kwargs) -> float:
+        if self.comm is not None:
+            return self.comm.upload_time(model_bytes, **kwargs)
+        if self.bandwidth <= 0:
+            return 0.0
+        return model_bytes * 8 / (1024 * 1024) / self.bandwidth
+
+    def comm_time(self, model_bytes: float, **kwargs) -> float:
+        if self.comm is not None:
+            return self.comm.comm_time(model_bytes, **kwargs)
         if self.bandwidth <= 0:
             return 0.0
         return (model_bytes * 8 / (1024 * 1024) / self.bandwidth) * 2
 
-    def duration(self, compute_second_per_step: float, num_steps: int, model_bytes: float) -> float:
-        """Total virtual time from dispatch to completion = compute + comm."""
-        return self.compute_time(compute_second_per_step, num_steps) + self.comm_time(model_bytes)
+    def duration(self, compute_second_per_step: float, num_steps: int,
+                 model_bytes: float, **kwargs) -> float:
+        return self.compute_time(compute_second_per_step, num_steps, **kwargs) + self.comm_time(model_bytes, **kwargs)
 
     def available(self, vtime: float) -> bool:
-        """v1: always available. (Real availability/session/dropout is v2 — note 03 D.)"""
         return True

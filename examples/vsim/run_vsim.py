@@ -16,7 +16,10 @@ from datetime import datetime
 
 from omegaconf import OmegaConf
 from appfl.agent import ServerAgent, ClientAgent
-from appfl.simulator import AsyncSimDriver, ClientProfile
+from appfl.simulator import AsyncSimDriver, SyncSimDriver, ClientProfile
+from appfl.simulator.availability_model import build_availability
+from appfl.simulator.comm_model import build_comm_models
+from appfl.simulator.compute_model import build_compute_models
 
 
 def _counts(prop, total):
@@ -129,6 +132,14 @@ def main():
                         help="AFL-Lib root (to load its npz shards via afl_data.py)")
     parser.add_argument("--afl_dataset", type=str, default=None,
                         help="AFL dataset dir name (e.g. mnist10, mnist20)")
+    parser.add_argument("--mode", type=str, default="async",
+                        choices=["async", "sync_count", "sync_window"],
+                        help="simulation mode: async | sync_count | sync_window")
+    parser.add_argument("--timing_only", action="store_true",
+                        help="timing-only mode: skip training/aggregation, compute "
+                             "virtual time from profiles (requires base_step_time)")
+    parser.add_argument("--target_epochs", type=int, default=None,
+                        help="target rounds for timing-only mode (overrides num_global_epochs)")
     args = parser.parse_args()
 
     # ---- logger (console + file) ----
@@ -209,39 +220,141 @@ def main():
         logger.info(f"profile {cid:>10}: compute_factor={prof.compute_factor:.3f}, "
                     f"bandwidth={prof.bandwidth:.1f} Mbps")
 
-    driver = AsyncSimDriver(
+    # v2: comm model — sample per-client CommModel if configured
+    comm_cfg = sim_cfg.get("comm_model", {}) if sim_cfg else {}
+    shared_pool = None
+    if comm_cfg:
+        comm_models, shared_pool = build_comm_models(client_ids, comm_cfg, seed + 100)
+        for cid, cm in comm_models.items():
+            profiles[cid].comm = cm
+            logger.info(f"comm   {cid:>10}: dl_bw={cm.download_bw:.1f}, ul_bw={cm.upload_bw:.1f}, "
+                        f"jitter={cm.jitter_sigma}, latency={cm.latency}s")
+
+    # v2: compute model — sample per-client ComputeModel if configured
+    compute_cfg = sim_cfg.get("compute_model", {}) if sim_cfg else {}
+    het_cfg = sim_cfg.get("heterogeneity", {}) if sim_cfg else {}
+    if compute_cfg:
+        compute_models = build_compute_models(client_ids, compute_cfg, het_cfg, seed + 300)
+        for cid, cm in compute_models.items():
+            profiles[cid].compute = cm
+            logger.info(f"compute {cid:>10}: mode={cm.mode}, device={cm.device_type}, "
+                        f"factor={cm.compute_factor:.3f}")
+
+    # v2: availability / dropout
+    avail_cfg = sim_cfg.get("availability", {}) if sim_cfg else {}
+    availability_model, timeout_model = build_availability(avail_cfg, client_ids, seed + 200)
+    if availability_model:
+        logger.info(f"availability: {type(availability_model).__name__}")
+    if timeout_model:
+        logger.info(f"timeout: seconds={timeout_model.timeout}, quantile={timeout_model.quantile}")
+
+    # v2: timing-only / calibration mode
+    time_model = sim_cfg.get("time_model", {}) if sim_cfg else {}
+    time_mode = time_model.get("mode", None)
+    calibration_epochs = None
+
+    if args.timing_only:
+        timing_only = True
+    elif time_mode == "calibration":
+        timing_only = False
+        calibration_epochs = time_model.get("calibration_epochs", 3)
+        logger.info(f"time_model: calibration mode ({calibration_epochs} local steps → timing-only)")
+    elif time_mode == "fixed":
+        timing_only = True
+        if base_step_time is None:
+            raise ValueError("time_model.mode='fixed' requires base_step_time")
+        logger.info(f"time_model: fixed mode (base_step_time={base_step_time})")
+    elif time_mode == "real_measure":
+        timing_only = False
+        logger.info("time_model: real_measure mode (real GPU time every step)")
+    else:
+        timing_only = sim_cfg.get("timing_only", False)
+
+    num_local_steps = (args.num_local_steps if args.num_local_steps is not None
+                       else server_config.client_configs.train_configs.get("num_local_steps", 20))
+    target_epochs = (args.target_epochs if args.target_epochs is not None
+                     else sim_cfg.get("target_epochs",
+                                      server_config.server_configs.get("num_global_epochs", 100)))
+
+    # ---- resolve mode from CLI or config ----
+    mode = args.mode
+    if mode == "async":
+        cfg_mode = sim_cfg.get("mode", "async") if sim_cfg else "async"
+        if cfg_mode.startswith("sync"):
+            mode = cfg_mode
+
+    common_kw = dict(
         server_agent=server_agent,
         client_agents=client_agents,
         profiles=profiles,
-        max_concurrency=max_conc,
         logger=logger,
         seed=seed,
         base_step_time=base_step_time,
         eval_every=eval_every,
+        availability_model=availability_model,
+        timeout_model=timeout_model,
+        shared_pool=shared_pool,
+        timing_only=timing_only,
+        num_local_steps=num_local_steps,
+        calibration_epochs=calibration_epochs,
     )
+
+    if mode == "async":
+        driver = AsyncSimDriver(
+            max_concurrency=max_conc,
+            target_epochs=target_epochs,
+            **common_kw,
+        )
+    else:
+        sync_cfg = sim_cfg.get("sync", {}) if sim_cfg else {}
+        driver = SyncSimDriver(
+            participants_per_round=sync_cfg.get("participants_per_round", args.num_clients),
+            mode="count" if mode == "sync_count" else "window",
+            min_responses=sync_cfg.get("min_responses"),
+            max_wait_time=sync_cfg.get("max_wait_time"),
+            window_duration=sync_cfg.get("window_duration"),
+            target_rounds=target_epochs,
+            **common_kw,
+        )
+
     driver.run()
 
     # ---- summary ----
-    accs = [r["val_accuracy"] for r in driver.history if isinstance(r.get("val_accuracy"), (int, float))]
-    if accs:
-        logger.info(f"last per-client val_accuracy={accs[-1]:.2f} | max={max(accs):.2f}")
-    gevals = [(r["epoch"], r["global_val_accuracy"]) for r in driver.history
-              if isinstance(r.get("global_val_accuracy"), (int, float))]
-    if gevals:
-        curve = " ".join(f"e{e}:{a:.1f}" for e, a in gevals)
-        logger.info(f"GLOBAL val_accuracy curve -> {curve}")
-        logger.info(f"GLOBAL final={gevals[-1][1]:.2f} | max={max(a for _, a in gevals):.2f}")
+    if mode == "async":
+        accs = [r["val_accuracy"] for r in driver.history if isinstance(r.get("val_accuracy"), (int, float))]
+        if accs:
+            logger.info(f"last per-client val_accuracy={accs[-1]:.2f} | max={max(accs):.2f}")
+        gevals = [(r["epoch"], r["global_val_accuracy"]) for r in driver.history
+                  if isinstance(r.get("global_val_accuracy"), (int, float))]
+        if gevals:
+            curve = " ".join(f"e{e}:{a:.1f}" for e, a in gevals)
+            logger.info(f"GLOBAL val_accuracy curve -> {curve}")
+            logger.info(f"GLOBAL final={gevals[-1][1]:.2f} | max={max(a for _, a in gevals):.2f}")
+    else:
+        non_skipped = [r for r in driver.history if not r.get("skipped")]
+        if non_skipped:
+            avg_accepted = sum(r["accepted_count"] for r in non_skipped) / len(non_skipped)
+            avg_dur = sum(r["duration"] for r in non_skipped) / len(non_skipped)
+            logger.info(f"sync summary: {len(non_skipped)} rounds completed, "
+                        f"avg_accepted={avg_accepted:.1f}, avg_round_dur={avg_dur:.2f}s")
+        gevals = [(r["round"], r["global_val_accuracy"]) for r in driver.history
+                  if isinstance(r.get("global_val_accuracy"), (int, float))]
+        if gevals:
+            logger.info(f"GLOBAL final={gevals[-1][1]:.2f} | max={max(a for _, a in gevals):.2f}")
 
     # ---- virtual-time invariant verification ----
     if args.verify:
-        target = server_config.server_configs.num_global_epochs
+        target = target_epochs
         checks = driver.verify(target)
         logger.info("VERIFY (virtual-time invariants):")
         for name, ok in checks.items():
-            logger.info(f"  [{'PASS' if ok else 'FAIL'}] {name}")
-        logger.info(f"VERIFY result: {'ALL PASS' if all(checks.values()) else 'SOME FAILED'} "
-                    f"(max_active={driver._max_active}/{driver.K}, "
-                    f"mono_violations={driver._mono_violations})")
+            if isinstance(ok, bool):
+                logger.info(f"  [{'PASS' if ok else 'FAIL'}] {name}")
+            else:
+                logger.info(f"  [INFO] {name} = {ok}")
+        bool_checks = {k: v for k, v in checks.items() if isinstance(v, bool)}
+        logger.info(f"VERIFY result: {'ALL PASS' if all(bool_checks.values()) else 'SOME FAILED'} "
+                    f"(max_active={driver._max_active}/{driver.K})")
     logger.info(f"log dir: {log_dir}")
 
 

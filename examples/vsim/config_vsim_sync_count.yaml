@@ -1,0 +1,68 @@
+# Virtual-time sync FL simulator config — count-based mode
+# Dispatch M clients per round, aggregate first K completions.
+# Run: cd examples && python vsim/run_vsim.py --server_config vsim/config_vsim_sync_count.yaml \
+#        --num_clients 10 --mode sync_count --timing_only --base_step_time 0.003 --verify
+client_configs:
+  train_configs:
+    trainer: "VanillaTrainer"
+    mode: "step"
+    num_local_steps: 20
+    optim: "Adam"
+    optim_args:
+      lr: 0.001
+    loss_fn_path: "./resources/loss/celoss.py"
+    loss_fn_name: "CELoss"
+    do_validation: True
+    do_pre_validation: True
+    metric_path: "./resources/metric/acc.py"
+    metric_name: "accuracy"
+    use_dp: False
+    epsilon: 1
+    clip_grad: False
+    clip_value: 1
+    clip_norm: 1
+    send_gradient: True
+    train_batch_size: 64
+    val_batch_size: 64
+    train_data_shuffle: True
+    val_data_shuffle: False
+
+  model_configs:
+    model_path: "./resources/model/cnn.py"
+    model_name: "CNN"
+    model_kwargs:
+      num_channel: 1
+      num_classes: 10
+      num_pixel: 28
+
+  comm_configs:
+    compressor_configs:
+      enable_compression: False
+
+server_configs:
+  num_clients: 10
+  scheduler: "SyncScheduler"
+  scheduler_kwargs:
+    same_init_model: True
+  aggregator: "FedAvgAggregator"
+  aggregator_kwargs:
+    client_weights_mode: "equal"
+  device: "cpu"
+  num_global_epochs: 100
+  logging_output_dirname: "./output"
+  logging_output_filename: "result"
+
+  simulator:
+    seed: 42
+    mode: "sync_count"
+    sync:
+      participants_per_round: 10    # M: dispatch all 10
+      min_responses: 8              # K: aggregate first 8
+      max_wait_time: 120.0          # hard deadline (seconds)
+    heterogeneity:
+      compute:
+        distribution: "lognormal"
+        params: { mu: 0.0, sigma: 0.5 }
+      bandwidth:
+        distribution: "uniform"
+        params: { lo: 150.0, hi: 600.0 }
