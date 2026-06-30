@@ -23,6 +23,13 @@ class SharedBandwidthPool:
         self.mode = mode
 
     def effective_bandwidth(self, client_bw, num_concurrent):
+        """
+        Compute effective bandwidth under congestion.
+
+        :param client_bw: Individual client bandwidth (Mbps).
+        :param num_concurrent: Number of concurrently communicating clients.
+        :return: Effective bandwidth (Mbps).
+        """
         if self.mode == "none" or num_concurrent <= 1:
             return client_bw
         fair_share = self.total_bw / num_concurrent
@@ -45,6 +52,7 @@ class CommModel:
 
     def _direction_time(self, model_bytes, bw, num_concurrent=1,
                         shared_pool=None, rng=None):
+        """Compute one-direction transfer time with jitter, congestion, and TCP overhead."""
         effective_bytes = model_bytes / max(self.compression_ratio, 0.01)
         bits_mb = effective_bytes * 8 / (1024 * 1024)
         eff_bw = self._effective_bw(bw, num_concurrent, shared_pool)
@@ -55,14 +63,41 @@ class CommModel:
         return max(base_time, 0.0)
 
     def download_time(self, model_bytes, num_concurrent=1, shared_pool=None, rng=None):
+        """
+        Compute virtual download time.
+
+        :param model_bytes: Model size in bytes.
+        :param num_concurrent: Number of concurrently communicating clients.
+        :param shared_pool: SharedBandwidthPool (optional).
+        :param rng: Random instance for jitter (optional).
+        :return: Download duration in seconds.
+        """
         return self._direction_time(model_bytes, self.download_bw,
                                     num_concurrent, shared_pool, rng)
 
     def upload_time(self, model_bytes, num_concurrent=1, shared_pool=None, rng=None):
+        """
+        Compute virtual upload time.
+
+        :param model_bytes: Model size in bytes.
+        :param num_concurrent: Number of concurrently communicating clients.
+        :param shared_pool: SharedBandwidthPool (optional).
+        :param rng: Random instance for jitter (optional).
+        :return: Upload duration in seconds.
+        """
         return self._direction_time(model_bytes, self.upload_bw,
                                     num_concurrent, shared_pool, rng)
 
     def comm_time(self, model_bytes, num_concurrent=1, shared_pool=None, rng=None):
+        """
+        Compute total round-trip communication time (download + upload).
+
+        :param model_bytes: Model size in bytes.
+        :param num_concurrent: Number of concurrently communicating clients.
+        :param shared_pool: SharedBandwidthPool (optional).
+        :param rng: Random instance for jitter (optional).
+        :return: Total communication duration in seconds.
+        """
         return (self.download_time(model_bytes, num_concurrent, shared_pool, rng) +
                 self.upload_time(model_bytes, num_concurrent, shared_pool, rng))
 

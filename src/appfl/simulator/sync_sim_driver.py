@@ -18,6 +18,12 @@ from .base_sim_driver import BaseSimDriver
 
 
 class SyncSimDriver(BaseSimDriver):
+    """Virtual-time synchronous FL simulation driver.
+
+    Supports two barrier modes: **count** (aggregate first K of M completions)
+    and **window** (aggregate all arrivals within a fixed time window).
+    """
+
     def __init__(
         self,
         server_agent,
@@ -72,6 +78,7 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- participant selection ----------
     def _select_participants(self):
+        """Select M participants for the current round, filtered by availability."""
         all_ids = list(self.clients.keys())
         if self.availability_model:
             available = [c for c in all_ids
@@ -84,6 +91,13 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- duration computation ----------
     def _compute_completions(self, selected, t_start):
+        """
+        Train all selected clients and compute their virtual completion times.
+
+        :param selected: List of selected client IDs.
+        :param t_start: Round start virtual time.
+        :return: List of completion dicts, sorted by completion_time.
+        """
         self.active = set(selected)
         self._max_active = max(self._max_active, len(self.active))
         completions = []
@@ -133,11 +147,19 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- barrier logic ----------
     def _apply_barrier(self, completions, t_start):
+        """
+        Apply the configured barrier to determine accepted/discarded clients.
+
+        :param completions: Sorted list of completion dicts.
+        :param t_start: Round start virtual time.
+        :return: Tuple of (accepted, discarded, t_barrier).
+        """
         if self.mode == "count":
             return self._barrier_count(completions, t_start)
         return self._barrier_window(completions, t_start)
 
     def _barrier_count(self, completions, t_start):
+        """Count barrier: accept first K completions, subject to max_wait_time."""
         K = self.min_responses
         if len(completions) < K:
             t = completions[-1]["completion_time"] if completions else t_start
@@ -158,6 +180,7 @@ class SyncSimDriver(BaseSimDriver):
         return accepted, discarded, t_barrier
 
     def _barrier_window(self, completions, t_start):
+        """Window barrier: accept all completions within window_duration."""
         deadline = t_start + self.window_duration
         accepted = [c for c in completions if c["completion_time"] <= deadline]
         discarded = [c for c in completions if c["completion_time"] > deadline]
@@ -179,6 +202,7 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- aggregation ----------
     def _aggregate_round(self, accepted):
+        """Aggregate local models from accepted clients via the server agent."""
         self.server.scheduler.num_clients = len(accepted)
         for i, c in enumerate(accepted):
             local_model = {k: v.cpu() if hasattr(v, 'cpu') else v
@@ -192,6 +216,7 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- recording ----------
     def _record_round(self, t_start, t_barrier, accepted, discarded, skipped):
+        """Append a round record to ``self.history``."""
         round_comm = self._model_bytes * 2 * len(accepted)
         self._total_comm_bytes += round_comm
         self.history.append({
@@ -211,6 +236,7 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- one round ----------
     def _run_round(self):
+        """Execute one synchronous FL round: select, train, barrier, aggregate."""
         t_start = self.virtual_time
         selected = self._select_participants()
 
@@ -259,6 +285,7 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- main loop ----------
     def run(self):
+        """Run the sync simulation for target_rounds, skipping rounds with no available clients."""
         self._calibrate()
         max_skips = self._target_rounds * 3
         while self._round < self._target_rounds:
@@ -283,6 +310,12 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- verification (override) ----------
     def verify(self, target_rounds):
+        """
+        Run sync-specific post-simulation invariant checks.
+
+        :param target_rounds: Expected number of completed rounds.
+        :return: Dict of check_name → bool (pass/fail) or int (info).
+        """
         non_skipped = [r for r in self.history if not r["skipped"]]
         checks = {
             "monotonic_round_starts": all(

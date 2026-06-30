@@ -27,6 +27,13 @@ from .base_sim_driver import BaseSimDriver
 
 
 class AsyncSimDriver(BaseSimDriver):
+    """Virtual-time asynchronous FL simulation driver.
+
+    Uses a min-heap event queue to reproduce asynchronous client arrival order
+    on a single device.  Supports FedAsync, FedBuff, and other APPFL async
+    aggregators without modification.
+    """
+
     def __init__(
         self,
         server_agent,
@@ -57,16 +64,19 @@ class AsyncSimDriver(BaseSimDriver):
 
     # ---------- async-specific helpers ----------
     def _cur_epoch(self) -> int:
+        """Return the current global epoch count."""
         if self.timing_only:
             return self._timing_epoch
         return self.server.scheduler.get_num_global_epochs()
 
     def _training_finished(self) -> bool:
+        """Check whether the target number of global updates has been reached."""
         if self.timing_only:
             return self._target_epochs is not None and self._timing_epoch >= self._target_epochs
         return self.server.training_finished()
 
     def _dispatch_idle(self):
+        """Fill empty concurrency slots by dispatching idle clients."""
         need = self.K - len(self.active)
         if need <= 0:
             return
@@ -93,6 +103,7 @@ class AsyncSimDriver(BaseSimDriver):
 
     # ---------- main loop ----------
     def run(self):
+        """Run the async simulation: pop events from the min-heap until done."""
         self._calibrate()
         self._dispatch_idle()
         while not self._training_finished() and self.queue:
@@ -116,6 +127,12 @@ class AsyncSimDriver(BaseSimDriver):
 
     # ---------- event handlers ----------
     def _handle_train_start(self, cid: str, dispatch_time: float):
+        """
+        Handle a train_start event: download model, train, schedule completion.
+
+        :param cid: Client identifier.
+        :param dispatch_time: Virtual time at which the client was dispatched.
+        """
         profile = self.profiles[cid]
 
         if not profile.available(dispatch_time):
@@ -185,6 +202,12 @@ class AsyncSimDriver(BaseSimDriver):
         )
 
     def _handle_train_complete(self, cid: str, completion_time: float):
+        """
+        Handle a train_complete event: aggregate, record, and re-dispatch.
+
+        :param cid: Client identifier.
+        :param completion_time: Virtual time at which training completed.
+        """
         p = self._pending.pop(cid)
 
         if self.timeout_model:

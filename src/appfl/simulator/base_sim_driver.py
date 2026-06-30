@@ -11,6 +11,13 @@ from typing import Dict, List, Optional
 
 
 class BaseSimDriver:
+    """Base class for virtual-time FL simulation drivers.
+
+    Provides common state, heap utilities, global evaluation, calibration,
+    and post-simulation verification.  Subclasses implement ``run()`` and
+    event-handling logic for their scheduling model (async or sync).
+    """
+
     def __init__(
         self,
         server_agent,
@@ -29,6 +36,25 @@ class BaseSimDriver:
         target_epochs: Optional[int] = None,
         calibration_epochs: Optional[int] = None,
     ):
+        """
+        Initialize the simulation driver with server/client agents and models.
+
+        :param server_agent: APPFL ServerAgent instance.
+        :param client_agents: List of APPFL ClientAgent instances.
+        :param profiles: Dict mapping client_id to ClientProfile.
+        :param max_concurrency: K — maximum concurrent in-flight clients.
+        :param logger: Python logger for simulation output.
+        :param seed: RNG seed for reproducibility.
+        :param base_step_time: Fixed per-step compute time (s); None = measured.
+        :param eval_every: Global evaluation frequency (0 = off).
+        :param availability_model: Dispatch-level dropout model (optional).
+        :param timeout_model: Completion-level timeout model (optional).
+        :param shared_pool: SharedBandwidthPool for congestion modeling (optional).
+        :param timing_only: If True, skip actual training/aggregation.
+        :param num_local_steps: Number of local training steps per client.
+        :param target_epochs: Target number of global updates.
+        :param calibration_epochs: Steps to profile before switching to timing-only.
+        """
         random.seed(seed)
         self.server = server_agent
         self.clients = {c.get_id(): c for c in client_agents}
@@ -103,6 +129,12 @@ class BaseSimDriver:
     # ---------- utilities ----------
     @staticmethod
     def _state_bytes(state) -> int:
+        """
+        Compute total bytes of a model state_dict.
+
+        :param state: Model state dict (or empty dict).
+        :return: Total byte count across all tensors.
+        """
         total = 0
         if hasattr(state, "values"):
             for v in state.values():
@@ -111,10 +143,18 @@ class BaseSimDriver:
         return total
 
     def _push(self, vtime: float, etype: str, cid: str):
+        """
+        Push an event onto the min-heap with auto-incrementing tiebreaker.
+
+        :param vtime: Virtual time for the event.
+        :param etype: Event type string (e.g. ``"train_start"``).
+        :param cid: Client identifier.
+        """
         heapq.heappush(self.queue, (vtime, self._seq, etype, cid))
         self._seq += 1
 
     def _comm_kwargs(self):
+        """Build keyword arguments for ``ClientProfile.comm_time()``."""
         kw = {}
         if self.shared_pool is not None:
             kw["num_concurrent"] = len(self.active)
@@ -124,6 +164,12 @@ class BaseSimDriver:
         return kw
 
     def _global_eval(self, global_model):
+        """
+        Evaluate the global model on the server's validation set.
+
+        :param global_model: Model state dict to evaluate.
+        :return: Tuple of (val_loss, val_accuracy), or None on failure.
+        """
         try:
             self.server.model.load_state_dict(global_model, strict=False)
         except Exception as e:  # noqa: BLE001
@@ -133,6 +179,7 @@ class BaseSimDriver:
 
     # ---------- calibration ----------
     def _calibrate(self):
+        """Profile all clients for a few local steps, then switch to timing-only mode."""
         if self._calibration_epochs is None:
             return
         cal_steps = min(self._calibration_epochs, self._num_local_steps)
@@ -178,6 +225,12 @@ class BaseSimDriver:
 
     # ---------- verification ----------
     def verify(self, target_epochs):
+        """
+        Run post-simulation invariant checks.
+
+        :param target_epochs: Expected number of completed global updates.
+        :return: Dict of check_name → bool (pass/fail) or int (info).
+        """
         vts = [r["vtime"] for r in self.history]
         checks = {
             "monotonic_virtual_time": self._mono_violations == 0 and vts == sorted(vts),
@@ -197,4 +250,5 @@ class BaseSimDriver:
 
     # ---------- interface ----------
     def run(self):
+        """Run the simulation. Subclasses must override this method."""
         raise NotImplementedError
