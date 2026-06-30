@@ -16,10 +16,19 @@ class AvailabilityModel:
     """Base: all clients always available."""
 
     def available(self, cid, vtime):
+        """
+        Check if a client is available for dispatch.
+
+        :param cid: Client identifier.
+        :param vtime: Current virtual time.
+        :return: True if the client is available.
+        """
         return True
 
 
 class PermanentDropout(AvailabilityModel):
+    """Client exits permanently with probability ``drop_prob`` per dispatch attempt."""
+
     def __init__(self, drop_prob=0.0, seed=42):
         self.drop_prob = drop_prob
         self.dropped = set()
@@ -35,6 +44,8 @@ class PermanentDropout(AvailabilityModel):
 
 
 class SessionDropout(AvailabilityModel):
+    """Cyclic active/inactive periods per client with phase noise."""
+
     def __init__(self, active_duration=60.0, inactive_duration=30.0,
                  phase_noise=0.2, seed=42):
         self.active_dur = active_duration
@@ -68,6 +79,8 @@ class SessionDropout(AvailabilityModel):
 
 
 class CorrelatedDropout(AvailabilityModel):
+    """Group of clients fail simultaneously for ``failure_duration`` seconds."""
+
     def __init__(self, groups, failure_prob=0.05, failure_duration=30.0, seed=42):
         self.groups = groups
         self.failure_prob = failure_prob
@@ -91,11 +104,20 @@ class CorrelatedDropout(AvailabilityModel):
 
 
 class TimeoutModel:
+    """Completion-level timeout: discard results exceeding a time threshold."""
+
     def __init__(self, timeout_seconds=None, timeout_quantile=None):
         self.timeout = timeout_seconds
         self.quantile = timeout_quantile
 
     def should_discard(self, duration, all_durations):
+        """
+        Check whether a client's result should be discarded due to timeout.
+
+        :param duration: This client's training duration.
+        :param all_durations: List of all past durations (for quantile mode).
+        :return: True if the result should be discarded.
+        """
         if self.timeout is not None:
             return duration > self.timeout
         if self.quantile is not None and all_durations:

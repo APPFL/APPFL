@@ -48,6 +48,13 @@ class ComputeModel:
     model_flops_per_step: float = 0.0
 
     def compute_time(self, cps: float, num_steps: int, **kwargs) -> float:
+        """
+        Compute virtual training time based on the configured mode.
+
+        :param cps: Compute seconds per step (measured or fixed).
+        :param num_steps: Number of local training steps.
+        :return: Virtual compute duration in seconds.
+        """
         if self.mode == "measured":
             return cps * num_steps * self.compute_factor
         elif self.mode == "factor":
