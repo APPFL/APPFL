@@ -39,11 +39,6 @@ server_configs:
     client_weights_mode: "equal"
   device: "cpu"
   num_global_epochs: 500
-  val_data_configs:
-    dataset_path: "./vsim/server_val_cifar.py"
-    dataset_name: "get_cifar10_test"
-    dataset_kwargs: {}
-    batch_size: 512
   simulator:
     seed: 42
     mode: "sync_window"
