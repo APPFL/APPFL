@@ -82,9 +82,20 @@ package and these example files. Zero APPFL core modifications.
 |------|------|
 | `run_vsim.py` | Entry point — config loading, agent creation, driver invocation |
 | `plot_timeline.py` | Timeline visualization (Gantt charts) |
-| `server_val_mnist.py` | Server-side MNIST test set for global evaluation |
-| `server_val_cifar.py` | Server-side CIFAR-10 test set for global evaluation |
-| `config_vsim_*.yaml` | Experiment configurations (see below) |
+
+### Example configurations (`examples/vsim/config_vsim_*.yaml`)
+
+The YAML configs included are **starting-point examples** — copy and modify them
+for your own experiments. They are not exhaustive; see the
+[Configuration Reference](#configuration-reference) below for all available
+parameters.
+
+| Config | Dataset | Algorithm | Mode |
+|--------|---------|-----------|------|
+| `config_vsim_fedasync.yaml` | MNIST | FedAsync | async |
+| `config_vsim_sync_count.yaml` | MNIST | FedAvg | sync (count) |
+| `config_vsim_sync_window.yaml` | MNIST | FedAvg | sync (window) |
+| `config_vsim_cifar_sync_fedavg.yaml` | CIFAR-10 | FedAvg | sync (window) |
 
 ## Quick Start
 
