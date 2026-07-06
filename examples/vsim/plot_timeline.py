@@ -8,15 +8,13 @@ Usage:
 """
 
 import re
-import sys
 import argparse
-from collections import defaultdict
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import numpy as np
 
 
 def parse_log(path, max_vt=None):
@@ -45,48 +43,59 @@ def parse_log(path, max_vt=None):
                 vt = float(m.group(1))
                 if max_vt and vt > max_vt:
                     continue
-                starts.append({
-                    "vt": vt,
-                    "client": m.group(2),
-                    "dur": float(m.group(3)),
-                    "compute": float(m.group(4)),
-                    "comm": float(m.group(5)),
-                })
+                starts.append(
+                    {
+                        "vt": vt,
+                        "client": m.group(2),
+                        "dur": float(m.group(3)),
+                        "compute": float(m.group(4)),
+                        "comm": float(m.group(5)),
+                    }
+                )
                 continue
             m = done_re.search(line)
             if m:
                 vt = float(m.group(1))
                 if max_vt and vt > max_vt:
                     continue
-                dones.append({
-                    "vt": vt,
-                    "client": m.group(2),
-                    "epoch": int(m.group(3)),
-                    "staleness": int(m.group(4)),
-                })
+                dones.append(
+                    {
+                        "vt": vt,
+                        "client": m.group(2),
+                        "epoch": int(m.group(3)),
+                        "staleness": int(m.group(4)),
+                    }
+                )
                 continue
             m = global_re.search(line)
             if m:
                 vt = float(m.group(1))
                 if max_vt and vt > max_vt:
                     continue
-                evals.append({
-                    "vt": vt,
-                    "epoch": int(m.group(2)),
-                    "acc": float(m.group(3)),
-                    "loss": float(m.group(4)),
-                })
+                evals.append(
+                    {
+                        "vt": vt,
+                        "epoch": int(m.group(2)),
+                        "acc": float(m.group(3)),
+                        "loss": float(m.group(4)),
+                    }
+                )
     return starts, dones, evals
 
 
 def plot_timeline(starts, dones, evals, out_path, max_vt=None):
-    clients = sorted(set(s["client"] for s in starts),
-                      key=lambda c: int(re.sub(r'\D', '', c) or 0))
+    clients = sorted(
+        {s["client"] for s in starts}, key=lambda c: int(re.sub(r"\D", "", c) or 0)
+    )
     cid_to_y = {c: i for i, c in enumerate(clients)}
 
     fig, (ax_timeline, ax_acc) = plt.subplots(
-        2, 1, figsize=(16, 8), height_ratios=[3, 1],
-        sharex=True, gridspec_kw={"hspace": 0.08}
+        2,
+        1,
+        figsize=(16, 8),
+        height_ratios=[3, 1],
+        sharex=True,
+        gridspec_kw={"hspace": 0.08},
     )
 
     bar_h = 0.7
@@ -95,29 +104,40 @@ def plot_timeline(starts, dones, evals, out_path, max_vt=None):
         y = cid_to_y[s["client"]]
         vt_start = s["vt"]
         compute_end = vt_start + s["compute"]
-        comm_end = compute_end + s["comm"]
 
         # compute bar
         ax_timeline.barh(
-            y, s["compute"], left=vt_start, height=bar_h,
-            color="#4C72B0", edgecolor="white", linewidth=0.3
+            y,
+            s["compute"],
+            left=vt_start,
+            height=bar_h,
+            color="#4C72B0",
+            edgecolor="white",
+            linewidth=0.3,
         )
         # comm bar
         ax_timeline.barh(
-            y, s["comm"], left=compute_end, height=bar_h,
-            color="#DD8452", edgecolor="white", linewidth=0.3
+            y,
+            s["comm"],
+            left=compute_end,
+            height=bar_h,
+            color="#DD8452",
+            edgecolor="white",
+            linewidth=0.3,
         )
 
     # aggregation points (DONE events)
     for d in dones:
         y = cid_to_y[d["client"]]
-        ax_timeline.plot(d["vt"], y, marker="|", color="black",
-                        markersize=8, markeredgewidth=1.2)
+        ax_timeline.plot(
+            d["vt"], y, marker="|", color="black", markersize=8, markeredgewidth=1.2
+        )
 
     # global eval lines
     for e in evals:
-        ax_timeline.axvline(e["vt"], color="#55A868", alpha=0.5,
-                           linewidth=1, linestyle="--")
+        ax_timeline.axvline(
+            e["vt"], color="#55A868", alpha=0.5, linewidth=1, linestyle="--"
+        )
 
     ax_timeline.set_yticks(range(len(clients)))
     ax_timeline.set_yticklabels(clients, fontsize=9)
@@ -128,8 +148,15 @@ def plot_timeline(starts, dones, evals, out_path, max_vt=None):
     legend_patches = [
         mpatches.Patch(color="#4C72B0", label="Compute"),
         mpatches.Patch(color="#DD8452", label="Communication"),
-        plt.Line2D([0], [0], color="black", marker="|", linestyle="None",
-                   markersize=8, label="Aggregation"),
+        plt.Line2D(
+            [0],
+            [0],
+            color="black",
+            marker="|",
+            linestyle="None",
+            markersize=8,
+            label="Aggregation",
+        ),
         plt.Line2D([0], [0], color="#55A868", linestyle="--", label="Global Eval"),
     ]
     ax_timeline.legend(handles=legend_patches, loc="upper right", fontsize=8)
@@ -156,15 +183,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("log", help="vsim log file")
     parser.add_argument("--out", default=None, help="output image path")
-    parser.add_argument("--max_vt", type=float, default=None,
-                        help="only show up to this virtual time (for zoomed view)")
+    parser.add_argument(
+        "--max_vt",
+        type=float,
+        default=None,
+        help="only show up to this virtual time (for zoomed view)",
+    )
     args = parser.parse_args()
 
     if args.out is None:
         args.out = args.log.rsplit(".", 1)[0] + "_timeline.png"
 
     starts, dones, evals = parse_log(args.log, args.max_vt)
-    print(f"Parsed: {len(starts)} starts, {len(dones)} completions, {len(evals)} global evals")
+    print(
+        f"Parsed: {len(starts)} starts, {len(dones)} completions, {len(evals)} global evals"
+    )
 
     plot_timeline(starts, dones, evals, args.out, args.max_vt)
 

@@ -53,11 +53,14 @@ class _FakeClient:
         pass
 
     def get_parameters(self):
-        return ({}, {
-            "current_local_steps": self.steps,
-            "compute_second_per_step": self.cps,
-            "val_accuracy": self.acc,
-        })
+        return (
+            {},
+            {
+                "current_local_steps": self.steps,
+                "compute_second_per_step": self.cps,
+                "val_accuracy": self.acc,
+            },
+        )
 
 
 def _silent_logger():
@@ -68,14 +71,24 @@ def _silent_logger():
     return lg
 
 
-def _make_driver(n, K, factors, target=20, seed=42, base_step_time=0.01,
-                 driver_cls=AsyncSimDriver):
+def _make_driver(
+    n, K, factors, target=20, seed=42, base_step_time=0.01, driver_cls=AsyncSimDriver
+):
     server = _FakeServer(target)
     clients = [_FakeClient(f"C{i}") for i in range(n)]
-    profiles = {f"C{i}": ClientProfile(compute_factor=factors[i], bandwidth=300.0)
-                for i in range(n)}
-    return driver_cls(server, clients, profiles, max_concurrency=K,
-                      logger=_silent_logger(), seed=seed, base_step_time=base_step_time)
+    profiles = {
+        f"C{i}": ClientProfile(compute_factor=factors[i], bandwidth=300.0)
+        for i in range(n)
+    }
+    return driver_cls(
+        server,
+        clients,
+        profiles,
+        max_concurrency=K,
+        logger=_silent_logger(),
+        seed=seed,
+        base_step_time=base_step_time,
+    )
 
 
 # --------------------------- tests --------------------------- #
@@ -94,8 +107,8 @@ def test_virtual_time_monotonic_and_count():
     d = _make_driver(4, 2, [1, 1, 1, 1], target=20)
     d.run()
     vts = [r["vtime"] for r in d.history]
-    assert vts == sorted(vts)            # virtual time never goes backward
-    assert len(d.history) == 20          # exactly target completions
+    assert vts == sorted(vts)  # virtual time never goes backward
+    assert len(d.history) == 20  # exactly target completions
 
 
 def test_staleness_nonnegative():
@@ -112,7 +125,7 @@ def test_determinism_with_fixed_step_time():
 
     a = seq(_make_driver(4, 2, [1.0, 2.0, 0.5, 1.5], target=24, seed=7))
     b = seq(_make_driver(4, 2, [1.0, 2.0, 0.5, 1.5], target=24, seed=7))
-    assert a == b                        # same seed + fixed step time -> bit-exact
+    assert a == b  # same seed + fixed step time -> bit-exact
 
 
 def test_heterogeneity_fast_completes_more():
@@ -130,7 +143,8 @@ def test_concurrency_never_exceeds_K():
             self._maxK = max(getattr(self, "_maxK", 0), len(self.active))
 
     K = 3
-    d = _make_driver(8, K, [1, 2, 3, 1, 2, 3, 1, 2], target=40, seed=5,
-                     driver_cls=_CapDriver)
+    d = _make_driver(
+        8, K, [1, 2, 3, 1, 2, 3, 1, 2], target=40, seed=5, driver_cls=_CapDriver
+    )
     d.run()
     assert d._maxK <= K

@@ -67,10 +67,15 @@ class BaseSimDriver:
         self.availability_model = availability_model
         self.timeout_model = timeout_model
         self.shared_pool = shared_pool
-        self._comm_rng = random.Random(seed + 7) if any(
-            getattr(p.comm, "jitter_sigma", 0) > 0 for p in profiles.values()
-            if p.comm is not None
-        ) else None
+        self._comm_rng = (
+            random.Random(seed + 7)
+            if any(
+                getattr(p.comm, "jitter_sigma", 0) > 0
+                for p in profiles.values()
+                if p.comm is not None
+            )
+            else None
+        )
 
         self.timing_only = timing_only
         self._num_local_steps = num_local_steps
@@ -102,7 +107,8 @@ class BaseSimDriver:
                 c.load_parameters(init_model)
         else:
             self._model_bytes = self._state_bytes(
-                self.server.model.state_dict() if hasattr(self.server, 'model') and self.server.model is not None
+                self.server.model.state_dict()
+                if hasattr(self.server, "model") and self.server.model is not None
                 else {}
             )
 
@@ -116,7 +122,9 @@ class BaseSimDriver:
         if availability_model is not None:
             v2_info.append(f"availability={type(availability_model).__name__}")
         if timeout_model is not None:
-            v2_info.append(f"timeout={timeout_model.timeout or f'q{timeout_model.quantile}'}")
+            v2_info.append(
+                f"timeout={timeout_model.timeout or f'q{timeout_model.quantile}'}"
+            )
         if shared_pool is not None:
             v2_info.append(f"shared_pool={shared_pool.total_bw}Mbps/{shared_pool.mode}")
         v2_str = f", v2=[{', '.join(v2_info)}]" if v2_info else ""
@@ -185,12 +193,14 @@ class BaseSimDriver:
         cal_steps = min(self._calibration_epochs, self._num_local_steps)
         global_params = self.server.get_parameters(serial_run=True)
         cps_values = []
-        self.logger.info(f"Calibration: profiling {len(self.clients)} clients "
-                         f"× {cal_steps} local steps...")
+        self.logger.info(
+            f"Calibration: profiling {len(self.clients)} clients "
+            f"× {cal_steps} local steps..."
+        )
 
         for cid, client in self.clients.items():
             orig_steps = None
-            if hasattr(client, 'trainer') and hasattr(client.trainer, 'train_configs'):
+            if hasattr(client, "trainer") and hasattr(client.trainer, "train_configs"):
                 orig_steps = client.trainer.train_configs.num_local_steps
                 client.trainer.train_configs.num_local_steps = cal_steps
 
@@ -214,8 +224,9 @@ class BaseSimDriver:
             raise ValueError("Calibration failed: no cps measurements collected")
 
         mean_cps = sum(cps_values) / len(cps_values)
-        std_cps = (sum((x - mean_cps) ** 2 for x in cps_values)
-                   / len(cps_values)) ** 0.5
+        std_cps = (
+            sum((x - mean_cps) ** 2 for x in cps_values) / len(cps_values)
+        ) ** 0.5
         self.base_step_time = mean_cps
         self.timing_only = True
         self.logger.info(
@@ -234,11 +245,14 @@ class BaseSimDriver:
         vts = [r["vtime"] for r in self.history]
         checks = {
             "monotonic_virtual_time": self._mono_violations == 0 and vts == sorted(vts),
-            "completion==dispatch+duration": all(r.get("completion_ok", False) for r in self.history),
+            "completion==dispatch+duration": all(
+                r.get("completion_ok", False) for r in self.history
+            ),
             "completions==target": len(self.history) == target_epochs,
             "concurrency<=K": self._max_active <= self.K,
             "staleness_nonneg_int": all(
-                isinstance(r["staleness"], int) and r["staleness"] >= 0 for r in self.history
+                isinstance(r["staleness"], int) and r["staleness"] >= 0
+                for r in self.history
             ),
             "durations_positive": all(r["duration"] > 0 for r in self.history),
         }

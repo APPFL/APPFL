@@ -49,13 +49,19 @@ class SyncSimDriver(BaseSimDriver):
         calibration_epochs: Optional[int] = None,
     ):
         super().__init__(
-            server_agent, client_agents, profiles,
+            server_agent,
+            client_agents,
+            profiles,
             max_concurrency=participants_per_round,
-            logger=logger, seed=seed, base_step_time=base_step_time,
+            logger=logger,
+            seed=seed,
+            base_step_time=base_step_time,
             eval_every=eval_every,
             availability_model=availability_model,
-            timeout_model=timeout_model, shared_pool=shared_pool,
-            timing_only=timing_only, num_local_steps=num_local_steps,
+            timeout_model=timeout_model,
+            shared_pool=shared_pool,
+            timing_only=timing_only,
+            num_local_steps=num_local_steps,
             target_epochs=target_rounds,
             calibration_epochs=calibration_epochs,
         )
@@ -81,8 +87,11 @@ class SyncSimDriver(BaseSimDriver):
         """Select M participants for the current round, filtered by availability."""
         all_ids = list(self.clients.keys())
         if self.availability_model:
-            available = [c for c in all_ids
-                         if self.availability_model.available(c, self.virtual_time)]
+            available = [
+                c
+                for c in all_ids
+                if self.availability_model.available(c, self.virtual_time)
+            ]
             self._avail_skips += len(all_ids) - len(available)
         else:
             available = all_ids
@@ -110,11 +119,15 @@ class SyncSimDriver(BaseSimDriver):
                 comp = profile.compute_time(cps, steps)
                 comm = profile.comm_time(self._model_bytes, **self._comm_kwargs())
                 dur = comp + comm
-                completions.append({
-                    "cid": cid, "duration": dur,
-                    "completion_time": t_start + dur,
-                    "local_model": None, "meta": {},
-                })
+                completions.append(
+                    {
+                        "cid": cid,
+                        "duration": dur,
+                        "completion_time": t_start + dur,
+                        "local_model": None,
+                        "meta": {},
+                    }
+                )
         else:
             global_params = self.server.get_parameters(serial_run=True)
             for cid in selected:
@@ -135,11 +148,15 @@ class SyncSimDriver(BaseSimDriver):
                 comp = profile.compute_time(cps, steps)
                 comm = profile.comm_time(self._model_bytes, **self._comm_kwargs())
                 dur = comp + comm
-                completions.append({
-                    "cid": cid, "duration": dur,
-                    "completion_time": t_start + dur,
-                    "local_model": local_model, "meta": meta,
-                })
+                completions.append(
+                    {
+                        "cid": cid,
+                        "duration": dur,
+                        "completion_time": t_start + dur,
+                        "local_model": local_model,
+                        "meta": meta,
+                    }
+                )
 
         completions.sort(key=lambda x: x["completion_time"])
         self.active.clear()
@@ -188,8 +205,12 @@ class SyncSimDriver(BaseSimDriver):
         if len(accepted) < self.min_responses:
             if self.max_wait_time:
                 hard_deadline = t_start + self.max_wait_time
-                accepted = [c for c in completions if c["completion_time"] <= hard_deadline]
-                discarded = [c for c in completions if c["completion_time"] > hard_deadline]
+                accepted = [
+                    c for c in completions if c["completion_time"] <= hard_deadline
+                ]
+                discarded = [
+                    c for c in completions if c["completion_time"] > hard_deadline
+                ]
                 if len(accepted) < self.min_responses:
                     return [], completions, hard_deadline
                 t_barrier = accepted[-1]["completion_time"]
@@ -205,34 +226,38 @@ class SyncSimDriver(BaseSimDriver):
         """Aggregate local models from accepted clients via the server agent."""
         self.server.scheduler.num_clients = len(accepted)
         for i, c in enumerate(accepted):
-            local_model = {k: v.cpu() if hasattr(v, 'cpu') else v
-                           for k, v in c["local_model"].items()}
+            local_model = {
+                k: v.cpu() if hasattr(v, "cpu") else v
+                for k, v in c["local_model"].items()
+            }
             meta = dict(c["meta"])
             meta["virtual_time"] = self.virtual_time
-            blocking = (i == len(accepted) - 1)
+            blocking = i == len(accepted) - 1
             self.server.global_update(
-                client_id=c["cid"], local_model=local_model,
-                blocking=blocking, **meta)
+                client_id=c["cid"], local_model=local_model, blocking=blocking, **meta
+            )
 
     # ---------- recording ----------
     def _record_round(self, t_start, t_barrier, accepted, discarded, skipped):
         """Append a round record to ``self.history``."""
         round_comm = self._model_bytes * 2 * len(accepted)
         self._total_comm_bytes += round_comm
-        self.history.append({
-            "round": self._round,
-            "vtime": t_barrier,
-            "t_start": t_start,
-            "t_barrier": t_barrier,
-            "accepted_count": len(accepted),
-            "discarded_count": len(discarded),
-            "accepted_cids": [c["cid"] for c in accepted],
-            "duration": t_barrier - t_start,
-            "skipped": skipped,
-            "staleness": 0,
-            "completion_ok": True,
-            "comm_bytes": round_comm,
-        })
+        self.history.append(
+            {
+                "round": self._round,
+                "vtime": t_barrier,
+                "t_start": t_start,
+                "t_barrier": t_barrier,
+                "accepted_count": len(accepted),
+                "discarded_count": len(discarded),
+                "accepted_cids": [c["cid"] for c in accepted],
+                "duration": t_barrier - t_start,
+                "skipped": skipped,
+                "staleness": 0,
+                "completion_ok": True,
+                "comm_bytes": round_comm,
+            }
+        )
 
     # ---------- one round ----------
     def _run_round(self):
@@ -255,7 +280,8 @@ class SyncSimDriver(BaseSimDriver):
         if not accepted:
             self.logger.info(
                 f"[round={self._round}] SKIP — "
-                f"{len(completions)} dispatched, 0 met deadline")
+                f"{len(completions)} dispatched, 0 met deadline"
+            )
             self._record_round(t_start, t_barrier, [], discarded, skipped=True)
             return False
 
@@ -273,14 +299,16 @@ class SyncSimDriver(BaseSimDriver):
                     self.history[-1]["global_val_accuracy"] = g[1]
                     self.logger.info(
                         f"[round={self._round}] GLOBAL "
-                        f"val_acc={g[1]:.2f} val_loss={g[0]:.4f}")
+                        f"val_acc={g[1]:.2f} val_loss={g[0]:.4f}"
+                    )
 
         round_comm_mb = self.history[-1]["comm_bytes"] / 1e6
         self.logger.info(
             f"[round={self._round}] vt={t_barrier:9.2f} "
             f"accepted={len(accepted)}/{len(selected)} "
             f"round_dur={t_barrier - t_start:.2f} "
-            f"comm={round_comm_mb:.1f}MB")
+            f"comm={round_comm_mb:.1f}MB"
+        )
         return True
 
     # ---------- main loop ----------
@@ -297,7 +325,8 @@ class SyncSimDriver(BaseSimDriver):
                 if self._skipped_rounds >= max_skips:
                     self.logger.warning(
                         f"Stopping: {self._skipped_rounds} consecutive skips "
-                        f"(completed {self._round}/{self._target_rounds})")
+                        f"(completed {self._round}/{self._target_rounds})"
+                    )
                     break
             if not self.timing_only and self.server.training_finished():
                 break
@@ -306,7 +335,8 @@ class SyncSimDriver(BaseSimDriver):
             f"Simulation finished: rounds={self._round}, "
             f"skipped={self._skipped_rounds}, "
             f"virtual_time={self.virtual_time:.2f}, "
-            f"total_comm={total_comm_gb:.2f}GB")
+            f"total_comm={total_comm_gb:.2f}GB"
+        )
 
     # ---------- verification (override) ----------
     def verify(self, target_rounds):
@@ -324,8 +354,7 @@ class SyncSimDriver(BaseSimDriver):
             ),
             "completed_rounds==target": len(non_skipped) == target_rounds,
             "barrier_respected": all(
-                r["accepted_count"] >= self.min_responses
-                for r in non_skipped
+                r["accepted_count"] >= self.min_responses for r in non_skipped
             ),
             "durations_positive": all(r["duration"] > 0 for r in self.history),
             "concurrency<=M": self._max_active <= self.K,
