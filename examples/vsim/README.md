@@ -19,15 +19,9 @@ package and these example files. Zero APPFL core modifications.
 - **Realistic system modeling** — 4 compute modes (measured, factor, profile,
   tier) with 16 device profiles; asymmetric bandwidth, jitter, shared BW pool,
   TCP overhead; 3 availability/dropout models + timeout
-- **15+ algorithms, zero simulator change** — any APPFL aggregator works
-  automatically via the decoupled event engine
 - **Framework-native** — uses APPFL's public API only (ServerAgent, ClientAgent,
   schedulers, aggregators). Existing APPFL experiments convert to virtual-time
   simulation by adding a `simulator:` config block
-- **Deterministic reproducibility** — fixed seed + `base_step_time` produces
-  bit-exact replays
-- **HPC-ready** — APPFL provides MPI, Globus Compute, PBS, lossy compressors
-  (SZ2/SZ3/ZFP/SZx); all available to the simulator without additional work
 - **Timeline visualization** — per-client Gantt charts (compute, communication,
   aggregation) with full and zoomed views
 
@@ -44,7 +38,6 @@ package and these example files. Zero APPFL core modifications.
 | Availability modeling | △⁶ | △ | ✓ | ✗ | △⁷ | ✗ | **✓** |
 | Async FL | ✓ | ✓ | △⁸ | ✓ | ✗ | △⁹ | **✓** |
 | Sync FL | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | **✓** |
-| HPC-native | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | **✓** |
 | Framework-native | — | — | — | — | — | — | **✓** |
 
 <details><summary>Footnotes (△ = partial support)</summary>
