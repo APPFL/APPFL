@@ -11,7 +11,6 @@ Backward compatible: default params reproduce v1 behavior exactly.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 import random as _random
 
 
@@ -39,19 +38,21 @@ class SharedBandwidthPool:
 @dataclass
 class CommModel:
     """Per-client communication model."""
-    download_bw: float = 300.0       # Mbps
-    upload_bw: float = 300.0         # Mbps (v1: symmetric, same as download)
-    jitter_sigma: float = 0.0        # 0 = deterministic (v1 compat)
-    compression_ratio: float = 1.0   # 1.0 = no compression
-    latency: float = 0.0             # base RTT in seconds (for TCP overhead)
+
+    download_bw: float = 300.0  # Mbps
+    upload_bw: float = 300.0  # Mbps (v1: symmetric, same as download)
+    jitter_sigma: float = 0.0  # 0 = deterministic (v1 compat)
+    compression_ratio: float = 1.0  # 1.0 = no compression
+    latency: float = 0.0  # base RTT in seconds (for TCP overhead)
 
     def _effective_bw(self, bw, num_concurrent, shared_pool):
         if shared_pool and num_concurrent > 1:
             return shared_pool.effective_bandwidth(bw, num_concurrent)
         return bw
 
-    def _direction_time(self, model_bytes, bw, num_concurrent=1,
-                        shared_pool=None, rng=None):
+    def _direction_time(
+        self, model_bytes, bw, num_concurrent=1, shared_pool=None, rng=None
+    ):
         """Compute one-direction transfer time with jitter, congestion, and TCP overhead."""
         effective_bytes = model_bytes / max(self.compression_ratio, 0.01)
         bits_mb = effective_bytes * 8 / (1024 * 1024)
@@ -72,8 +73,9 @@ class CommModel:
         :param rng: Random instance for jitter (optional).
         :return: Download duration in seconds.
         """
-        return self._direction_time(model_bytes, self.download_bw,
-                                    num_concurrent, shared_pool, rng)
+        return self._direction_time(
+            model_bytes, self.download_bw, num_concurrent, shared_pool, rng
+        )
 
     def upload_time(self, model_bytes, num_concurrent=1, shared_pool=None, rng=None):
         """
@@ -85,8 +87,9 @@ class CommModel:
         :param rng: Random instance for jitter (optional).
         :return: Upload duration in seconds.
         """
-        return self._direction_time(model_bytes, self.upload_bw,
-                                    num_concurrent, shared_pool, rng)
+        return self._direction_time(
+            model_bytes, self.upload_bw, num_concurrent, shared_pool, rng
+        )
 
     def comm_time(self, model_bytes, num_concurrent=1, shared_pool=None, rng=None):
         """
@@ -98,8 +101,9 @@ class CommModel:
         :param rng: Random instance for jitter (optional).
         :return: Total communication duration in seconds.
         """
-        return (self.download_time(model_bytes, num_concurrent, shared_pool, rng) +
-                self.upload_time(model_bytes, num_concurrent, shared_pool, rng))
+        return self.download_time(
+            model_bytes, num_concurrent, shared_pool, rng
+        ) + self.upload_time(model_bytes, num_concurrent, shared_pool, rng)
 
 
 def _sample_dist(cfg, rng, default=300.0):
@@ -133,8 +137,10 @@ def build_comm_models(client_ids, comm_cfg, seed):
         dl = _sample_dist(dl_cfg, rng, 300.0)
         ul = _sample_dist(ul_cfg, rng, dl) if ul_cfg else dl
         models[cid] = CommModel(
-            download_bw=dl, upload_bw=ul,
-            jitter_sigma=jitter, compression_ratio=compression,
+            download_bw=dl,
+            upload_bw=ul,
+            jitter_sigma=jitter,
+            compression_ratio=compression,
             latency=latency,
         )
 

@@ -10,28 +10,27 @@ Replaces v1's simple ``cps * steps * compute_factor`` with multiple modes:
 Backward compatible: mode="measured" reproduces v1 behavior exactly.
 """
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 import random as _random
 
 
 DEVICE_PROFILES = {
-    "a100":       {"tflops": 312,    "desc": "NVIDIA A100 (datacenter)"},
-    "h100":       {"tflops": 756,    "desc": "NVIDIA H100 (datacenter)"},
-    "v100":       {"tflops": 125,    "desc": "NVIDIA V100 (datacenter)"},
-    "a10":        {"tflops": 62.5,   "desc": "NVIDIA A10 (inference)"},
-    "rtx4090":    {"tflops": 82.6,   "desc": "NVIDIA RTX 4090 (consumer)"},
-    "rtx3090":    {"tflops": 71,     "desc": "NVIDIA RTX 3090 (consumer)"},
-    "rtx3080":    {"tflops": 29.8,   "desc": "NVIDIA RTX 3080 (consumer)"},
-    "gtx1080":    {"tflops": 8.9,    "desc": "NVIDIA GTX 1080 (consumer)"},
-    "gtx1060":    {"tflops": 4.4,    "desc": "NVIDIA GTX 1060 (consumer)"},
-    "jetson_orin": {"tflops": 40,    "desc": "NVIDIA Jetson Orin (edge)"},
-    "jetson_nx":  {"tflops": 21,     "desc": "NVIDIA Jetson Xavier NX (edge)"},
+    "a100": {"tflops": 312, "desc": "NVIDIA A100 (datacenter)"},
+    "h100": {"tflops": 756, "desc": "NVIDIA H100 (datacenter)"},
+    "v100": {"tflops": 125, "desc": "NVIDIA V100 (datacenter)"},
+    "a10": {"tflops": 62.5, "desc": "NVIDIA A10 (inference)"},
+    "rtx4090": {"tflops": 82.6, "desc": "NVIDIA RTX 4090 (consumer)"},
+    "rtx3090": {"tflops": 71, "desc": "NVIDIA RTX 3090 (consumer)"},
+    "rtx3080": {"tflops": 29.8, "desc": "NVIDIA RTX 3080 (consumer)"},
+    "gtx1080": {"tflops": 8.9, "desc": "NVIDIA GTX 1080 (consumer)"},
+    "gtx1060": {"tflops": 4.4, "desc": "NVIDIA GTX 1060 (consumer)"},
+    "jetson_orin": {"tflops": 40, "desc": "NVIDIA Jetson Orin (edge)"},
+    "jetson_nx": {"tflops": 21, "desc": "NVIDIA Jetson Xavier NX (edge)"},
     "jetson_nano": {"tflops": 0.472, "desc": "NVIDIA Jetson Nano (edge)"},
-    "m1":         {"tflops": 2.6,    "desc": "Apple M1 (laptop)"},
-    "m2":         {"tflops": 3.6,    "desc": "Apple M2 (laptop)"},
-    "rpi4":       {"tflops": 0.013,  "desc": "Raspberry Pi 4 CPU (IoT)"},
-    "esp32":      {"tflops": 0.0004, "desc": "ESP32 microcontroller (IoT)"},
+    "m1": {"tflops": 2.6, "desc": "Apple M1 (laptop)"},
+    "m2": {"tflops": 3.6, "desc": "Apple M2 (laptop)"},
+    "rpi4": {"tflops": 0.013, "desc": "Raspberry Pi 4 CPU (IoT)"},
+    "esp32": {"tflops": 0.0004, "desc": "ESP32 microcontroller (IoT)"},
 }
 
 # Reference device: all speed ratios are relative to this
@@ -41,6 +40,7 @@ _REF_DEVICE = "a100"
 @dataclass
 class ComputeModel:
     """Per-client compute model."""
+
     mode: str = "measured"
     compute_factor: float = 1.0
     device_type: str = "a100"
@@ -61,7 +61,9 @@ class ComputeModel:
             return cps * num_steps * self.compute_factor
         elif self.mode == "profile":
             ref = DEVICE_PROFILES[_REF_DEVICE]["tflops"]
-            target = DEVICE_PROFILES.get(self.device_type, DEVICE_PROFILES[_REF_DEVICE])["tflops"]
+            target = DEVICE_PROFILES.get(
+                self.device_type, DEVICE_PROFILES[_REF_DEVICE]
+            )["tflops"]
             ratio = ref / max(target, 0.0001)
             return cps * num_steps * ratio
         elif self.mode == "tier":
@@ -71,7 +73,12 @@ class ComputeModel:
                 return cps * num_steps * self.compute_factor
             batch_size = kwargs.get("batch_size", 64)
             total_flops = self.model_flops_per_step * num_steps * batch_size
-            device_flops = DEVICE_PROFILES.get(self.device_type, DEVICE_PROFILES[_REF_DEVICE])["tflops"] * 1e12
+            device_flops = (
+                DEVICE_PROFILES.get(self.device_type, DEVICE_PROFILES[_REF_DEVICE])[
+                    "tflops"
+                ]
+                * 1e12
+            )
             return total_flops / (device_flops * max(self.gpu_utilization, 0.01))
         return cps * num_steps * self.compute_factor
 

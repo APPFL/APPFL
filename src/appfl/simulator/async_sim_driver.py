@@ -54,11 +54,20 @@ class AsyncSimDriver(BaseSimDriver):
         calibration_epochs: Optional[int] = None,
     ):
         super().__init__(
-            server_agent, client_agents, profiles, max_concurrency, logger,
-            seed=seed, base_step_time=base_step_time, eval_every=eval_every,
-            availability_model=availability_model, timeout_model=timeout_model,
-            shared_pool=shared_pool, timing_only=timing_only,
-            num_local_steps=num_local_steps, target_epochs=target_epochs,
+            server_agent,
+            client_agents,
+            profiles,
+            max_concurrency,
+            logger,
+            seed=seed,
+            base_step_time=base_step_time,
+            eval_every=eval_every,
+            availability_model=availability_model,
+            timeout_model=timeout_model,
+            shared_pool=shared_pool,
+            timing_only=timing_only,
+            num_local_steps=num_local_steps,
+            target_epochs=target_epochs,
             calibration_epochs=calibration_epochs,
         )
 
@@ -72,7 +81,10 @@ class AsyncSimDriver(BaseSimDriver):
     def _training_finished(self) -> bool:
         """Check whether the target number of global updates has been reached."""
         if self.timing_only:
-            return self._target_epochs is not None and self._timing_epoch >= self._target_epochs
+            return (
+                self._target_epochs is not None
+                and self._timing_epoch >= self._target_epochs
+            )
         return self.server.training_finished()
 
     def _dispatch_idle(self):
@@ -216,7 +228,8 @@ class AsyncSimDriver(BaseSimDriver):
                 self._timeout_drops += 1
                 self.active.discard(cid)
                 self.logger.info(
-                    f"[vt={completion_time:9.2f}] TIMEOUT {cid:>10} dur={p['duration']:.2f}")
+                    f"[vt={completion_time:9.2f}] TIMEOUT {cid:>10} dur={p['duration']:.2f}"
+                )
                 self._dispatch_idle()
                 return
 
@@ -234,7 +247,10 @@ class AsyncSimDriver(BaseSimDriver):
                 "val_accuracy": None,
                 "duration": p["duration"],
                 "dispatch_time": p["dispatch_time"],
-                "completion_ok": abs(p["dispatch_time"] + p["duration"] - completion_time) < 1e-9,
+                "completion_ok": abs(
+                    p["dispatch_time"] + p["duration"] - completion_time
+                )
+                < 1e-9,
                 "comm_bytes": comm_bytes,
             }
             self.logger.info(
@@ -251,7 +267,9 @@ class AsyncSimDriver(BaseSimDriver):
         meta["virtual_time"] = completion_time
         meta["dispatch_time"] = p["dispatch_time"]
 
-        local_model = {k: v.cpu() if hasattr(v, 'cpu') else v for k, v in p["local_model"].items()}
+        local_model = {
+            k: v.cpu() if hasattr(v, "cpu") else v for k, v in p["local_model"].items()
+        }
 
         global_model = self.server.global_update(
             client_id=cid, local_model=local_model, blocking=False, **meta
@@ -273,10 +291,13 @@ class AsyncSimDriver(BaseSimDriver):
             "val_accuracy": val_acc,
             "duration": p["duration"],
             "dispatch_time": p["dispatch_time"],
-            "completion_ok": abs(p["dispatch_time"] + p["duration"] - completion_time) < 1e-9,
+            "completion_ok": abs(p["dispatch_time"] + p["duration"] - completion_time)
+            < 1e-9,
             "comm_bytes": comm_bytes,
         }
-        acc_str = f"{val_acc:.2f}" if isinstance(val_acc, (int, float)) else str(val_acc)
+        acc_str = (
+            f"{val_acc:.2f}" if isinstance(val_acc, (int, float)) else str(val_acc)
+        )
         self.logger.info(
             f"[vt={completion_time:9.2f}] DONE   {cid:>10} epoch={epoch_now:3d} "
             f"staleness={staleness:2d} val_acc={acc_str}"

@@ -46,8 +46,9 @@ class PermanentDropout(AvailabilityModel):
 class SessionDropout(AvailabilityModel):
     """Cyclic active/inactive periods per client with phase noise."""
 
-    def __init__(self, active_duration=60.0, inactive_duration=30.0,
-                 phase_noise=0.2, seed=42):
+    def __init__(
+        self, active_duration=60.0, inactive_duration=30.0, phase_noise=0.2, seed=42
+    ):
         self.active_dur = active_duration
         self.inactive_dur = inactive_duration
         self.phase_noise = phase_noise
@@ -64,14 +65,14 @@ class SessionDropout(AvailabilityModel):
             else:
                 state = "inactive"
                 next_t = cycle - offset
-            next_t *= (1 + self.rng.uniform(-self.phase_noise, self.phase_noise))
+            next_t *= 1 + self.rng.uniform(-self.phase_noise, self.phase_noise)
             self.phases[cid] = (state, next_t)
 
         state, next_t = self.phases[cid]
         while vtime >= next_t:
             state = "inactive" if state == "active" else "active"
             dur = self.active_dur if state == "active" else self.inactive_dur
-            dur *= (1 + self.rng.uniform(-self.phase_noise, self.phase_noise))
+            dur *= 1 + self.rng.uniform(-self.phase_noise, self.phase_noise)
             next_t += dur
             self.phases[cid] = (state, next_t)
 
@@ -149,7 +150,8 @@ def build_availability(avail_cfg, client_ids, seed):
     if mode == "permanent":
         pc = avail_cfg.get("permanent", {})
         availability_model = PermanentDropout(
-            drop_prob=pc.get("drop_prob", 0.02), seed=seed,
+            drop_prob=pc.get("drop_prob", 0.02),
+            seed=seed,
         )
     elif mode == "session":
         sc = avail_cfg.get("session", {})
@@ -176,24 +178,35 @@ def build_availability(avail_cfg, client_ids, seed):
             models.append(PermanentDropout(pc.get("drop_prob", 0.02), seed))
         if "session" in avail_cfg:
             sc = avail_cfg["session"]
-            models.append(SessionDropout(
-                sc.get("active_duration", 300.0),
-                sc.get("inactive_duration", 600.0),
-                sc.get("phase_noise", 0.2),
-                seed + 1,
-            ))
+            models.append(
+                SessionDropout(
+                    sc.get("active_duration", 300.0),
+                    sc.get("inactive_duration", 600.0),
+                    sc.get("phase_noise", 0.2),
+                    seed + 1,
+                )
+            )
         if "correlated" in avail_cfg:
             cc = avail_cfg["correlated"]
             num_groups = cc.get("num_groups", 3)
             groups = {cid: i % num_groups for i, cid in enumerate(client_ids)}
-            models.append(CorrelatedDropout(groups, cc.get("failure_prob", 0.05),
-                                            cc.get("failure_duration", 30.0), seed + 2))
+            models.append(
+                CorrelatedDropout(
+                    groups,
+                    cc.get("failure_prob", 0.05),
+                    cc.get("failure_duration", 30.0),
+                    seed + 2,
+                )
+            )
         if models:
+
             class _Composite(AvailabilityModel):
                 def __init__(self, ms):
                     self.models = ms
+
                 def available(self, cid, vtime):
                     return all(m.available(cid, vtime) for m in self.models)
+
             availability_model = _Composite(models)
 
     return availability_model, timeout_model

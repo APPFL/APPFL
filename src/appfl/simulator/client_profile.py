@@ -21,12 +21,14 @@ from dataclasses import dataclass
 class ClientProfile:
     """Per-client system-heterogeneity profile combining compute and communication models."""
 
-    compute_factor: float = 1.0   # device slowdown multiplier (AFL-Lib `delay`)
-    bandwidth: float = 300.0      # Mbps, v1 legacy (used when comm is None)
-    comm: object = None           # Optional CommModel (v2)
-    compute: object = None        # Optional ComputeModel (v2)
+    compute_factor: float = 1.0  # device slowdown multiplier (AFL-Lib `delay`)
+    bandwidth: float = 300.0  # Mbps, v1 legacy (used when comm is None)
+    comm: object = None  # Optional CommModel (v2)
+    compute: object = None  # Optional ComputeModel (v2)
 
-    def compute_time(self, compute_second_per_step: float, num_steps: int, **kwargs) -> float:
+    def compute_time(
+        self, compute_second_per_step: float, num_steps: int, **kwargs
+    ) -> float:
         """
         Compute virtual training time for this client.
 
@@ -35,7 +37,9 @@ class ClientProfile:
         :return: Virtual compute duration in seconds.
         """
         if self.compute is not None:
-            return self.compute.compute_time(compute_second_per_step, num_steps, **kwargs)
+            return self.compute.compute_time(
+                compute_second_per_step, num_steps, **kwargs
+            )
         return compute_second_per_step * num_steps * self.compute_factor
 
     def download_time(self, model_bytes: float, **kwargs) -> float:
@@ -77,8 +81,13 @@ class ClientProfile:
             return 0.0
         return (model_bytes * 8 / (1024 * 1024) / self.bandwidth) * 2
 
-    def duration(self, compute_second_per_step: float, num_steps: int,
-                 model_bytes: float, **kwargs) -> float:
+    def duration(
+        self,
+        compute_second_per_step: float,
+        num_steps: int,
+        model_bytes: float,
+        **kwargs,
+    ) -> float:
         """
         Compute total virtual duration (compute + communication).
 
@@ -87,7 +96,9 @@ class ClientProfile:
         :param model_bytes: Model size in bytes.
         :return: Total virtual duration in seconds.
         """
-        return self.compute_time(compute_second_per_step, num_steps, **kwargs) + self.comm_time(model_bytes, **kwargs)
+        return self.compute_time(
+            compute_second_per_step, num_steps, **kwargs
+        ) + self.comm_time(model_bytes, **kwargs)
 
     def available(self, vtime: float) -> bool:
         """Always returns True; dropout is handled by driver-level AvailabilityModel."""
