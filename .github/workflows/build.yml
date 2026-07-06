@@ -21,7 +21,7 @@ jobs:
         mpi: ['openmpi']
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Free up disk space
       run: |
         sudo rm -rf /usr/share/dotnet
