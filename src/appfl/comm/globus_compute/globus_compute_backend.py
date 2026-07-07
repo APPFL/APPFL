@@ -119,24 +119,18 @@ class GlobusComputeBackend(ServerCommBackend):
             f"Backend manages {len(self.client_endpoints)} client endpoint(s)."
         )
         for client_id, endpoint in self.client_endpoints.items():
-            self.logger.info(
-                f"Client '{client_id}' -> {endpoint.client_endpoint_id}"
-            )
+            self.logger.info(f"Client '{client_id}' -> {endpoint.client_endpoint_id}")
 
     @property
     def client_ids(self) -> List[str]:
         return list(self.client_endpoints.keys())
 
-    def prepare_model(
-        self, model: Optional[Union[Dict, OrderedDict, bytes]]
-    ) -> Any:
+    def prepare_model(self, model: Optional[Union[Dict, OrderedDict, bytes]]) -> Any:
         """Upload/proxy the shared model once before submitting it to clients."""
         if model is None:
             return None
         if self.use_s3bucket:
-            return send_model_by_s3(
-                self.experiment_id, self.comm_type, model, "server"
-            )
+            return send_model_by_s3(self.experiment_id, self.comm_type, model, "server")
         elif self.use_proxystore:
             return self.proxystore.proxy(model)
         return model
@@ -184,7 +178,7 @@ class GlobusComputeBackend(ServerCommBackend):
         # Clean-up cloud storage
         if self.use_s3bucket:
             CloudStorage.clean_up()
-            self.logger.warning('[debug] S3 bucket cleanup complete.')
+            self.logger.warning("[debug] S3 bucket cleanup complete.")
         # Clean-up proxystore
         if hasattr(self, "proxystore") and self.proxystore is not None:
             try:

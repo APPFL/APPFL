@@ -39,8 +39,10 @@ class ModelTransferHelper:
         if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
             server_agent_config.server_configs.comm_configs, "s3_configs"
         ):
-            use_s3bucket = server_agent_config.server_configs.comm_configs.s3_configs.get(
-                "enable_s3", False
+            use_s3bucket = (
+                server_agent_config.server_configs.comm_configs.s3_configs.get(
+                    "enable_s3", False
+                )
             )
             s3_bucket = server_agent_config.server_configs.comm_configs.s3_configs.get(
                 "s3_bucket", None

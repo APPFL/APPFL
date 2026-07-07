@@ -144,9 +144,7 @@ class ServerDrivenCommunicator(BaseServerCommunicator):
         return client_results, client_metadata
 
     def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
-        assert len(self.executing_task_futs), (
-            "There is no active client running tasks."
-        )
+        assert len(self.executing_task_futs), "There is no active client running tasks."
         fut = next(as_completed(list(self.executing_task_futs)))
         return self._process_future(fut)
 

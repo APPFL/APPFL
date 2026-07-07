@@ -136,9 +136,7 @@ class TESBackend(ServerCommBackend):
             f"Backend manages {len(self.client_endpoints)} client endpoint(s)."
         )
         for client_id, endpoint_info in self.client_endpoints.items():
-            self.logger.info(
-                f"Client '{client_id}' -> {endpoint_info['tes_endpoint']}"
-            )
+            self.logger.info(f"Client '{client_id}' -> {endpoint_info['tes_endpoint']}")
 
     def _disable_cloud_transfer_for_client(self, client_config):
         """
@@ -876,9 +874,7 @@ class TESBackend(ServerCommBackend):
 
         return model_result, metadata_result
 
-    def prepare_model(
-        self, model: Optional[Union[Dict, OrderedDict, bytes]]
-    ) -> Any:
+    def prepare_model(self, model: Optional[Union[Dict, OrderedDict, bytes]]) -> Any:
         """Upload the shared model once to the base S3 store if enabled."""
         if model is None:
             return None

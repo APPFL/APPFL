@@ -104,9 +104,7 @@ class ServerCommBackend(ABC):
         ...
 
     @abstractmethod
-    def prepare_model(
-        self, model: Optional[Union[Dict, OrderedDict, bytes]]
-    ) -> Any:
+    def prepare_model(self, model: Optional[Union[Dict, OrderedDict, bytes]]) -> Any:
         """
         Transport-specific one-time preparation of a shared model before it is
         submitted to (potentially many) clients. For transports that upload the
