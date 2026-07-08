@@ -1,7 +1,5 @@
 # Simulation Config Guide
 
-This guide lists the dataset-loading config hierarchy used by the simulation examples.
-
 ```yaml
 data_configs:
   dataset_name: str
@@ -32,4 +30,4 @@ data_configs:
 
 Notes:
 - LEAF datasets require `partition: "pre"`.
-- `custom` dataset loading is marked TODO.
+- (TODO) `custom` dataset loading would be touched later
