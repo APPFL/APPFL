@@ -24,7 +24,7 @@ model_configs:
     num_classes: 200
 
 algorithm_configs:
-  device: "cpu"
+  device: "cuda"
   num_global_epochs: 5
 
   scheduler: "SyncScheduler"
@@ -35,7 +35,7 @@ algorithm_configs:
 
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:
-    client_weights_mode: "equal"
+    client_weights_mode: "sample_size"
 
   trainer: "VanillaTrainer"
   trainer_kwargs:
