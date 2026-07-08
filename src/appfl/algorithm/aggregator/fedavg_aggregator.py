@@ -343,7 +343,8 @@ class FedAvgAggregator(BaseAggregator):
                 total_sample_size = sum(
                     self.client_sample_size[cid]
                     for cid in local_models
-                    if hasattr(self, "client_sample_size") and cid in self.client_sample_size
+                    if hasattr(self, "client_sample_size")
+                    and cid in self.client_sample_size
                 )
                 for client_id, model in local_models.items():
                     if (
@@ -382,7 +383,8 @@ class FedAvgAggregator(BaseAggregator):
             total_sample_size = sum(
                 self.client_sample_size[cid]
                 for cid in local_models
-                if hasattr(self, "client_sample_size") and cid in self.client_sample_size
+                if hasattr(self, "client_sample_size")
+                and cid in self.client_sample_size
             )
             for client_id, model in local_models.items():
                 if (
@@ -471,7 +473,8 @@ class FedAvgAggregator(BaseAggregator):
             total_sample_size = sum(
                 self.client_sample_size[cid]
                 for cid in local_models
-                if hasattr(self, "client_sample_size") and cid in self.client_sample_size
+                if hasattr(self, "client_sample_size")
+                and cid in self.client_sample_size
             )
             for client_id, model in local_models.items():
                 if (

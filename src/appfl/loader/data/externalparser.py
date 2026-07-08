@@ -400,12 +400,11 @@ def _rows_to_tensor_dataset(rows, feature_key: str, label_key: str, config, name
 
     try:
         from PIL import Image as _Image
+
         _is_pil = isinstance(first, _Image.Image)
     except ImportError:
         _is_pil = False
-    if _is_pil or (
-        isinstance(first, np.ndarray) and np.asarray(first).ndim in {2, 3}
-    ):
+    if _is_pil or (isinstance(first, np.ndarray) and np.asarray(first).ndim in {2, 3}):
         x_tensor = torch.stack([_to_image_tensor(v) for v in features], dim=0)
         config.need_embedding = False
         config.seq_len = None

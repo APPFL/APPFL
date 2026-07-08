@@ -23,7 +23,7 @@ class SimClientAgent(ClientAgent):
         )
         config = OmegaConf.create(config_input)
         # self.sim_config = OmegaConf.create(config)
-        self.sim_config = config.copy() # actually never used in current implementation
+        self.sim_config = config.copy()  # actually never used in current implementation
         is_unified_config = "train_configs" not in config
 
         if client_id is None:

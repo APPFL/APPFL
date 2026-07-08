@@ -11,14 +11,18 @@ class SimServerAgent(ServerAgent):
         config = OmegaConf.create(server_agent_config)
 
         ## Inevitable part due to backward compatibility
-        self.sim_config = config.copy() # note: this is never used
+        self.sim_config = config.copy()  # note: this is never used
         if "client_configs" not in config:
             algorithm = config.get("algorithm_configs", {})
             log_configs = config.get("log_configs", {})
             server_configs = config.get("server_configs", {})
             trainer_kwargs = algorithm.get("trainer_kwargs", {})
             scheduler_kwargs = OmegaConf.create(algorithm.get("scheduler_kwargs", {}))
-            resolved_num_clients = num_clients if num_clients is not None else scheduler_kwargs.get("num_clients")
+            resolved_num_clients = (
+                num_clients
+                if num_clients is not None
+                else scheduler_kwargs.get("num_clients")
+            )
             if resolved_num_clients is None:
                 raise ValueError(
                     "num_clients must be specified either as an argument or in "
@@ -73,7 +77,9 @@ class SimServerAgent(ServerAgent):
             self._val_dataset, batch_size=1, shuffle=False, num_workers=0
         )
 
-    def set_sample_size(self, client_id=None, sample_size=None, sample_sizes=None, **kwargs):
+    def set_sample_size(
+        self, client_id=None, sample_size=None, sample_sizes=None, **kwargs
+    ):
         if sample_sizes is not None:
             for cid, sz in sample_sizes.items():
                 self.aggregator.set_client_sample_size(cid, sz)
