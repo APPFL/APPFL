@@ -640,13 +640,13 @@ def _build_client_groups(
 
 
 def _sample_train_clients(
-    train_client_ids: list[int], num_sampled_clients: int
+    train_client_ids: list[int], num_sampled_clients: int, seed: int = 0
 ) -> list[int]:
     if not train_client_ids:
         return []
     n = max(1, int(num_sampled_clients))
     n = min(n, len(train_client_ids))
-    return sorted(random.sample(train_client_ids, n))
+    return sorted(random.Random(seed).sample(train_client_ids, n))
 
 
 def _resolve_num_sampled_clients(config: DictConfig, num_clients: int) -> int:

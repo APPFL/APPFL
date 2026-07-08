@@ -119,6 +119,7 @@ setuptools.setup(
             "wget",
             "torchvision",
             "tensorboard",
+            "Pillow",
         ],
         "monai": ["monai[all]==1.2.0"],
         "mpi": ["mpi4py"],

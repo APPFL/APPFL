@@ -61,7 +61,3 @@ algorithm_configs:
     # Loss function
     loss_fn_path: "./celoss.py"
     loss_fn_name: "CELoss"
-
-# Backward compatibility
-server_configs:
-  optimizer_memory: True

@@ -22,8 +22,16 @@ class SimClientAgent(ClientAgent):
             else kwargs.pop("config", {})
         )
         config = OmegaConf.create(config_input)
-        self.sim_config = OmegaConf.create(config)
+        # self.sim_config = OmegaConf.create(config)
+        self.sim_config = config.copy() # actually never used in current implementation
         is_unified_config = "train_configs" not in config
+
+        if client_id is None:
+            warnings.warn(
+                message="Client ID (client_id) not specified. Generating a random one.",
+                category=UserWarning,
+            )
+            client_id = str(uuid.uuid4())
 
         if is_unified_config:
             algorithm = config.get("algorithm_configs", {})
@@ -34,7 +42,7 @@ class SimClientAgent(ClientAgent):
             self.num_clients_per_round = scheduler_kwargs.get("num_clients_per_round")
             config = OmegaConf.create(
                 {
-                    "client_id": str(client_id) if client_id is not None else "0",
+                    "client_id": str(client_id),
                     "model_configs": config.get("model_configs", {}),
                     "train_configs": OmegaConf.merge(
                         trainer_kwargs,
@@ -52,14 +60,8 @@ class SimClientAgent(ClientAgent):
                     "comm_configs": config.get("comm_configs", {}),
                 }
             )
-        elif client_id is not None:
-            config.client_id = str(client_id)
         else:
-            warnings.warn(
-                message="Client ID (client_id) not specified. Generating a random one.",
-                category=UserWarning,
-            )
-            config.client_id = str(uuid.uuid4())
+            config.client_id = str(client_id)
         self.client_id = config.client_id
 
         if client_dataset is not None:
@@ -70,10 +72,11 @@ class SimClientAgent(ClientAgent):
 
     def _load_data(self):
         if self._dataset is not None:
-            train_dataset, val_dataset = (
-                self._dataset[0],
-                self._dataset[1] if len(self._dataset) > 1 else None,
-            )
-            self.train_dataset, self.val_dataset = train_dataset, val_dataset
+            if isinstance(self._dataset, (tuple, list)):
+                self.train_dataset = self._dataset[0]
+                self.val_dataset = self._dataset[1] if len(self._dataset) > 1 else None
+            else:
+                self.train_dataset = self._dataset
+                self.val_dataset = None
             return
-        super()._load_data()
+        # super()._load_data() # Dead code, never be reached in current implementation as ValueError is raised when client_dataset is None
