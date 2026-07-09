@@ -9,6 +9,7 @@ funnel.db
 *.joblib
 examples/hostfiles
 scaling_test
+local
 local_tests
 **/experiments_log/
 src/appfl/service/resources
