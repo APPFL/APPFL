@@ -15,7 +15,6 @@ from appfl.comm.utils.s3_storage import CloudStorage
 from appfl.config import ClientAgentConfig, ServerAgentConfig
 from .utils.endpoint import GlobusComputeClientEndpoint
 from globus_compute_sdk.serialize import CombinedCode
-from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 
 
 class GlobusComputeServerCommunicator(BaseServerCommunicator):
@@ -289,6 +288,11 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         )
 
         if "compute_token" in kwargs and "openid_token" in kwargs:
+            # Imported lazily: globus-compute-sdk 4.9 dropped this module, and it is
+            # only needed on the token-auth path (the hosted APPFLx backend), not for
+            # a local driver dispatching to endpoints. See RUNBOOK §9.
+            from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
+
             compute_login_manager = AuthorizerLoginManager(
                 authorizers={
                     ComputeScopes.resource_server: AccessTokenAuthorizer(
