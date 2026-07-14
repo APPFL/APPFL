@@ -340,15 +340,20 @@ class FedAvgAggregator(BaseAggregator):
                         continue
                     self.step[name] = torch.zeros_like(self.global_state[name])
 
+                total_sample_size = sum(
+                    self.client_sample_size[cid]
+                    for cid in local_models
+                    if hasattr(self, "client_sample_size")
+                    and cid in self.client_sample_size
+                )
                 for client_id, model in local_models.items():
                     if (
                         self.client_weights_mode == "sample_size"
                         and hasattr(self, "client_sample_size")
                         and client_id in self.client_sample_size
+                        and total_sample_size > 0
                     ):
-                        weight = self.client_sample_size[client_id] / sum(
-                            self.client_sample_size.values()
-                        )
+                        weight = self.client_sample_size[client_id] / total_sample_size
                     else:
                         weight = 1.0 / len(local_models)
 
@@ -375,15 +380,20 @@ class FedAvgAggregator(BaseAggregator):
                     continue
                 self.step[name] = torch.zeros_like(self.global_state[name])
 
+            total_sample_size = sum(
+                self.client_sample_size[cid]
+                for cid in local_models
+                if hasattr(self, "client_sample_size")
+                and cid in self.client_sample_size
+            )
             for client_id, model in local_models.items():
                 if (
                     self.client_weights_mode == "sample_size"
                     and hasattr(self, "client_sample_size")
                     and client_id in self.client_sample_size
+                    and total_sample_size > 0
                 ):
-                    weight = self.client_sample_size[client_id] / sum(
-                        self.client_sample_size.values()
-                    )
+                    weight = self.client_sample_size[client_id] / total_sample_size
                 else:
                     weight = 1.0 / len(local_models)
 
@@ -460,15 +470,20 @@ class FedAvgAggregator(BaseAggregator):
                         continue
                     self.step[key] = torch.zeros_like(self.global_state[key])
 
+            total_sample_size = sum(
+                self.client_sample_size[cid]
+                for cid in local_models
+                if hasattr(self, "client_sample_size")
+                and cid in self.client_sample_size
+            )
             for client_id, model in local_models.items():
                 if (
                     self.client_weights_mode == "sample_size"
                     and hasattr(self, "client_sample_size")
                     and client_id in self.client_sample_size
+                    and total_sample_size > 0
                 ):
-                    weight = self.client_sample_size[client_id] / sum(
-                        self.client_sample_size.values()
-                    )
+                    weight = self.client_sample_size[client_id] / total_sample_size
                 else:
                     weight = 1.0 / len(local_models)
 

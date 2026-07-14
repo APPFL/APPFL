@@ -110,6 +110,8 @@ setuptools.setup(
             "furo",
         ],
         "examples": [
+            "datasets==4.8.5; python_version >= '3.9'",
+            "datasets; python_version < '3.9'",
             "opencv-python",
             "pyarrow",
             "fastparquet",
@@ -118,6 +120,7 @@ setuptools.setup(
             "wget",
             "torchvision",
             "tensorboard",
+            "Pillow",
         ],
         "monai": ["monai[all]==1.2.0"],
         "mpi": ["mpi4py"],
