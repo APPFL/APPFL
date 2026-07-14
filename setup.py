@@ -110,7 +110,8 @@ setuptools.setup(
             "furo",
         ],
         "examples": [
-            "datasets==4.8.5",
+            "datasets==4.8.5; python_version >= '3.9'",
+            "datasets; python_version < '3.9'",
             "opencv-python",
             "pyarrow",
             "fastparquet",
