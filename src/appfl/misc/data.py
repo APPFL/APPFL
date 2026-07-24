@@ -446,10 +446,9 @@ def dirichlet_noniid_partition(
     normalized_portions = np.zeros(individuals.shape)
     for i in range(num_clients):
         for j in range(len(classes_samples)):
+            denom = np.dot(weights, individuals.transpose()[j])
             normalized_portions[i][j] = (
-                weights[i]
-                * individuals[i][j]
-                / np.dot(weights, individuals.transpose()[j])
+                weights[i] * individuals[i][j] / denom if denom > 0 else 0.0
             )
 
     sample_matrix = np.multiply(
@@ -704,8 +703,9 @@ def dirichlet_noniid_partition_df(
         for j in range(len(classes_samples)):
             # This line effectively normalizes so that sum over i for individuals[i][j]
             # matches the fraction of class j in the entire dataset
+            denom = np.dot(weights, individuals[:, j])
             normalized_portions[i][j] = (
-                weights[i] * individuals[i][j] / np.dot(weights, individuals[:, j])
+                weights[i] * individuals[i][j] / denom if denom > 0 else 0.0
             )
 
     sample_matrix = np.multiply(
