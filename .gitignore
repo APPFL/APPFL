@@ -1,5 +1,8 @@
 logs
+log
 data
+!src/appfl/loader/data/
+!src/appfl/loader/data/**
 examples/resources/configs/gwas/sites-data
 examples/memory_profiles
 funnel.db

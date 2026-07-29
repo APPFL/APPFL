@@ -147,6 +147,7 @@ class ServerAgent:
     ) -> Optional[Union[Dict, Future]]:
         """
         Set the size of the local dataset of a client.
+
         :param: client_id: A unique client id for server to distinguish clients, which can be obtained via `ClientAgent.get_id()`.
         :param: sample_size: The size of the local dataset of a client.
         :param: sync: Whether to synchronize the sample size among all clients. If `True`, the method can return the relative weight of the client.
