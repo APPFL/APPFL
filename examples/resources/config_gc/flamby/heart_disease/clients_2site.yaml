@@ -1,0 +1,45 @@
+# Fed-Heart-Disease over Globus Compute — two-site federation (ANL + C-DAC).
+#
+# NOTE ON PATHS:
+#   `dataset_path` is resolved on the SERVER (the ANL driver). The communicator reads the
+#   file and ships its source to the worker as `dataset_source`, then deletes the path
+#   (src/appfl/comm/globus_compute/globus_compute_server_communicator.py:60). So it is a
+#   path on the ANL driver machine for BOTH clients, and stays relative to `examples/`,
+#   which is where run.py is invoked from.
+#   `logging_output_dirname` is the opposite: it is used on the WORKER, so it is an
+#   absolute path on each site's own cluster.
+#
+# Each site loads its own FLamby center (`client_id` below == FLamby `center`):
+#   Site1 ANL   -> center 0 (Cleveland),     n_train = 199
+#   Site4 C-DAC -> center 3 (VA Long Beach), n_train = 85
+# `num_clients: 4` is the dataset's natural split size and only bounds an assert in the
+# loader; it is not the number of participating sites (that is server_configs.num_clients).
+
+clients:
+  - endpoint_id: "c540b588-8854-4418-b0e1-86a3626e38fe"   # ANL / Polaris, single-user EP
+    client_id: "Site1"
+    train_configs:
+      device: "cpu"
+      logging_output_dirname: "/lus/grand/projects/GeomicVar/mjoel/APPFL_FLamby/APPFL/local/output"
+      logging_output_filename: "appfl_Site1_gc"
+    data_configs:
+      dataset_path: "./resources/dataset/flamby_dataset.py"
+      dataset_name: "get_flamby"
+      dataset_kwargs:
+        dataset: "HeartDisease"
+        num_clients: 4
+        client_id: 0
+
+  - endpoint_id: "84a675b1-3d68-4805-a489-18187904c7d6"   # C-DAC India, multi-user EP -> flamby_svc
+    client_id: "Site4"
+    train_configs:
+      device: "cpu"
+      logging_output_dirname: "/home/flamby_svc/data/fedlearn/outputs"
+      logging_output_filename: "appfl_Site4_gc"
+    data_configs:
+      dataset_path: "./resources/dataset/flamby_dataset.py"
+      dataset_name: "get_flamby"
+      dataset_kwargs:
+        dataset: "HeartDisease"
+        num_clients: 4
+        client_id: 3

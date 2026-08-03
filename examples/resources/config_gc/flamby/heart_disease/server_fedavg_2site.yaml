@@ -1,0 +1,69 @@
+# FedAvg server config for the two-site (ANL + C-DAC) Fed-Heart-Disease run.
+# Differs from the stock server_fedavg.yaml in three deliberate ways, all to shrink the
+# failure surface of the first intercontinental run (ABOUT.md §13.3):
+#   1. num_global_epochs: 5   — prove the transport completes before asking for 20.
+#   2. generate_dr_report: False — the readiness report costs an extra round-trip to every
+#      site and needs matplotlib/seaborn on each worker. Turn on once the plain run is green.
+#   3. client_weights_mode: equal — the centers are unbalanced (199 vs 85), so `sample_size`
+#      is the more defensible choice for the paper, but it needs run.py --get_sample_size
+#      and one more round-trip. Switch after the first green run, and record which was used.
+#
+# All *_path entries below are read on the ANL driver, relative to `examples/`.
+
+client_configs:
+  train_configs:
+    # Local trainer
+    trainer: "VanillaTrainer"
+    mode: "step"
+    num_local_steps: 100
+    optim: "Adam"
+    optim_args:
+      lr: 0.001
+    # Loss function
+    loss_fn_path: "./resources/loss/bceloss.py"
+    loss_fn_name: "BaselineLoss"
+    # Client validation
+    do_validation: True
+    do_pre_validation: True
+    metric_path: "./resources/metric/binary_acc.py"
+    metric_name: "metric"
+    # Differential privacy
+    use_dp: False
+    epsilon: 1
+    clip_grad: False
+    clip_value: 1
+    clip_norm: 1
+    # Data loader
+    train_batch_size: 4
+    val_batch_size: 4
+    train_data_shuffle: True
+    val_data_shuffle: False
+
+  data_readiness_configs:
+    generate_dr_report: False
+
+  model_configs:
+    model_path: "./resources/model/flamby_heart_disease.py"
+    model_name: "Baseline"
+
+  comm_configs:
+    compressor_configs:
+      enable_compression: False
+      lossy_compressor: "SZ2Compressor"
+      lossless_compressor: "blosc"
+      error_bounding_mode: "REL"
+      error_bound: 1e-3
+      param_cutoff: 1024
+
+server_configs:
+  num_clients: 2
+  scheduler: "SyncScheduler"
+  scheduler_kwargs:
+    same_init_model: True
+  aggregator: "FedAvgAggregator"
+  aggregator_kwargs:
+    client_weights_mode: "equal"
+  device: "cpu"
+  num_global_epochs: 5
+  logging_output_dirname: "/lus/grand/projects/GeomicVar/mjoel/APPFL_FLamby/APPFL/local/output"
+  logging_output_filename: "result_2site_fedavg"
