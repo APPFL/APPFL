@@ -1,4 +1,3 @@
-from typing import Optional, Dict
 from appfl.login_manager import BaseAuthenticator
 from appfl.login_manager.globus import GlobusLoginManager
 
@@ -11,7 +10,7 @@ class GlobusAuthenticator(BaseAuthenticator):
     """
 
     def __init__(
-        self, *, is_fl_server: bool = False, globus_group_id: Optional[str] = None
+        self, *, is_fl_server: bool = False, globus_group_id: str | None = None
     ) -> None:
         self.login_manager = GlobusLoginManager(is_fl_server=is_fl_server)
         self.login_manager.ensure_logged_in()
@@ -33,7 +32,7 @@ class GlobusAuthenticator(BaseAuthenticator):
                     "Please make sure the group exists and you are the admin or manager of the group."
                 ) from e
 
-    def get_auth_token(self) -> Dict[str, str]:
+    def get_auth_token(self) -> dict[str, str]:
         """
         Invoked by FL client to get the auth tokens as a `dict` for the FL server validation.
         """
@@ -42,7 +41,7 @@ class GlobusAuthenticator(BaseAuthenticator):
         auth_tokens["expires_at"] = str(auth_tokens["expires_at"])
         return auth_tokens
 
-    def validate_auth_token(self, auth_tokens: Dict) -> bool:
+    def validate_auth_token(self, auth_tokens: dict) -> bool:
         """
         Invoked by FL server to validate the auth tokens provided by the FL client.
         Return `True` if the tokens are valid, `False` otherwise.

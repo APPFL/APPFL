@@ -1,18 +1,19 @@
-import os
 import csv
+import os
+import os.path as osp
 import stat
 import sys
 import time
+import warnings
+
 import boto3
 import requests
-import warnings
-import os.path as osp
-from typing import Optional
 from botocore.exceptions import ClientError
+
 from appfl.misc.utils import (
     dump_data_to_file,
-    load_data_from_file,
     id_generator,
+    load_data_from_file,
     secure_appfl_dir,
 )
 
@@ -34,7 +35,7 @@ def _open_credentials_file_securely(path: str):
             "ensure the file is readable only by the current user.",
             stacklevel=2,
         )
-        return open(path, encoding="utf-8")  # noqa: SIM115
+        return open(path, encoding="utf-8")
 
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     try:
@@ -95,8 +96,8 @@ class CloudStorage:
     @classmethod
     def init(
         cls,
-        s3_bucket: Optional[str] = None,
-        s3_creds_file: Optional[str] = None,
+        s3_bucket: str | None = None,
+        s3_creds_file: str | None = None,
         s3_tmp_dir: str = None,
         logger=None,
     ):
@@ -149,8 +150,8 @@ class CloudStorage:
     def upload_file(
         self,
         file_path: str,
-        object_url: Optional[str] = None,
-        object_name: Optional[str] = None,
+        object_url: str | None = None,
+        object_name: str | None = None,
         expiration: int = 3600,
         delete_local: bool = True,
     ) -> dict:

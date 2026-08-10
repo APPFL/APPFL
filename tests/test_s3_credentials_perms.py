@@ -8,7 +8,6 @@ import pytest
 
 from appfl.comm.utils.s3_storage import _open_credentials_file_securely
 
-
 posix_only = pytest.mark.skipif(
     os.name != "posix", reason="POSIX permission semantics required"
 )
@@ -108,6 +107,7 @@ def test_legacy_unsafe_open_not_in_credentials_block():
     """Defense in depth: the credentials-loading block must route through
     the secure helper, not plain open()."""
     import inspect
+
     from appfl.comm.utils import s3_storage
 
     src = inspect.getsource(s3_storage.CloudStorage.init)

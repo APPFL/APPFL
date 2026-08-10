@@ -1,9 +1,11 @@
 import pickle
+from collections import OrderedDict
+from typing import Any
+
 import numpy as np
 from mpi4py import MPI
-from collections import OrderedDict
+
 from appfl.compressor import Compressor
-from typing import Any, Optional, Union
 from appfl.misc.deprecation import deprecated
 
 
@@ -16,7 +18,7 @@ class MpiCommunicator:
     learning experiments on multiple MPI processes, where each MPI process represents EXACTLY ONE learning client.
     """
 
-    def __init__(self, comm: MPI.Intracomm, compressor: Optional[Compressor] = None):
+    def __init__(self, comm: MPI.Intracomm, compressor: Compressor | None = None):
         self.comm = comm
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
@@ -59,8 +61,8 @@ class MpiCommunicator:
 
     def broadcast_global_model(
         self,
-        model: Optional[Union[dict, OrderedDict]] = None,
-        args: Optional[dict] = None,
+        model: dict | OrderedDict | None = None,
+        args: dict | None = None,
     ):
         """
         Broadcast the global model state dictionary and additional arguments from the server MPI process
@@ -95,8 +97,8 @@ class MpiCommunicator:
 
     def send_global_model_to_client(
         self,
-        model: Optional[Union[dict, OrderedDict]] = None,
-        args: Optional[dict] = None,
+        model: dict | OrderedDict | None = None,
+        args: dict | None = None,
         client_idx: int = -1,
     ):
         """
@@ -138,7 +140,7 @@ class MpiCommunicator:
             )
             self.recv_queue_idx.append(client_idx)
 
-    def send_local_model_to_server(self, model: Union[dict, OrderedDict], dest: int):
+    def send_local_model_to_server(self, model: dict | OrderedDict, dest: int):
         """
         Client sends the local model state dict to the server (dest).
         :param `model`: the local model state dictionary to be sent

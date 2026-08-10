@@ -1,10 +1,10 @@
 from .authenticator import BaseAuthenticator
+from .globus import GlobusAuthenticator, GlobusLoginManager
 from .naive import NaiveAuthenticator
-from .globus import GlobusLoginManager, GlobusAuthenticator
 
 __all__ = [
     "BaseAuthenticator",
-    "NaiveAuthenticator",
-    "GlobusLoginManager",
     "GlobusAuthenticator",
+    "GlobusLoginManager",
+    "NaiveAuthenticator",
 ]

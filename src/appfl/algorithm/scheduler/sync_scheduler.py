@@ -1,9 +1,12 @@
 import threading
-from typing import Any, Union, Dict, OrderedDict
+from collections import OrderedDict
 from concurrent.futures import Future
+from typing import Any
+
 from omegaconf import DictConfig
-from appfl.algorithm.scheduler import BaseScheduler
+
 from appfl.algorithm.aggregator import BaseAggregator
+from appfl.algorithm.scheduler import BaseScheduler
 from appfl.misc.memory_utils import optimize_memory_cleanup
 
 
@@ -24,8 +27,8 @@ class SyncScheduler(BaseScheduler):
 
     def schedule(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict],
+        client_id: int | str,
+        local_model: dict | OrderedDict,
         **kwargs,
     ) -> Future:
         """
@@ -115,8 +118,8 @@ class SyncScheduler(BaseScheduler):
             return self._num_global_epochs
 
     def _parse_aggregated_model(
-        self, aggregated_model: Dict, client_id: Union[int, str]
-    ) -> Dict:
+        self, aggregated_model: dict, client_id: int | str
+    ) -> dict:
         """
         Parse the aggregated model. Currently, this method is used to
         parse different client gradients for the vertical federated learning.

@@ -5,7 +5,7 @@ This loss function is suitable for multi-class classification tasks on graphs,
 such as node classification in citation networks.
 """
 
-import torch.nn as nn
+from torch import nn
 
 
 class NLLLoss(nn.Module):

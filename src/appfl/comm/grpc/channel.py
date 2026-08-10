@@ -2,11 +2,14 @@
 Auxiliary function to create a secure/insecure gRPC channel.
 """
 
+from typing import Any
+
 import grpc
+
+from appfl.misc.utils import get_appfl_authenticator
+
 from .auth import APPFLAuthMetadataProvider
 from .utils import load_credential_from_file
-from typing import Optional, Union, Dict, Any
-from appfl.misc.utils import get_appfl_authenticator
 
 
 def create_grpc_channel(
@@ -14,9 +17,9 @@ def create_grpc_channel(
     *,
     use_ssl: bool = False,
     use_authenticator: bool = False,
-    root_certificate: Optional[Union[str, bytes]] = None,
-    authenticator: Optional[str] = None,
-    authenticator_args: Dict[str, Any] = {},
+    root_certificate: str | bytes | None = None,
+    authenticator: str | None = None,
+    authenticator_args: dict[str, Any] = {},
     max_message_size: int = 2 * 1024 * 1024,
     **kwargs,
 ) -> grpc.Channel:

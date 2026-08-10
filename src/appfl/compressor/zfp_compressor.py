@@ -1,15 +1,16 @@
 import gzip
 import lzma
-import zlib
-import zstd
-import blosc
-import torch
 import pickle
-import numpy as np
-from copy import deepcopy
-from omegaconf import DictConfig
+import zlib
 from collections import OrderedDict
-from typing import Tuple, Union, List
+from copy import deepcopy
+
+import blosc
+import numpy as np
+import torch
+import zstd
+from omegaconf import DictConfig
+
 from .base_compressor import BaseCompressor
 
 try:
@@ -37,7 +38,7 @@ class ZFPCompressor(BaseCompressor):
 
     def compress_model(
         self,
-        model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]],
+        model: dict | OrderedDict | list[dict | OrderedDict],
         batched: bool = False,
     ) -> bytes:
         """
@@ -80,9 +81,9 @@ class ZFPCompressor(BaseCompressor):
     def decompress_model(
         self,
         compressed_model: bytes,
-        model: Union[dict, OrderedDict],
+        model: dict | OrderedDict,
         batched: bool = False,
-    ) -> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
+    ) -> OrderedDict | dict | list[OrderedDict | dict]:
         """
         Decompress all the communicated model parameters. The local model can be batched as a list.
         :param compressed_model: compressed model parameters as bytes
@@ -128,8 +129,8 @@ class ZFPCompressor(BaseCompressor):
         return decompressed_model
 
     def _compress_weights(
-        self, weights: Union[OrderedDict, dict]
-    ) -> Tuple[Union[OrderedDict, dict], int]:
+        self, weights: OrderedDict | dict
+    ) -> tuple[OrderedDict | dict, int]:
         """
         Compress ONE set of weights of the model.
         :param weights: the model weights to be compressed
@@ -200,9 +201,9 @@ class ZFPCompressor(BaseCompressor):
 
     def _decompress_model(
         self,
-        compressed_weights: Union[dict, OrderedDict],
-        model: Union[dict, OrderedDict],
-    ) -> Union[OrderedDict, dict]:
+        compressed_weights: dict | OrderedDict,
+        model: dict | OrderedDict,
+    ) -> OrderedDict | dict:
         """
         Decompress ONE set of weights of the model.
         :param compressed_weights: the compressed model weights
@@ -252,7 +253,7 @@ class ZFPCompressor(BaseCompressor):
         return decompressed_weights
 
     def _decompress(
-        self, cmp_data, ori_shape: Tuple[int, ...], ori_dtype: np.dtype
+        self, cmp_data, ori_shape: tuple[int, ...], ori_dtype: np.dtype
     ) -> np.ndarray:
         """
         Decompress data with chosen compressor

@@ -2,8 +2,9 @@
 Python API for SZx
 """
 
-import sys
 import ctypes
+import sys
+
 import numpy as np
 
 

@@ -1,9 +1,9 @@
-import os
 import json
 import logging
+import os
 
-from appfl.loader.data.leaf.postprocess.sample import sample_clients
 from appfl.loader.data.leaf.postprocess.filter import filter_clients
+from appfl.loader.data.leaf.postprocess.sample import sample_clients
 from appfl.loader.data.leaf.postprocess.split import split_datasets
 
 logger = logging.getLogger(__name__)
