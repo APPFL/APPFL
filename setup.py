@@ -25,7 +25,7 @@ with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
 if sys.version_info >= (3, 9):
-    numpy_version = "numpy==1.26.4"
+    numpy_version = "numpy>=2.0.0"
     zfpy_version = "zfpy"
 else:
     numpy_version = "numpy"  # Default numpy version for Python < 3.9
