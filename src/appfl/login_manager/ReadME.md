@@ -20,9 +20,10 @@ class BaseAuthenticator:
 ```
 
 ## Naive Authenticator
-Currently, we provide the two authenticators,
+Currently, we provide the following authenticators,
 - [`NaiveAuthenticator`](naive)
 - [`GlobusAuthenticator`](globus)
+- [`KeycloakAuthenticator`](keycloak)
 
 `NaiveAuthenticator` is a shared-secret scheme: the same `auth_token` must be configured on the server and on every client, and the server admits any peer that presents it. It is intended for demos and trusted-network testing only — production deployments should use `GlobusAuthenticator` (or another identity-bound mechanism).
 
@@ -159,3 +160,56 @@ For the logged in FL server, `valiate_auth_token()` function takes three steps t
 - Use the retrieved Globus Group Service access token to get all the client IDs for all clients in the specified Globus group
 - Take the Globus Identity access token provided by clients to get the client ID for that client
 - Check if the client ID belongs to the specified Globus group
+
+## Keycloak Authenticator
+`KeycloakAuthenticator` uses [Keycloak](https://www.keycloak.org/) as the identity provider. Each FL client is its own Keycloak confidential client (`client_id`/`client_secret`) and authenticates headlessly via the OAuth2 **client credentials grant** — no browser, so it works on compute nodes. The server verifies each token's signature against Keycloak's JWKS and requires an `fl_client` role.
+
+### Set up Keycloak
+- Create a realm (e.g. `appfl`) and an `fl_client` realm role (Realm roles → Create role).
+- For each FL client, create a Keycloak client with **Client authentication: On** and **Service accounts roles** enabled, then assign it `fl_client` (client → *Service accounts roles* tab → *Assign role*).
+- Get that client's secret from its *Credentials* tab.
+
+### Constructor
+```python
+KeycloakAuthenticator(
+    is_fl_server: bool = False,
+    server_url: str,                       # e.g. "https://keycloak.example.org"
+    realm: str,
+    client_id: Optional[str] = None,       # required for clients
+    client_secret: Optional[str] = None,   # required for clients
+    role: str = "fl_client",
+    role_client_id: Optional[str] = None,  # set if `role` is a client role, not a realm role
+    leeway: int = 10,                      # clock-skew tolerance (seconds) for token expiry
+)
+```
+
+### Config
+`use_ssl: True` is required whenever `use_authenticator: True`. Full examples: [server](../../../examples/resources/configs/mnist/server_fedavg_keycloak_auth.yaml), [client 1](../../../examples/resources/configs/mnist/client_1_keycloak_auth.yaml), [client 2](../../../examples/resources/configs/mnist/client_2_keycloak_auth.yaml).
+
+```yaml
+# server: server_configs.comm_configs.grpc_configs
+use_authenticator: True
+authenticator: "KeycloakAuthenticator"
+authenticator_args:
+  is_fl_server: True
+  server_url: "http://localhost:8080"
+  realm: "appfl"
+```
+```yaml
+# client: comm_configs.grpc_configs
+use_authenticator: True
+authenticator: "KeycloakAuthenticator"
+authenticator_args:
+  is_fl_server: False
+  server_url: "http://localhost:8080"
+  realm: "appfl"
+  client_id: "fl-client-1"
+  client_secret: "<client-secret-from-keycloak>"
+```
+
+### Example deployment
+Tested end-to-end with Keycloak on an AWS EC2 instance (`http://44.200.247.230:8080`, realm `appfl`), FL server on the same instance, FL clients connecting from a separate machine. For multi-device federations, host Keycloak somewhere every client can reach — not `localhost` — and put it behind HTTPS with brute-force protection enabled; the instance above currently runs with `sslRequired: none` for testing convenience only.
+
+### Auth Flow for Keycloak Authenticator
+- `get_auth_token()` (FL client): requests an access token from Keycloak's token endpoint (`/realms/{realm}/protocol/openid-connect/token`) using the client credentials grant, and returns `{"access_token": <jwt>}`.
+- `validate_auth_token()` (FL server): fetches Keycloak's public signing keys from its JWKS endpoint (`/realms/{realm}/protocol/openid-connect/certs`, cached after the first call), verifies the access token's signature, issuer, and expiry, then checks that the token's claims include the required `fl_client` role. Tokens that fail signature verification, are expired, or lack the role are rejected.

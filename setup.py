@@ -74,6 +74,11 @@ setuptools.setup(
         globus_sdk_version,
         globus_compute_sdk_version,
         globus_compute_endpoint_version,
+        # >=2.6.0: older PyJWT crashes on Keycloak's JWKS response, which
+        # includes a non-signing RSA-OAEP encryption key alongside the RS256
+        # signing key.
+        "PyJWT[crypto]>=2.6.0",
+        "requests",
         "boto3",
         "botocore",
         "lz4",
