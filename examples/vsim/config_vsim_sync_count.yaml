@@ -1,7 +1,7 @@
 # Virtual-time sync FL simulator config — count-based mode
 # Dispatch M clients per round, aggregate first K completions.
 # Run: cd examples && python vsim/run_vsim.py --server_config vsim/config_vsim_sync_count.yaml \
-#        --num_clients 10 --mode sync_count --base_step_time 0.003 --verify
+#        --num_clients 10 --mode sync_count --timing_only --base_step_time 0.003 --verify
 client_configs:
   train_configs:
     trainer: "VanillaTrainer"

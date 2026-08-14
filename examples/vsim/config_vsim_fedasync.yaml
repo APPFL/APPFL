@@ -71,7 +71,9 @@ server_configs:
     backend: "virtual_time"
     seed: 42
     max_concurrency: 2          # >=2 (K=1 is round-robin -> no async dynamics)
-    base_step_time: null        # null -> trainer's measured compute_second_per_step
+    staleness_mode: "round"     # v1 = round (APPFL native). time-based = v2.
+    time_model:
+      base_step_time: null      # null -> use trainer's measured compute_second_per_step
     heterogeneity:
       compute:
         distribution: "lognormal"
