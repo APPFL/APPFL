@@ -24,13 +24,6 @@ for i, (k, v) in enumerate(authors.items()):
 with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
-if sys.version_info >= (3, 9):
-    numpy_version = "numpy==1.26.4"
-    zfpy_version = "zfpy"
-else:
-    numpy_version = "numpy"  # Default numpy version for Python < 3.9
-    zfpy_version = "zfpy==1.0.0"
-
 if sys.version_info >= (3, 10):
     wandb_version = "wandb"
     globus_sdk_version = "globus-sdk>=4.4.1"
@@ -66,7 +59,7 @@ setuptools.setup(
     },
     python_requires=">=3.8",
     install_requires=[
-        numpy_version,
+        "numpy",
         "torch",
         "grpcio",
         "grpcio-tools",
@@ -82,7 +75,6 @@ setuptools.setup(
         "boto3",
         "botocore",
         "lz4",
-        zfpy_version,
         "zstd",
         "blosc",
         "python-xz",
@@ -129,6 +121,15 @@ setuptools.setup(
         ],
         "monai": ["monai[all]==1.2.0"],
         "mpi": ["mpi4py"],
+        # The ZFP lossy compressor is optional: zfpy wheels are built against
+        # the numpy 1.x ABI and fail to import under numpy>=2.0.0. Installing
+        # this extra pins numpy accordingly; everything else in APPFL works
+        # fine with numpy 2.x.
+        "zfp": [
+            "zfpy; python_version >= '3.9'",
+            "zfpy==1.0.0; python_version < '3.9'",
+            "numpy<2.0.0",
+        ],
     },
     entry_points={
         "console_scripts": [
