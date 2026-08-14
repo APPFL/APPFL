@@ -11,18 +11,12 @@ import pathlib
 import numpy as np
 from . import pysz
 from . import pyszx
+from .zfpy_utils import require_zfpy
 from copy import deepcopy
 from appfl.misc.deprecation import deprecated
 from omegaconf import DictConfig
 from collections import OrderedDict
 from typing import Tuple, Union, List
-
-try:
-    import zfpy
-
-    _ZFP_COMPATIBLE = True
-except:  # noqa: E722
-    _ZFP_COMPATIBLE = False
 
 
 @deprecated(
@@ -246,9 +240,7 @@ class Compressor:
             )
             return compressed_arr.tobytes()
         elif self.cfg.lossy_compressor == "ZFP":
-            if not _ZFP_COMPATIBLE:
-                err_msg = f"ZFP compressor is not compatible with your current numpy version: {np.__version__}, please use numpy<2.0.0"
-                raise ImportError(err_msg)
+            zfpy = require_zfpy()
             if self.cfg.error_bounding_mode == "ABS":
                 return zfpy.compress_numpy(ori_data, tolerance=self.cfg.error_bound)
             elif self.cfg.error_bounding_mode == "REL":
@@ -343,10 +335,7 @@ class Compressor:
             )
             return decompressed_arr
         elif self.cfg.lossy_compressor == "ZFP":
-            if not _ZFP_COMPATIBLE:
-                raise ImportError(
-                    f"ZFP is not compatible with your current numpy version: {np.__version__}, please use numpy<2.0.0"
-                )
+            zfpy = require_zfpy()
             return zfpy.decompress_numpy(cmp_data)
         else:
             raise NotImplementedError
