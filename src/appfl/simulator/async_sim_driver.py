@@ -52,6 +52,7 @@ class AsyncSimDriver(BaseSimDriver):
         num_local_steps: int = 20,
         target_epochs: Optional[int] = None,
         calibration_epochs: Optional[int] = None,
+        calibration_client: Optional[str] = None,
     ):
         super().__init__(
             server_agent,
@@ -69,6 +70,7 @@ class AsyncSimDriver(BaseSimDriver):
             num_local_steps=num_local_steps,
             target_epochs=target_epochs,
             calibration_epochs=calibration_epochs,
+            calibration_client=calibration_client,
         )
 
     # ---------- async-specific helpers ----------

@@ -160,7 +160,8 @@ server_configs:
     time_model:
       base_step_time: null             # null = measured GPU time
       mode: null                       # null | fixed | calibration | real_measure
-      calibration_epochs: 3            # steps for calibration mode
+      calibration_client: Client1      # representative client (default: first)
+      calibration_epochs: 3            # short local-step calibration run
 
     heterogeneity:
       compute:
@@ -230,7 +231,8 @@ server_configs:
 | **time_model** | | | | |
 | `base_step_time` | float | `None` | All drivers | Per-step compute time (s). None = measured |
 | `mode` | str | `None` | `run_vsim.py` | fixed, calibration, real_measure |
-| `calibration_epochs` | int | `3` | `BaseSimDriver` | Profile steps before switching to timing-only |
+| `calibration_client` | str | first client | `BaseSimDriver` | Representative client measured once |
+| `calibration_epochs` | int | `3` | `BaseSimDriver` | Local steps for the representative calibration run |
 | **heterogeneity** | | | | |
 | `compute.distribution` | str | — | `build_profiles()` | lognormal or fixed |
 | `compute.params.mu/sigma` | float | 0.0/0.5 | `build_profiles()` | Lognormal parameters |
@@ -309,4 +311,6 @@ dispatches to whichever model is configured.
 With a fixed `base_step_time` and seed, repeated runs produce bit-exact results.
 When using measured GPU time (`base_step_time=None`), virtual durations vary
 slightly across runs due to hardware timing noise — use
-`time_model.mode=calibration` to measure once and then switch to timing-only.
+`time_model.mode=calibration` to train one representative client for a short
+run, use its reported wall-clock seconds per actual optimizer step, and then
+switch to timing-only simulation.

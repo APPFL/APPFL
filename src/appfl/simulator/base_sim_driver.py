@@ -35,6 +35,7 @@ class BaseSimDriver:
         num_local_steps: int = 20,
         target_epochs: Optional[int] = None,
         calibration_epochs: Optional[int] = None,
+        calibration_client: Optional[str] = None,
     ):
         """
         Initialize the simulation driver with server/client agents and models.
@@ -54,6 +55,7 @@ class BaseSimDriver:
         :param num_local_steps: Number of local training steps per client.
         :param target_epochs: Target number of global updates.
         :param calibration_epochs: Steps to profile before switching to timing-only.
+        :param calibration_client: Representative client ID; defaults to the first client.
         """
         random.seed(seed)
         self.server = server_agent
@@ -82,6 +84,7 @@ class BaseSimDriver:
         self._target_epochs = target_epochs
         self._timing_epoch = 0
         self._calibration_epochs = calibration_epochs
+        self._calibration_client = calibration_client
         if timing_only and base_step_time is None and calibration_epochs is None:
             raise ValueError("timing_only=True requires base_step_time to be set")
 
@@ -187,51 +190,37 @@ class BaseSimDriver:
 
     # ---------- calibration ----------
     def _calibrate(self):
-        """Profile all clients for a few local steps, then switch to timing-only mode."""
+        """Profile one representative client, then switch to timing-only mode."""
         if self._calibration_epochs is None:
             return
         cal_steps = min(self._calibration_epochs, self._num_local_steps)
+        cid = self._calibration_client or next(iter(self.clients))
+        if cid not in self.clients:
+            raise ValueError(f"Unknown calibration_client: {cid}")
+        client = self.clients[cid]
         global_params = self.server.get_parameters(serial_run=True)
-        cps_values = []
-        self.logger.info(
-            f"Calibration: profiling {len(self.clients)} clients "
-            f"× {cal_steps} local steps..."
-        )
+        orig_steps = None
+        if hasattr(client, "trainer") and hasattr(client.trainer, "train_configs"):
+            orig_steps = client.trainer.train_configs.num_local_steps
+            client.trainer.train_configs.num_local_steps = cal_steps
 
-        for cid, client in self.clients.items():
-            orig_steps = None
-            if hasattr(client, "trainer") and hasattr(client.trainer, "train_configs"):
-                orig_steps = client.trainer.train_configs.num_local_steps
-                client.trainer.train_configs.num_local_steps = cal_steps
+        self.logger.info(f"Calibration: profiling {cid} for {cal_steps} local steps...")
+        client.load_parameters(global_params)
+        client.train()
+        result = client.get_parameters()
 
-            client.load_parameters(global_params)
-            client.train()
-            res = client.get_parameters()
-
-            if orig_steps is not None:
-                client.trainer.train_configs.num_local_steps = orig_steps
-
-            if isinstance(res, tuple):
-                meta = dict(res[1])
-            else:
-                meta = {}
-            cps = float(meta.get("compute_second_per_step", 0.0))
-            if cps > 0:
-                cps_values.append(cps)
-            self.logger.info(f"  {cid}: cps={cps:.6f}s")
-
-        if not cps_values:
+        if orig_steps is not None:
+            client.trainer.train_configs.num_local_steps = orig_steps
+        meta = dict(result[1]) if isinstance(result, tuple) else {}
+        actual_steps = int(meta.get("current_local_steps", 0))
+        cps = float(meta.get("compute_second_per_step", 0.0))
+        if cps <= 0 or actual_steps <= 0:
             raise ValueError("Calibration failed: no cps measurements collected")
-
-        mean_cps = sum(cps_values) / len(cps_values)
-        std_cps = (
-            sum((x - mean_cps) ** 2 for x in cps_values) / len(cps_values)
-        ) ** 0.5
-        self.base_step_time = mean_cps
+        self.base_step_time = cps
         self.timing_only = True
         self.logger.info(
-            f"CALIBRATION DONE: {len(cps_values)} samples, "
-            f"mean_cps={mean_cps:.6f}s (std={std_cps:.6f}s) → timing-only"
+            f"CALIBRATION DONE: client={cid}, steps={actual_steps}, "
+            f"cps={cps:.6f}s → timing-only"
         )
 
     # ---------- verification ----------

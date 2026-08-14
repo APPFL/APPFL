@@ -63,6 +63,15 @@ class _FakeClient:
         )
 
 
+class _CalibrationClient(_FakeClient):
+    def __init__(self, cid, cps):
+        super().__init__(cid, cps=cps, steps=3)
+        self.train_calls = 0
+
+    def train(self, **kw):
+        self.train_calls += 1
+
+
 def _silent_logger():
     lg = logging.getLogger("vsim_test")
     lg.handlers.clear()
@@ -148,3 +157,48 @@ def test_concurrency_never_exceeds_K():
     )
     d.run()
     assert d._maxK <= K
+
+
+def test_calibration_profiles_only_selected_client():
+    server = _FakeServer(target_epochs=2)
+    clients = [_CalibrationClient("C0", 0.01), _CalibrationClient("C1", 0.25)]
+    profiles = {cid: ClientProfile() for cid in ("C0", "C1")}
+    driver = AsyncSimDriver(
+        server,
+        clients,
+        profiles,
+        max_concurrency=1,
+        logger=_silent_logger(),
+        target_epochs=2,
+        num_local_steps=3,
+        calibration_epochs=3,
+        calibration_client="C1",
+    )
+
+    driver._calibrate()
+
+    assert clients[0].train_calls == 0
+    assert clients[1].train_calls == 1
+    assert driver.base_step_time == 0.25
+    assert driver.timing_only is True
+
+
+def test_calibration_rejects_unknown_client():
+    driver = AsyncSimDriver(
+        _FakeServer(target_epochs=1),
+        [_CalibrationClient("C0", 0.01)],
+        {"C0": ClientProfile()},
+        max_concurrency=1,
+        logger=_silent_logger(),
+        target_epochs=1,
+        num_local_steps=3,
+        calibration_epochs=3,
+        calibration_client="missing",
+    )
+
+    try:
+        driver._calibrate()
+    except ValueError as error:
+        assert "Unknown calibration_client" in str(error)
+    else:
+        raise AssertionError("unknown calibration client should fail")

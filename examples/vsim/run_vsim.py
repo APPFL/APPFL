@@ -345,14 +345,17 @@ def main():
     time_model = sim_cfg.get("time_model", {}) if sim_cfg else {}
     time_mode = time_model.get("mode", None)
     calibration_epochs = None
+    calibration_client = None
 
     if args.timing_only:
         timing_only = True
     elif time_mode == "calibration":
         timing_only = False
         calibration_epochs = time_model.get("calibration_epochs", 3)
+        calibration_client = time_model.get("calibration_client")
         logger.info(
-            f"time_model: calibration mode ({calibration_epochs} local steps → timing-only)"
+            f"time_model: calibration mode (client={calibration_client or 'first'}, "
+            f"{calibration_epochs} local steps → timing-only)"
         )
     elif time_mode == "fixed":
         timing_only = True
@@ -399,6 +402,7 @@ def main():
         timing_only=timing_only,
         num_local_steps=num_local_steps,
         calibration_epochs=calibration_epochs,
+        calibration_client=calibration_client,
     )
 
     if mode == "async":

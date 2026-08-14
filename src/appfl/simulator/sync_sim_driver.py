@@ -47,6 +47,7 @@ class SyncSimDriver(BaseSimDriver):
         timing_only: bool = False,
         num_local_steps: int = 20,
         calibration_epochs: Optional[int] = None,
+        calibration_client: Optional[str] = None,
     ):
         super().__init__(
             server_agent,
@@ -64,6 +65,7 @@ class SyncSimDriver(BaseSimDriver):
             num_local_steps=num_local_steps,
             target_epochs=target_rounds,
             calibration_epochs=calibration_epochs,
+            calibration_client=calibration_client,
         )
         self.mode = mode
         self.min_responses = min_responses if min_responses is not None else self.K
