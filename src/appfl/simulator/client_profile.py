@@ -8,10 +8,6 @@ trainer metadata (`compute_second_per_step`), so we do not time `train()` oursel
     comm_time    = model_bytes * 8 / (1024**2) / bandwidth * 2   # downlink + uplink
     duration     = compute_time + comm_time
 
-v2 additions:
-  - Optional CommModel (asymmetric BW, jitter, congestion, compression, TCP overhead).
-  - Optional ComputeModel (device profiles, FLOPs-based, multiple modes).
-  - `available()` remains always-True; dropout is via driver-level AvailabilityModel.
 """
 
 from dataclasses import dataclass
@@ -19,12 +15,10 @@ from dataclasses import dataclass
 
 @dataclass
 class ClientProfile:
-    """Per-client system-heterogeneity profile combining compute and communication models."""
+    """Per-client compute slowdown and round-trip bandwidth profile."""
 
     compute_factor: float = 1.0  # device slowdown multiplier (AFL-Lib `delay`)
-    bandwidth: float = 300.0  # Mbps, v1 legacy (used when comm is None)
-    comm: object = None  # Optional CommModel (v2)
-    compute: object = None  # Optional ComputeModel (v2)
+    bandwidth: float = 300.0  # Mbps
 
     def compute_time(
         self, compute_second_per_step: float, num_steps: int, **kwargs
@@ -36,10 +30,6 @@ class ClientProfile:
         :param num_steps: Number of local training steps.
         :return: Virtual compute duration in seconds.
         """
-        if self.compute is not None:
-            return self.compute.compute_time(
-                compute_second_per_step, num_steps, **kwargs
-            )
         return compute_second_per_step * num_steps * self.compute_factor
 
     def download_time(self, model_bytes: float, **kwargs) -> float:
@@ -49,8 +39,6 @@ class ClientProfile:
         :param model_bytes: Model size in bytes.
         :return: Download duration in seconds.
         """
-        if self.comm is not None:
-            return self.comm.download_time(model_bytes, **kwargs)
         if self.bandwidth <= 0:
             return 0.0
         return model_bytes * 8 / (1024 * 1024) / self.bandwidth
@@ -62,8 +50,6 @@ class ClientProfile:
         :param model_bytes: Model size in bytes.
         :return: Upload duration in seconds.
         """
-        if self.comm is not None:
-            return self.comm.upload_time(model_bytes, **kwargs)
         if self.bandwidth <= 0:
             return 0.0
         return model_bytes * 8 / (1024 * 1024) / self.bandwidth
@@ -75,8 +61,6 @@ class ClientProfile:
         :param model_bytes: Model size in bytes.
         :return: Round-trip communication duration in seconds.
         """
-        if self.comm is not None:
-            return self.comm.comm_time(model_bytes, **kwargs)
         if self.bandwidth <= 0:
             return 0.0
         return (model_bytes * 8 / (1024 * 1024) / self.bandwidth) * 2
@@ -101,5 +85,5 @@ class ClientProfile:
         ) + self.comm_time(model_bytes, **kwargs)
 
     def available(self, vtime: float) -> bool:
-        """Always returns True; dropout is handled by driver-level AvailabilityModel."""
+        """Return True; availability models are added by a later extension."""
         return True

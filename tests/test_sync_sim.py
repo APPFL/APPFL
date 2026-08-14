@@ -82,8 +82,6 @@ def _make_sync(
     target_rounds=10,
     seed=42,
     base_step_time=0.01,
-    timing_only=True,
-    num_local_steps=20,
 ):
     server = _FakeServer(target_rounds * 100)
     clients = [_FakeClient(f"C{i}") for i in range(n)]
@@ -104,8 +102,6 @@ def _make_sync(
         max_wait_time=max_wait_time,
         window_duration=window_duration,
         target_rounds=target_rounds,
-        timing_only=timing_only,
-        num_local_steps=num_local_steps,
     )
 
 
@@ -275,7 +271,6 @@ def test_window_skip_round():
         window_duration=0.0001,
         target_rounds=5,
         base_step_time=0.01,
-        num_local_steps=100,
     )
     d.run()
     skipped = [r for r in d.history if r["skipped"]]
@@ -283,7 +278,7 @@ def test_window_skip_round():
 
 
 def test_actual_training_count():
-    """Count mode with actual training (timing_only=False)."""
+    """Count mode performs actual local training."""
     d = _make_sync(
         n=3,
         M=3,
@@ -291,7 +286,6 @@ def test_actual_training_count():
         mode="count",
         min_responses=2,
         target_rounds=5,
-        timing_only=False,
         base_step_time=0.01,
     )
     d.run()

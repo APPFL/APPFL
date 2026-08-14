@@ -5,8 +5,7 @@ Two modes:
   - window: dispatch M clients, aggregate all arriving within window_duration
 
 Both modes support max_wait_time (hard deadline) and min_responses (skip round
-if fewer arrive).  All v2 timing models (CommModel, ComputeModel,
-AvailabilityModel, timing-only) work unchanged.
+if fewer arrive).
 
 Inherits BaseSimDriver for common state, utilities, and model init.
 """
@@ -40,13 +39,6 @@ class SyncSimDriver(BaseSimDriver):
         max_wait_time: Optional[float] = None,
         window_duration: Optional[float] = None,
         target_rounds: int = 100,
-        # v2
-        availability_model=None,
-        timeout_model=None,
-        shared_pool=None,
-        timing_only: bool = False,
-        num_local_steps: int = 20,
-        calibration_epochs: Optional[int] = None,
     ):
         super().__init__(
             server_agent,
@@ -57,13 +49,6 @@ class SyncSimDriver(BaseSimDriver):
             seed=seed,
             base_step_time=base_step_time,
             eval_every=eval_every,
-            availability_model=availability_model,
-            timeout_model=timeout_model,
-            shared_pool=shared_pool,
-            timing_only=timing_only,
-            num_local_steps=num_local_steps,
-            target_epochs=target_rounds,
-            calibration_epochs=calibration_epochs,
         )
         self.mode = mode
         self.min_responses = min_responses if min_responses is not None else self.K
@@ -84,19 +69,10 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- participant selection ----------
     def _select_participants(self):
-        """Select M participants for the current round, filtered by availability."""
+        """Select M participants for the current round."""
         all_ids = list(self.clients.keys())
-        if self.availability_model:
-            available = [
-                c
-                for c in all_ids
-                if self.availability_model.available(c, self.virtual_time)
-            ]
-            self._avail_skips += len(all_ids) - len(available)
-        else:
-            available = all_ids
-        M = min(self.K, len(available))
-        return random.sample(available, M) if M > 0 else []
+        participant_count = min(self.K, len(all_ids))
+        return random.sample(all_ids, participant_count)
 
     # ---------- duration computation ----------
     def _compute_completions(self, selected, t_start):
@@ -111,52 +87,35 @@ class SyncSimDriver(BaseSimDriver):
         self._max_active = max(self._max_active, len(self.active))
         completions = []
 
-        if self.timing_only:
-            cps = float(self.base_step_time)
-            steps = self._num_local_steps
-            for cid in selected:
-                profile = self.profiles[cid]
-                comp = profile.compute_time(cps, steps)
-                comm = profile.comm_time(self._model_bytes, **self._comm_kwargs())
-                dur = comp + comm
-                completions.append(
-                    {
-                        "cid": cid,
-                        "duration": dur,
-                        "completion_time": t_start + dur,
-                        "local_model": None,
-                        "meta": {},
-                    }
-                )
-        else:
-            global_params = self.server.get_parameters(serial_run=True)
-            for cid in selected:
-                client = self.clients[cid]
-                profile = self.profiles[cid]
-                client.load_parameters(global_params)
-                client.train()
-                res = client.get_parameters()
-                if isinstance(res, tuple):
-                    local_model, meta = res[0], dict(res[1])
-                else:
-                    local_model, meta = res, {}
-                steps = int(meta.get("current_local_steps", 0))
-                if self.base_step_time is not None:
-                    cps = float(self.base_step_time)
-                else:
-                    cps = float(meta.get("compute_second_per_step", 0.0))
-                comp = profile.compute_time(cps, steps)
-                comm = profile.comm_time(self._model_bytes, **self._comm_kwargs())
-                dur = comp + comm
-                completions.append(
-                    {
-                        "cid": cid,
-                        "duration": dur,
-                        "completion_time": t_start + dur,
-                        "local_model": local_model,
-                        "meta": meta,
-                    }
-                )
+        global_params = self.server.get_parameters(serial_run=True)
+        for cid in selected:
+            client = self.clients[cid]
+            profile = self.profiles[cid]
+            client.load_parameters(global_params)
+            client.train()
+            result = client.get_parameters()
+            if isinstance(result, tuple):
+                local_model, meta = result[0], dict(result[1])
+            else:
+                local_model, meta = result, {}
+            steps = int(meta.get("current_local_steps", 0))
+            cps = (
+                float(self.base_step_time)
+                if self.base_step_time is not None
+                else float(meta.get("compute_second_per_step", 0.0))
+            )
+            comp = profile.compute_time(cps, steps)
+            comm = profile.comm_time(self._model_bytes)
+            duration = comp + comm
+            completions.append(
+                {
+                    "cid": cid,
+                    "duration": duration,
+                    "completion_time": t_start + duration,
+                    "local_model": local_model,
+                    "meta": meta,
+                }
+            )
 
         completions.sort(key=lambda x: x["completion_time"])
         self.active.clear()
@@ -285,22 +244,20 @@ class SyncSimDriver(BaseSimDriver):
             self._record_round(t_start, t_barrier, [], discarded, skipped=True)
             return False
 
-        if not self.timing_only:
-            self._aggregate_round(accepted)
+        self._aggregate_round(accepted)
 
         self._record_round(t_start, t_barrier, accepted, discarded, skipped=False)
 
         if self.eval_every and (self._round + 1) % self.eval_every == 0:
-            if not self.timing_only:
-                global_model = self.server.get_parameters(serial_run=True)
-                g = self._global_eval(global_model)
-                if g is not None:
-                    self.history[-1]["global_val_loss"] = g[0]
-                    self.history[-1]["global_val_accuracy"] = g[1]
-                    self.logger.info(
-                        f"[round={self._round}] GLOBAL "
-                        f"val_acc={g[1]:.2f} val_loss={g[0]:.4f}"
-                    )
+            global_model = self.server.get_parameters(serial_run=True)
+            g = self._global_eval(global_model)
+            if g is not None:
+                self.history[-1]["global_val_loss"] = g[0]
+                self.history[-1]["global_val_accuracy"] = g[1]
+                self.logger.info(
+                    f"[round={self._round}] GLOBAL "
+                    f"val_acc={g[1]:.2f} val_loss={g[0]:.4f}"
+                )
 
         round_comm_mb = self.history[-1]["comm_bytes"] / 1e6
         self.logger.info(
@@ -314,7 +271,6 @@ class SyncSimDriver(BaseSimDriver):
     # ---------- main loop ----------
     def run(self):
         """Run the sync simulation for target_rounds, skipping rounds with no available clients."""
-        self._calibrate()
         max_skips = self._target_rounds * 3
         while self._round < self._target_rounds:
             success = self._run_round()
@@ -328,7 +284,7 @@ class SyncSimDriver(BaseSimDriver):
                         f"(completed {self._round}/{self._target_rounds})"
                     )
                     break
-            if not self.timing_only and self.server.training_finished():
+            if self.server.training_finished():
                 break
         total_comm_gb = self._total_comm_bytes / 1e9
         self.logger.info(
@@ -361,6 +317,4 @@ class SyncSimDriver(BaseSimDriver):
         }
         if self._skipped_rounds > 0:
             checks["skipped_rounds"] = self._skipped_rounds
-        if self._avail_skips > 0:
-            checks["availability_skips"] = self._avail_skips
         return checks

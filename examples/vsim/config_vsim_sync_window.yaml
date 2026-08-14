@@ -1,7 +1,7 @@
 # Virtual-time sync FL simulator config — time-window mode
 # Dispatch M clients per round, aggregate all arriving within window_duration.
 # Run: cd examples && python vsim/run_vsim.py --server_config vsim/config_vsim_sync_window.yaml \
-#        --num_clients 10 --mode sync_window --timing_only --base_step_time 0.003 --verify
+#        --num_clients 10 --mode sync_window --base_step_time 0.003 --verify
 client_configs:
   train_configs:
     trainer: "VanillaTrainer"
