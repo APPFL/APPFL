@@ -1,6 +1,8 @@
-import torch
+from typing import Any
+
 import numpy as np
-from typing import Dict, Any
+import torch
+
 from appfl.misc.data_readiness import BaseCADREModule
 
 
@@ -19,7 +21,7 @@ class CADREModuleOutliers(BaseCADREModule):
         """
         super().__init__(train_dataset, **kwargs)
 
-    def metric(self, **kwargs) -> Dict[str, Any]:
+    def metric(self, **kwargs) -> dict[str, Any]:
         """
         Identifies outlier images in the dataset using the IQR method based on image statistics.
 
@@ -70,7 +72,7 @@ class CADREModuleOutliers(BaseCADREModule):
             "outlier_indices": list(outlier_indices),
         }
 
-    def rule(self, metric_result: Dict[str, Any], threshold: float = 0.1) -> bool:
+    def rule(self, metric_result: dict[str, Any], threshold: float = 0.1) -> bool:
         """
         Determine if the proportion of outliers exceeds the threshold.
 
@@ -83,7 +85,7 @@ class CADREModuleOutliers(BaseCADREModule):
         """
         return metric_result["proportion_outliers"] > threshold
 
-    def remedy(self, metric_result: Dict[str, Any], logger, **kwargs) -> Dict[str, Any]:
+    def remedy(self, metric_result: dict[str, Any], logger, **kwargs) -> dict[str, Any]:
         """
         Removes outliers from the dataset based on identified indices.
 

@@ -1,5 +1,5 @@
 def get_loss():
-    import torch.nn as nn
+    from torch import nn
 
     class CELoss(nn.Module):
         """Cross Entroy Loss"""

@@ -1,8 +1,10 @@
 import abc
-import torch.nn as nn
+from collections import OrderedDict
+from typing import Any
+
 from omegaconf import DictConfig
+from torch import nn
 from torch.utils.data import Dataset
-from typing import Optional, Dict, Any, Tuple, Union, OrderedDict
 
 
 class BaseTrainer:
@@ -21,14 +23,14 @@ class BaseTrainer:
 
     def __init__(
         self,
-        model: Optional[nn.Module] = None,
-        loss_fn: Optional[nn.Module] = None,
-        metric: Optional[Any] = None,
-        train_dataset: Optional[Dataset] = None,
-        val_dataset: Optional[Dataset] = None,
+        model: nn.Module | None = None,
+        loss_fn: nn.Module | None = None,
+        metric: Any | None = None,
+        train_dataset: Dataset | None = None,
+        val_dataset: Dataset | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
-        client_id: Optional[Any] = None,
+        logger: Any | None = None,
+        client_id: Any | None = None,
         **kwargs,
     ):
         self.round = 0
@@ -45,9 +47,8 @@ class BaseTrainer:
     @abc.abstractmethod
     def get_parameters(
         self,
-    ) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """Return local model parameters and optional metadata."""
-        pass
 
     @abc.abstractmethod
     def train(self, **kwargs):
@@ -55,7 +56,7 @@ class BaseTrainer:
 
     def load_parameters(
         self,
-        params: Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Any],
+        params: dict | OrderedDict | tuple[dict | OrderedDict, dict] | Any,
     ):
         """Load model parameters."""
         self.model.load_state_dict(params, strict=False)

@@ -1,29 +1,31 @@
 import copy
+import importlib
+import logging
 import time
+from typing import Any
+
+import numpy as np
 import torch
 import wandb
-import importlib
-import numpy as np
-from torch.nn import Module
 from omegaconf import DictConfig
-from typing import Tuple, Dict, Optional, Any
-from torch.utils.data import Dataset, DataLoader
-from appfl.privacy import (
-    SecureAggregator,
-    laplace_mechanism_output_perturb,
-    gaussian_mechanism_output_perturb,
-    make_private_with_opacus,
-)
-from appfl.algorithm.trainer.base_trainer import BaseTrainer
-from appfl.misc.utils import parse_device_str, apply_model_device
-from appfl.misc.memory_utils import (
-    extract_model_state_optimized,
-    safe_inplace_operation,
-    optimize_memory_cleanup,
-)
 from opacus import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
-import logging
+from torch.nn import Module
+from torch.utils.data import DataLoader, Dataset
+
+from appfl.algorithm.trainer.base_trainer import BaseTrainer
+from appfl.misc.memory_utils import (
+    extract_model_state_optimized,
+    optimize_memory_cleanup,
+    safe_inplace_operation,
+)
+from appfl.misc.utils import apply_model_device, parse_device_str
+from appfl.privacy import (
+    SecureAggregator,
+    gaussian_mechanism_output_perturb,
+    laplace_mechanism_output_perturb,
+    make_private_with_opacus,
+)
 
 logging.getLogger().handlers.clear()
 logging.getLogger().setLevel(logging.WARNING)
@@ -40,13 +42,13 @@ class VanillaTrainer(BaseTrainer):
 
     def __init__(
         self,
-        model: Optional[Module] = None,
-        loss_fn: Optional[Module] = None,
-        metric: Optional[Any] = None,
-        train_dataset: Optional[Dataset] = None,
-        val_dataset: Optional[Dataset] = None,
+        model: Module | None = None,
+        loss_fn: Module | None = None,
+        metric: Any | None = None,
+        train_dataset: Dataset | None = None,
+        val_dataset: Dataset | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -510,7 +512,7 @@ class VanillaTrainer(BaseTrainer):
             if send_gradient:
                 self._compute_gradient()
 
-    def get_parameters(self) -> Dict:
+    def get_parameters(self) -> dict:
         if not hasattr(self, "model_state"):
             if self.optimize_memory:
                 self.model_state = extract_model_state_optimized(
@@ -542,7 +544,7 @@ class VanillaTrainer(BaseTrainer):
                 "Number of local steps must be specified"
             )
 
-    def _validate(self) -> Tuple[float, float]:
+    def _validate(self) -> tuple[float, float]:
         """
         Validate the model
         :return: loss, accuracy
@@ -567,7 +569,7 @@ class VanillaTrainer(BaseTrainer):
 
     def _train_batch(
         self, optimizer: torch.optim.Optimizer, data, target
-    ) -> Tuple[float, np.ndarray, np.ndarray]:
+    ) -> tuple[float, np.ndarray, np.ndarray]:
         """
         Train the model for one batch of data
         :param optimizer: torch optimizer
