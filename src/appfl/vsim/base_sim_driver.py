@@ -46,7 +46,11 @@ class BaseSimDriver:
         :param base_step_time: Fixed per-step compute time (s); None = measured.
         :param eval_every: Global evaluation frequency (0 = off).
         """
-        random.seed(seed)
+        # A private generator, not `random.seed()`: seeding the module-global RNG
+        # here would perturb every other consumer in the process (client data
+        # partitioning has already run by this point), and any unrelated draw from
+        # it would in turn shift this simulation's dispatch order.
+        self._rng = random.Random(seed)
         self.server = server_agent
         self.clients = {c.get_id(): c for c in client_agents}
         self.profiles = profiles

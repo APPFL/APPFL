@@ -12,7 +12,6 @@ Design facts verified against APPFL source (2026-06-12):
 """
 
 import heapq
-import random
 from typing import Dict, List, Optional
 
 from .base_sim_driver import BaseSimDriver
@@ -70,7 +69,7 @@ class AsyncSimDriver(BaseSimDriver):
             return
         idle = [cid for cid in self.clients if cid not in self.active]
 
-        for cid in random.sample(idle, min(need, len(idle))):
+        for cid in self._rng.sample(idle, min(need, len(idle))):
             self.active.add(cid)
             self._push(self.virtual_time, "train_start", cid)
 
@@ -124,8 +123,11 @@ class AsyncSimDriver(BaseSimDriver):
         """
         profile = self.profiles[cid]
 
-        if not profile.available(dispatch_time):
-            self._push(dispatch_time, "train_start", cid)
+        # Defer only when the client is genuinely unavailable *later*; a retry at
+        # the same virtual time would never advance the clock.
+        ready_at = profile.next_available(dispatch_time)
+        if ready_at > dispatch_time:
+            self._push(ready_at, "train_start", cid)
             return
 
         epoch_dispatch = self._cur_epoch()

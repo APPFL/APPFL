@@ -12,7 +12,6 @@ if fewer arrive).
 Inherits BaseSimDriver for common state, utilities, and model init.
 """
 
-import random
 from typing import Dict, List, Optional
 
 from .base_sim_driver import BaseSimDriver
@@ -66,6 +65,17 @@ class SyncSimDriver(BaseSimDriver):
         if mode == "window" and window_duration is None:
             raise ValueError("mode='window' requires window_duration")
 
+        # A quorum larger than the cohort can never be met, so every round would
+        # skip. `_select_participants` caps the cohort at the client count.
+        cohort = min(self.participants_per_round, len(self.clients))
+        if self.min_responses > cohort:
+            raise ValueError(
+                f"min_responses={self.min_responses} exceeds the {cohort} client(s) "
+                f"dispatched per round (participants_per_round="
+                f"{self.participants_per_round}, num_clients={len(self.clients)}), "
+                f"so no round could ever reach the quorum."
+            )
+
         # A barrier admits a varying subset each round, so the scheduler must accept
         # a per-round response count. Checked here rather than at the first
         # aggregation: on a scheduler without it, assigning `num_clients` would
@@ -92,7 +102,7 @@ class SyncSimDriver(BaseSimDriver):
         """Select this round's cohort of `participants_per_round` clients."""
         all_ids = list(self.clients.keys())
         participant_count = min(self.participants_per_round, len(all_ids))
-        return random.sample(all_ids, participant_count)
+        return self._rng.sample(all_ids, participant_count)
 
     # ---------- duration computation ----------
     def _compute_completions(self, selected, t_start):
@@ -147,49 +157,71 @@ class SyncSimDriver(BaseSimDriver):
         return self._barrier_window(completions, t_start)
 
     def _barrier_count(self, completions, t_start):
-        """Count barrier: accept the first `min_responses` completions, subject to max_wait_time."""
+        """
+        Count barrier: release as soon as ``min_responses`` clients have arrived.
+
+        The quorum is guaranteed reachable — the constructor rejects a
+        ``min_responses`` larger than the cohort — so a short round can only mean
+        the quorum arrives too late. If ``max_wait_time`` is set and the quorum
+        arrival falls beyond it, the round is skipped: by definition fewer than
+        ``min_responses`` had arrived by the deadline, so there is no smaller set
+        to fall back on.
+
+        :param completions: Completion dicts, sorted ascending by completion time.
+        :param t_start: Round start virtual time.
+        :return: Tuple of (accepted, discarded, t_barrier).
+        """
         if len(completions) < self.min_responses:
-            t = completions[-1]["completion_time"] if completions else t_start
-            return completions, [], t
+            return [], completions, t_start
 
         accepted = completions[: self.min_responses]
-        discarded = completions[self.min_responses :]
         t_barrier = accepted[-1]["completion_time"]
 
         if self.max_wait_time and t_barrier > t_start + self.max_wait_time:
-            deadline = t_start + self.max_wait_time
-            accepted = [c for c in completions if c["completion_time"] <= deadline]
-            discarded = [c for c in completions if c["completion_time"] > deadline]
-            if len(accepted) < self.min_responses:
-                return [], completions, deadline
-            t_barrier = deadline
+            return [], completions, t_start + self.max_wait_time
 
-        return accepted, discarded, t_barrier
+        return accepted, completions[self.min_responses :], t_barrier
 
     def _barrier_window(self, completions, t_start):
-        """Window barrier: accept all completions within window_duration."""
+        """
+        Window barrier: accept every client arriving within ``window_duration``.
+
+        The clock advances to the end of the window even when all clients arrive
+        early, because the server cannot know who else is still coming until the
+        window closes. Rounds therefore cost a full window whenever the quorum is
+        met — that is the defining property of this mode, not a rounding artifact.
+
+        If fewer than ``min_responses`` arrive, the round extends past the window
+        and the barrier releases the moment the quorum is reached, which is the
+        earliest point the server may proceed. Extending therefore degrades to the
+        count barrier: exactly ``min_responses`` clients are accepted, and the
+        clock stops at that arrival rather than running on to ``max_wait_time``.
+        Without a ``max_wait_time`` there is nothing to extend into, so the round
+        is skipped at the window's end.
+
+        :param completions: Completion dicts, sorted ascending by completion time.
+        :param t_start: Round start virtual time.
+        :return: Tuple of (accepted, discarded, t_barrier).
+        """
         deadline = t_start + self.window_duration
         accepted = [c for c in completions if c["completion_time"] <= deadline]
-        discarded = [c for c in completions if c["completion_time"] > deadline]
+        if len(accepted) >= self.min_responses:
+            return accepted, completions[len(accepted) :], deadline
 
-        if len(accepted) < self.min_responses:
-            if self.max_wait_time:
-                hard_deadline = t_start + self.max_wait_time
-                accepted = [
-                    c for c in completions if c["completion_time"] <= hard_deadline
-                ]
-                discarded = [
-                    c for c in completions if c["completion_time"] > hard_deadline
-                ]
-                if len(accepted) < self.min_responses:
-                    return [], completions, hard_deadline
-                t_barrier = accepted[-1]["completion_time"]
-            else:
-                return [], completions, deadline
-        else:
-            t_barrier = deadline
+        if not self.max_wait_time:
+            return [], completions, deadline
 
-        return accepted, discarded, t_barrier
+        # Too few arrived in the window: keep waiting, but only until the quorum
+        # is met. `completions` is sorted, so the first `min_responses` entries are
+        # the earliest arrivals and the last of them is when the barrier releases.
+        hard_deadline = t_start + self.max_wait_time
+        reachable = [c for c in completions if c["completion_time"] <= hard_deadline]
+        if len(reachable) < self.min_responses:
+            return [], completions, hard_deadline
+
+        accepted = completions[: self.min_responses]
+        discarded = completions[self.min_responses :]
+        return accepted, discarded, accepted[-1]["completion_time"]
 
     # ---------- aggregation ----------
     def _aggregate_round(self, accepted):

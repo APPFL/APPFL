@@ -5,6 +5,7 @@ ServerAgent / ClientAgent, so no dataset, model, or real training is needed.
 """
 
 import logging
+import random
 from collections import Counter
 
 import pytest
@@ -137,7 +138,7 @@ def test_client_profile_math():
     # bytes*8/1MiB/bw*2 = 8/100*2 = 0.16
     assert abs(p.comm_time(one_mib) - 0.16) < 1e-9
     assert abs(p.duration(0.01, 100, one_mib) - 2.16) < 1e-9
-    assert p.available(123.0) is True
+    assert p.next_available(123.0) == 123.0  # always available by default
 
 
 def test_virtual_time_monotonic_and_count():
@@ -269,3 +270,67 @@ def test_base_step_time_rescues_a_trainer_without_timing():
     d.run()
     assert len(d.history) == 5
     assert all(r["duration"] > 0 for r in d.history)
+
+
+def test_driver_does_not_touch_the_global_rng():
+    """Constructing and running a driver must not disturb the module-global RNG."""
+    random.seed(1234)
+    expected = [random.random() for _ in range(5)]
+
+    random.seed(1234)
+    _make_driver(4, 2, [1.0, 2.0, 0.5, 1.5], target=10, seed=99).run()
+    assert [random.random() for _ in range(5)] == expected
+
+
+def test_global_rng_does_not_perturb_the_driver():
+    """An unrelated consumer of `random` must not shift the dispatch order."""
+
+    def dispatch_order():
+        d = _make_driver(4, 2, [1.0, 2.0, 0.5, 1.5], target=12, seed=7)
+        d.run()
+        return [r["cid"] for r in d.history]
+
+    baseline = dispatch_order()
+    random.seed(0)
+    random.random()  # somebody else draws from the global stream
+    assert dispatch_order() == baseline
+
+
+def test_unavailable_client_is_deferred_not_spun():
+    """A client offline until T is dispatched at T, and the clock advances there."""
+
+    class _OfflineUntil(ClientProfile):
+        """C0 cannot start before t=50; everyone else is always available."""
+
+        def __init__(self, offline_until, **kw):
+            super().__init__(**kw)
+            self.offline_until = offline_until
+
+        def next_available(self, vtime):
+            return max(vtime, self.offline_until)
+
+    # Target chosen so the run outlives t=50 and C0 really is dispatched;
+    # with base_step_time=0.01 x 100 steps each round costs 1.0 virtual second.
+    server = _FakeServer(70)
+    clients = [_FakeClient(f"C{i}") for i in range(3)]
+    profiles = {
+        "C0": _OfflineUntil(50.0, compute_factor=1.0),
+        "C1": ClientProfile(compute_factor=1.0),
+        "C2": ClientProfile(compute_factor=1.0),
+    }
+    d = AsyncSimDriver(
+        server,
+        clients,
+        profiles,
+        max_in_flight=2,
+        logger=_silent_logger(),
+        seed=5,
+        base_step_time=0.01,
+    )
+    d.run()  # would hang forever on a same-instant retry
+
+    c0 = [r for r in d.history if r["cid"] == "C0"]
+    assert c0, "C0 should be dispatched once its availability window opens"
+    assert all(r["dispatch_time"] >= 50.0 for r in c0)
+    vts = [r["vtime"] for r in d.history]
+    assert vts == sorted(vts)

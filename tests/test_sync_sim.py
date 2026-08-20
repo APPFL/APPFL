@@ -352,3 +352,117 @@ def test_incompatible_scheduler_is_rejected():
             logger=_logger(),
             base_step_time=0.01,
         )
+
+
+# --- window barrier: where the clock stops on each path --- #
+def _window_barrier(min_responses, window_duration, max_wait_time, arrivals):
+    """Drive _barrier_window directly with synthetic arrival times."""
+    d = _make_sync(
+        n=len(arrivals), M=len(arrivals), factors=[1.0] * len(arrivals),
+        mode="window", min_responses=min_responses,
+        window_duration=window_duration, max_wait_time=max_wait_time,
+    )
+    completions = [
+        {"cid": f"C{i}", "completion_time": t} for i, t in enumerate(arrivals)
+    ]
+    return d._barrier_window(completions, t_start=0.0)
+
+
+def test_window_barrier_waits_out_the_window():
+    """Quorum met inside the window: the clock advances the full window."""
+    accepted, discarded, t = _window_barrier(
+        min_responses=3, window_duration=20.0, max_wait_time=None,
+        arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
+    )
+    assert [c["cid"] for c in accepted] == ["C0", "C1", "C2"]
+    assert [c["cid"] for c in discarded] == ["C3", "C4"]
+    assert t == 20.0  # the deadline, not the last arrival at 18
+
+
+def test_window_barrier_releases_when_quorum_is_reached():
+    """Quorum missed: extend past the window, but stop at the quorum arrival."""
+    accepted, discarded, t = _window_barrier(
+        min_responses=3, window_duration=15.0, max_wait_time=35.0,
+        arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
+    )
+    assert [c["cid"] for c in accepted] == ["C0", "C1", "C2"]
+    assert t == 18.0  # the 3rd arrival — not the hard deadline, not the 4th at 30
+    assert [c["cid"] for c in discarded] == ["C3", "C4"]
+
+
+def test_window_barrier_skips_when_quorum_unreachable():
+    """Not enough arrive even by the hard deadline: skip the round."""
+    accepted, _, t = _window_barrier(
+        min_responses=4, window_duration=15.0, max_wait_time=20.0,
+        arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
+    )
+    assert accepted == []
+    assert t == 20.0
+
+
+def test_window_barrier_skips_without_max_wait():
+    """No max_wait_time means nothing to extend into."""
+    accepted, _, t = _window_barrier(
+        min_responses=4, window_duration=15.0, max_wait_time=None,
+        arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
+    )
+    assert accepted == []
+    assert t == 15.0
+
+
+# --- count barrier --- #
+def _count_barrier(min_responses, max_wait_time, arrivals, n=None):
+    """Drive _barrier_count directly with synthetic arrival times."""
+    n = n or len(arrivals)
+    d = _make_sync(
+        n=n, M=n, factors=[1.0] * n, mode="count",
+        min_responses=min_responses, max_wait_time=max_wait_time,
+    )
+    completions = [
+        {"cid": f"C{i}", "completion_time": t} for i, t in enumerate(arrivals)
+    ]
+    return d._barrier_count(completions, t_start=0.0)
+
+
+def test_count_barrier_releases_at_the_quorum_arrival():
+    accepted, discarded, t = _count_barrier(
+        min_responses=3, max_wait_time=None, arrivals=[10.0, 12.0, 18.0, 30.0, 55.0]
+    )
+    assert [c["cid"] for c in accepted] == ["C0", "C1", "C2"]
+    assert [c["cid"] for c in discarded] == ["C3", "C4"]
+    assert t == 18.0
+
+
+def test_count_barrier_skips_when_quorum_is_late():
+    """Quorum arrives past the deadline: skip, never accept a partial round."""
+    accepted, _, t = _count_barrier(
+        min_responses=3, max_wait_time=15.0, arrivals=[10.0, 12.0, 18.0, 30.0, 55.0]
+    )
+    assert accepted == []  # only 2 had arrived by 15
+    assert t == 15.0
+
+
+def test_count_barrier_never_accepts_below_quorum():
+    """Fewer completions than the quorum is a skip, not a short success."""
+    accepted, discarded, t = _count_barrier(
+        min_responses=4, max_wait_time=None, arrivals=[10.0, 12.0], n=4
+    )
+    assert accepted == []
+    assert len(discarded) == 2
+    assert t == 0.0
+
+
+def test_unreachable_quorum_is_rejected():
+    """min_responses larger than the cohort could never be met."""
+    with pytest.raises(ValueError, match="exceeds the 3 client"):
+        _make_sync(n=3, M=3, factors=[1.0] * 3, mode="count", min_responses=5)
+
+
+def test_verify_barrier_respected_holds():
+    """The driver and its own verify() agree on the barrier contract."""
+    d = _make_sync(
+        n=8, M=8, factors=[float(i + 1) for i in range(8)],
+        mode="count", min_responses=5, target_rounds=5,
+    )
+    d.run()
+    assert d.verify(5)["barrier_respected"]

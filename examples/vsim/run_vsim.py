@@ -29,7 +29,7 @@ def _counts(prop, total):
     return fl
 
 
-def _afl_lib_profiles(client_ids, het):
+def _afl_lib_profiles(client_ids, het, rng):
     """Replicate AFL-Lib's device/comm heterogeneity exactly so settings match
     AFL-Lib: compute_factor = device_reference x SCALE_FACTOR (TX2/Nano/Pi),
     bandwidth sampled uniformly within WiFi/4G/5G tiers (utils/sys_utils.py)."""
@@ -41,13 +41,13 @@ def _afl_lib_profiles(client_ids, het):
     comm_prop = list(het.get("comm_prop", [1, 1, 1]))
     dev_assign = [i for i, c in enumerate(_counts(dev_prop, n)) for _ in range(c)]
     comm_assign = [i for i, c in enumerate(_counts(comm_prop, n)) for _ in range(c)]
-    random.shuffle(dev_assign)
-    random.shuffle(comm_assign)
+    rng.shuffle(dev_assign)
+    rng.shuffle(comm_assign)
     profiles = {}
     for k, cid in enumerate(client_ids):
         lo, hi = bands[comm_assign[k]]
         profiles[cid] = ClientProfile(
-            compute_factor=delays[dev_assign[k]], bandwidth=random.uniform(lo, hi)
+            compute_factor=delays[dev_assign[k]], bandwidth=rng.uniform(lo, hi)
         )
     return profiles
 
@@ -69,11 +69,17 @@ def build_profiles_from_json(client_ids, het_json):
 
 
 def build_profiles(client_ids, sim_cfg, seed):
-    """Sample a ClientProfile per client from the config heterogeneity block."""
-    random.seed(seed)
+    """
+    Sample a ClientProfile per client from the config heterogeneity block.
+
+    Draws from a private generator rather than seeding the module-global RNG, so
+    profile generation neither disturbs nor is disturbed by anything else in the
+    process that uses `random` (model init, data partitioning, the drivers).
+    """
+    rng = random.Random(seed)
     het = sim_cfg.get("heterogeneity", {}) if sim_cfg else {}
     if het.get("preset") == "afl_lib":
-        return _afl_lib_profiles(client_ids, het)
+        return _afl_lib_profiles(client_ids, het, rng)
     comp = het.get("compute", {})
     bw = het.get("bandwidth", {})
     profiles = {}
@@ -81,13 +87,13 @@ def build_profiles(client_ids, sim_cfg, seed):
         # compute_factor
         if comp.get("distribution") == "lognormal":
             pr = comp.get("params", {})
-            cf = random.lognormvariate(pr.get("mu", 0.0), pr.get("sigma", 0.5))
+            cf = rng.lognormvariate(pr.get("mu", 0.0), pr.get("sigma", 0.5))
         else:
             cf = 1.0
         # bandwidth (Mbps)
         if bw.get("distribution") == "uniform":
             pr = bw.get("params", {})
-            band = random.uniform(pr.get("lo", 150.0), pr.get("hi", 600.0))
+            band = rng.uniform(pr.get("lo", 150.0), pr.get("hi", 600.0))
         else:
             band = 300.0
         profiles[cid] = ClientProfile(compute_factor=cf, bandwidth=band)

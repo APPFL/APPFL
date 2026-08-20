@@ -21,9 +21,12 @@ next virtual event or barrier.
 - `sync_count` dispatches `participants_per_round` clients and aggregates the
   first `min_responses` virtual completions. Remaining completions are
   discarded for that round.
-- `sync_window` aggregates clients that finish within a virtual-time window. A
-  minimum response count and optional hard deadline control whether the round
-  is accepted or skipped.
+- `sync_window` aggregates clients that finish within a virtual-time window.
+  The clock always advances the full window when the round succeeds, since the
+  server cannot know who else is coming until the window closes. If fewer than
+  `min_responses` arrive, the round extends up to `max_wait_time` and releases
+  the moment the quorum is reached; if the quorum is still unreachable, or no
+  `max_wait_time` is set, the round is skipped.
 
 For each client, the basic duration is
 

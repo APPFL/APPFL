@@ -84,6 +84,17 @@ class ClientProfile:
             compute_second_per_step, num_steps, **kwargs
         ) + self.comm_time(model_bytes, **kwargs)
 
-    def available(self, vtime: float) -> bool:
-        """Return True; availability models are added by a later extension."""
-        return True
+    def next_available(self, vtime: float) -> float:
+        """
+        Return the earliest time at or after ``vtime`` when this client can start.
+
+        Always ``vtime`` here — availability modelling is a later extension. That
+        extension must return a *strictly later* time while the client is offline.
+        A boolean "is it available?" cannot express when to retry, and re-queueing
+        at the same virtual instant would spin the event loop without advancing the
+        clock; returning a time makes that mistake unwritable.
+
+        :param vtime: Virtual time at which dispatch is being attempted.
+        :return: Virtual time at which the client can begin training.
+        """
+        return vtime
