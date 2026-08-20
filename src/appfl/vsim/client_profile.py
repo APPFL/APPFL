@@ -48,9 +48,7 @@ class ClientProfile:
         """
         if self.bandwidth <= 0:
             return 0.0
-        return (
-            model_bytes * _BITS_PER_BYTE / (self.bandwidth * _BITS_PER_MEGABIT)
-        )
+        return model_bytes * _BITS_PER_BYTE / (self.bandwidth * _BITS_PER_MEGABIT)
 
     def upload_time(self, model_bytes: float, **kwargs) -> float:
         """
@@ -61,9 +59,7 @@ class ClientProfile:
         """
         if self.bandwidth <= 0:
             return 0.0
-        return (
-            model_bytes * _BITS_PER_BYTE / (self.bandwidth * _BITS_PER_MEGABIT)
-        )
+        return model_bytes * _BITS_PER_BYTE / (self.bandwidth * _BITS_PER_MEGABIT)
 
     def comm_time(self, model_bytes: float, **kwargs) -> float:
         """

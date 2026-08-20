@@ -308,14 +308,19 @@ def test_actual_training_count():
 def test_scheduler_is_told_the_accepted_count():
     """The scheduler must wait for the number that passed the barrier, not M."""
     d = _make_sync(
-        n=10, M=10, factors=[float(i + 1) for i in range(10)],
-        mode="count", min_responses=4, target_rounds=3,
+        n=10,
+        M=10,
+        factors=[float(i + 1) for i in range(10)],
+        mode="count",
+        min_responses=4,
+        target_rounds=3,
     )
     d.run()
     accepted = [r["accepted_count"] for r in d.history if not r["skipped"]]
     # every round asks for its accepted count, then restores the configured value
     asked = [
-        c for c in d.server.scheduler.requested_counts
+        c
+        for c in d.server.scheduler.requested_counts
         if c != _FakeScheduler.CONFIGURED_NUM_CLIENTS
     ]
     assert asked == accepted
@@ -324,8 +329,12 @@ def test_scheduler_is_told_the_accepted_count():
 def test_scheduler_state_is_restored():
     """The driver leaves the scheduler as it found it."""
     d = _make_sync(
-        n=6, M=6, factors=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
-        mode="count", min_responses=3, target_rounds=3,
+        n=6,
+        M=6,
+        factors=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        mode="count",
+        min_responses=3,
+        target_rounds=3,
     )
     d.run()
     assert d.server.scheduler.num_clients == _FakeScheduler.CONFIGURED_NUM_CLIENTS
@@ -358,9 +367,13 @@ def test_incompatible_scheduler_is_rejected():
 def _window_barrier(min_responses, window_duration, max_wait_time, arrivals):
     """Drive _barrier_window directly with synthetic arrival times."""
     d = _make_sync(
-        n=len(arrivals), M=len(arrivals), factors=[1.0] * len(arrivals),
-        mode="window", min_responses=min_responses,
-        window_duration=window_duration, max_wait_time=max_wait_time,
+        n=len(arrivals),
+        M=len(arrivals),
+        factors=[1.0] * len(arrivals),
+        mode="window",
+        min_responses=min_responses,
+        window_duration=window_duration,
+        max_wait_time=max_wait_time,
     )
     completions = [
         {"cid": f"C{i}", "completion_time": t} for i, t in enumerate(arrivals)
@@ -371,7 +384,9 @@ def _window_barrier(min_responses, window_duration, max_wait_time, arrivals):
 def test_window_barrier_waits_out_the_window():
     """Quorum met inside the window: the clock advances the full window."""
     accepted, discarded, t = _window_barrier(
-        min_responses=3, window_duration=20.0, max_wait_time=None,
+        min_responses=3,
+        window_duration=20.0,
+        max_wait_time=None,
         arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
     )
     assert [c["cid"] for c in accepted] == ["C0", "C1", "C2"]
@@ -382,7 +397,9 @@ def test_window_barrier_waits_out_the_window():
 def test_window_barrier_releases_when_quorum_is_reached():
     """Quorum missed: extend past the window, but stop at the quorum arrival."""
     accepted, discarded, t = _window_barrier(
-        min_responses=3, window_duration=15.0, max_wait_time=35.0,
+        min_responses=3,
+        window_duration=15.0,
+        max_wait_time=35.0,
         arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
     )
     assert [c["cid"] for c in accepted] == ["C0", "C1", "C2"]
@@ -393,7 +410,9 @@ def test_window_barrier_releases_when_quorum_is_reached():
 def test_window_barrier_skips_when_quorum_unreachable():
     """Not enough arrive even by the hard deadline: skip the round."""
     accepted, _, t = _window_barrier(
-        min_responses=4, window_duration=15.0, max_wait_time=20.0,
+        min_responses=4,
+        window_duration=15.0,
+        max_wait_time=20.0,
         arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
     )
     assert accepted == []
@@ -403,7 +422,9 @@ def test_window_barrier_skips_when_quorum_unreachable():
 def test_window_barrier_skips_without_max_wait():
     """No max_wait_time means nothing to extend into."""
     accepted, _, t = _window_barrier(
-        min_responses=4, window_duration=15.0, max_wait_time=None,
+        min_responses=4,
+        window_duration=15.0,
+        max_wait_time=None,
         arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
     )
     assert accepted == []
@@ -415,8 +436,12 @@ def _count_barrier(min_responses, max_wait_time, arrivals, n=None):
     """Drive _barrier_count directly with synthetic arrival times."""
     n = n or len(arrivals)
     d = _make_sync(
-        n=n, M=n, factors=[1.0] * n, mode="count",
-        min_responses=min_responses, max_wait_time=max_wait_time,
+        n=n,
+        M=n,
+        factors=[1.0] * n,
+        mode="count",
+        min_responses=min_responses,
+        max_wait_time=max_wait_time,
     )
     completions = [
         {"cid": f"C{i}", "completion_time": t} for i, t in enumerate(arrivals)
@@ -461,8 +486,12 @@ def test_unreachable_quorum_is_rejected():
 def test_verify_barrier_respected_holds():
     """The driver and its own verify() agree on the barrier contract."""
     d = _make_sync(
-        n=8, M=8, factors=[float(i + 1) for i in range(8)],
-        mode="count", min_responses=5, target_rounds=5,
+        n=8,
+        M=8,
+        factors=[float(i + 1) for i in range(8)],
+        mode="count",
+        min_responses=5,
+        target_rounds=5,
     )
     d.run()
     assert d.verify(5)["barrier_respected"]

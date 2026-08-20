@@ -157,7 +157,7 @@ class BaseSimDriver:
             f"Client {cid} reported {key}={value!r}, so its virtual duration cannot "
             f"be computed. Virtual durations come from trainer metadata: "
             f"`current_local_steps` and `compute_second_per_step`, which "
-            f"VanillaTrainer reports in both \"step\" and \"epoch\" mode. Use a "
+            f'VanillaTrainer reports in both "step" and "epoch" mode. Use a '
             f"trainer that reports them, or set `base_step_time` under "
             f"`server_configs.simulator` to supply a fixed per-step time (a step "
             f"count is still required from the trainer)."
