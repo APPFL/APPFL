@@ -1,5 +1,5 @@
 # Virtual-time sync FL simulator config — time-window mode
-# Dispatch M clients per round, aggregate all arriving within window_duration.
+# Dispatch participants_per_round clients, aggregate all arriving within window_duration.
 # Run: cd examples && python vsim/run_vsim.py --server_config vsim/config_vsim_sync_window.yaml \
 #        --num_clients 10 --mode sync_window --base_step_time 0.003 --verify
 client_configs:
@@ -21,7 +21,7 @@ client_configs:
     clip_grad: False
     clip_value: 1
     clip_norm: 1
-    send_gradient: True
+    send_gradient: False   # FedAvgAggregator averages weights, not deltas
     train_batch_size: 64
     val_batch_size: 64
     train_data_shuffle: True
@@ -35,9 +35,6 @@ client_configs:
       num_classes: 10
       num_pixel: 28
 
-  comm_configs:
-    compressor_configs:
-      enable_compression: False
 
 server_configs:
   num_clients: 10
@@ -48,7 +45,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 100
+  num_global_epochs: 10
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 
@@ -56,7 +53,7 @@ server_configs:
     seed: 42
     mode: "sync_window"
     sync:
-      participants_per_round: 10    # M: dispatch all 10
+      participants_per_round: 10    # dispatch all 10
       min_responses: 5              # minimum to aggregate (skip if fewer)
       window_duration: 30.0         # time window (seconds)
       max_wait_time: 60.0           # hard deadline if min_responses not met in window

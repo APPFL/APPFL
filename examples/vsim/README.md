@@ -12,12 +12,15 @@ next virtual event or barrier.
 
 ## Modes
 
-- `async` keeps up to `max_concurrency` clients virtually in flight. A min-heap
+- `async` keeps up to `max_in_flight` clients virtually in flight. A min-heap
   orders completion events, and updates reach the APPFL server in virtual
   arrival order. This reconstructs asynchronous completion order and staleness
-  although local training is physically serial.
-- `sync_count` dispatches M clients and aggregates the first K virtual
-  completions. Remaining completions are discarded for that round.
+  although local training is physically serial. Note that every arrival
+  aggregates on its own: `max_in_flight` bounds outstanding updates, it is not
+  a quorum.
+- `sync_count` dispatches `participants_per_round` clients and aggregates the
+  first `min_responses` virtual completions. Remaining completions are
+  discarded for that round.
 - `sync_window` aggregates clients that finish within a virtual-time window. A
   minimum response count and optional hard deadline control whether the round
   is accepted or skipped.
@@ -66,7 +69,7 @@ server_configs:
   simulator:
     seed: 42
     mode: async                 # async | sync_count | sync_window
-    max_concurrency: 4          # async: virtual in-flight limit K
+    max_in_flight: 4            # async: dispatched but not yet arrived
     base_step_time: null        # seconds/step; null uses trainer measurement
     eval_every: 0               # 0 disables global validation
     heterogeneity:
@@ -77,14 +80,14 @@ server_configs:
         distribution: uniform
         params: {lo: 150.0, hi: 600.0}  # Mbps
     sync:
-      participants_per_round: 10  # M
-      min_responses: 8             # K
+      participants_per_round: 10   # dispatched each round
+      min_responses: 8             # needed before the round is accepted
       window_duration: 30.0        # seconds; required by sync_window
       max_wait_time: 60.0          # optional hard deadline in seconds
 ```
 
 Important command-line overrides are `--mode`, `--num_clients`, `--device`,
-`--seed`, `--max_concurrency`, `--base_step_time`, `--num_global_epochs`,
+`--seed`, `--max_in_flight`, `--base_step_time`, `--num_global_epochs`,
 `--num_local_steps`, `--eval_every`, and `--verify`. Run
 `python vsim/run_vsim.py --help` for the complete list.
 

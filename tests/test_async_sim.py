@@ -1,4 +1,4 @@
-"""Unit tests for the virtual-time async FL simulator (appfl.simulator).
+"""Unit tests for the virtual-time async FL simulator (appfl.vsim).
 
 These test the core event-queue logic in isolation using lightweight fakes for
 ServerAgent / ClientAgent, so no dataset, model, or real training is needed.
@@ -7,7 +7,7 @@ ServerAgent / ClientAgent, so no dataset, model, or real training is needed.
 import logging
 from collections import Counter
 
-from appfl.simulator import AsyncSimDriver, ClientProfile
+from appfl.vsim import AsyncSimDriver, ClientProfile
 
 
 # --------------------------- fakes --------------------------- #
@@ -84,7 +84,7 @@ def _make_driver(
         server,
         clients,
         profiles,
-        max_concurrency=K,
+        max_in_flight=K,
         logger=_silent_logger(),
         seed=seed,
         base_step_time=base_step_time,
@@ -136,15 +136,16 @@ def test_heterogeneity_fast_completes_more():
     assert c["C0"] > c["C1"]
 
 
-def test_concurrency_never_exceeds_K():
+def test_in_flight_never_exceeds_limit():
     class _CapDriver(AsyncSimDriver):
         def _dispatch_idle(self):
             super()._dispatch_idle()
-            self._maxK = max(getattr(self, "_maxK", 0), len(self.active))
+            self._peak = max(getattr(self, "_peak", 0), len(self.active))
 
-    K = 3
+    limit = 3
     d = _make_driver(
-        8, K, [1, 2, 3, 1, 2, 3, 1, 2], target=40, seed=5, driver_cls=_CapDriver
+        8, limit, [1, 2, 3, 1, 2, 3, 1, 2], target=40, seed=5, driver_cls=_CapDriver
     )
     d.run()
-    assert d._maxK <= K
+    assert d._peak <= limit
+    assert d.verify(40)["in_flight<=max_in_flight"]

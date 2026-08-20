@@ -1,5 +1,5 @@
 # Virtual-time sync FL simulator config — count-based mode
-# Dispatch M clients per round, aggregate first K completions.
+# Dispatch participants_per_round clients, aggregate the first min_responses completions.
 # Run: cd examples && python vsim/run_vsim.py --server_config vsim/config_vsim_sync_count.yaml \
 #        --num_clients 10 --mode sync_count --base_step_time 0.003 --verify
 client_configs:
@@ -21,7 +21,7 @@ client_configs:
     clip_grad: False
     clip_value: 1
     clip_norm: 1
-    send_gradient: True
+    send_gradient: False
     train_batch_size: 64
     val_batch_size: 64
     train_data_shuffle: True
@@ -35,10 +35,6 @@ client_configs:
       num_classes: 10
       num_pixel: 28
 
-  comm_configs:
-    compressor_configs:
-      enable_compression: False
-
 server_configs:
   num_clients: 10
   scheduler: "SyncScheduler"
@@ -48,7 +44,7 @@ server_configs:
   aggregator_kwargs:
     client_weights_mode: "equal"
   device: "cpu"
-  num_global_epochs: 100
+  num_global_epochs: 10
   logging_output_dirname: "./output"
   logging_output_filename: "result"
 
@@ -56,8 +52,8 @@ server_configs:
     seed: 42
     mode: "sync_count"
     sync:
-      participants_per_round: 10    # M: dispatch all 10
-      min_responses: 8              # K: aggregate first 8
+      participants_per_round: 10    # dispatch all 10
+      min_responses: 8              # aggregate the first 8 to arrive
       max_wait_time: 120.0          # hard deadline (seconds)
     heterogeneity:
       compute:

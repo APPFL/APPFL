@@ -5,7 +5,7 @@ Uses the same lightweight fakes as test_async_sim.py.
 
 import logging
 
-from appfl.simulator import SyncSimDriver, ClientProfile
+from appfl.vsim import SyncSimDriver, ClientProfile
 
 
 # --------------------------- fakes --------------------------- #

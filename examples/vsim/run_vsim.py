@@ -8,15 +8,13 @@ Run from the examples/ directory (relative ./resources paths in the config):
     python vsim/run_vsim.py --num_clients 2 --seed 42
 """
 
-import os
 import argparse
-import logging
 import random
 from datetime import datetime
 
 from omegaconf import OmegaConf
 from appfl.agent import ServerAgent, ClientAgent
-from appfl.simulator import AsyncSimDriver, SyncSimDriver, ClientProfile
+from appfl.vsim import AsyncSimDriver, SyncSimDriver, ClientProfile, VsimLogger
 
 
 def _counts(prop, total):
@@ -147,10 +145,11 @@ def main():
         help="override server_configs.num_global_epochs",
     )
     parser.add_argument(
-        "--max_concurrency",
+        "--max_in_flight",
         type=int,
         default=None,
-        help="override simulator.max_concurrency (K)",
+        help="override simulator.max_in_flight (async: clients dispatched "
+        "but not yet arrived)",
     )
     parser.add_argument(
         "--num_local_steps",
@@ -193,17 +192,7 @@ def main():
 
     # ---- logger (console + file) ----
     log_dir = f"./vsim_logs/run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    os.makedirs(log_dir, exist_ok=True)
-    logger = logging.getLogger("vsim")
-    logger.setLevel(logging.INFO)
-    logger.handlers.clear()
-    fmt = logging.Formatter("[%(asctime)s vsim] %(message)s", "%H:%M:%S")
-    sh = logging.StreamHandler()
-    sh.setFormatter(fmt)
-    logger.addHandler(sh)
-    fh = logging.FileHandler(os.path.join(log_dir, "vsim.log"))
-    fh.setFormatter(fmt)
-    logger.addHandler(fh)
+    logger = VsimLogger(logging_id="vsim", file_dir=log_dir, file_name="vsim")
 
     # ---- configs ----
     server_config = OmegaConf.load(args.server_config)
@@ -217,10 +206,10 @@ def main():
         )
     sim_cfg = server_config.server_configs.get("simulator", {})
     seed = args.seed if args.seed is not None else sim_cfg.get("seed", 42)
-    max_conc = (
-        args.max_concurrency
-        if args.max_concurrency is not None
-        else sim_cfg.get("max_concurrency", args.num_clients)
+    max_in_flight = (
+        args.max_in_flight
+        if args.max_in_flight is not None
+        else sim_cfg.get("max_in_flight", args.num_clients)
     )
     base_step_time = (
         args.base_step_time
@@ -282,10 +271,15 @@ def main():
         profiles = build_profiles_from_json(client_ids, args.het_json)
     else:
         profiles = build_profiles(client_ids, sim_cfg, seed)
+    logger.log_banner("Client system profiles")
+    logger.log_title(["client", "slowdown", "bw_Mbps"])
     for cid, prof in profiles.items():
-        logger.info(
-            f"profile {cid:>10}: compute_factor={prof.compute_factor:.3f}, "
-            f"bandwidth={prof.bandwidth:.1f} Mbps"
+        logger.log_content(
+            {
+                "client": cid,
+                "slowdown": prof.compute_factor,
+                "bw_Mbps": prof.bandwidth,
+            }
         )
 
     target_epochs = server_config.server_configs.get("num_global_epochs", 100)
@@ -309,7 +303,7 @@ def main():
 
     if mode == "async":
         driver = AsyncSimDriver(
-            max_concurrency=max_conc,
+            max_in_flight=max_in_flight,
             **common_kw,
         )
     else:
@@ -375,16 +369,17 @@ def main():
     if args.verify:
         target = target_epochs
         checks = driver.verify(target)
-        logger.info("VERIFY (virtual-time invariants):")
+        logger.log_banner("Virtual-time invariant checks")
         for name, ok in checks.items():
             if isinstance(ok, bool):
-                logger.info(f"  [{'PASS' if ok else 'FAIL'}] {name}")
+                line = f"  {'PASS' if ok else 'FAIL'}  {name}"
+                logger.info(line) if ok else logger.error(line)
             else:
-                logger.info(f"  [INFO] {name} = {ok}")
-        bool_checks = {k: v for k, v in checks.items() if isinstance(v, bool)}
-        logger.info(
-            f"VERIFY result: {'ALL PASS' if all(bool_checks.values()) else 'SOME FAILED'} "
-            f"(max_active={driver._max_active}/{driver.K})"
+                logger.info(f"  INFO  {name} = {ok}")
+        bool_checks = [v for v in checks.values() if isinstance(v, bool)]
+        logger.log_banner(
+            "ALL CHECKS PASSED" if all(bool_checks) else "SOME CHECKS FAILED",
+            {"max_active": driver._max_active},
         )
     logger.info(f"log dir: {log_dir}")
 

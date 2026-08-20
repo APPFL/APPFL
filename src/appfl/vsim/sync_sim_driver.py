@@ -1,8 +1,10 @@
 """Virtual-time synchronous FL simulator driver (v3).
 
 Two modes:
-  - count:  dispatch M clients, aggregate first K completions (over-selection)
-  - window: dispatch M clients, aggregate all arriving within window_duration
+  - count:  dispatch `participants_per_round` clients, aggregate the first
+            `min_responses` completions (over-selection)
+  - window: dispatch `participants_per_round` clients, aggregate all arriving
+            within window_duration
 
 Both modes support max_wait_time (hard deadline) and min_responses (skip round
 if fewer arrive).
@@ -19,8 +21,9 @@ from .base_sim_driver import BaseSimDriver
 class SyncSimDriver(BaseSimDriver):
     """Virtual-time synchronous FL simulation driver.
 
-    Supports two barrier modes: **count** (aggregate first K of M completions)
-    and **window** (aggregate all arrivals within a fixed time window).
+    Supports two barrier modes: **count** (aggregate the first `min_responses`
+    of `participants_per_round` completions) and **window** (aggregate all
+    arrivals within a fixed time window).
     """
 
     def __init__(
@@ -44,14 +47,16 @@ class SyncSimDriver(BaseSimDriver):
             server_agent,
             client_agents,
             profiles,
-            max_concurrency=participants_per_round,
             logger=logger,
             seed=seed,
             base_step_time=base_step_time,
             eval_every=eval_every,
         )
+        self.participants_per_round = max(1, int(participants_per_round))
         self.mode = mode
-        self.min_responses = min_responses if min_responses is not None else self.K
+        self.min_responses = (
+            min_responses if min_responses is not None else self.participants_per_round
+        )
         self.max_wait_time = max_wait_time
         self.window_duration = window_duration
         self._target_rounds = target_rounds
@@ -62,16 +67,17 @@ class SyncSimDriver(BaseSimDriver):
             raise ValueError("mode='window' requires window_duration")
 
         self.logger.info(
-            f"  sync mode={mode}, M={self.K}, min_responses={self.min_responses}, "
+            f"  sync mode={mode}, participants_per_round={self.participants_per_round}, "
+            f"min_responses={self.min_responses}, "
             f"max_wait={max_wait_time}, window={window_duration}, "
             f"target_rounds={target_rounds}"
         )
 
     # ---------- participant selection ----------
     def _select_participants(self):
-        """Select M participants for the current round."""
+        """Select this round's cohort of `participants_per_round` clients."""
         all_ids = list(self.clients.keys())
-        participant_count = min(self.K, len(all_ids))
+        participant_count = min(self.participants_per_round, len(all_ids))
         return random.sample(all_ids, participant_count)
 
     # ---------- duration computation ----------
@@ -135,14 +141,13 @@ class SyncSimDriver(BaseSimDriver):
         return self._barrier_window(completions, t_start)
 
     def _barrier_count(self, completions, t_start):
-        """Count barrier: accept first K completions, subject to max_wait_time."""
-        K = self.min_responses
-        if len(completions) < K:
+        """Count barrier: accept the first `min_responses` completions, subject to max_wait_time."""
+        if len(completions) < self.min_responses:
             t = completions[-1]["completion_time"] if completions else t_start
             return completions, [], t
 
-        accepted = completions[:K]
-        discarded = completions[K:]
+        accepted = completions[: self.min_responses]
+        discarded = completions[self.min_responses :]
         t_barrier = accepted[-1]["completion_time"]
 
         if self.max_wait_time and t_barrier > t_start + self.max_wait_time:
@@ -227,7 +232,14 @@ class SyncSimDriver(BaseSimDriver):
         if not selected:
             step = self.max_wait_time or self.window_duration or 10.0
             self.virtual_time = t_start + step
-            self.logger.info(f"[round={self._round}] SKIP — no available clients")
+            self.logger.log_content(
+                {
+                    "round": self._round,
+                    "vtime": self.virtual_time,
+                    "status": "SKIP",
+                    "note": "no clients",
+                }
+            )
             self._record_round(t_start, self.virtual_time, [], [], skipped=True)
             return False
 
@@ -237,9 +249,15 @@ class SyncSimDriver(BaseSimDriver):
         self.virtual_time = t_barrier
 
         if not accepted:
-            self.logger.info(
-                f"[round={self._round}] SKIP — "
-                f"{len(completions)} dispatched, 0 met deadline"
+            self.logger.log_content(
+                {
+                    "round": self._round,
+                    "vtime": t_barrier,
+                    "status": "SKIP",
+                    "dispatched": len(completions),
+                    "accepted": 0,
+                    "note": "missed deadline",
+                }
             )
             self._record_round(t_start, t_barrier, [], discarded, skipped=True)
             return False
@@ -255,22 +273,39 @@ class SyncSimDriver(BaseSimDriver):
                 self.history[-1]["global_val_loss"] = g[0]
                 self.history[-1]["global_val_accuracy"] = g[1]
                 self.logger.info(
-                    f"[round={self._round}] GLOBAL "
-                    f"val_acc={g[1]:.2f} val_loss={g[0]:.4f}"
+                    f"global eval @ round {self._round}: "
+                    f"val_acc={g[1]:.4f}  val_loss={g[0]:.4f}"
                 )
 
-        round_comm_mb = self.history[-1]["comm_bytes"] / 1e6
-        self.logger.info(
-            f"[round={self._round}] vt={t_barrier:9.2f} "
-            f"accepted={len(accepted)}/{len(selected)} "
-            f"round_dur={t_barrier - t_start:.2f} "
-            f"comm={round_comm_mb:.1f}MB"
+        self.logger.log_content(
+            {
+                "round": self._round,
+                "vtime": t_barrier,
+                "status": "OK",
+                "dispatched": len(selected),
+                "accepted": len(accepted),
+                "duration": t_barrier - t_start,
+                "comm_MB": self.history[-1]["comm_bytes"] / 1e6,
+            }
         )
         return True
 
     # ---------- main loop ----------
     def run(self):
         """Run the sync simulation for target_rounds, skipping rounds with no available clients."""
+        self.logger.log_title(
+            [
+                "round",
+                "vtime",
+                "status",
+                "dispatched",
+                "accepted",
+                "duration",
+                "comm_MB",
+                "note",
+            ],
+            repeat=True,
+        )
         max_skips = self._target_rounds * 3
         while self._round < self._target_rounds:
             success = self._run_round()
@@ -286,12 +321,14 @@ class SyncSimDriver(BaseSimDriver):
                     break
             if self.server.training_finished():
                 break
-        total_comm_gb = self._total_comm_bytes / 1e9
-        self.logger.info(
-            f"Simulation finished: rounds={self._round}, "
-            f"skipped={self._skipped_rounds}, "
-            f"virtual_time={self.virtual_time:.2f}, "
-            f"total_comm={total_comm_gb:.2f}GB"
+        self.logger.log_banner(
+            "Simulation finished",
+            {
+                "rounds": self._round,
+                "skipped": self._skipped_rounds,
+                "virtual_time": f"{self.virtual_time:.2f}s",
+                "total_comm": f"{self._total_comm_bytes / 1e9:.2f} GB",
+            },
         )
 
     # ---------- verification (override) ----------
@@ -313,7 +350,8 @@ class SyncSimDriver(BaseSimDriver):
                 r["accepted_count"] >= self.min_responses for r in non_skipped
             ),
             "durations_positive": all(r["duration"] > 0 for r in self.history),
-            "concurrency<=M": self._max_active <= self.K,
+            "participants<=participants_per_round": self._max_active
+            <= self.participants_per_round,
         }
         if self._skipped_rounds > 0:
             checks["skipped_rounds"] = self._skipped_rounds

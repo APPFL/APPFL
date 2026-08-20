@@ -70,7 +70,7 @@ server_configs:
   simulator:
     backend: "virtual_time"
     seed: 42
-    max_concurrency: 2          # >=2 (K=1 is round-robin -> no async dynamics)
+    max_in_flight: 2            # >=2 (1 is round-robin -> no async dynamics)
     base_step_time: null        # null -> trainer's measured compute_second_per_step
     heterogeneity:
       compute:

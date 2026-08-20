@@ -31,22 +31,28 @@ class AsyncSimDriver(BaseSimDriver):
         server_agent,
         client_agents: List,
         profiles: Dict,
-        max_concurrency: int,
+        max_in_flight: int,
         logger,
         seed: int = 42,
         base_step_time: Optional[float] = None,
         eval_every: int = 0,
     ):
+        """
+        :param max_in_flight: Maximum clients dispatched but not yet arrived.
+            Nothing runs concurrently — training is strictly serial — so this
+            bounds *virtual* outstanding updates, not physical parallelism.
+        """
         super().__init__(
             server_agent,
             client_agents,
             profiles,
-            max_concurrency,
             logger,
             seed=seed,
             base_step_time=base_step_time,
             eval_every=eval_every,
         )
+        self.max_in_flight = max(1, int(max_in_flight))
+        self.logger.info(f"  async max_in_flight={self.max_in_flight}")
 
     # ---------- async-specific helpers ----------
     def _cur_epoch(self) -> int:
@@ -58,8 +64,8 @@ class AsyncSimDriver(BaseSimDriver):
         return self.server.training_finished()
 
     def _dispatch_idle(self):
-        """Fill empty concurrency slots by dispatching idle clients."""
-        need = self.K - len(self.active)
+        """Refill in-flight slots up to `max_in_flight` from the idle pool."""
+        need = self.max_in_flight - len(self.active)
         if need <= 0:
             return
         idle = [cid for cid in self.clients if cid not in self.active]
@@ -73,6 +79,20 @@ class AsyncSimDriver(BaseSimDriver):
     # ---------- main loop ----------
     def run(self):
         """Run the async simulation: pop events from the min-heap until done."""
+        self.logger.log_title(
+            [
+                "vtime",
+                "event",
+                "client",
+                "duration",
+                "compute",
+                "comm",
+                "epoch",
+                "staleness",
+                "val_acc",
+            ],
+            repeat=True,
+        )
         self._dispatch_idle()
         while not self._training_finished() and self.queue:
             vtime, _, etype, cid = heapq.heappop(self.queue)
@@ -84,11 +104,14 @@ class AsyncSimDriver(BaseSimDriver):
                 self._handle_train_start(cid, vtime)
             elif etype == "train_complete":
                 self._handle_train_complete(cid, vtime)
-        total_comm_gb = self._total_comm_bytes / 1e9
-        self.logger.info(
-            f"Simulation finished: virtual_time={self.virtual_time:.2f}, "
-            f"global_epochs={self._cur_epoch()}, completions={len(self.history)}, "
-            f"total_comm={total_comm_gb:.2f}GB"
+        self.logger.log_banner(
+            "Simulation finished",
+            {
+                "virtual_time": f"{self.virtual_time:.2f}s",
+                "global_epochs": self._cur_epoch(),
+                "completions": len(self.history),
+                "total_comm": f"{self._total_comm_bytes / 1e9:.2f} GB",
+            },
         )
 
     # ---------- event handlers ----------
@@ -138,9 +161,15 @@ class AsyncSimDriver(BaseSimDriver):
             "duration": dur,
         }
         self._push(completion, "train_complete", cid)
-        self.logger.info(
-            f"[vt={dispatch_time:9.2f}] START  {cid:>10} "
-            f"dur={dur:8.2f} (compute={comp:.2f}+comm={comm:.2f})"
+        self.logger.log_content(
+            {
+                "vtime": dispatch_time,
+                "event": "START",
+                "client": cid,
+                "duration": dur,
+                "compute": comp,
+                "comm": comm,
+            }
         )
 
     def _handle_train_complete(self, cid: str, completion_time: float):
@@ -186,12 +215,15 @@ class AsyncSimDriver(BaseSimDriver):
             < 1e-9,
             "comm_bytes": comm_bytes,
         }
-        acc_str = (
-            f"{val_acc:.2f}" if isinstance(val_acc, (int, float)) else str(val_acc)
-        )
-        self.logger.info(
-            f"[vt={completion_time:9.2f}] DONE   {cid:>10} epoch={epoch_now:3d} "
-            f"staleness={staleness:2d} val_acc={acc_str}"
+        self.logger.log_content(
+            {
+                "vtime": completion_time,
+                "event": "DONE",
+                "client": cid,
+                "epoch": epoch_now,
+                "staleness": staleness,
+                "val_acc": val_acc if isinstance(val_acc, (int, float)) else "-",
+            }
         )
 
         if self.eval_every and (epoch_now % self.eval_every == 0):
@@ -199,9 +231,21 @@ class AsyncSimDriver(BaseSimDriver):
             if g is not None:
                 rec["global_val_loss"], rec["global_val_accuracy"] = g
                 self.logger.info(
-                    f"[vt={completion_time:9.2f}] GLOBAL epoch={epoch_now:3d} "
-                    f"global_val_acc={g[1]:.2f} global_val_loss={g[0]:.4f}"
+                    f"global eval @ epoch {epoch_now}: "
+                    f"val_acc={g[1]:.4f}  val_loss={g[0]:.4f}"
                 )
 
         self.history.append(rec)
         self._dispatch_idle()
+
+    # ---------- verification ----------
+    def verify(self, target_epochs):
+        """
+        Run the shared invariant checks plus the async in-flight bound.
+
+        :param target_epochs: Expected number of completed global updates.
+        :return: Dict of check_name → bool (pass/fail) or int (info).
+        """
+        checks = super().verify(target_epochs)
+        checks["in_flight<=max_in_flight"] = self._max_active <= self.max_in_flight
+        return checks

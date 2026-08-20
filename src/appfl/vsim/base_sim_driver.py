@@ -9,6 +9,8 @@ import heapq
 import random
 from typing import Dict, List, Optional
 
+from .logger import ensure_table_logger
+
 
 class BaseSimDriver:
     """Base class for virtual-time FL simulation drivers.
@@ -23,7 +25,6 @@ class BaseSimDriver:
         server_agent,
         client_agents: List,
         profiles: Dict,
-        max_concurrency: int,
         logger,
         seed: int = 42,
         base_step_time: Optional[float] = None,
@@ -32,10 +33,14 @@ class BaseSimDriver:
         """
         Initialize the simulation driver with server/client agents and models.
 
+        Note that the base class deliberately owns no client-count limit: the
+        async driver bounds clients *in flight*, while the sync driver sizes a
+        *per-round cohort*. Those are different quantities, so each subclass
+        names and verifies its own.
+
         :param server_agent: APPFL ServerAgent instance.
         :param client_agents: List of APPFL ClientAgent instances.
         :param profiles: Dict mapping client_id to ClientProfile.
-        :param max_concurrency: K — maximum concurrent in-flight clients.
         :param logger: Python logger for simulation output.
         :param seed: RNG seed for reproducibility.
         :param base_step_time: Fixed per-step compute time (s); None = measured.
@@ -45,8 +50,7 @@ class BaseSimDriver:
         self.server = server_agent
         self.clients = {c.get_id(): c for c in client_agents}
         self.profiles = profiles
-        self.K = max(1, int(max_concurrency))
-        self.logger = logger
+        self.logger = ensure_table_logger(logger)
         self.base_step_time = base_step_time
         self.eval_every = int(eval_every) if eval_every else 0
 
@@ -67,10 +71,15 @@ class BaseSimDriver:
         for client in client_agents:
             client.load_parameters(init_model)
 
-        self.logger.info(
-            f"{type(self).__name__} init: clients={len(self.clients)}, K={self.K}, "
-            f"model_bytes={self._model_bytes} (~{self._model_bytes / 1e6:.2f} MB), "
-            f"seed={seed}"
+        self.logger.log_banner(
+            f"APPFL virtual-time simulation — {type(self).__name__}",
+            {
+                "clients": len(self.clients),
+                "model": f"{self._model_bytes / 1e6:.2f} MB",
+                "step_time": "measured" if base_step_time is None else f"{base_step_time}s",
+                "eval_every": self.eval_every or "off",
+                "seed": seed,
+            },
         )
 
     # ---------- utilities ----------
@@ -117,7 +126,9 @@ class BaseSimDriver:
     # ---------- verification ----------
     def verify(self, target_epochs):
         """
-        Run post-simulation invariant checks.
+        Run post-simulation invariant checks common to every driver.
+
+        Subclasses add whatever bound applies to their own client-count limit.
 
         :param target_epochs: Expected number of completed global updates.
         :return: Dict of check_name → bool (pass/fail) or int (info).
@@ -129,7 +140,6 @@ class BaseSimDriver:
                 r.get("completion_ok", False) for r in self.history
             ),
             "completions==target": len(self.history) == target_epochs,
-            "concurrency<=K": self._max_active <= self.K,
             "staleness_nonneg_int": all(
                 isinstance(r["staleness"], int) and r["staleness"] >= 0
                 for r in self.history
