@@ -1,0 +1,497 @@
+"""Unit tests for the virtual-time sync FL simulator (SyncSimDriver).
+
+Uses the same lightweight fakes as test_async_sim.py.
+"""
+
+import logging
+
+import pytest
+
+from appfl.vsim import SyncSimDriver, ClientProfile
+
+
+# --------------------------- fakes --------------------------- #
+class _FakeScheduler:
+    """Mirrors SyncScheduler's public surface: a settable response count."""
+
+    CONFIGURED_NUM_CLIENTS = 99
+
+    def __init__(self):
+        self.epochs = 0
+        self.num_clients = self.CONFIGURED_NUM_CLIENTS
+        self.requested_counts = []
+
+    def get_num_global_epochs(self):
+        return self.epochs
+
+    def set_num_clients(self, num_clients):
+        self.num_clients = num_clients
+        self.requested_counts.append(num_clients)
+
+
+class _FakeServer:
+    def __init__(self, target_epochs):
+        self.scheduler = _FakeScheduler()
+        self.target = target_epochs
+        self.model = None
+        self._epochs = 0
+
+    def get_parameters(self, **kw):
+        return {}
+
+    def global_update(self, client_id, local_model, blocking=False, **kw):
+        self._epochs += 1
+        self.scheduler.epochs = self._epochs
+        return {}
+
+    def training_finished(self, **kw):
+        return self._epochs >= self.target
+
+    def server_validate(self):
+        return None
+
+
+class _FakeClient:
+    def __init__(self, cid, cps=0.01, steps=100, acc=90.0):
+        self.cid, self.cps, self.steps, self.acc = cid, cps, steps, acc
+
+    def get_id(self):
+        return self.cid
+
+    def load_parameters(self, p):
+        pass
+
+    def train(self, **kw):
+        pass
+
+    def get_parameters(self):
+        return (
+            {},
+            {
+                "current_local_steps": self.steps,
+                "compute_second_per_step": self.cps,
+                "val_accuracy": self.acc,
+            },
+        )
+
+
+def _logger():
+    lg = logging.getLogger("vsim_sync_test")
+    lg.handlers.clear()
+    lg.addHandler(logging.NullHandler())
+    lg.setLevel(logging.CRITICAL)
+    return lg
+
+
+def _make_sync(
+    n,
+    M,
+    factors,
+    mode="count",
+    min_responses=None,
+    max_wait_time=None,
+    window_duration=None,
+    target_rounds=10,
+    seed=42,
+    base_step_time=0.01,
+):
+    server = _FakeServer(target_rounds * 100)
+    clients = [_FakeClient(f"C{i}") for i in range(n)]
+    profiles = {
+        f"C{i}": ClientProfile(compute_factor=factors[i], bandwidth=300.0)
+        for i in range(n)
+    }
+    return SyncSimDriver(
+        server_agent=server,
+        client_agents=clients,
+        profiles=profiles,
+        participants_per_round=M,
+        logger=_logger(),
+        seed=seed,
+        base_step_time=base_step_time,
+        mode=mode,
+        min_responses=min_responses,
+        max_wait_time=max_wait_time,
+        window_duration=window_duration,
+        target_rounds=target_rounds,
+    )
+
+
+# ======================== tests ======================== #
+
+
+def test_count_basic_round_count():
+    """Count mode: 5 clients, M=5, K=3, 10 rounds → exactly 10 completed."""
+    d = _make_sync(
+        n=5, M=5, factors=[1.0] * 5, mode="count", min_responses=3, target_rounds=10
+    )
+    d.run()
+    checks = d.verify(10)
+    assert checks["completed_rounds==target"], (
+        f"expected 10 rounds, got {len([r for r in d.history if not r['skipped']])}"
+    )
+    assert checks["monotonic_round_starts"]
+    assert checks["durations_positive"]
+
+
+def test_count_over_selection():
+    """M=5, K=3: first 3 completions accepted, 2 discarded per round."""
+    d = _make_sync(
+        n=5,
+        M=5,
+        factors=[1.0, 2.0, 3.0, 4.0, 5.0],
+        mode="count",
+        min_responses=3,
+        target_rounds=5,
+    )
+    d.run()
+    for r in d.history:
+        if not r["skipped"]:
+            assert r["accepted_count"] == 3, (
+                f"expected 3 accepted, got {r['accepted_count']}"
+            )
+            assert r["discarded_count"] == 2, (
+                f"expected 2 discarded, got {r['discarded_count']}"
+            )
+
+
+def test_count_barrier_time():
+    """Barrier time = K-th fastest client's completion time."""
+    factors = [1.0, 10.0, 100.0]  # very different speeds
+    d = _make_sync(
+        n=3, M=3, factors=factors, mode="count", min_responses=2, target_rounds=1
+    )
+    d.run()
+    r = d.history[0]
+    assert r["accepted_count"] == 2
+    assert r["duration"] > 0
+
+
+def test_window_basic():
+    """Window mode: all clients within window → all accepted."""
+    d = _make_sync(
+        n=5,
+        M=5,
+        factors=[1.0] * 5,
+        mode="window",
+        min_responses=1,
+        window_duration=100.0,
+        target_rounds=5,
+    )
+    d.run()
+    checks = d.verify(5)
+    assert checks["completed_rounds==target"]
+    for r in d.history:
+        assert r["accepted_count"] == 5
+
+
+def test_window_straggler_discard():
+    """Window mode: slow client exceeds window → discarded."""
+    # factor=1 → fast, factor=1000 → very slow (way past 1s window)
+    d = _make_sync(
+        n=3,
+        M=3,
+        factors=[1.0, 1.0, 1000.0],
+        mode="window",
+        min_responses=1,
+        window_duration=1.0,
+        target_rounds=3,
+    )
+    d.run()
+    for r in d.history:
+        if not r["skipped"]:
+            assert r["accepted_count"] == 2, "slow client should be discarded"
+            assert r["discarded_count"] == 1
+
+
+def test_monotonic_virtual_time():
+    """Virtual time strictly increases across rounds."""
+    d = _make_sync(
+        n=5,
+        M=5,
+        factors=[1.0, 1.5, 2.0, 2.5, 3.0],
+        mode="count",
+        min_responses=3,
+        target_rounds=20,
+    )
+    d.run()
+    vts = [r["vtime"] for r in d.history]
+    for i in range(len(vts) - 1):
+        assert vts[i] < vts[i + 1], (
+            f"vtime not monotonic at round {i}: {vts[i]} >= {vts[i + 1]}"
+        )
+
+
+def test_staleness_always_zero():
+    """Sync FL: staleness is always 0 (all clients train on same global model)."""
+    d = _make_sync(
+        n=4,
+        M=4,
+        factors=[1.0, 2.0, 3.0, 4.0],
+        mode="count",
+        min_responses=2,
+        target_rounds=10,
+    )
+    d.run()
+    for r in d.history:
+        assert r["staleness"] == 0
+
+
+def test_determinism():
+    """Same seed → identical results."""
+
+    def run_once(seed):
+        d = _make_sync(
+            n=8,
+            M=5,
+            factors=[1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5],
+            mode="count",
+            min_responses=3,
+            target_rounds=10,
+            seed=seed,
+        )
+        d.run()
+        return [(r["vtime"], tuple(sorted(r["accepted_cids"]))) for r in d.history]
+
+    assert run_once(42) == run_once(42)
+    assert run_once(42) != run_once(99)
+
+
+def test_concurrency_bounded():
+    """Max active clients never exceeds M."""
+    d = _make_sync(
+        n=10,
+        M=6,
+        factors=[float(i + 1) for i in range(10)],
+        mode="count",
+        min_responses=4,
+        target_rounds=10,
+    )
+    d.run()
+    assert d._max_active <= 6
+
+
+def test_window_skip_round():
+    """Window mode with tiny window: if nobody arrives, round is skipped."""
+    # All clients have factor=100 → very slow; window=0.001s → nobody makes it
+    d = _make_sync(
+        n=3,
+        M=3,
+        factors=[100.0] * 3,
+        mode="window",
+        min_responses=2,
+        window_duration=0.0001,
+        target_rounds=5,
+        base_step_time=0.01,
+    )
+    d.run()
+    skipped = [r for r in d.history if r["skipped"]]
+    assert len(skipped) > 0, "expected some skipped rounds with tiny window"
+
+
+def test_actual_training_count():
+    """Count mode performs actual local training."""
+    d = _make_sync(
+        n=3,
+        M=3,
+        factors=[1.0] * 3,
+        mode="count",
+        min_responses=2,
+        target_rounds=5,
+        base_step_time=0.01,
+    )
+    d.run()
+    checks = d.verify(5)
+    assert checks["completed_rounds==target"]
+
+
+def test_scheduler_is_told_the_accepted_count():
+    """The scheduler must wait for the number that passed the barrier, not M."""
+    d = _make_sync(
+        n=10,
+        M=10,
+        factors=[float(i + 1) for i in range(10)],
+        mode="count",
+        min_responses=4,
+        target_rounds=3,
+    )
+    d.run()
+    accepted = [r["accepted_count"] for r in d.history if not r["skipped"]]
+    # every round asks for its accepted count, then restores the configured value
+    asked = [
+        c
+        for c in d.server.scheduler.requested_counts
+        if c != _FakeScheduler.CONFIGURED_NUM_CLIENTS
+    ]
+    assert asked == accepted
+
+
+def test_scheduler_state_is_restored():
+    """The driver leaves the scheduler as it found it."""
+    d = _make_sync(
+        n=6,
+        M=6,
+        factors=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        mode="count",
+        min_responses=3,
+        target_rounds=3,
+    )
+    d.run()
+    assert d.server.scheduler.num_clients == _FakeScheduler.CONFIGURED_NUM_CLIENTS
+
+
+def test_incompatible_scheduler_is_rejected():
+    """An async-style scheduler can't express a per-round response count."""
+
+    class _NoCountScheduler:
+        def __init__(self):
+            self.epochs = 0
+
+        def get_num_global_epochs(self):
+            return self.epochs
+
+    server = _FakeServer(100)
+    server.scheduler = _NoCountScheduler()
+    with pytest.raises(TypeError, match="set_num_clients"):
+        SyncSimDriver(
+            server_agent=server,
+            client_agents=[_FakeClient("C0")],
+            profiles={"C0": ClientProfile()},
+            participants_per_round=1,
+            logger=_logger(),
+            base_step_time=0.01,
+        )
+
+
+# --- window barrier: where the clock stops on each path --- #
+def _window_barrier(min_responses, window_duration, max_wait_time, arrivals):
+    """Drive _barrier_window directly with synthetic arrival times."""
+    d = _make_sync(
+        n=len(arrivals),
+        M=len(arrivals),
+        factors=[1.0] * len(arrivals),
+        mode="window",
+        min_responses=min_responses,
+        window_duration=window_duration,
+        max_wait_time=max_wait_time,
+    )
+    completions = [
+        {"cid": f"C{i}", "completion_time": t} for i, t in enumerate(arrivals)
+    ]
+    return d._barrier_window(completions, t_start=0.0)
+
+
+def test_window_barrier_waits_out_the_window():
+    """Quorum met inside the window: the clock advances the full window."""
+    accepted, discarded, t = _window_barrier(
+        min_responses=3,
+        window_duration=20.0,
+        max_wait_time=None,
+        arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
+    )
+    assert [c["cid"] for c in accepted] == ["C0", "C1", "C2"]
+    assert [c["cid"] for c in discarded] == ["C3", "C4"]
+    assert t == 20.0  # the deadline, not the last arrival at 18
+
+
+def test_window_barrier_releases_when_quorum_is_reached():
+    """Quorum missed: extend past the window, but stop at the quorum arrival."""
+    accepted, discarded, t = _window_barrier(
+        min_responses=3,
+        window_duration=15.0,
+        max_wait_time=35.0,
+        arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
+    )
+    assert [c["cid"] for c in accepted] == ["C0", "C1", "C2"]
+    assert t == 18.0  # the 3rd arrival — not the hard deadline, not the 4th at 30
+    assert [c["cid"] for c in discarded] == ["C3", "C4"]
+
+
+def test_window_barrier_skips_when_quorum_unreachable():
+    """Not enough arrive even by the hard deadline: skip the round."""
+    accepted, _, t = _window_barrier(
+        min_responses=4,
+        window_duration=15.0,
+        max_wait_time=20.0,
+        arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
+    )
+    assert accepted == []
+    assert t == 20.0
+
+
+def test_window_barrier_skips_without_max_wait():
+    """No max_wait_time means nothing to extend into."""
+    accepted, _, t = _window_barrier(
+        min_responses=4,
+        window_duration=15.0,
+        max_wait_time=None,
+        arrivals=[10.0, 12.0, 18.0, 30.0, 55.0],
+    )
+    assert accepted == []
+    assert t == 15.0
+
+
+# --- count barrier --- #
+def _count_barrier(min_responses, max_wait_time, arrivals, n=None):
+    """Drive _barrier_count directly with synthetic arrival times."""
+    n = n or len(arrivals)
+    d = _make_sync(
+        n=n,
+        M=n,
+        factors=[1.0] * n,
+        mode="count",
+        min_responses=min_responses,
+        max_wait_time=max_wait_time,
+    )
+    completions = [
+        {"cid": f"C{i}", "completion_time": t} for i, t in enumerate(arrivals)
+    ]
+    return d._barrier_count(completions, t_start=0.0)
+
+
+def test_count_barrier_releases_at_the_quorum_arrival():
+    accepted, discarded, t = _count_barrier(
+        min_responses=3, max_wait_time=None, arrivals=[10.0, 12.0, 18.0, 30.0, 55.0]
+    )
+    assert [c["cid"] for c in accepted] == ["C0", "C1", "C2"]
+    assert [c["cid"] for c in discarded] == ["C3", "C4"]
+    assert t == 18.0
+
+
+def test_count_barrier_skips_when_quorum_is_late():
+    """Quorum arrives past the deadline: skip, never accept a partial round."""
+    accepted, _, t = _count_barrier(
+        min_responses=3, max_wait_time=15.0, arrivals=[10.0, 12.0, 18.0, 30.0, 55.0]
+    )
+    assert accepted == []  # only 2 had arrived by 15
+    assert t == 15.0
+
+
+def test_count_barrier_never_accepts_below_quorum():
+    """Fewer completions than the quorum is a skip, not a short success."""
+    accepted, discarded, t = _count_barrier(
+        min_responses=4, max_wait_time=None, arrivals=[10.0, 12.0], n=4
+    )
+    assert accepted == []
+    assert len(discarded) == 2
+    assert t == 0.0
+
+
+def test_unreachable_quorum_is_rejected():
+    """min_responses larger than the cohort could never be met."""
+    with pytest.raises(ValueError, match="exceeds the 3 client"):
+        _make_sync(n=3, M=3, factors=[1.0] * 3, mode="count", min_responses=5)
+
+
+def test_verify_barrier_respected_holds():
+    """The driver and its own verify() agree on the barrier contract."""
+    d = _make_sync(
+        n=8,
+        M=8,
+        factors=[float(i + 1) for i in range(8)],
+        mode="count",
+        min_responses=5,
+        target_rounds=5,
+    )
+    d.run()
+    assert d.verify(5)["barrier_respected"]

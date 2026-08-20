@@ -1,0 +1,53 @@
+# Sync FL (window mode) — CIFAR-10, FedAvg, CNN
+# Same model/optimizer/data as config_vsim_cifar_async.yaml, but sync aggregation.
+# Run: cd examples && python vsim/run_vsim.py \
+#        --server_config vsim/config_vsim_cifar_sync_fedavg.yaml \
+#        --client_config resources/configs/cifar10/client_1.yaml \
+#        --num_clients 10 --device cuda --verify
+client_configs:
+  train_configs:
+    trainer: "VanillaTrainer"
+    mode: "step"
+    num_local_steps: 20
+    optim: "SGD"
+    optim_args: { lr: 0.05, momentum: 0.9, weight_decay: 0.0001 }
+    loss_fn_path: "./resources/loss/celoss.py"
+    loss_fn_name: "CELoss"
+    do_validation: False
+    do_pre_validation: False
+    metric_path: "./resources/metric/acc.py"
+    metric_name: "accuracy"
+    send_gradient: False
+    optimize_memory: False
+    train_batch_size: 64
+    val_batch_size: 64
+
+  model_configs:
+    model_path: "./resources/model/cnn.py"
+    model_name: "CNN"
+    model_kwargs: { num_channel: 3, num_classes: 10, num_pixel: 32 }
+
+  comm_configs:
+    compressor_configs: { enable_compression: False }
+
+server_configs:
+  num_clients: 10
+  scheduler: "SyncScheduler"
+  scheduler_kwargs: { same_init_model: True }
+  aggregator: "FedAvgAggregator"
+  aggregator_kwargs:
+    client_weights_mode: "equal"
+  device: "cpu"
+  num_global_epochs: 500
+  simulator:
+    seed: 42
+    mode: "sync_window"
+    eval_every: 5
+    sync:
+      participants_per_round: 10
+      min_responses: 5
+      window_duration: 30.0
+      max_wait_time: 60.0
+    heterogeneity:
+      compute: { distribution: "lognormal", params: { mu: 0.0, sigma: 0.5 } }
+      bandwidth: { distribution: "uniform", params: { lo: 150.0, hi: 600.0 } }

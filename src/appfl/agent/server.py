@@ -121,13 +121,19 @@ class ServerAgent:
     ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
         """
         Return the global model to the clients.
+
         :param: `blocking`: The global model may not be immediately available (e.g. if the server wants to wait for all client
             to send the `get_parameters` request before returning the global model for same model initialization).
             Setting `blocking` to `True` will block the client until the global model is available.
         :param: `kwargs`: Additional arguments for the method. Specifically,
             - `init_model`: whether getting the initial model (which should be same among all clients, thus blocking)
+
             - `serial_run`: set `True` if for serial simulation run, thus no blocking is needed.
             - `globus_compute_run`: set `True` if for globus compute run, thus no blocking is needed.
+            - `client_id`: the client this model is being sent to. Asynchronous aggregators
+              use it to record which global model version the client trains from, so
+              staleness is measured from the download rather than the client's previous
+              upload. Omit it only when no single client is requesting the model.
         """
         global_model = self.scheduler.get_parameters(**kwargs)
         if not isinstance(global_model, Future):

@@ -106,6 +106,21 @@ class SyncScheduler(BaseScheduler):
                     self._num_global_epochs += 1
             return future
 
+    def set_num_clients(self, num_clients: int) -> None:
+        """
+        Set how many local models to wait for before aggregating.
+
+        Defaults to the configured federation size. Callers that aggregate a
+        varying subset each round — such as a simulator applying an over-selection
+        or deadline barrier — can lower it per round. Changing it mid-round, while
+        models for the current round are already buffered, will change when that
+        round fires.
+
+        :param num_clients: number of local models required to trigger aggregation
+        """
+        with self._access_lock:
+            self.num_clients = num_clients
+
     def get_num_global_epochs(self) -> int:
         """
         Get the number of global epochs.
