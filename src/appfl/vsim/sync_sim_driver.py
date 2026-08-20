@@ -66,6 +66,20 @@ class SyncSimDriver(BaseSimDriver):
         if mode == "window" and window_duration is None:
             raise ValueError("mode='window' requires window_duration")
 
+        # A barrier admits a varying subset each round, so the scheduler must accept
+        # a per-round response count. Checked here rather than at the first
+        # aggregation: on a scheduler without it, assigning `num_clients` would
+        # silently create a dead attribute and the round would never fire.
+        scheduler = self.server.scheduler
+        if not hasattr(scheduler, "set_num_clients"):
+            raise TypeError(
+                f"{type(self).__name__} needs a scheduler that can wait for a "
+                f"per-round number of responses, i.e. one exposing "
+                f"`set_num_clients()` such as SyncScheduler. Got "
+                f"{type(scheduler).__name__}. Asynchronous schedulers aggregate on "
+                f"every arrival and should be driven with AsyncSimDriver instead."
+            )
+
         self.logger.info(
             f"  sync mode={mode}, participants_per_round={self.participants_per_round}, "
             f"min_responses={self.min_responses}, "
@@ -179,19 +193,33 @@ class SyncSimDriver(BaseSimDriver):
 
     # ---------- aggregation ----------
     def _aggregate_round(self, accepted):
-        """Aggregate local models from accepted clients via the server agent."""
-        self.server.scheduler.num_clients = len(accepted)
-        for i, c in enumerate(accepted):
-            local_model = {
-                k: v.cpu() if hasattr(v, "cpu") else v
-                for k, v in c["local_model"].items()
-            }
-            meta = dict(c["meta"])
-            meta["virtual_time"] = self.virtual_time
-            blocking = i == len(accepted) - 1
-            self.server.global_update(
-                client_id=c["cid"], local_model=local_model, blocking=blocking, **meta
-            )
+        """
+        Aggregate local models from accepted clients via the server agent.
+
+        Only the clients that passed the barrier are submitted, so the scheduler is
+        told to fire at that count rather than at the configured federation size.
+        The configured value is restored afterwards, leaving the scheduler as found.
+        """
+        scheduler = self.server.scheduler
+        previous_num_clients = scheduler.num_clients
+        scheduler.set_num_clients(len(accepted))
+        try:
+            for i, c in enumerate(accepted):
+                local_model = {
+                    k: v.cpu() if hasattr(v, "cpu") else v
+                    for k, v in c["local_model"].items()
+                }
+                meta = dict(c["meta"])
+                meta["virtual_time"] = self.virtual_time
+                blocking = i == len(accepted) - 1
+                self.server.global_update(
+                    client_id=c["cid"],
+                    local_model=local_model,
+                    blocking=blocking,
+                    **meta,
+                )
+        finally:
+            scheduler.set_num_clients(previous_num_clients)
 
     # ---------- recording ----------
     def _record_round(self, t_start, t_barrier, accepted, discarded, skipped):

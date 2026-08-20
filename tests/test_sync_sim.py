@@ -5,16 +5,28 @@ Uses the same lightweight fakes as test_async_sim.py.
 
 import logging
 
+import pytest
+
 from appfl.vsim import SyncSimDriver, ClientProfile
 
 
 # --------------------------- fakes --------------------------- #
 class _FakeScheduler:
+    """Mirrors SyncScheduler's public surface: a settable response count."""
+
+    CONFIGURED_NUM_CLIENTS = 99
+
     def __init__(self):
         self.epochs = 0
+        self.num_clients = self.CONFIGURED_NUM_CLIENTS
+        self.requested_counts = []
 
     def get_num_global_epochs(self):
         return self.epochs
+
+    def set_num_clients(self, num_clients):
+        self.num_clients = num_clients
+        self.requested_counts.append(num_clients)
 
 
 class _FakeServer:
@@ -291,3 +303,52 @@ def test_actual_training_count():
     d.run()
     checks = d.verify(5)
     assert checks["completed_rounds==target"]
+
+
+def test_scheduler_is_told_the_accepted_count():
+    """The scheduler must wait for the number that passed the barrier, not M."""
+    d = _make_sync(
+        n=10, M=10, factors=[float(i + 1) for i in range(10)],
+        mode="count", min_responses=4, target_rounds=3,
+    )
+    d.run()
+    accepted = [r["accepted_count"] for r in d.history if not r["skipped"]]
+    # every round asks for its accepted count, then restores the configured value
+    asked = [
+        c for c in d.server.scheduler.requested_counts
+        if c != _FakeScheduler.CONFIGURED_NUM_CLIENTS
+    ]
+    assert asked == accepted
+
+
+def test_scheduler_state_is_restored():
+    """The driver leaves the scheduler as it found it."""
+    d = _make_sync(
+        n=6, M=6, factors=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        mode="count", min_responses=3, target_rounds=3,
+    )
+    d.run()
+    assert d.server.scheduler.num_clients == _FakeScheduler.CONFIGURED_NUM_CLIENTS
+
+
+def test_incompatible_scheduler_is_rejected():
+    """An async-style scheduler can't express a per-round response count."""
+
+    class _NoCountScheduler:
+        def __init__(self):
+            self.epochs = 0
+
+        def get_num_global_epochs(self):
+            return self.epochs
+
+    server = _FakeServer(100)
+    server.scheduler = _NoCountScheduler()
+    with pytest.raises(TypeError, match="set_num_clients"):
+        SyncSimDriver(
+            server_agent=server,
+            client_agents=[_FakeClient("C0")],
+            profiles={"C0": ClientProfile()},
+            participants_per_round=1,
+            logger=_logger(),
+            base_step_time=0.01,
+        )

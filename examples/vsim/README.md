@@ -114,6 +114,11 @@ simulator implementation is required when the algorithm uses the public agent,
 scheduler, and aggregator interfaces. Async algorithms use `async`; synchronous
 algorithms use `sync_count` or `sync_window`.
 
+The sync modes carry one extra requirement. A barrier admits a varying subset of
+the dispatched clients each round, so the scheduler must accept a per-round
+response count via `set_num_clients()` — `SyncScheduler` does. A scheduler
+without it is rejected when the driver is constructed.
+
 ## Scope
 
 This engine physically trains clients serially on one device. It does not model
