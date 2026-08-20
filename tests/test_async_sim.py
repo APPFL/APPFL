@@ -134,11 +134,54 @@ def test_client_profile_math():
     p = ClientProfile(compute_factor=2.0, bandwidth=100.0)
     assert p.compute_time(0.01, 100) == 2.0
     assert p.comm_time(0) == 0.0
-    one_mib = 1024 * 1024
-    # bytes*8/1MiB/bw*2 = 8/100*2 = 0.16
-    assert abs(p.comm_time(one_mib) - 0.16) < 1e-9
-    assert abs(p.duration(0.01, 100, one_mib) - 2.16) < 1e-9
+    # 12.5 MB over 100 Mbps: 12.5e6*8 = 100e6 bits -> 1s each way, 2s round trip.
+    twelve_and_a_half_mb = 12_500_000
+    assert abs(p.download_time(twelve_and_a_half_mb) - 1.0) < 1e-12
+    assert abs(p.upload_time(twelve_and_a_half_mb) - 1.0) < 1e-12
+    assert abs(p.comm_time(twelve_and_a_half_mb) - 2.0) < 1e-12
+    assert abs(p.duration(0.01, 100, twelve_and_a_half_mb) - 4.0) < 1e-12
     assert p.next_available(123.0) == 123.0  # always available by default
+
+
+def test_comm_time_is_the_two_directions():
+    """comm_time composes the directional methods, so overriding either works."""
+
+    class _AsymmetricLink(ClientProfile):
+        def upload_time(self, model_bytes, **kwargs):
+            return super().upload_time(model_bytes, **kwargs) * 4  # slow uplink
+
+    p = _AsymmetricLink(bandwidth=100.0)
+    mb = 12_500_000
+    assert abs(p.comm_time(mb) - 5.0) < 1e-12  # 1s down + 4s up
+
+
+def test_compression_ratio_scales_transfer():
+    """Only the compressed bytes are put on the wire."""
+    uncompressed = _make_driver(2, 2, [1.0, 1.0], target=4)
+    compressed = AsyncSimDriver(
+        _FakeServer(4),
+        [_FakeClient(f"C{i}") for i in range(2)],
+        {f"C{i}": ClientProfile(compute_factor=1.0) for i in range(2)},
+        max_in_flight=2,
+        logger=_silent_logger(),
+        base_step_time=0.01,
+        compression_ratio=0.25,
+    )
+    assert compressed._model_bytes == compressed._raw_model_bytes * 0.25
+    assert uncompressed._model_bytes == uncompressed._raw_model_bytes
+
+
+def test_invalid_compression_ratio_rejected():
+    for bad in (0.0, -0.5, 1.5):
+        with pytest.raises(ValueError, match="compression_ratio"):
+            AsyncSimDriver(
+                _FakeServer(1),
+                [_FakeClient("C0")],
+                {"C0": ClientProfile()},
+                max_in_flight=1,
+                logger=_silent_logger(),
+                compression_ratio=bad,
+            )
 
 
 def test_virtual_time_monotonic_and_count():

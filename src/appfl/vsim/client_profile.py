@@ -1,23 +1,30 @@
 """Per-client system-heterogeneity profile for the virtual-time async FL simulator.
 
-v1 (AFL-Lib-equivalent): a single multiplicative compute slowdown factor plus a
-fixed per-client bandwidth. The *measured* per-step compute time comes from APPFL's
-trainer metadata (`compute_second_per_step`), so we do not time `train()` ourselves.
+A single multiplicative compute slowdown factor plus a fixed per-client bandwidth.
+The *measured* per-step compute time comes from APPFL's trainer metadata
+(`compute_second_per_step`), so we do not time `train()` ourselves.
 
     compute_time = compute_second_per_step * num_local_steps * compute_factor
-    comm_time    = model_bytes * 8 / (1024**2) / bandwidth * 2   # downlink + uplink
+    comm_time    = model_bytes * 8 / (bandwidth * 1e6) * 2       # downlink + uplink
     duration     = compute_time + comm_time
+
+Bandwidth is Mbps in its standard networking sense: 10^6 bits per second, not
+2^20. Mixing the two (dividing bits by 1024**2 and then by a Mbps figure)
+understates transfer time by ~4.6%.
 
 """
 
 from dataclasses import dataclass
+
+_BITS_PER_BYTE = 8
+_BITS_PER_MEGABIT = 1e6  # Mbps is decimal megabits per second, not mebibits
 
 
 @dataclass
 class ClientProfile:
     """Per-client compute slowdown and round-trip bandwidth profile."""
 
-    compute_factor: float = 1.0  # device slowdown multiplier (AFL-Lib `delay`)
+    compute_factor: float = 1.0  # device slowdown multiplier (>1 is slower)
     bandwidth: float = 300.0  # Mbps
 
     def compute_time(
@@ -36,34 +43,41 @@ class ClientProfile:
         """
         Compute virtual downlink communication time.
 
-        :param model_bytes: Model size in bytes.
+        :param model_bytes: Bytes actually placed on the wire.
         :return: Download duration in seconds.
         """
         if self.bandwidth <= 0:
             return 0.0
-        return model_bytes * 8 / (1024 * 1024) / self.bandwidth
+        return (
+            model_bytes * _BITS_PER_BYTE / (self.bandwidth * _BITS_PER_MEGABIT)
+        )
 
     def upload_time(self, model_bytes: float, **kwargs) -> float:
         """
         Compute virtual uplink communication time.
 
-        :param model_bytes: Model size in bytes.
+        :param model_bytes: Bytes actually placed on the wire.
         :return: Upload duration in seconds.
         """
         if self.bandwidth <= 0:
             return 0.0
-        return model_bytes * 8 / (1024 * 1024) / self.bandwidth
+        return (
+            model_bytes * _BITS_PER_BYTE / (self.bandwidth * _BITS_PER_MEGABIT)
+        )
 
     def comm_time(self, model_bytes: float, **kwargs) -> float:
         """
         Compute total communication time (download + upload).
 
-        :param model_bytes: Model size in bytes.
+        Composed from the two directional methods rather than recomputing, so a
+        profile that models asymmetric links only has to override those.
+
+        :param model_bytes: Bytes actually placed on the wire.
         :return: Round-trip communication duration in seconds.
         """
-        if self.bandwidth <= 0:
-            return 0.0
-        return (model_bytes * 8 / (1024 * 1024) / self.bandwidth) * 2
+        return self.download_time(model_bytes, **kwargs) + self.upload_time(
+            model_bytes, **kwargs
+        )
 
     def duration(
         self,

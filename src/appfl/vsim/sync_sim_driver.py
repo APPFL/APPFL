@@ -35,6 +35,7 @@ class SyncSimDriver(BaseSimDriver):
         seed: int = 42,
         base_step_time: Optional[float] = None,
         eval_every: int = 0,
+        compression_ratio: float = 1.0,
         # sync
         mode: str = "count",
         min_responses: Optional[int] = None,
@@ -50,6 +51,7 @@ class SyncSimDriver(BaseSimDriver):
             seed=seed,
             base_step_time=base_step_time,
             eval_every=eval_every,
+            compression_ratio=compression_ratio,
         )
         self.participants_per_round = max(1, int(participants_per_round))
         self.mode = mode

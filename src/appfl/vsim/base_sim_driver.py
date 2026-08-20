@@ -29,6 +29,7 @@ class BaseSimDriver:
         seed: int = 42,
         base_step_time: Optional[float] = None,
         eval_every: int = 0,
+        compression_ratio: float = 1.0,
     ):
         """
         Initialize the simulation driver with server/client agents and models.
@@ -45,6 +46,10 @@ class BaseSimDriver:
         :param seed: RNG seed for reproducibility.
         :param base_step_time: Fixed per-step compute time (s); None = measured.
         :param eval_every: Global evaluation frequency (0 = off).
+        :param compression_ratio: Fraction of the raw model size actually sent
+            (1.0 = uncompressed, 0.25 = 4x compression). The simulator times the
+            bytes on the wire, and cannot know a compressor's real ratio without
+            running it, so an enabled compressor must be declared here.
         """
         # A private generator, not `random.seed()`: seeding the module-global RNG
         # here would perturb every other consumer in the process (client data
@@ -70,8 +75,16 @@ class BaseSimDriver:
         self._prev_vt = None
         self._total_comm_bytes = 0
 
+        if not 0 < compression_ratio <= 1:
+            raise ValueError(
+                f"compression_ratio must be in (0, 1]; got {compression_ratio}"
+            )
+        self.compression_ratio = compression_ratio
+
         init_model = self.server.get_parameters(serial_run=True)
-        self._model_bytes = self._state_bytes(init_model)
+        self._raw_model_bytes = self._state_bytes(init_model)
+        # Transfer times are driven by what actually goes over the wire.
+        self._model_bytes = self._raw_model_bytes * compression_ratio
         for client in client_agents:
             client.load_parameters(init_model)
 
@@ -79,7 +92,8 @@ class BaseSimDriver:
             f"APPFL virtual-time simulation — {type(self).__name__}",
             {
                 "clients": len(self.clients),
-                "model": f"{self._model_bytes / 1e6:.2f} MB",
+                "model": f"{self._raw_model_bytes / 1e6:.2f} MB",
+                "on_wire": f"{self._model_bytes / 1e6:.2f} MB",
                 "step_time": (
                     "measured" if base_step_time is None else f"{base_step_time}s"
                 ),

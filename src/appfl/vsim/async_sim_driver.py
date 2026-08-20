@@ -35,6 +35,7 @@ class AsyncSimDriver(BaseSimDriver):
         seed: int = 42,
         base_step_time: Optional[float] = None,
         eval_every: int = 0,
+        compression_ratio: float = 1.0,
     ):
         """
         :param max_in_flight: Maximum clients dispatched but not yet arrived.
@@ -49,6 +50,7 @@ class AsyncSimDriver(BaseSimDriver):
             seed=seed,
             base_step_time=base_step_time,
             eval_every=eval_every,
+            compression_ratio=compression_ratio,
         )
         self.max_in_flight = max(1, int(max_in_flight))
         self.logger.info(f"  async max_in_flight={self.max_in_flight}")

@@ -32,9 +32,12 @@ For each client, the basic duration is
 
 ```text
 compute = seconds_per_step * local_steps * compute_factor
-communication = 2 * model_bits / bandwidth
+communication = 2 * wire_bytes * 8 / (bandwidth * 1e6)
 duration = compute + communication
 ```
+
+`bandwidth` is Mbps in the standard networking sense — 10^6 bits per second.
+`wire_bytes` is the raw model size scaled by `compression_ratio`.
 
 By default, `seconds_per_step` comes from APPFL trainer metadata for the actual
 local training task. Set `base_step_time` to supply a fixed seconds-per-step
@@ -74,6 +77,7 @@ server_configs:
     mode: async                 # async | sync_count | sync_window
     max_in_flight: 4            # async: dispatched but not yet arrived
     base_step_time: null        # seconds/step; null uses trainer measurement
+    compression_ratio: 1.0      # fraction of the model actually sent (1.0 = raw)
     eval_every: 0               # 0 disables global validation
     heterogeneity:
       compute:
@@ -94,8 +98,23 @@ Important command-line overrides are `--mode`, `--num_clients`, `--device`,
 `--num_local_steps`, `--eval_every`, and `--verify`. Run
 `python vsim/run_vsim.py --help` for the complete list.
 
+To replay a fixed heterogeneity setup rather than sampling one, pass
+`--profiles_json` a file of explicit per-client values:
+
+```json
+{"Client1": {"compute_factor": 1.81, "bandwidth": 412.7},
+ "Client2": {"compute_factor": 0.94, "bandwidth": 248.4}}
+```
+
+Clients may be keyed by id or by position, and `delay` is accepted as a synonym
+for `compute_factor`.
+
 `compute_factor` is a multiplicative slowdown. `bandwidth` is symmetric Mbps
-and communication includes one model download and one upload. A fixed seed and
+and communication includes one model download and one upload. The simulator
+measures raw tensor bytes and cannot know what a compressor would achieve
+without running it, so if `enable_compression` is set in `comm_configs`, declare
+the expected ratio via `compression_ratio`; otherwise transfers are modelled
+uncompressed and the runner warns. A fixed seed and
 fixed `base_step_time` make the virtual schedule reproducible; measured trainer
 time can vary with hardware load.
 

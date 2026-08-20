@@ -17,53 +17,45 @@ from appfl.agent import ServerAgent, ClientAgent
 from appfl.vsim import AsyncSimDriver, SyncSimDriver, ClientProfile, VsimLogger
 
 
-def _counts(prop, total):
-    """AFL-Lib probs_to_counts: split `total` into integer counts per proportion."""
-    s = float(sum(prop))
-    raw = [p / s * total for p in prop]
-    fl = [int(x) for x in raw]
-    rem = total - sum(fl)
-    order = sorted(range(len(prop)), key=lambda i: raw[i] - fl[i], reverse=True)
-    for i in range(rem):
-        fl[order[i]] += 1
-    return fl
+def build_profiles_from_json(client_ids, path):
+    """
+    Load explicit per-client profiles instead of sampling them.
 
+    Use this to replay a fixed heterogeneity setup — a previous run, or one
+    exported from another framework. The file maps each client to its slowdown
+    and bandwidth, keyed by client id or by position:
 
-def _afl_lib_profiles(client_ids, het, rng):
-    """Replicate AFL-Lib's device/comm heterogeneity exactly so settings match
-    AFL-Lib: compute_factor = device_reference x SCALE_FACTOR (TX2/Nano/Pi),
-    bandwidth sampled uniformly within WiFi/4G/5G tiers (utils/sys_utils.py)."""
-    SCALE = 50.0
-    delays = [d * SCALE for d in (1.0, 1.8125, 11.625)]  # TX2, Nano, Pi
-    bands = [(150.0, 600.0), (20.0, 100.0), (50.0, 1000.0)]  # WiFi, 4G, 5G
-    n = len(client_ids)
-    dev_prop = list(het.get("dev_prop", [1, 1, 1]))
-    comm_prop = list(het.get("comm_prop", [1, 1, 1]))
-    dev_assign = [i for i, c in enumerate(_counts(dev_prop, n)) for _ in range(c)]
-    comm_assign = [i for i, c in enumerate(_counts(comm_prop, n)) for _ in range(c)]
-    rng.shuffle(dev_assign)
-    rng.shuffle(comm_assign)
-    profiles = {}
-    for k, cid in enumerate(client_ids):
-        lo, hi = bands[comm_assign[k]]
-        profiles[cid] = ClientProfile(
-            compute_factor=delays[dev_assign[k]], bandwidth=rng.uniform(lo, hi)
-        )
-    return profiles
+        {"Client1": {"compute_factor": 1.8, "bandwidth": 412.7}, ...}
+        {"0": {"compute_factor": 1.8, "bandwidth": 412.7}, ...}
 
+    `delay` is accepted as a synonym for `compute_factor`.
 
-def build_profiles_from_json(client_ids, het_json):
-    """Use AFL-Lib's exported per-client (delay, bandwidth) so system heterogeneity
-    is IDENTICAL to AFL-Lib (delay -> compute_factor, bandwidth -> bandwidth)."""
+    :param client_ids: Client ids, in dispatch order.
+    :param path: Path to the JSON file.
+    :return: Dict mapping client_id to ClientProfile.
+    """
     import json
 
-    with open(het_json) as f:
-        het = json.load(f)
+    with open(path) as f:
+        entries = json.load(f)
+
     profiles = {}
     for idx, cid in enumerate(client_ids):
-        h = het[str(idx)]  # AFL keys clients by integer id 0..N-1
+        key = cid if cid in entries else str(idx)
+        if key not in entries:
+            raise KeyError(
+                f"{path} has no entry for client {cid!r} (or index {idx}); "
+                f"it defines {sorted(entries)[:5]}..."
+            )
+        entry = entries[key]
+        if "compute_factor" not in entry and "delay" not in entry:
+            raise KeyError(
+                f"{path} entry for {key!r} needs `compute_factor` (or `delay`); "
+                f"got keys {sorted(entry)}"
+            )
         profiles[cid] = ClientProfile(
-            compute_factor=float(h["delay"]), bandwidth=float(h["bandwidth"])
+            compute_factor=float(entry.get("compute_factor", entry.get("delay"))),
+            bandwidth=float(entry["bandwidth"]),
         )
     return profiles
 
@@ -78,8 +70,6 @@ def build_profiles(client_ids, sim_cfg, seed):
     """
     rng = random.Random(seed)
     het = sim_cfg.get("heterogeneity", {}) if sim_cfg else {}
-    if het.get("preset") == "afl_lib":
-        return _afl_lib_profiles(client_ids, het, rng)
     comp = het.get("compute", {})
     bw = het.get("bandwidth", {})
     profiles = {}
@@ -164,28 +154,17 @@ def main():
         help="override client_configs.train_configs.num_local_steps",
     )
     parser.add_argument(
-        "--het_json",
+        "--profiles_json",
         type=str,
         default=None,
-        help="AFL-Lib exported per-client (delay,bandwidth) JSON to match exactly",
+        help="JSON file of explicit per-client {compute_factor, bandwidth}; "
+        "overrides the sampled heterogeneity",
     )
     parser.add_argument(
         "--eval_every",
         type=int,
         default=None,
         help="override simulator.eval_every (0 = off)",
-    )
-    parser.add_argument(
-        "--afl_dir",
-        type=str,
-        default=None,
-        help="AFL-Lib root (to load its npz shards via afl_data.py)",
-    )
-    parser.add_argument(
-        "--afl_dataset",
-        type=str,
-        default=None,
-        help="AFL dataset dir name (e.g. mnist10, mnist20)",
     )
     parser.add_argument(
         "--mode",
@@ -225,19 +204,15 @@ def main():
     eval_every = (
         args.eval_every if args.eval_every is not None else sim_cfg.get("eval_every", 0)
     )
+    compression_ratio = float(sim_cfg.get("compression_ratio", 1.0))
 
-    # keep server-side global-eval dataset in sync (AFL full test set) BEFORE ServerAgent
-    # loads it during __init__.
+    # Keep the server-side validation dataset in sync BEFORE ServerAgent loads it
+    # during __init__.
     if hasattr(server_config.server_configs, "val_data_configs"):
         vdc = server_config.server_configs.val_data_configs
         if not hasattr(vdc, "dataset_kwargs") or vdc.dataset_kwargs is None:
             vdc.dataset_kwargs = {}
-        vdk = vdc.dataset_kwargs
-        vdk.num_clients = args.num_clients
-        if args.afl_dir is not None:
-            vdk.afl_dir = args.afl_dir
-        if args.afl_dataset is not None:
-            vdk.dataset = args.afl_dataset
+        vdc.dataset_kwargs.num_clients = args.num_clients
 
     server_agent = ServerAgent(server_agent_config=server_config)
 
@@ -258,10 +233,6 @@ def main():
             client_configs[i].data_configs.dataset_kwargs.alpha2 = (
                 args.alpha * args.num_classes
             )
-        if args.afl_dir is not None:
-            client_configs[i].data_configs.dataset_kwargs.afl_dir = args.afl_dir
-        if args.afl_dataset is not None:
-            client_configs[i].data_configs.dataset_kwargs.dataset = args.afl_dataset
 
     client_agents = [
         ClientAgent(client_agent_config=client_configs[i])
@@ -273,8 +244,8 @@ def main():
 
     # ---- profiles + driver ----
     client_ids = [c.get_id() for c in client_agents]
-    if args.het_json:
-        profiles = build_profiles_from_json(client_ids, args.het_json)
+    if args.profiles_json:
+        profiles = build_profiles_from_json(client_ids, args.profiles_json)
     else:
         profiles = build_profiles(client_ids, sim_cfg, seed)
     logger.log_banner("Client system profiles")
@@ -297,6 +268,19 @@ def main():
         if cfg_mode.startswith("sync"):
             mode = cfg_mode
 
+    # The simulator times raw tensor bytes, so an enabled compressor has to be
+    # declared: it cannot know the achieved ratio without running the compressor.
+    compressor_cfg = server_config.client_configs.get("comm_configs", {}).get(
+        "compressor_configs", {}
+    )
+    if compressor_cfg.get("enable_compression", False) and compression_ratio == 1.0:
+        logger.warning(
+            "Compression is enabled in comm_configs, but simulator."
+            "compression_ratio is 1.0, so transfers are modelled uncompressed and "
+            "communication time is overstated. Set `compression_ratio` under "
+            "`server_configs.simulator` to the fraction of the model actually sent."
+        )
+
     common_kw = dict(
         server_agent=server_agent,
         client_agents=client_agents,
@@ -305,6 +289,7 @@ def main():
         seed=seed,
         base_step_time=base_step_time,
         eval_every=eval_every,
+        compression_ratio=compression_ratio,
     )
 
     if mode == "async":
