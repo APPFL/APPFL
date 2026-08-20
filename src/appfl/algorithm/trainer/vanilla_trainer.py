@@ -230,6 +230,12 @@ class VanillaTrainer(BaseTrainer):
             )
 
         if self.train_configs.mode == "epoch":
+            # Report the step count in epoch mode too, so downstream consumers that
+            # reason in steps (e.g. the virtual-time simulator) work in both modes.
+            steps_per_epoch = len(self.train_dataloader)
+            total_local_steps = self.train_configs.num_local_epochs * steps_per_epoch
+            self.val_results["current_local_steps"] = total_local_steps
+            total_train_time = 0.0
             for epoch in range(self.train_configs.num_local_epochs):
                 start_time = time.time()
                 train_loss, target_true, target_pred = 0, [], []
@@ -252,6 +258,7 @@ class VanillaTrainer(BaseTrainer):
                     self.val_results["val_loss"].append(val_loss)
                     self.val_results["val_accuracy"].append(val_accuracy)
                 per_epoch_time = time.time() - start_time
+                total_train_time += per_epoch_time
                 if self.enabled_wandb:
                     wandb.log(
                         {
@@ -286,6 +293,10 @@ class VanillaTrainer(BaseTrainer):
                             val_accuracy,
                         ]
                     )
+                )
+            if total_local_steps > 0:
+                self.val_results["compute_second_per_step"] = (
+                    total_train_time / total_local_steps
                 )
         else:
             self.val_results["current_local_steps"] = self.train_configs.num_local_steps

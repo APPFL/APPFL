@@ -76,7 +76,9 @@ class BaseSimDriver:
             {
                 "clients": len(self.clients),
                 "model": f"{self._model_bytes / 1e6:.2f} MB",
-                "step_time": "measured" if base_step_time is None else f"{base_step_time}s",
+                "step_time": (
+                    "measured" if base_step_time is None else f"{base_step_time}s"
+                ),
                 "eval_every": self.eval_every or "off",
                 "seed": seed,
             },
@@ -97,6 +99,51 @@ class BaseSimDriver:
                 if hasattr(v, "numel") and hasattr(v, "element_size"):
                     total += v.numel() * v.element_size()
         return total
+
+    def _client_duration(self, cid: str, profile, meta: Dict):
+        """
+        Derive a client's virtual duration from its training metadata.
+
+        Raises rather than silently producing a zero-compute round. Only
+        ``VanillaTrainer`` reports these keys, so another trainer would otherwise
+        yield a run in which every duration is pure communication time. Such a run
+        completes normally and passes ``verify()``, because communication keeps
+        ``duration > 0``.
+
+        :param cid: Client identifier, used in the error message.
+        :param profile: The client's :class:`ClientProfile`.
+        :param meta: Metadata returned by the client's trainer.
+        :return: Tuple of (compute_time, comm_time, duration), all in seconds.
+        """
+        steps = meta.get("current_local_steps")
+        cps = self.base_step_time
+        if cps is None:
+            cps = meta.get("compute_second_per_step")
+            missing = "compute_second_per_step"
+        else:
+            missing = None
+
+        if steps is None or float(steps) <= 0:
+            self._raise_missing_metadata(cid, "current_local_steps", steps)
+        if cps is None or float(cps) <= 0:
+            self._raise_missing_metadata(cid, missing or "base_step_time", cps)
+
+        comp = profile.compute_time(float(cps), int(steps))
+        comm = profile.comm_time(self._model_bytes)
+        return comp, comm, comp + comm
+
+    @staticmethod
+    def _raise_missing_metadata(cid: str, key: str, value):
+        """Raise a runtime error naming the metadata the duration model needs."""
+        raise RuntimeError(
+            f"Client {cid} reported {key}={value!r}, so its virtual duration cannot "
+            f"be computed. Virtual durations come from trainer metadata: "
+            f"`current_local_steps` and `compute_second_per_step`, which "
+            f"VanillaTrainer reports in both \"step\" and \"epoch\" mode. Use a "
+            f"trainer that reports them, or set `base_step_time` under "
+            f"`server_configs.simulator` to supply a fixed per-step time (a step "
+            f"count is still required from the trainer)."
+        )
 
     def _push(self, vtime: float, etype: str, cid: str):
         """

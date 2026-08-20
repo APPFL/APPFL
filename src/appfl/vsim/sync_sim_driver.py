@@ -104,15 +104,7 @@ class SyncSimDriver(BaseSimDriver):
                 local_model, meta = result[0], dict(result[1])
             else:
                 local_model, meta = result, {}
-            steps = int(meta.get("current_local_steps", 0))
-            cps = (
-                float(self.base_step_time)
-                if self.base_step_time is not None
-                else float(meta.get("compute_second_per_step", 0.0))
-            )
-            comp = profile.compute_time(cps, steps)
-            comm = profile.comm_time(self._model_bytes)
-            duration = comp + comm
+            _, _, duration = self._client_duration(cid, profile, meta)
             completions.append(
                 {
                     "cid": cid,

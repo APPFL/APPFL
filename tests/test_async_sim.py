@@ -7,6 +7,8 @@ ServerAgent / ClientAgent, so no dataset, model, or real training is needed.
 import logging
 from collections import Counter
 
+import pytest
+
 from appfl.vsim import AsyncSimDriver, ClientProfile
 
 
@@ -220,3 +222,50 @@ def test_idle_client_is_not_stale():
     d.run()
     assert all(r["staleness"] == 0 for r in d.history)
     assert all(s == 0 for s in d.server.observed_staleness)
+
+
+class _NoTimingClient(_FakeClient):
+    """Reports a step count but no per-step time, as any non-VanillaTrainer would."""
+
+    def get_parameters(self):
+        return ({}, {"current_local_steps": self.steps, "val_accuracy": self.acc})
+
+
+class _NoStepsClient(_FakeClient):
+    """Reports a per-step time but no step count, as "epoch" mode would."""
+
+    def get_parameters(self):
+        return ({}, {"compute_second_per_step": self.cps, "val_accuracy": self.acc})
+
+
+def _driver_with(client_cls, base_step_time):
+    clients = [client_cls(f"C{i}") for i in range(2)]
+    profiles = {f"C{i}": ClientProfile(compute_factor=1.0) for i in range(2)}
+    return AsyncSimDriver(
+        _FakeServer(5),
+        clients,
+        profiles,
+        max_in_flight=2,
+        logger=_silent_logger(),
+        base_step_time=base_step_time,
+    )
+
+
+def test_missing_step_time_raises():
+    """No per-step time and no override: fail loudly, don't run at zero compute."""
+    with pytest.raises(RuntimeError, match="reported compute_second_per_step=None"):
+        _driver_with(_NoTimingClient, base_step_time=None).run()
+
+
+def test_missing_step_count_raises():
+    """base_step_time supplies seconds-per-step; a step count is still required."""
+    with pytest.raises(RuntimeError, match="reported current_local_steps=None"):
+        _driver_with(_NoStepsClient, base_step_time=0.01).run()
+
+
+def test_base_step_time_rescues_a_trainer_without_timing():
+    """The documented escape hatch: a step count plus a fixed per-step time is enough."""
+    d = _driver_with(_NoTimingClient, base_step_time=0.01)
+    d.run()
+    assert len(d.history) == 5
+    assert all(r["duration"] > 0 for r in d.history)

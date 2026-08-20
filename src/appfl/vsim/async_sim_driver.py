@@ -145,15 +145,7 @@ class AsyncSimDriver(BaseSimDriver):
         else:
             local_model, meta = res, {}
 
-        steps = int(meta.get("current_local_steps", 0))
-        if self.base_step_time is not None:
-            cps = float(self.base_step_time)
-        else:
-            cps = float(meta.get("compute_second_per_step", 0.0))
-
-        comp = profile.compute_time(cps, steps)
-        comm = profile.comm_time(self._model_bytes)
-        dur = comp + comm
+        comp, comm, dur = self._client_duration(cid, profile, meta)
         completion = dispatch_time + dur
 
         self._pending[cid] = {
