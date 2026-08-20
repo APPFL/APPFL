@@ -71,10 +71,45 @@ def _silent_logger():
     return lg
 
 
+class _VersionTrackingServer(_FakeServer):
+    """Mirrors FedAsyncAggregator's version bookkeeping.
+
+    ``client_step`` is written on download (when ``client_id`` is supplied) and
+    again on upload, and staleness is ``global_step - client_step[cid]``, exactly
+    as ``FedAsyncAggregator.compute_steps`` computes it.
+    """
+
+    def __init__(self, target_epochs):
+        super().__init__(target_epochs)
+        self.client_step = {}
+        self.observed_staleness = []
+
+    def get_parameters(self, **kw):
+        client_id = kw.get("client_id")
+        if client_id is not None:
+            self.client_step[client_id] = self.scheduler.epochs
+        return {}
+
+    def global_update(self, client_id, local_model, blocking=False, **kw):
+        self.observed_staleness.append(
+            self.scheduler.epochs - self.client_step.get(client_id, 0)
+        )
+        result = super().global_update(client_id, local_model, blocking=blocking, **kw)
+        self.client_step[client_id] = self.scheduler.epochs
+        return result
+
+
 def _make_driver(
-    n, K, factors, target=20, seed=42, base_step_time=0.01, driver_cls=AsyncSimDriver
+    n,
+    K,
+    factors,
+    target=20,
+    seed=42,
+    base_step_time=0.01,
+    driver_cls=AsyncSimDriver,
+    server_cls=_FakeServer,
 ):
-    server = _FakeServer(target)
+    server = server_cls(target)
     clients = [_FakeClient(f"C{i}") for i in range(n)]
     profiles = {
         f"C{i}": ClientProfile(compute_factor=factors[i], bandwidth=300.0)
@@ -149,3 +184,39 @@ def test_in_flight_never_exceeds_limit():
     d.run()
     assert d._peak <= limit
     assert d.verify(40)["in_flight<=max_in_flight"]
+
+
+def test_staleness_matches_aggregator_view():
+    """Recorded staleness must equal what a version-tracking aggregator computes.
+
+    With max_in_flight < num_clients, clients idle between dispatches and then
+    receive the newest global model. Measuring staleness from a client's previous
+    upload (rather than from its download) over-counts those updates.
+    """
+    d = _make_driver(
+        6,
+        2,
+        [1.0, 3.0, 0.5, 2.0, 1.5, 4.0],
+        target=25,
+        seed=3,
+        server_cls=_VersionTrackingServer,
+    )
+    d.run()
+    recorded = [r["staleness"] for r in d.history]
+    assert recorded == d.server.observed_staleness
+    assert min(recorded) == 0  # a freshly dispatched client is not stale
+
+
+def test_idle_client_is_not_stale():
+    """With only one client in flight, nothing can land mid-training."""
+    d = _make_driver(
+        4,
+        1,
+        [1.0, 1.0, 1.0, 1.0],
+        target=8,
+        seed=11,
+        server_cls=_VersionTrackingServer,
+    )
+    d.run()
+    assert all(r["staleness"] == 0 for r in d.history)
+    assert all(s == 0 for s in d.server.observed_staleness)

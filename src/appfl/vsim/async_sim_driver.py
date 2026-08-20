@@ -132,7 +132,10 @@ class AsyncSimDriver(BaseSimDriver):
 
         # --- ACTUAL TRAINING ---
         client = self.clients[cid]
-        global_params = self.server.get_parameters(serial_run=True)
+        # `client_id` lets the aggregator record which global version this client
+        # trains from; without it staleness is measured from the client's previous
+        # upload, which over-counts whenever a client idles between dispatches.
+        global_params = self.server.get_parameters(serial_run=True, client_id=cid)
         client.load_parameters(global_params)
 
         client.train()
@@ -191,6 +194,10 @@ class AsyncSimDriver(BaseSimDriver):
             k: v.cpu() if hasattr(v, "cpu") else v for k, v in p["local_model"].items()
         }
 
+        # Captured before the update: `global_update` increments the epoch counter,
+        # so reading it afterwards would make staleness 0 impossible.
+        epoch_before = self._cur_epoch()
+
         global_model = self.server.global_update(
             client_id=cid, local_model=local_model, blocking=False, **meta
         )
@@ -198,7 +205,7 @@ class AsyncSimDriver(BaseSimDriver):
             global_model = global_model.result()
 
         epoch_now = self._cur_epoch()
-        staleness = epoch_now - p["epoch_dispatch"]
+        staleness = epoch_before - p["epoch_dispatch"]
         self.active.discard(cid)
 
         comm_bytes = self._model_bytes * 2

@@ -51,8 +51,23 @@ class FedAsyncAggregator(BaseAggregator):
         self.client_step = {}
         self.step = {}
 
-    def get_parameters(self, **kwargs) -> Dict:
+    def get_parameters(
+        self, client_id: Optional[Union[str, int]] = None, **kwargs
+    ) -> Dict:
         """
+        Return the global model, optionally recording which global version the
+        requesting client is about to train from.
+
+        :param client_id: The client this model is being sent to. Supplying it
+            records the download, so staleness is measured from the version the
+            client actually trained from. Without it, staleness is derived from
+            the client's previous *upload* (see `compute_steps`), which assumes
+            the client re-downloads immediately after uploading — true when
+            clients loop upload -> download, false when a client sits idle
+            between rounds and then receives a fresher model than that
+            assumption implies. Omit it only when no single client is requesting
+            the model; a client that aggregates without one logs a warning.
+
         The aggregator can deal with three general aggregation cases:
 
         - The model is provided to the aggregator and it has the same state as the global state
@@ -64,6 +79,9 @@ class FedAsyncAggregator(BaseAggregator):
         - The model is not provided to the aggregator:
             In this case, the aggregator will raise an error when it does not have the global state (i.e., at the beginning), and return the global state afterward.
         """
+        if client_id is not None:
+            self.client_step[client_id] = self.global_step
+
         if self.global_state is None:
             if self.model is not None:
                 if self.optimize_memory:
@@ -165,6 +183,19 @@ class FedAsyncAggregator(BaseAggregator):
         else:
             return {k: v.clone() for k, v in self.global_state.items()}
 
+    def _warn_unrecorded_download(self, client_id: Union[str, int]) -> None:
+        """Warn once if no caller ever recorded this client's model download."""
+        if getattr(self, "_download_warning_issued", False) or self.logger is None:
+            return
+        self._download_warning_issued = True
+        self.logger.warning(
+            f"Client {client_id} aggregated with no recorded model download, so "
+            "staleness is measured from its previous upload. That is exact when "
+            "clients re-download immediately after uploading, but over-counts for "
+            "clients that idle between rounds. Pass `client_id` to `get_parameters` "
+            "to measure staleness from the download instead. (Logged once.)"
+        )
+
     def compute_steps(
         self,
         client_id: Union[str, int],
@@ -174,6 +205,11 @@ class FedAsyncAggregator(BaseAggregator):
         Compute changes to the global model after the aggregation.
         """
         if client_id not in self.client_step:
+            # Never recorded at download time, so staleness falls back to counting
+            # from this client's previous upload. Exact for the usual
+            # upload -> download loop, but wrong for clients that idle in between,
+            # so say so once rather than reporting plausible-but-wrong staleness.
+            self._warn_unrecorded_download(client_id)
             self.client_step[client_id] = 0
         gradient_based = self.aggregator_configs.get("gradient_based", False)
         if (

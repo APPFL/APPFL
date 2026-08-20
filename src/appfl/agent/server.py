@@ -128,6 +128,10 @@ class ServerAgent:
             - `init_model`: whether getting the initial model (which should be same among all clients, thus blocking)
             - `serial_run`: set `True` if for serial simulation run, thus no blocking is needed.
             - `globus_compute_run`: set `True` if for globus compute run, thus no blocking is needed.
+            - `client_id`: the client this model is being sent to. Asynchronous aggregators
+              use it to record which global model version the client trains from, so
+              staleness is measured from the download rather than the client's previous
+              upload. Omit it only when no single client is requesting the model.
         """
         global_model = self.scheduler.get_parameters(**kwargs)
         if not isinstance(global_model, Future):
