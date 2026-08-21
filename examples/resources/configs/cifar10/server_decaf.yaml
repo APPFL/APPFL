@@ -1,0 +1,56 @@
+client_configs:
+  train_configs:
+    trainer: "DeCaFTrainer"
+    mode: "step"
+    num_local_steps: 4          # 1 epoch: ceil(100 imgs / batch 32) — shots=50, 5 clients, 10 classes
+    encoder: "both"             # "vision" | "text" | "both"
+    freeze_a: False
+    lr: 2.0e-4
+    weight_decay: 1.0e-2
+    train_batch_size: 32
+    val_batch_size: 64
+    train_data_shuffle: True
+    val_data_shuffle: False
+    do_validation: True
+    do_pre_validation: False
+    device: "cuda"
+
+  model_configs:
+    model_path: "./resources/model/decaf_model.py"
+    model_name: "DeCaFModel"
+    model_kwargs:
+      backbone: "ViT-B/16"
+      encoder: "both"
+      position: "all"
+      params: ["q", "k", "v"]
+      r: 2
+      alpha: 1
+      dropout_rate: 0.25
+
+  comm_configs:
+    compressor_configs:
+      enable_compression: False
+      lossy_compressor: "SZ2Compressor"
+      lossless_compressor: "blosc"
+      error_bounding_mode: "REL"
+      error_bound: 1.0e-3
+      param_cutoff: 1024
+
+server_configs:
+  num_clients: 5
+  scheduler: "SyncScheduler"
+  scheduler_kwargs:
+    same_init_model: True
+  aggregator: "FederatedLoRASVDAggregator"
+  aggregator_kwargs:
+    lora_rank: 2                       # must match model_kwargs.r
+    client_weights_mode: "sample_size"
+    device: "cpu"
+  num_global_epochs: 500
+  logging_output_dirname: "./output"
+  logging_output_filename: "result_decaf_cifar10"
+  comm_configs:
+    grpc_configs:
+      server_uri: localhost:50051
+      max_message_size: 268435456
+      use_ssl: False
