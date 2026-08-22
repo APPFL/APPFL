@@ -640,10 +640,16 @@ class GRPCClientCommunicator:
         return serialized_data
 
     def _deserialize_model_optimized(self, model_bytes):
-        """Memory-efficient model deserialization."""
+        """Memory-efficient model deserialization.
+
+        Uses ``weights_only=True`` so a malicious payload cannot execute
+        Python during ``torch.load``. The threat model treats the server as
+        trusted, but defense-in-depth here is free: the global model is a
+        tensor state dict in every legitimate code path.
+        """
         with io.BytesIO(model_bytes) as buffer:
             model = torch.load(
-                buffer, map_location="cpu"
+                buffer, map_location="cpu", weights_only=True
             )  # Load to CPU first for memory efficiency
         gc.collect()
         return model

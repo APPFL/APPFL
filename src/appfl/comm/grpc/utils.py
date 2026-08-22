@@ -24,9 +24,22 @@ def serialize_model(model):
     return buffer.getvalue()
 
 
-def deserialize_model(model_bytes):
-    """Deserialize a model from a byte string."""
-    return torch.load(io.BytesIO(model_bytes))
+def deserialize_model(model_bytes, *, weights_only: bool = True):
+    """Deserialize a model from a byte string.
+
+    By default, this calls :func:`torch.load` with ``weights_only=True`` so
+    that arbitrary pickle payloads embedded in ``model_bytes`` cannot execute
+    Python during load. This is the correct setting for the common case where
+    the bytes hold a tensor state dict received from an untrusted peer.
+
+    Callers that legitimately need to round-trip non-tensor Python objects
+    (e.g. ``proxystore.proxy.Proxy`` references, Colab handles, or
+    ``CloudStorageObject`` references) must pass ``weights_only=False``
+    explicitly *and* ensure the operation is gated by a server-side opt-in to
+    the corresponding feature — otherwise an attacker can put a pickle gadget
+    in ``model_bytes`` and trigger code execution.
+    """
+    return torch.load(io.BytesIO(model_bytes), weights_only=weights_only)
 
 
 def load_credential_from_file(filepath):
