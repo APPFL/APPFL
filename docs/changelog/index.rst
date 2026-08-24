@@ -1,6 +1,32 @@
 Changelog
 =========
 
+appfl v1.11.0
+-------------
+
+New Features
+~~~~~~~~~~~~
+
+- Introduce ``appfl.vsim``, a virtual-time federated learning simulation engine from `@Sungmin Kang <https://github.com/sungminkg>`_, which trains all clients serially on a single CPU/GPU while reconstructing the wall-clock behavior of a real federation with a virtual clock. It ships synchronous and asynchronous drivers together with configurable client availability, communication, and compute models. [`Documentation <https://github.com/APPFL/APPFL/tree/main/examples/vsim>`_].
+- Add a Keycloak-based authenticator for FL client/server authentication from `@Abhijit Chunduru <https://github.com/Abhijit4-debug>`_.
+- Integrate DIMAT into APPFL, together with a gRPC example, from `@Minh Pham <https://github.com/mnpham0417>`_.
+- Add simulation data loaders and support for user-provided external datasets in ``appfl.sim`` from `@Seok-Ju (Adam) Hahn <https://github.com/vaseline555>`_.
+- Add a federated GWAS example running on GA4GH TES endpoints, with documentation from `@Matthew Joel <https://github.com/mfjoel01>`_. [`Documentation <https://github.com/APPFL/APPFL/tree/main/examples/resources/config_tes/gwas>`_].
+- Add an APPFL agent skill for coding agents, installable via the new ``appfl-install-skill`` command.
+- Add a federated learning example on the Bridge2AI voice dataset.
+- Add a prototype scikit-learn trainer for non-deep-learning federated models.
+- Relax the ``numpy`` version requirement to allow ``numpy`` 2.x dependencies, reported by `@Étienne Bourbeau <https://github.com/bourdeet>`_ in `#433 <https://github.com/APPFL/APPFL/issues/433>`_.
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix a series of security issues reported and fixed by `@Matthieu Dorier <https://github.com/mdorier>`_, including: preventing shell injection when setting up SSL certificates via ``appfl-setup-ssl``, requiring an explicit ``auth_token`` in ``NaiveAuthenticator``, no longer shipping the test SSL certificates and private key in the released wheel, creating APPFL working directories with ``0o700`` permissions and a uid-namespaced ``/tmp`` fallback, enforcing owner-only permissions on the Globus token store directory and database, refusing AWS credentials files with insecure permissions, and using randomly named temporary files while refusing symlinks in TES client writes.
+- Tune the gRPC keepalive defaults so long-idle FL channels are not dropped, from `@Matthieu Dorier <https://github.com/mdorier>`_.
+- Fix the scheduling logic and logging of the ``QueueScheduler``, from `@Emon Dey <https://github.com/Emon-dey>`_.
+- Guard against a divide-by-zero (NaN) crash in ``dirichlet_noniid_partition``, from `@Sungmin Kang <https://github.com/sungminkg>`_.
+- Rename ``server.pem`` to ``server.crt`` for consistent naming of generated SSL certificates.
+- Lazily import ``Pillow`` so that it is only required when actually used.
+
 appfl v1.10.0
 -------------
 
