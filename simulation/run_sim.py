@@ -4,10 +4,11 @@ Serial simulation of Federated learning.
 
 import argparse
 import random
+
 from omegaconf import OmegaConf
+
 from appfl.agent import SimClientAgent, SimServerAgent
 from appfl.loader import load_and_split_dataset
-
 
 # Load configuration
 argparser = argparse.ArgumentParser()

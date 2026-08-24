@@ -1,44 +1,48 @@
 import gc
 import io
 import os
-import uuid
-import grpc
-import time
-import yaml
-import torch
 import pathlib
+import time
+import uuid
+from collections import OrderedDict
 from datetime import datetime
+from typing import Any
+
+import grpc
+import torch
+import yaml
+from omegaconf import DictConfig, OmegaConf
+from proxystore.proxy import Proxy, extract
+from proxystore.store import Store
+
+from appfl.comm.grpc import (
+    create_grpc_channel,
+    deserialize_model,
+    proto_to_databuffer,
+    serialize_model,
+)
 from appfl.comm.utils.s3_storage import CloudStorage
 from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_s3
+from appfl.misc.memory_utils import (
+    efficient_bytearray_concatenation,
+    get_state_dict_memory_info,
+    optimize_memory_cleanup,
+    split_state_dict_by_size,
+)
+from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
+
 from .grpc_communicator_pb2 import (
     ClientHeader,
     ConfigurationRequest,
-    GetGlobalModelRequest,
-    GetGlobalModelRespone,
-    UpdateGlobalModelRequest,
-    UpdateGlobalModelResponse,
     CustomActionRequest,
     CustomActionResponse,
+    GetGlobalModelRequest,
+    GetGlobalModelRespone,
     ServerStatus,
+    UpdateGlobalModelRequest,
+    UpdateGlobalModelResponse,
 )
 from .grpc_communicator_pb2_grpc import GRPCCommunicatorStub
-from omegaconf import OmegaConf, DictConfig
-from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
-from appfl.comm.grpc import (
-    proto_to_databuffer,
-    serialize_model,
-    deserialize_model,
-    create_grpc_channel,
-)
-from proxystore.store import Store
-from proxystore.proxy import Proxy, extract
-from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
-from appfl.misc.memory_utils import (
-    efficient_bytearray_concatenation,
-    optimize_memory_cleanup,
-    get_state_dict_memory_info,
-    split_state_dict_by_size,
-)
 
 
 class GRPCClientCommunicator:
@@ -48,16 +52,16 @@ class GRPCClientCommunicator:
 
     def __init__(
         self,
-        client_id: Union[str, int],
+        client_id: str | int,
         *,
         server_uri: str,
         use_ssl: bool = False,
         use_authenticator: bool = False,
-        root_certificate: Optional[Union[str, bytes]] = None,
-        authenticator: Optional[str] = None,
-        authenticator_args: Dict[str, Any] = {},
+        root_certificate: str | bytes | None = None,
+        authenticator: str | None = None,
+        authenticator_args: dict[str, Any] = {},
         max_message_size: int = 2 * 1024 * 1024,
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         """
@@ -129,7 +133,7 @@ class GRPCClientCommunicator:
 
     def get_global_model(
         self, **kwargs
-    ) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Get the global model from the server.
         :param kwargs: additional metadata to be sent to the server
@@ -143,7 +147,7 @@ class GRPCClientCommunicator:
             client_id = str(self.client_id)
         if self.use_s3bucket:
             local_model_key = (
-                f"{self.experiment_id}_{str(uuid.uuid4())}_server_state_{client_id}"
+                f"{self.experiment_id}_{uuid.uuid4()!s}_server_state_{client_id}"
             )
             local_model_url = CloudStorage.presign_upload_object(
                 local_model_key, register_for_clean=True
@@ -220,8 +224,8 @@ class GRPCClientCommunicator:
             return model, meta_data
 
     def update_global_model(
-        self, local_model: Union[Dict, OrderedDict, bytes], **kwargs
-    ) -> Tuple[Union[Dict, OrderedDict], Dict]:
+        self, local_model: dict | OrderedDict | bytes, **kwargs
+    ) -> tuple[dict | OrderedDict, dict]:
         """
         Send local model to FL server for global update, and return the new global model.
         :param local_model: the local model to be sent to the server for global aggregation
@@ -232,7 +236,7 @@ class GRPCClientCommunicator:
 
         # Streamed aggregation: Check BEFORE wrapping in ProxyStore/S3/Colab
         # This ensures we chunk the raw model state_dict, not a Proxy or S3 reference
-        if self.use_model_chunking and isinstance(local_model, (Dict, OrderedDict)):
+        if self.use_model_chunking and isinstance(local_model, (dict, OrderedDict)):
             mem_info = get_state_dict_memory_info(local_model)
             if mem_info["total_bytes"] > self.model_chunk_size:
                 if self.logger:
@@ -261,7 +265,7 @@ class GRPCClientCommunicator:
                 self.experiment_id, "grpc", local_model, client_id
             )
             local_model_key = (
-                f"{self.experiment_id}_{str(uuid.uuid4())}_server_state_{client_id}"
+                f"{self.experiment_id}_{uuid.uuid4()!s}_server_state_{client_id}"
             )
             local_model_url = CloudStorage.presign_upload_object(
                 local_model_key, register_for_clean=True
@@ -358,8 +362,8 @@ class GRPCClientCommunicator:
         return model, meta_data
 
     def _streamed_get_global_model(
-        self, first_chunk: Union[Dict, OrderedDict], first_meta: Dict, **kwargs
-    ) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
+        self, first_chunk: dict | OrderedDict, first_meta: dict, **kwargs
+    ) -> dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Streamed GetGlobalModel: receive model in chunks from server.
         Client explicitly requests each chunk by passing `_chunk_id`.
@@ -428,8 +432,8 @@ class GRPCClientCommunicator:
             return model, first_meta
 
     def _streamed_aggregation(
-        self, local_model: Union[Dict, OrderedDict], **kwargs
-    ) -> Tuple[Union[Dict, OrderedDict], Dict]:
+        self, local_model: dict | OrderedDict, **kwargs
+    ) -> tuple[dict | OrderedDict, dict]:
         """
         Streamed aggregation: send model in chunks, aggregate each chunk separately.
         Works with any transport mechanism (S3, ProxyStore, optimized, regular).
@@ -501,7 +505,7 @@ class GRPCClientCommunicator:
             # Restore chunking setting
             self.use_model_chunking = old_use_chunking
 
-    def invoke_custom_action(self, action: str, **kwargs) -> Dict:
+    def invoke_custom_action(self, action: str, **kwargs) -> dict:
         """
         Invoke a custom action on the server.
         :param action: the action to be invoked

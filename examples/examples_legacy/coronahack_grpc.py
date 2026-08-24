@@ -6,20 +6,22 @@ To run with Naive authenticator:
 mpiexec -np 5 python ./coronahack_grpc.py --use_ssl --use_authenticator --authenticator Naive --num_epochs 10
 """
 
-import time
-import torch
 import argparse
+import time
+
+import torch
+from dataloader.coronahack_dataloader import get_corona
+from losses.utils import get_loss
+from metric.utils import get_metric
+from models.utils import get_model
 from mpi4py import MPI
 from omegaconf import OmegaConf
+
+import appfl.run_grpc_client as grpc_client
+import appfl.run_grpc_server as grpc_server
+from appfl.comm.grpc import load_credential_from_file
 from appfl.config import Config
 from appfl.misc.utils import set_seed
-from losses.utils import get_loss
-from models.utils import get_model
-from metric.utils import get_metric
-import appfl.run_grpc_server as grpc_server
-import appfl.run_grpc_client as grpc_client
-from dataloader.coronahack_dataloader import get_corona
-from appfl.comm.grpc import load_credential_from_file
 
 
 def _require_cert(arg_value, flag_name):

@@ -6,18 +6,18 @@ This script provides comprehensive analysis and visualization of memory profilin
 from MPI federated learning experiments, comparing original vs optimized implementations.
 """
 
-import os
-import sys
-import json
-import subprocess
 import argparse
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from pathlib import Path
-from typing import Dict, List, Optional
+import json
+import os
+import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 
 @dataclass
@@ -54,7 +54,7 @@ class MPIResultAnalyzer:
         )
         sns.set_palette("husl")
 
-    def _discover_profiles(self) -> Dict[str, Dict[str, str]]:
+    def _discover_profiles(self) -> dict[str, dict[str, str]]:
         """Discover and categorize profile files by rank and type."""
         profile_files = list(self.profiles_dir.glob("*.bin"))
 
@@ -77,7 +77,7 @@ class MPIResultAnalyzer:
 
     def extract_metrics_from_profile(
         self, profile_path: str, rank: str, profile_type: str
-    ) -> Optional[ProfileMetrics]:
+    ) -> ProfileMetrics | None:
         """Extract detailed metrics from a memory profile using python -m memray."""
         try:
             result = subprocess.run(
@@ -114,7 +114,7 @@ class MPIResultAnalyzer:
 
     def _parse_text_stats(
         self, profile_path: str, rank: str, profile_type: str
-    ) -> Optional[ProfileMetrics]:
+    ) -> ProfileMetrics | None:
         """Fallback text parsing for python -m memray stats output."""
         try:
             result = subprocess.run(
@@ -213,7 +213,7 @@ class MPIResultAnalyzer:
             pass
         return 1.0
 
-    def collect_all_metrics(self) -> List[ProfileMetrics]:
+    def collect_all_metrics(self) -> list[ProfileMetrics]:
         """Collect metrics from all discovered profiles."""
         print("Extracting metrics from profiles...")
 

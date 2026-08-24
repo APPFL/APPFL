@@ -1,12 +1,14 @@
 import time
+
 import torch
-from omegaconf import OmegaConf
-from appfl.config import Config
-from models.cnn import CNN
-import appfl.run_grpc_server as grpc_server
-import appfl.run_grpc_client as grpc_client
-from mpi4py import MPI
 from dataloader.femnist_dataloader import get_femnist
+from models.cnn import CNN
+from mpi4py import MPI
+from omegaconf import OmegaConf
+
+import appfl.run_grpc_client as grpc_client
+import appfl.run_grpc_server as grpc_server
+from appfl.config import Config
 
 DataSet_name = "FEMNIST"
 num_clients = 203

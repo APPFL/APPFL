@@ -13,12 +13,13 @@ python grpc/run_client_dimat.py --config ./resources/configs/mnist/client_1_dima
 python grpc/run_client_dimat.py --config ./resources/configs/mnist/client_2_dimat.yaml --pretrain_epochs 10
 """
 
-import time
 import argparse
+import time
+
 from omegaconf import OmegaConf
+
 from appfl.agent import ClientAgent
 from appfl.comm.grpc import GRPCClientCommunicator
-
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(

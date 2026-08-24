@@ -1,7 +1,9 @@
-import os
 import json
+import os
+
 import numpy as np
 import torch
+
 from appfl.misc.data import Dataset
 
 # Please download and preprocess the FEMNIST data before calling this dataloader

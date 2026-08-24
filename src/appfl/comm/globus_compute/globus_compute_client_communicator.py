@@ -17,8 +17,8 @@ def globus_compute_client_entry_point(
     # from client's local appfl instead of sending the function logics within the function.
     try:
         from appfl.comm.utils.executor import (
-            get_sample_size_executor,
             data_readiness_report_executor,
+            get_sample_size_executor,
             train_executor,
         )
 
