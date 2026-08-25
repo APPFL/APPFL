@@ -30,3 +30,4 @@ wandb_configs:
   entity: zl52-university-of-illinois-urbana-champaign
   project: appfl
   exp_name: appfl-mnist
+  exp_id: mnist-grpc-2clients-experiment-001

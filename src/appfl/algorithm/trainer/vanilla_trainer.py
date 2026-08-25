@@ -38,6 +38,12 @@ class VanillaTrainer(BaseTrainer):
         as well as the number of local epochs or steps.
     """
 
+    # Name of the metric used as the x-axis for all wandb charts. Logging against
+    # the federated learning round keeps every client on a common axis, instead of
+    # the implicit wandb step which advances once per `wandb.log` call and so
+    # differs between clients that share a run.
+    _WANDB_STEP_METRIC = "round"
+
     def __init__(
         self,
         model: Optional[Module] = None,
@@ -88,6 +94,8 @@ class VanillaTrainer(BaseTrainer):
         ):
             self.enabled_wandb = True
             self.wandb_logging_id = self.train_configs.wandb_logging_id
+            wandb.define_metric(self._WANDB_STEP_METRIC, hidden=True)
+            wandb.define_metric("*", step_metric=self._WANDB_STEP_METRIC)
         else:
             self.enabled_wandb = False
         self._sanity_check()
@@ -100,6 +108,17 @@ class VanillaTrainer(BaseTrainer):
             self.train_configs.get("dp_mechanism", "laplace") == "opacus"
         ):
             self.privacy_engine = PrivacyEngine()
+
+    def _wandb_log(self, metrics: dict, round_value: float) -> None:
+        """
+        Log metrics to wandb against the federated learning round.
+
+        :param metrics: the metrics to log, already prefixed with the client id.
+        :param round_value: the value of the `round` x-axis for these metrics. It may
+            be fractional to place several points inside a single round, e.g. one per
+            local epoch.
+        """
+        wandb.log({**metrics, self._WANDB_STEP_METRIC: round_value})
 
     def train(self, **kwargs):
         """
@@ -196,11 +215,12 @@ class VanillaTrainer(BaseTrainer):
                     content.insert(1, 0)
                 self.logger.log_content(content)
                 if self.enabled_wandb:
-                    wandb.log(
+                    self._wandb_log(
                         {
                             f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
                             f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
-                        }
+                        },
+                        self.round,
                     )
 
         # Start training
@@ -260,13 +280,14 @@ class VanillaTrainer(BaseTrainer):
                 per_epoch_time = time.time() - start_time
                 total_train_time += per_epoch_time
                 if self.enabled_wandb:
-                    wandb.log(
+                    self._wandb_log(
                         {
                             f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
                             f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
                             f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
                             f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
-                        }
+                        },
+                        self.round + (epoch + 1) / self.train_configs.num_local_epochs,
                     )
                 self.logger.log_content(
                     [self.round, epoch, per_epoch_time, train_loss, train_accuracy]
@@ -353,13 +374,14 @@ class VanillaTrainer(BaseTrainer):
                 per_step_time / self.train_configs.num_local_steps
             )
             if self.enabled_wandb:
-                wandb.log(
+                self._wandb_log(
                     {
                         f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
                         f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
                         f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
                         f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
-                    }
+                    },
+                    self.round + 1,
                 )
             self.logger.log_content(
                 [self.round, per_step_time, train_loss, train_accuracy]

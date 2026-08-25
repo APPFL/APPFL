@@ -640,6 +640,17 @@ class ClientAgent:
     def _init_wandb(self) -> None:
         """
         Initialize Weights and Biases for logging.
+
+        The wandb run id is resolved in the following order of precedence:
+
+        1. ``wandb_configs.exp_id``, explicitly set by the user. Giving all clients
+           of a federation the same value groups them into a single wandb run, which
+           is useful when each client runs in its own process (e.g. gRPC).
+        2. ``experiment_id``, assigned by the server. This is only available at this
+           point for communicators that merge the server configurations into the
+           client configurations before the client agent is created (e.g. Globus
+           Compute); for others it arrives later via ``load_config``.
+        3. A randomly generated id, giving the client its own run.
         """
         if not hasattr(self.client_agent_config, "wandb_configs"):
             self.client_agent_config.train_configs.enable_wandb = wandb.run is not None
@@ -655,7 +666,11 @@ class ClientAgent:
             dir=self.client_agent_config.train_configs.get(
                 "logging_output_dirname", "./output"
             ),
-            id=self.client_agent_config.get("experiment_id", wandb.util.generate_id()),
+            id=(
+                self.client_agent_config.wandb_configs.get("exp_id", None)
+                or self.client_agent_config.get("experiment_id", None)
+                or wandb.util.generate_id()
+            ),
             name=self.client_agent_config.wandb_configs.get("exp_name", "appfl"),
             config=OmegaConf.to_container(self.client_agent_config, resolve=True),
             resume="allow",
