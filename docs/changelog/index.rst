@@ -16,6 +16,7 @@ New Features
 - Add a federated learning example on the Bridge2AI voice dataset.
 - Add a prototype scikit-learn trainer for non-deep-learning federated models.
 - Relax the ``numpy`` version requirement to allow ``numpy`` 2.x dependencies, reported by `@Étienne Bourbeau <https://github.com/bourdeet>`_ in `#433 <https://github.com/APPFL/APPFL/issues/433>`_.
+- Add a ``wandb_configs.exp_id`` option so that all clients of a federation can log into a single Weights & Biases run, which is useful when each client runs in its own process (e.g. gRPC). If unset, the id assigned by the server is used when available, otherwise a random one is generated.
 
 Bug Fixes
 ~~~~~~~~~
@@ -25,6 +26,7 @@ Bug Fixes
 - Fix the scheduling logic and logging of the ``QueueScheduler``, from `@Emon Dey <https://github.com/Emon-dey>`_.
 - Guard against a divide-by-zero (NaN) crash in ``dirichlet_noniid_partition``, from `@Sungmin Kang <https://github.com/sungminkg>`_.
 - Rename ``server.pem`` to ``server.crt`` for consistent naming of generated SSL certificates.
+- Log client metrics to Weights & Biases against the federated learning round rather than the implicit wandb step, so that all clients share a common x-axis instead of being spread over interleaved steps.
 - Lazily import ``Pillow`` so that it is only required when actually used.
 
 appfl v1.10.0
