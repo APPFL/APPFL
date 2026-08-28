@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from appfl.decentralized.baseline.base_baseline import BaseBaseline
+from appfl.decentralized.adko.baseline.base_baseline import BaseBaseline
 
 
 class FixedBaseline(BaseBaseline):

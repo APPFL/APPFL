@@ -26,7 +26,7 @@ class BaseBaseline(ABC):
     Two methods. ``observe`` is called once per round with the agent's new measurement;
     ``current`` returns the ``(baseline, scale)`` the next token is encoded against::
 
-        from appfl.decentralized.baseline import BaseBaseline
+        from appfl.decentralized.adko.baseline import BaseBaseline
 
         class QuantileBaseline(BaseBaseline):
             \"\"\"Succeed only in the top quartile of what this agent has seen.\"\"\"
