@@ -94,24 +94,35 @@ def serve(
     else:
         server.add_insecure_port(server_uri)
     server.start()
+
+    # A servicer need not be a federated-learning server. Servicers that carry no
+    # `server_agent` (e.g. a decentralized token relay, which holds no model, aggregator, or
+    # scheduler) simply have no self-termination condition and run until interrupted.
+    server_agent = getattr(servicer, "server_agent", None)
+
+    def _log_termination():
+        logger = getattr(server_agent, "logger", None)
+        if logger is not None:
+            logger.info("Terminating the server ...")
+        else:
+            print("Terminating the server ...")
+
+    def _cleanup():
+        if hasattr(servicer, "cleanup"):
+            servicer.cleanup()
+
     try:
         while True:
             time.sleep(1)
-            if servicer.server_agent.server_terminated():
-                servicer.cleanup()
-                if hasattr(servicer.server_agent, "logger"):
-                    servicer.server_agent.logger.info("Terminating the server ...")
-                else:
-                    print("Terminating the server ...")
+            if server_agent is not None and server_agent.server_terminated():
+                _cleanup()
+                _log_termination()
                 time.sleep(
                     10
                 )  # sleep for 10 seconds to ensure clients receive the termination signal
                 server.stop(0)
                 break
     except KeyboardInterrupt:
-        servicer.cleanup()
-        if hasattr(servicer.server_agent, "logger"):
-            servicer.server_agent.logger.info("Terminating the server ...")
-        else:
-            print("Terminating the server ...")
+        _cleanup()
+        _log_termination()
         return
