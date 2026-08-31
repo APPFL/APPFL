@@ -20,7 +20,7 @@ from appfl.decentralized.algorithm.adko.knowledge_token import (
     binary_entropy,
     encode_token,
 )
-from appfl.decentralized.algorithm.adko.interfaces import DesignSpace, LanguageModel, Surrogate
+from appfl.decentralized.algorithm.adko.components import DesignSpace, LanguageModel, Surrogate
 from appfl.decentralized.algorithm.adko.baseline import (
     BaseBaseline,
     FixedBaseline,

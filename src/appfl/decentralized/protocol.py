@@ -7,7 +7,7 @@ Two contracts live here, and both are deliberately minimal -- they are the surfa
 * :class:`AgentProtocol` -- what the round driver needs to drive something.
 
 Algorithm-specific interfaces (surrogate, language model, design space) live in
-``appfl.decentralized.algorithm.adko.interfaces``. Keeping them apart is what lets a second algorithm
+``appfl.decentralized.algorithm.adko.components``. Keeping them apart is what lets a second algorithm
 reuse ``exchange.py``, ``runner.py``, ``topology.py`` and ``budget.py`` unchanged.
 """
 
