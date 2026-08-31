@@ -1,32 +1,34 @@
-import io
 import gc
+import io
 import os
-import torch
 import pathlib
-import warnings
 import threading
+import warnings
+from collections import OrderedDict
+from concurrent.futures import Future
+
 import numpy as np
-import torch.nn as nn
+import torch
+from omegaconf import DictConfig, OmegaConf
+from torch import nn
+from torch.utils.data import DataLoader
+
+from appfl.algorithm.aggregator import BaseAggregator
+from appfl.algorithm.scheduler import BaseScheduler
 from appfl.config import ServerAgentConfig
 from appfl.logger import ServerAgentFileLogger
-from appfl.algorithm.scheduler import BaseScheduler
-from appfl.algorithm.aggregator import BaseAggregator
+from appfl.misc.data_readiness.report import (
+    generate_html_content,
+    get_unique_file_path,
+    save_html_report,
+)
 from appfl.misc.utils import (
     create_instance_from_file,
-    get_function_from_file,
-    run_function_from_file,
     get_appfl_aggregator,
     get_appfl_compressor,
     get_appfl_scheduler,
-)
-from concurrent.futures import Future
-from torch.utils.data import DataLoader
-from omegaconf import OmegaConf, DictConfig
-from typing import Union, Dict, OrderedDict, Tuple, Optional
-from appfl.misc.data_readiness.report import (
-    get_unique_file_path,
-    generate_html_content,
-    save_html_report,
+    get_function_from_file,
+    run_function_from_file,
 )
 
 
@@ -82,11 +84,11 @@ class ServerAgent:
 
     def global_update(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict, bytes],
+        client_id: int | str,
+        local_model: dict | OrderedDict | bytes,
         blocking: bool = False,
         **kwargs,
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Future | dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Update the global model using the local model from a client and return the updated global model.
         :param: client_id: A unique client id for server to distinguish clients, which be obtained via `ClientAgent.get_id()`.
@@ -118,7 +120,7 @@ class ServerAgent:
 
     def get_parameters(
         self, blocking: bool = False, **kwargs
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Future | dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Return the global model to the clients.
 
@@ -145,12 +147,12 @@ class ServerAgent:
 
     def set_sample_size(
         self,
-        client_id: Union[int, str],
+        client_id: int | str,
         sample_size: int,
         sync: bool = False,
         blocking: bool = False,
         **kwargs,
-    ) -> Optional[Union[Dict, Future]]:
+    ) -> dict | Future | None:
         """
         Set the size of the local dataset of a client.
 
@@ -206,7 +208,7 @@ class ServerAgent:
             <= self.scheduler.get_num_global_epochs()
         )
 
-    def close_connection(self, client_id: Union[int, str]) -> None:
+    def close_connection(self, client_id: int | str) -> None:
         """Record the client that has finished the communication with the server."""
         if not hasattr(self, "closed_clients"):
             self.closed_clients = set()
@@ -214,7 +216,7 @@ class ServerAgent:
         with self._close_connection_lock:
             self.closed_clients.add(client_id)
 
-    def data_readiness_report(self, readiness_report: Dict) -> None:
+    def data_readiness_report(self, readiness_report: dict) -> None:
         """
         Generate the data readiness report and save it to the output directory.
         """
@@ -502,7 +504,7 @@ class ServerAgent:
                 compressor_config=self.server_agent_config.server_configs.comm_configs.compressor_configs,
             )
 
-    def _bytes_to_model(self, model_bytes: bytes) -> Union[Dict, OrderedDict]:
+    def _bytes_to_model(self, model_bytes: bytes) -> dict | OrderedDict:
         """Deserialize the model from bytes."""
         if not self.enable_compression:
             # Memory optimization: Use context manager and load to CPU first
@@ -551,7 +553,7 @@ class ServerAgent:
                 ),
             )
 
-    def _validate(self) -> Tuple[float, float]:
+    def _validate(self) -> tuple[float, float]:
         """
         Validate the model
         :return: loss, accuracy

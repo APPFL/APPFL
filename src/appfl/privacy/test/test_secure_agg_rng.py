@@ -3,8 +3,9 @@ Test script to verify the SecureAggregator RNG fix.
 Tests: determinism, distribution properties, and mask cancellation.
 """
 
-import torch
 import numpy as np
+import torch
+
 from appfl.privacy import SecureAggregator
 
 

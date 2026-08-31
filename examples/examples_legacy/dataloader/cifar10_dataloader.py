@@ -1,22 +1,24 @@
 import os
+
 import torch
 import torchvision
 from mpi4py import MPI
-from typing import Optional, List
+
 from appfl.misc.data import Dataset
-from .utils.transform import test_transform, train_transform
+
+from .utils.generate_readiness_report import generate_readiness_report
 from .utils.partition import (
-    iid_partition,
     class_noiid_partition,
     dirichlet_noiid_partition,
+    iid_partition,
 )
-from .utils.generate_readiness_report import generate_readiness_report
+from .utils.transform import test_transform, train_transform
 
 
 def get_cifar10(
-    comm: Optional[MPI.Comm],
+    comm: MPI.Comm | None,
     num_clients: int,
-    dr_metrics: Optional[List[str]] = None,
+    dr_metrics: list[str] | None = None,
     partition: str = "iid",
     visualization: bool = True,
     output_dirname: str = "./outputs",

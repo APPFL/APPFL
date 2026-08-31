@@ -1,10 +1,11 @@
-import os
-import csv
-import cv2
-import json
-import torch
 import argparse
+import csv
+import json
+import os
+
+import cv2
 import numpy as np
+import torch
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

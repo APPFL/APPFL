@@ -1,5 +1,5 @@
 import torch
-import torch.nn as nn
+from torch import nn
 from torchvision import models
 from torchvision.models.resnet import BasicBlock, ResNet18_Weights
 

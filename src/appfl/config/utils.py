@@ -2,19 +2,20 @@
 [Deprecated] This file contains utility functions to load configurations from yaml files.
 """
 
-import yaml
-import inspect
 import importlib.util
+import inspect
 import os.path as osp
 from datetime import datetime
+
+import yaml
 from omegaconf import OmegaConf
-from typing import List
+
 from appfl.config import (
     Config,
-    GlobusComputeServerConfig,
-    GlobusComputeClientConfig,
     ExecutableFunc,
+    GlobusComputeClientConfig,
     GlobusComputeConfig,
+    GlobusComputeServerConfig,
 )
 from appfl.config.fed import Federated
 
@@ -229,7 +230,7 @@ def get_call(script: str):
 
 
 def load_appfl_client_config_funcx_web(
-    cfg: GlobusComputeConfig, config_files: List[str], dataloaders: List[str]
+    cfg: GlobusComputeConfig, config_files: list[str], dataloaders: list[str]
 ):
     assert len(config_files) == len(dataloaders), (
         "The number of configuration files and dataloader files are different!"

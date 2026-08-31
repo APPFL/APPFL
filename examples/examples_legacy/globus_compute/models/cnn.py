@@ -1,7 +1,8 @@
 def get_model():
     import math
+
     import torch
-    import torch.nn as nn
+    from torch import nn
 
     class CNN(nn.Module):
         def __init__(self, num_channel, num_classes, num_pixel):

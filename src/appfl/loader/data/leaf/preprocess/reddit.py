@@ -1,7 +1,6 @@
-import os
 import json
 import logging
-
+import os
 from collections import Counter, defaultdict
 
 logger = logging.getLogger(__name__)
@@ -31,8 +30,7 @@ def preprocess(root):
                 original if (type(original) is list) else original["target_tokens"]
                 for original in data["user_data"][user]["y"]
             ]  # don't know why... but some samples are not parsed (i.e., in `dict` format, not `list`)
-        else:
-            data["num_samples"] = num_samples
+        data["num_samples"] = num_samples
         return data
 
     def _build_counter(train_data):
@@ -107,12 +105,7 @@ def preprocess(root):
     # adjust path since preprocessed json files are already prepared
     if os.path.exists(os.path.join(path, "raw", "new_small_data")):
         for file in os.listdir(os.path.join(path, "raw", "new_small_data")):
-            if "train" in file:
-                os.replace(
-                    os.path.join(path, "raw", "new_small_data", file),
-                    os.path.join(path, "intermediate", file),
-                )
-            elif "test" in file:
+            if "train" in file or "test" in file:
                 os.replace(
                     os.path.join(path, "raw", "new_small_data", file),
                     os.path.join(path, "intermediate", file),

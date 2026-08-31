@@ -14,10 +14,10 @@ Two deliberate differences from the APPFL loggers:
   because the simulator already timestamps its per-run output directory.
 """
 
-import os
 import logging
+import os
 import pathlib
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -38,7 +38,7 @@ _MIN_RULE_WIDTH = 72
 class _TableMixin:
     """Aligned-column helpers, mirroring ``ClientAgentFileLogger``."""
 
-    def log_title(self, titles: List, repeat: bool = False) -> None:
+    def log_title(self, titles: list, repeat: bool = False) -> None:
         """
         Record the column headers for subsequent :meth:`log_content` calls.
 
@@ -53,7 +53,7 @@ class _TableMixin:
         if not repeat:
             self.info(self._title_row())
 
-    def set_title(self, titles: List) -> None:
+    def set_title(self, titles: list) -> None:
         """Record column headers without printing them."""
         if not hasattr(self, "titles"):
             self.titles = titles
@@ -62,7 +62,7 @@ class _TableMixin:
         """Render the header row for the current titles."""
         return " ".join(["%10s" % t for t in self.titles])
 
-    def log_content(self, contents: Union[Dict, List]) -> None:
+    def log_content(self, contents: dict | list) -> None:
         """
         Print one row under the headers set by :meth:`log_title`.
 
@@ -90,7 +90,7 @@ class _TableMixin:
         # Blank columns pad to full width; trim so partial rows end cleanly.
         self.info(row.rstrip())
 
-    def log_banner(self, title: str, fields: Optional[Dict[str, Any]] = None) -> None:
+    def log_banner(self, title: str, fields: dict[str, Any] | None = None) -> None:
         """Print a rule, a title, and an optional row of ``key=value`` fields."""
         lines = [title]
         if fields:
@@ -159,7 +159,7 @@ class VsimLogger(_TableMixin):
     def warning(self, warning: str) -> None:
         self.logger.warning(warning)
 
-    def get_log_filepath(self) -> Optional[str]:
+    def get_log_filepath(self) -> str | None:
         return getattr(self, "log_filepath", None)
 
 
