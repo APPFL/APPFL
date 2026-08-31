@@ -162,7 +162,7 @@ def encode_token(
         c = clip(|y - threshold| / scale, 0, 1)
 
     ``threshold`` is ADKO's ``b`` and ``scale`` normalizes the deviation. Both come from a
-    :class:`~appfl.decentralized.adko.baseline.Baseline`, which may be fixed or updated from local history. The paper (v2) is explicit that either is legitimate: a fixed
+    :class:`~appfl.decentralized.algorithm.adko.baseline.Baseline`, which may be fixed or updated from local history. The paper (v2) is explicit that either is legitimate: a fixed
     threshold when "success" has a natural domain meaning, a running median otherwise. See
     ``baseline/`` for why the choice matters rather than being a detail.
     """

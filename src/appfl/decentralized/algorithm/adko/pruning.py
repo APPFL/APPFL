@@ -15,7 +15,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, Sequence
 
-from appfl.decentralized.adko.knowledge_token import KnowledgeToken
+from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken
 
 
 class TokenPruner(ABC):

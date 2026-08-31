@@ -8,7 +8,7 @@ Every field is something any token-exchanging method produces, so the same recor
 an in-process run, an ``mpirun`` run, and a live multi-site run. That comparability is the
 point: it is what lets a scaling curve measured in simulation be read against a demo measured
 across real institutions. Algorithm-specific traces subclass :class:`Meter` -- see
-``adko.metrics.ADKOMeter``.
+``algorithm.adko.metrics.ADKOMeter``.
 """
 
 from __future__ import annotations

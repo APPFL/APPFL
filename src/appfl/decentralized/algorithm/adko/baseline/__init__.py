@@ -18,9 +18,9 @@ See :class:`BaseBaseline` for the two-method contract and a worked custom exampl
 
 from typing import Any, Dict, Optional
 
-from appfl.decentralized.adko.baseline.base_baseline import BaseBaseline
-from appfl.decentralized.adko.baseline.fixed_baseline import FixedBaseline
-from appfl.decentralized.adko.baseline.running_median_baseline import (
+from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseline
+from appfl.decentralized.algorithm.adko.baseline.fixed_baseline import FixedBaseline
+from appfl.decentralized.algorithm.adko.baseline.running_median_baseline import (
     RunningMedianBaseline,
     median,
     standard_deviation,
@@ -79,7 +79,7 @@ def get_appfl_baseline(
     canonical = _ALIASES.get(baseline_name, baseline_name)
     import importlib
 
-    module = importlib.import_module("appfl.decentralized.adko.baseline")
+    module = importlib.import_module("appfl.decentralized.algorithm.adko.baseline")
     try:
         BaselineClass = getattr(module, canonical)
     except AttributeError:

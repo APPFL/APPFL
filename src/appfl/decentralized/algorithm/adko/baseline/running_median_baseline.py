@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from appfl.decentralized.adko.baseline.base_baseline import BaseBaseline
+from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseline
 
 
 def median(values: List[float]) -> float:
