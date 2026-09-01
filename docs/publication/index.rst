@@ -3,6 +3,14 @@ Publications
 
 This page presents the publications using the APPFL framework. You may also find an FL-as-a-service platform built on top of APPFL at `service.appfl.ai <https://appflx.link/>`_.
 
+2026
+----
+- **[ICML 2026]** Y. Li, E. Dey, Z. Li, K. Raghavan, R. Madduri, K. Kim, "FedQueue: Queue-Aware Federated Learning for Cross-Facility HPC Training," in *The Forty-Third International Conference on Machine Learning*, 2026. `[Paper] <https://openreview.net/pdf?id=ODWi7lbMGU>`_
+- **[eScience 2026]** Z. Li, A. Chunduru, H. Krishnan, E. Chagnon, P. Nugent, K. Kim, R. Madduri, "Federated Learning on the American Science Cloud using APPFL," to appear in *2026 IEEE 22nd International Conference on e-Science (eScience)*, 2026.
+- **[eScience 2026][Poster]** A. Chunduru, M. Joel, Z. Li, R. Madduri, "Towards Global Federated Genome-Wide Association Meta-Analysis Using GA4GH TES," to appear in *2026 IEEE 22nd International Conference on e-Science (eScience)*, 2026.
+- **[Preprint]** Y. Li, Z. Li, K. Chard, I. Foster, T. Munson, R. Madduri, K. Kim, "Scalable Cross-Facility Federated Learning for Scientific Foundation Models on Multiple Supercomputers," *arXiv preprint arXiv:2603.19544*, 2026. `[Paper] <https://arxiv.org/abs/2603.19544>`_
+
+
 2025
 ----
 - **[CCGrid 2025]** Z. Li, S. He, Z. Yang, M. Ryu, K. Kim, R. Madduri, "Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework," in *2025 IEEE 25th International Symposium on Cluster, Cloud and Internet Computing (CCGrid)*, 2025. `[Paper] <https://arxiv.org/pdf/2409.11585>`_
@@ -10,7 +18,9 @@ This page presents the publications using the APPFL framework. You may also find
 - **[CSBJ][Journal]** T.-H. Hoang, J. Fuhrman, R. Madduri, M. Li, P. Chaturvedi, Z. Li, K. Kim, M. Ryu, R. Chard, E. Huerta et al., "Enabling end-to-end secure federated learning in biomedical research on heterogeneous computing environments with appflx," in *Computational and Structural Biotechnology Journal*, 2025. `[Paper] <https://doi.org/10.1016/j.csbj.2024.12.001>`_
 - **[eScience 2025]** K. Hiniduma, Z. Li, A. Sinha, R. Madduri, S. Byna, "CADRE: Customizable Assurance of Data Readiness in Privacy-Preserving Federated Learning", to appear in *2025 IEEE 21st International Conference on e-Science (eScience)*, 2025. `[Paper] <https://arxiv.org/pdf/2505.23849>`_
 - **[Allerton 2025]** A. Sinha, Z. Li, T. Liu, V. Kindratenko, K. Kim, R. Madduri, "FedCostAware: Enabling Cost-Aware Federated Learning on the Cloud", to appear in *61st Allerton Conference on Communication, Control, and Computing*, 2025. `[Paper] <https://arxiv.org/pdf/2505.21727>`_
+- **[TPS-ISA 2025]** Z. Li, A. Sinha, Y. Li, K. Chard, K. Kim, R. Madduri, "Experiences Building Enterprise-Level Privacy-Preserving Federated Learning to Power AI for Science," in *Proceedings of the 7th IEEE International Conference on Trust, Privacy and Security in Intelligent Systems, and Applications (TPS-ISA 2025)*, 2025. `[Paper] <https://arxiv.org/abs/2511.08998>`_
 - **[ApJS][Journal]** P. Patel, A. Corsi, E. A. Huerta, K. Merfeld, V. Tiki, Z. Li, et al., "RADAR-Radio Afterglow Detection and AI-driven Response: A Federated Framework for Gravitational Wave Event Follow-Up," to appear in *The Astrophysical Journal Supplement Series*, 2025. `[Paper] <https://arxiv.org/abs/2507.14827>`_
+- **[SEC 2025]** Z. Chen, W. Chen, D. Zhang, K. Kim, G. Li, S. Di, X. Lu, "FedDES: Discrete Event Based Performance Simulation for Federated Learning Systems," in *Proceedings of the Tenth ACM/IEEE Symposium on Edge Computing (SEC)*, 2025, pp. 1-16.
 
 
 2024
