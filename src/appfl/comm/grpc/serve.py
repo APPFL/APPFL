@@ -2,14 +2,65 @@
 Serve a gRPC server
 """
 
+import ipaddress
+import logging
 import time
+import warnings
 import grpc
 from concurrent import futures
+from .channel import _uri_host
 from .grpc_communicator_pb2_grpc import add_GRPCCommunicatorServicer_to_server
 from .utils import load_credential_from_file
 from .auth import APPFLAuthMetadataInterceptor
 from typing import Any, Optional, Union, Dict
 from appfl.misc.utils import get_appfl_authenticator
+
+_logger = logging.getLogger(__name__)
+
+
+def _warn_if_bind_uri_not_covered_by_san(
+    server_uri: str, server_certificate: Union[bytes, str]
+) -> None:
+    """Advisory only — log a WARNING if the bind authority of ``server_uri``
+    is not covered by any DNS or IP SAN entry on the server cert. Clients
+    pinning ``server_hostname`` would fail handshakes in this case."""
+    try:
+        from cryptography import x509  # transitive via grpcio
+    except ImportError:
+        return
+    try:
+        pem = (
+            server_certificate
+            if isinstance(server_certificate, (bytes, bytearray))
+            else server_certificate.encode()
+        )
+        cert = x509.load_pem_x509_certificate(pem)
+        san_ext = cert.extensions.get_extension_for_class(
+            x509.SubjectAlternativeName
+        ).value
+    except Exception:
+        return
+    uri_host = _uri_host(server_uri)
+    if not uri_host:
+        return
+    dns_names = set(san_ext.get_values_for_type(x509.DNSName))
+    ip_values = {str(ip) for ip in san_ext.get_values_for_type(x509.IPAddress)}
+    try:
+        ip_canonical = str(ipaddress.ip_address(uri_host))
+        is_ip = True
+    except ValueError:
+        ip_canonical = uri_host
+        is_ip = False
+    covered = (uri_host in dns_names) or (is_ip and ip_canonical in ip_values)
+    if not covered:
+        msg = (
+            f"serve: bind URI host {uri_host!r} is not covered by any SAN on "
+            f"the server certificate (DNS={sorted(dns_names)}, "
+            f"IP={sorted(ip_values)}). Clients pinning server_hostname to "
+            "this value will reject the handshake."
+        )
+        warnings.warn(msg, stacklevel=2)
+        _logger.warning(msg)
 
 
 def serve(
@@ -90,6 +141,7 @@ def serve(
             ),
             root_certificates=ca_certificate,
         )
+        _warn_if_bind_uri_not_covered_by_san(server_uri, server_certificate)
         server.add_secure_port(server_uri, credentials)
     else:
         server.add_insecure_port(server_uri)

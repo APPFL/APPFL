@@ -57,6 +57,9 @@ class GRPCClientCommunicator:
         authenticator: Optional[str] = None,
         authenticator_args: Dict[str, Any] = {},
         max_message_size: int = 2 * 1024 * 1024,
+        server_hostname: Optional[str] = None,
+        insecure_skip_server_identity_check: bool = False,
+        allow_uri_hostname_mismatch: bool = False,
         logger: Optional[Any] = None,
         **kwargs,
     ):
@@ -71,6 +74,12 @@ class GRPCClientCommunicator:
         :param authenticator: The name of the authenticator to use for authenticating the client in each RPC.
         :param authenticator_args: The arguments to pass to the authenticator.
         :param max_message_size: The maximum message size in bytes.
+        :param server_hostname: Pinned server identity for TLS hostname verification.
+            Required when ``use_ssl=True``; must match a SAN entry on the server cert.
+        :param insecure_skip_server_identity_check: Opt-out of SAN verification (still
+            verifies the chain). Emits a warning; never set in production.
+        :param allow_uri_hostname_mismatch: Permit ``server_uri`` to use a DNS host
+            that differs from ``server_hostname`` (e.g. load-balancer fronting).
         """
         self.client_id = client_id
         self.logger = logger
@@ -92,6 +101,9 @@ class GRPCClientCommunicator:
             authenticator=authenticator,
             authenticator_args=authenticator_args,
             max_message_size=max_message_size,
+            server_hostname=server_hostname,
+            insecure_skip_server_identity_check=insecure_skip_server_identity_check,
+            allow_uri_hostname_mismatch=allow_uri_hostname_mismatch,
         )
         grpc.channel_ready_future(channel).result(timeout=3600)
         self.stub = GRPCCommunicatorStub(channel)
