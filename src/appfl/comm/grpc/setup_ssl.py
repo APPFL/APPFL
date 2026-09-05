@@ -5,6 +5,25 @@ import subprocess
 
 _SAFE_PATH_RE = re.compile(r"^/[A-Za-z0-9_./-]*$")
 
+# Certificate subject / SAN fields are interpolated into a generated bash
+# script and an OpenSSL config file. Restrict them to a conservative set of
+# characters so a value cannot break out of its quoting context and inject
+# shell commands or extra config directives.
+_SAFE_FIELD_RE = re.compile(r"^[A-Za-z0-9 ._-]+$")
+
+
+def _prompt_safe_field(prompt: str, default: str) -> str:
+    """Prompt for a certificate field, rejecting values that contain
+    characters outside a safe allow-list. Re-prompts until valid."""
+    while True:
+        value = input(prompt) or default
+        if _SAFE_FIELD_RE.match(value):
+            return value
+        print(
+            "Invalid value: only letters, digits, spaces, '.', '_' and '-' "
+            "are allowed. Please try again."
+        )
+
 
 def setup_ssl():
     """
@@ -46,23 +65,25 @@ def setup_ssl():
     default_DNS = "localhost"
     default_IP = "127.0.0.1"
 
-    # Prompt user for C, ST, O, CN, DNS, IP, with default values
-    C = (
-        input(f"Enter Country Code, press Enter to use default '{default_C}': ")
-        or default_C
+    # Prompt user for C, ST, O, CN, DNS, IP, with default values. Each value is
+    # validated against a safe allow-list because it is later interpolated into
+    # a generated shell script and OpenSSL config file.
+    C = _prompt_safe_field(
+        f"Enter Country Code, press Enter to use default '{default_C}': ", default_C
     )
-    ST = (
-        input(f"Enter State, press Enter to use default '{default_ST}': ") or default_ST
+    ST = _prompt_safe_field(
+        f"Enter State, press Enter to use default '{default_ST}': ", default_ST
     )
-    ORG = (
-        input(f"Enter Organization (O), press Enter to use default '{default_O}': ")
-        or default_O
+    ORG = _prompt_safe_field(
+        f"Enter Organization (O), press Enter to use default '{default_O}': ",
+        default_O,
     )
-    DNS = (
-        input(f"Enter DNS (DNS.1), press Enter to use default '{default_DNS}': ")
-        or default_DNS
+    DNS = _prompt_safe_field(
+        f"Enter DNS (DNS.1), press Enter to use default '{default_DNS}': ", default_DNS
     )
-    IP = input(f"Enter IP, press Enter to use default '{default_IP}': ") or default_IP
+    IP = _prompt_safe_field(
+        f"Enter IP, press Enter to use default '{default_IP}': ", default_IP
+    )
 
     # Create the configuration file content
     conf_content = f"""
