@@ -32,6 +32,7 @@ from .grpc_communicator_pb2_grpc import GRPCCommunicatorServicer
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
+from appfl.comm.utils.state_dict_validation import validate_state_dict
 from .utils import proto_to_databuffer, serialize_model, deserialize_model
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
@@ -61,6 +62,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         )
         self._load_proxystore(server_agent.server_agent_config)
         self._load_google_drive(server_agent.server_agent_config)
+        self._load_s3_flag(server_agent.server_agent_config)
         self._num_connected_clients = 0
         self._total_num_clients = self.server_agent.get_num_clients()
 
@@ -156,6 +158,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             model_key = None
             model_url = None
             if use_s3:
+                self._require_server_feature(
+                    "_use_s3", self.use_s3bucket, request.header.client_id, context
+                )
                 model_key = meta_data.get("model_key", None)
                 model_url = meta_data.get("model_url", None)
 
@@ -323,19 +328,42 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
+            # The three alternative-transport branches below all eventually
+            # produce a tensor state dict, which is then schema-validated
+            # against the server's own model. The reference object that
+            # *describes* where to fetch the state dict differs by transport:
+            #
+            # * colab and S3 use a plain Python dict, which round-trips safely
+            #   through torch.load(weights_only=True);
+            # * proxystore uses a Proxy class with a user-defined factory,
+            #   which forces weights_only=False — that branch is therefore
+            #   gated by the server-side proxystore-enabled flag so an
+            #   unauthorised client cannot trigger it.
             if meta_data.get("_use_proxystore", False):
-                local_model_proxy = deserialize_model(local_model)
+                self._require_server_feature(
+                    "_use_proxystore", self.use_proxystore, client_id, context
+                )
+                local_model_proxy = deserialize_model(local_model, weights_only=False)
                 local_model = extract(local_model_proxy)
 
                 if self.optimize_memory:
                     optimize_memory_cleanup(local_model_proxy, force_gc=True)
             if meta_data.get("_use_colab_connector", False):
-                local_model = deserialize_model(local_model)
+                self._require_server_feature(
+                    "_use_colab_connector",
+                    self.use_colab_connector,
+                    client_id,
+                    context,
+                )
+                drive_handle = deserialize_model(local_model)
                 local_model = self.colab_connector.load_model(
-                    local_model["model_drive_path"]
+                    drive_handle["model_drive_path"]
                 )
             use_s3 = meta_data.get("_use_s3", False)
             if use_s3:
+                self._require_server_feature(
+                    "_use_s3", self.use_s3bucket, client_id, context
+                )
                 model_key = meta_data.get("model_key", None)
                 model_url = meta_data.get("model_url", None)
                 local_model = extract_model_from_s3(
@@ -344,6 +372,24 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     "grpc",
                     deserialize_model(local_model),
                 )
+
+            # Validate the resulting state dict against the server's known
+            # model schema, regardless of which transport carried it. This is
+            # the structural defence: even payloads that survive deserialisation
+            # must match the federation's published parameter names and shapes.
+            if isinstance(local_model, bytes):
+                # Default tensor path: bytes go to ServerAgent._bytes_to_model
+                # which runs validate_state_dict internally. Nothing more to
+                # do here.
+                pass
+            else:
+                reference_model = getattr(self.server_agent, "model", None)
+                reference = (
+                    reference_model.state_dict()
+                    if reference_model is not None
+                    else None
+                )
+                validate_state_dict(local_model, reference=reference)
 
             # Streamed aggregation: chunk metadata is passed through to aggregator
             if self.use_model_chunking and "_chunk_idx" in meta_data:
@@ -643,6 +689,53 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             self.logger.info(
                 f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
             )
+
+    def _load_s3_flag(self, server_agent_config) -> None:
+        """Determine whether the operator has opted this server into S3-based
+        model transfer. The flag gates the ``_use_s3`` metadata field so that
+        an untrusted client cannot opt the server into that code path
+        unilaterally (which would otherwise let the client point the server
+        at an arbitrary URL and feed it an unsafe-deserialised reference
+        object).
+        """
+        self.use_s3bucket = False
+        try:
+            s3_configs = server_agent_config.server_configs.comm_configs.s3_configs
+        except (AttributeError, KeyError):
+            return
+        if s3_configs is None:
+            return
+        # Either an explicit enable flag or the presence of an s3_bucket
+        # value counts as opt-in.
+        enabled = bool(s3_configs.get("enable_s3", False)) or bool(
+            s3_configs.get("s3_bucket", None)
+        )
+        self.use_s3bucket = enabled
+
+    def _require_server_feature(
+        self, flag_name: str, server_enabled: bool, client_id: str, context
+    ) -> None:
+        """Refuse the request when the client set a feature flag in its
+        metadata but the server has not been opted into that feature.
+
+        Without this gate, the corresponding deserialisation branches run
+        ``torch.load(weights_only=False)`` on bytes the client controls, which
+        is direct RCE on the server. Raises a gRPC ``FAILED_PRECONDITION``
+        error so the client sees a clear refusal rather than a generic crash.
+        """
+        if server_enabled:
+            return
+        msg = (
+            f"Client {client_id!r} requested {flag_name}=True but this "
+            "server has not been configured for that transport. Refusing "
+            "the request: enabling the corresponding feature server-side "
+            "is required."
+        )
+        self.logger.warning(msg)
+        if context is not None:
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            context.set_details(msg)
+        raise ValueError(msg)
 
     def _load_google_drive(self, server_agent_config) -> None:
         self.use_colab_connector = False
