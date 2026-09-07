@@ -1,18 +1,21 @@
 import copy
-import torch
 import logging
-import numpy as np
-from appfl.algorithm import BaseServer
 from collections import OrderedDict
-from .grpc_communicator_old_pb2 import Job
+
+import numpy as np
+import torch
 from torch.utils.data import DataLoader
+
+from appfl.algorithm import BaseServer
 from appfl.misc.utils import (
     create_custom_logger,
-    load_model,
-    validation,
-    save_model_iteration,
     get_appfl_algorithm,
+    load_model,
+    save_model_iteration,
+    validation,
 )
+
+from .grpc_communicator_old_pb2 import Job
 
 
 class APPFLgRPCServer:
@@ -154,8 +157,7 @@ class APPFLgRPCServer:
                 self.fed_server, self.dataloader, self.metric
             )
 
-            if accuracy > self.best_accuracy:
-                self.best_accuracy = accuracy
+            self.best_accuracy = max(self.best_accuracy, accuracy)
 
             self.logger.info(
                 f"[Round: {self.round_number: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%, Best Accuracy: {self.best_accuracy:.2f}%"
@@ -178,7 +180,7 @@ class APPFLgRPCServer:
     def is_round_finished(self):
         return all(
             (c, self.round_number) in self.client_learning_status
-            for c in range(0, self.num_clients)
+            for c in range(self.num_clients)
         )
 
     """

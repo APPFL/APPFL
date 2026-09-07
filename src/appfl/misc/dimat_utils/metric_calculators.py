@@ -3,8 +3,9 @@ Metric computation for alignment between models.
 Ported from DIMAT/utils/metric_calculators.py.
 """
 
-import torch
 from abc import ABC, abstractmethod
+
+import torch
 
 
 class MetricCalculator(ABC):

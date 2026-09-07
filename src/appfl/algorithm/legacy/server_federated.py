@@ -1,9 +1,11 @@
 import abc
 import copy
-import torch
 import logging
-from .fl_base import BaseServer
 from collections import OrderedDict
+
+import torch
+
+from .fl_base import BaseServer
 
 
 class FedServer(BaseServer):
@@ -62,7 +64,6 @@ class FedServer(BaseServer):
     @abc.abstractmethod
     def compute_step(self):
         """Compute the step for global model gradient descend."""
-        pass
 
     def update(self, local_states: list):
         self.global_state = copy.deepcopy(self.model.state_dict())

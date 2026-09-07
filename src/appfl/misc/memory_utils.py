@@ -6,16 +6,18 @@ used throughout the APPFL codebase to reduce memory usage and improve garbage co
 """
 
 import gc
-import torch
 import io
-from typing import Dict, Any, Optional, Union, OrderedDict
+from collections import OrderedDict
 from contextlib import contextmanager
+from typing import Any, Union
+
+import torch
 
 
 def clone_state_dict_optimized(
-    state_dict: Union[Dict[str, torch.Tensor], OrderedDict[str, torch.Tensor]],
+    state_dict: dict[str, torch.Tensor] | OrderedDict[str, torch.Tensor],
     include_buffers: bool = True,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """
     Memory-efficient cloning of model state dict using tensor.clone().detach()
     instead of copy.deepcopy().
@@ -38,7 +40,7 @@ def clone_state_dict_optimized(
 
 def extract_model_state_optimized(
     model: torch.nn.Module, include_buffers: bool = True, cpu_transfer: bool = False
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """
     Memory-efficient extraction of model state using tensor cloning.
 
@@ -75,8 +77,8 @@ def extract_model_state_optimized(
 def safe_inplace_operation(
     tensor: torch.Tensor,
     operation: str,
-    operand: Union[torch.Tensor, float, int],
-    alpha: Optional[float] = None,
+    operand: torch.Tensor | float,
+    alpha: float | None = None,
 ) -> torch.Tensor:
     """
     Safely perform in-place operations with dtype checking to avoid errors
@@ -132,10 +134,10 @@ def safe_inplace_operation(
 
 
 def efficient_tensor_aggregation(
-    tensors: Dict[str, torch.Tensor],
-    weights: Optional[Dict[str, float]] = None,
+    tensors: dict[str, torch.Tensor],
+    weights: dict[str, float] | None = None,
     cleanup_intermediate: bool = True,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """
     Memory-efficient tensor aggregation with dtype-aware operations.
 
@@ -267,7 +269,7 @@ def optimize_memory_cleanup(
         torch.cuda.empty_cache()
 
 
-def get_tensor_memory_info(tensor: torch.Tensor) -> Dict[str, Any]:
+def get_tensor_memory_info(tensor: torch.Tensor) -> dict[str, Any]:
     """
     Get memory usage information for a tensor.
 
@@ -315,7 +317,7 @@ safe_tensor_operation = safe_inplace_operation
 
 
 def split_state_dict_by_size(
-    state_dict: Union[Dict[str, torch.Tensor], "OrderedDict[str, torch.Tensor]"],
+    state_dict: Union[dict[str, torch.Tensor], "OrderedDict[str, torch.Tensor]"],
     max_chunk_size: int = 1 * 1024 * 1024 * 1024,  # 1GB default
 ) -> list:
     """
@@ -379,7 +381,7 @@ def split_state_dict_by_size(
     return chunks
 
 
-def merge_state_dict_chunks(chunks: list) -> Dict[str, torch.Tensor]:
+def merge_state_dict_chunks(chunks: list) -> dict[str, torch.Tensor]:
     """
     Merge state_dict chunks back into a single state_dict.
 
@@ -404,8 +406,8 @@ def merge_state_dict_chunks(chunks: list) -> Dict[str, torch.Tensor]:
 
 
 def get_state_dict_memory_info(
-    state_dict: Union[Dict[str, torch.Tensor], "OrderedDict[str, torch.Tensor]"],
-) -> Dict[str, Any]:
+    state_dict: Union[dict[str, torch.Tensor], "OrderedDict[str, torch.Tensor]"],
+) -> dict[str, Any]:
     """
     Get detailed memory information about a state_dict.
 

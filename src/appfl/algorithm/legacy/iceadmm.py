@@ -1,10 +1,13 @@
 import copy
-import torch
 import logging
 from collections import OrderedDict
-from .ppfl_base import PPFLServer, PPFLClient
+
+import torch
+
 from appfl.misc.deprecation import deprecated
 from appfl.misc.utils import get_torch_optimizer
+
+from .ppfl_base import PPFLClient, PPFLServer
 
 log = logging.getLogger(__name__)
 
@@ -64,11 +67,9 @@ class ICEADMMServer(PPFLServer):
             logger.info(title)
 
         contents = super().log_contents(cfg, t)
-        contents = contents + "{:12.4e} {:12.4e} {:12.4e} {:12.4e}".format(
-            self.prim_res,
-            self.dual_res,
-            min(self.penalty.values()),
-            max(self.penalty.values()),
+        contents = (
+            contents
+            + f"{self.prim_res:12.4e} {self.dual_res:12.4e} {min(self.penalty.values()):12.4e} {max(self.penalty.values()):12.4e}"
         )
         logger.info(contents)
 

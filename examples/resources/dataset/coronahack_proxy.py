@@ -3,10 +3,12 @@ Proxy dataset for DIMAT aggregator with CoronaHack.
 Uses a subset of the CoronaHack test set for activation statistics and BN reset.
 """
 
-import os
 import csv
+import os
+
 import cv2
 import torch
+
 from appfl.misc.data import Dataset
 
 

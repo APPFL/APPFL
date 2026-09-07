@@ -1,6 +1,7 @@
 import uuid
 from collections import OrderedDict
-from typing import Any, Dict, Optional, Union
+from typing import Any
+
 from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
 from appfl.misc.utils import secure_appfl_dir
 
@@ -9,10 +10,10 @@ def send_model_by_pre_signed_s3(
     client_id: str,
     experiment_id: str,
     comm_type: str,
-    model: Union[Dict, OrderedDict, bytes],
-    model_key: Optional[str],
-    model_url: Optional[str],
-    logger: Optional[Any] = None,
+    model: dict | OrderedDict | bytes,
+    model_key: str | None,
+    model_url: str | None,
+    logger: Any | None = None,
 ):
     s3_tmp_dir = secure_appfl_dir(comm_type, client_id, experiment_id)
     model_wrapper = LargeObjectWrapper(model, model_key)

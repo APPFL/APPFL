@@ -1,7 +1,6 @@
 import numpy as np
-import torch
 import piq
-from typing import Dict
+import torch
 
 
 def imbalance_degree(lst):
@@ -134,7 +133,7 @@ def dataset_sharpness(dataset):
 
 
 def ned_squared(
-    class_distribution1: Dict[int, int], class_distribution2: Dict[int, int]
+    class_distribution1: dict[int, int], class_distribution2: dict[int, int]
 ) -> float:
     u = np.array(list(class_distribution1.values()))
     v = np.array(list(class_distribution2.values()))

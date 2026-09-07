@@ -1,6 +1,6 @@
 import uuid
-from enum import Enum
 from collections import OrderedDict
+from enum import Enum
 
 
 class ClientEndpointStatus(Enum):

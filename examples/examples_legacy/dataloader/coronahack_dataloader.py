@@ -1,9 +1,11 @@
-import os
 import csv
-import cv2
 import json
-import torch
+import os
+
+import cv2
 import numpy as np
+import torch
+
 from appfl.misc.data import Dataset, data_sanity_check
 
 

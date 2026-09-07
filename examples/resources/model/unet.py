@@ -7,10 +7,9 @@ Author: Fernando Perez-Garcia
 Requires: Python >=3.6
 """
 
-from typing import Optional
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 
 class Baseline(nn.Module):
@@ -21,15 +20,15 @@ class Baseline(nn.Module):
         dimensions: int = 3,
         num_encoding_blocks: int = 3,
         out_channels_first_layer: int = 8,
-        normalization: Optional[str] = "batch",
+        normalization: str | None = "batch",
         pooling_type: str = "max",
         upsampling_type: str = "linear",
         preactivation: bool = False,
         residual: bool = False,
         padding: int = 1,
         padding_mode: str = "zeros",
-        activation: Optional[str] = "PReLU",
-        initial_dilation: Optional[int] = None,
+        activation: str | None = "PReLU",
+        initial_dilation: int | None = None,
         dropout: float = 0,
         monte_carlo_dropout: float = 0,
     ):
@@ -138,13 +137,13 @@ class ConvolutionalBlock(nn.Module):
         dimensions: int,
         in_channels: int,
         out_channels: int,
-        normalization: Optional[str] = None,
+        normalization: str | None = None,
         kernel_size: int = 3,
-        activation: Optional[str] = "ReLU",
+        activation: str | None = "ReLU",
         preactivation: bool = False,
         padding: int = 0,
         padding_mode: str = "zeros",
-        dilation: Optional[int] = None,
+        dilation: int | None = None,
         dropout: float = 0,
     ):
         super().__init__()
@@ -225,13 +224,13 @@ class Decoder(nn.Module):
         dimensions: int,
         upsampling_type: str,
         num_decoding_blocks: int,
-        normalization: Optional[str],
+        normalization: str | None,
         preactivation: bool = False,
         residual: bool = False,
         padding: int = 0,
         padding_mode: str = "zeros",
-        activation: Optional[str] = "ReLU",
-        initial_dilation: Optional[int] = None,
+        activation: str | None = "ReLU",
+        initial_dilation: int | None = None,
         dropout: float = 0,
     ):
         super().__init__()
@@ -270,13 +269,13 @@ class DecodingBlock(nn.Module):
         in_channels_skip_connection: int,
         dimensions: int,
         upsampling_type: str,
-        normalization: Optional[str],
+        normalization: str | None,
         preactivation: bool = True,
         residual: bool = False,
         padding: int = 0,
         padding_mode: str = "zeros",
-        activation: Optional[str] = "ReLU",
-        dilation: Optional[int] = None,
+        activation: str | None = "ReLU",
+        dilation: int | None = None,
         dropout: float = 0,
     ):
         super().__init__()
@@ -390,13 +389,13 @@ class Encoder(nn.Module):
         dimensions: int,
         pooling_type: str,
         num_encoding_blocks: int,
-        normalization: Optional[str],
+        normalization: str | None,
         preactivation: bool = False,
         residual: bool = False,
         padding: int = 0,
         padding_mode: str = "zeros",
-        activation: Optional[str] = "ReLU",
-        initial_dilation: Optional[int] = None,
+        activation: str | None = "ReLU",
+        initial_dilation: int | None = None,
         dropout: float = 0,
     ):
         super().__init__()
@@ -449,15 +448,15 @@ class EncodingBlock(nn.Module):
         in_channels: int,
         out_channels_first: int,
         dimensions: int,
-        normalization: Optional[str],
-        pooling_type: Optional[str],
+        normalization: str | None,
+        pooling_type: str | None,
         preactivation: bool = False,
         is_first_block: bool = False,
         residual: bool = False,
         padding: int = 0,
         padding_mode: str = "zeros",
-        activation: Optional[str] = "ReLU",
-        dilation: Optional[int] = None,
+        activation: str | None = "ReLU",
+        dilation: int | None = None,
         dropout: float = 0,
     ):
         super().__init__()

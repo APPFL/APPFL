@@ -6,18 +6,18 @@ This script generates detailed analysis and comparison results similar to the gR
 but adapted for MPI-specific federated learning scenarios.
 """
 
-import os
-import sys
-import json
-import subprocess
 import argparse
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from pathlib import Path
-from typing import Dict, Optional
+import json
+import os
+import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 
 @dataclass
@@ -53,7 +53,7 @@ class MPIResultsGenerator:
         plt.style.use("default")
         sns.set_palette("husl")
 
-    def _discover_profiles(self) -> Dict[str, Dict[str, str]]:
+    def _discover_profiles(self) -> dict[str, dict[str, str]]:
         """Discover all profile files organized by rank and type."""
         profiles = {}
 
@@ -77,7 +77,7 @@ class MPIResultsGenerator:
 
     def _extract_metrics(
         self, profile_path: str, rank: str, profile_type: str
-    ) -> Optional[MPIProfileMetrics]:
+    ) -> MPIProfileMetrics | None:
         """Extract detailed metrics from a memory profile using python -m memray."""
         # Memray --json writes to a file, not stdout. Try to handle this properly.
         try:
@@ -183,7 +183,7 @@ class MPIResultsGenerator:
 
     def _parse_text_stats(
         self, profile_path: str, rank: str, profile_type: str
-    ) -> Optional[MPIProfileMetrics]:
+    ) -> MPIProfileMetrics | None:
         """Fallback text parsing for python -m memray stats output."""
         try:
             # Use a more robust approach to avoid broken pipe issues

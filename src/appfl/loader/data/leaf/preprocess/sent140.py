@@ -1,11 +1,10 @@
-import os
-import re
 import json
 import logging
+import os
+import re
+from collections import OrderedDict, defaultdict
 
 import pandas as pd
-
-from collections import defaultdict, OrderedDict
 
 logger = logging.getLogger(__name__)
 

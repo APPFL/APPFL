@@ -1,13 +1,16 @@
+import concurrent.futures
+import os.path as osp
 import time
 import uuid
-import os.path as osp
-import concurrent.futures
 from collections import OrderedDict
-from appfl.config import ClientTask
+
+from globus_compute_sdk import Client, Executor
 from omegaconf import DictConfig, OmegaConf
-from globus_compute_sdk import Executor, Client
-from .utils.endpoint import GlobusComputeClientEndpoint
+
 from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
+from appfl.config import ClientTask
+
+from .utils.endpoint import GlobusComputeClientEndpoint
 
 
 class GlobusComputeCommunicator:
@@ -111,9 +114,7 @@ class GlobusComputeCommunicator:
         ].client_cfg.name
         client_task_name = self.executing_tasks[task_id].task_name
         self.logger.info(
-            "Received results of task '{}' from {}.".format(
-                client_task_name, client_name
-            )
+            f"Received results of task '{client_task_name}' from {client_name}."
         )
         # Finalize the experiment if necessary
         if do_finalize:
@@ -164,7 +165,7 @@ class GlobusComputeCommunicator:
         # Execute training tasks at clients
         for client_idx, _ in enumerate(self.cfg.clients):
             if self.use_s3bucket and exct_func.__name__ == "client_training":
-                local_model_key = f"{str(uuid.uuid4())}_client_state_{client_idx}"
+                local_model_key = f"{uuid.uuid4()!s}_client_state_{client_idx}"
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 kwargs["local_model_key"] = local_model_key
                 kwargs["local_model_url"] = local_model_url
@@ -192,7 +193,7 @@ class GlobusComputeCommunicator:
         args, kwargs = self.__handle_params(args, kwargs)
 
         if self.use_s3bucket and exct_func.__name__ == "client_training":
-            local_model_key = f"{str(uuid.uuid4())}_client_state_{client_idx}"
+            local_model_key = f"{uuid.uuid4()!s}_client_state_{client_idx}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
             kwargs["local_model_key"] = local_model_key
             kwargs["local_model_url"] = local_model_url

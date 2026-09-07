@@ -1,16 +1,18 @@
-import time
-import torch
 import argparse
-from omegaconf import OmegaConf
-from appfl.config import Config
-from appfl.misc.utils import set_seed
-from appfl.misc.data import data_sanity_check
-import appfl.run_serial as rs
-import appfl.run_mpi as rm
-from mpi4py import MPI
-from models.utils import get_model
+import time
+
+import torch
 from dataloader.femnist_dataloader import get_femnist
-from appfl.config.fed import Federated, ICEADMM, IIADMM  # noqa
+from models.utils import get_model
+from mpi4py import MPI
+from omegaconf import OmegaConf
+
+import appfl.run_mpi as rm
+import appfl.run_serial as rs
+from appfl.config import Config
+from appfl.config.fed import ICEADMM, IIADMM, Federated  # noqa
+from appfl.misc.data import data_sanity_check
+from appfl.misc.utils import set_seed
 
 parser = argparse.ArgumentParser()
 

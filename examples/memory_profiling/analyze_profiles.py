@@ -3,8 +3,8 @@
 Script to analyze memory profiles and generate optimization recommendations
 """
 
-import os
 import argparse
+import os
 import subprocess
 from pathlib import Path
 

@@ -10,7 +10,6 @@ import pytest
 
 from appfl.misc.utils import _ensure_secure_dir, secure_appfl_dir
 
-
 posix_only = pytest.mark.skipif(
     os.name != "posix", reason="POSIX permission semantics required"
 )
@@ -135,6 +134,7 @@ def test_legacy_unsafe_mkdir_not_in_misc_utils():
     blocks for `.appfl` should be gone from misc.utils — they're replaced by
     secure_appfl_dir."""
     import inspect
+
     from appfl.misc import utils
 
     src = inspect.getsource(utils.create_instance_from_file_source)
@@ -144,6 +144,7 @@ def test_legacy_unsafe_mkdir_not_in_misc_utils():
 
 def test_legacy_unsafe_mkdir_not_in_s3_utils():
     import inspect
+
     from appfl.comm.utils import s3_utils
 
     src = inspect.getsource(s3_utils)
@@ -153,6 +154,7 @@ def test_legacy_unsafe_mkdir_not_in_s3_utils():
 
 def test_legacy_unsafe_mkdir_not_in_s3_storage_init():
     import inspect
+
     from appfl.comm.utils import s3_storage
 
     src = inspect.getsource(s3_storage.CloudStorage.init)

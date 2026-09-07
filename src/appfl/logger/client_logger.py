@@ -1,11 +1,12 @@
-import os
-import uuid
 import logging
+import os
 import pathlib
-from .utils import LevelFilter
+import uuid
 from datetime import datetime
+
 from colorama import Fore, Style
-from typing import List, Dict, Union
+
+from .utils import LevelFilter
 
 
 class ClientAgentFileLogger:
@@ -120,16 +121,16 @@ class ClientAgentFileLogger:
             if not file_exists:
                 self.info(f"Logging to {real_file_name}")
 
-    def log_title(self, titles: List) -> None:
+    def log_title(self, titles: list) -> None:
         self.titles = titles
         title = " ".join(["%10s" % t for t in titles])
         self.info(title)
 
-    def set_title(self, titles: List) -> None:
+    def set_title(self, titles: list) -> None:
         if not hasattr(self, "titles"):
             self.titles = titles
 
-    def log_content(self, contents: Union[Dict, List]) -> None:
+    def log_content(self, contents: dict | list) -> None:
         if not isinstance(contents, dict) and not isinstance(contents, list):
             raise ValueError("Contents must be a dictionary or list")
         if not isinstance(contents, list):

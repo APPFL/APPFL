@@ -2,12 +2,15 @@
 Serve a gRPC server
 """
 
-import grpc
 import logging
 from concurrent import futures
-from typing import Any, Optional
-from appfl.login_manager import BaseAuthenticator
+from typing import Any
+
+import grpc
+
 from appfl.comm.grpc.auth import APPFLAuthMetadataInterceptor
+from appfl.login_manager import BaseAuthenticator
+
 from .grpc_communicator_old_pb2_grpc import add_GRPCCommunicatorV0Servicer_to_server
 
 
@@ -17,9 +20,9 @@ def grpc_serve(
     *,
     use_ssl: bool = False,
     use_authenticator: bool = False,
-    server_certificate_key: Optional[bytes] = None,
-    server_certificate: Optional[bytes] = None,
-    authenticator: Optional[BaseAuthenticator] = None,
+    server_certificate_key: bytes | None = None,
+    server_certificate: bytes | None = None,
+    authenticator: BaseAuthenticator | None = None,
     max_message_size: int = 2 * 1024 * 1024,
     max_workers: int = 10,
 ):

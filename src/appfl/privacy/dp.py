@@ -1,11 +1,12 @@
 import copy
+from typing import Any
+
 import torch
-from typing import Dict, Any
 
 
 def laplace_mechanism_output_perturb(
     model: torch.nn.Module, sensitivity: float, epsilon: float
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Differential privacy for output perturbation based on Laplacian distribution.
     The output perturbation adds Laplacian noise with zero mean to ``model.named_parameters()``.
@@ -28,7 +29,7 @@ def laplace_mechanism_output_perturb(
 
 def gaussian_mechanism_output_perturb(
     model: torch.nn.Module, sensitivity: float, epsilon: float, delta: float = 1e-5
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Gaussian mechanism for DP.
     Adds Gaussian noise proportional to sensitivity/epsilon.

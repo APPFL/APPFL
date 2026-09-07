@@ -1,5 +1,7 @@
 import argparse
+
 from omegaconf import OmegaConf
+
 from appfl.agent import ClientAgent
 from appfl.comm.grpc import GRPCClientCommunicator
 

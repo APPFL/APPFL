@@ -1,15 +1,17 @@
-import time
-import math
 import csv
+import math
 import os
 import random
 import threading
-from omegaconf import DictConfig
+import time
 from collections import OrderedDict
 from concurrent.futures import Future
-from typing import Any, Union, Dict, Tuple, List
-from appfl.algorithm.scheduler import BaseScheduler
+from typing import Any
+
+from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import BaseAggregator
+from appfl.algorithm.scheduler import BaseScheduler
 
 
 class QueueScheduler(BaseScheduler):
@@ -71,7 +73,7 @@ class QueueScheduler(BaseScheduler):
 
     def get_parameters(
         self, **kwargs
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Future | dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         with self._access_lock:
             kwargs["record_time"] = True
             return super().get_parameters(**kwargs)
@@ -83,8 +85,8 @@ class QueueScheduler(BaseScheduler):
 
     def schedule(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict],
+        client_id: int | str,
+        local_model: dict | OrderedDict,
         **kwargs,
     ) -> Future:
         with self._access_lock:
@@ -101,9 +103,9 @@ class QueueScheduler(BaseScheduler):
 
     def _schedule_update_with_admission(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict],
-        kwargs: Dict,
+        client_id: int | str,
+        local_model: dict | OrderedDict,
+        kwargs: dict,
     ) -> None:
         curr_round = self._get_curr_round(client_id)
         q_delay = kwargs.get("queue_delay", kwargs.get("queue_time", 0.0))
@@ -246,8 +248,8 @@ class QueueScheduler(BaseScheduler):
 
     def _update_queue_estimation(
         self,
-        client_id: Union[int, str],
-        kwargs: Dict,
+        client_id: int | str,
+        kwargs: dict,
     ) -> None:
         assert "queue_time" in kwargs, "QueueScheduler requires `queue_time` in kwargs."
         queue_time = kwargs.get("queue_delay", kwargs["queue_time"])
@@ -263,8 +265,8 @@ class QueueScheduler(BaseScheduler):
 
     def _update_compute_estimation(
         self,
-        client_id: Union[int, str],
-        kwargs: Dict,
+        client_id: int | str,
+        kwargs: dict,
     ) -> None:
         assert "compute_second_per_step" in kwargs, (
             "QueueScheduler requires `compute_second_per_step` in kwargs."
@@ -277,12 +279,12 @@ class QueueScheduler(BaseScheduler):
             + (1 - self.alpha_compute) * self.compute_time_estimation[client_id]
         )
 
-    def _get_local_steps(self, client_id: Union[int, str]) -> int:
+    def _get_local_steps(self, client_id: int | str) -> int:
         if client_id not in self.client_steps_record:
             self.client_steps_record[client_id] = self.warm_up_steps
         return self.client_steps_record[client_id]
 
-    def _get_curr_round(self, client_id: Union[int, str]) -> int:
+    def _get_curr_round(self, client_id: int | str) -> int:
         if client_id not in self.client_round_record:
             self.client_round_record[client_id] = 0
         return self.client_round_record[client_id]
@@ -299,8 +301,8 @@ class QueueScheduler(BaseScheduler):
         }
 
     def _get_client_metadata(
-        self, client_id: Union[int, str], all_clients: List[Union[int, str]]
-    ) -> Dict[str, Any]:
+        self, client_id: int | str, all_clients: list[int | str]
+    ) -> dict[str, Any]:
         q_hat = self.queue_time_estimation.get(client_id, self.q_init)
         job_budget = self._get_job_budget_from_queue_estimate(q_hat)
         local_steps = max(
@@ -356,7 +358,7 @@ class QueueScheduler(BaseScheduler):
     def _get_job_budget_from_queue_estimate(self, q_hat: float) -> float:
         return max(0.5, self.t_sync - q_hat - self.theta)
 
-    def _sample_queue_delay(self, client_id: Union[int, str]) -> float:
+    def _sample_queue_delay(self, client_id: int | str) -> float:
         if self.queue_mode == "off":
             return 0.0
         if self.queue_mode == "fixed":
@@ -369,7 +371,7 @@ class QueueScheduler(BaseScheduler):
         return max(0.0, self._queue_rng.lognormvariate(mu, sigma))
 
     def _get_indexed_value(
-        self, values: List[float], client_id: Union[int, str], default: float
+        self, values: list[float], client_id: int | str, default: float
     ) -> float:
         if len(values) == 0:
             return default
@@ -378,7 +380,7 @@ class QueueScheduler(BaseScheduler):
             return values[idx]
         return values[-1]
 
-    def _client_index(self, client_id: Union[int, str]) -> int:
+    def _client_index(self, client_id: int | str) -> int:
         try:
             return int(client_id) - 1
         except (TypeError, ValueError):
@@ -387,7 +389,7 @@ class QueueScheduler(BaseScheduler):
                 return max(0, int(digits) - 1)
         return 0
 
-    def _parse_float_list(self, value: Any) -> List[float]:
+    def _parse_float_list(self, value: Any) -> list[float]:
         if isinstance(value, (list, tuple)):
             return [float(v) for v in value]
         return [float(v.strip()) for v in str(value).split(",") if v.strip()]
@@ -425,9 +427,7 @@ class QueueScheduler(BaseScheduler):
             )
         open(self._fedqueue_log_paths["detail"], "w").close()
 
-    def _log_round_row(
-        self, client_id: Union[int, str], admitted: bool, entry: Dict
-    ) -> None:
+    def _log_round_row(self, client_id: int | str, admitted: bool, entry: dict) -> None:
         if self._fedqueue_log_paths is None:
             return
         local_steps = entry["local_steps"]
@@ -452,7 +452,7 @@ class QueueScheduler(BaseScheduler):
             )
 
     def _log_applied_rows(
-        self, all_clients: List[Union[int, str]], staleness: Dict[Union[str, int], int]
+        self, all_clients: list[int | str], staleness: dict[str | int, int]
     ) -> None:
         if self._fedqueue_log_paths is None:
             return

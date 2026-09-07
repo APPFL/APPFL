@@ -1,24 +1,26 @@
-import os
-import re
 import ast
-import sys
 import copy
-import stat
-import yaml
-import torch
-import random
-import string
-import logging
-import pathlib
 import importlib
-import numpy as np
-import pickle as pkl
-import os.path as osp
 import importlib.util
-import torch.nn as nn
+import logging
+import os
+import os.path as osp
+import pathlib
+import pickle as pkl
+import random
+import re
+import stat
+import string
+import sys
+from typing import Any
+
+import numpy as np
+import torch
+import yaml
 from omegaconf import DictConfig
+from torch import nn
+
 from .deprecation import deprecated
-from typing import Any, Optional, Union, Tuple, List, Dict
 
 
 def _ensure_secure_dir(path: pathlib.Path) -> None:
@@ -63,7 +65,7 @@ def secure_appfl_dir(*parts: str) -> str:
         fallback_root = pathlib.Path("/tmp") / ".appfl"
     candidates = [pathlib.Path.home() / ".appfl", fallback_root]
 
-    last_err: Optional[Exception] = None
+    last_err: Exception | None = None
     for root in candidates:
         try:
             _ensure_secure_dir(root)
@@ -82,8 +84,8 @@ def secure_appfl_dir(*parts: str) -> str:
 @deprecated(silent=True)
 def get_appfl_algorithm(
     algorithm_name: str,
-    args: Union[Tuple, List],
-    kwargs: Dict,
+    args: tuple | list,
+    kwargs: dict,
 ):
     try:
         appfl_module = importlib.import_module("appfl.algorithm")
@@ -96,7 +98,7 @@ def get_appfl_algorithm(
 
 def get_proxystore_connector(
     connector_name: str,
-    connector_args: Dict[str, Any],
+    connector_args: dict[str, Any],
 ):
     assert connector_name in ["RedisConnector", "FileConnector", "EndpointConnector"], (
         f"Invalid connector name: {connector_name}, only RedisConnector, FileConnector, and EndpointConnector are supported"
@@ -118,7 +120,7 @@ def get_proxystore_connector(
 
 def get_appfl_authenticator(
     authenticator_name: str,
-    authenticator_args: Dict[str, Any],
+    authenticator_args: dict[str, Any],
 ):
     try:
         appfl_module = importlib.import_module("appfl.login_manager")
@@ -131,9 +133,9 @@ def get_appfl_authenticator(
 
 def get_appfl_aggregator(
     aggregator_name: str,
-    model: Optional[Any],
+    model: Any | None,
     aggregator_config: DictConfig,
-    logger: Optional[Any] = None,
+    logger: Any | None = None,
 ):
     try:
         appfl_module = importlib.import_module("appfl.algorithm.aggregator")
@@ -147,8 +149,8 @@ def get_appfl_aggregator(
 def get_appfl_scheduler(
     scheduler_name: str,
     scheduler_config: DictConfig,
-    aggregator: Optional[Any] = None,
-    logger: Optional[Any] = None,
+    aggregator: Any | None = None,
+    logger: Any | None = None,
 ):
     try:
         appfl_module = importlib.import_module("appfl.algorithm.scheduler")

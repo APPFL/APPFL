@@ -1,9 +1,8 @@
-import os
-import json
-import pickle
-import logging
 import hashlib
-
+import json
+import logging
+import os
+import pickle
 
 logger = logging.getLogger(__name__)
 
@@ -192,17 +191,16 @@ def preprocess(root):
                 user_data[w]["y"].append(nc)
             writer_count += 1
             all_writers += 1
-        else:
-            all_data = {}
-            all_data["users"] = users
-            all_data["num_samples"] = num_samples
-            all_data["user_data"] = user_data
+        all_data = {}
+        all_data["users"] = users
+        all_data["num_samples"] = num_samples
+        all_data["user_data"] = user_data
 
-            file_name = "all_data.json"
-            file_path = os.path.join(path, "all_data", file_name)
+        file_name = "all_data.json"
+        file_path = os.path.join(path, "all_data", file_name)
 
-            with open(file_path, "w") as outfile:
-                json.dump(all_data, outfile)
+        with open(file_path, "w") as outfile:
+            json.dump(all_data, outfile)
 
     # set path
     DATASET_NAME = __file__.split("/")[-1].split(".")[0]

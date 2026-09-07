@@ -1,15 +1,17 @@
 import os
-import torch
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import torch
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
 from appfl.misc.data import (
     Dataset,
-    iid_partition,
-    dirichlet_noniid_partition,
     class_noniid_partition,
+    dirichlet_noniid_partition,
+    iid_partition,
 )
 
 

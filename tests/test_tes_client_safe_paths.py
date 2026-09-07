@@ -16,7 +16,6 @@ from appfl.comm.tes.tes_client_communicator import (
     tes_client_entry_point,
 )
 
-
 # ---------- _mkstemp_path ----------
 
 
@@ -156,6 +155,7 @@ def test_predictable_paths_not_in_source():
     """Defense in depth: ensure the legacy fixed paths are gone from
     the implementation file."""
     import inspect
+
     from appfl.comm.tes import tes_client_communicator
 
     src = inspect.getsource(tes_client_communicator)

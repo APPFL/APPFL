@@ -1,19 +1,22 @@
 import gc
-import time
-import yaml
-import torch
 import logging
 import threading
+import time
+from collections import OrderedDict
+from concurrent.futures import Future
+
 import numpy as np
+import torch
+import yaml
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from typing import Optional, Dict, OrderedDict
-from concurrent.futures import Future
+
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
-from .config import MPITask, MPITaskRequest, MPITaskResponse, MPIServerStatus
-from .serializer import byte_to_request, response_to_byte, model_to_byte, byte_to_model
-from appfl.misc.memory_utils import optimize_memory_cleanup, memory_efficient_model_io
+from appfl.misc.memory_utils import memory_efficient_model_io, optimize_memory_cleanup
+
+from .config import MPIServerStatus, MPITask, MPITaskRequest, MPITaskResponse
+from .serializer import byte_to_model, byte_to_request, model_to_byte, response_to_byte
 
 
 class MPIServerCommunicator:
@@ -21,7 +24,7 @@ class MPIServerCommunicator:
         self,
         comm,
         server_agent: ServerAgent,
-        logger: Optional[ServerAgentFileLogger] = None,
+        logger: ServerAgentFileLogger | None = None,
         optimize_memory: bool = True,
         **kwargs,
     ) -> None:
@@ -42,9 +45,9 @@ class MPIServerCommunicator:
             )
             else optimize_memory
         )
-        self._get_global_model_futures: Dict[int, Future] = {}
-        self._update_global_model_futures: Dict[int, Future] = {}
-        self._sample_size_futures: Dict[int, Future] = {}
+        self._get_global_model_futures: dict[int, Future] = {}
+        self._update_global_model_futures: dict[int, Future] = {}
+        self._sample_size_futures: dict[int, Future] = {}
         self._client_id_to_client_rank = {}  # client_id to client_rank mapping
         self._benchmarking = self.server_agent.server_agent_config.server_configs.get(
             "benchmarking", False
@@ -94,7 +97,7 @@ class MPIServerCommunicator:
         client_rank: int,
         request_tag: int,
         request: MPITaskRequest,
-    ) -> Optional[MPITaskResponse]:
+    ) -> MPITaskResponse | None:
         """
         Handle the request from the clients.
         :param `request`: the request from the clients
@@ -147,7 +150,7 @@ class MPIServerCommunicator:
 
     def _get_global_model(
         self, client_rank: int, request: MPITaskRequest
-    ) -> Optional[MPITaskResponse]:
+    ) -> MPITaskResponse | None:
         """
         Return the global model to clients. This method is supposed to provide clients with
         the initial and final global model.
@@ -206,7 +209,7 @@ class MPIServerCommunicator:
 
     def _update_global_model(
         self, client_rank: int, request: MPITaskRequest
-    ) -> Optional[MPITaskResponse]:
+    ) -> MPITaskResponse | None:
         """
         Update the global model with the local model from the client,
         and return the updated global model to the client.
@@ -322,7 +325,7 @@ class MPIServerCommunicator:
         self,
         client_rank: int,
         request: MPITaskRequest,
-    ) -> Optional[MPITaskResponse]:
+    ) -> MPITaskResponse | None:
         """
         Invoke custom action on the server.
         :param: `client_rank`: The rank of the client in MPI

@@ -1,8 +1,10 @@
-from dataclasses import dataclass, field
-from typing import Any, List, Dict, Optional
-from omegaconf import DictConfig, OmegaConf
 import os
 import sys
+from dataclasses import dataclass, field
+from typing import Any
+
+from omegaconf import DictConfig, OmegaConf
+
 from .fed import Federated
 
 
@@ -72,7 +74,7 @@ class Config:
 
     # Personalization options
     personalization: bool = False
-    p_layers: List[str] = field(default_factory=lambda: [])
+    p_layers: list[str] = field(default_factory=list)
     config_name: str = ""
 
     ## gRPC configurations ##
@@ -137,7 +139,7 @@ class Config:
     param_cutoff: int = 1024
 
     # Data readiness
-    dr_metrics: Optional[List[str]] = field(default_factory=lambda: [])
+    dr_metrics: list[str] | None = field(default_factory=list)
 
 
 @dataclass
@@ -177,7 +179,7 @@ class ClientTask:
     success: bool = False
     start_time: float = -1
     end_time: float = -1
-    log: Optional[Dict] = field(default_factory=dict)
+    log: dict | None = field(default_factory=dict)
 
 
 @dataclass
@@ -186,12 +188,12 @@ class GlobusComputeConfig(Config):
     get_model: ExecutableFunc = field(default_factory=ExecutableFunc)
     get_loss: ExecutableFunc = field(default_factory=ExecutableFunc)
     val_metric: ExecutableFunc = field(default_factory=ExecutableFunc)
-    clients: List[GlobusComputeClientConfig] = field(default_factory=list)
+    clients: list[GlobusComputeClientConfig] = field(default_factory=list)
     dataset: str = ""
     loss: str = "CrossEntropy"
-    model_kwargs: Dict = field(default_factory=dict)
+    model_kwargs: dict = field(default_factory=dict)
     server: GlobusComputeServerConfig
-    logging_tasks: List = field(default_factory=list)
+    logging_tasks: list = field(default_factory=list)
     hf_model_arc: str = ""
     hf_model_weights: str = ""
 

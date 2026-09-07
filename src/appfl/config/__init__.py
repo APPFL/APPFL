@@ -1,20 +1,20 @@
-from .config import ServerAgentConfig, ClientAgentConfig
+from .config import ClientAgentConfig, ServerAgentConfig
 from .config_deperacated import (
-    Config,
-    GlobusComputeServerConfig,
-    GlobusComputeClientConfig,
-    ExecutableFunc,
     ClientTask,
+    Config,
+    ExecutableFunc,
+    GlobusComputeClientConfig,
     GlobusComputeConfig,
+    GlobusComputeServerConfig,
 )
 
 __all__ = [
-    "ServerAgentConfig",
     "ClientAgentConfig",
-    "Config",
-    "GlobusComputeServerConfig",
-    "GlobusComputeClientConfig",
-    "ExecutableFunc",
     "ClientTask",
+    "Config",
+    "ExecutableFunc",
+    "GlobusComputeClientConfig",
     "GlobusComputeConfig",
+    "GlobusComputeServerConfig",
+    "ServerAgentConfig",
 ]

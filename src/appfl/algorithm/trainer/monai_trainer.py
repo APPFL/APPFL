@@ -1,14 +1,16 @@
 import copy
 import time
 import warnings
-from typing import Optional, Any
+from typing import Any
+
 from omegaconf import DictConfig
+
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-from monai.fl.client.monai_algo import MonaiAlgo  # noqa: E402
-from monai.fl.utils.exchange_object import ExchangeObject  # noqa: E402
-from monai.fl.utils.constants import ExtraItems, WeightType  # noqa: E402
+from monai.fl.client.monai_algo import MonaiAlgo
+from monai.fl.utils.constants import ExtraItems, WeightType
+from monai.fl.utils.exchange_object import ExchangeObject
 
 
 class MonaiTrainer(BaseTrainer):
@@ -16,7 +18,7 @@ class MonaiTrainer(BaseTrainer):
         self,
         client_id: str,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         self.round = 0

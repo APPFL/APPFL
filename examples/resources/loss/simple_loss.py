@@ -2,7 +2,7 @@
 Simple loss function for TES testing
 """
 
-import torch.nn as nn
+from torch import nn
 
 
 class SimpleLoss(nn.Module):

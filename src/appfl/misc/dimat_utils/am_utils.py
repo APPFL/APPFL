@@ -4,7 +4,7 @@ Ported from DIMAT/utils/am_utils.py.
 """
 
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.amp import autocast
 from tqdm.auto import tqdm
 

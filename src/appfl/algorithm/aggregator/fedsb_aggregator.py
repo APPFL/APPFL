@@ -1,28 +1,30 @@
-import os
 import json
-import torch
+import os
 import shutil
-from omegaconf import DictConfig
-from safetensors.torch import load_file
-from peft import LoraConfig, get_peft_model
-from typing import Union, Dict, Any, Optional
-from appfl.algorithm.aggregator import BaseAggregator
+from typing import Any
+
+import torch
 from fed_sb.fed.fed_agg import (
-    aggregate_models_ffa,
-    aggregate_models_fedex,
     aggregate_models_fed_it,
     aggregate_models_fed_sb,
+    aggregate_models_fedex,
+    aggregate_models_ffa,
 )
 from fed_sb.utils.initialization_utils import find_and_initialize
+from omegaconf import DictConfig
+from peft import LoraConfig, get_peft_model
+from safetensors.torch import load_file
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
+
+from appfl.algorithm.aggregator import BaseAggregator
 
 
 class FedSBAggregator(BaseAggregator):
     def __init__(
         self,
-        model: Optional[torch.nn.Module] = None,
+        model: torch.nn.Module | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         self.model = model
         self.aggregator_configs = aggregator_configs
@@ -31,9 +33,7 @@ class FedSBAggregator(BaseAggregator):
     def get_parameters(self, **kwargs):
         raise NotImplementedError("FedSB does not support get_parameters.")
 
-    def aggregate(
-        self, local_models: Dict[Union[str, int], Union[str, Dict]], **kwargs
-    ) -> Dict:
+    def aggregate(self, local_models: dict[str | int, str | dict], **kwargs) -> dict:
         client_ids = list(local_models.keys())
         first_client_data = list(local_models.values())[0]
 

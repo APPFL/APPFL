@@ -2,20 +2,21 @@
 mpiexec -np 5 python ./coronahack_mpi.py --num_epochs 10
 """
 
-import time
-import torch
 import argparse
-import appfl.run_mpi as rm
-import appfl.run_mpi_sync as rms
+import time
+
+import torch
+from dataloader.coronahack_dataloader import get_corona
+from losses.utils import get_loss
+from metric.utils import get_metric
+from models.utils import get_model
 from mpi4py import MPI
 from omegaconf import OmegaConf
+
+import appfl.run_mpi as rm
+import appfl.run_mpi_sync as rms
 from appfl.config import Config
 from appfl.misc.utils import set_seed
-from losses.utils import get_loss
-from models.utils import get_model
-from metric.utils import get_metric
-from dataloader.coronahack_dataloader import get_corona
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default="cpu")

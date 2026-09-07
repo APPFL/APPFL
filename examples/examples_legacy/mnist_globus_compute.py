@@ -2,19 +2,21 @@
 python mnist_globus_compute.py --client_config path_to_client_config.yaml --server_config path_to_server_config.yaml --send-final-model
 """
 
-import torch
 import argparse
-from omegaconf import OmegaConf
+
+import torch
+from appfl.comm.globus_compute.utils.utils import get_executable_func, get_loss_func
 from globus_compute_sdk import Client
-from appfl.misc.utils import set_seed
+from omegaconf import OmegaConf
+
+from appfl.comm.globus_compute.utils.logging import GlobusComputeServerLogger
 from appfl.config import GlobusComputeConfig
 from appfl.config.utils import (
     load_globus_compute_client_config,
     load_globus_compute_server_config,
 )
+from appfl.misc.utils import set_seed
 from appfl.run_globus_compute_server import run_server
-from appfl.comm.globus_compute.utils.logging import GlobusComputeServerLogger
-from appfl.comm.globus_compute.utils.utils import get_executable_func, get_loss_func
 
 parser = argparse.ArgumentParser()
 ## Client config choices

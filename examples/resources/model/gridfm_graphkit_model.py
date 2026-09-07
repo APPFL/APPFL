@@ -1,10 +1,9 @@
+import os
+
+import yaml
 from gridfm_graphkit.datasets.powergrid_datamodule import LitGridDataModule
 from gridfm_graphkit.io.param_handler import NestedNamespace
 from gridfm_graphkit.tasks.feature_reconstruction_task import FeatureReconstructionTask
-
-import yaml
-
-import os
 
 
 def get_gridfm_graphkit_model():

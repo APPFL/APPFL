@@ -1,8 +1,11 @@
 import abc
 import time
-from omegaconf import DictConfig
+from collections import OrderedDict
 from concurrent.futures import Future
-from typing import Union, Dict, Any, Tuple, OrderedDict
+from typing import Any
+
+from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import BaseAggregator
 
 
@@ -17,10 +20,10 @@ class BaseScheduler:
     @abc.abstractmethod
     def schedule(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict],
+        client_id: int | str,
+        local_model: dict | OrderedDict,
         **kwargs,
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Future | dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Schedule the global aggregation for the local model from a client.
         :param local_model: the local model from a client
@@ -28,16 +31,14 @@ class BaseScheduler:
         :param kwargs: additional keyword arguments for the scheduler
         :return: the aggregated model or a future object for the aggregated model
         """
-        pass
 
     @abc.abstractmethod
     def get_num_global_epochs(self) -> int:
         """Return the total number of global epochs for federated learning."""
-        pass
 
     def get_parameters(
         self, **kwargs
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Future | dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Return the global model to the clients. For the initial global model, the method can
         block until all clients have requested the initial global model to make sure all clients

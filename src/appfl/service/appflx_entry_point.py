@@ -1,14 +1,16 @@
-import os
-import json
-import pprint
 import argparse
+import json
+import os
+import pprint
 import warnings
-from omegaconf import OmegaConf
 from concurrent.futures import Future
+
+from omegaconf import OmegaConf
+
 from appfl.agent import ServerAgent
+from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 from appfl.misc.utils import get_last_function_name
 from appfl.service.utils import APPFLxDataExchanger
-from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
