@@ -21,6 +21,12 @@ except:  # noqa: E722
     pass
 
 try:
+    from .decaf_trainer import DeCaFTrainer
+except:  # noqa: E722
+    pass
+
+try:
+    from .decentralized_trainer import DecentralizedTrainer
     from .sklearn_trainer import SklearnTrainer
 except:  # noqa: E722
     pass
@@ -35,5 +41,7 @@ __all__ = [
     "FedSBTrainer",
     "LLMDummyTrainer",
     "DIMATTrainer",
+    "DeCaFTrainer",
+    "DecentralizedTrainer",
     "SklearnTrainer",
 ]

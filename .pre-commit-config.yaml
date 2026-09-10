@@ -1,4 +1,4 @@
-exclude: ^.*_pb2(_grpc)?\.py$  # Global exclude for all hooks
+exclude: '^(.*_pb2(_grpc)?\.py|examples/resources/clip_lora/.*)$'  # Global exclude for all hooks
 repos:
   - repo: 'https://github.com/pre-commit/pre-commit-hooks'
     rev: v6.0.0
