@@ -1,0 +1,83 @@
+# Hybrid federation: clients reached through different transports in a single run.
+# Each client declares its transport via `comm_configs.comm_type`. If omitted, the
+# transport is auto-inferred (`endpoint_id` -> globus_compute, `tes_configs` -> tes).
+clients:
+  # ---- Client reached via Globus Compute ----
+  - client_id: "Client1-GlobusCompute"
+    endpoint_id: "98b30895-3677-432b-8e8c-da72b093c565"
+    comm_configs:
+      comm_type: "globus_compute"
+    train_configs:
+      device: "cpu"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+    data_configs:
+      dataset_path: "./resources/dataset/mnist_dataset.py"
+      dataset_name: "get_mnist"
+      dataset_kwargs:
+        num_clients: 4
+        client_id: 0
+        partition_strategy: "class_noniid"
+        visualization: True
+
+  # ---- Client reached via Globus Compute ----
+  - client_id: "Client2-GlobusCompute"
+    endpoint_id: "4f53131b-e59d-465f-9153-efe9b02d9f3e"
+    comm_configs:
+      comm_type: "globus_compute"
+    train_configs:
+      device: "cpu"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+    data_configs:
+      dataset_path: "./resources/dataset/mnist_dataset.py"
+      dataset_name: "get_mnist"
+      dataset_kwargs:
+        num_clients: 4
+        client_id: 1
+        partition_strategy: "class_noniid"
+        visualization: True
+
+    # ---- Client reached via Globus Compute ----
+  - client_id: "Client3-GlobusCompute"
+    endpoint_id: "090ef9c4-a81a-4d74-ba4c-a5f13701226b"
+    comm_configs:
+      comm_type: "globus_compute"
+    train_configs:
+      device: "cpu"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+    data_configs:
+      dataset_path: "./resources/dataset/mnist_dataset.py"
+      dataset_name: "get_mnist"
+      dataset_kwargs:
+        num_clients: 4
+        client_id: 2
+        partition_strategy: "class_noniid"
+        visualization: True
+
+  # ---- Client reached via GA4GH TES ----
+  - client_id: "Client4-TES"
+    comm_configs:
+      comm_type: "tes"
+      tes_configs:
+        tes_endpoint: "http://3.95.234.120:8000"
+        auth_token: ""
+        docker_image: "zilinghan/client-gwas:latest"
+        resource_requirements:
+          cpu_cores: 4
+          ram_gb: 8.0
+          disk_gb: 20.0
+          preemptible: false
+    train_configs:
+      device: "cpu"
+      logging_output_dirname: "./output"
+      logging_output_filename: "result"
+    data_configs:
+      dataset_path: "./resources/dataset/mnist_dataset.py"
+      dataset_name: "get_mnist"
+      dataset_kwargs:
+        num_clients: 4
+        client_id: 3
+        partition_strategy: "class_noniid"
+        visualization: False
