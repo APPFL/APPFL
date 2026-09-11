@@ -58,7 +58,12 @@ class Provenance:
 
 
 def binary_entropy(p: float) -> float:
-    """H_b(p) in bits, with the usual 0 log 0 = 0 convention."""
+    """H_b(p) in bits, with the usual 0 log 0 = 0 convention.
+
+    Returns the entropy of a Bernoulli r.v. with success of probability p.
+
+    This is used in the KnowledgeToken.fidelity() method.
+    """
     if p <= 0.0 or p >= 1.0:
         return 0.0
     return -(p * math.log2(p) + (1 - p) * math.log2(1 - p))
@@ -87,16 +92,29 @@ class KnowledgeToken:
 
     # -- ADKO Definition 3 / Algorithm 2 ----------------------------------------------
 
+    # Definition: Token Fidelity. The fidelity of the token k is the fraction of mutual information about the true outcome that survives binary quantization: n_k = I(f_j(\theta_k); k) / H(f_j(\theta_k)) \in [0,1], where I(\cdot;\cdot) denotes mutual information and H(\cdot) denotes differential entropy under the Gaussian Process posterior.
     def fidelity(self) -> float:
         """Estimated token fidelity: ``eta = c * (1 - H_b((1 - c) / 2))``.
 
         The fraction of mutual information about the true outcome that survives binary
         quantization. ``c = 1`` (outcome far from the threshold) gives ``eta = 1``, nearly
         lossless; ``c = 0`` (outcome sitting on the threshold) gives ``eta = 0``, the signal
-        is a coin flip and the token says nothing.
+        is a coin flip and the token says nothing (maximum entropy).
         """
+        # \eta(c) = c \times (1 - H_b((1 - c) / 2)), where \eta is the fidelity and H_b is the binary entropy
         return self.advantage * (1.0 - binary_entropy((1.0 - self.advantage) / 2.0))
 
+    # Algorithm 2: Fidelity-Aware Token Pruning --- Agent i, Budget B
+    # Input: Token memory K_i^t with |K_i^t| > B, recency weight \alpha_\tau > 0
+    # Output: Pruned K_i^t with |K_i^t| = B.
+    # 1. while |K_i^t| > B do
+    # 2.       for each token k \in K_i^t do
+    # 3.            \hat{\eta}_k \leftarrow c_k \cdot (1 - H_b((1-c_k)/2)) --- estimate token fidelity
+    # 4.            score(k) \leftarrow \hat{\eta}_k \cdot c_k \cdot exp(-\alpha_tau(t - k.round))
+    # 5.       end for
+    # 6.       drop \leftarrow \arg\min_{k \in K_i^t}score(k)
+    # 7.       K_i^t \leftarrow K_i^t \ {dropped}
+    # 8. end while
     def pruning_score(self, current_round: int, alpha_tau: float = 0.01) -> float:
         """Algorithm 2 line 4: ``score = eta * c * exp(-alpha_tau * (t - k.round))``."""
         age = max(0, current_round - self.provenance.round)
@@ -140,6 +158,7 @@ class KnowledgeToken:
         return len(self.serialize()) * 8
 
 
+# Definition: Knowledge Token. k_i^t = \{s_i^t, c_i^t, z_i^t, \varphi(\theta_i^t) \} where s_i^t \in \{success, fail\}. In particular s_i^t = success iff y_i^t \ge b_t^i, where b_t^i > 0is the contextual baseline
 def encode_token(
     *,
     agent_id: str,
@@ -168,8 +187,10 @@ def encode_token(
     """
     deviation = (
         observation - threshold if objective == "maximize" else threshold - observation
-    )
-    advantage = 0.0 if scale <= 0 else min(1.0, abs(deviation) / scale)
+    )  # computes deviation d = y - b (max) or d = b - y (min) for calculating the advantage score
+    advantage = (
+        0.0 if scale <= 0 else min(1.0, abs(deviation) / scale)
+    )  # c_i^t = |y_i^t - b_t^i|/(scale), the scale is either ||y - b_t^i||_{\max} which is described in the paper or another "bounded, monotone confidence formula based on b_t^i". The paper used for their FMTBO using the agent's running median and median absolute deviation.
     return KnowledgeToken(
         signal=Signal.SUCCESS if deviation >= 0 else Signal.FAIL,
         advantage=advantage,
