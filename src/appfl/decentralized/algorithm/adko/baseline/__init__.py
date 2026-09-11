@@ -25,11 +25,15 @@ from appfl.decentralized.algorithm.adko.baseline.running_median_baseline import 
     median,
     standard_deviation,
 )
+from appfl.decentralized.algorithm.adko.baseline.max_deviation_baseline import (
+    MaxDeviationBaseline,
+)
 
 __all__ = [
     "BaseBaseline",
     "FixedBaseline",
     "RunningMedianBaseline",
+    "MaxDeviationBaseline",
     "median",
     "standard_deviation",
     "get_appfl_baseline",
@@ -41,6 +45,7 @@ __all__ = [
 _ALIASES = {
     "fixed": "FixedBaseline",
     "running_median": "RunningMedianBaseline",
+    "max_deviation": "MaxDeviationBaseline",
 }
 
 
