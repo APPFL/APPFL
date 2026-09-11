@@ -5,7 +5,7 @@
                   what I expect   how unsure I am          do my neighbours         do my neighbours
                   from my data    personally               succeed here?            fail here?
 
-The first two terms are exactly GP-UCB over the agent's *private* posterior. The last two are
+The first two terms, U_i(theta) and sigma_i(theta), are exactly GP-UCB over the agent's *private* posterior. The last two are
 the collaboration, and they are computed entirely from peer tokens -- never from peer data.
 
 Set ``lam = gamma = 0`` and it degenerates to independent per-agent GP-UCB, which is the
@@ -38,6 +38,9 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken, Signal
+
+# Similarity Kernel: S(\theta, \theta_k) = \exp(- d(\varphi(\theta), \varphi(\theta_k))^2 / denom), where denom is the bandwidth-dependent normalizer.
+# similarity() computes the above.
 
 
 def distance(
@@ -131,7 +134,9 @@ class ReasoningWeights:
     peer_normalization: str = "source_average"  # "source_average" | "mixing_weight"
 
     @classmethod
-    def many_task(cls, dim: int = 10, target_similarity: float = 0.2) -> "ReasoningWeights":
+    def many_task(
+        cls, dim: int = 10, target_similarity: float = 0.2
+    ) -> "ReasoningWeights":
         """The v2 recommended defaults, with bandwidth derived for ``dim``."""
         return cls(
             beta=2.0,
@@ -147,6 +152,7 @@ class ReasoningWeights:
     @classmethod
     def suzuki(cls) -> "ReasoningWeights":
         """The tuned Suzuki configuration: asymmetric weights, fidelity weighting, Hamming."""
+        # intended to replicate the suzuki benchmark configuration.
         return cls(
             beta=2.0,
             lam=4.0,
@@ -181,30 +187,46 @@ def peer_terms(
     """
     weights = weights or ReasoningWeights()
 
-    by_source: Dict[str, List[KnowledgeToken]] = {}
+    by_source: Dict[str, List[KnowledgeToken]] = (
+        {}
+    )  # group tokens by their respective agent --- matches the per-neighbor source aggretation idea where success and failure terms are computed per neighbor then aggregated over neighbors.
     for token in token_memory:
         by_source.setdefault(token.provenance.agent_id, []).append(token)
 
-    attraction = 0.0
-    avoidance = 0.0
-    n_sources = 0
+    attraction = 0.0  # G_i(\theta)
+    avoidance = 0.0  # Lambda_i(\theta)
+    n_sources = 0  # used only for "source_average" normalization
+
+    # for each neighbor/source j compute its contribution to both successes and failures
     for source_id, tokens in by_source.items():
+
+        # drop the sources that are not neighbors in the graph, satisfying the paper's neighborhood (N_i) assumption
         if mixing_weight(source_id) <= 0.0:
             continue
+
+        # count sources and set outer normalization factor
         n_sources += 1
+        # for peer_normalization = "mixing_weight" we scale by pi_ij (graph-dependent mixing)
+        # for peer_normalization = "source_average" you scale by 1.0 and later average across sources.
         outer = (
             mixing_weight(source_id)
             if weights.peer_normalization == "mixing_weight"
             else 1.0
         )
+        # compute token weights inside the source
         token_weights = [
             t.advantage * (t.fidelity() if weights.weight_by_fidelity else 1.0)
             for t in tokens
         ]
+
+        # compute the denom for within source normalization
         denom = sum(token_weights) + 1e-8
+
+        # init per-source accumulators
         source_attraction = 0.0
         source_avoidance = 0.0
         for token, weight in zip(tokens, token_weights):
+            # compute kernel similarity weighted contribution
             contribution = weight * similarity(
                 candidate_embedding,
                 token.embedding,
@@ -216,9 +238,11 @@ def peer_terms(
                 source_attraction += contribution
             else:
                 source_avoidance += contribution
+        # normalize source and global aggregation, which is the per-source normalized sum then aggregate across sources
         attraction += outer * source_attraction / denom
         avoidance += outer * source_avoidance / denom
 
+    # averages the per-source normalization contributions across all neighbor sources that contributed
     if weights.peer_normalization == "source_average" and n_sources:
         attraction /= n_sources
         avoidance /= n_sources
@@ -242,11 +266,13 @@ def reasoning_score(
 
 
 def score_candidates(
-    candidates: Sequence[Sequence[float]],
-    posteriors: Sequence[Tuple[float, float]],
-    token_memory: Sequence[KnowledgeToken],
-    mixing_weight: Callable[[str], float],
-    weights: Optional[ReasoningWeights] = None,
+    candidates: Sequence[
+        Sequence[float]
+    ],  # list of candidate points represented as embeddings (\phi(\theta))
+    posteriors: Sequence[Tuple[float, float]],  # list of (\mu, \sigma)
+    token_memory: Sequence[KnowledgeToken],  # K_i^t
+    mixing_weight: Callable[[str], float],  # \pi_{ij}
+    weights: Optional[ReasoningWeights] = None,  # hyperparam presets
 ) -> Dict[int, float]:
     """Score a candidate batch, returning ``{candidate_index: R_i(theta)}``.
 
