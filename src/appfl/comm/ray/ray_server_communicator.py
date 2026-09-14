@@ -1,22 +1,25 @@
-import ray
-import uuid
 import time
+import uuid
+from collections import OrderedDict
+from typing import Any
+
+import ray
 from omegaconf import OmegaConf
-from appfl.logger import ServerAgentFileLogger
-from appfl.comm.ray import RayClientCommunicator
+
 from appfl.comm.base import BaseServerCommunicator
+from appfl.comm.ray import RayClientCommunicator
 from appfl.comm.utils.config import ClientTask
 from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
-from appfl.config import ServerAgentConfig, ClientAgentConfig
-from typing import List, Optional, Union, Dict, OrderedDict, Any, Tuple
+from appfl.config import ClientAgentConfig, ServerAgentConfig
+from appfl.logger import ServerAgentFileLogger
 
 
 class RayServerCommunicator(BaseServerCommunicator):
     def __init__(
         self,
         server_agent_config: ServerAgentConfig,
-        client_agent_configs: List[ClientAgentConfig],
-        logger: Optional[ServerAgentFileLogger] = None,
+        client_agent_configs: list[ClientAgentConfig],
+        logger: ServerAgentFileLogger | None = None,
         **kwargs,
     ):
         self.comm_type = "ray"
@@ -61,15 +64,15 @@ class RayServerCommunicator(BaseServerCommunicator):
                     server_agent_config, client_config
                 )
 
-        self.executing_tasks: Dict[str, ClientTask] = {}
-        self.executing_task_futs: Dict[Any, str] = {}
+        self.executing_tasks: dict[str, ClientTask] = {}
+        self.executing_task_futs: dict[Any, str] = {}
 
     def send_task_to_all_clients(
         self,
         task_name: str,
         *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Union[Dict, List[Dict]] = {},
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | list[dict] = {},
         need_model_response: bool = False,
     ):
         """
@@ -89,7 +92,7 @@ class RayServerCommunicator(BaseServerCommunicator):
         for i, client_id in enumerate(self.client_actors):
             client_metadata = metadata[i] if isinstance(metadata, list) else metadata
             if need_model_response and self.use_s3bucket:
-                local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
+                local_model_key = f"{uuid.uuid4()!s}_client_state_{client_id}"
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 client_metadata["local_model_key"] = local_model_key
                 client_metadata["local_model_url"] = local_model_url
@@ -104,8 +107,8 @@ class RayServerCommunicator(BaseServerCommunicator):
         client_id: str,
         task_name: str,
         *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Optional[Dict] = {},
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | None = {},
         need_model_response: bool = False,
     ):
         """
@@ -124,7 +127,7 @@ class RayServerCommunicator(BaseServerCommunicator):
             )
             model = CloudStorage.upload_object(model_wrapper, register_for_clean=True)
         if need_model_response and self.use_s3bucket:
-            local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
+            local_model_key = f"{uuid.uuid4()!s}_client_state_{client_id}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
             metadata["local_model_key"] = local_model_key
             metadata["local_model_url"] = local_model_url
@@ -134,7 +137,7 @@ class RayServerCommunicator(BaseServerCommunicator):
         self._register_task(task_id, task_ref, client_id, task_name)
         self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
-    def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
+    def recv_result_from_all_clients(self) -> tuple[dict, dict]:
         """
         Receive task results from all clients that have running tasks.
         :return `client_results`: A dictionary containing the results from all clients - Dict[client_id, client_model]
@@ -173,7 +176,7 @@ class RayServerCommunicator(BaseServerCommunicator):
 
         return client_results, client_metadata
 
-    def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
+    def recv_result_from_one_client(self) -> tuple[str, Any, dict]:
         """
         Receive task results from the first client that finishes the task.
         :return `client_id`: The client id from which the result is received.
@@ -213,7 +216,7 @@ class RayServerCommunicator(BaseServerCommunicator):
         if hasattr(self, "proxystore") and self.proxystore is not None:
             try:
                 self.proxystore.close(clear=True)
-            except Exception:  # noqa: E722
+            except Exception:
                 self.proxystore.close()
         self.logger.info(
             "The server and all clients have been shutted down successfully."

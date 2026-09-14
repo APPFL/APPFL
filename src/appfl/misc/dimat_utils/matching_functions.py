@@ -3,9 +3,9 @@ Matching algorithms for feature space alignment between models.
 Ported from DIMAT/utils/matching_functions.py.
 """
 
-import torch
-import scipy
 import networkx as nx
+import scipy
+import torch
 
 
 def remove_col(x, idx):
@@ -157,7 +157,7 @@ def match_tensors_optimal(metric, corrsave_path, node, r=0.5, add_bias=False, **
     for i in range(2 * out_dim):
         G.add_node(i)
     for i in range(2 * out_dim):
-        for j in range(0, i):
+        for j in range(i):
             G.add_edge(i, j, weight=(corr_mtx_a[i, j] - min_num))
     matches = nx.max_weight_matching(G)
     matches_matrix = torch.zeros(2 * out_dim, out_dim, device=correlation.device)

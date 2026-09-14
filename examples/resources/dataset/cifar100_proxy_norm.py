@@ -5,8 +5,9 @@ __getitem__ call) matching the original DIMAT code's trainloader.
 """
 
 import os
+
 import torchvision
-import torchvision.transforms as transforms
+from torchvision import transforms
 
 
 def get_cifar100_proxy(num_samples: int = None, **kwargs):

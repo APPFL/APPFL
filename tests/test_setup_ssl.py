@@ -5,10 +5,9 @@ path)."""
 import os
 import stat
 import subprocess
+import sys
 
 import pytest
-
-import sys
 
 import appfl.comm.grpc.setup_ssl  # noqa: F401  (ensures submodule is loaded)
 from appfl.comm.grpc.setup_ssl import setup_ssl

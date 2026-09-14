@@ -3,27 +3,29 @@
 """
 
 import copy
+import logging
 import math
 import time
-import torch
-import logging
+from collections import OrderedDict
+from typing import Any
+
 import numpy as np
-import torch.nn as nn
+import torch
 from mpi4py import MPI
 from omegaconf import DictConfig
-from typing import Any, Union, List
-from collections import OrderedDict
+from torch import nn
 from torch.utils.data import DataLoader
-from appfl.compressor import Compressor
+
 from appfl.comm.mpi import MpiSyncCommunicator
+from appfl.compressor import Compressor
 from appfl.misc.data import Dataset
 from appfl.misc.utils import (
-    validation,
-    save_model_iteration,
-    save_partial_model_iteration,
     client_log,
     create_custom_logger,
     get_appfl_algorithm,
+    save_model_iteration,
+    save_partial_model_iteration,
+    validation,
 )
 
 
@@ -134,8 +136,7 @@ def run_server(
             if cfg.use_tensorboard:
                 writer.add_scalar("server_test_accuracy", test_accuracy, t)
                 writer.add_scalar("server_test_loss", test_loss, t)
-            if test_accuracy > best_accuracy:
-                best_accuracy = test_accuracy
+            best_accuracy = max(best_accuracy, test_accuracy)
         cfg.logginginfo.Validation_time = time.time() - validation_start
         cfg.logginginfo.PerIter_time = time.time() - per_iter_start
         cfg.logginginfo.Elapsed_time = time.time() - start_time
@@ -163,7 +164,7 @@ def run_server(
 def run_client(
     cfg: DictConfig,
     comm: MPI.Comm,
-    model: Union[nn.Module, List],
+    model: nn.Module | list,
     loss_fn: nn.Module,
     num_clients: int,
     train_data: Dataset,

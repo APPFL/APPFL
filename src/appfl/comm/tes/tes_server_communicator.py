@@ -1,18 +1,21 @@
-import os
 import json
-import uuid
+import os
 import time
-import yaml
+import uuid
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
+
 import boto3
 import requests
-from omegaconf import OmegaConf
+import yaml
 from botocore.exceptions import ClientError
-from appfl.logger import ServerAgentFileLogger
+from omegaconf import OmegaConf
+
 from appfl.comm.base import BaseServerCommunicator
-from appfl.config import ClientAgentConfig, ServerAgentConfig
 from appfl.comm.utils.s3_storage import CloudStorage, LargeObjectWrapper
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Optional, Union, OrderedDict, Tuple, Any
+from appfl.config import ClientAgentConfig, ServerAgentConfig
+from appfl.logger import ServerAgentFileLogger
 
 
 class TESServerCommunicator(BaseServerCommunicator):
@@ -27,15 +30,15 @@ class TESServerCommunicator(BaseServerCommunicator):
     def __init__(
         self,
         server_agent_config: ServerAgentConfig,
-        client_agent_configs: List[ClientAgentConfig],
-        logger: Optional[ServerAgentFileLogger] = None,
+        client_agent_configs: list[ClientAgentConfig],
+        logger: ServerAgentFileLogger | None = None,
         **kwargs,
     ):
         self.comm_type = "tes"
         super().__init__(server_agent_config, client_agent_configs, logger, **kwargs)
 
         # Initialize TES client endpoints mapping
-        self.client_endpoints: Dict[str, Dict] = {}
+        self.client_endpoints: dict[str, dict] = {}
         _client_id_check_set = set()
 
         for client_config in client_agent_configs:
@@ -185,7 +188,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
     def _get_client_auth_token(
         self, client_config: ClientAgentConfig, client_id: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get auth token for a specific client's TES endpoint."""
         if (
             hasattr(client_config, "comm_configs")
@@ -212,7 +215,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
     def _get_client_resources(
         self, client_config: ClientAgentConfig, client_id: str
-    ) -> Dict:
+    ) -> dict:
         """Get resource requirements for a specific client."""
         if (
             hasattr(client_config, "comm_configs")
@@ -224,7 +227,7 @@ class TESServerCommunicator(BaseServerCommunicator):
             f"Client {client_id} missing required comm_configs.tes_configs.resource_requirements"
         )
 
-    def _get_client_volumes(self, client_config: ClientAgentConfig) -> List[Dict]:
+    def _get_client_volumes(self, client_config: ClientAgentConfig) -> list[dict]:
         """Get volume mount configuration for a specific client's data access."""
         volumes = []
 
@@ -261,7 +264,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
     def _get_client_environment(
         self, client_config: ClientAgentConfig
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Get environment variables for client's data access."""
         env_vars = {}
 
@@ -281,7 +284,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
         return env_vars
 
-    def _upload_model(self, model, storage_key: str) -> Dict:
+    def _upload_model(self, model, storage_key: str) -> dict:
         """Upload model using configured file storage."""
         if self.file_storage_type == "local":
             return self._upload_model_local(model, storage_key)
@@ -290,7 +293,7 @@ class TESServerCommunicator(BaseServerCommunicator):
         else:
             raise ValueError(f"Unsupported file storage type: {self.file_storage_type}")
 
-    def _upload_model_local(self, model, storage_key: str) -> Dict:
+    def _upload_model_local(self, model, storage_key: str) -> dict:
         """Upload model to local workspace directory."""
         import torch
 
@@ -309,10 +312,11 @@ class TESServerCommunicator(BaseServerCommunicator):
             "storage_key": storage_key,
         }
 
-    def _upload_model_s3(self, model, storage_key: str) -> Dict:
+    def _upload_model_s3(self, model, storage_key: str) -> dict:
         """Upload model to S3 and return presigned URL."""
-        import torch
         import tempfile
+
+        import torch
         from botocore.exceptions import ClientError
 
         s3_key = f"appfl-tes/{storage_key}"
@@ -384,9 +388,9 @@ class TESServerCommunicator(BaseServerCommunicator):
         self,
         client_id: str,
         task_name: str,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Optional[Dict] = None,
-    ) -> Dict:
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | None = None,
+    ) -> dict:
         """Create a GA4GH TES task specification."""
         task_id = str(uuid.uuid4())
         client_info = self.client_endpoints[client_id]
@@ -578,7 +582,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
         return tes_task
 
-    def _submit_tes_task(self, tes_task: Dict, client_id: str) -> str:
+    def _submit_tes_task(self, tes_task: dict, client_id: str) -> str:
         """Submit a TES task to the appropriate endpoint for the client."""
         client_info = self.client_endpoints[client_id]
         tes_endpoint = client_info["tes_endpoint"]
@@ -600,7 +604,7 @@ class TESServerCommunicator(BaseServerCommunicator):
         result = response.json()
         return result["id"]
 
-    def _get_tes_task_status(self, tes_task_id: str, client_id: str) -> Dict:
+    def _get_tes_task_status(self, tes_task_id: str, client_id: str) -> dict:
         """Get TES task status from the appropriate endpoint."""
         client_info = self.client_endpoints[client_id]
         tes_endpoint = client_info["tes_endpoint"]
@@ -625,7 +629,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
     def _wait_for_task_completion(
         self, tes_task_id: str, client_id: str, timeout: int = 3600
-    ) -> Tuple[Any, Dict]:
+    ) -> tuple[Any, dict]:
         """Wait for TES task completion and return results."""
         start_time = time.time()
 
@@ -651,7 +655,7 @@ class TESServerCommunicator(BaseServerCommunicator):
             f"TES task {tes_task_id} for {client_id} timed out after {timeout} seconds"
         )
 
-    def _extract_task_results(self, task_info: Dict) -> Tuple[Any, Dict]:
+    def _extract_task_results(self, task_info: dict) -> tuple[Any, dict]:
         """Extract real results from TES task outputs."""
         import os
 
@@ -780,8 +784,8 @@ class TESServerCommunicator(BaseServerCommunicator):
         self,
         task_name: str,
         *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Union[Dict, List[Dict]] = {},
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | list[dict] = {},
         need_model_response: bool = False,
     ):
         """
@@ -800,7 +804,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
             # Add S3 upload URL for model response if needed
             if need_model_response and self.use_s3bucket:
-                local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
+                local_model_key = f"{uuid.uuid4()!s}_client_state_{client_id}"
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 client_metadata["local_model_key"] = local_model_key
                 client_metadata["local_model_url"] = local_model_url
@@ -830,8 +834,8 @@ class TESServerCommunicator(BaseServerCommunicator):
         client_id: str,
         task_name: str,
         *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Optional[Dict] = {},
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | None = {},
         need_model_response: bool = False,
     ):
         """
@@ -850,7 +854,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
         # Add S3 upload URL for model response if needed
         if need_model_response and self.use_s3bucket:
-            local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
+            local_model_key = f"{uuid.uuid4()!s}_client_state_{client_id}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
             metadata["local_model_key"] = local_model_key
             metadata["local_model_url"] = local_model_url
@@ -873,7 +877,7 @@ class TESServerCommunicator(BaseServerCommunicator):
             f"TES task '{task_name}' (ID: {tes_task_id}) submitted to {client_id} at {client_endpoint}"
         )
 
-    def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
+    def recv_result_from_all_clients(self) -> tuple[dict, dict]:
         """
         Receive task results from all clients that have running tasks.
         """
@@ -915,7 +919,7 @@ class TESServerCommunicator(BaseServerCommunicator):
 
         return client_results, client_metadata
 
-    def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
+    def recv_result_from_one_client(self) -> tuple[str, Any, dict]:
         """
         Receive task results from the first client that finishes the task.
         """

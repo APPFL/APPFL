@@ -1,5 +1,5 @@
-import torchvision.models as models
-import torch.nn as nn
+from torch import nn
+from torchvision import models
 from torchvision.models import ResNet50_Weights
 
 

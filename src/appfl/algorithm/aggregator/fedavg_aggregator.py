@@ -1,17 +1,20 @@
-import gc
 import copy
+import gc
+from collections import OrderedDict
+from typing import Any
+
 import torch
 from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import BaseAggregator
-from typing import Union, Dict, OrderedDict, Any, Optional
-from appfl.privacy.secure_aggregator import SecureAggregator
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
-    safe_inplace_operation,
-    optimize_memory_cleanup,
-    split_state_dict_by_size,
     get_state_dict_memory_info,
+    optimize_memory_cleanup,
+    safe_inplace_operation,
+    split_state_dict_by_size,
 )
+from appfl.privacy.secure_aggregator import SecureAggregator
 
 
 class FedAvgAggregator(BaseAggregator):
@@ -27,9 +30,9 @@ class FedAvgAggregator(BaseAggregator):
 
     def __init__(
         self,
-        model: Optional[torch.nn.Module] = None,
+        model: torch.nn.Module | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         self.model = model
         self.logger = logger
@@ -64,7 +67,7 @@ class FedAvgAggregator(BaseAggregator):
         """
         self.model_chunk_size = chunk_size
 
-    def get_parameters(self, **kwargs) -> Dict:
+    def get_parameters(self, **kwargs) -> dict:
         """
         The aggregator can deal with three general aggregation cases:
 
@@ -148,8 +151,8 @@ class FedAvgAggregator(BaseAggregator):
             return {k: v.clone() for k, v in self.global_state.items()}
 
     def aggregate(
-        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs
-    ) -> Dict:
+        self, local_models: dict[str | int, dict | OrderedDict], **kwargs
+    ) -> dict:
         """
         Take the weighted average of local models from clients and return the global model.
 
@@ -319,9 +322,7 @@ class FedAvgAggregator(BaseAggregator):
         else:
             return {k: v.clone() for k, v in self.global_state.items()}
 
-    def compute_steps(
-        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]
-    ):
+    def compute_steps(self, local_models: dict[str | int, dict | OrderedDict]):
         """
         Compute the changes to the global model after the aggregation.
         """
@@ -404,8 +405,8 @@ class FedAvgAggregator(BaseAggregator):
                         )
 
     def _aggregate_chunk(
-        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs
-    ) -> Dict:
+        self, local_models: dict[str | int, dict | OrderedDict], **kwargs
+    ) -> dict:
         """Memory-efficient chunk aggregation for streamed aggregation."""
         # Extract chunk metadata (scheduler aggregates kwargs by client_id)
         # All clients should have same chunk_idx/keys/total, so take from first client
@@ -456,7 +457,7 @@ class FedAvgAggregator(BaseAggregator):
 
     def _compute_chunk_steps(
         self,
-        local_models: Dict[Union[str, int], Union[Dict, OrderedDict]],
+        local_models: dict[str | int, dict | OrderedDict],
         chunk_keys: list,
     ):
         """Compute aggregation steps for chunk parameters."""

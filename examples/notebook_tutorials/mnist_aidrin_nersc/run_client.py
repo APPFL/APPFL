@@ -15,14 +15,14 @@ but prints the metrics instead of rendering them, and saves the plots as PNG fil
 next to this script when `--save_plots` is given.
 """
 
-import os
-import base64
-import random
 import argparse
+import base64
+import os
+import random
 import warnings
 
-import torch
 import numpy as np
+import torch
 from omegaconf import OmegaConf
 
 from appfl.agent import ClientAgent

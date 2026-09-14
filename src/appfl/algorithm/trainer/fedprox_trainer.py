@@ -1,7 +1,9 @@
+from collections import OrderedDict
+from typing import Any
+
 import torch
-from torch.nn import Module
 from omegaconf import DictConfig
-from typing import Optional, Any, Union, Dict, OrderedDict
+from torch.nn import Module
 from torch.utils.data import Dataset
 
 from appfl.algorithm.trainer.vanilla_trainer import VanillaTrainer
@@ -25,13 +27,13 @@ class FedProxTrainer(VanillaTrainer):
 
     def __init__(
         self,
-        model: Optional[Module] = None,
-        loss_fn: Optional[Module] = None,
-        metric: Optional[Any] = None,
-        train_dataset: Optional[Dataset] = None,
-        val_dataset: Optional[Dataset] = None,
+        model: Module | None = None,
+        loss_fn: Module | None = None,
+        metric: Any | None = None,
+        train_dataset: Dataset | None = None,
+        val_dataset: Dataset | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -55,7 +57,7 @@ class FedProxTrainer(VanillaTrainer):
             for name, param in self.model.named_parameters()
         }
 
-    def load_parameters(self, params: Union[Dict, OrderedDict, Any]):
+    def load_parameters(self, params: dict | OrderedDict | Any):
         """Load the new global model and refresh the proximal anchor."""
         super().load_parameters(params)
         self._snapshot_global_params()

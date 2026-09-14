@@ -3,11 +3,12 @@ Base computation graph for neural network architectures.
 Ported from DIMAT/graphs/base_graph.py.
 """
 
+from abc import ABC, abstractmethod
+from enum import Enum
+
+import networkx as nx
 import torch
 from torch.amp import autocast
-import networkx as nx
-from enum import Enum
-from abc import ABC, abstractmethod
 
 
 class FeatureReshapeHandler:
@@ -202,7 +203,6 @@ class BIGGraph(ABC):
                             self.intermediates[this_node] = FeatureReshapeHandler(
                                 m.__class__.__name__, this_info
                             ).reshape(x[0].detach().to(device))
-                            return None
 
                         module = self.get_module(succ_info["layer"])
                         self.hooks.append(module.register_forward_pre_hook(prehook))
@@ -222,7 +222,6 @@ class BIGGraph(ABC):
                             self.intermediates[this_node] = FeatureReshapeHandler(
                                 m.__class__.__name__, this_info
                             ).reshape(y.detach().to(device))
-                            return None
 
                         module = self.get_module(pred_info["layer"])
                         self.hooks.append(module.register_forward_hook(posthook))
@@ -249,7 +248,6 @@ class BIGGraph(ABC):
 
     def draw(self, nodes=None, save_path=None):
         """Visualize DAG (no-op without matplotlib/pygraphviz)."""
-        pass
 
     @abstractmethod
     def graphify(self):
