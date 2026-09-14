@@ -2,9 +2,9 @@
 Configuration for each algorithm
 """
 
-from .federated import Federated
 from .fedasync import FedAsync
+from .federated import Federated
 from .iceadmm import ICEADMM
 from .iiadmm import IIADMM
 
-__all__ = ["Federated", "FedAsync", "ICEADMM", "IIADMM"]
+__all__ = ["ICEADMM", "IIADMM", "FedAsync", "Federated"]

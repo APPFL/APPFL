@@ -1,7 +1,7 @@
 from .cnn import CNN
+from .lstm import LSTMForecast
 from .resnet import ResNet18
 from .resnet_legacy import resnet18
-from .lstm import LSTMForecast
 
 
 def get_model(args):

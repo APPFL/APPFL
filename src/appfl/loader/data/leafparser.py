@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import importlib
 import hashlib
+import importlib
 import json
 import logging
 import random
@@ -12,12 +12,11 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from appfl.loader.data.leaf import download_data, postprocess_leaf
 from appfl.loader.data.data_utils import (
     resolve_dataset_logger,
     resolve_fixed_pool_clients,
 )
-
+from appfl.loader.data.leaf import download_data, postprocess_leaf
 
 _TEXT_DATASETS = {"shakespeare", "sent140", "reddit"}
 _DEFAULT_LEAF_META = {

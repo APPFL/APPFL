@@ -9,7 +9,6 @@ import pytest
 
 from appfl.login_manager import NaiveAuthenticator
 
-
 _GOOD_TOKEN = "x" * 32  # >= 16 chars
 
 

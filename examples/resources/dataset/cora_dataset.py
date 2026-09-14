@@ -1,10 +1,10 @@
 import os
-import torch
-from torch_geometric.datasets import Planetoid
-from torch_geometric.data import Data
-from torch.utils.data import Dataset
+
 import numpy as np
-from typing import Tuple
+import torch
+from torch.utils.data import Dataset
+from torch_geometric.data import Data
+from torch_geometric.datasets import Planetoid
 
 
 class NodeSubgraphDataset(Dataset):
@@ -44,7 +44,7 @@ def get_cora(
     partition_strategy: str = "random",
     alpha: float = 0.5,
     **kwargs,
-) -> Tuple[NodeSubgraphDataset, NodeSubgraphDataset]:
+) -> tuple[NodeSubgraphDataset, NodeSubgraphDataset]:
     """
     Load and partition the Cora dataset for federated learning.
 

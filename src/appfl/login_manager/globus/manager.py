@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-import sys
 import platform
+import sys
 import threading
-from typing import Iterator
-from .tokenstore import get_token_storage_adapter
-from globus_sdk.scopes import AuthScopes, GroupsScopes
+from collections.abc import Iterator
+
 from globus_sdk import (
-    NativeAppAuthClient,
-    RefreshTokenAuthorizer,
     AuthClient,
     GroupsClient,
+    NativeAppAuthClient,
+    RefreshTokenAuthorizer,
 )
+from globus_sdk.scopes import AuthScopes, GroupsScopes
+
+from .tokenstore import get_token_storage_adapter
 
 
 class GlobusLoginManager:

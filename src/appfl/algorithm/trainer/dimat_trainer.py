@@ -6,7 +6,9 @@ the merged global model parameters, which is important for convergence
 after DIMAT's feature-space alignment.
 """
 
-from typing import Union, Dict, OrderedDict, Any
+from collections import OrderedDict
+from typing import Any
+
 from appfl.algorithm.trainer.vanilla_trainer import VanillaTrainer
 
 
@@ -19,7 +21,7 @@ class DIMATTrainer(VanillaTrainer):
 
     def load_parameters(
         self,
-        params: Union[Dict, OrderedDict, Any],
+        params: dict | OrderedDict | Any,
     ):
         """Load model parameters from the server.
 

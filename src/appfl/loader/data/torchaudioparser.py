@@ -16,7 +16,6 @@ from appfl.loader.data.data_utils import (
 )
 from appfl.loader.data.partition_utils import partition_raw_dataset
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -3,17 +3,19 @@
 """
 
 import copy
-import time
-import torch
 import logging
-import torch.nn as nn
-from typing import Any
-from omegaconf import DictConfig
+import time
 from collections import OrderedDict
+from typing import Any
+
+import torch
+from omegaconf import DictConfig
+from torch import nn
 from torch.utils.data import DataLoader
+
 from appfl.comm.grpc import APPFLgRPCClient, Job
 from appfl.misc.data import Dataset
-from appfl.misc.utils import save_model_iteration, client_log, get_appfl_algorithm
+from appfl.misc.utils import client_log, get_appfl_algorithm, save_model_iteration
 
 
 def update_model_state(comm, model, round_number):
