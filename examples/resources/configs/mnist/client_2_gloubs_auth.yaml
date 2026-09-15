@@ -25,6 +25,7 @@ comm_configs:
     max_message_size: 1048576
     use_ssl: True
     root_certificate: "/your-home/.appfl/ssl/ca.crt"
+    server_hostname: localhost  # must match a SAN on the server cert (printed by appfl-setup-ssl)
     use_authenticator: True
     authenticator: "GlobusAuthenticator"
     authenticator_args:
