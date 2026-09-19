@@ -1,0 +1,18 @@
+client_configs:
+  data_readiness_configs:
+    generate_dr_report: true
+    output_dirname: ./output/subgroup_calibration
+    output_filename: data_readiness_report
+    dr_metrics:
+      cadremodule_configs:
+        cadremodule_path: ./cadre_module.py
+        cadremodule_name: SubgroupCalibrationCADREModule
+        remedy_action: false
+        cadremodule_kwargs:
+          n_bins: 10
+          release_n_bins: 5
+          min_cell_count: 5
+          min_outcome_count: 0
+server_configs:
+  num_clients: 4
+  logging_output_dirname: ./output/subgroup_calibration

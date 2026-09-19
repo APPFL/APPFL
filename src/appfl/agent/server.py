@@ -22,11 +22,13 @@ from appfl.misc.utils import (
 from concurrent.futures import Future
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
-from typing import Union, Dict, OrderedDict, Tuple, Optional
+from typing import Union, Dict, OrderedDict, Tuple, Optional, Iterable
 from appfl.misc.data_readiness.report import (
+    get_calibration_summary,
     get_unique_file_path,
     generate_html_content,
     save_html_report,
+    save_json_report,
 )
 
 
@@ -214,10 +216,17 @@ class ServerAgent:
         with self._close_connection_lock:
             self.closed_clients.add(client_id)
 
-    def data_readiness_report(self, readiness_report: Dict) -> None:
+    def data_readiness_report(
+        self,
+        readiness_report: Dict,
+        expected_client_ids: Optional[Iterable[str]] = None,
+    ) -> None:
         """
         Generate the data readiness report and save it to the output directory.
         """
+        calibration_summary = get_calibration_summary(
+            readiness_report, expected_client_ids
+        )
         output_dir = self.server_agent_config.client_configs.data_readiness_configs.get(
             "output_dirname", "./output"
         )
@@ -230,13 +239,19 @@ class ServerAgent:
         if not os.path.exists(output_dir):
             pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
+        if calibration_summary is not None:
+            json_file_path = get_unique_file_path(
+                output_dir, output_filename + "_calibration", "json"
+            )
+            save_json_report(json_file_path, calibration_summary, self.logger)
+
         # Save JSON report
         # json_file_path = get_unique_file_path(output_dir, output_filename, "json")
         # save_json_report(json_file_path, readiness_report, self.logger)
 
         # Generate and save HTML report
         html_file_path = get_unique_file_path(output_dir, output_filename, "html")
-        html_content = generate_html_content(readiness_report)
+        html_content = generate_html_content(readiness_report, calibration_summary)
         save_html_report(html_file_path, html_content, self.logger)
 
         self._data_readiness_reports = {}

@@ -63,6 +63,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self._load_google_drive(server_agent.server_agent_config)
         self._num_connected_clients = 0
         self._total_num_clients = self.server_agent.get_num_clients()
+        self._dr_metrics = {}
+        self._dr_metrics_futures = {}
+        self._dr_metrics_lock = threading.Lock()
 
         # Streamed aggregation configuration
         self.use_model_chunking = kwargs.get("use_model_chunking", False)
@@ -502,6 +505,17 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             context.set_details("Server error occurred!")
             raise e
 
+    def _cancel_readiness_report(self, client_id, request_future):
+        """Release this batch when a waiting client disconnects."""
+        with self._dr_metrics_lock:
+            if self._dr_metrics_futures.get(client_id) is not request_future:
+                return
+            error = RuntimeError("client cancelled a readiness report")
+            for future in self._dr_metrics_futures.values():
+                future.set_exception(error)
+            self._dr_metrics = {}
+            self._dr_metrics_futures = {}
+
     def InvokeCustomAction(self, request_iterator, context):
         """
         This function is the entry point for any custom action that the server agent can perform. The server agent should implement the custom action and call this function to perform the action.
@@ -559,23 +573,47 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 )
             elif action == "get_data_readiness_report":
                 num_clients = self.server_agent.get_num_clients()
-                if not hasattr(self, "_dr_metrics_lock"):
-                    self._dr_metrics = {}
-                    self._dr_metrics_futures = {}
-                    self._dr_metrics_lock = threading.Lock()
+                _dr_metric_future = Future()
+                cancelled = threading.Event()
+
+                def cancel_report():
+                    cancelled.set()
+                    self._cancel_readiness_report(client_id, _dr_metric_future)
+
+                callback_registered = context.add_callback(cancel_report)
                 with self._dr_metrics_lock:
+                    if client_id in self._dr_metrics_futures:
+                        raise ValueError("client already submitted a readiness report")
                     for k, v in meta_data.items():
                         if k not in self._dr_metrics:
                             self._dr_metrics[k] = {}
                         self._dr_metrics[k][client_id] = v
-                    _dr_metric_future = Future()
                     self._dr_metrics_futures[client_id] = _dr_metric_future
-                    if len(self._dr_metrics_futures) == num_clients:
-                        self.server_agent.data_readiness_report(self._dr_metrics)
-                        for client_id, future in self._dr_metrics_futures.items():
-                            future.set_result(None)
+                    if (
+                        not callback_registered
+                        or cancelled.is_set()
+                        or not context.is_active()
+                    ):
+                        error = RuntimeError("client cancelled a readiness report")
+                        for future in self._dr_metrics_futures.values():
+                            future.set_exception(error)
                         self._dr_metrics = {}
                         self._dr_metrics_futures = {}
+                    elif len(self._dr_metrics_futures) == num_clients:
+                        try:
+                            self.server_agent.data_readiness_report(
+                                self._dr_metrics,
+                                expected_client_ids=set(self._dr_metrics_futures),
+                            )
+                        except Exception as error:
+                            for future in self._dr_metrics_futures.values():
+                                future.set_exception(error)
+                        else:
+                            for future in self._dr_metrics_futures.values():
+                                future.set_result(None)
+                        finally:
+                            self._dr_metrics = {}
+                            self._dr_metrics_futures = {}
                 # waiting for the data readiness report to be generated for synchronization
                 _dr_metric_future.result()
                 response = CustomActionResponse(
