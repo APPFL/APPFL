@@ -25,6 +25,7 @@ log_globus_compute_appfl
 .DS_Store
 *.npz
 .compressor
+.external/
 *.pptx
 src/appfl/.DS_Store
 src/appfl/algorithm/mryu.py
