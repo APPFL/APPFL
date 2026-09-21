@@ -7,7 +7,7 @@ import logging
 
 import pytest
 
-from appfl.vsim import SyncSimDriver, ClientProfile
+from appfl.vsim import ClientProfile, SyncSimDriver
 
 
 # --------------------------- fakes --------------------------- #

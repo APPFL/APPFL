@@ -1,19 +1,22 @@
-import grpc
-import time
 import logging
+import time
+
+import grpc
 import numpy as np
-from .grpc_utils import proto_to_databuffer, construct_tensor_record
+
+from appfl.misc.utils import get_appfl_authenticator
+
+from .channel import create_grpc_channel
 from .grpc_communicator_old_pb2 import (
     Header,
     JobRequest,
-    TensorRequest,
-    TensorRecord,
-    WeightRequest,
     LearningResults,
+    TensorRecord,
+    TensorRequest,
+    WeightRequest,
 )
-from .channel import create_grpc_channel
 from .grpc_communicator_old_pb2_grpc import GRPCCommunicatorV0Stub
-from appfl.misc.utils import get_appfl_authenticator
+from .grpc_utils import construct_tensor_record, proto_to_databuffer
 
 
 class APPFLgRPCClient:
