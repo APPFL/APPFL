@@ -1,13 +1,9 @@
-"""Fidelity-aware token pruning -- ADKO Algorithm 2.
+"""Token pruning policies for ADKO memory budgets.
 
-Token memory is bounded (Constraint 3.2: ``|K_i^t| <= B``), so something must be discarded.
-*What* gets discarded is load-bearing: Proposition 4 shows this policy keeps average fidelity
-``eta_bar -> 1``, which is precisely what removes the linear compression term from the regret
-bound and buys sublinear convergence. Pruning is not housekeeping, it is part of the algorithm.
-
-The variants below are the ablation arms from the paper's Section 6.1 -- ADKO beats both
-FIFO and naive sharing, and reproducing that gap is the cheapest end-to-end check that an
-APPFL-side port is faithful.
+Algorithm 1 requires bounded token memory, ``|K_i^t| <= B``. Algorithm 2 prunes
+tokens by keeping high-fidelity, high-confidence, recent evidence. This matters
+because the Rillo et al. (ADKO) regret bound depends on preserving high average
+fidelity ``eta_bar`` under the memory budget.
 """
 
 from __future__ import annotations
@@ -70,17 +66,7 @@ class FidelityAwarePruner(TokenPruner):
 
 
 class ConfidencePruner(TokenPruner):
-    """Keep the highest-advantage tokens. The v2 many-task default.
-
-    Recency breaks exact ties and nothing more, so this differs from :class:`FIFOPruner` in
-    exactly one controlled choice -- which is what makes the pair a clean ablation.
-
-    Note what is *absent* relative to :class:`FidelityAwarePruner`: no fidelity factor and no
-    recency decay. The many-task tokens carry no fidelity at all, and the implementation
-    prunes on confidence alone. The theory still defines fidelity (Definition 3) and still
-    relies on ``eta_bar -> 1`` for the compression term (Proposition 4), so theory and
-    implementation have diverged here; worth knowing before reading too much into either.
-    """
+    """Keep tokens with the highest advantage ``c``."""
 
     def prune(
         self, tokens: Sequence[KnowledgeToken], budget: int, current_round: int
@@ -96,7 +82,11 @@ class ConfidencePruner(TokenPruner):
 
 
 class RandomPruner(TokenPruner):
-    """Uniformly random retention. The control arm: any selective policy must beat it."""
+    """Keep a random subset of tokens.
+
+    Args:
+        seed: Seed combined with round and buffer size.
+    """
 
     def __init__(self, seed: int = 0):
         self.seed = seed

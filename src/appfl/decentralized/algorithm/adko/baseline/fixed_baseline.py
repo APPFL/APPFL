@@ -1,4 +1,10 @@
-"""A constant, federation-wide threshold."""
+"""Fixed ADKO baseline.
+
+Use this when the experiment has a natural global success threshold, such as the
+Suzuki benchmark yield cutoff in Rillo et al. (ADKO). Every agent uses the same
+``b`` and ``scale``, so a success token has the same meaning across the
+federation.
+"""
 
 from __future__ import annotations
 
@@ -8,15 +14,11 @@ from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseli
 
 
 class FixedBaseline(BaseBaseline):
-    """A constant threshold shared by every agent. The Suzuki configuration.
+    """Constant ``b = threshold`` and ``scale``.
 
-    ``scale`` normalizes the advantage score. The reference derives it from the objective's
-    known range as ``max(tau, 100 - tau)``, which for ``tau = 50`` gives 50.
-
-    Because it is identical across agents, a SUCCESS from any agent means the same thing --
-    which is what makes summing peer evidence coherent. That property is exactly what a
-    per-agent running baseline gives up, and why the choice is domain-dependent rather than a
-    matter of taste.
+    Args:
+        threshold: Fixed baseline ``b``.
+        scale: Divides ``|y - b|`` to get confidence ``c``.
     """
 
     def __init__(self, threshold: float, scale: float):

@@ -71,11 +71,14 @@ def binary_entropy(p: float) -> float:
 
 @dataclass
 class KnowledgeToken:
-    """One ADKO token. Constructed by an agent, routed by the transport layer.
+    """One ADKO token ``k = {s, c, phi(theta), z}``.
 
-    The transport treats this as opaque except for :meth:`size_bits` (Constraint 3.2 budget
-    accounting) and ``provenance.agent_id`` (routing). Interpreting ``insight`` or using
-    ``embedding`` in a similarity kernel is the agent layer's business.
+    Args:
+        signal: Success or failure.
+        advantage: Confidence ``c = min(1, |y - b| / scale)``.
+        embedding: Shared location ``phi(theta)``.
+        insight: Optional text ``z``.
+        provenance: Token id, agent id, and round.
     """
 
     signal: Signal
@@ -94,13 +97,7 @@ class KnowledgeToken:
 
     # Definition: Token Fidelity. The fidelity of the token k is the fraction of mutual information about the true outcome that survives binary quantization: n_k = I(f_j(\theta_k); k) / H(f_j(\theta_k)) \in [0,1], where I(\cdot;\cdot) denotes mutual information and H(\cdot) denotes differential entropy under the Gaussian Process posterior.
     def fidelity(self) -> float:
-        """Estimated token fidelity: ``eta = c * (1 - H_b((1 - c) / 2))``.
-
-        The fraction of mutual information about the true outcome that survives binary
-        quantization. ``c = 1`` (outcome far from the threshold) gives ``eta = 1``, nearly
-        lossless; ``c = 0`` (outcome sitting on the threshold) gives ``eta = 0``, the signal
-        is a coin flip and the token says nothing (maximum entropy).
-        """
+        """Return ``eta(c) = c * (1 - H_b((1 - c) / 2))``."""
         # \eta(c) = c \times (1 - H_b((1 - c) / 2)), where \eta is the fidelity and H_b is the binary entropy
         return self.advantage * (1.0 - binary_entropy((1.0 - self.advantage) / 2.0))
 
@@ -116,7 +113,7 @@ class KnowledgeToken:
     # 7.       K_i^t \leftarrow K_i^t \ {dropped}
     # 8. end while
     def pruning_score(self, current_round: int, alpha_tau: float = 0.01) -> float:
-        """Algorithm 2 line 4: ``score = eta * c * exp(-alpha_tau * (t - k.round))``."""
+        """Return ``eta(c) * c * exp(-alpha_tau * age)``."""
         age = max(0, current_round - self.provenance.round)
         return self.fidelity() * self.advantage * math.exp(-alpha_tau * age)
 

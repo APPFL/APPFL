@@ -1,4 +1,10 @@
-"""The baseline contract: how an agent decides what counts as SUCCESS."""
+"""Baseline contract for token encoding.
+
+Rillo et al. (ADKO) use a contextual baseline ``b_i^t`` to turn a raw
+observation into a binary success/failure token. This interface returns
+``(b, scale)`` so token encoding can compute ``c = min(1, |y - b| / scale)``
+without exposing the raw history used to choose ``b``.
+"""
 
 from __future__ import annotations
 

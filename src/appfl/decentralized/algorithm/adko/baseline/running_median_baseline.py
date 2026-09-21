@@ -1,4 +1,10 @@
-"""Median of local history, scaled by median absolute deviation."""
+"""Running-median ADKO baseline.
+
+Rillo et al. (ADKO) recommend a local-history baseline when there is no natural
+success threshold. This uses ``b = median(y)`` and a median-absolute-deviation
+scale, so one unusually good or bad observation does not dominate future token
+confidence.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +14,7 @@ from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseli
 
 
 def median(values: List[float]) -> float:
-    """Plain median. Kept module-level so custom baselines can reuse it."""
+    """Return the median value."""
     ordered = sorted(values)
     n = len(ordered)
     mid = n // 2
@@ -23,16 +29,11 @@ def standard_deviation(values: List[float]) -> float:
 
 
 class RunningMedianBaseline(BaseBaseline):
-    """``b = median(y)``, ``scale = 1.4826 * median(|y - b|)``. The paper's v2 default.
+    """Use ``b = median(y)`` and ``scale = 1.4826 * median(|y - b|)``.
 
-    The constant rescales median absolute deviation into an estimate of a Gaussian standard
-    deviation. Both statistics are robust, which is the point: an agent that hits one
-    spectacular outlier early does not spend the rest of the run calling everything else a
-    failure -- the failure mode a mean-and-standard-deviation version has.
-
-    Falls back to the standard deviation when MAD degenerates (more than half the history
-    identical), and to 1.0 when that degenerates too, so a flat early history cannot produce a
-    divide-by-zero or a token whose advantage is meaningless.
+    Args:
+        warmup_baseline: Initial ``b`` before observations.
+        warmup_scale: Initial ``scale`` before observations.
     """
 
     MAD_TO_SIGMA = 1.4826

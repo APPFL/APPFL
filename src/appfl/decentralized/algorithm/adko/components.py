@@ -1,17 +1,10 @@
-"""The pluggable components ADKO's agent is built from, and does not itself supply.
+"""Interfaces ADKO needs from a scientific application.
 
-Three of them, unrelated to each other except that the agent needs all three: an
-uncertainty-aware :class:`Surrogate`, an optional :class:`LanguageModel`, and the
-:class:`DesignSpace` being searched. "Component" is APPFL's own word for a plug-and-play part
-behind a base class -- the same relationship an aggregator or a trainer has to the framework.
-
-These are Bayesian-optimization concepts, not decentralization concepts, which is why they
-live here rather than beside :class:`~appfl.decentralized.protocol.AgentProtocol`. A different
-decentralized algorithm would need entirely different components and still use the same
-transport, graph and round driver.
-
-This is the file to hand to whoever owns the science: implement these, and the rest of the
-package carries the result to the other agents.
+ADKO is domain-agnostic: the application supplies a surrogate model, a search
+space, and optionally a language model. In Rillo et al. (ADKO), the surrogate is
+usually a Gaussian process fitted only to one agent's local observations. ADKO
+only needs it to predict an expected value ``mu(theta)`` and uncertainty
+``sigma(theta)`` for embedded candidate points ``phi(theta)``.
 """
 
 from __future__ import annotations
@@ -34,19 +27,18 @@ class Surrogate(ABC):
     def posterior(
         self, candidates: Sequence[Sequence[float]]
     ) -> List[Tuple[float, float]]:
-        """Return ``(mu, sigma)`` per candidate. Batched: this is the per-round bottleneck."""
+        """Return ``(mu, sigma)`` for each candidate embedding."""
 
     @abstractmethod
     def update(self, embedding: Sequence[float], observation: float) -> None:
-        """Algorithm 1 step 12: append to ``D_i`` and refit."""
+        """Update with one local pair ``(phi(theta), y)``."""
 
 
 class LanguageModel(ABC):
-    """``M_i`` -- used at exactly two points in Algorithm 1, and optional at both.
+    """Optional model used for candidate proposals and token insights.
 
-    The paper ablates it: the NAS study runs with no LM at all, isolating token-based
-    collaboration from semantic reasoning. Any port should keep that switch, because it is
-    what separates "the tokens carry signal" from "the LM is doing the work".
+    It can suggest new points from token memory and write the optional text
+    field ``z`` in a token.
     """
 
     @abstractmethod
@@ -58,39 +50,26 @@ class LanguageModel(ABC):
         history: Optional[Sequence[Tuple[Any, float]]] = None,
         progress: Optional[Dict[str, Any]] = None,
     ) -> List[Any]:
-        """Algorithm 1 step 3: propose ``n`` candidate *design points*.
+        """Return candidate design points.
 
-        :param history: this agent's own ``(point, observation)`` pairs. Local and private --
-            it goes to the agent's own model, not to peers.
-        :param progress: ``n_obs``, ``best_y``, ``rounds_since_improve``,
-            ``recent_improvement``.
-
-        Both are needed for the model to *exploit* rather than only react to peers. The
-        reference prompt carries a laboratory profile, the allowed options, a progress block,
-        a coverage map, the lab's own observation memory, and peer evidence
-        (``llm_suzuki.py::_propose_prompt``); without history and progress the model is
-        working from peer tokens alone and cannot tell a promising region it has already
-        exhausted from one it has never touched.
-
-        Returns points in the space's own representation, not embeddings -- the agent calls
-        ``space.embed`` on whatever comes back.
-
-        This is where cross-slice transfer happens: the LM reads that an iodide/BPin motif
-        worked in DMF and proposes its analogue in MeCN. In the paper's chemistry study this
-        cuts the scored candidate set from ~3,696 to 10 per round at comparable hit rate.
-
-        Returning an empty list must be safe. A flaky endpoint should degrade the run to the
-        LM-free path, not end it.
+        Args:
+            token_memory: Peer tokens the model can use.
+            space: Search space for valid proposals.
+            n: Maximum number of candidates.
+            history: Optional local ``(point, y)`` history.
+            progress: Optional progress summary.
         """
 
     @abstractmethod
     def encode_insight(
         self, embedding: Sequence[float], observation: float, threshold: float
     ) -> Optional[str]:
-        """Algorithm 1 step 10: the natural-language ``z`` carried by an outgoing token.
+        """Return optional insight ``z`` for an outgoing token.
 
-        Returning ``None`` is legitimate and cheap -- ``z`` dominates token size, so an agent
-        under a tight bit budget should emit numeric-only tokens.
+        Args:
+            embedding: Evaluated point as ``phi(theta)``.
+            observation: Local result ``y``.
+            threshold: Baseline ``b`` for success or failure.
         """
 
 
@@ -111,16 +90,7 @@ class DesignSpace(ABC):
         """Draw candidate design points, for the exploration perturbations in step 4."""
 
     def enumerate(self) -> Optional[List[Any]]:
-        """Every point this agent may choose, or ``None`` if the space is not enumerable.
-
-        The reference scores the *entire unobserved set* each round -- ~3,696 conditions in
-        the Suzuki study, already restricted to this laboratory's solvent
-        (``run_suzuki.py::_unobserved_candidates``). Reproducing its results requires the same
-        pool, so a categorical space must return it here.
-
-        Continuous spaces return ``None``; the agent then falls back to sampling, which is a
-        deliberate approximation rather than the reference algorithm.
-        """
+        """Return all feasible points, or ``None`` if the space is not enumerable."""
         return None
 
     def local_perturbations(self, around: Any, n: int) -> List[Any]:
