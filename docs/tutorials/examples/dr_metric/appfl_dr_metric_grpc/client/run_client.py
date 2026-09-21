@@ -1,6 +1,8 @@
 import argparse
+
 from omegaconf import OmegaConf
 from resources.cadre_module import CADREModule
+
 from appfl.comm.grpc import GRPCClientCommunicator
 
 argparser = argparse.ArgumentParser()

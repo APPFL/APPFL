@@ -12,8 +12,6 @@ if fewer arrive).
 Inherits BaseSimDriver for common state, utilities, and model init.
 """
 
-from typing import Dict, List, Optional
-
 from .base_sim_driver import BaseSimDriver
 
 
@@ -28,19 +26,19 @@ class SyncSimDriver(BaseSimDriver):
     def __init__(
         self,
         server_agent,
-        client_agents: List,
-        profiles: Dict,
+        client_agents: list,
+        profiles: dict,
         participants_per_round: int,
         logger,
         seed: int = 42,
-        base_step_time: Optional[float] = None,
+        base_step_time: float | None = None,
         eval_every: int = 0,
         compression_ratio: float = 1.0,
         # sync
         mode: str = "count",
-        min_responses: Optional[int] = None,
-        max_wait_time: Optional[float] = None,
-        window_duration: Optional[float] = None,
+        min_responses: int | None = None,
+        max_wait_time: float | None = None,
+        window_duration: float | None = None,
         target_rounds: int = 100,
     ):
         super().__init__(

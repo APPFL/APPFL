@@ -1,10 +1,11 @@
 import argparse
 import platform
+
 import globus_sdk
+from globus_compute_sdk import Client, Executor
+from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 from globus_sdk import NativeAppAuthClient
 from globus_sdk.scopes import AuthScopes, ComputeScopes
-from globus_compute_sdk import Executor, Client
-from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--login", action="store_true")

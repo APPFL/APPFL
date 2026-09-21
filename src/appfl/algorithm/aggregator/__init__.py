@@ -1,15 +1,15 @@
 from .base_aggregator import BaseAggregator
+from .fedadagrad_aggregator import FedAdagradAggregator
+from .fedadam_aggregator import FedAdamAggregator
+from .fedasync_aggregator import FedAsyncAggregator
 from .fedavg_aggregator import FedAvgAggregator
 from .fedavgm_aggregator import FedAvgMAggregator
-from .fedadam_aggregator import FedAdamAggregator
-from .fedyogi_aggregator import FedYogiAggregator
-from .fedadagrad_aggregator import FedAdagradAggregator
-from .fedasync_aggregator import FedAsyncAggregator
 from .fedbuff_aggregator import FedBuffAggregator
-from .fedqueue_aggregator import FedQueueAggregator
 from .fedcompass_aggregator import FedCompassAggregator
-from .iiadmm_aggregator import IIADMMAggregator
+from .fedqueue_aggregator import FedQueueAggregator
+from .fedyogi_aggregator import FedYogiAggregator
 from .iceadmm_aggregator import ICEADMMAggregator
+from .iiadmm_aggregator import IIADMMAggregator
 
 try:
     from .fedsb_aggregator import FedSBAggregator
@@ -23,17 +23,17 @@ except:  # noqa: E722
 
 __all__ = [
     "BaseAggregator",
+    "DIMATaggregator",
+    "FedAdagradAggregator",
+    "FedAdamAggregator",
+    "FedAsyncAggregator",
     "FedAvgAggregator",
     "FedAvgMAggregator",
-    "FedAdamAggregator",
-    "FedYogiAggregator",
-    "FedAdagradAggregator",
-    "FedAsyncAggregator",
     "FedBuffAggregator",
-    "FedQueueAggregator",
     "FedCompassAggregator",
-    "IIADMMAggregator",
-    "ICEADMMAggregator",
+    "FedQueueAggregator",
     "FedSBAggregator",
-    "DIMATaggregator",
+    "FedYogiAggregator",
+    "ICEADMMAggregator",
+    "IIADMMAggregator",
 ]

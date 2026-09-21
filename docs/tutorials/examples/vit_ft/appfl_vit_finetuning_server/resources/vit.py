@@ -1,5 +1,5 @@
 import torch
-from torchvision.models import vit_b_16, ViT_B_16_Weights
+from torchvision.models import ViT_B_16_Weights, vit_b_16
 
 
 def get_vit():

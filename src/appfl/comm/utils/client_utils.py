@@ -1,11 +1,15 @@
 import os
+from collections import OrderedDict
+from typing import Any
+
 import torch
-from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
+from proxystore.store import Store
+
 from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_pre_signed_s3
 from appfl.config import ClientAgentConfig
 from appfl.misc.utils import get_proxystore_connector
-from typing import Union, Dict, OrderedDict, Any, Optional
+
 from .s3_storage import CloudStorage, LargeObjectWrapper
 from .utils import get_executable_func
 
@@ -27,9 +31,9 @@ def load_global_model(client_agent_config: ClientAgentConfig, global_model: Any)
 
 def send_local_model(
     client_agent_config: ClientAgentConfig,
-    local_model: Union[Dict, OrderedDict, bytes],
-    local_model_key: Optional[str],
-    local_model_url: Optional[str],
+    local_model: dict | OrderedDict | bytes,
+    local_model_key: str | None,
+    local_model_url: str | None,
 ):
     s3_enabled = is_s3_enabled(client_agent_config)
     comm_type = get_comm_type(client_agent_config)

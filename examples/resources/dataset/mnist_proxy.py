@@ -4,9 +4,11 @@ Uses a subset of the MNIST test set for activation statistics and BN reset.
 """
 
 import os
+
 import torch
 import torchvision
-import torchvision.transforms as transforms
+from torchvision import transforms
+
 from appfl.misc.data import Dataset
 
 

@@ -4,9 +4,11 @@ Uses the same normalization as the paper training data.
 """
 
 import os
+
 import torch
 import torchvision
-import torchvision.transforms as transforms
+from torchvision import transforms
+
 from appfl.misc.data import Dataset
 
 

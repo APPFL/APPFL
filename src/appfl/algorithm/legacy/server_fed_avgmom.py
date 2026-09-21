@@ -1,4 +1,5 @@
 from appfl.misc.deprecation import deprecated
+
 from .server_federated import FedServer
 
 
