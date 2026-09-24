@@ -1,6 +1,6 @@
 """ADKO in one process -- the control run.
 
-    python examples/decentralized/run_inprocess.py
+    python examples/decentralized/transports/run_inprocess.py
 """
 
 import argparse

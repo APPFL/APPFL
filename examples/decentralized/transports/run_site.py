@@ -4,10 +4,10 @@ Its data, its surrogate, and its raw observations never leave this process. The 
 that goes on the wire is one knowledge token per round.
 
     # in four separate terminals, or at four separate institutions
-    python examples/decentralized/run_site.py --agent-id agent-0 --server-uri localhost:50051
-    python examples/decentralized/run_site.py --agent-id agent-1 --server-uri localhost:50051
-    python examples/decentralized/run_site.py --agent-id agent-2 --server-uri localhost:50051
-    python examples/decentralized/run_site.py --agent-id agent-3 --server-uri localhost:50051
+    python examples/decentralized/transports/run_site.py --agent-id agent-0 --server-uri localhost:50051
+    python examples/decentralized/transports/run_site.py --agent-id agent-1 --server-uri localhost:50051
+    python examples/decentralized/transports/run_site.py --agent-id agent-2 --server-uri localhost:50051
+    python examples/decentralized/transports/run_site.py --agent-id agent-3 --server-uri localhost:50051
 
 Sites may start in any order; the round barrier holds until all four have arrived. Add
 --use-ssl --root-certificate for a real network.

@@ -5,7 +5,7 @@ difference is that tokens cross ranks instead of dict entries. This is what scal
 counts an in-process demo cannot reach, and therefore what a coordination-scaling study runs
 on.
 
-    mpirun -n 4 python examples/decentralized/run_mpi.py
+    mpirun -n 4 python examples/decentralized/transports/run_mpi.py
 
 Rank r owns AGENT_IDS[r], so -n must equal the agent count.
 """

@@ -16,7 +16,7 @@ Note what this servicer does NOT construct: a ServerAgent. There is no model to 
 aggregator, no scheduler. That absence is the clearest statement of what a decentralized run
 needs from a server, which is almost nothing.
 
-    python examples/decentralized/run_relay.py --server-uri localhost:50051
+    python examples/decentralized/transports/run_relay.py --server-uri localhost:50051
 
 Add --use-ssl with certificates for anything crossing a real network.
 """
