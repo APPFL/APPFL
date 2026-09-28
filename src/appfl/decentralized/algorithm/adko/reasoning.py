@@ -46,7 +46,7 @@ from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken, S
 def distance(
     a: Sequence[float], b: Sequence[float], metric: str = "euclidean"
 ) -> float:
-    """Distance between two design-point embeddings.
+    """Return distance between embeddings.
 
     ``euclidean`` for continuous spaces. ``hamming`` -- the fraction of positions that
     differ -- for categorical spaces, which is what the Suzuki study uses: its design points
@@ -61,16 +61,7 @@ def distance(
 
 
 def bandwidth_for_dimension(dim: int, target_similarity: float = 0.2) -> float:
-    """``sigma_s = sqrt((d / 6) / -log(s*))`` -- the paper's v2 bandwidth heuristic.
-
-    In a normalized d-dimensional space two typical points sit at squared distance about
-    ``d / 6``. Choosing the similarity ``s*`` you want peers to still have at that distance
-    pins the bandwidth. Without this, peer influence vanishes as dimension grows and the
-    social terms quietly stop doing anything -- the failure mode is silent, since the run
-    still completes and simply behaves like the no-communication arm.
-
-    ``d = 10, s* = 0.2`` gives ``sigma_s ~= 1.02``, the value the many-task study uses.
-    """
+    """Return ``sigma_s = sqrt((dim / 6) / -log(target_similarity))``."""
     if not 0.0 < target_similarity < 1.0:
         raise ValueError("target_similarity must be in (0, 1)")
     return math.sqrt((dim / 6.0) / -math.log(target_similarity))
@@ -83,20 +74,12 @@ def similarity(
     metric: str = "euclidean",
     kernel: str = "sigma_sq",
 ) -> float:
-    """``S(theta, theta_k) = exp(-d(phi(theta), phi(theta_k))^2 / denom)``.
+    """Return ``S(a,b) = exp(-d(a,b)^2 / denom)``.
 
-    Operates on embeddings, never raw design points -- which is what lets peer influence be
-    computed without violating Constraint 3.1.
-
-    ``kernel`` picks the denominator, and the two published studies differ:
-    ``"sigma_sq"`` gives ``sigma_s^2`` (the paper as written, and the many-task
-    implementation) while ``"two_sigma_sq"`` gives ``2 * sigma_s^2`` (the Suzuki
-    implementation's Gaussian form). A factor of two in the exponent is not cosmetic at these
-    bandwidths, so it is a setting rather than a convention.
-
-    ``sigma_s`` sets how far a peer's evidence reaches; under the Hamming metric it reads as
-    "how many disagreeing positions still count as nearby". See
-    :func:`bandwidth_for_dimension` for a principled starting value.
+    Args:
+        sigma_s: Controls how quickly similarity decays.
+        metric: Distance type.
+        kernel: Denominator choice, ``sigma_s^2`` or ``2 * sigma_s^2``.
     """
     if not embedding_a or not embedding_b:
         return 0.0
@@ -108,20 +91,17 @@ def similarity(
 
 @dataclass
 class ReasoningWeights:
-    """``beta``, ``lambda``, ``gamma``, ``sigma_s`` from Eq. (1), plus the form choices.
+    """Hyperparameters for ``mu + beta*sigma + lam*G - gamma*Lambda``.
 
-    Defaults follow the paper's v2 "low-calibration starting point": ``beta = 2`` (a standard
-    GP-UCB choice) and ``lam = gamma = 2``, giving peer successes and failures **symmetric**
-    weight. That is a change from the Suzuki study's tuned ``(4, 32)``, where failures weighed
-    eight times successes -- see :meth:`suzuki`.
-
-    ``weight_by_fidelity`` and ``peer_normalization`` are where the two published
-    implementations genuinely disagree, so they are settings rather than hardcoded:
-
-    * the Suzuki implementation weights each token by ``c * eta`` and scales each source by
-      the graph mixing weight ``pi_ij``;
-    * the many-task implementation weights by ``c`` alone -- its tokens carry no fidelity at
-      all -- and averages over the sources actually present in memory.
+    Args:
+        beta: Weight on uncertainty ``sigma``.
+        lam: Weight on success term ``G``.
+        gamma: Weight on failure term ``Lambda``.
+        sigma_s: Similarity bandwidth.
+        metric: Distance type.
+        kernel: Similarity denominator choice.
+        weight_by_fidelity: Use ``c * eta`` instead of ``c``.
+        peer_normalization: Combine peers by average or graph weight.
     """
 
     beta: float = 2.0
@@ -137,7 +117,7 @@ class ReasoningWeights:
     def many_task(
         cls, dim: int = 10, target_similarity: float = 0.2
     ) -> "ReasoningWeights":
-        """The v2 recommended defaults, with bandwidth derived for ``dim``."""
+        """Return the Rillo et al. (ADKO) v2 defaults."""
         return cls(
             beta=2.0,
             lam=2.0,
@@ -151,7 +131,7 @@ class ReasoningWeights:
 
     @classmethod
     def suzuki(cls) -> "ReasoningWeights":
-        """The tuned Suzuki configuration: asymmetric weights, fidelity weighting, Hamming."""
+        """Return the Suzuki benchmark defaults."""
         # intended to replicate the suzuki benchmark configuration.
         return cls(
             beta=2.0,
@@ -171,19 +151,17 @@ def peer_terms(
     mixing_weight: Callable[[str], float],
     weights: Optional[ReasoningWeights] = None,
 ) -> Tuple[float, float]:
-    """Compute ``G_i(theta)`` (success attraction) and ``Lambda_i(theta)`` (failure avoidance).
+    """Return peer attraction ``G`` and avoidance ``Lambda``.
 
-        per source j:  [ sum_{k in K_j} w_k S(theta, theta_k) 1[s_k] ] / [ sum_{k in K_j} w_k ]
-        w_k          =  c_k * eta_k   or   c_k        (weights.weight_by_fidelity)
-        outer factor =  pi_ij         or   1 / |sources|   (weights.peer_normalization)
+    For each source, tokens contribute ``w_k S(theta, theta_k)`` where
+    ``w_k = c_k * eta_k`` when fidelity weighting is enabled, otherwise ``c_k``.
+    Success tokens add to ``G``; failure tokens add to ``Lambda``.
 
-    ``mixing_weight`` maps a token's originating agent id to ``pi_ij``; normally
-    ``partial(topology.uniform_weight, self.agent_id)``. A source whose weight is zero is
-    dropped under **both** normalizations -- an agent should not be swayed by evidence
-    arriving from outside its neighborhood, whichever way the remaining sources are scaled.
-
-    The agent's own tokens participate here on equal footing with peers; the reference
-    appends the agent's own token to its memory in the broadcast step for exactly that reason.
+    Args:
+        candidate_embedding: Candidate as ``phi(theta)``.
+        token_memory: Tokens this agent has.
+        mixing_weight: Returns neighbor weight ``pi_ij``.
+        weights: Scoring settings.
     """
     weights = weights or ReasoningWeights()
 
@@ -249,6 +227,95 @@ def peer_terms(
     return attraction, avoidance
 
 
+def peer_terms_batch(
+    candidate_embeddings: Sequence[Sequence[float]],
+    token_memory: Sequence[KnowledgeToken],
+    mixing_weight: Callable[[str], float],
+    weights: Optional[ReasoningWeights] = None,
+):
+    """Vectorized :func:`peer_terms` for many candidates.
+
+    Args:
+        candidate_embeddings: Candidates as ``phi(theta)``.
+        token_memory: Tokens this agent has.
+        mixing_weight: Returns neighbor weight ``pi_ij``.
+        weights: Scoring settings.
+    """
+    import numpy as np
+
+    weights = weights or ReasoningWeights()
+    n = len(candidate_embeddings)
+    attraction = np.zeros(n)
+    avoidance = np.zeros(n)
+    if n == 0 or not token_memory:
+        return attraction, avoidance
+
+    usable = [t for t in token_memory if len(t.embedding) > 0]
+    if not usable:
+        return attraction, avoidance
+
+    candidates = np.asarray(candidate_embeddings, dtype=float)
+    if candidates.ndim == 1:
+        candidates = candidates.reshape(n, -1)
+
+    by_source: Dict[str, List[KnowledgeToken]] = {}
+    for token in usable:
+        by_source.setdefault(token.provenance.agent_id, []).append(token)
+
+    bw = max(weights.sigma_s, 1e-12)
+    denom_kernel = bw**2 if weights.kernel == "sigma_sq" else 2 * bw**2
+    n_sources = 0
+
+    for source_id, tokens in by_source.items():
+        if mixing_weight(source_id) <= 0.0:
+            continue
+        n_sources += 1
+        outer = (
+            mixing_weight(source_id)
+            if weights.peer_normalization == "mixing_weight"
+            else 1.0
+        )
+
+        embeddings = np.asarray([t.embedding for t in tokens], dtype=float)
+        if embeddings.shape[1] != candidates.shape[1]:
+            raise ValueError(
+                f"token embedding dim {embeddings.shape[1]} != candidate dim "
+                f"{candidates.shape[1]} for source {source_id!r}; the federation must share "
+                f"one phi"
+            )
+
+        if weights.metric == "hamming":
+            distances = (candidates[:, None, :] != embeddings[None, :, :]).mean(axis=2)
+        else:
+            diff = candidates[:, None, :] - embeddings[None, :, :]
+            distances = np.sqrt((diff**2).sum(axis=2))
+
+        kernel = np.exp(-(distances**2) / denom_kernel)  # (n_candidates, n_tokens)
+
+        token_weights = np.asarray(
+            [
+                t.advantage * (t.fidelity() if weights.weight_by_fidelity else 1.0)
+                for t in tokens
+            ],
+            dtype=float,
+        )
+        is_success = np.asarray(
+            [1.0 if t.signal is Signal.SUCCESS else 0.0 for t in tokens], dtype=float
+        )
+
+        weighted = kernel * token_weights[None, :]
+        denom = float(token_weights.sum()) + 1e-8
+        attraction += outer * (weighted * is_success[None, :]).sum(axis=1) / denom
+        avoidance += (
+            outer * (weighted * (1.0 - is_success)[None, :]).sum(axis=1) / denom
+        )
+
+    if weights.peer_normalization == "source_average" and n_sources:
+        attraction /= n_sources
+        avoidance /= n_sources
+    return attraction, avoidance
+
+
 def reasoning_score(
     posterior_mean: float,
     posterior_std: float,
@@ -256,7 +323,7 @@ def reasoning_score(
     avoidance: float,
     weights: ReasoningWeights,
 ) -> float:
-    """Eq. (1). Kept as a free function so it can be unit-tested against the paper directly."""
+    """Return ``mu + beta*sigma + lam*G - gamma*Lambda``."""
     return (
         posterior_mean
         + weights.beta * posterior_std
@@ -274,19 +341,28 @@ def score_candidates(
     mixing_weight: Callable[[str], float],  # \pi_{ij}
     weights: Optional[ReasoningWeights] = None,  # hyperparam presets
 ) -> Dict[int, float]:
-    """Score a candidate batch, returning ``{candidate_index: R_i(theta)}``.
+    """Return ADKO scores keyed by candidate index.
 
-    ``candidates`` are embeddings; ``posteriors`` are the matching ``(mu, sigma)`` pairs from
-    the agent's private surrogate.
-
-    Note the reference standardizes ``mu`` and ``sigma`` before combining them with the peer
-    terms (``mu_std``, ``sigma_std`` in ``run_suzuki.py``). That matters: ``G`` and ``Lambda``
-    are normalized into [0, 1] by construction, so an unstandardized posterior on a 0-100
-    yield scale would swamp them regardless of ``lam`` and ``gamma``. Standardization is the
-    :class:`Surrogate` implementation's responsibility here -- it is the only component that
-    knows the objective's scale.
+    Args:
+        candidates: Candidate embeddings.
+        posteriors: Matching ``(mu, sigma)`` values.
+        token_memory: Current tokens ``K_i^t``.
+        mixing_weight: Returns neighbor weight ``pi_ij``.
+        weights: Scoring settings.
     """
     weights = weights or ReasoningWeights()
+
+    try:
+        attractions, avoidances = peer_terms_batch(
+            candidates, token_memory, mixing_weight, weights
+        )
+        return {
+            idx: reasoning_score(mu, sigma, attractions[idx], avoidances[idx], weights)
+            for idx, (mu, sigma) in enumerate(posteriors)
+        }
+    except ImportError:
+        pass
+
     scores: Dict[int, float] = {}
     for idx, (embedding, (mu, sigma)) in enumerate(zip(candidates, posteriors)):
         attraction, avoidance = peer_terms(
