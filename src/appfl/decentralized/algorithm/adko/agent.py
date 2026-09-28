@@ -17,10 +17,25 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from appfl.decentralized.protocol import AgentProtocol
 from appfl.decentralized.algorithm.adko.baseline import BaseBaseline
-from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken, encode_token
-from appfl.decentralized.algorithm.adko.components import DesignSpace, LanguageModel, Surrogate
-from appfl.decentralized.algorithm.adko.pruning import FidelityAwarePruner, TokenPruner, merge
-from appfl.decentralized.algorithm.adko.reasoning import ReasoningWeights, score_candidates
+from appfl.decentralized.algorithm.adko.knowledge_token import (
+    KnowledgeToken,
+    encode_token,
+)
+from appfl.decentralized.algorithm.adko.components import (
+    DesignSpace,
+    LanguageModel,
+    Surrogate,
+)
+from appfl.decentralized.algorithm.adko.pruning import (
+    FidelityAwarePruner,
+    TokenPruner,
+    merge,
+)
+from appfl.decentralized.algorithm.adko.reasoning import (
+    ReasoningWeights,
+    peer_terms,
+    score_candidates,
+)
 
 
 class ADKOAgent(AgentProtocol):
@@ -60,6 +75,11 @@ class ADKOAgent(AgentProtocol):
         warmup_rounds: int = 5,
         total_proposals: Optional[int] = None,
         seed: int = 0,
+        include_own_tokens: bool = True,
+        embedding_privatizer: Optional[
+            Callable[[Sequence[float]], Sequence[float]]
+        ] = None,
+        warmup_points: Optional[Sequence[Any]] = None,
     ):
         self.agent_id = agent_id
         self.surrogate = surrogate
@@ -78,6 +98,9 @@ class ADKOAgent(AgentProtocol):
         self.warmup_rounds = warmup_rounds
         self.total_proposals = total_proposals
         self.rng = random.Random(seed)
+        self.include_own_tokens = include_own_tokens
+        self.embedding_privatizer = embedding_privatizer
+        self.warmup_points = list(warmup_points) if warmup_points is not None else None
 
         # Private state. None of this is ever transmitted (Constraint 3.1).
         self.token_memory: List[KnowledgeToken] = []
@@ -90,6 +113,9 @@ class ADKOAgent(AgentProtocol):
         # already been measured wastes a round of an expensive budget.
         self._observed_keys: set = set()
         self._best_round: int = -1
+        #: Reasoning score formulation terms for the last non-warmup round; ``None`` in warmup. Written by
+        #: :meth:`act`, read by drivers that log per-step traces.
+        self.last_decision: Optional[Dict[str, Any]] = None
 
     # -- AgentProtocol -----------------------------------------------------------------
 
@@ -116,7 +142,10 @@ class ADKOAgent(AgentProtocol):
         # argmax over a flat posterior is not exploration -- it just returns whichever
         # candidate the sampler happened to emit first. Random gives real coverage.
         if self._in_warmup(round_idx):
-            chosen = self._propose_random()
+            self.last_decision = None  # no acquisition ran this round
+            chosen = self._warmup_point(round_idx)
+            if chosen is None:
+                chosen = self._propose_random()
             if chosen is None:
                 return []
             chosen_embedding = self.space.embed(chosen)
@@ -139,6 +168,20 @@ class ADKOAgent(AgentProtocol):
             best_idx = max(scores, key=lambda i: scores[i])
             chosen, chosen_embedding = candidates[best_idx], embeddings[best_idx]
 
+            mu, sigma = posteriors[best_idx]
+            attraction, avoidance = peer_terms(
+                chosen_embedding, self.token_memory, self.mixing_weight, self.weights
+            )
+            self.last_decision = {
+                "round": round_idx,
+                "n_candidates_scored": len(candidates),
+                "score_mu": float(mu),
+                "score_beta_sigma": float(self.weights.beta * sigma),
+                "score_lam_G": float(self.weights.lam * attraction),
+                "score_gamma_Lambda": float(self.weights.gamma * avoidance),
+                "n_tokens_in_memory": len(self.token_memory),
+            }
+
         # Step 9: execution. The only place the agent touches ground truth.
         observation = self.evaluator(chosen)
 
@@ -157,6 +200,11 @@ class ADKOAgent(AgentProtocol):
             insight = self.language_model.encode_insight(
                 chosen_embedding, observation, threshold
             )
+        token_embedding = (
+            list(self.embedding_privatizer(chosen_embedding))
+            if self.embedding_privatizer is not None
+            else chosen_embedding
+        )
         token = encode_token(
             agent_id=self.agent_id,
             round=round_idx,
@@ -164,7 +212,7 @@ class ADKOAgent(AgentProtocol):
             threshold=threshold,
             scale=scale,
             objective=self.objective,
-            embedding=chosen_embedding,
+            embedding=token_embedding,
             space_id=getattr(self.space, "space_id", ""),
             insight=insight,
             insight_model=(
@@ -180,7 +228,8 @@ class ADKOAgent(AgentProtocol):
         self._observations.append(observation)
         self._points.append(chosen)
         self._observed_keys.add(self._key(chosen_embedding))
-        self.token_memory.append(token)
+        if self.include_own_tokens:
+            self.token_memory.append(token)
 
         return [token]
 
@@ -189,6 +238,12 @@ class ADKOAgent(AgentProtocol):
     def _in_warmup(self, round_idx: int) -> bool:
         """``run_suzuki.py:1146`` -- random until enough rounds *and* enough observations."""
         return round_idx < self.warmup_rounds or len(self._observations) < 2
+
+    def _warmup_point(self, round_idx: int) -> Optional[Any]:
+        """Return the injected warmup point for this round, if one exists."""
+        if self.warmup_points is None or round_idx >= len(self.warmup_points):
+            return None
+        return self.warmup_points[round_idx]
 
     def _key(self, embedding: Sequence[float]) -> tuple:
         """Identity of a probe for the observed-set filter. Rounded so floating-point noise
@@ -230,12 +285,15 @@ class ADKOAgent(AgentProtocol):
             "n_obs": len(self._observations),
             "best_y": best,
             "rounds_since_improve": (
-                0 if self._best_round < 0 else len(self._observations) - 1 - self._best_round
+                0
+                if self._best_round < 0
+                else len(self._observations) - 1 - self._best_round
             ),
             "recent_improvement": (
                 0.0
                 if len(self._observations) < 2
-                else max(self._observations[-5:]) - max(self._observations[:-5] or [best])
+                else max(self._observations[-5:])
+                - max(self._observations[:-5] or [best])
             ),
         }
 
