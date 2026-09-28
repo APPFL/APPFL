@@ -1,7 +1,7 @@
-import torch.nn as nn
 import torch
-from torchvision.models import resnet18 as resnet18base
+from torch import nn
 from torchvision.models import ResNet as ResNetBase
+from torchvision.models import resnet18 as resnet18base
 from torchvision.models.resnet import BasicBlock, ResNet18_Weights
 
 

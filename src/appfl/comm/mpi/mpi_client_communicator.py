@@ -1,12 +1,15 @@
 import gc
-import yaml
+from collections import OrderedDict
+
 import torch
+import yaml
 from mpi4py import MPI
 from omegaconf import DictConfig, OmegaConf
-from typing import Dict, Union, Tuple, OrderedDict, Optional, List
-from .config import MPITaskRequest, MPITaskResponse, MPIServerStatus, MPITask
-from .serializer import request_to_byte, byte_to_response, byte_to_model, model_to_byte
-from appfl.misc.memory_utils import optimize_memory_cleanup, memory_efficient_model_io
+
+from appfl.misc.memory_utils import memory_efficient_model_io, optimize_memory_cleanup
+
+from .config import MPIServerStatus, MPITask, MPITaskRequest, MPITaskResponse
+from .serializer import byte_to_model, byte_to_response, model_to_byte, request_to_byte
 
 
 class MPIClientCommunicator:
@@ -24,8 +27,8 @@ class MPIClientCommunicator:
         self,
         comm,
         server_rank: int,
-        client_id: Optional[Union[str, int]] = None,
-        client_ids: Optional[List[Union[str, int]]] = None,
+        client_id: str | int | None = None,
+        client_ids: list[str | int] | None = None,
         optimize_memory: bool = True,
         **kwargs,
     ):
@@ -73,7 +76,7 @@ class MPIClientCommunicator:
 
     def get_global_model(
         self, **kwargs
-    ) -> Union[Union[Dict, OrderedDict], Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Get the global model from the server.
 
@@ -117,10 +120,10 @@ class MPIClientCommunicator:
 
     def update_global_model(
         self,
-        local_model: Union[Dict, OrderedDict, bytes],
-        client_id: Optional[Union[str, int]] = None,
+        local_model: dict | OrderedDict | bytes,
+        client_id: str | int | None = None,
         **kwargs,
-    ) -> Tuple[Union[Dict, OrderedDict], Dict]:
+    ) -> tuple[dict | OrderedDict, dict]:
         """
         Send local model(s) to the FL server for global update, and return the new global model.
 
@@ -219,8 +222,8 @@ class MPIClientCommunicator:
         return model, meta_data
 
     def invoke_custom_action(
-        self, action: str, client_id: Optional[Union[str, int]] = None, **kwargs
-    ) -> Dict:
+        self, action: str, client_id: str | int | None = None, **kwargs
+    ) -> dict:
         """
         Invoke a custom action on the server.
 

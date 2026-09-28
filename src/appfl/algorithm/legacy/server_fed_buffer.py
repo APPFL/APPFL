@@ -1,7 +1,10 @@
-import logging
 import copy
+import logging
+
 import torch
+
 from appfl.misc.deprecation import deprecated
+
 from .server_federated import FedServer
 
 logger = logging.getLogger(__name__)

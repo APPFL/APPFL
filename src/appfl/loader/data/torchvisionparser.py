@@ -39,10 +39,10 @@ def _ensure_targets(ds):
         return
     for attr in ["labels", "_labels", "y"]:
         if hasattr(ds, attr):
-            setattr(ds, "targets", getattr(ds, attr))
+            ds.targets = getattr(ds, attr)
             return
     if hasattr(ds, "_samples"):
-        setattr(ds, "targets", [s[-1] for s in ds._samples])
+        ds.targets = [s[-1] for s in ds._samples]
 
 
 def _instantiate_dataset(dataset_cls, root: str, split: str, download: bool, transform):
@@ -122,7 +122,7 @@ def fetch_torchvision_dataset(config):
     dataset_meta.num_embeddings = None
     if hasattr(raw_train, "classes"):
         dataset_meta.num_classes = max(
-            int(dataset_meta.num_classes), int(len(raw_train.classes))
+            int(dataset_meta.num_classes), len(raw_train.classes)
         )
     else:
         dataset_meta.num_classes = int(infer_num_classes(raw_train))
