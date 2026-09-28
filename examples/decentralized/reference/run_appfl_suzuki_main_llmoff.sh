@@ -22,12 +22,12 @@ if [[ -n "${P_NOISE:-}" ]]; then
   COMMON_ARGS+=(--p-noise "$P_NOISE")
 fi
 
-"$PYTHON" examples/decentralized/suzuki/run_suzuki_appfl.py \
+"$PYTHON" examples/decentralized/reference/run_suzuki_appfl.py \
   --config "$REF_ROOT/scientific_discovery/experiments/main_iid_llmoff.json" \
   --out-dir "$OUT_ROOT/iid" \
   "${COMMON_ARGS[@]}"
 
-"$PYTHON" examples/decentralized/suzuki/run_suzuki_appfl.py \
+"$PYTHON" examples/decentralized/reference/run_suzuki_appfl.py \
   --config "$REF_ROOT/scientific_discovery/experiments/main_noniid_llmoff.json" \
   --out-dir "$OUT_ROOT/het" \
   "${COMMON_ARGS[@]}"

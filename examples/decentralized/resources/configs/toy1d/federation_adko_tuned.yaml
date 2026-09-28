@@ -1,0 +1,67 @@
+# Toy 1-D yield experiment, ADKO with the tuned asymmetric weights.
+#
+# THIS IS THE TOY OBJECTIVE, not the Suzuki study. It differs from federation_adko.yaml only
+# in how Eq. (1) is weighted: the published Suzuki tuning (lam 4, gamma 32 -- failures weigh
+# eight times successes), a fixed success threshold, and Algorithm 2 pruning, instead of the
+# v2 many-task defaults. It exists so the weighting can be compared on an objective that runs
+# in seconds and needs no dependencies.
+#
+# For the real Suzuki-Miyaura study on the suzuki_edbo dataset, use ../suzuki instead.
+#
+# What every agent must agree on. The analogue of a server_*.yaml in the FL examples:
+# nothing in here is local to a site, and two sites running different copies of this file
+# are running different experiments.
+
+# Which experiment this file belongs to. A federation config and an agent config
+# whose tags disagree are refused at load time -- pairing the Suzuki federation with
+# the toy agent would otherwise run, and quietly produce nonsense.
+experiment: "toy1d"
+
+federation_configs:
+  num_agents: 4
+  num_rounds: 40
+  seed: 0
+  known_optimum: 100.0          # printed alongside the federation best, when known
+  topology: "fully_connected"   # fully_connected | ring | star | random_geometric
+  topology_kwargs: {}
+
+agent_configs:
+  algorithm_configs:
+    # ADKO Algorithm 1
+    warmup_rounds: 5            # random proposals before the surrogate is trusted
+    token_budget: 40            # tokens an agent keeps in memory
+    alpha_tau: 0.01             # fidelity decay rate, exp(-alpha * age)
+    objective: "maximize"
+    emit_insight: false         # the z field; ignored unless an LLM is attached
+    total_proposals: null       # null -> unbounded; set for a fixed evaluation budget
+    n_local_candidates: 10
+
+    # Eq. (1): R = mu + beta*sigma + lam*G - gamma*Lambda.
+    # A preset fixes the whole configuration -- weights, distance, kernel, normalization --
+    # because those are not independent knobs. Any field listed below the preset overrides it.
+    weights:
+      preset: "suzuki"
+      # No dim: the Suzuki study fixes the bandwidth rather than deriving it from the
+      # dimension. 0.05 is this toy's 1-D value; the five-dimensional study uses 0.5.
+      sigma_s: 0.05
+
+    baseline:                   # what counts as SUCCESS in the token's s field
+      baseline: "fixed"
+      baseline_kwargs: {threshold: 50.0, scale: 50.0}
+
+    pruner:                     # which token to drop when memory is full
+      pruner: "fidelity"      # fidelity | confidence | fifo | random
+      pruner_kwargs: {alpha_tau: 0.01}
+
+  surrogate_configs:
+    surrogate_path: "./resources/surrogate/kernel_surrogate.py"
+    surrogate_name: "get_surrogate"
+    surrogate_kwargs:
+      bandwidth: 0.05
+      prior_sigma: 1.0
+
+comm_configs:
+  budget_configs:
+    # ADKO Constraint 3.2: at most one token of at most B bits per neighbour per round.
+    # null means unlimited, which is the reference's own setting.
+    bits_per_neighbor_per_round: null

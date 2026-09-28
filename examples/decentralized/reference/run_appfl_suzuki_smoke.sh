@@ -12,7 +12,7 @@ P_NOISE="${P_NOISE:-0}"
 cd "$APPFL_ROOT"
 export PYTHONPATH="$APPFL_ROOT/src:."
 
-"$PYTHON" examples/decentralized/suzuki/run_suzuki_appfl.py \
+"$PYTHON" examples/decentralized/reference/run_suzuki_appfl.py \
   --config "$REF_ROOT/scientific_discovery/experiments/main_iid_llmoff.json" \
   --warmup-dir "$REF_ROOT/scientific_discovery/results/warmup" \
   --out-dir "$OUT_ROOT/iid" \
@@ -20,7 +20,7 @@ export PYTHONPATH="$APPFL_ROOT/src:."
   --parallel "$PARALLEL" \
   --p-noise "$P_NOISE"
 
-"$PYTHON" examples/decentralized/suzuki/run_suzuki_appfl.py \
+"$PYTHON" examples/decentralized/reference/run_suzuki_appfl.py \
   --config "$REF_ROOT/scientific_discovery/experiments/main_noniid_llmoff.json" \
   --warmup-dir "$REF_ROOT/scientific_discovery/results/warmup" \
   --out-dir "$OUT_ROOT/het" \

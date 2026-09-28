@@ -12,23 +12,30 @@ a shortcut:
     and no agent sees anything beyond its own neighbors' tokens. This process routes bytes it
     never interprets -- a switchboard, not an aggregator.
 
-Note what this servicer does NOT construct: a ServerAgent. There is no model to hold, no
+Note what this launcher does NOT construct: a ServerAgent. There is no model to hold, no
 aggregator, no scheduler. That absence is the clearest statement of what a decentralized run
-needs from a server, which is almost nothing.
+needs from a server, which is almost nothing. It reads only the federation config, because
+the graph is the one thing the relay has to know and the only thing it is entitled to.
 
-    python examples/decentralized/transports/run_relay.py --server-uri localhost:50051
+    python grpc/run_relay.py --server_uri localhost:50051
 
-Add --use-ssl with certificates for anything crossing a real network.
+Add --use_ssl with certificates for anything crossing a real network.
 """
 
 import argparse
+import sys
+from pathlib import Path
+
+#: ``examples/decentralized``. Relative resource paths in the configs resolve against it, so
+#: a launcher can be invoked from here or from the repository root.
+EXAMPLE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(EXAMPLE_ROOT / "resources"))
 
 from appfl.comm.grpc import serve
 
-from appfl.decentralized import RelayServer
+from appfl.decentralized import RelayServer, create_topology, load_federation_config
 from appfl.decentralized.exchange.grpc_servicer import RelayServicer
 
-from benchmark import make_topology
 
 
 def report_shutdown(action_count: int) -> None:
@@ -38,15 +45,21 @@ def report_shutdown(action_count: int) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--server-uri", default="localhost:50051")
-    parser.add_argument("--topology", default="fully_connected")
-    parser.add_argument("--use-ssl", action="store_true")
-    parser.add_argument("--server-certificate", default=None)
-    parser.add_argument("--server-certificate-key", default=None)
-    args = parser.parse_args()
+    argparser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    # Only the federation config: the relay is entitled to the graph and nothing else.
+    argparser.add_argument(
+        "--federation_config", type=str, default="./resources/configs/toy1d/federation_adko.yaml"
+    )
+    argparser.add_argument("--server_uri", type=str, default="localhost:50051")
+    argparser.add_argument("--use_ssl", action="store_true")
+    argparser.add_argument("--server_certificate", type=str, default=None)
+    argparser.add_argument("--server_certificate_key", type=str, default=None)
+    args = argparser.parse_args()
 
-    topology = make_topology(args.topology)
+    federation_config = load_federation_config(args.federation_config, EXAMPLE_ROOT)
+    topology = create_topology(federation_config)
     relay = RelayServer(topology)
     print(f"relay up at {args.server_uri}")
     print(f"topology: {topology.describe()}")

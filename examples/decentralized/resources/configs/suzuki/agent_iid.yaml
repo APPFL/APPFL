@@ -1,0 +1,33 @@
+# One laboratory in the Suzuki study.
+#
+# In HET the space_kwargs below restrict this agent to a single solvent, which is what makes
+# a neighbour's token the only route to another solvent's chemistry. In IID the restriction
+# is lifted and every agent sees the whole 3,696-reaction grid.
+
+# Which experiment this file belongs to. A federation config and an agent config
+# whose tags disagree are refused at load time -- pairing the Suzuki federation with
+# the toy agent would otherwise run, and quietly produce nonsense.
+experiment: "suzuki_iid"
+
+agent_id: "agent-0"
+
+space_configs:
+  space_path: "./resources/space/suzuki_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 0              # set by the launcher; in HET it is also the solvent index
+    num_agents: 4               # set by the launcher
+    seed: 42                    # set by the launcher
+    iid_mode: true              # must match the federation config
+
+evaluator_configs:
+  evaluator_path: "./resources/evaluator/suzuki_lookup.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
+  cost_seconds: 0.0             # a table lookup; the real cost is a bench experiment
+
+comm_configs:
+  grpc_configs:
+    server_uri: "localhost:50051"
+    use_ssl: false
+    root_certificate: null

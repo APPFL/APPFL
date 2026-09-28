@@ -1,6 +1,6 @@
 """Compare APPFL Suzuki results against the ADKO reference outputs.
 
-    python examples/decentralized/suzuki/compare_to_reference.py \
+    python examples/decentralized/reference/compare_to_reference.py \
         --appfl     results/appfl_main \
         --reference ../adko/scientific_discovery/results/main/<combo> \
         --arm IID

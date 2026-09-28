@@ -1,0 +1,54 @@
+# Suzuki-Miyaura ADKO, IID: every agent may propose any of the 3,696 reactions.
+#
+# The same experiment the reference ADKO `scientific_discovery` study runs, expressed as an
+# APPFL federation config. Hyperparameters follow the reference's
+# `experiments/main_iid_llmoff.json` (b2 l1 g32 s0p5 t50 tb40 a0p01).
+#
+# Needs BoTorch, GPyTorch and Olympus; see ../../../reference/README.md.
+
+# Which experiment this file belongs to. A federation config and an agent config
+# whose tags disagree are refused at load time -- pairing the Suzuki federation with
+# the toy agent would otherwise run, and quietly produce nonsense.
+experiment: "suzuki_iid"
+
+federation_configs:
+  num_agents: 4                 # IID places no constraint on the count
+  num_rounds: 200
+  seed: 42                      # the reference's SEED_BASE
+  topology: "complete"          # the reference's name for fully_connected
+  topology_kwargs: {}
+
+agent_configs:
+  algorithm_configs:
+    warmup_rounds: 5
+    token_budget: 40
+    alpha_tau: 0.01
+    objective: "maximize"
+    emit_insight: false         # this is the LM-free arm (use_llm: false)
+    total_proposals: null
+    n_local_candidates: 10
+
+    weights:
+      preset: "suzuki"          # beta 2, gamma 32, Hamming, fidelity-weighted
+      lam: 1.0                  # the IID arm weights peer successes lower than HET does
+      sigma_s: 0.5              # similarity_bw in the reference config
+
+    baseline:
+      baseline: "fixed"
+      baseline_kwargs:
+        threshold: 50.0         # tau
+        scale: 50.0             # max(tau, 100 - tau)
+
+    pruner:
+      pruner: "fidelity"
+      pruner_kwargs:
+        alpha_tau: 0.01
+
+  surrogate_configs:
+    surrogate_path: "./resources/surrogate/categorical_gp_surrogate.py"
+    surrogate_name: "get_surrogate"
+    surrogate_kwargs: {}
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null

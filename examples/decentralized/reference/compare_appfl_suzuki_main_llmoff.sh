@@ -23,7 +23,7 @@ if [[ "${STRICT_STEPS:-0}" == "1" ]]; then
   COMMON_ARGS+=(--strict-steps)
 fi
 
-"$PYTHON" examples/decentralized/suzuki/compare_to_reference.py \
+"$PYTHON" examples/decentralized/reference/compare_to_reference.py \
   --appfl "$OUT_ROOT/iid" \
   --reference "$REF_ROOT/scientific_discovery/results/main/b2l1g32s0p5t50tb40a0p01pn0p04365_llmoff" \
   --arm IID \
@@ -31,7 +31,7 @@ fi
   --report-json "$REPORT_ROOT/iid_llmoff_comparison.json" \
   "${COMMON_ARGS[@]}"
 
-"$PYTHON" examples/decentralized/suzuki/compare_to_reference.py \
+"$PYTHON" examples/decentralized/reference/compare_to_reference.py \
   --appfl "$OUT_ROOT/het" \
   --reference "$REF_ROOT/scientific_discovery/results/main/b2l4g32s0p5t50tb40a0p01pn0p04365_llmoff" \
   --arm HET \

@@ -147,3 +147,12 @@ class CategoricalGPSurrogate(Surrogate):
             except Exception:
                 # Keep the previous GP if this round's fit is numerically unstable.
                 pass
+
+
+def get_surrogate() -> CategoricalGPSurrogate:
+    """Entry point named by ``surrogate_configs.surrogate_name``.
+
+    Takes no arguments: every knob the reference exposes is a property of the kernel, which
+    is fixed by what is being reproduced.
+    """
+    return CategoricalGPSurrogate()

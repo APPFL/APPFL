@@ -1,0 +1,35 @@
+# One agent of the toy 1-D experiment.
+#
+# The analogue of a client_N.yaml in the FL examples: everything here is local to a site and
+# never leaves it. The launcher fills in agent_id and the space_kwargs that say which agent
+# this is, exactly as run_serial.py fills in client_id and dataset_kwargs.client_id.
+
+# Which experiment this file belongs to. A federation config and an agent config
+# whose tags disagree are refused at load time -- pairing the Suzuki federation with
+# the toy agent would otherwise run, and quietly produce nonsense.
+experiment: "toy1d"
+
+agent_id: "agent-0"
+
+# The agent's slice of the design space -- its "data".
+space_configs:
+  space_path: "./resources/space/toy1d_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 0              # set by the launcher
+    num_agents: 4               # set by the launcher
+    seed: 0                     # set by the launcher
+    n_bins: 50                  # quantization applied before anything is shared
+
+# The oracle -- ADKO Algorithm 1 step 9, the only place ground truth is touched.
+evaluator_configs:
+  evaluator_path: "./resources/evaluator/toy_yield.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
+  cost_seconds: 1.0             # price an instant stand-in as a real experiment
+
+comm_configs:
+  grpc_configs:                 # used by grpc/run_site.py only
+    server_uri: "localhost:50051"
+    use_ssl: false
+    root_certificate: null

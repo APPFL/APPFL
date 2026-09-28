@@ -1,6 +1,6 @@
 """Reproduce the ADKO ``scientific_discovery`` Suzuki study on APPFL's decentralized runtime.
 
-    python examples/decentralized/suzuki/run_suzuki_appfl.py \
+    python examples/decentralized/reference/run_suzuki_appfl.py \
         --config ../adko/scientific_discovery/experiments/main_iid_llmoff.json \
         --warmup-dir ../adko/scientific_discovery/results/warmup \
         --out-dir results/appfl_main
@@ -36,9 +36,13 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
-_HERE = Path(__file__).resolve().parent
-if str(_HERE) not in sys.path:
-    sys.path.insert(0, str(_HERE))
+# The Suzuki chemistry and GP live in ../resources, where the launcher-driven examples load
+# them from too, so this reproduction and `serial/run_serial.py --federation_config
+# resources/configs/suzuki/...` are running against exactly the same space and surrogate.
+_RESOURCES = Path(__file__).resolve().parents[1] / "resources"
+for _dir in (_RESOURCES / "space", _RESOURCES / "surrogate"):
+    if str(_dir) not in sys.path:
+        sys.path.insert(0, str(_dir))
 
 from appfl.decentralized import InProcessExchange, build_topology, run_federation
 from appfl.decentralized.algorithm.adko import (
@@ -49,7 +53,7 @@ from appfl.decentralized.algorithm.adko import (
     build_baseline,
 )
 
-from space import (  # noqa: E402  -- sys.path is set above
+from suzuki_space import (  # noqa: E402  -- sys.path is set above
     D,
     N_OPTS_PER_DIM,
     SuzukiSpace,
@@ -57,7 +61,7 @@ from space import (  # noqa: E402  -- sys.path is set above
     decode_int_to_smiles,
     make_evaluator,
 )
-from surrogate import CategoricalGPSurrogate  # noqa: E402
+from categorical_gp_surrogate import CategoricalGPSurrogate  # noqa: E402
 
 N_AGENTS = 4
 N_ROUNDS = 200

@@ -42,6 +42,16 @@ from appfl.decentralized.exchange import (
     unpack_tokens,
 )
 from appfl.decentralized.runner import run_federation, run_local_agent
+from appfl.decentralized.config import (
+    agent_ids,
+    as_kwargs,
+    create_budget,
+    create_topology,
+    load_agent_configs,
+    load_callable,
+    load_federation_config,
+    resolve_path,
+)
 
 __all__ = [
     # contracts
@@ -65,6 +75,15 @@ __all__ = [
     # the round loop
     "run_federation",
     "run_local_agent",
+    # configuration
+    "load_federation_config",
+    "load_agent_configs",
+    "agent_ids",
+    "create_topology",
+    "create_budget",
+    "resolve_path",
+    "load_callable",
+    "as_kwargs",
     # enforcement and observation
     "CommBudget",
     "Meter",

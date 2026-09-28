@@ -53,6 +53,13 @@ from appfl.decentralized.algorithm.adko.llm import (
     build_language_model,
 )
 
+from appfl.decentralized.algorithm.adko.builder import (
+    PRUNERS,
+    WEIGHT_PRESETS,
+    create_agent,
+    create_weights,
+)
+
 __all__ = [
     # the token
     "KnowledgeToken",
@@ -72,6 +79,11 @@ __all__ = [
     "get_appfl_baseline",
     # the algorithm
     "ADKOAgent",
+    # construction from configuration
+    "create_agent",
+    "create_weights",
+    "PRUNERS",
+    "WEIGHT_PRESETS",
     "ADKOMeter",
     "ReasoningWeights",
     "reasoning_score",

@@ -1,0 +1,53 @@
+# Suzuki-Miyaura ADKO, non-IID (HET): each agent owns one solvent.
+#
+# The same experiment the reference ADKO `scientific_discovery` study runs, expressed as an
+# APPFL federation config. Hyperparameters follow the reference's
+# `experiments/main_noniid_llmoff.json` (b2 l4 g32 s0p5 t50 tb40 a0p01).
+#
+# Needs BoTorch, GPyTorch and Olympus; see ../../../reference/README.md.
+
+# Which experiment this file belongs to. A federation config and an agent config
+# whose tags disagree are refused at load time -- pairing the Suzuki federation with
+# the toy agent would otherwise run, and quietly produce nonsense.
+experiment: "suzuki_het"
+
+federation_configs:
+  num_agents: 4                 # HET splits by solvent, and there are four solvents
+  num_rounds: 200
+  seed: 42                      # the reference's SEED_BASE
+  topology: "complete"          # the reference's name for fully_connected
+  topology_kwargs: {}
+
+agent_configs:
+  algorithm_configs:
+    warmup_rounds: 5
+    token_budget: 40
+    alpha_tau: 0.01
+    objective: "maximize"
+    emit_insight: false         # this is the LM-free arm (use_llm: false)
+    total_proposals: null
+    n_local_candidates: 10
+
+    weights:
+      preset: "suzuki"          # beta 2, lam 4, gamma 32, Hamming, fidelity-weighted
+      sigma_s: 0.5              # similarity_bw in the reference config
+
+    baseline:
+      baseline: "fixed"
+      baseline_kwargs:
+        threshold: 50.0         # tau
+        scale: 50.0             # max(tau, 100 - tau)
+
+    pruner:
+      pruner: "fidelity"
+      pruner_kwargs:
+        alpha_tau: 0.01
+
+  surrogate_configs:
+    surrogate_path: "./resources/surrogate/categorical_gp_surrogate.py"
+    surrogate_name: "get_surrogate"
+    surrogate_kwargs: {}
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null

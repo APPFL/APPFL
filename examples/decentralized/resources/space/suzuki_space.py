@@ -188,3 +188,24 @@ def flip_categories(
                 alt += 1
             noisy[dim] = float(alt)
     return noisy
+
+
+def get_design_space(
+    agent_index: int = 0,
+    num_agents: int = 4,
+    iid_mode: bool = False,
+    seed: int = 0,
+) -> SuzukiSpace:
+    """Entry point named by ``space_configs.space_name`` in an agent config.
+
+    ``iid_mode`` is the heterogeneity switch: ``true`` lets every agent see all 3,696
+    reactions, ``false`` restricts each to one solvent. HET therefore needs exactly one agent
+    per solvent, which is why four is not a default but a requirement.
+    """
+    if not iid_mode and num_agents != len(PARAM_OPTIONS[SOLVENT_DIM]):
+        raise ValueError(
+            f"HET mode splits agents by solvent, so it needs exactly "
+            f"{len(PARAM_OPTIONS[SOLVENT_DIM])} agents, not {num_agents}. "
+            f"Set iid_mode: true to run any other agent count."
+        )
+    return SuzukiSpace(agent_index, iid_mode, seed=seed + agent_index)
