@@ -2,7 +2,7 @@
 Tiny neural network for TES testing - very small to avoid gRPC size limits
 """
 
-import torch.nn as nn
+from torch import nn
 
 
 class TinyNet(nn.Module):

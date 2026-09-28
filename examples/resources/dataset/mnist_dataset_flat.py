@@ -1,11 +1,13 @@
 import os
+
 import numpy as np
 import torchvision
-import torchvision.transforms as transforms
+from torchvision import transforms
+
 from appfl.misc.data import (
-    iid_partition,
     class_noniid_partition,
     dirichlet_noniid_partition,
+    iid_partition,
 )
 
 

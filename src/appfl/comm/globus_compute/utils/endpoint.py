@@ -1,9 +1,11 @@
 import uuid
-from enum import Enum
-from omegaconf import DictConfig
+from collections import OrderedDict
 from concurrent.futures import Future
+from enum import Enum
+
 from globus_compute_sdk import Executor
-from typing import Optional, Union, Dict, OrderedDict, Tuple
+from omegaconf import DictConfig
+
 from appfl.comm.globus_compute.globus_compute_client_communicator import (
     globus_compute_client_entry_point,
 )
@@ -63,9 +65,9 @@ class GlobusComputeClientEndpoint:
         self,
         gce: Executor,
         task_name: str,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        meta_data: Optional[Dict] = None,
-    ) -> Tuple[Optional[str], Optional[Future]]:
+        model: dict | OrderedDict | bytes | None = None,
+        meta_data: dict | None = None,
+    ) -> tuple[str | None, Future | None]:
         """
         Submit a task to the client's Globus Compute endpoint.
         :param `gce`: Globus Compute executor for submitting tasks to the Globus Compute client endpoint

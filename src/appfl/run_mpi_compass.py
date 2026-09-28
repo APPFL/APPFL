@@ -3,24 +3,26 @@
 """
 
 import copy
-import time
 import logging
-import torch.nn as nn
+import time
 from typing import Any
+
 from mpi4py import MPI
 from omegaconf import DictConfig
+from torch import nn
 from torch.utils.data import DataLoader
+
+from appfl.algorithm import SchedulerCompassMPI, SchedulerDummy
+from appfl.comm.mpi import MpiCommunicator
+from appfl.compressor import Compressor
 from appfl.misc.data import Dataset
 from appfl.misc.utils import (
-    validation,
-    compute_gradient,
     client_log,
+    compute_gradient,
     create_custom_logger,
     get_appfl_algorithm,
+    validation,
 )
-from appfl.compressor import Compressor
-from appfl.comm.mpi import MpiCommunicator
-from appfl.algorithm import SchedulerCompassMPI, SchedulerDummy
 
 
 def run_server(
@@ -126,8 +128,7 @@ def run_server(
             validation_start = time.time()
             if cfg.validation:
                 test_loss, test_accuracy = validation(server, test_dataloader, metric)
-                if test_accuracy > best_accuracy:
-                    best_accuracy = test_accuracy
+                best_accuracy = max(best_accuracy, test_accuracy)
                 if cfg.use_tensorboard:
                     # Add them to tensorboard
                     writer.add_scalar(

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from collections import Counter
-from contextlib import contextmanager
-from io import BytesIO
 import logging
 import os
+from collections import Counter
+from collections.abc import Iterable
+from contextlib import contextmanager
+from io import BytesIO
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import torch
@@ -19,7 +20,6 @@ from appfl.loader.data.data_utils import (
     resolve_dataset_logger,
 )
 from appfl.loader.data.partition_utils import partition_raw_dataset
-
 
 logger = logging.getLogger(__name__)
 

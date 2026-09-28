@@ -1,8 +1,9 @@
 import io
 import math
-import torch
-from typing import Optional
 from collections import OrderedDict
+
+import torch
+
 from appfl.compressor import Compressor
 from appfl.misc.deprecation import deprecated
 
@@ -15,7 +16,7 @@ class MpiSyncCommunicator:
     on multiple MPI processes, where each process can represent MORE THAN ONE federated learning
     clients by having those clients running serially on each MPI process."""
 
-    def __init__(self, comm, compressor: Optional[Compressor] = None):
+    def __init__(self, comm, compressor: Compressor | None = None):
         self.comm = comm
         self.compressor = compressor
         self.comm_rank = comm.Get_rank()
@@ -61,15 +62,15 @@ class MpiSyncCommunicator:
             self.max_slice_count = max(self.counts)
             self.comm.bcast(self.max_slice_count)
         recvs = {}
-        for rank in range(0, self.comm_size):
+        for rank in range(self.comm_size):
             recvs[rank] = b""
         for n in range(self.max_slice_count):
             recv = self.comm.gather(None, root=self.comm_rank)
-            for r in range(0, self.comm_size):
+            for r in range(self.comm_size):
                 if r != self.comm_rank and n < self.counts[r]:
                     recvs[r] = b"".join([recvs[r], recv[r]])
         local_models = [None for _ in range(num_clients)]
-        for r in range(0, self.comm_size):
+        for r in range(self.comm_size):
             if r != self.comm_rank:
                 if self.compressor is not None:
                     local_model_dict = self.compressor.decompress_model(

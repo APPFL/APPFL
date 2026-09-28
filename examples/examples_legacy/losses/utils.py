@@ -1,5 +1,6 @@
-import torch
 import importlib
+
+import torch
 
 
 def get_loss(loss_fn_path, loss_class_name=None):
@@ -7,7 +8,7 @@ def get_loss(loss_fn_path, loss_class_name=None):
         return torch.nn.CrossEntropyLoss()
     # Extract the module name from the file path (removing the ".py" extension)
     loss_fn_path = loss_fn_path.replace("/", ".")
-    module_name = loss_fn_path[:-3] if loss_fn_path.endswith(".py") else loss_fn_path
+    module_name = loss_fn_path.removesuffix(".py")
 
     # Import the module dynamically
     module = importlib.import_module(module_name)
