@@ -1,0 +1,77 @@
+# One DFL node, and the whole configuration -- there is no second file.
+#
+# Centralized FL splits configuration in two because a server holds what the clients must
+# agree on. DFL has no server, so a node's file describes everything it needs: who it talks
+# to, what it trains, and on what data.
+#
+# This copy is set up for *simulation*: `neighbors.mode: from_topo` names a graph and lets it
+# be derived, and the serial and MPI launchers load this one file and adjust `node_id` and the
+# data partition for each node.
+
+node_id: "Node0" # set by the launcher in simulation
+
+num_epochs: 10 # rounds of {local training -> exchange with neighbors -> aggregate}
+aggregator: "DFLNodeFedAvgAggregator"
+aggregator_kwargs: {}
+
+# Who this node exchanges models with -- the only thing about the graph it needs to know.
+neighbors:
+  # from_topo: derive the neighbor lists from a named graph over generated ids
+  #   (Node0..Node{num_nodes-1}). Simulation only: it works because every node derives the
+  #   same graph and so they agree by construction.
+  # explicit: name the neighbors directly. The only mode a real deployment can use.
+  mode: "from_topo"
+  topology: "fully_connected" # fully_connected | ring | star | random_geometric | custom
+  topology_kwargs: {}
+  num_nodes: 4
+
+train_configs:
+  # Local trainer
+  trainer: "VanillaTrainer"
+  mode: "step"
+  num_local_steps: 100
+  optim: "Adam"
+  optim_args:
+    lr: 0.001
+  # Loss function
+  loss_fn_path: "./resources/loss/celoss.py"
+  loss_fn_name: "CELoss"
+  # Local validation
+  do_validation: True
+  do_pre_validation: False
+  metric_path: "./resources/metric/acc.py"
+  metric_name: "accuracy"
+  # Differential privacy
+  use_dp: False
+  # Data loader
+  train_batch_size: 64
+  val_batch_size: 64
+  train_data_shuffle: True
+  val_data_shuffle: False
+  # Device
+  device: "cpu"
+  # Logging and outputs
+  logging_output_dirname: "./output"
+  logging_output_filename: "result"
+
+model_configs:
+  # Every node builds its own model, so they must agree on the seed or the federation starts
+  # from N different initializations.
+  seed: 42
+  model_path: "./resources/model/cnn.py"
+  model_name: "CNN"
+  model_kwargs:
+    num_channel: 1
+    num_classes: 10
+    num_pixel: 28
+
+data_configs:
+  dataset_path: "./resources/dataset/mnist_dataset.py"
+  dataset_name: "get_mnist"
+  dataset_kwargs:
+    num_clients: 4 # set by the launcher in simulation
+    client_id: 0 # set by the launcher in simulation
+    partition_strategy: "class_noniid"
+    visualization: False
+    output_dirname: "./output"
+    output_filename: "visualization.pdf"
