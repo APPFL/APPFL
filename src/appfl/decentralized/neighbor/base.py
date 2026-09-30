@@ -7,7 +7,6 @@ module is only the shape of the answer, so it depends on nothing.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -17,10 +16,10 @@ class NeighborEndpoint:
     node_id: str
     #: Where to reach it. Required in peer-to-peer mode; unused in relay mode, where the
     #: relay is dialed instead and the peer is named rather than addressed.
-    server_uri: Optional[str] = None
+    server_uri: str | None = None
     #: Mixing weight for this peer's model. `None` means uniform over the closed
     #: neighborhood, `1 / (|recv_from| + 1)`.
-    weight: Optional[float] = None
+    weight: float | None = None
 
 
 @dataclass
@@ -28,15 +27,15 @@ class Neighbors:
     """This node's view of the graph: who it serves, and who it fetches from."""
 
     #: Node ids permitted to request this node's model.
-    send_to: List[str] = field(default_factory=list)
+    send_to: list[str] = field(default_factory=list)
     #: Peers whose models this node fetches and averages.
-    recv_from: List[NeighborEndpoint] = field(default_factory=list)
+    recv_from: list[NeighborEndpoint] = field(default_factory=list)
 
     @property
-    def recv_from_ids(self) -> List[str]:
+    def recv_from_ids(self) -> list[str]:
         return [neighbor.node_id for neighbor in self.recv_from]
 
-    def endpoint(self, node_id: str) -> Optional[NeighborEndpoint]:
+    def endpoint(self, node_id: str) -> NeighborEndpoint | None:
         for neighbor in self.recv_from:
             if neighbor.node_id == node_id:
                 return neighbor
@@ -57,10 +56,18 @@ class Neighbors:
         raise ValueError(
             f"neighbors for {local_id} describe a directed exchange: it serves "
             f"{sorted(serving)} but fetches from {sorted(fetching)}"
-            + (f"; {sorted(serving - fetching)} would receive this node's model without ever "
-               f"sending theirs back" if serving - fetching else "")
-            + (f"; {sorted(fetching - serving)} would be asked for a model this node is not "
-               f"willing to reciprocate" if fetching - serving else "")
+            + (
+                f"; {sorted(serving - fetching)} would receive this node's model without ever "
+                f"sending theirs back"
+                if serving - fetching
+                else ""
+            )
+            + (
+                f"; {sorted(fetching - serving)} would be asked for a model this node is not "
+                f"willing to reciprocate"
+                if fetching - serving
+                else ""
+            )
             + ". Set `directed: true` if that asymmetry is deliberate -- a directed graph is "
             "supported, but it must be strongly connected and its consensus point is weighted "
             "by influence rather than being the plain average. If it was not deliberate, the "
@@ -76,7 +83,7 @@ class Neighbors:
         """
         return not self.send_to or str(node_id) in self.send_to
 
-    def weights(self, local_id: str) -> Dict[str, float]:
+    def weights(self, local_id: str) -> dict[str, float]:
         """`{node_id: weight}` over this node and its `recv_from` peers, summing to one."""
         explicit = {n.node_id: n.weight for n in self.recv_from if n.weight is not None}
         if len(explicit) == len(self.recv_from):

@@ -7,11 +7,11 @@ behavior the MPI and gRPC launchers have to reproduce, and it is the fastest way
 topology does to convergence.
 
     # uses the default config, which is a 4-node fully connected graph of MNIST clients
-    python dfl/serial/run_serial.py 
-    
+    python dfl/serial/run_serial.py
+
     # uses the default config, but overrides the number of nodes to 16
-    python dfl/serial/run_serial.py --num_nodes 16 
-    
+    python dfl/serial/run_serial.py --num_nodes 16
+
     # uses a ring topology instead of the default fully connected one
     python dfl/serial/run_serial.py \
         --config ./resources/configs/dfl/mnist/simulation/node_0_ring.yaml
@@ -32,7 +32,9 @@ from appfl.decentralized.neighbor import (
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(
-    "--config", type=str, default="./resources/configs/dfl/mnist/simulation/node_0_full.yaml"
+    "--config",
+    type=str,
+    default="./resources/configs/dfl/mnist/simulation/node_0_full.yaml",
 )
 argparser.add_argument("--num_nodes", type=int, default=None)
 argparser.add_argument("--num_epochs", type=int, default=None)
@@ -46,7 +48,7 @@ if args.num_epochs is not None:
 
 # Build the graph once, and immediately reduce it to one neighbor list per node. The graph is
 # a convenience of simulation -- this launcher owns every node, so it can afford to know the
-# whole federation. 
+# whole federation.
 topology = build_topology_from_config(node_config.neighbors)
 node_ids = topology.node_ids
 num_nodes = len(node_ids)

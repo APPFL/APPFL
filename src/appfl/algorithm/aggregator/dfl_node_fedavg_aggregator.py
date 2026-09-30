@@ -122,5 +122,7 @@ class DFLNodeFedAvgAggregator(BaseAggregator):
 
         total = own + sum(peers.values())
         if total <= 0:
-            raise ValueError(f"mixing weights sum to {total}, which cannot be normalized")
+            raise ValueError(
+                f"mixing weights sum to {total}, which cannot be normalized"
+            )
         return own / total, {key: value / total for key, value in peers.items()}

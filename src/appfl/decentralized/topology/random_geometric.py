@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Sequence, Tuple
+from typing import Sequence
 
 from appfl.decentralized.topology.base import Topology
 
@@ -71,14 +71,14 @@ class RandomGeometric(Topology):
             components.append(sorted(component))
         return components
 
-    def layout(self) -> Dict[str, Tuple[float, float]]:
+    def layout(self) -> dict[str, tuple[float, float]]:
         """The positions the edges were derived from."""
         return {
             node_id: (float(self.positions[i][0]), float(self.positions[i][1]))
             for i, node_id in enumerate(self.node_ids)
         }
 
-    def neighbors(self, node_id: str) -> List[str]:
+    def neighbors(self, node_id: str) -> list[str]:
         i = self._index[node_id]
         return [
             self.node_ids[j] for j in range(len(self.node_ids)) if self._adjacency[i, j]

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, Sequence
 
 
 class Topology(ABC):
@@ -43,7 +43,7 @@ class Topology(ABC):
         self._index = {node_id: i for i, node_id in enumerate(self.node_ids)}
 
     @abstractmethod
-    def neighbors(self, node_id: str) -> List[str]:
+    def neighbors(self, node_id: str) -> list[str]:
         """Peers that ``node_id`` exchanges models with. Excludes ``node_id`` itself.
 
         For a directed graph this is ambiguous, so directed subclasses override
@@ -51,11 +51,11 @@ class Topology(ABC):
         this node exchanges with in either direction.
         """
 
-    def in_neighbors(self, node_id: str) -> List[str]:
+    def in_neighbors(self, node_id: str) -> list[str]:
         """Nodes whose models ``node_id`` receives and averages. Undirected: its neighbors."""
         return self.neighbors(node_id)
 
-    def out_neighbors(self, node_id: str) -> List[str]:
+    def out_neighbors(self, node_id: str) -> list[str]:
         """Nodes that receive ``node_id``'s model. Undirected: its neighbors."""
         return self.neighbors(node_id)
 
@@ -63,7 +63,7 @@ class Topology(ABC):
         """In-degree: how many models this node averages. That is what weights normalize over."""
         return len(self.in_neighbors(node_id))
 
-    def edges(self) -> Iterable[Tuple[str, str]]:
+    def edges(self) -> Iterable[tuple[str, str]]:
         """Every ``(i, j)`` where ``j`` receives ``i``'s model.
 
         An undirected edge therefore appears twice, once in each direction, and a directed one
@@ -112,7 +112,7 @@ class Topology(ABC):
         if len(self.node_ids) <= 1:
             return True
         forward = {n: self.out_neighbors(n) for n in self.node_ids}
-        backward: Dict[str, List[str]] = {n: [] for n in self.node_ids}
+        backward: dict[str, list[str]] = {n: [] for n in self.node_ids}
         for node, targets in forward.items():
             for target in targets:
                 backward[target].append(node)
@@ -154,7 +154,7 @@ class Topology(ABC):
 
     # -- inspection ---------------------------------------------------------------------
 
-    def layout(self) -> Dict[str, Tuple[float, float]]:
+    def layout(self) -> dict[str, tuple[float, float]]:
         """Node positions for drawing, as ``{node_id: (x, y)}``.
 
         Evenly spaced on a circle, which reads well for the graphs where position carries no
@@ -174,11 +174,11 @@ class Topology(ABC):
 
     def draw(
         self,
-        path: Optional[str] = None,
-        ax: Optional[Any] = None,
-        title: Optional[str] = None,
+        path: str | None = None,
+        ax: Any | None = None,
+        title: str | None = None,
         with_labels: bool = True,
-        figsize: Tuple[float, float] = (5.5, 5.5),
+        figsize: tuple[float, float] = (5.5, 5.5),
         node_color: str = "#156082",
         edge_color: str = "#8a8a8a",
         fontsize: float = 7.0,
@@ -235,7 +235,13 @@ class Topology(ABC):
         xs = [positions[n][0] for n in self.node_ids]
         ys = [positions[n][1] for n in self.node_ids]
         ax.scatter(
-            xs, ys, s=diameter**2, c=node_color, zorder=3, edgecolors="white", linewidths=1.5
+            xs,
+            ys,
+            s=diameter**2,
+            c=node_color,
+            zorder=3,
+            edgecolors="white",
+            linewidths=1.5,
         )
         if with_labels:
             for node_id in self.node_ids:
@@ -289,7 +295,8 @@ class Topology(ABC):
             header,
             "row sends to column"
             + (" (undirected, so symmetric)" if not self.directed else ""),
-            " " * (width + 2) + " ".join(f"{i:>{digits}}" for i in range(len(self.node_ids))),
+            " " * (width + 2)
+            + " ".join(f"{i:>{digits}}" for i in range(len(self.node_ids))),
         ]
         for i, sender in enumerate(self.node_ids):
             out = set(self.out_neighbors(sender))
@@ -300,7 +307,7 @@ class Topology(ABC):
             lines.append(f"{sender:>{width}} {i:>{digits}} {row}")
         return "\n".join(lines)
 
-    def describe(self) -> Dict[str, float]:
+    def describe(self) -> dict[str, float]:
         """Summary logged alongside every run, so topologies are comparable after the fact."""
         degrees = [self.degree(node_id) for node_id in self.node_ids]
         summary = {

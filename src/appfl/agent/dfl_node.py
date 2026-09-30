@@ -23,7 +23,7 @@ class DFLNodeAgent(ClientAgent):
     It subclasses :class:`~appfl.agent.ClientAgent`, so the model, loss, metric, dataset,
     trainer and compressor are loaded from configuration in exactly the same way as for a
     centralized FL client -- a DFL node is an FL client, plus the aggregation duty that a
-    centralized run would leave to the server. Everything a `ClientAgent` supports therefore 
+    centralized run would leave to the server. Everything a `ClientAgent` supports therefore
     works unchanged.
 
     What this class adds on top of `ClientAgent`:

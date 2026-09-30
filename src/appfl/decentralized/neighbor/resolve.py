@@ -7,7 +7,7 @@ See the package docstring for what each is for.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Sequence
 
 from appfl.decentralized.neighbor.base import NeighborEndpoint, Neighbors
 from appfl.decentralized.topology import Topology, build_topology
@@ -19,8 +19,9 @@ FROM_TOPOLOGY = "from_topo"
 EXPLICIT = "explicit"
 NEIGHBOR_MODES = (FROM_TOPOLOGY, EXPLICIT)
 
+
 #: Node ids `from_topo` generates, and which the launchers assign to match.
-def generated_node_ids(num_nodes: int) -> List[str]:
+def generated_node_ids(num_nodes: int) -> list[str]:
     """`Node0 .. Node{num_nodes-1}` -- the roster `from_topo` assumes."""
     return [f"Node{i}" for i in range(int(num_nodes))]
 
@@ -51,7 +52,7 @@ def build_topology_from_config(config: Any) -> Topology:
     )
 
 
-def _as_dict(node: Any) -> Dict[str, Any]:
+def _as_dict(node: Any) -> dict[str, Any]:
     """A plain dict from a config node that may be absent or an empty (falsy) DictConfig."""
     if node is None:
         return {}
@@ -61,7 +62,7 @@ def _as_dict(node: Any) -> Dict[str, Any]:
 def resolve_neighbors(
     config: Any,
     node_id: str,
-    topology: Optional[Topology] = None,
+    topology: Topology | None = None,
 ) -> Neighbors:
     """Turn a `neighbors` config block into a concrete :class:`Neighbors`.
 
@@ -88,7 +89,9 @@ def resolve_neighbors(
         )
 
     if mode == FROM_TOPOLOGY:
-        topology = topology if topology is not None else build_topology_from_config(config)
+        topology = (
+            topology if topology is not None else build_topology_from_config(config)
+        )
         if node_id not in topology.node_ids:
             raise ValueError(
                 f"node_id {node_id!r} is not among the ids `{FROM_TOPOLOGY}` generates "
@@ -98,14 +101,17 @@ def resolve_neighbors(
         return Neighbors(
             send_to=list(topology.out_neighbors(node_id)),
             recv_from=[
-                NeighborEndpoint(node_id=peer) for peer in topology.in_neighbors(node_id)
+                NeighborEndpoint(node_id=peer)
+                for peer in topology.in_neighbors(node_id)
             ],
         )
 
     send_to = [str(n) for n in (config.get("send_to", []) or [])]
     recv_from = []
     for entry in config.get("recv_from", []) or []:
-        if isinstance(entry, str):  # bare id, for relay mode where no endpoint is needed
+        if isinstance(
+            entry, str
+        ):  # bare id, for relay mode where no endpoint is needed
             recv_from.append(NeighborEndpoint(node_id=entry))
             continue
         recv_from.append(
@@ -122,8 +128,8 @@ def resolve_neighbors(
 
 
 def resolve_all_neighbors_from_topology(
-    topology: Topology, node_ids: Optional[Sequence[str]] = None
-) -> Dict[str, Neighbors]:
+    topology: Topology, node_ids: Sequence[str] | None = None
+) -> dict[str, Neighbors]:
     """Every node's neighbor view, keyed by node id, derived from one graph.
 
     The counterpart of :func:`resolve_neighbors`, which answers for a single node from its own
@@ -136,7 +142,8 @@ def resolve_all_neighbors_from_topology(
             # in-neighbors are whose models it fetches. Equal unless the graph is directed.
             send_to=list(topology.out_neighbors(node_id)),
             recv_from=[
-                NeighborEndpoint(node_id=peer) for peer in topology.in_neighbors(node_id)
+                NeighborEndpoint(node_id=peer)
+                for peer in topology.in_neighbors(node_id)
             ],
         )
         for node_id in (node_ids if node_ids is not None else topology.node_ids)

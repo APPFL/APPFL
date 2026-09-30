@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List
 
 from appfl.decentralized.topology.base import Topology
 
@@ -16,5 +15,5 @@ class FullyConnected(Topology):
     it is a baseline rather than a deployment.
     """
 
-    def neighbors(self, node_id: str) -> List[str]:
+    def neighbors(self, node_id: str) -> list[str]:
         return [n for n in self.node_ids if n != node_id]

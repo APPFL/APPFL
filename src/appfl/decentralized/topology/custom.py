@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Iterable, Sequence
 
 from appfl.decentralized.topology.base import Topology
 
@@ -59,18 +59,20 @@ class Custom(Topology):
     def __init__(
         self,
         node_ids: Sequence[str],
-        edges: Optional[Iterable[Tuple[str, str]]] = None,
-        adjacency: Optional[Dict[str, Sequence[str]]] = None,
+        edges: Iterable[tuple[str, str]] | None = None,
+        adjacency: dict[str, Sequence[str]] | None = None,
         directed: bool = False,
         warn_on_repair: bool = True,
     ):
         super().__init__(node_ids)
         self.directed = directed
         if (edges is None) == (adjacency is None):
-            raise ValueError("Custom topology needs exactly one of `edges` or `adjacency`")
+            raise ValueError(
+                "Custom topology needs exactly one of `edges` or `adjacency`"
+            )
 
-        self._out: Dict[str, List[str]] = {n: [] for n in self.node_ids}
-        self._in: Dict[str, List[str]] = {n: [] for n in self.node_ids}
+        self._out: dict[str, list[str]] = {n: [] for n in self.node_ids}
+        self._in: dict[str, list[str]] = {n: [] for n in self.node_ids}
         pairs = (
             [(str(a), str(b)) for a, b in edges]
             if edges is not None
@@ -111,12 +113,12 @@ class Custom(Topology):
         if sender not in self._in[receiver]:
             self._in[receiver].append(sender)
 
-    def neighbors(self, node_id: str) -> List[str]:
+    def neighbors(self, node_id: str) -> list[str]:
         """Everyone this node exchanges with, in either direction."""
         return list(dict.fromkeys(self._out[node_id] + self._in[node_id]))
 
-    def in_neighbors(self, node_id: str) -> List[str]:
+    def in_neighbors(self, node_id: str) -> list[str]:
         return list(self._in[node_id])
 
-    def out_neighbors(self, node_id: str) -> List[str]:
+    def out_neighbors(self, node_id: str) -> list[str]:
         return list(self._out[node_id])

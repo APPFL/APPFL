@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Sequence
+from typing import Sequence
 
 from appfl.decentralized.topology.base import Topology
 
@@ -19,7 +19,7 @@ class Ring(Topology):
         super().__init__(node_ids)
         self.k = k
 
-    def neighbors(self, node_id: str) -> List[str]:
+    def neighbors(self, node_id: str) -> list[str]:
         n = len(self.node_ids)
         i = self._index[node_id]
         out = []
