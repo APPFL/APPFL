@@ -23,6 +23,7 @@ adjusting the identity and the data partition per node.
 import argparse
 import copy
 import warnings
+from pathlib import Path
 from omegaconf import OmegaConf
 from appfl.agent import DFLNodeAgent
 from appfl.decentralized.neighbor import (
@@ -38,6 +39,12 @@ argparser.add_argument(
 )
 argparser.add_argument("--num_nodes", type=int, default=None)
 argparser.add_argument("--num_epochs", type=int, default=None)
+argparser.add_argument(
+    "--save_parameters",
+    type=str,
+    default=None,
+    help="directory to write each node's final parameters to, as <node_id>.pt",
+)
 args = argparser.parse_args()
 
 node_config = OmegaConf.load(args.config)
@@ -103,3 +110,12 @@ for epoch in range(int(node_config.num_epochs)):
     }
     for agent in node_agents:
         agent.aggregate_parameters(neighbor_models[agent.get_id()])
+
+if args.save_parameters is not None:
+    import torch
+
+    output = Path(args.save_parameters)
+    output.mkdir(parents=True, exist_ok=True)
+    for agent in node_agents:
+        torch.save(agent.get_parameters(), output / f"{agent.get_id()}.pt")
+    print(f"wrote {len(node_agents)} node(s) to {output}")
