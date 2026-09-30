@@ -20,6 +20,11 @@ def describe_slice(agent: Any) -> str:
     return f"space {getattr(space, 'space_id', '?')}"
 
 
+def format_point(x: Any) -> str:
+    """toy1d points are floats; Suzuki points are tuples of categorical choices."""
+    return f"{x:.3f}" if isinstance(x, (int, float)) else f"{x}"
+
+
 def print_config(agents: Sequence[Any]) -> None:
     if not agents:
         return
@@ -37,11 +42,9 @@ def print_agent(agent: Any, rank: Optional[int] = None) -> None:
     if best is None:
         return
     where = f" (rank {rank})" if rank is not None else ""
-    # toy1d points are floats; Suzuki points are tuples of categorical choices
-    x = f"{best[0]:.3f}" if isinstance(best[0], (int, float)) else f"{best[0]}"
     print(
         f"  {agent.agent_id}{where} {describe_slice(agent)}  "
-        f"best x={x} yield={best[1]:.1f}  "
+        f"best x={format_point(best[0])} yield={best[1]:.1f}  "
         f"eta_bar={agent.mean_token_fidelity():.3f}"
     )
 

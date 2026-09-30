@@ -33,7 +33,7 @@ from appfl.decentralized import (
 from appfl.decentralized.algorithm.adko import ADKOMeter, create_agent
 
 from llm_cli import add_llm_arguments, llm_config_from_args  # noqa: E402
-from reporting import describe_slice, print_config, print_llm, print_totals  # noqa: E402
+from reporting import describe_slice, format_point, print_config, print_llm, print_totals  # noqa: E402
 
 
 def main() -> None:
@@ -110,7 +110,7 @@ def main() -> None:
         if row["best"] is not None:
             print(
                 f"  {row['agent_id']} (rank {rank}) {row['slice']}  "
-                f"best x={row['best'][0]:.3f} yield={row['best'][1]:.1f}  "
+                f"best x={format_point(row['best'][0])} yield={row['best'][1]:.1f}  "
                 f"eta_bar={row['eta_bar']:.3f}"
             )
     print_totals(total, n_rounds, optimum=federation.get("known_optimum", None))

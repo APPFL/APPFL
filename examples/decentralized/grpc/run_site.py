@@ -39,7 +39,7 @@ from appfl.decentralized import (
 from appfl.decentralized.algorithm.adko import ADKOMeter, create_agent
 
 from llm_cli import add_llm_arguments, llm_config_from_args  # noqa: E402
-from reporting import describe_slice  # noqa: E402
+from reporting import describe_slice, format_point  # noqa: E402
 
 
 def main() -> None:
@@ -102,7 +102,7 @@ def main() -> None:
         if best is not None and (round_idx + 1) % 10 == 0:
             print(
                 f"[{args.agent_id}] round {round_idx + 1:>3}  "
-                f"best x={best[0]:.3f} yield={best[1]:.1f}  "
+                f"best x={format_point(best[0])} yield={best[1]:.1f}  "
                 f"eta_bar={local.mean_token_fidelity():.3f}  "
                 f"bits sent={meter.bits_sent}"
             )
@@ -116,7 +116,7 @@ def main() -> None:
     best = agent.best_so_far()
     print(f"\n[{args.agent_id}] done after {n_rounds} rounds")
     if best is not None:
-        print(f"  best found        : x={best[0]:.3f} yield={best[1]:.1f}")
+        print(f"  best found        : x={format_point(best[0])} yield={best[1]:.1f}")
     print(f"  eta_bar           : {agent.mean_token_fidelity():.3f}")
     print(f"  tokens emitted    : {meter.tokens_emitted}")
     print(f"  bits sent         : {meter.bits_sent}")
