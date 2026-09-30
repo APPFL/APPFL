@@ -4,7 +4,8 @@ set -euo pipefail
 APPFL_ROOT="${APPFL_ROOT:-/Users/johnzhouyang.wu/Documents/APPFL}"
 PYTHON="${PYTHON:-/opt/homebrew/Caskroom/miniconda/base/envs/adko/bin/python}"
 REF_ROOT="${REF_ROOT:-$APPFL_ROOT/.external/adko_ref}"
-OUT_ROOT="${OUT_ROOT:-$APPFL_ROOT/results/appfl_suzuki_smoke}"
+RUN_ID="${RUN_ID:-$(date +%Y%m%d%H%M%S)}"
+OUT_ROOT="${OUT_ROOT:-$APPFL_ROOT/results/appfl_suzuki_smoke/$RUN_ID}"
 SEEDS="${SEEDS:-1}"
 PARALLEL="${PARALLEL:-1}"
 P_NOISE="${P_NOISE:-0}"
@@ -27,3 +28,5 @@ export PYTHONPATH="$APPFL_ROOT/src:."
   --seeds "$SEEDS" \
   --parallel "$PARALLEL" \
   --p-noise "$P_NOISE"
+
+echo "[done] results -> $OUT_ROOT"

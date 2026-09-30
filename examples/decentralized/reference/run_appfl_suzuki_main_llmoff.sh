@@ -4,7 +4,8 @@ set -euo pipefail
 APPFL_ROOT="${APPFL_ROOT:-/Users/johnzhouyang.wu/Documents/APPFL}"
 PYTHON="${PYTHON:-/opt/homebrew/Caskroom/miniconda/base/envs/adko/bin/python}"
 REF_ROOT="${REF_ROOT:-$APPFL_ROOT/.external/adko_ref}"
-OUT_ROOT="${OUT_ROOT:-$APPFL_ROOT/results/appfl_suzuki_main_llmoff}"
+RUN_ID="${RUN_ID:-$(date +%Y%m%d%H%M%S)}"
+OUT_ROOT="${OUT_ROOT:-$APPFL_ROOT/results/appfl_suzuki_main_llmoff/$RUN_ID}"
 
 cd "$APPFL_ROOT"
 export PYTHONPATH="$APPFL_ROOT/src:."
@@ -31,3 +32,5 @@ fi
   --config "$REF_ROOT/scientific_discovery/experiments/main_noniid_llmoff.json" \
   --out-dir "$OUT_ROOT/het" \
   "${COMMON_ARGS[@]}"
+
+echo "[done] results -> $OUT_ROOT"
