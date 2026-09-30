@@ -2,5 +2,12 @@ from .client import ClientAgent
 from .server import ServerAgent
 from .sim_client import SimClientAgent
 from .sim_server import SimServerAgent
+from .dfl_node import DFLNodeAgent
 
-__all__ = ["ClientAgent", "ServerAgent", "SimClientAgent", "SimServerAgent"]
+__all__ = [
+    "ClientAgent",
+    "ServerAgent",
+    "SimClientAgent",
+    "SimServerAgent",
+    "DFLNodeAgent",
+]
