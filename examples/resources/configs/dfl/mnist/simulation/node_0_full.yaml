@@ -38,7 +38,7 @@ train_configs:
   loss_fn_name: "CELoss"
   # Local validation
   do_validation: True
-  do_pre_validation: False
+  do_pre_validation: True
   metric_path: "./resources/metric/acc.py"
   metric_name: "accuracy"
   # Differential privacy

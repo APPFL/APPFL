@@ -76,7 +76,7 @@ neighbors = resolve_all_neighbors_from_topology(topology, node_ids)
 print(f"topology: {node_config.neighbors.topology} {topology.describe()}")
 for node_id in node_ids:
     view = neighbors[node_id]
-    line = f"  {node_id} receives from {view.recv_from_ids}"
+    line = f"  {node_id} receives from {list(view.recv_from)}"
     if topology.directed:
         line += f", serves {view.send_to}"
     print(line)
@@ -104,7 +104,7 @@ for epoch in range(int(node_config.num_epochs)):
             neighbor_id: agents_by_id[neighbor_id].get_parameters(
                 round_id=epoch, requester_id=agent.get_id()
             )
-            for neighbor_id in agent.neighbors.recv_from_ids
+            for neighbor_id in agent.neighbors.recv_from
         }
         for agent in node_agents
     }

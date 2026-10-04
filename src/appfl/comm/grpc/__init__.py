@@ -3,6 +3,7 @@ from .channel import create_grpc_channel
 from .utils import proto_to_databuffer, serialize_model, deserialize_model
 from .grpc_client_communicator import GRPCClientCommunicator
 from .grpc_server_communicator import GRPCServerCommunicator
+from .grpc_peer_communicator import GRPCPeerCommunicator
 from ._credentials import load_credential_from_file
 from . import _credentials as _credentials_module
 from ..grpc_legacy import (
@@ -22,6 +23,7 @@ __all__ = [
     "deserialize_model",
     "GRPCClientCommunicator",
     "GRPCServerCommunicator",
+    "GRPCPeerCommunicator",
     "load_credential_from_file",
     "APPFLgRPCClient",
     "APPFLgRPCServer",

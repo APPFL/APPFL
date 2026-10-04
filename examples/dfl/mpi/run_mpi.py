@@ -1,11 +1,11 @@
 """
 MPI simulation of Decentralized Federated Learning (DFL).
 
-One node per rank, exchanging models directly with its graph neighbors. 
+One node per rank, exchanging models directly with its graph neighbors.
 
     # uses the default config, which is a 4-node fully connected graph of MNIST clients
     mpirun -n 4 python dfl/mpi/run_mpi.py
-    
+
     # uses a ring topology instead of the default fully connected one with 8 nodes
     mpirun -n 8 python dfl/mpi/run_mpi.py \
         --config ./resources/configs/dfl/mnist/simulation/node_0_ring.yaml
@@ -84,7 +84,7 @@ communicator = MPIPeerCommunicator(
     node_id=node_id,
     node_ids=node_ids,
     send_to=neighbors.send_to,
-    recv_from=neighbors.recv_from_ids,
+    recv_from=list(neighbors.recv_from),
 )
 
 for epoch in range(int(node_config.num_epochs)):

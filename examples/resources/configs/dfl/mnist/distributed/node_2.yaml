@@ -1,0 +1,92 @@
+# One DFL node in a real deployment -- site 2.
+#
+# Each site has exactly this one file, and it names only what this node needs: its own
+# identity, the peers it exchanges models with, and where to reach them. There is no roster
+# and no global graph anywhere in the system. A site cannot see who else is in the federation
+# beyond its own neighbors, and does not need to.
+#
+# This set happens to describe a fully connected federation of 4 nodes on localhost, so it
+# can be run on one machine. Replace the URIs with real hostnames and nothing else changes.
+#
+#   python dfl/grpc/run_node.py --config ./resources/configs/dfl/mnist/distributed/node_2.yaml
+
+node_id: "Node2"
+
+num_epochs: 20 # rounds of {local training -> exchange with neighbors -> aggregate}
+aggregator: "DFLNodeFedAvgAggregator"
+aggregator_kwargs: {}
+
+# Who this node exchanges models with -- the only thing about the graph it needs to know.
+neighbors:
+  mode: "explicit"
+  # Who may request MY model. A peer not on this list is refused -- by this
+  # node's own servicer in peer-to-peer mode, or by the relay, which builds its
+  # permission map out of what each node declares when it checks in.
+  send_to: ["Node0", "Node1", "Node3"]
+  # Whose models I fetch and average. `server_uri` is where to reach them in
+  # peer-to-peer mode; in relay mode it is dropped and the relay is dialled
+  # instead, with the peer named rather than addressed.
+  recv_from:
+    - node_id: "Node0"
+      server_uri: "localhost:50051"
+    - node_id: "Node1"
+      server_uri: "localhost:50052"
+    - node_id: "Node3"
+      server_uri: "localhost:50054"
+
+comm_configs:
+  grpc_configs:
+    server_uri: "localhost:50053"
+    max_message_size: 1048576
+    use_ssl: False
+
+train_configs:
+  # Local trainer
+  trainer: "VanillaTrainer"
+  mode: "step"
+  num_local_steps: 100
+  optim: "Adam"
+  optim_args:
+    lr: 0.001
+  # Loss function
+  loss_fn_path: "./resources/loss/celoss.py"
+  loss_fn_name: "CELoss"
+  # Local validation
+  do_validation: True
+  do_pre_validation: True
+  metric_path: "./resources/metric/acc.py"
+  metric_name: "accuracy"
+  # Differential privacy
+  use_dp: False
+  # Data loader
+  train_batch_size: 64
+  val_batch_size: 64
+  train_data_shuffle: True
+  val_data_shuffle: False
+  # Device
+  device: "cpu"
+  # Logging and outputs
+  logging_output_dirname: "./output"
+  logging_output_filename: "result"
+
+model_configs:
+  # Every node builds its own model, so they must agree on the seed
+  # or load the same weights from a file. The model is not sent over the network.
+  seed: 42
+  model_path: "./resources/model/cnn.py"
+  model_name: "CNN"
+  model_kwargs:
+    num_channel: 1
+    num_classes: 10
+    num_pixel: 28
+
+data_configs:
+  dataset_path: "./resources/dataset/mnist_dataset.py"
+  dataset_name: "get_mnist"
+  dataset_kwargs:
+    num_clients: 4
+    client_id: 2
+    partition_strategy: "class_noniid"
+    visualization: False
+    output_dirname: "./output"
+    output_filename: "visualization.pdf"

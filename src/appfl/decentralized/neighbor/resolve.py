@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from appfl.decentralized.neighbor.base import NeighborEndpoint, Neighbors
+from appfl.decentralized.neighbor.base import Neighbors
 from appfl.decentralized.topology import Topology, build_topology
 
 
@@ -100,28 +100,23 @@ def resolve_neighbors(
             )
         return Neighbors(
             send_to=list(topology.out_neighbors(node_id)),
-            recv_from=[
-                NeighborEndpoint(node_id=peer)
-                for peer in topology.in_neighbors(node_id)
-            ],
+            recv_from={peer: None for peer in topology.in_neighbors(node_id)},
         )
 
     send_to = [str(n) for n in (config.get("send_to", []) or [])]
-    recv_from = []
+    recv_from: dict[str, str | None] = {}
+    weights: dict[str, float] = {}
     for entry in config.get("recv_from", []) or []:
         if isinstance(
             entry, str
         ):  # bare id, for relay mode where no endpoint is needed
-            recv_from.append(NeighborEndpoint(node_id=entry))
+            recv_from[entry] = None
             continue
-        recv_from.append(
-            NeighborEndpoint(
-                node_id=str(entry["node_id"]),
-                server_uri=entry.get("server_uri", None),
-                weight=entry.get("weight", None),
-            )
-        )
-    neighbors = Neighbors(send_to=send_to, recv_from=recv_from)
+        peer = str(entry["node_id"])
+        recv_from[peer] = entry.get("server_uri", None)
+        if entry.get("weight", None) is not None:
+            weights[peer] = float(entry["weight"])
+    neighbors = Neighbors(send_to=send_to, recv_from=recv_from, weights=weights)
     if not bool(config.get("directed", False)):
         neighbors.require_undirected(node_id)
     return neighbors
@@ -141,10 +136,7 @@ def resolve_all_neighbors_from_topology(
             # out-neighbors receive this node's model, so they are who it must serve;
             # in-neighbors are whose models it fetches. Equal unless the graph is directed.
             send_to=list(topology.out_neighbors(node_id)),
-            recv_from=[
-                NeighborEndpoint(node_id=peer)
-                for peer in topology.in_neighbors(node_id)
-            ],
+            recv_from={peer: None for peer in topology.in_neighbors(node_id)},
         )
         for node_id in (node_ids if node_ids is not None else topology.node_ids)
     }

@@ -10,36 +10,17 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class NeighborEndpoint:
-    """One peer this node fetches from."""
-
-    node_id: str
-    #: Where to reach it. Required in peer-to-peer mode; unused in relay mode, where the
-    #: relay is dialed instead and the peer is named rather than addressed.
-    server_uri: str | None = None
-    #: Mixing weight for this peer's model. `None` means uniform over the closed
-    #: neighborhood, `1 / (|recv_from| + 1)`.
-    weight: float | None = None
-
-
-@dataclass
 class Neighbors:
     """This node's view of the graph: who it serves, and who it fetches from."""
 
     #: Node ids permitted to request this node's model.
     send_to: list[str] = field(default_factory=list)
-    #: Peers whose models this node fetches and averages.
-    recv_from: list[NeighborEndpoint] = field(default_factory=list)
-
-    @property
-    def recv_from_ids(self) -> list[str]:
-        return [neighbor.node_id for neighbor in self.recv_from]
-
-    def endpoint(self, node_id: str) -> NeighborEndpoint | None:
-        for neighbor in self.recv_from:
-            if neighbor.node_id == node_id:
-                return neighbor
-        return None
+    #: ``{node_id: server_uri}`` for the peers this node fetches from. The endpoint is `None`
+    #: whenever the peer is named rather than addressed
+    recv_from: dict[str, str | None] = field(default_factory=dict)
+    #: ``{node_id: weight}`` for peers whose share is set explicitly. Empty means uniform over
+    #: the closed neighborhood, which is what almost every run wants.
+    weights: dict[str, float] = field(default_factory=dict)
 
     def require_undirected(self, local_id: str) -> None:
         """Raise unless this node serves exactly the peers it fetches from.
@@ -50,7 +31,7 @@ class Neighbors:
         """
         if not self.send_to:
             return
-        serving, fetching = set(self.send_to), set(self.recv_from_ids)
+        serving, fetching = set(self.send_to), set(self.recv_from)
         if serving == fetching:
             return
         raise ValueError(
@@ -83,21 +64,27 @@ class Neighbors:
         """
         return not self.send_to or str(node_id) in self.send_to
 
-    def weights(self, local_id: str) -> dict[str, float]:
+    def mixing_weights(self, local_id: str) -> dict[str, float]:
         """`{node_id: weight}` over this node and its `recv_from` peers, summing to one."""
-        explicit = {n.node_id: n.weight for n in self.recv_from if n.weight is not None}
-        if len(explicit) == len(self.recv_from):
-            total = sum(explicit.values())
-            if total > 1.0:
-                raise ValueError(
-                    f"neighbor weights for {local_id} sum to {total}, leaving no weight for "
-                    f"the node's own model"
-                )
-            return {**explicit, local_id: 1.0 - total}
-        if explicit:
+        unknown = set(self.weights) - set(self.recv_from)
+        if unknown:
             raise ValueError(
-                f"{local_id}: some recv_from entries set `weight` and some do not. Set it on "
+                f"{local_id}: weights given for {sorted(unknown)}, which this node does not "
+                f"fetch from. A weight for a peer that sends nothing has nothing to apply to."
+            )
+        if not self.weights:
+            uniform = 1.0 / (len(self.recv_from) + 1)
+            return {peer: uniform for peer in self.recv_from} | {local_id: uniform}
+        if len(self.weights) != len(self.recv_from):
+            missing = sorted(set(self.recv_from) - set(self.weights))
+            raise ValueError(
+                f"{local_id}: weights are set for some peers but not {missing}. Set them for "
                 f"all of them or none -- a partial assignment has no defensible completion."
             )
-        uniform = 1.0 / (len(self.recv_from) + 1)
-        return {n.node_id: uniform for n in self.recv_from} | {local_id: uniform}
+        total = sum(self.weights.values())
+        if total > 1.0:
+            raise ValueError(
+                f"neighbor weights for {local_id} sum to {total}, leaving no weight for the "
+                f"node's own model"
+            )
+        return {**self.weights, local_id: 1.0 - total}

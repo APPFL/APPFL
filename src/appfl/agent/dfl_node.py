@@ -94,14 +94,6 @@ class DFLNodeAgent(ClientAgent):
     def node_id(self) -> str:
         return self.get_id()
 
-    def may_serve(self, requester_id: Union[str, int]) -> bool:
-        """Whether ``requester_id`` is allowed to request this node's model.
-
-        Checked here rather than only in the communicator, so peer-to-peer and relay
-        deployments enforce the same declaration rather than each having its own opinion.
-        """
-        return self.neighbors.may_serve(str(requester_id))
-
     # -- the client half: train, then publish -----------------------------------------
 
     def train(self, **kwargs) -> None:
@@ -157,7 +149,9 @@ class DFLNodeAgent(ClientAgent):
         trains on stale neighbors and the run stops being reproducible -- and stops matching
         centralized FedAvg on a fully connected graph.
         """
-        if requester_id is not None and not self.may_serve(requester_id):
+        # The declaration lives on `Neighbors`, so in-process and networked callers apply
+        # the same rule rather than each keeping its own opinion of it.
+        if requester_id is not None and not self.neighbors.may_serve(str(requester_id)):
             raise PermissionError(
                 f"node {self.get_id()} does not serve {requester_id}: it is not in this "
                 f"node's `send_to` list ({self.neighbors.send_to})."
@@ -220,7 +214,7 @@ class DFLNodeAgent(ClientAgent):
         """
         if not isinstance(neighbor_models, dict) or not self.neighbors.recv_from:
             return None
-        return self.neighbors.weights(self.get_id())
+        return self.neighbors.mixing_weights(self.get_id())
 
     # -- connection bookkeeping --------------------------------------------------------
 
