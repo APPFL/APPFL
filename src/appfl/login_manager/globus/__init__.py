@@ -1,9 +1,9 @@
-from .manager import GlobusLoginManager
-from .globus_authenticator import GlobusAuthenticator
 from .cli import appfl_globus_auth
+from .globus_authenticator import GlobusAuthenticator
+from .manager import GlobusLoginManager
 
 __all__ = [
-    "GlobusLoginManager",
     "GlobusAuthenticator",
+    "GlobusLoginManager",
     "appfl_globus_auth",
 ]

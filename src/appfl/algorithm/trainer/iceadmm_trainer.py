@@ -1,15 +1,17 @@
 import copy
-import time
-import torch
 import importlib
-import numpy as np
-import torch.nn as nn
-from omegaconf import DictConfig
+import time
 from collections import OrderedDict
+from typing import Any
+
+import numpy as np
+import torch
+from omegaconf import DictConfig
+from torch import nn
 from torch.utils.data import DataLoader, Dataset
-from typing import Any, Optional, Tuple
-from appfl.privacy import laplace_mechanism_output_perturb
+
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
+from appfl.privacy import laplace_mechanism_output_perturb
 
 
 class ICEADMMTrainer(BaseTrainer):
@@ -21,13 +23,13 @@ class ICEADMMTrainer(BaseTrainer):
 
     def __init__(
         self,
-        model: Optional[nn.Module] = None,
-        loss_fn: Optional[nn.Module] = None,
-        metric: Optional[Any] = None,
-        train_dataset: Optional[Dataset] = None,
-        val_dataset: Optional[Dataset] = None,
+        model: nn.Module | None = None,
+        loss_fn: nn.Module | None = None,
+        metric: Any | None = None,
+        train_dataset: Dataset | None = None,
+        val_dataset: Dataset | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -430,7 +432,7 @@ class ICEADMMTrainer(BaseTrainer):
                 self.primal_states[name] - global_state[name]
             )
 
-    def _validate(self) -> Tuple[float, float]:
+    def _validate(self) -> tuple[float, float]:
         """
         Validate the model
         :return: loss, accuracy

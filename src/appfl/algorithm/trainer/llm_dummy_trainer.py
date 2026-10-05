@@ -1,7 +1,9 @@
 import gc
+from typing import Any
+
 import torch
 from torch.nn import Module
-from typing import Optional, Any
+
 from appfl.algorithm.trainer import BaseTrainer
 
 
@@ -18,8 +20,8 @@ class LLMDummyTrainer(BaseTrainer):
 
     def __init__(
         self,
-        model: Optional[Module] = None,
-        logger: Optional[Any] = None,
+        model: Module | None = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         self.model = model

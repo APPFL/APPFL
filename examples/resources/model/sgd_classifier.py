@@ -1,6 +1,7 @@
 import joblib
 import numpy as np
 from sklearn.linear_model import SGDClassifier
+
 from appfl.algorithm.trainer.sklearn_trainer import SklearnModelWrapper
 
 

@@ -3,19 +3,20 @@ To run serially with 5 clients:
 python ./mnist_serial.py --num_clients 5 --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10
 """
 
-import time
-import torch
 import argparse
-import appfl.run_serial as rs
-from omegaconf import OmegaConf
-from appfl.config import Config
-from appfl.misc.utils import set_seed
-from appfl.misc.data import data_sanity_check
-from losses.utils import get_loss
-from models.utils import get_model
-from metric.utils import get_metric
-from dataloader.mnist_dataloader import get_mnist
+import time
 
+import torch
+from dataloader.mnist_dataloader import get_mnist
+from losses.utils import get_loss
+from metric.utils import get_metric
+from models.utils import get_model
+from omegaconf import OmegaConf
+
+import appfl.run_serial as rs
+from appfl.config import Config
+from appfl.misc.data import data_sanity_check
+from appfl.misc.utils import set_seed
 
 ## read arguments
 parser = argparse.ArgumentParser()

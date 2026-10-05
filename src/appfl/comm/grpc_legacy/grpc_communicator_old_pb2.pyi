@@ -1,14 +1,13 @@
-from google.protobuf.internal import containers as _containers
-from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
-from google.protobuf import descriptor as _descriptor
-from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable
+from collections.abc import Mapping as _Mapping
 from typing import (
     ClassVar as _ClassVar,
-    Iterable as _Iterable,
-    Mapping as _Mapping,
-    Optional as _Optional,
-    Union as _Union,
 )
+
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 
 DESCRIPTOR: _descriptor.FileDescriptor
 EMPTY: MessageStatus
@@ -26,8 +25,8 @@ class Acknowledgment(_message.Message):
     status: MessageStatus
     def __init__(
         self,
-        header: _Optional[_Union[Header, _Mapping]] = ...,
-        status: _Optional[_Union[MessageStatus, str]] = ...,
+        header: Header | _Mapping | None = ...,
+        status: MessageStatus | str | None = ...,
     ) -> None: ...
 
 class DataBufferV0(_message.Message):
@@ -37,7 +36,7 @@ class DataBufferV0(_message.Message):
     data_bytes: bytes
     size: int
     def __init__(
-        self, size: _Optional[int] = ..., data_bytes: _Optional[bytes] = ...
+        self, size: int | None = ..., data_bytes: bytes | None = ...
     ) -> None: ...
 
 class Header(_message.Message):
@@ -47,7 +46,7 @@ class Header(_message.Message):
     client_id: int
     server_id: int
     def __init__(
-        self, server_id: _Optional[int] = ..., client_id: _Optional[int] = ...
+        self, server_id: int | None = ..., client_id: int | None = ...
     ) -> None: ...
 
 class JobRequest(_message.Message):
@@ -58,8 +57,8 @@ class JobRequest(_message.Message):
     job_done: Job
     def __init__(
         self,
-        header: _Optional[_Union[Header, _Mapping]] = ...,
-        job_done: _Optional[_Union[Job, str]] = ...,
+        header: Header | _Mapping | None = ...,
+        job_done: Job | str | None = ...,
     ) -> None: ...
 
 class JobResponse(_message.Message):
@@ -72,9 +71,9 @@ class JobResponse(_message.Message):
     round_number: int
     def __init__(
         self,
-        header: _Optional[_Union[Header, _Mapping]] = ...,
-        round_number: _Optional[int] = ...,
-        job_todo: _Optional[_Union[Job, str]] = ...,
+        header: Header | _Mapping | None = ...,
+        round_number: int | None = ...,
+        job_todo: Job | str | None = ...,
     ) -> None: ...
 
 class LearningResults(_message.Message):
@@ -91,11 +90,11 @@ class LearningResults(_message.Message):
     round_number: int
     def __init__(
         self,
-        header: _Optional[_Union[Header, _Mapping]] = ...,
-        round_number: _Optional[int] = ...,
-        penalty: _Optional[float] = ...,
-        primal: _Optional[_Iterable[_Union[TensorRecord, _Mapping]]] = ...,
-        dual: _Optional[_Iterable[_Union[TensorRecord, _Mapping]]] = ...,
+        header: Header | _Mapping | None = ...,
+        round_number: int | None = ...,
+        penalty: float | None = ...,
+        primal: _Iterable[TensorRecord | _Mapping] | None = ...,
+        dual: _Iterable[TensorRecord | _Mapping] | None = ...,
     ) -> None: ...
 
 class TensorRecord(_message.Message):
@@ -110,10 +109,10 @@ class TensorRecord(_message.Message):
     name: str
     def __init__(
         self,
-        name: _Optional[str] = ...,
-        data_shape: _Optional[_Iterable[int]] = ...,
-        data_bytes: _Optional[bytes] = ...,
-        data_dtype: _Optional[str] = ...,
+        name: str | None = ...,
+        data_shape: _Iterable[int] | None = ...,
+        data_bytes: bytes | None = ...,
+        data_dtype: str | None = ...,
     ) -> None: ...
 
 class TensorRequest(_message.Message):
@@ -126,9 +125,9 @@ class TensorRequest(_message.Message):
     round_number: int
     def __init__(
         self,
-        header: _Optional[_Union[Header, _Mapping]] = ...,
-        name: _Optional[str] = ...,
-        round_number: _Optional[int] = ...,
+        header: Header | _Mapping | None = ...,
+        name: str | None = ...,
+        round_number: int | None = ...,
     ) -> None: ...
 
 class WeightRequest(_message.Message):
@@ -139,8 +138,8 @@ class WeightRequest(_message.Message):
     size: int
     def __init__(
         self,
-        header: _Optional[_Union[Header, _Mapping]] = ...,
-        size: _Optional[int] = ...,
+        header: Header | _Mapping | None = ...,
+        size: int | None = ...,
     ) -> None: ...
 
 class WeightResponse(_message.Message):
@@ -151,8 +150,8 @@ class WeightResponse(_message.Message):
     weight: float
     def __init__(
         self,
-        header: _Optional[_Union[Header, _Mapping]] = ...,
-        weight: _Optional[float] = ...,
+        header: Header | _Mapping | None = ...,
+        weight: float | None = ...,
     ) -> None: ...
 
 class Job(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):

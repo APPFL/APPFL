@@ -1,12 +1,14 @@
-import torch
-import pathlib
 import importlib
+import pathlib
+from typing import Any
+
+import torch
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
-from typing import Any, Union, List, Dict, Optional
+
 from appfl.algorithm.aggregator import BaseAggregator
-from appfl.misc.utils import create_instance_from_file, run_function_from_file
 from appfl.misc.memory_utils import optimize_memory_cleanup
+from appfl.misc.utils import create_instance_from_file, run_function_from_file
 
 
 class VFLAggregator(BaseAggregator):
@@ -45,7 +47,7 @@ class VFLAggregator(BaseAggregator):
         self._load_data()
         self.train_losses, self.val_losses = [], []
 
-    def aggregate(self, local_embeddings: Union[List[Dict], Dict[str, Dict]], **kwargs):
+    def aggregate(self, local_embeddings: list[dict] | dict[str, dict], **kwargs):
         # Prepare concatenated embeddings
         embedding_lengths = []
         if isinstance(local_embeddings, dict):
@@ -150,7 +152,7 @@ class VFLAggregator(BaseAggregator):
             "get_parameters method should not be called for VFLAggregator"
         )
 
-    def plot_loss(self, save_path: Optional[str] = None):
+    def plot_loss(self, save_path: str | None = None):
         if save_path:
             import matplotlib
 
