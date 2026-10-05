@@ -6,8 +6,8 @@ DIMAT setup.
 
 import numpy as np
 import torchvision
-import torchvision.transforms as transforms
 from torch.utils.data import Subset
+from torchvision import transforms
 
 
 def get_cifar10(

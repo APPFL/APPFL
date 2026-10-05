@@ -1,13 +1,15 @@
+import json
 import os
 import sys
-import json
-import torch
+from pathlib import Path
+
 import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pathlib import Path
+import torch
 from scipy.stats import norm
-import matplotlib.pyplot as plt
+
 from appfl.algorithm.aggregator import BaseAggregator
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -23,7 +25,7 @@ if _gwas_demo_dir:
     sys.path.insert(0, _gwas_demo_dir)
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gwas_config import HIT_P_THRESHOLD  # noqa: E402
+from gwas_config import HIT_P_THRESHOLD
 
 matplotlib.use("Agg")
 

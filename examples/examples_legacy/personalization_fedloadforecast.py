@@ -1,22 +1,24 @@
+import argparse
+import copy
+import cProfile
 import io
 import os
-import copy
-import torch
-import argparse
-import warnings
-import cProfile
 import pstats
-import appfl.run_mpi as rm
-import appfl.run_serial as rs
-from mpi4py import MPI
-from omegaconf import OmegaConf
-from appfl.config import Config
-from appfl.misc.data import Dataset
-from appfl.misc.utils import load_model_state, set_seed, load_model
+import warnings
+
+import torch
 from dataloader.nrel_dataloader import get_nrel
 from losses.utils import get_loss
 from metric.utils import get_metric
 from models.utils import get_model, validate_parameter_names
+from mpi4py import MPI
+from omegaconf import OmegaConf
+
+import appfl.run_mpi as rm
+import appfl.run_serial as rs
+from appfl.config import Config
+from appfl.misc.data import Dataset
+from appfl.misc.utils import load_model, load_model_state, set_seed
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -205,11 +207,9 @@ def main():
     cfg.use_tensorboard = False
 
     ## save/load
-    cfg.output_dirname = args.model_dir + "/outputs_{}_{}_{}_{}".format(
-        args.dataset,
-        args.server,
-        args.client_optimizer,
-        args.personalization_config_name,
+    cfg.output_dirname = (
+        args.model_dir
+        + f"/outputs_{args.dataset}_{args.server}_{args.client_optimizer}_{args.personalization_config_name}"
     )
     if args.save_model:
         cfg.save_model_state_dict = True
@@ -217,10 +217,8 @@ def main():
         cfg.save_model_dirname = (
             args.model_dir + "/save_models_NREL_%s" % args.personalization_config_name
         )
-        cfg.save_model_filename = "model_{}_{}_{}".format(
-            args.dataset,
-            args.client_optimizer,
-            args.server,
+        cfg.save_model_filename = (
+            f"model_{args.dataset}_{args.client_optimizer}_{args.server}"
         )
         cfg.checkpoints_interval = args.save_every
     if args.load_model:
@@ -231,12 +229,7 @@ def main():
                 args.model_dir
                 + "/save_models_NREL_%s" % args.personalization_config_name
             )
-            cfg.load_model_filename = "model_{}_{}_{}_{}".format(
-                args.dataset,
-                args.client_optimizer,
-                args.server,
-                args.load_model_suffix,
-            )
+            cfg.load_model_filename = f"model_{args.dataset}_{args.client_optimizer}_{args.server}_{args.load_model_suffix}"
             load_model_state(cfg, model)
             for c_idx in range(args.num_clients):
                 load_model_state(cfg, model_clients[c_idx], client_id=c_idx)
@@ -246,12 +239,7 @@ def main():
                 args.model_dir
                 + "/save_models_NREL_%s" % args.personalization_config_name
             )
-            cfg.load_model_filename = "model_{}_{}_{}_{}".format(
-                args.dataset,
-                args.client_optimizer,
-                args.server,
-                args.load_model_suffix,
-            )
+            cfg.load_model_filename = f"model_{args.dataset}_{args.client_optimizer}_{args.server}_{args.load_model_suffix}"
             load_model_state(cfg, model[0])
             for c_idx in range(args.num_clients):
                 load_model_state(cfg, model_clients[c_idx + 1], client_id=c_idx)
@@ -260,10 +248,8 @@ def main():
                 args.model_dir
                 + "/save_models_NREL_%s" % args.personalization_config_name
             )
-            cfg.save_model_filename = "model_{}_{}_{}".format(
-                args.dataset,
-                args.client_optimizer,
-                args.server,
+            cfg.save_model_filename = (
+                f"model_{args.dataset}_{args.client_optimizer}_{args.server}"
             )
             model = load_model(cfg)
     else:

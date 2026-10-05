@@ -1,16 +1,19 @@
-import os
 import copy
+import os
 import time
-import torch
+
 import numpy as np
-from .fl_base import BaseClient
+import torch
+
 from appfl.misc.deprecation import deprecated
 from appfl.misc.utils import (
-    save_partial_model_iteration,
-    model_parameters_clip_factor,
-    scale_update,
     get_torch_optimizer,
+    model_parameters_clip_factor,
+    save_partial_model_iteration,
+    scale_update,
 )
+
+from .fl_base import BaseClient
 
 
 @deprecated(

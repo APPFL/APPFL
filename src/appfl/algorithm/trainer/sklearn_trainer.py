@@ -1,13 +1,13 @@
 import time
-import torch
-import numpy as np
-import torch.nn as nn
 from collections import OrderedDict
+from typing import Any
+
+import numpy as np
+import torch
 from omegaconf import DictConfig
-from typing import Any, Optional, Union
+from torch import nn
 
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
-
 
 # ── shared param-conversion helpers ───────────────────────────────────────────
 
@@ -109,13 +109,13 @@ class SklearnTrainer(BaseTrainer):
 
     def __init__(
         self,
-        model: Optional[Any] = None,
-        loss_fn: Optional[Any] = None,
-        metric: Optional[Any] = None,
-        train_dataset: Optional[Any] = None,
-        val_dataset: Optional[Any] = None,
+        model: Any | None = None,
+        loss_fn: Any | None = None,
+        metric: Any | None = None,
+        train_dataset: Any | None = None,
+        val_dataset: Any | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -235,7 +235,7 @@ class SklearnTrainer(BaseTrainer):
         self.round += 1
         self.model_state = _sklearn_get_state(self.model)
 
-    def get_parameters(self) -> Union[dict, tuple]:
+    def get_parameters(self) -> dict | tuple:
         if not hasattr(self, "model_state"):
             self.model_state = _sklearn_get_state(self.model)
         return (
