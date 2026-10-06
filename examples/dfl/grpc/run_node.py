@@ -51,7 +51,8 @@ grpc_configs = config.get("comm_configs", {}).get("grpc_configs", {}) or {}
 
 communicator = GRPCPeerCommunicator(
     node_id=node_id,
-    server_uri=grpc_configs.get("server_uri", "localhost:50051"),
+    server_uri=grpc_configs.get("server_uri", None),
+    relay_server_uri=grpc_configs.get("relay_server_uri", None),
     send_to=neighbors.send_to,
     recv_from=neighbors.recv_from,
     use_ssl=bool(grpc_configs.get("use_ssl", False)),

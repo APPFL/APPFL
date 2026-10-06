@@ -1,16 +1,14 @@
-# One DFL node in a real deployment -- site 3.
+# One DFL node in a mixed federation -- site 1, serving its own payloads.
 #
-# Each site has exactly this one file, and it names only what this node needs: its own
-# identity, the peers it exchanges models with, and where to reach them. There is no roster
-# and no global graph anywhere in the system. A site cannot see who else is in the federation
-# beyond its own neighbors, and does not need to.
+# Sites 0 and 1 can be dialled, so they serve directly. Sites 2 and 3 cannot -- think NAT, or
+# a firewall that only permits outbound connections -- so they publish to a relay and their
+# peers collect from there. Both kinds take part in the same federation, and no launcher
+# knows which kind it is running: the difference is entirely in this file.
 #
-# This set happens to describe a fully connected federation of 4 nodes on localhost, so it
-# can be run on one machine. Replace the URIs with real hostnames and nothing else changes.
-#
-#   python dfl/grpc/run_node.py --config ./resources/configs/dfl/mnist/distributed/node_3.yaml
+#   python dfl/grpc/run_relay.py --config ./resources/configs/dfl/mnist/relay/relay.yaml
+#   python dfl/grpc/run_node.py --config ./resources/configs/dfl/mnist/relay/node_1.yaml
 
-node_id: "Node3"
+node_id: "Node1"
 
 num_epochs: 20 # rounds of {local training -> exchange with neighbors -> aggregate}
 aggregator: "DFLNodeFedAvgAggregator"
@@ -22,21 +20,20 @@ neighbors:
   # Who may request MY model. A peer not on this list is refused -- by this
   # node's own servicer in peer-to-peer mode, or by the relay, which builds its
   # permission map out of what each node declares when it checks in.
-  send_to: ["Node0", "Node1", "Node2"]
+  send_to: ["Node0", "Node2", "Node3"]
   # Whose models I fetch and average. `server_uri` is simply where to reach them: their own
-  # address if they serve, or the relay they publish through if they do not serve. The fetching
+  # address if they serve, or the relay they publish through if they do not. The fetching
   # side sends the same request either way, which is why mixing the two needs no new code.
   recv_from:
     - node_id: "Node0"
       server_uri: "localhost:50051"
-    - node_id: "Node1"
-      server_uri: "localhost:50052"
     - node_id: "Node2"
-      server_uri: "localhost:50053"
-
+      server_uri: "localhost:50050"
+    - node_id: "Node3"
+      server_uri: "localhost:50050"
 comm_configs:
   grpc_configs:
-    server_uri: "localhost:50054"
+    server_uri: "localhost:50052"
     max_message_size: 1048576
     use_ssl: False
 
@@ -85,7 +82,7 @@ data_configs:
   dataset_name: "get_mnist"
   dataset_kwargs:
     num_clients: 4
-    client_id: 3
+    client_id: 1
     partition_strategy: "class_noniid"
     visualization: False
     output_dirname: "./output"

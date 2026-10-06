@@ -4,6 +4,7 @@ from .utils import proto_to_databuffer, serialize_model, deserialize_model
 from .grpc_client_communicator import GRPCClientCommunicator
 from .grpc_server_communicator import GRPCServerCommunicator
 from .grpc_peer_communicator import GRPCPeerCommunicator
+from .grpc_relay_server import GRPCRelayServicer, serve_relay
 from ._credentials import load_credential_from_file
 from . import _credentials as _credentials_module
 from ..grpc_legacy import (
@@ -24,6 +25,8 @@ __all__ = [
     "GRPCClientCommunicator",
     "GRPCServerCommunicator",
     "GRPCPeerCommunicator",
+    "GRPCRelayServicer",
+    "serve_relay",
     "load_credential_from_file",
     "APPFLgRPCClient",
     "APPFLgRPCServer",

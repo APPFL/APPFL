@@ -14,53 +14,22 @@ from appfl.comm.grpc.grpc_communicator_pb2 import (
     GetGlobalModelRespone,
     ServerHeader,
     ServerStatus,
+    UpdateGlobalModelRequest,
+    UpdateGlobalModelResponse,
 )
 from appfl.comm.grpc.grpc_communicator_pb2_grpc import (
     GRPCCommunicatorServicer,
     GRPCCommunicatorStub,
     add_GRPCCommunicatorServicer_to_server,
 )
+from appfl.comm.grpc.payload_store import PayloadStore
 from appfl.comm.grpc.utils import (
     deserialize_model,
+    MAX_RECEIVE_MESSAGE_BYTES,
     proto_to_databuffer,
+    response_chunk_size,
     serialize_model,
 )
-
-
-class _PayloadStore:
-    """What this peer has published, by round, as bytes ready to send."""
-
-    def __init__(self, history: int = 2):
-        self.history = history
-        self._rounds: Dict[int, bytes] = {}
-        self._latest = -1
-        self._condition = threading.Condition()
-
-    def publish(self, round_id: int, data: bytes) -> None:
-        with self._condition:
-            self._rounds[round_id] = data
-            self._latest = max(self._latest, round_id)
-            for stale in sorted(self._rounds)[: -self.history]:
-                del self._rounds[stale]
-            self._condition.notify_all()
-
-    def get(self, round_id: int, timeout: float) -> bytes:
-        """Block until ``round_id`` is published, then return it."""
-        deadline = time.monotonic() + timeout
-        with self._condition:
-            while round_id not in self._rounds:
-                if round_id < self._latest:
-                    raise KeyError(
-                        f"round {round_id} was asked for but this peer has already moved past "
-                        f"it (now at {self._latest}, keeping {self.history}). The requester "
-                        f"has fallen further behind than the synchronous protocol allows."
-                    )
-                remaining = deadline - time.monotonic()
-                if remaining <= 0 or not self._condition.wait(remaining):
-                    raise TimeoutError(
-                        f"round {round_id} was not published within {timeout:.0f}s"
-                    )
-            return self._rounds[round_id]
 
 
 class GRPCPeerServicer(GRPCCommunicatorServicer):
@@ -69,7 +38,7 @@ class GRPCPeerServicer(GRPCCommunicatorServicer):
     def __init__(
         self,
         node_id: str,
-        store: _PayloadStore,
+        store: PayloadStore,
         send_to: Sequence[str],
         max_message_size: int,
         wait_timeout: float,
@@ -91,7 +60,7 @@ class GRPCPeerServicer(GRPCCommunicatorServicer):
         where a caller should ask about it; this is only how the servicer applies it to a
         request that has arrived.
         """
-        return not self.send_to or str(requester_id) in self.send_to
+        return not self.send_to or requester_id in self.send_to
 
     def GetGlobalModel(self, request, context):
         """Return this peer's payload for a requested round. **Nothing global is involved.**
@@ -113,6 +82,12 @@ class GRPCPeerServicer(GRPCCommunicatorServicer):
         requester = request.header.client_id
         meta_data = yaml.safe_load(request.meta_data) if request.meta_data else {}
         round_id = int(meta_data.get("round_id", 0))
+        target = str(meta_data.get("target", "") or self.node_id)
+        if target != self.node_id:
+            context.abort(
+                grpc.StatusCode.NOT_FOUND,
+                f"{self.node_id} serves only its own payloads, not {target}'s",
+            )
 
         if not self._may_serve(requester):
             # Enforced at the transport because that is where the request arrives from the
@@ -133,7 +108,10 @@ class GRPCPeerServicer(GRPCCommunicatorServicer):
             global_model=data,
             meta_data=yaml.dump({"round_id": round_id}),
         )
-        yield from proto_to_databuffer(response, max_message_size=self.max_message_size)
+        yield from proto_to_databuffer(
+            response,
+            max_message_size=response_chunk_size(self.max_message_size, meta_data),
+        )
 
     def InvokeCustomAction(self, request_iterator, context):
         request = CustomActionRequest()
@@ -149,13 +127,17 @@ class GRPCPeerServicer(GRPCCommunicatorServicer):
                 f"{self.node_id} does not implement action {request.action!r}",
             )
         with self._closed_lock:
-            self._closed.add(str(requester))
+            self._closed.add(requester)
             remaining = len(set(self.send_to) - self._closed)
         self.logger.info(
             f"[{self.node_id}] {requester} finished; {remaining} peer(s) still collecting"
         )
+        meta_data = yaml.safe_load(request.meta_data) if request.meta_data else {}
         response = CustomActionResponse(header=ServerHeader(status=ServerStatus.DONE))
-        yield from proto_to_databuffer(response, max_message_size=self.max_message_size)
+        yield from proto_to_databuffer(
+            response,
+            max_message_size=response_chunk_size(self.max_message_size, meta_data),
+        )
 
     def everyone_finished(self) -> bool:
         """Whether every peer this node serves has said it is done collecting."""
@@ -190,9 +172,10 @@ class GRPCPeerCommunicator:
     def __init__(
         self,
         node_id: str,
-        server_uri: str,
         send_to: Sequence[str],
         recv_from: Mapping[str, str],
+        server_uri: Optional[str] = None,
+        relay_server_uri: Optional[str] = None,
         use_ssl: bool = False,
         server_certificate: Optional[str] = None,
         server_certificate_key: Optional[str] = None,
@@ -204,31 +187,56 @@ class GRPCPeerCommunicator:
         logger: Optional[Any] = None,
     ) -> None:
         self.node_id = str(node_id)
+        # Exactly one of `server_uri` or `relay_server_uri`: a node either serves its own payloads or 
+        # publishes them to a relay. A site behind NAT can only do the second.
         self.server_uri = server_uri
+        self.relay_server_uri = relay_server_uri
+        if server_uri and relay_server_uri:
+            raise ValueError(
+                f"{node_id} sets both server_uri ({server_uri}) and relay_server_uri "
+                f"({relay_server_uri}). A node either serves its own payloads or publishes "
+                f"them to a relay; doing both would put the same payload in two places with "
+                f"no rule for which peers read which."
+            )
+        if not server_uri and not relay_server_uri and send_to:
+            raise ValueError(
+                f"{node_id} is expected to serve {sorted(send_to)} but has neither a "
+                f"server_uri to listen on nor a relay_server_uri to publish to, so nothing "
+                f"could ever collect from it."
+            )
+        # Ids are normalized to str here, at the boundary where they arrive from YAML --
+        # `send_to: [0, 1]` is a perfectly ordinary config. Ids read back off the wire are
+        # protobuf `string` fields and are already str, so they are compared as they come.
         self.send_to = [str(peer) for peer in send_to]
         self.recv_from = {str(peer): uri for peer, uri in recv_from.items()}
+        # Needed either way: every node dials out, whether or not anything dials it.
         self.use_ssl = use_ssl
-        self.server_certificate = server_certificate
-        self.server_certificate_key = server_certificate_key
         self.root_certificate = root_certificate
         self.max_message_size = max_message_size
         self.connect_timeout = connect_timeout
         self.wait_timeout = wait_timeout
         self.logger = logger if logger is not None else logging.getLogger(__name__)
 
-        self.max_workers = self._resolve_max_workers(max_workers)
-        self.store = _PayloadStore()
-        self.servicer = GRPCPeerServicer(
-            self.node_id,
-            self.store,
-            self.send_to,
-            max_message_size=max_message_size,
-            wait_timeout=wait_timeout,
-            logger=self.logger,
-        )
-        self._server = None
-        self._stubs: Dict[str, GRPCCommunicatorStub] = {}
+        if self.server_uri:
+            # Serving: a thread pool sized to the peers that collect, a store to serve them
+            # from, the servicer that reads it, and the certificate to present.
+            self.server_certificate = server_certificate
+            self.server_certificate_key = server_certificate_key
+            self.max_workers = self._resolve_max_workers(max_workers)
+            self.store = PayloadStore()
+            self.servicer = GRPCPeerServicer(
+                self.node_id,
+                self.store,
+                self.send_to,
+                max_message_size=max_message_size,
+                wait_timeout=wait_timeout,
+                logger=self.logger,
+            )
+            self._server = None
+        # Keyed by endpoint rather than by peer: several peers reached through one relay share
+        # a single channel, and the relay this node publishes to is usually one of them.
         self._channels: Dict[str, Any] = {}
+        self._stubs: Dict[str, GRPCCommunicatorStub] = {}
 
     def _resolve_max_workers(self, max_workers: Optional[int]) -> int:
         """One thread per peer served, plus headroom, unless the caller insists otherwise.
@@ -253,39 +261,51 @@ class GRPCPeerCommunicator:
 
     def start(self) -> None:
         """Start serving, then dial every peer this node collects from."""
-        self._server = grpc.server(
-            futures.ThreadPoolExecutor(max_workers=self.max_workers),
-            options=[
-                ("grpc.max_concurrent_streams", self.max_workers),
-                ("grpc.max_send_message_length", self.max_message_size),
-                ("grpc.max_receive_message_length", self.max_message_size),
-                ("grpc.keepalive_time_ms", 60000),
-                ("grpc.keepalive_timeout_ms", 20000),
-                ("grpc.keepalive_permit_without_calls", 1),
-            ],
-        )
-        add_GRPCCommunicatorServicer_to_server(self.servicer, self._server)
-        if self.use_ssl:
-            from appfl.comm.grpc.utils import load_credential_from_file
+        if self.server_uri:
+            self._server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=self.max_workers),
+                options=[
+                    ("grpc.max_concurrent_streams", self.max_workers),
+                    ("grpc.max_send_message_length", self.max_message_size),
+                    ("grpc.max_receive_message_length", MAX_RECEIVE_MESSAGE_BYTES),
+                    ("grpc.keepalive_time_ms", 60000),
+                    ("grpc.keepalive_timeout_ms", 20000),
+                    ("grpc.keepalive_permit_without_calls", 1),
+                ],
+            )
+            add_GRPCCommunicatorServicer_to_server(self.servicer, self._server)
+            if self.use_ssl:
+                from appfl.comm.grpc.utils import load_credential_from_file
 
-            key = self.server_certificate_key
-            certificate = self.server_certificate
-            if isinstance(key, str):
-                key = load_credential_from_file(key)
-            if isinstance(certificate, str):
-                certificate = load_credential_from_file(certificate)
-            self._server.add_secure_port(
-                self.server_uri, grpc.ssl_server_credentials(((key, certificate),))
+                key = self.server_certificate_key
+                certificate = self.server_certificate
+                if isinstance(key, str):
+                    key = load_credential_from_file(key)
+                if isinstance(certificate, str):
+                    certificate = load_credential_from_file(certificate)
+                self._server.add_secure_port(
+                    self.server_uri, grpc.ssl_server_credentials(((key, certificate),))
+                )
+            else:
+                self._server.add_insecure_port(self.server_uri)
+            self._server.start()
+            self.logger.info(
+                f"[{self.node_id}] serving at {self.server_uri} with "
+                f"{self.max_workers} worker(s); "
+                f"{len(self.send_to)} peer(s) may collect from it"
             )
         else:
-            self._server.add_insecure_port(self.server_uri)
-        self._server.start()
-        self.logger.info(
-            f"[{self.node_id}] serving at {self.server_uri} with {self.max_workers} worker(s); "
-            f"{len(self.send_to)} peer(s) may collect from it"
-        )
+            self.logger.info(
+                f"[{self.node_id}] not serving; publishing to the relay at "
+                f"{self.relay_server_uri}. Nothing dials this node, which is the point -- a "
+                f"site that cannot accept inbound connections still participates fully."
+            )
 
-        for peer_id, uri in self.recv_from.items():
+        endpoints = dict.fromkeys(
+            [uri for uri in self.recv_from.values() if uri]
+            + ([self.relay_server_uri] if self.relay_server_uri else [])
+        )
+        for uri in endpoints:
             channel = create_grpc_channel(
                 uri,
                 use_ssl=self.use_ssl,
@@ -293,9 +313,19 @@ class GRPCPeerCommunicator:
                 max_message_size=self.max_message_size,
             )
             grpc.channel_ready_future(channel).result(timeout=self.connect_timeout)
-            self._channels[peer_id] = channel
-            self._stubs[peer_id] = GRPCCommunicatorStub(channel)
-            self.logger.info(f"[{self.node_id}] connected to {peer_id} at {uri}")
+            self._channels[uri] = channel
+            self._stubs[uri] = GRPCCommunicatorStub(channel)
+            # One endpoint can serve both roles at once, and usually does: two relay-using
+            # nodes collect each other's payloads through the same relay they publish to.
+            roles = []
+            if uri == self.relay_server_uri:
+                roles.append("publishing through it")
+            reached = sorted(p for p, u in self.recv_from.items() if u == uri)
+            if reached:
+                roles.append(f"collecting {reached} from it")
+            self.logger.info(
+                f"[{self.node_id}] connected to {uri}: {', '.join(roles)}"
+            )
         self.logger.info(
             f"[{self.node_id}] ready: collecting from {sorted(self.recv_from)}"
         )
@@ -306,12 +336,12 @@ class GRPCPeerCommunicator:
         It keeps serving until every peer it serves has said the same, so a neighbor still
         waiting on this node's last round is not cut off mid-collection.
         """
-        for peer_id, stub in self._stubs.items():
+        for uri, stub in self._stubs.items():
             try:
                 request = CustomActionRequest(
                     header=ClientHeader(client_id=self.node_id),
                     action="close_connection",
-                    meta_data=yaml.dump({}),
+                    meta_data=yaml.dump({"max_message_size": self.max_message_size}),
                 )
                 received = b""
                 for chunk in stub.InvokeCustomAction(
@@ -321,15 +351,17 @@ class GRPCPeerCommunicator:
                     timeout=60,
                 ):
                     received += chunk.data_bytes
-                self.logger.info(f"[{self.node_id}] told {peer_id} it is finished")
+                self.logger.info(f"[{self.node_id}] told {uri} it is finished")
             except grpc.RpcError as error:
                 # A peer that has already stopped is not an error worth failing a run over.
                 self.logger.warning(
-                    f"[{self.node_id}] could not reach {peer_id} while closing: "
+                    f"[{self.node_id}] could not reach {uri} while closing: "
                     f"{error.code().name}"
                 )
 
-        if self.send_to:
+        # Only a node that serves has collectors to wait for; one publishing through a relay
+        # has already handed everything over and owes nobody anything.
+        if self.server_uri and self.send_to:
             self.logger.info(
                 f"[{self.node_id}] waiting for {len(self.send_to)} peer(s) to finish "
                 f"collecting before stopping"
@@ -346,7 +378,7 @@ class GRPCPeerCommunicator:
 
         for channel in self._channels.values():
             channel.close()
-        if self._server is not None:
+        if self.server_uri:
             self._server.stop(0)
         self.logger.info(f"[{self.node_id}] stopped")
 
@@ -360,21 +392,71 @@ class GRPCPeerCommunicator:
     # -- the exchange ------------------------------------------------------------------
 
     def exchange(self, round_id: int, payload: Any) -> Dict[str, Any]:
-        """Publish ``payload`` for this round and return the neighbors' payloads."""
-        self.store.publish(int(round_id), serialize_model(payload))
+        """Publish ``payload`` for this round and return the neighbors' payloads.
+
+        Publishing goes wherever this node is reachable -- its own store if it serves, the
+        relay if it does not. Collecting is identical either way: the request names the peer
+        whose payload is wanted, and a self-hosting peer ignores that field while a relay uses
+        it to look up. So the fetching side never has to know which kind of endpoint it is
+        talking to, which is what lets the two mix in one federation.
+        """
+        data = serialize_model(payload)
+        if self.relay_server_uri:
+            self._publish_to_relay(int(round_id), data)
+        else:
+            self.store.publish(int(round_id), data)
 
         received: Dict[str, Any] = {}
-        for peer_id, stub in self._stubs.items():
+        for peer_id, uri in self.recv_from.items():
             request = GetGlobalModelRequest(
                 header=ClientHeader(client_id=self.node_id),
-                meta_data=yaml.dump({"round_id": int(round_id)}),
+                # The chunk size has to fit the *receiver*, so this says what it can take.
+                # A relay serving several nodes cannot assume they all agree, and a chunk
+                # above the requester's channel limit is refused after it is already sent.
+                meta_data=yaml.dump(
+                    {
+                        "round_id": int(round_id),
+                        "target": peer_id,
+                        "max_message_size": self.max_message_size,
+                    }
+                ),
             )
-            data = b""
-            for chunk in stub.GetGlobalModel(request, timeout=self.wait_timeout):
-                data += chunk.data_bytes
+            chunks = b""
+            for chunk in self._stubs[uri].GetGlobalModel(
+                request, timeout=self.wait_timeout
+            ):
+                chunks += chunk.data_bytes
             response = GetGlobalModelRespone()
-            response.ParseFromString(data)
+            response.ParseFromString(chunks)
             if response.header.status == ServerStatus.ERROR:
                 raise RuntimeError(f"{peer_id} returned an error for round {round_id}")
             received[peer_id] = deserialize_model(response.global_model)
         return received
+
+    def _publish_to_relay(self, round_id: int, data: bytes) -> None:
+        """Hand this round's payload to the relay, with the access list that applies to it.
+
+        `send_to` travels with every publish so the relay can enforce a graph it was never
+        given -- it learns only the edges its publishers tell it about.
+        """
+        request = UpdateGlobalModelRequest(
+            header=ClientHeader(client_id=self.node_id),
+            local_model=data,
+            meta_data=yaml.dump(
+                {
+                    "round_id": round_id,
+                    "send_to": list(self.send_to),
+                    "max_message_size": self.max_message_size,
+                }
+            ),
+        )
+        received = b""
+        for chunk in self._stubs[self.relay_server_uri].UpdateGlobalModel(
+            proto_to_databuffer(request, max_message_size=self.max_message_size),
+            timeout=self.wait_timeout,
+        ):
+            received += chunk.data_bytes
+        response = UpdateGlobalModelResponse()
+        response.ParseFromString(received)
+        if response.header.status == ServerStatus.ERROR:
+            raise RuntimeError(f"the relay rejected round {round_id} from {self.node_id}")

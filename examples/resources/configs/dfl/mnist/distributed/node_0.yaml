@@ -23,9 +23,9 @@ neighbors:
   # node's own servicer in peer-to-peer mode, or by the relay, which builds its
   # permission map out of what each node declares when it checks in.
   send_to: ["Node1", "Node2", "Node3"]
-  # Whose models I fetch and average. `server_uri` is where to reach them in
-  # peer-to-peer mode; in relay mode it is dropped and the relay is dialled
-  # instead, with the peer named rather than addressed.
+  # Whose models I fetch and average. `server_uri` is simply where to reach them: their own
+  # address if they serve, or the relay they publish through if they do not serve. The fetching
+  # side sends the same request either way, which is why mixing the two needs no new code.
   recv_from:
     - node_id: "Node1"
       server_uri: "localhost:50052"

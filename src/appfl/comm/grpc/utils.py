@@ -1,6 +1,25 @@
 import io
 import torch
+from typing import Any, Dict, Optional
 from .grpc_communicator_pb2 import DataBuffer
+
+MAX_RECEIVE_MESSAGE_BYTES: int = 256 * 1024 * 1024
+
+def response_chunk_size(
+    own_max_message_size: int, meta_data: Optional[Dict[str, Any]] = None
+) -> int:
+    """Chunk a response to the smaller of what this server sends and what the caller accepts.
+
+    Every request carries the caller's own ``max_message_size`` in its ``meta_data``. Chunking
+    a reply larger than that is refused at the caller's channel, so the two are reconciled
+    here. Absent a declaration, the server's own size stands.
+    """
+    if not meta_data:
+        return own_max_message_size
+    return min(
+        own_max_message_size,
+        int(meta_data.get("max_message_size", own_max_message_size)),
+    )
 
 
 def proto_to_databuffer(proto, max_message_size=(2 * 1024 * 1024)):
