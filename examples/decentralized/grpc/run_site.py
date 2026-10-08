@@ -1,0 +1,115 @@
+"""One site of a decentralized optimization federation, over gRPC.
+
+Run this once per site, each with its own config. A site serves its tokens to the peers that
+collect from them and dials out to the peers it collects from.
+
+# run from `examples` -- four terminals, or four institutions
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/distributed/node_0.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/distributed/node_1.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/distributed/node_2.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/distributed/node_3.yaml
+
+A site that cannot accept inbound connections publishes to a relay instead, and its peers
+collect from there. Both kinds mix freely in one federation, and this launcher cannot tell
+which it is running -- the difference is entirely in the config:
+
+python decentralized/grpc/run_relay.py
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/relay/node_0.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/relay/node_1.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/relay/node_2.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/relay/node_3.yaml
+
+Sites may start in any order: each serves before it dials, and a connection to a peer that is
+not up yet waits rather than failing. The config must use `neighbors.mode: explicit` -- a
+deployed site names its neighbors and never holds a roster, which is exactly what
+distinguishes this from the simulation launchers.
+"""
+
+import sys
+import argparse
+from omegaconf import OmegaConf
+from appfl.agent import DeOptNodeAgent
+from appfl.comm.grpc import GRPCPeerCommunicator
+from appfl.decentralized.algorithm.adko import create_agent
+from appfl.decentralized.algorithm.adko.metrics import ADKOMeter
+from appfl.decentralized.budget import CommBudget
+from appfl.decentralized.neighbor import resolve_neighbors
+
+sys.path.insert(0, "./decentralized/resources")
+
+from llm_cli import add_llm_arguments, llm_config_from_args  # noqa: E402
+from reporting import describe_slice, format_point, print_totals  # noqa: E402
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument(
+    "--config",
+    type=str,
+    default="./decentralized/resources/configs/toy1d/distributed/node_0.yaml",
+)
+argparser.add_argument("--num_rounds", type=int, default=None)
+add_llm_arguments(argparser)
+args = argparser.parse_args()
+
+node_config = OmegaConf.load(args.config)
+if args.num_rounds is not None:
+    node_config.num_epochs = args.num_rounds
+n_rounds = int(node_config.num_epochs)
+
+node_id = str(node_config.node_id)
+neighbors = resolve_neighbors(node_config.neighbors, node_id)
+
+meter = ADKOMeter()
+budget_configs = node_config.get("comm_configs", {}).get("budget_configs", {}) or {}
+budget = CommBudget(
+    bits_per_neighbor_per_round=budget_configs.get("bits_per_neighbor_per_round", None),
+    tokens_per_neighbor_per_round=int(
+        budget_configs.get("tokens_per_neighbor_per_round", 1)
+    ),
+)
+
+# No topology: this site has none, and does not need one. 
+algorithm_agent = create_agent(
+    node_config, neighbors, meter, llm_config=llm_config_from_args(args)
+)
+agent = DeOptNodeAgent(
+    algorithm_agent=algorithm_agent,
+    dfl_node_agent_config=node_config,
+    neighbors=neighbors,
+    budget=budget,
+    meter=meter,
+)
+
+grpc_configs = node_config.get("comm_configs", {}).get("grpc_configs", {}) or {}
+communicator = GRPCPeerCommunicator(
+    node_id=node_id,
+    # Exactly one of the two, and which one is this site's own business. Its peers' `recv_from`
+    # already says where to come looking, so neither they nor this launcher need to know.
+    server_uri=grpc_configs.get("server_uri", None),
+    relay_server_uri=grpc_configs.get("relay_server_uri", None),
+    send_to=neighbors.send_to,
+    recv_from=neighbors.recv_from,
+    use_ssl=bool(grpc_configs.get("use_ssl", False)),
+    server_certificate=grpc_configs.get("server_certificate", None),
+    server_certificate_key=grpc_configs.get("server_certificate_key", None),
+    root_certificate=grpc_configs.get("root_certificate", None),
+    max_message_size=int(grpc_configs.get("max_message_size", 2 * 1024 * 1024)),
+    logger=agent.logger,
+)
+
+with communicator:
+    for round_idx in range(n_rounds):
+        agent.train()
+        tokens = agent.get_parameters(round_id=round_idx)
+        peer_tokens = communicator.exchange(round_idx, tokens)
+        agent.aggregate_parameters(peer_tokens)
+        meter.record_fidelity([algorithm_agent])
+
+best = algorithm_agent.best_so_far()
+print(f"\n=== grpc, {node_id} ===")
+if best is not None:
+    print(
+        f"  {node_id} {describe_slice(algorithm_agent)}  "
+        f"best x={format_point(best[0])} yield={best[1]:.1f}  "
+        f"eta_bar={algorithm_agent.mean_token_fidelity():.3f}"
+    )
+print_totals(meter, n_rounds, optimum=node_config.get("known_optimum", None))

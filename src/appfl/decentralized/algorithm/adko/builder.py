@@ -26,8 +26,9 @@ from typing import Callable, Dict, Optional
 
 from omegaconf import DictConfig
 
-from appfl.decentralized.config import agent_ids, as_kwargs, load_callable
+from appfl.decentralized.config import as_kwargs, load_callable
 from appfl.decentralized.metrics import Meter, metered_evaluator
+from appfl.decentralized.neighbor import Neighbors
 from appfl.decentralized.topology import Topology
 
 from appfl.decentralized.algorithm.adko.agent import ADKOAgent
@@ -88,42 +89,76 @@ def create_weights(config: Optional[DictConfig]) -> ReasoningWeights:
     return weights
 
 
+def _mixing_weight(
+    agent_id: str, neighbors: Neighbors, topology: Optional[Topology]
+) -> Callable[[str], float]:
+    """``pi_ij`` as a function of the peer id, from whichever source this node has.
+
+    A simulation holds the graph and asks it. A deployed site holds only its own neighbors,
+    so the weight comes from the ``neighbors`` block -- named per peer when the operator sets
+    them, uniform over the closed in-neighborhood otherwise, which is the same number the
+    graph would have given. Non-neighbors get 0 either way, so a token arriving by an
+    unexpected path is ignored rather than silently weighted.
+    """
+    if topology is not None:
+        return lambda other, me=agent_id: topology.mixing_weight(me, other)
+
+    uniform = 1.0 / (len(neighbors.recv_from) + 1)
+
+    def weight(other: str) -> float:
+        if other == agent_id:
+            return neighbors.weights.get(other, uniform)
+        if other not in neighbors.recv_from:
+            return 0.0
+        return neighbors.weights.get(other, uniform)
+
+    return weight
+
+
 def create_agent(
-    agent_config: DictConfig,
-    federation_config: DictConfig,
-    topology: Topology,
+    node_config: DictConfig,
+    neighbors: Neighbors,
     meter: Meter,
     llm_config: Optional[LLMConfig] = None,
+    topology: Optional[Topology] = None,
 ) -> ADKOAgent:
-    """Build one agent: once per agent in a serial run, once per process everywhere else.
+    """Build one agent from one node's config: once per node, whatever the transport.
 
     Every launcher goes through here, so an agent is configured identically no matter which
     transport carries its tokens -- which is what makes cross-backend comparison mean
     anything.
 
-    Resource paths in the two configs are expected to be absolute already;
-    :func:`appfl.decentralized.config.load_federation_config` and
-    :func:`~appfl.decentralized.config.load_agent_configs` resolve them at load time.
+    One config, complete on its own: the federation-wide file this used to be paired with is
+    gone, so what was ``federation_config.agent_configs.algorithm_configs`` is now just
+    ``node_config.algorithm_configs``. Resource paths are expected to be absolute already;
+    :func:`appfl.decentralized.config.resolve_path` is what a launcher resolves them with.
+
+    :param neighbors: who this node exchanges with. In a deployment it is all the node knows
+        about the federation, which is why the mixing weight comes from here when no graph is
+        available.
+    :param topology: the whole graph, when a simulation launcher has one. Supplies the mixing
+        weight and the node's index in the roster; both fall back to ``node_config`` without it.
     """
-    federation = federation_config.federation_configs
-    shared = federation_config.agent_configs
-    algorithm = shared.algorithm_configs
+    algorithm = node_config.algorithm_configs
 
-    agent_id = str(agent_config.agent_id)
-    index = agent_ids(federation_config).index(agent_id)
-    seed = int(federation.get("seed", 0)) + index
+    agent_id = str(node_config.node_id)
+    if topology is not None:
+        index = list(topology.node_ids).index(agent_id)
+    else:
+        index = int(node_config.get("node_index", 0))
+    seed = int(node_config.get("seed", 0)) + index
 
-    space_configs = agent_config.space_configs
+    space_configs = node_config.space_configs
     space = load_callable(space_configs.space_path, space_configs.space_name)(
         **as_kwargs(space_configs.get("space_kwargs", None))
     )
 
-    surrogate_configs = shared.surrogate_configs
+    surrogate_configs = node_config.surrogate_configs
     surrogate = load_callable(
         surrogate_configs.surrogate_path, surrogate_configs.surrogate_name
     )(**as_kwargs(surrogate_configs.get("surrogate_kwargs", None)))
 
-    evaluator_configs = agent_config.evaluator_configs
+    evaluator_configs = node_config.evaluator_configs
     evaluator = load_callable(
         evaluator_configs.evaluator_path, evaluator_configs.evaluator_name
     )(**as_kwargs(evaluator_configs.get("evaluator_kwargs", None)))
@@ -144,8 +179,11 @@ def create_agent(
         surrogate=surrogate,
         space=space,
         evaluator=evaluator,
-        # uniform_weight, not Metropolis-Hastings: 1/(|N_i|+1) is what the reference uses.
-        mixing_weight=lambda other, me=agent_id: topology.uniform_weight(me, other),
+        # 1/(|N_i|+1), not Metropolis-Hastings: the uniform weight is what the reference
+        # uses. `Topology.mixing_weight` is that same quantity on this branch, normalized
+        # over the node's *incoming* set so the mixing matrix stays row-stochastic -- equal
+        # for the undirected graphs ADKO assumes.
+        mixing_weight=_mixing_weight(agent_id, neighbors, topology),
         baseline=build_baseline(
             str(baseline_configs.get("baseline", "running_median")),
             **as_kwargs(baseline_configs.get("baseline_kwargs", None)),
