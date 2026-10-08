@@ -103,3 +103,24 @@ __all__ = [
     "OpenAILanguageModel",
     "build_language_model",
 ]
+
+def _allow_tokens_through_torch_serialization() -> None:
+    """Declare the token types as safe for ``torch.load``.
+
+    APPFL's transports serialize payloads with ``torch.save``/``torch.load``, and since
+    PyTorch 2.6 ``torch.load`` defaults to ``weights_only=True`` -- it will refuse any class
+    it has not been told about, which is exactly the protection that should stay on for model
+    parameters arriving from a peer. These three are plain data: an enum of two strings and
+    two dataclasses of floats, strings and lists, with no custom ``__reduce__``. Declaring
+    them here, where they are defined, is what lets a knowledge token travel the same wire a
+    state dict does without any launcher loosening the check globally.
+    """
+    try:
+        import torch
+    except ImportError:
+        return
+    add_safe_globals = getattr(torch.serialization, "add_safe_globals", None)
+    if add_safe_globals is not None:
+        add_safe_globals([KnowledgeToken, Provenance, Signal])
+
+_allow_tokens_through_torch_serialization()
