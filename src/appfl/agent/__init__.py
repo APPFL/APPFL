@@ -3,6 +3,7 @@ from .server import ServerAgent
 from .sim_client import SimClientAgent
 from .sim_server import SimServerAgent
 from .dfl_node import DFLNodeAgent
+from .deopt_node import DeOptNodeAgent
 
 __all__ = [
     "ClientAgent",
@@ -10,4 +11,5 @@ __all__ = [
     "SimClientAgent",
     "SimServerAgent",
     "DFLNodeAgent",
+    "DeOptNodeAgent",
 ]

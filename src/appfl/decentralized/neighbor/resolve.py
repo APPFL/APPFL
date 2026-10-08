@@ -21,9 +21,25 @@ NEIGHBOR_MODES = (FROM_TOPOLOGY, EXPLICIT)
 
 
 #: Node ids `from_topo` generates, and which the launchers assign to match.
-def generated_node_ids(num_nodes: int) -> list[str]:
-    """`Node0 .. Node{num_nodes-1}` -- the roster `from_topo` assumes."""
-    return [f"Node{i}" for i in range(int(num_nodes))]
+def generated_node_ids(num_nodes: int, prefix: str = "Node") -> list[str]:
+    """`{prefix}0 .. {prefix}{num_nodes-1}` -- the roster `from_topo` assumes.
+
+    The prefix is configurable because an id is not always a label. ADKO's heterogeneous arm
+    assigns each agent a different slice of the design space by its index, and its configs
+    name the agents `agent-0 ... agent-3`, so renaming them would silently re-map which agent
+    gets which slice.
+    """
+    return [f"{prefix}{i}" for i in range(int(num_nodes))]
+
+
+def roster_from_config(config: Any) -> list[str]:
+    """The federation's node ids: named outright, or generated from `num_nodes`."""
+    named = config.get("node_ids", None)
+    if named:
+        return [str(node_id) for node_id in named]
+    return generated_node_ids(
+        config["num_nodes"], str(config.get("id_prefix", "Node"))
+    )
 
 
 def build_topology_from_config(config: Any) -> Topology:
@@ -47,7 +63,7 @@ def build_topology_from_config(config: Any) -> Topology:
         )
     return build_topology(
         str(config.get("topology", "fully_connected")),
-        generated_node_ids(config["num_nodes"]),
+        roster_from_config(config),
         **(_as_dict(config.get("topology_kwargs", None))),
     )
 

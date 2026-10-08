@@ -107,24 +107,37 @@ class DFLNodeAgent(ClientAgent):
         self.publish_parameters()
 
     def publish_parameters(self, round_id: Optional[int] = None) -> None:
-        """Make the current local model available to neighbors as round ``round_id``."""
+        """Make this round's payload available to neighbors as round ``round_id``.
+
+        The round tagging, the two-round retention and the futures are the same whatever is
+        being published, so they live here and only here -- a subclass changes *what* it
+        publishes by overriding :meth:`_payload_to_publish`, never how publication works.
+        """
+        payload = self._payload_to_publish()
+        with self._model_params_lock:
+            self._round = self._round + 1 if round_id is None else round_id
+            self._published[self._round] = payload
+            while len(self._published) > self._published_history:
+                self._published.popitem(last=False)
+            for future in self._pending.pop(self._round, []):
+                future.set_result(payload)
+
+    def _payload_to_publish(self) -> Any:
+        """What this node publishes this round. The local model, unless a subclass says else.
+
+        A decentralized node that is not training a model overrides this -- ADKO publishes
+        knowledge tokens -- and inherits the publication machinery untouched.
+        """
         params = self.trainer.get_parameters()
         if isinstance(params, tuple):
             params = params[0]
         # Detach from the trainer's own tensors. Aggregation loads new parameters into the
         # model in place, and a neighbor that has not collected yet must still receive this
         # round's model rather than the mixed one that replaced it.
-        params = {
+        return {
             name: (tensor.detach().clone() if torch.is_tensor(tensor) else tensor)
             for name, tensor in params.items()
         }
-        with self._model_params_lock:
-            self._round = self._round + 1 if round_id is None else round_id
-            self._published[self._round] = params
-            while len(self._published) > self._published_history:
-                self._published.popitem(last=False)
-            for future in self._pending.pop(self._round, []):
-                future.set_result(params)
 
     # -- the server half: serve this node's model to a neighbor ------------------------
 
@@ -254,9 +267,10 @@ class DFLNodeAgent(ClientAgent):
 
     def _load_aggregator(self) -> None:
         """Instantiate the aggregator named in the config, the way the server agent does."""
-        aggregator_name = self.dfl_node_agent_config.get(
-            "aggregator", "DFLNodeFedAvgAggregator"
-        )
+        aggregator_name = self.dfl_node_agent_config.get("aggregator", None)
+        if aggregator_name is None:
+            self.aggregator: Optional[BaseAggregator] = None
+            return
         aggregator_module = importlib.import_module("appfl.algorithm.aggregator")
         if not hasattr(aggregator_module, aggregator_name):
             raise ValueError(f"Invalid aggregator name: {aggregator_name}")

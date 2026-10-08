@@ -69,6 +69,7 @@ from appfl.decentralized.neighbor.resolve import (
     build_topology_from_config,
     resolve_all_neighbors_from_topology,
     generated_node_ids,
+    roster_from_config,
     resolve_neighbors,
 )
 
@@ -78,4 +79,5 @@ __all__ = [
     "resolve_all_neighbors_from_topology",
     "build_topology_from_config",
     "generated_node_ids",
+    "roster_from_config",
 ]
