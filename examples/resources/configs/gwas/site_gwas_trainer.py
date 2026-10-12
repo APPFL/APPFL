@@ -1,16 +1,17 @@
+import json
 import os
 import sys
-import json
-import torch
+from pathlib import Path
+
 import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pathlib import Path
-import matplotlib.pyplot as plt
-from scipy.stats import chi2, t
+import torch
 from pandas_plink import read_plink1_bin
-from appfl.algorithm.trainer.base_trainer import BaseTrainer
+from scipy.stats import chi2, t
 
+from appfl.algorithm.trainer.base_trainer import BaseTrainer
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -29,21 +30,19 @@ if _gwas_demo_dir:
     sys.path.insert(0, _gwas_demo_dir)
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gwas_config import (  # noqa: E402
-    USE_CUML,
+from gwas_config import (
     HIT_P_THRESHOLD,
+    USE_CUML,
+    apply_variant_scaling,
     get_linear_regression,
     get_logistic_regression,
-    apply_variant_scaling,
 )
-
 
 matplotlib.use("Agg")
 
 if not USE_CUML:
     pass
-from sklearn.metrics import r2_score, roc_auc_score, roc_curve  # noqa: E402
-
+from sklearn.metrics import r2_score, roc_auc_score, roc_curve
 
 CHROM_MAP = {"X": 23, "Y": 24, "XY": 25, "MT": 26, "M": 26}
 

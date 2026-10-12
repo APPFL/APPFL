@@ -1,21 +1,24 @@
 import time
 import uuid
 import warnings
-from omegaconf import OmegaConf
 from collections import OrderedDict
-from globus_sdk.scopes import AuthScopes, ComputeScopes
-from globus_sdk import AccessTokenAuthorizer
-from globus_compute_sdk import Executor, Client
 from concurrent.futures import as_completed
-from typing import Optional, Dict, List, Union, Tuple, Any
-from appfl.comm.utils.s3_utils import send_model_by_s3
-from appfl.logger import ServerAgentFileLogger
+from typing import Any
+
+from globus_compute_sdk import Client, Executor
+from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
+from globus_compute_sdk.serialize import CombinedCode
+from globus_sdk import AccessTokenAuthorizer
+from globus_sdk.scopes import AuthScopes, ComputeScopes
+from omegaconf import OmegaConf
+
 from appfl.comm.base import BaseServerCommunicator
 from appfl.comm.utils.s3_storage import CloudStorage
+from appfl.comm.utils.s3_utils import send_model_by_s3
 from appfl.config import ClientAgentConfig, ServerAgentConfig
+from appfl.logger import ServerAgentFileLogger
+
 from .utils.endpoint import GlobusComputeClientEndpoint
-from globus_compute_sdk.serialize import CombinedCode
-from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
 
 
 class GlobusComputeServerCommunicator(BaseServerCommunicator):
@@ -36,8 +39,8 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
     def __init__(
         self,
         server_agent_config: ServerAgentConfig,
-        client_agent_configs: List[ClientAgentConfig],
-        logger: Optional[ServerAgentFileLogger] = None,
+        client_agent_configs: list[ClientAgentConfig],
+        logger: ServerAgentFileLogger | None = None,
         **kwargs,
     ):
         self.comm_type = "globus_compute"
@@ -50,7 +53,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         self._load_gce(**kwargs)
 
         # Initiate the Globus Compute client endpoints.
-        self.client_endpoints: Dict[str, GlobusComputeClientEndpoint] = {}
+        self.client_endpoints: dict[str, GlobusComputeClientEndpoint] = {}
         _client_id_check_set = set()
         for client_config in client_agent_configs:
             assert hasattr(client_config, "endpoint_id"), (
@@ -103,8 +106,8 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         self,
         task_name: str,
         *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Union[Dict, List[Dict]] = {},
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | list[dict] = {},
         need_model_response: bool = False,
     ):
         """
@@ -124,7 +127,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         for i, client_id in enumerate(self.client_endpoints):
             client_metadata = metadata[i] if isinstance(metadata, list) else metadata
             if need_model_response and self.use_s3bucket:
-                local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
+                local_model_key = f"{uuid.uuid4()!s}_client_state_{client_id}"
                 local_model_url = CloudStorage.presign_upload_object(local_model_key)
                 client_metadata["local_model_key"] = local_model_key
                 client_metadata["local_model_url"] = local_model_url
@@ -142,8 +145,8 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         client_id: str,
         task_name: str,
         *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Optional[Dict] = {},
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | None = {},
         need_model_response: bool = False,
     ):
         """
@@ -162,7 +165,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         elif self.use_proxystore and model is not None:
             model = self.proxystore.proxy(model)
         if need_model_response and self.use_s3bucket:
-            local_model_key = f"{str(uuid.uuid4())}_client_state_{client_id}"
+            local_model_key = f"{uuid.uuid4()!s}_client_state_{client_id}"
             local_model_url = CloudStorage.presign_upload_object(local_model_key)
             metadata["local_model_key"] = local_model_key
             metadata["local_model_url"] = local_model_url
@@ -175,7 +178,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         self._register_task(task_id, task_future, client_id, task_name)
         self.logger.info(f"Task '{task_name}' is assigned to {client_id}.")
 
-    def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
+    def recv_result_from_all_clients(self) -> tuple[dict, dict]:
         """
         Receive task results from all clients that have running tasks.
         :return `client_results`: A dictionary containing the results from all clients - Dict[client_id, client_model]
@@ -213,7 +216,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
                 raise e
         return client_results, client_metadata
 
-    def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
+    def recv_result_from_one_client(self) -> tuple[str, Any, dict]:
         """
         Receive task results from the first client that finishes the task.
         :return `client_id`: The client endpoint id from which the result is received.

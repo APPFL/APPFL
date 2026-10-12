@@ -3,12 +3,15 @@
 """
 
 import logging
-import torch.nn as nn
 from typing import Any
-from .misc.data import Dataset
+
 from omegaconf import DictConfig
-from .comm.grpc import GRPCCommunicator, APPFLgRPCServer, grpc_serve
+from torch import nn
+
 from appfl.misc.utils import get_appfl_authenticator
+
+from .comm.grpc import APPFLgRPCServer, GRPCCommunicator, grpc_serve
+from .misc.data import Dataset
 
 
 def run_server(

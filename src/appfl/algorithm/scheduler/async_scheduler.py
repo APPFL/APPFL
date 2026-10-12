@@ -1,8 +1,11 @@
 import threading
+from collections import OrderedDict
+from typing import Any
+
 from omegaconf import DictConfig
-from appfl.algorithm.scheduler import BaseScheduler
+
 from appfl.algorithm.aggregator import BaseAggregator
-from typing import Any, Union, Dict, OrderedDict, Tuple
+from appfl.algorithm.scheduler import BaseScheduler
 from appfl.misc.memory_utils import optimize_memory_cleanup
 
 
@@ -19,10 +22,10 @@ class AsyncScheduler(BaseScheduler):
 
     def schedule(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict],
+        client_id: int | str,
+        local_model: dict | OrderedDict,
         **kwargs,
-    ) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Schedule an asynchronous global aggregation for the local model from a client.
         The method will return the aggregated model immediately after the local model is submitted.

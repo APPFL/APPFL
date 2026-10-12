@@ -1,33 +1,35 @@
-import os
 import json
+import os
+from datetime import datetime
+from typing import Any
+
+import numpy as np
 import torch
 import wandb
-import numpy as np
-from datetime import datetime
-from typing import Any, Optional, Dict
-from torch.utils.data import DataLoader
-from omegaconf import DictConfig, OmegaConf
-from safetensors.torch import load_file
-from appfl.algorithm.trainer import BaseTrainer
-from transformers import AdamW, TrainingArguments, Trainer
-from fed_sb.utils.initialization_utils import find_and_initialize_grad
-from fed_sb.utils.gradient_utils import estimate_and_process_grads_torch
-from fed_sb.utils.data_utils import (
-    load_and_preprocess_it,
-    DataCollatorForSupervisedDataset,
-)
 from fed_sb.models import (
     create_model_tokenizer_it,
-    create_peft_model_it,
     create_peft_FFA_model_it,
+    create_peft_model_it,
 )
+from fed_sb.utils.data_utils import (
+    DataCollatorForSupervisedDataset,
+    load_and_preprocess_it,
+)
+from fed_sb.utils.gradient_utils import estimate_and_process_grads_torch
+from fed_sb.utils.initialization_utils import find_and_initialize_grad
+from omegaconf import DictConfig, OmegaConf
+from safetensors.torch import load_file
+from torch.utils.data import DataLoader
+from transformers import AdamW, Trainer, TrainingArguments
+
+from appfl.algorithm.trainer import BaseTrainer
 
 
 class FedSBTrainer(BaseTrainer):
     def __init__(
         self,
         train_configs: DictConfig,
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         self.logger = logger
@@ -309,7 +311,7 @@ class FedSBTrainer(BaseTrainer):
 
     def _load_adapter_safetensors(
         self, final_model_path: str
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """
         Load adapter weights from the saved safetensors file - exactly what the aggregator expects.
         This ensures 100% compatibility with the file-based approach.
@@ -321,7 +323,7 @@ class FedSBTrainer(BaseTrainer):
         else:
             return {}
 
-    def _load_adapter_config(self, model_path: str) -> Dict[str, Any]:
+    def _load_adapter_config(self, model_path: str) -> dict[str, Any]:
         """
         Extract adapter configuration from the saved adapter_config.json file.
         """

@@ -1,7 +1,8 @@
 from __future__ import annotations
-import globus_sdk
 
 from typing import Protocol, runtime_checkable
+
+import globus_sdk
 
 
 @runtime_checkable

@@ -4,18 +4,20 @@ Memory profiling wrapper for MPI federated learning using memray
 """
 
 import argparse
-import sys
 import os
-import memray
+import sys
 from pathlib import Path
+
+import memray
 from mpi4py import MPI
 
 # Add parent directories to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from omegaconf import OmegaConf
-from appfl.agent import ServerAgent, ClientAgent
-from appfl.comm.mpi import MPIServerCommunicator, MPIClientCommunicator
+
+from appfl.agent import ClientAgent, ServerAgent
+from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 
 
 def run_mpi_with_profiling(
