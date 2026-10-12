@@ -1,10 +1,11 @@
+import logging
 import os
 import pathlib
-import logging
-from .utils import LevelFilter
-from typing import Optional
 from datetime import datetime
+
 from colorama import Fore, Style
+
+from .utils import LevelFilter
 
 
 class ServerAgentFileLogger:
@@ -97,6 +98,6 @@ class ServerAgentFileLogger:
     def warning(self, warning: str) -> None:
         self.logger.warning(warning)
 
-    def get_log_filepath(self) -> Optional[str]:
+    def get_log_filepath(self) -> str | None:
         if hasattr(self, "log_filepath"):
             return self.log_filepath

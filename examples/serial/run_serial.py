@@ -4,7 +4,9 @@ It should be noted that only synchronous FL can be simulated in this way.
 """
 
 import argparse
+
 from omegaconf import OmegaConf
+
 from appfl.agent import ClientAgent, ServerAgent
 
 argparser = argparse.ArgumentParser()

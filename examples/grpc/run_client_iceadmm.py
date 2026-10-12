@@ -8,7 +8,9 @@ sample size for local training purposes.
 
 import argparse
 import warnings
+
 from omegaconf import OmegaConf
+
 from appfl.agent import ClientAgent
 from appfl.comm.grpc import GRPCClientCommunicator
 

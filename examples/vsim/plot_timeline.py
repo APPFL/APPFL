@@ -7,14 +7,14 @@ Usage:
     python vsim/plot_timeline.py <log_file> [--out <output.png>] [--max_vt <seconds>]
 """
 
-import re
 import argparse
+import re
 
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 
 
 def parse_log(path, max_vt=None):

@@ -1,8 +1,10 @@
 import os
-import torch
+
 import numpy as np
-from appfl.misc.data import Dataset
+import torch
 from datasets.PreprocessedData.NREL_Preprocess import NRELDataDownloader
+
+from appfl.misc.data import Dataset
 
 
 def get_nrel(args):
