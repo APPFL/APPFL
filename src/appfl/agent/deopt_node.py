@@ -52,6 +52,19 @@ class DeOptNodeAgent(DFLNodeAgent):
     :param meter: where traffic is counted. ``None`` counts nothing.
     """
 
+    #: Columns of the per-round progress line, in order. Deliberately narrow enough to stay
+    #: readable in a four-terminal gRPC run, where each process prints only its own rounds.
+    _log_columns: Sequence[str] = (
+        "Round",
+        "Phase",
+        "Best",
+        "Tokens",
+        "Emit",
+        "Recv",
+        "EtaBar",
+        "PeerTerm",
+    )
+
     def __init__(
         self,
         algorithm_agent: AgentProtocol,
@@ -72,6 +85,7 @@ class DeOptNodeAgent(DFLNodeAgent):
         self.budget = budget
         self.meter = meter
         self._emitted: List[Any] = []
+        self._logged_title = False
 
     # -- the three steps ----------------------------------------------------------------
 
@@ -117,4 +131,48 @@ class DeOptNodeAgent(DFLNodeAgent):
             if payload:
                 tokens.extend(payload)
         self.algorithm_agent.observe(tokens)
+        self._log_round(len(tokens))
+
+    def _log_round(self, num_received: int) -> None:
+        """Log one line for the round that just finished.
+
+        Here rather than in :meth:`train` because a round is not over until the neighbors'
+        tokens are in. ``Recv`` is the only column not knowable earlier, and it is the one
+        that matters most when something is wrong: a node that is optimizing happily but
+        receiving nothing looks identical to a healthy one in every other column.
+
+        Only the algorithm's *public* surface is read -- ``last_decision`` is documented as
+        the hook for drivers that log traces -- and every field is probed with ``getattr``,
+        so an :class:`~appfl.decentralized.protocol.AgentProtocol` that exposes none of it
+        still logs its rounds, with ``-`` in the columns it cannot answer.
+        """
+        agent = self.algorithm_agent
+        if not self._logged_title:
+            self.logger.log_title(list(self._log_columns))
+            self._logged_title = True
+
+        best = agent.best_so_far() if hasattr(agent, "best_so_far") else None
+        # `last_decision` is None during warmup, when no acquisition ran at all. An agent
+        # that does not define it is a different kind of agent, not one in warmup, so the
+        # two cases are distinguished rather than both printed as "warmup".
+        has_phase = hasattr(agent, "last_decision")
+        decision = getattr(agent, "last_decision", None)
+        self.logger.log_content(
+            [
+                self._round,
+                ("acquire" if decision else "warmup") if has_phase else "-",
+                best[1] if best is not None else "-",
+                len(getattr(agent, "token_memory", ())),
+                len(self._emitted),
+                num_received,
+                agent.mean_token_fidelity()
+                if hasattr(agent, "mean_token_fidelity")
+                else "-",
+                # lam*G - gamma*Lambda: the whole contribution the neighbourhood made to
+                # this round's choice. One number for "is the exchange changing decisions".
+                decision["score_lam_G"] - decision["score_gamma_Lambda"]
+                if decision
+                else "-",
+            ]
+        )
 

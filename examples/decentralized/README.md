@@ -83,9 +83,17 @@ The relay stops once every site it has heard from has finished, counting a site 
 
 Four laboratories optimizing a Suzuki–Miyaura coupling over 3,696 measured reactions, trading one knowledge token per neighbour per round — the experiment from the ADKO paper's `scientific_discovery` study. Hyperparameters follow its LM-free arm (`b2 l4 g32 s0p5 t50 tb40 a0p01`), and the oracle is the real `suzuki_edbo` yield table rather than a synthetic objective, so a run is a reproduction rather than a demonstration.
 
+There is nothing to download. The dataset ships inside Olympus, as `src/olympus/datasets/dataset_suzuki_edbo/` — 3,696 rows of five categorical parameters and a measured yield, from Perera et al., *Science* **359**, 429–434 (2018) — and `resources/evaluator/suzuki_lookup.py` reads it through `olympus.datasets.load_dataset`, which is also how the reference reads it.
+
 ```bash
-pip install botorch gpytorch olymp     # Olympus is published as `olymp`
+pip install botorch gpytorch
+git clone https://github.com/the-matter-lab/olympus.git ~/olympus
+pip install -e ~/olympus
 ```
+
+Olympus imports its own plotting module at package load, and that module calls `plt.register_cmap`, which matplotlib removed in 3.9 — so on a current matplotlib the first `import olympus` dies with `AttributeError: module 'matplotlib.pyplot' has no attribute 'register_cmap'`. Either pin `matplotlib<3.9` as the reference's `requirements.txt` does, or replace the two `plt.register_cmap(cmap=X)` calls in `src/olympus/plotter/olympus_colors.py` with `matplotlib.colormaps.register(X)`, the supported route since 3.6. Nothing in this example plots, so either is fine.
+
+Olympus' core requirements are otherwise light — numpy, pandas, scikit-learn, matplotlib, seaborn, and SQLAlchemy at an exact `==1.4.45` that will downgrade a 2.x install — because only its dataset half is wanted here. The TensorFlow stack the reference pins is for Olympus' own planners and loads lazily, so it is never reached: ADKO brings its own surrogate.
 
 Two arms, separated by one flag:
 
@@ -104,7 +112,7 @@ mpirun -n 8 python decentralized/mpi/run_mpi.py \
     --config ./decentralized/resources/configs/suzuki/simulation/node_0_iid.yaml
 ```
 
-200 rounds of four agents, each refitting a GP after every observation, takes minutes rather than the toy example's seconds. Add `--num_rounds 10` for a smoke run.
+All six configs run the study's **200 rounds**, because the point of this example is reproduction: the published figures are 200-round `system_best` traces, and nothing shorter lands on them. Four agents each refitting a GP after every observation costs minutes rather than the toy example's seconds, so every launcher takes `--num_rounds` — `--num_rounds 10` is a smoke run. Shortening it is a faster look at the machinery, not a reproduction.
 
 HET also has a deployed form, because four labs holding four different solvents is the real experiment rather than a simulation of one:
 
