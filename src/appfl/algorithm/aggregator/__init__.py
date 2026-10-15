@@ -15,6 +15,11 @@ try:
 except:  # noqa: E722
     pass
 
+try:
+    from .evo2_aggregator import Evo2FedAvgAggregator
+except:  # noqa: E722
+    pass
+
 __all__ = [
     "BaseAggregator",
     "FedAvgAggregator",
@@ -28,4 +33,5 @@ __all__ = [
     "IIADMMAggregator",
     "ICEADMMAggregator",
     "FedSBAggregator",
+    "Evo2FedAvgAggregator",
 ]

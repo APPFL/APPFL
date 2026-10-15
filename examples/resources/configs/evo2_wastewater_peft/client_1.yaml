@@ -1,0 +1,49 @@
+# Example APPFL client config for Evo2 PEFT federated fine-tuning.
+#
+# Each federated site runs its own copy of this file (see client_2.yaml),
+# since in practice each one is a separate HPC allocation (e.g. one site on
+# Polaris, another on Perlmutter) with its own data path, model checkpoint
+# path, and PEFT settings — hence train_configs is fully specified here
+# rather than left to the server to distribute.
+
+client_id: "site_anl_1"
+
+train_configs:
+  # Built-in — registered in appfl.algorithm.trainer.__init__.
+  trainer: "Evo2PEFTTrainer"
+  site: "site_anl_1"
+  method: "lora" # "lora" | "qlora" | "ia3"
+  base_data: "/path/to/data" # expects <base_data>/<site>/fasta/*.fna
+  model_path: "/path/to/evo2_7b.pt"
+  evo2_dir: "/path/to/evo2_repo" # a writable clone of the evo2 package source
+  num_local_steps: 100
+  # Chunk size is a property of your data's sequence-length regime, not
+  # something the trainer infers — getting it wrong doesn't raise an error,
+  # it silently trains in an untested regime. 8192 fits long assembled
+  # contigs; use your reads' actual length (e.g. ~150) for raw short reads.
+  chunk_size: 8192
+  lr: 0.0002
+  # AIDRIN/DRISEE data-readiness gate — optional. Omit aidrin_csv entirely to
+  # skip it (self._site_ready stays True unconditionally). When set, any
+  # file whose DRISEE score exceeds drisee_threshold is excluded from
+  # training, and if every file in the site ends up excluded, this client
+  # sends a contamination sentinel instead of real adapter weights for that
+  # round (see Evo2FedAvgAggregator on the server, which filters these out).
+  aidrin_csv: "/path/to/site_aidrin_inputs.csv"
+  drisee_threshold: 20.0
+
+comm_configs:
+  grpc_configs:
+    server_uri: "localhost:50051"
+    max_message_size: 104857600 # 100 MB — covers adapter tensors (~20 MB each)
+    use_ssl: False
+    # Real-world gotchas hit running this against a public TLS relay
+    # (APPFLx) instead of a local server, in case you hit the same thing:
+    #   - use_ssl must be True against a real TLS endpoint; False fails the
+    #     handshake immediately rather than falling back to plaintext.
+    #   - optimize_memory must match the server's own setting. A server
+    #     running with optimize_memory=True sends a tiny metadata-only
+    #     message followed by a raw (non-protobuf) byte stream; a client
+    #     with optimize_memory=False instead concatenates every chunk and
+    #     parses it as one protobuf message, which corrupts on those raw
+    #     bytes. Confirmed via byte-level inspection of the response.

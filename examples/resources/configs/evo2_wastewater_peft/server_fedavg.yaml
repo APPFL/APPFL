@@ -1,0 +1,42 @@
+# APPFL FedAvg server config for the Evo2 wastewater-PEFT case study.
+#
+# No GPU needed on the server — clients train Evo2 7B + LoRA/QLoRA/IA3
+# adapters locally and only ever exchange adapter tensors (~20 MB each).
+# This was first run on an EC2 t3.medium.
+
+client_configs:
+  # DummyModel has no parameters -> state_dict()={} -> clients start from
+  # fresh adapter init; see dummy_model.py and evo2_aggregator.py.
+  model_configs:
+    model_name: "DummyModel"
+    model_path: "./dummy_model.py"
+
+  train_configs:
+    num_local_steps: 1000
+
+  comm_configs:
+    compressor_configs:
+      enable_compression: False
+
+server_configs:
+  num_clients: 2 # one entry per federated site (e.g. Polaris + Perlmutter)
+  scheduler: "SyncScheduler"
+
+  # Built-in — registered in appfl.algorithm.aggregator.__init__.
+  aggregator: "Evo2FedAvgAggregator"
+  aggregator_kwargs:
+    client_weights_mode: "equal"
+
+  device: "cpu"
+  num_global_epochs: 20
+  logging_output_dirname: "./output"
+  logging_output_filename: "evo2_fedavg"
+  comm_configs:
+    grpc_configs:
+      server_uri: "0.0.0.0:50051" # bind to all interfaces
+      max_message_size: 104857600 # 100 MB — covers adapter tensors (~20 MB each)
+      use_ssl: False
+      # For a real deployment behind a public TLS relay (e.g. APPFLx), set
+      # use_ssl: True and the matching server_certificate/server_certificate_key/
+      # ca_certificate — see client_1.yaml's comm_configs for the client-side
+      # gotchas that come with that (optimize_memory handshake format).
