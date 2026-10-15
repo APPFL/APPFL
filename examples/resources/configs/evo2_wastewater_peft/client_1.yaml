@@ -1,0 +1,21 @@
+# Example APPFL client config for Evo2 PEFT federated fine-tuning.
+# Each site runs its own copy of this file (see client_2.yaml). Shared
+# settings (trainer_path, num_local_steps, lr, ...) live in server_fedavg.yaml.
+
+client_id: "site_anl_1"
+
+train_configs:
+  site: "site_anl_1"
+  method: "lora" # "lora" | "qlora" | "ia3"
+  base_data: "/path/to/data" # expects <base_data>/<site>/fasta/*.fna
+  model_path: "/path/to/evo2_7b.pt"
+  evo2_dir: "/path/to/evo2_repo" # writable clone of the evo2 package source
+  chunk_size: 8192 # match your data's sequence length (e.g. ~150 for short reads)
+  aidrin_csv: "/path/to/site_aidrin_inputs.csv" # optional AIDRIN/DRISEE gate
+
+comm_configs:
+  grpc_configs:
+    server_uri: "sci-f317ce0b-82c5-44df-bfc3-e03778bcf132-grpc.trac.appflx.link:443"
+    max_message_size: 104857600
+    use_ssl: True
+    optimize_memory: True # must match the server's setting
