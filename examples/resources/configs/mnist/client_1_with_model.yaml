@@ -1,0 +1,37 @@
+client_id: "Client1"
+
+train_configs:
+  # Device
+  device: "cpu"
+  # Logging and outputs
+  logging_output_dirname: "./output"
+  logging_output_filename: "result"
+
+# Local dataset
+data_configs:
+  dataset_path: "./resources/dataset/mnist_dataset.py"
+  dataset_name: "get_mnist"
+  dataset_kwargs:
+    num_clients: 2
+    client_id: 0
+    partition_strategy: "class_noniid"
+    visualization: True
+    output_dirname: "./output"
+    output_filename: "visualization.pdf"
+
+comm_configs:
+  grpc_configs:
+    server_uri: localhost:50051
+    max_message_size: 1048576
+    use_ssl: False
+
+# Model definition is provided by the client (server does not have it)
+model_configs:
+  model_path: "./resources/model/cnn.py"
+  model_name: "CNN"
+  model_kwargs:
+    num_channel: 1
+    num_classes: 10
+    num_pixel: 28
+  # Seed used before model creation so all clients start from the same initial weights
+  init_seed: 42
