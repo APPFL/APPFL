@@ -565,6 +565,10 @@ class ClientAgent:
         ):
             self.trainer = None
             return
+        if hasattr(self.client_agent_config, "mlflow_configs"):
+            self.client_agent_config.train_configs.mlflow_configs = (
+                self.client_agent_config.mlflow_configs
+            )
         if hasattr(self.client_agent_config.train_configs, "trainer_path"):
             self.trainer = create_instance_from_file(
                 self.client_agent_config.train_configs.trainer_path,
@@ -597,6 +601,10 @@ class ClientAgent:
                 if self.client_agent_config.train_configs.trainer == "MonaiTrainer":
                     raise ImportError(
                         'Monai is not installed. Please install Monai to use MonaiTrainer using: pip install "appfl[monai]" or pip install -e ".[monai]" if installing from source.'
+                    )
+                if self.client_agent_config.train_configs.trainer == "LightningTrainer":
+                    raise ImportError(
+                        'PyTorch Lightning is not installed. Please install it to use LightningTrainer using: pip install "appfl[lightning]" or pip install -e ".[lightning]" if installing from source.'
                     )
                 raise ValueError(
                     f"Invalid trainer name: {self.client_agent_config.train_configs.trainer}"

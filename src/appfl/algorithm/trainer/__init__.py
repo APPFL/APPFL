@@ -25,6 +25,11 @@ try:
 except:  # noqa: E722
     pass
 
+try:
+    from .lightning_trainer import LightningTrainer
+except:  # noqa: E722
+    pass
+
 __all__ = [
     "BaseTrainer",
     "VanillaTrainer",
@@ -36,4 +41,5 @@ __all__ = [
     "LLMDummyTrainer",
     "DIMATTrainer",
     "SklearnTrainer",
+    "LightningTrainer",
 ]
