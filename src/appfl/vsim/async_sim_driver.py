@@ -1,7 +1,9 @@
 """Virtual-time asynchronous FL simulator driver.
 
 v1: Runs N clients on a single CPU/GPU *sequentially*, but reproduces asynchronous
-client *arrival order* via a virtual-time event queue (min-heap).
+client *arrival order* via a virtual-time event queue (min-heap). With a
+DeferredExecutor (e.g. MPI workers) the same event loop dispatches training to other
+processes, and the virtual event order is unchanged.
 
 Design facts verified against APPFL source (2026-06-12):
   - `ServerAgent.global_update(..., blocking=False)` with AsyncScheduler returns a
@@ -36,11 +38,14 @@ class AsyncSimDriver(BaseSimDriver):
         base_step_time: Optional[float] = None,
         eval_every: int = 0,
         compression_ratio: float = 1.0,
+        executor=None,
+        task_seeding: bool = True,
     ):
         """
-        :param max_in_flight: Maximum clients dispatched but not yet arrived.
-            Nothing runs concurrently — training is strictly serial — so this
-            bounds *virtual* outstanding updates, not physical parallelism.
+        :param max_in_flight: Maximum clients dispatched but not yet arrived. It
+            bounds *virtual* outstanding updates. In-process training is strictly
+            serial; with an executor, at most this many tasks exist at once, so it
+            also caps how many workers can be kept busy.
         """
         super().__init__(
             server_agent,
@@ -51,6 +56,8 @@ class AsyncSimDriver(BaseSimDriver):
             base_step_time=base_step_time,
             eval_every=eval_every,
             compression_ratio=compression_ratio,
+            executor=executor,
+            task_seeding=task_seeding,
         )
         self.max_in_flight = max(1, int(max_in_flight))
         self.logger.info(f"  async max_in_flight={self.max_in_flight}")
@@ -69,7 +76,7 @@ class AsyncSimDriver(BaseSimDriver):
         need = self.max_in_flight - len(self.active)
         if need <= 0:
             return
-        idle = [cid for cid in self.clients if cid not in self.active]
+        idle = [cid for cid in self.client_ids if cid not in self.active]
 
         for cid in self._rng.sample(idle, min(need, len(idle))):
             self.active.add(cid)
@@ -105,6 +112,10 @@ class AsyncSimDriver(BaseSimDriver):
                 self._handle_train_start(cid, vtime)
             elif etype == "train_complete":
                 self._handle_train_complete(cid, vtime)
+        # The serial engine had already trained these; an executor need not.
+        if self.executor is not None:
+            for pending in self._pending.values():
+                self.executor.discard(pending["handle"])
         self.logger.log_banner(
             "Simulation finished",
             {
@@ -134,31 +145,32 @@ class AsyncSimDriver(BaseSimDriver):
 
         epoch_dispatch = self._cur_epoch()
 
-        # --- ACTUAL TRAINING ---
-        client = self.clients[cid]
         # `client_id` lets the aggregator record which global version this client
         # trains from; without it staleness is measured from the client's previous
         # upload, which over-counts whenever a client idles between dispatches.
         global_params = self.server.get_parameters(serial_run=True, client_id=cid)
-        client.load_parameters(global_params)
+        seed = self._next_seed(cid)
 
-        client.train()
-        res = client.get_parameters()
-        if isinstance(res, tuple):
-            local_model, meta = res[0], dict(res[1])
+        if self.executor is None:
+            # --- ACTUAL TRAINING, in this process ---
+            local_model, meta = self._train_in_process(cid, global_params, seed)
+            comp, comm, dur = self._client_duration(cid, profile, meta)
+            pending = {"local_model": local_model, "meta": meta}
         else:
-            local_model, meta = res, {}
-
-        comp, comm, dur = self._client_duration(cid, profile, meta)
+            # The duration is known now, so the completion event can be queued
+            # before the client has trained; the worker trains it meanwhile and
+            # `_handle_train_complete` blocks only if the result is not back yet.
+            comp, comm, dur = self._apriori_duration(cid, profile)
+            handle = self.executor.submit(
+                cid, epoch_dispatch, global_params, dispatch_time + dur, seed
+            )
+            pending = {"handle": handle}
         completion = dispatch_time + dur
 
-        self._pending[cid] = {
-            "local_model": local_model,
-            "meta": meta,
-            "dispatch_time": dispatch_time,
-            "epoch_dispatch": epoch_dispatch,
-            "duration": dur,
-        }
+        pending.update(
+            dispatch_time=dispatch_time, epoch_dispatch=epoch_dispatch, duration=dur
+        )
+        self._pending[cid] = pending
         self._push(completion, "train_complete", cid)
         self.logger.log_content(
             {
@@ -179,15 +191,20 @@ class AsyncSimDriver(BaseSimDriver):
         :param completion_time: Virtual time at which training completed.
         """
         p = self._pending.pop(cid)
+        if self.executor is None:
+            local_model, meta = p["local_model"], p["meta"]
+        else:
+            local_model, meta = self.executor.result(p["handle"])
+            self._check_steps(cid, meta)
 
         # --- ACTUAL AGGREGATION ---
-        meta = dict(p["meta"])
+        meta = dict(meta)
         val_acc = meta.get("val_accuracy")
         meta["virtual_time"] = completion_time
         meta["dispatch_time"] = p["dispatch_time"]
 
         local_model = {
-            k: v.cpu() if hasattr(v, "cpu") else v for k, v in p["local_model"].items()
+            k: v.cpu() if hasattr(v, "cpu") else v for k, v in local_model.items()
         }
 
         # Captured before the update: `global_update` increments the epoch counter,

@@ -42,6 +42,8 @@ class SyncSimDriver(BaseSimDriver):
         max_wait_time: Optional[float] = None,
         window_duration: Optional[float] = None,
         target_rounds: int = 100,
+        executor=None,
+        task_seeding: bool = True,
     ):
         super().__init__(
             server_agent,
@@ -52,6 +54,8 @@ class SyncSimDriver(BaseSimDriver):
             base_step_time=base_step_time,
             eval_every=eval_every,
             compression_ratio=compression_ratio,
+            executor=executor,
+            task_seeding=task_seeding,
         )
         self.participants_per_round = max(1, int(participants_per_round))
         self.mode = mode
@@ -69,12 +73,12 @@ class SyncSimDriver(BaseSimDriver):
 
         # A quorum larger than the cohort can never be met, so every round would
         # skip. `_select_participants` caps the cohort at the client count.
-        cohort = min(self.participants_per_round, len(self.clients))
+        cohort = min(self.participants_per_round, len(self.client_ids))
         if self.min_responses > cohort:
             raise ValueError(
                 f"min_responses={self.min_responses} exceeds the {cohort} client(s) "
                 f"dispatched per round (participants_per_round="
-                f"{self.participants_per_round}, num_clients={len(self.clients)}), "
+                f"{self.participants_per_round}, num_clients={len(self.client_ids)}), "
                 f"so no round could ever reach the quorum."
             )
 
@@ -102,14 +106,19 @@ class SyncSimDriver(BaseSimDriver):
     # ---------- participant selection ----------
     def _select_participants(self):
         """Select this round's cohort of `participants_per_round` clients."""
-        all_ids = list(self.clients.keys())
+        all_ids = list(self.client_ids)
         participant_count = min(self.participants_per_round, len(all_ids))
         return self._rng.sample(all_ids, participant_count)
 
     # ---------- duration computation ----------
     def _compute_completions(self, selected, t_start):
         """
-        Train all selected clients and compute their virtual completion times.
+        Compute the virtual completion time of every selected client.
+
+        In-process, this trains every selected client (their durations come from
+        the trainer's timing). With an executor the durations are known before
+        training, so nothing is trained here: :meth:`_train_accepted` later trains
+        only the clients the barrier accepts.
 
         :param selected: List of selected client IDs.
         :param t_start: Round start virtual time.
@@ -118,32 +127,55 @@ class SyncSimDriver(BaseSimDriver):
         self.active = set(selected)
         self._max_active = max(self._max_active, len(self.active))
         completions = []
+        # Seeds are drawn for every selected client, accepted or not, so the k-th
+        # task of a client gets the same seed on both paths.
+        seeds = {cid: self._next_seed(cid) for cid in selected}
 
-        global_params = self.server.get_parameters(serial_run=True)
+        if self.executor is None:
+            global_params = self.server.get_parameters(serial_run=True)
         for cid in selected:
-            client = self.clients[cid]
             profile = self.profiles[cid]
-            client.load_parameters(global_params)
-            client.train()
-            result = client.get_parameters()
-            if isinstance(result, tuple):
-                local_model, meta = result[0], dict(result[1])
+            if self.executor is None:
+                local_model, meta = self._train_in_process(
+                    cid, global_params, seeds[cid]
+                )
+                _, _, duration = self._client_duration(cid, profile, meta)
+                completion = {"local_model": local_model, "meta": meta}
             else:
-                local_model, meta = result, {}
-            _, _, duration = self._client_duration(cid, profile, meta)
-            completions.append(
-                {
-                    "cid": cid,
-                    "duration": duration,
-                    "completion_time": t_start + duration,
-                    "local_model": local_model,
-                    "meta": meta,
-                }
+                _, _, duration = self._apriori_duration(cid, profile)
+                completion = {"seed": seeds[cid]}
+            completion.update(
+                cid=cid, duration=duration, completion_time=t_start + duration
             )
+            completions.append(completion)
 
         completions.sort(key=lambda x: x["completion_time"])
         self.active.clear()
         return completions
+
+    def _train_accepted(self, accepted):
+        """
+        Train the clients a barrier accepted, through the executor.
+
+        The global model is published once for the round, every accepted client is
+        submitted with its completion time as the deadline (so workers train them in
+        aggregation order), and each result is stored in its completion dict for
+        :meth:`_aggregate_round`, which then runs unchanged.
+
+        :param accepted: Completion dicts accepted by the barrier, in arrival order.
+        """
+        global_params = self.server.get_parameters(serial_run=True)
+        version = self.server.scheduler.get_num_global_epochs()
+        self.executor.publish(version, global_params)
+        handles = [
+            self.executor.submit(
+                c["cid"], version, None, c["completion_time"], c["seed"]
+            )
+            for c in accepted
+        ]
+        for c, handle in zip(accepted, handles):
+            c["local_model"], c["meta"] = self.executor.result(handle)
+            self._check_steps(c["cid"], c["meta"])
 
     # ---------- barrier logic ----------
     def _apply_barrier(self, completions, t_start):
@@ -316,6 +348,8 @@ class SyncSimDriver(BaseSimDriver):
             self._record_round(t_start, t_barrier, [], discarded, skipped=True)
             return False
 
+        if self.executor is not None:
+            self._train_accepted(accepted)
         self._aggregate_round(accepted)
 
         self._record_round(t_start, t_barrier, accepted, discarded, skipped=False)
