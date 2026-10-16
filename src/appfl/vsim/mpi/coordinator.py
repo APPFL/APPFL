@@ -118,6 +118,7 @@ class MPIExecutor(DeferredExecutor):
             "bytes_from_workers": 0,
             "stall_seconds": 0.0,
             "pack_seconds": 0.0,
+            "setup_seconds": 0.0,
             "peak_prefetched_bytes": 0,
         }
 
@@ -192,6 +193,9 @@ class MPIExecutor(DeferredExecutor):
         # of a second and dominates the coordinator's loop.
         gc.collect()
         gc.freeze()
+
+        self._stats["setup_seconds"] = time.perf_counter() - self._started
+        self._started = time.perf_counter()  # wall and utilization cover the run
 
         hosts = sorted({r["host"] for r in replies})
         idle = [r["rank"] for r in replies if r["clients"] == 0]

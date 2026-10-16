@@ -9,6 +9,9 @@ Two modes:
 Both modes support max_wait_time (hard deadline) and min_responses (skip round
 if fewer arrive).
 
+With a DeferredExecutor (e.g. MPI workers) durations are known before training, so
+the barrier is applied first and only the accepted clients are trained remotely.
+
 Inherits BaseSimDriver for common state, utilities, and model init.
 """
 
