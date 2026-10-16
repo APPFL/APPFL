@@ -141,6 +141,19 @@ the dispatched clients each round, so the scheduler must accept a per-round
 response count via `set_num_clients()` — `SyncScheduler` does. A scheduler
 without it is rejected when the driver is constructed.
 
+Client weights follow `aggregator_kwargs.client_weights_mode` as usual. The
+runner reports every client's local dataset size to the server before the run,
+and lists it under `samples` in the "Client system profiles" table, so
+`"sample_size"` weights updates by data size. A script that builds
+`AsyncSimDriver` or `SyncSimDriver` itself has to report the sizes too;
+otherwise the aggregators fall back to equal weights without a warning:
+
+```python
+from appfl.vsim import register_sample_sizes
+
+register_sample_sizes(server_agent, client_agents)  # before driver.run()
+```
+
 ## Scope
 
 This engine physically trains clients serially on one device. It does not model
