@@ -1,16 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from omegaconf import DictConfig, OmegaConf
 
 
 @dataclass
 class ServerAgentConfig:
-    client_configs: DictConfig = OmegaConf.create(
-        {
-            "train_configs": OmegaConf.create({}),
-            "model_configs": OmegaConf.create({}),
-        }
+    client_configs: DictConfig = field(
+        default_factory=lambda: OmegaConf.create(
+            {
+                "train_configs": OmegaConf.create({}),
+                "model_configs": OmegaConf.create({}),
+            }
+        )
     )
-    server_configs: DictConfig = OmegaConf.create({})
+    server_configs: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
 
 
 @dataclass
@@ -25,8 +27,8 @@ class ClientAgentConfig:
     - additional_configs: Additional configurations that are not covered by the above categories.
     """
 
-    train_configs: DictConfig = OmegaConf.create({})
-    model_configs: DictConfig = OmegaConf.create({})
-    data_configs: DictConfig = OmegaConf.create({})
-    comm_configs: DictConfig = OmegaConf.create({})
-    additional_configs: DictConfig = OmegaConf.create({})
+    train_configs: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
+    model_configs: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
+    data_configs: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
+    comm_configs: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
+    additional_configs: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
