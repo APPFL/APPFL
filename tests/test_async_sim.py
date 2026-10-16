@@ -4,6 +4,7 @@ These test the core event-queue logic in isolation using lightweight fakes for
 ServerAgent / ClientAgent, so no dataset, model, or real training is needed.
 """
 
+import json
 import logging
 import random
 from collections import Counter
@@ -182,6 +183,32 @@ def test_invalid_compression_ratio_rejected():
                 logger=_silent_logger(),
                 compression_ratio=bad,
             )
+
+
+def test_history_records_compute_comm_split():
+    """Each async record carries the compute/comm split of its duration."""
+
+    class _Tensor:
+        """Stands in for a 4 MB parameter tensor, so transfers take time."""
+
+        def numel(self):
+            return 1_000_000
+
+        def element_size(self):
+            return 4
+
+    class _SizedServer(_FakeServer):
+        def get_parameters(self, **kw):
+            return {"w": _Tensor()}
+
+    d = _make_driver(3, 2, [1.0, 2.0, 0.5], target=6, server_cls=_SizedServer)
+    d.run()
+    for r in d.history:
+        factor = d.profiles[r["cid"]].compute_factor
+        assert abs(r["compute_time"] - 0.01 * 100 * factor) < 1e-12
+        assert r["comm_time"] > 0
+        assert abs(r["compute_time"] + r["comm_time"] - r["duration"]) < 1e-12
+    json.dumps(d.history)  # what run_vsim.py --save_history writes
 
 
 def test_virtual_time_monotonic_and_count():

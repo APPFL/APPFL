@@ -121,8 +121,29 @@ time can vary with hardware load.
 ## Outputs and verification
 
 The runner writes console output and `vsim_logs/run_<timestamp>/vsim.log`.
-`driver.history` contains one record per async completion or sync round.
-`plot_timeline.py` can visualize async history exported by a caller.
+`driver.history` contains one record per async completion or sync round, and
+`--save_history PATH` writes it to a JSON file. An async record holds the
+arrival time `vtime`, the client `cid`, the global `epoch` after aggregation,
+`staleness`, `dispatch_time`, and `duration`, split into `compute_time` and
+`comm_time`. It also carries the client's `val_accuracy`, `comm_bytes`, and
+`completion_ok`. Global evaluation runs when `eval_every` is positive and
+`server_configs` has a `val_data_configs` block; records at evaluated epochs
+then also hold `global_val_accuracy` and `global_val_loss`.
+
+`plot_timeline.py` draws an async history as a per-client timeline: compute and
+communication bars, aggregation marks, global-eval lines, and the global
+accuracy curve underneath. Next to the main figure it writes a `_zoom` view of
+the first 5 virtual seconds. Pass `--max_vt T` to plot only the first `T`
+seconds instead.
+
+```bash
+python vsim/run_vsim.py --num_clients 4 --base_step_time 0.01 --save_history h.json
+python vsim/plot_timeline.py h.json --out t.png   # writes t.png and t_zoom.png
+```
+
+For a run made without `--save_history`, pass its `vsim.log` instead. The event
+table in the log is parsed on a best-effort basis, and its values are rounded to
+four decimals.
 
 `--verify` checks virtual-time monotonicity, completion arithmetic, requested
 completion/round counts, concurrency bounds, nonnegative async staleness, and
