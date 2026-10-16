@@ -21,6 +21,7 @@ We present a collection of tutorials for APPFL framework.
     examples_scaling_test
     examples_monai
     examples_dr_integration
+    examples_subgroup_calibration
     examples_international
     appflx/index
     deprecated_tutorial

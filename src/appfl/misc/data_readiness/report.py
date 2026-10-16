@@ -1,5 +1,8 @@
 import json
 import os
+from collections.abc import Mapping
+from html import escape
+from .calibration import aggregate_calibration_reports
 from .plots import generate_combined_feature_space_plot
 
 
@@ -15,18 +18,70 @@ def get_unique_file_path(output_dir, output_filename, extension):
 
 
 def save_json_report(file_path, readiness_report, logger):
-    with open(file_path, "w") as json_file:
+    with open(file_path, "w", encoding="utf-8") as json_file:
         json.dump(readiness_report, json_file, indent=4)
     logger.info(f"Data readiness report saved as JSON to: {file_path}")
 
 
 def save_html_report(file_path, html_content, logger):
-    with open(file_path, "w") as html_file:
+    with open(file_path, "w", encoding="utf-8") as html_file:
         html_file.write(html_content)
     logger.info(f"Data readiness report saved as HTML: {file_path}")
 
 
-def generate_html_content(readiness_report):
+def get_calibration_summary(readiness_report, expected_client_ids=None):
+    """Aggregate calibration entries using their transport client IDs."""
+    entries = readiness_report.get("specified_metrics", {})
+    if not isinstance(entries, Mapping):
+        raise ValueError("specified_metrics must map client IDs to metrics")
+    if not any(
+        isinstance(entry, Mapping) and "subgroup_calibration" in entry
+        for entry in entries.values()
+    ):
+        return None
+    client_ids = set(expected_client_ids or ())
+    for values in readiness_report.values():
+        if isinstance(values, Mapping):
+            client_ids.update(values)
+    if set(entries) != client_ids or any(
+        not isinstance(entry, Mapping) or "subgroup_calibration" not in entry
+        for entry in entries.values()
+    ):
+        raise ValueError("all clients must supply a subgroup calibration report")
+    return aggregate_calibration_reports(
+        {client: entry["subgroup_calibration"] for client, entry in entries.items()}
+    )
+
+
+def add_calibration_section(summary):
+    """Render metrics for retained patients without exposing extra totals."""
+    content = "<h2>Subgroup calibration</h2>"
+    content += (
+        f"<p>{summary['n_bins']} probability bins; minimum cell count "
+        f"{summary['min_cell_count']}; minimum events and non-events "
+        f"{summary['min_outcome_count']}. Scores describe retained patients only. "
+        "Missing groups are unavailable. Full-cohort coverage is unknown.</p>"
+        "<p>Wider bins can hide calibration differences. Suppression does not "
+        "provide a formal privacy guarantee.</p>"
+    )
+    if not summary["groups"]:
+        return content + "<p>Unavailable: no cells meet the reporting thresholds.</p>"
+    content += (
+        "<table><thead><tr><th>Group</th><th>Retained patients</th>"
+        "<th>ECE</th><th>Brier score</th><th>Warning</th></tr></thead><tbody>"
+    )
+    for group, metrics in summary["groups"].items():
+        content += (
+            f"<tr><td>{escape(group)}</td><td>{metrics['n']}</td>"
+            f"<td>{metrics['ece']:.6f}</td><td>{metrics['brier']:.6f}</td>"
+            f"<td>{escape(metrics['warning'] or '')}</td></tr>"
+        )
+    return content + "</tbody></table>"
+
+
+def generate_html_content(readiness_report, calibration_summary=None):
+    if calibration_summary is None:
+        calibration_summary = get_calibration_summary(readiness_report)
     html_content = get_html_header()
 
     attribute_keys = [key for key in readiness_report.keys() if key != "to_combine"]
@@ -53,15 +108,25 @@ def generate_html_content(readiness_report):
             if key == "plots":
                 continue
             value = readiness_report[key][client_id]
+            if (
+                key == "specified_metrics"
+                and isinstance(value, Mapping)
+                and "subgroup_calibration" in value
+            ):
+                value = dict(
+                    value, subgroup_calibration="See subgroup calibration below"
+                )
             value_str = (
                 str(value)
                 if not isinstance(value, list)
                 else ", ".join(map(str, value))
             )
-            html_content += f"<td>{value_str}</td>"
+            html_content += f"<td>{escape(value_str)}</td>"
         html_content += "</tr>"
 
     html_content += "</tbody></table>"
+    if calibration_summary is not None:
+        html_content += add_calibration_section(calibration_summary)
 
     # Add plots for each client
     for client_id in client_ids:
