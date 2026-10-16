@@ -5,6 +5,7 @@ service GRPCCommunicator {
   rpc GetGlobalModel (GetGlobalModelRequest) returns (stream DataBuffer) {}
   rpc UpdateGlobalModel (stream DataBuffer) returns (stream DataBuffer) {}
   rpc InvokeCustomAction (stream DataBuffer) returns (stream DataBuffer) {}
+  rpc PollResult (PollRequest) returns (stream DataBuffer) {}
 }
 
 // Binary data buffer for transmitted data with larger size
@@ -21,6 +22,8 @@ message ClientHeader {
 // Header to include for all server responses for client to know the server status
 message ServerHeader {
   ServerStatus status = 1;
+  string ticket = 2;        // set with PENDING: ticket to poll the result with
+  float poll_interval = 3;  // set with PENDING: seconds to wait before polling
 }
 
 // Status code for the server
@@ -28,6 +31,7 @@ enum ServerStatus {
   RUN = 0;
   DONE = 1;
   ERROR = 2;
+  PENDING = 3; // request acknowledged, poll for the result with `PollResult`
 }
 
 message ConfigurationRequest {
@@ -72,4 +76,9 @@ message CustomActionRequest {
 message CustomActionResponse {
   ServerHeader header = 1;
   string results = 2;
+}
+
+message PollRequest {
+  ClientHeader header = 1;
+  string ticket = 2;
 }
