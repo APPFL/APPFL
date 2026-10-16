@@ -1,5 +1,7 @@
 logs
 log
+proposal
+examples/mlruns
 data
 !src/appfl/loader/data/
 !src/appfl/loader/data/**

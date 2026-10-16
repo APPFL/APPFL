@@ -120,6 +120,7 @@ setuptools.setup(
             "Pillow",
         ],
         "monai": ["monai[all]==1.2.0"],
+        "lightning": ["lightning>=2.0", "mlflow"],
         "mpi": ["mpi4py"],
         # The ZFP lossy compressor is optional: zfpy wheels are built against
         # the numpy 1.x ABI and fail to import under numpy>=2.0.0. Installing
