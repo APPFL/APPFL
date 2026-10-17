@@ -495,3 +495,99 @@ def test_verify_barrier_respected_holds():
     )
     d.run()
     assert d.verify(5)["barrier_respected"]
+
+
+# --- compressed uploads --- #
+_RAW_BYTES = 1000  # size of the served global model
+_LINK_MBPS = 0.008  # 1000 bytes/s: the raw model takes exactly 1s each way
+
+
+class _FakeTensor:
+    """Just enough of a tensor for the driver to size it."""
+
+    def __init__(self, nbytes):
+        self.nbytes = nbytes
+
+    def numel(self):
+        return self.nbytes
+
+    def element_size(self):
+        return 1
+
+
+class _SizedServer(_FakeServer):
+    """Serves a model of known size and records every update it is given."""
+
+    def __init__(self, target_epochs):
+        super().__init__(target_epochs)
+        self.received = []
+
+    def get_parameters(self, **kw):
+        return {"w": _FakeTensor(_RAW_BYTES)}
+
+    def global_update(self, client_id, local_model, blocking=False, **kw):
+        self.received.append((client_id, local_model))
+        return super().global_update(client_id, local_model, blocking=blocking, **kw)
+
+
+class _CompressingClient(_FakeClient):
+    """Returns its update as bytes, as ClientAgent does with compression enabled."""
+
+    def __init__(self, cid, payload=b"\x00" * 250):
+        super().__init__(cid)
+        self.payload = payload
+
+    def get_parameters(self):
+        return self.payload, super().get_parameters()[1]
+
+
+def _sized_sync(clients, compression_ratio=1.0, min_responses=None, target_rounds=3):
+    """Count-mode driver over a `_RAW_BYTES` model, with 1s of compute per client."""
+    return SyncSimDriver(
+        server_agent=_SizedServer(target_rounds * 100),
+        client_agents=clients,
+        profiles={c.get_id(): ClientProfile(bandwidth=_LINK_MBPS) for c in clients},
+        participants_per_round=len(clients),
+        logger=_logger(),
+        base_step_time=0.01,  # x 100 steps
+        compression_ratio=compression_ratio,
+        mode="count",
+        min_responses=min_responses,
+        target_rounds=target_rounds,
+    )
+
+
+def test_compressed_update_reaches_server_unchanged():
+    """A compressing client hands back bytes, which the server decompresses itself."""
+    clients = [_CompressingClient(f"C{i}") for i in range(3)]
+    d = _sized_sync(clients, min_responses=2)
+    d.run()
+    assert d.verify(3)["completed_rounds==target"]
+    payload = {c.get_id(): c.payload for c in clients}
+    assert len(d.server.received) == 6  # 2 accepted x 3 rounds
+    assert all(m is payload[cid] for cid, m in d.server.received)
+
+
+@pytest.mark.parametrize("compression_ratio", [1.0, 0.25])
+def test_compressed_upload_is_timed_from_its_payload(compression_ratio):
+    """Each client uploads its own payload; the declared ratio is moot."""
+    payload = {"C0": b"\x00" * 250, "C1": b"\x00" * 500}
+    d = _sized_sync(
+        [_CompressingClient(cid, p) for cid, p in payload.items()],
+        compression_ratio=compression_ratio,
+    )
+    d.run()
+    for r in d.history:
+        # the barrier waits for C1: 1s compute + 1s raw model down + 0.5s up
+        assert r["duration"] == pytest.approx(2.5)
+        assert r["comm_bytes"] == 2 * _RAW_BYTES + 250 + 500
+
+
+def test_compression_ratio_scales_the_upload_only():
+    """A declared ratio models a compressor that is not run: only the uplink shrinks."""
+    d = _sized_sync([_FakeClient(f"C{i}") for i in range(2)], compression_ratio=0.25)
+    d.run()
+    for r in d.history:
+        # 1s compute + 1s for the raw model down + 0.25s for a quarter of it up
+        assert r["duration"] == pytest.approx(2.25)
+        assert r["comm_bytes"] == pytest.approx(2 * 1.25 * _RAW_BYTES)
