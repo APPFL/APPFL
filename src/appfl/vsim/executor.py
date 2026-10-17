@@ -93,6 +93,20 @@ class DeferredExecutor(ABC):
     def discard(self, handle: TaskHandle) -> None:
         """Declare that the task's result will never be consumed."""
 
+    def set_remaining(self, count: Optional[int]) -> None:
+        """
+        Declare that the driver will consume at most ``count`` more results.
+
+        Results are consumed in deadline order, so the driver has consumed all
+        ``count`` of them by the ``count``-th smallest pending deadline, whatever it
+        submits later. A task due after that, already submitted or submitted
+        later, can never be consumed: the executor may skip it, and the driver
+        never asks for it. ``None`` withdraws the declaration. The default ignores
+        it.
+
+        :param count: Upper bound on the remaining :meth:`result` calls.
+        """
+
     @abstractmethod
     def shutdown(self) -> Dict:
         """Stop the workers and return execution statistics."""

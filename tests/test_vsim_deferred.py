@@ -163,6 +163,74 @@ class _ShuffledExecutor(DeferredExecutor):
         return {}
 
 
+class _HorizonExecutor(_ShuffledExecutor):
+    """
+    Drops every task the driver's remaining-result count rules out, as MPIExecutor
+    does, and fails if the driver later asks for one of them.
+    """
+
+    def __init__(self, clients, **kw):
+        super().__init__(clients, **kw)
+        self.declared = []
+        self.dropped = {}  # tid -> remaining count when it was dropped
+        self._open = {}  # tid -> handle, submitted and not yet consumed
+        self._remaining = None
+
+    def set_remaining(self, count):
+        self.declared.append(count)
+        self._remaining = count
+        self._drop_unreachable()
+
+    def submit(self, cid, version, params, deadline, seed):
+        handle = super().submit(cid, version, params, deadline, seed)
+        self._open[handle.tid] = handle
+        self._drop_unreachable()
+        return handle
+
+    def _drop_unreachable(self):
+        if self._remaining is None or len(self._open) <= self._remaining:
+            return
+        deadlines = sorted(h.deadline for h in self._open.values())
+        horizon = deadlines[self._remaining - 1] if self._remaining else -1.0
+        for tid, handle in list(self._open.items()):
+            if handle.deadline > horizon:
+                del self._open[tid]
+                self._pending.pop(tid, None)
+                self._results.pop(tid, None)
+                self.dropped[tid] = self._remaining
+
+    def result(self, handle):
+        assert handle.tid not in self.dropped, "the driver consumed a dropped task"
+        self._open.pop(handle.tid)
+        return super().result(handle)
+
+    def discard(self, handle):
+        self._open.pop(handle.tid, None)
+        super().discard(handle)
+
+
+class _BufferedServer:
+    """Advances the epoch count only on every second arrival, like a buffer."""
+
+    def __init__(self, target):
+        self.inner = _Server(target)
+        self.scheduler = _Scheduler()
+        self.model = None
+        self.arrivals = 0
+
+    def get_parameters(self, **kw):
+        return self.inner.get_parameters(**kw)
+
+    def global_update(self, client_id, local_model, blocking=False, **kw):
+        self.arrivals += 1
+        if self.arrivals % 2 == 0:
+            self.scheduler.epochs += 1
+        return {"w": float(self.scheduler.epochs)}
+
+    def training_finished(self, **kw):
+        return self.scheduler.epochs >= self.inner.target
+
+
 class _OfflineUntil(ClientProfile):
     def __init__(self, until, **kw):
         super().__init__(**kw)
@@ -191,10 +259,20 @@ def _profiles(factors, offline=None):
     return profiles
 
 
-def _async(factors, deferred, K=3, target=30, seed=5, offline=None, **kw):
+def _async(
+    factors,
+    deferred,
+    K=3,
+    target=30,
+    seed=5,
+    offline=None,
+    executor_cls=_ShuffledExecutor,
+    server_cls=_Server,
+    **kw,
+):
     clients = [_Client(f"C{i}") for i in range(len(factors))]
-    executor = _ShuffledExecutor(clients, shuffle_seed=seed) if deferred else None
-    server = _Server(target)
+    executor = executor_cls(clients, shuffle_seed=seed) if deferred else None
+    server = server_cls(target)
     driver = AsyncSimDriver(
         server,
         None if deferred else clients,
@@ -282,6 +360,68 @@ def test_async_leftover_tasks_are_discarded():
         p["handle"].tid for p in driver._pending.values()
     }
     assert not consumed & {h.tid for h in ex.discarded}
+
+
+@pytest.mark.parametrize("shuffle_seed", [0, 1, 2])
+def test_async_target_epochs_lets_the_executor_drop_unconsumed_tasks(shuffle_seed):
+    factors = [1.0, 3.0, 0.5, 2.0, 1.5, 4.0, 0.7, 2.5]
+    eager, s_eager, _ = _async(
+        factors, deferred=False, K=8, target=12, seed=shuffle_seed
+    )
+    eager.run()
+    driver, server, ex = _async(
+        factors,
+        deferred=True,
+        K=8,
+        target=12,
+        seed=shuffle_seed,
+        executor_cls=_HorizonExecutor,
+        target_epochs=12,
+    )
+    driver.run()
+    assert driver.history == eager.history
+    assert server.updates == s_eager.updates
+    assert ex.declared == list(range(12, -1, -1))
+    consumed = {h.tid for h in ex.result_order}
+    assert len(consumed) == 12
+    assert consumed | set(ex.dropped) == {h.tid for h in ex.submitted}
+    # Tasks are ruled out before the last arrival, while they could still train.
+    assert any(count > 0 for count in ex.dropped.values())
+
+
+def test_async_target_epochs_has_no_effect_in_process():
+    plain, _, _ = _async([1.0, 2.0, 0.5], deferred=False, K=2, target=9)
+    plain.run()
+    declared, _, _ = _async(
+        [1.0, 2.0, 0.5], deferred=False, K=2, target=9, target_epochs=5
+    )
+    declared.run()
+    assert declared.history == plain.history
+
+
+def test_async_target_epochs_rejects_arrivals_that_do_not_advance_the_epoch():
+    driver, _, _ = _async(
+        [1.0, 2.0, 0.5],
+        deferred=True,
+        target=6,
+        executor_cls=_HorizonExecutor,
+        server_cls=_BufferedServer,
+        target_epochs=6,
+    )
+    with pytest.raises(RuntimeError, match="advances the global epoch count"):
+        driver.run()
+
+
+def test_async_target_epochs_below_the_servers_target_raises():
+    driver, _, _ = _async(
+        [1.0, 2.0, 0.5],
+        deferred=True,
+        target=8,
+        executor_cls=_HorizonExecutor,
+        target_epochs=5,
+    )
+    with pytest.raises(RuntimeError, match="target_epochs=5"):
+        driver.run()
 
 
 def test_async_steps_mismatch_raises():

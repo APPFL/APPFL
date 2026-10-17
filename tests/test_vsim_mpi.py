@@ -22,6 +22,7 @@ from omegaconf import OmegaConf  # noqa: E402
 
 from appfl.vsim import AsyncSimDriver, ClientProfile, SyncSimDriver  # noqa: E402
 from appfl.vsim.mpi import MPIExecutor, run_worker  # noqa: E402
+from appfl.vsim.mpi.coordinator import assign_homes  # noqa: E402
 
 pytestmark = pytest.mark.mpi(min_size=2)
 
@@ -118,9 +119,11 @@ IDS = [f"Client{i + 1}" for i in range(9)]
 PROFILES = {
     cid: ClientProfile(compute_factor=0.5 + (i % 4) * 0.5) for i, cid in enumerate(IDS)
 }
+# Expected durations up to a common factor (every client runs 100 steps).
+DURATIONS = {cid: profile.compute_factor for cid, profile in PROFILES.items()}
 
 
-def _tensor_driver(mode, executor, base_step_time=0.01):
+def _tensor_driver(mode, executor, base_step_time=0.01, target_epochs=None):
     clients = None if executor else [_TensorClient(cid) for cid in IDS]
     if mode == "async":
         server = _TensorServer(30)
@@ -133,6 +136,7 @@ def _tensor_driver(mode, executor, base_step_time=0.01):
             seed=7,
             base_step_time=base_step_time,
             executor=executor,
+            target_epochs=target_epochs,
         )
     else:
         server = _TensorServer(10**6, sync=True)
@@ -181,31 +185,46 @@ def _executors(count):
 
 
 # ======================== tests ======================== #
+@pytest.mark.parametrize("balanced", [False, True])
 @pytest.mark.parametrize("mode", ["async", "sync"])
-def test_mpi_run_matches_in_process(mode):
+def test_mpi_run_matches_in_process(mode, balanced):
+    """``balanced`` places clients by expected load and, in async mode, declares
+    the target so the executor drops tasks that can never be consumed."""
     torch.set_num_threads(1)
+    placement = {}
+    if balanced:
+        placement = dict(durations=DURATIONS, mode=mode, max_in_flight=5)
 
     @_executors(1)
     def run(new_executor):
         reference, ref_server = _tensor_driver(mode, None)
         reference.run()
-        executor = new_executor(IDS, prefetch_mb=0.05)  # tiny budget: on-demand path
-        driver, server = _tensor_driver(mode, executor)
+        # A tiny prefetch budget exercises the on-demand fetch path.
+        executor = new_executor(IDS, prefetch_mb=0.05, **placement)
+        driver, server = _tensor_driver(
+            mode, executor, target_epochs=30 if balanced else None
+        )
         driver.run()
         stats = executor.shutdown()
-        return reference, ref_server, driver, server, stats
+        return reference, ref_server, driver, server, stats, executor.homes
 
     out = _on_rank0(MPI.COMM_WORLD, run, _make_tensor_client)
     if out is None:
         return
-    reference, ref_server, driver, server, stats = out
+    reference, ref_server, driver, server, stats, homes = out
     assert driver.history == reference.history
     assert server.updates == ref_server.updates
     assert torch.equal(server.w, ref_server.w)
     assert stats["results"] == len(server.updates)
+    workers = MPI.COMM_WORLD.Get_size() - 1
+    assert homes == assign_homes(IDS, workers, **placement)
+    assert stats["trained"] <= stats["tasks"] - stats["dropped_unsent"]
+    if mode == "async":
+        assert (stats["dropped"] > 0) == balanced
     if mode == "sync":
         # One broadcast per new version; no per-client model sends.
         assert stats["model_sends"] == 0 and stats["broadcasts"] >= 1
+        assert stats["dropped"] == 0
 
 
 def test_mpi_calibrates_step_time():
@@ -281,10 +300,20 @@ def _real_driver(kind, tmp_dir, executor):
     if executor is None:
         clients = [_make_real_client(cid, context, "cpu") for cid in ids]
     else:
-        executor = executor(ids, context=context)
+        executor = executor(
+            ids,
+            context=context,
+            durations={cid: p.compute_factor for cid, p in profiles.items()},
+            mode="async" if kind == "fedasync" else "sync",
+            max_in_flight=3,
+        )
     common = dict(logger=_logger(), seed=3, base_step_time=0.01, executor=executor)
     if kind == "fedasync":
-        driver = AsyncSimDriver(server, clients, profiles, max_in_flight=3, **common)
+        # AsyncScheduler counts one epoch per arrival, so the executor may drop
+        # tasks past the 8th arrival.
+        driver = AsyncSimDriver(
+            server, clients, profiles, max_in_flight=3, target_epochs=8, **common
+        )
     else:
         driver = SyncSimDriver(
             server,

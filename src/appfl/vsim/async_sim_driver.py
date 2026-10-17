@@ -40,12 +40,20 @@ class AsyncSimDriver(BaseSimDriver):
         compression_ratio: float = 1.0,
         executor=None,
         task_seeding: bool = True,
+        target_epochs: Optional[int] = None,
     ):
         """
         :param max_in_flight: Maximum clients dispatched but not yet arrived. It
             bounds *virtual* outstanding updates. In-process training is strictly
             serial; with an executor, at most this many tasks exist at once, so it
             also caps how many workers can be kept busy.
+        :param target_epochs: The server's ``num_global_epochs``. Pass it only when
+            every arrival advances the server's epoch count, as APPFL's
+            ``AsyncScheduler`` does; the run then ends after at most
+            ``target_epochs`` arrivals, and the driver tells the executor how many
+            remain, so tasks that can never be consumed are not trained. The
+            driver raises if an arrival does not advance the count. Unused
+            in-process.
         """
         super().__init__(
             server_agent,
@@ -60,6 +68,7 @@ class AsyncSimDriver(BaseSimDriver):
             task_seeding=task_seeding,
         )
         self.max_in_flight = max(1, int(max_in_flight))
+        self.target_epochs = None if target_epochs is None else int(target_epochs)
         self.logger.info(f"  async max_in_flight={self.max_in_flight}")
 
     # ---------- async-specific helpers ----------
@@ -84,6 +93,32 @@ class AsyncSimDriver(BaseSimDriver):
 
         self._max_active = max(self._max_active, len(self.active))
 
+    def _declare_remaining(self):
+        """Tell the executor how many more arrivals can end the run, if known."""
+        if self.executor is not None and self.target_epochs is not None:
+            self.executor.set_remaining(max(0, self.target_epochs - self._cur_epoch()))
+
+    def _check_epoch_advanced(self, epoch_before: int, epoch_now: int):
+        """
+        Fail if the count declared by :meth:`_declare_remaining` was too small.
+
+        The executor may already have dropped tasks beyond that count, and the
+        driver would wait for one of them.
+        """
+        if self.executor is None or self.target_epochs is None:
+            return
+        if epoch_now <= epoch_before or (
+            epoch_now >= self.target_epochs and not self._training_finished()
+        ):
+            raise RuntimeError(
+                f"target_epochs={self.target_epochs} assumes every arrival advances "
+                f"the global epoch count until the server finishes at "
+                f"target_epochs, but an arrival moved it from {epoch_before} to "
+                f"{epoch_now} (training_finished={self._training_finished()}). Pass "
+                f"target_epochs only with a scheduler that counts one epoch per "
+                f"arrival, such as AsyncScheduler, and equal to num_global_epochs."
+            )
+
     # ---------- main loop ----------
     def run(self):
         """Run the async simulation: pop events from the min-heap until done."""
@@ -101,6 +136,7 @@ class AsyncSimDriver(BaseSimDriver):
             ],
             repeat=True,
         )
+        self._declare_remaining()
         self._dispatch_idle()
         while not self._training_finished() and self.queue:
             vtime, _, etype, cid = heapq.heappop(self.queue)
@@ -218,6 +254,8 @@ class AsyncSimDriver(BaseSimDriver):
             global_model = global_model.result()
 
         epoch_now = self._cur_epoch()
+        self._check_epoch_advanced(epoch_before, epoch_now)
+        self._declare_remaining()
         staleness = epoch_before - p["epoch_dispatch"]
         self.active.discard(cid)
 

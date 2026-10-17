@@ -14,7 +14,7 @@ import bisect
 import gc
 import statistics
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Mapping, Optional
 
 from ..codec import pack_state, unpack_state
 from ..executor import DeferredExecutor, TaskHandle
@@ -24,14 +24,101 @@ _MIN_BACKOFF = 5e-5
 _MAX_BACKOFF = 2e-3
 
 
+def assign_homes(
+    client_ids: List[str],
+    num_workers: int,
+    durations: Optional[Mapping[str, float]] = None,
+    mode: str = "async",
+    max_in_flight: Optional[int] = None,
+) -> Dict[str, int]:
+    """
+    Choose the worker rank, ``1`` to ``num_workers``, that hosts each client.
+
+    A worker trains every task of the clients it hosts, and every task takes about
+    the same physical time whatever the client's virtual duration, so a good
+    placement evens out the number of tasks each worker must train. Without
+    ``durations``, client ``i`` goes to rank ``1 + i % num_workers``. With an
+    expected virtual duration per client:
+
+    - async: a client in flight completes once per duration, so clients are
+      packed by expected update rate, largest first, each onto the worker with the
+      smallest total rate so far (LPT). With fewer clients in flight than clients,
+      a finished client also waits until the driver samples it again. Sampling is
+      uniform over idle clients, so every client waits the same mean time ``I``
+      and updates at rate ``1 / (duration + I)``, where ``I`` keeps
+      ``max_in_flight`` clients in flight: ``sum(d / (d + I)) == max_in_flight``.
+    - sync: a barrier accepts the fastest clients of each cohort, so clients are
+      dealt round-robin in order of duration, and every worker hosts an equal
+      share of the clients most likely to be accepted.
+
+    :param client_ids: Client ids in configured order.
+    :param num_workers: Number of worker ranks.
+    :param durations: Expected virtual duration of one task per client. Only ratios
+        matter. ``None`` keeps ``i % num_workers``.
+    :param mode: ``"async"``, or a sync mode (any value starting with ``"sync"``).
+    :param max_in_flight: async only: clients in flight at once; ``None`` means all.
+    :return: Dict mapping each client id to its worker rank.
+    """
+    if durations is None:
+        return {cid: 1 + i % num_workers for i, cid in enumerate(client_ids)}
+    missing = [cid for cid in client_ids if cid not in durations]
+    if missing:
+        raise ValueError(f"durations has no entry for clients {missing[:5]}")
+    expected = {cid: float(durations[cid]) for cid in client_ids}
+    invalid = [cid for cid, d in expected.items() if not 0 < d < float("inf")]
+    if invalid:
+        raise ValueError(
+            f"durations must be positive and finite; got "
+            f"{ {cid: expected[cid] for cid in invalid[:5]} }"
+        )
+    order = {cid: i for i, cid in enumerate(client_ids)}
+
+    if mode.startswith("sync"):
+        ranked = sorted(client_ids, key=lambda cid: (expected[cid], order[cid]))
+        return {cid: 1 + i % num_workers for i, cid in enumerate(ranked)}
+    if mode != "async":
+        raise ValueError(f"mode must be 'async' or start with 'sync'; got {mode!r}")
+
+    rates = _update_rates(expected, max_in_flight)
+    loads = [0.0] * num_workers
+    homes = {}
+    for cid in sorted(client_ids, key=lambda cid: (-rates[cid], order[cid])):
+        worker = min(range(num_workers), key=lambda j: (loads[j], j))
+        homes[cid] = 1 + worker
+        loads[worker] += rates[cid]
+    return homes
+
+
+def _update_rates(
+    durations: Dict[str, float], max_in_flight: Optional[int]
+) -> Dict[str, float]:
+    """Return each client's expected async update rate (see :func:`assign_homes`)."""
+    values = list(durations.values())
+    in_flight = len(values) if max_in_flight is None else int(max_in_flight)
+    in_flight = max(1, min(in_flight, len(values)))
+    idle = 0.0
+    if in_flight < len(values):
+        # sum(d / (d + I)) falls from len(values) at I = 0 to at most sum(d) / I.
+        low, high = 0.0, sum(values) / in_flight
+        for _ in range(64):
+            middle = 0.5 * (low + high)
+            if sum(d / (d + middle) for d in values) > in_flight:
+                low = middle
+            else:
+                high = middle
+        idle = high
+    return {cid: 1.0 / (d + idle) for cid, d in durations.items()}
+
+
 class MPIExecutor(DeferredExecutor):
     """
     Train vsim clients on MPI worker ranks while rank 0 runs the event loop.
 
     Rank 0 constructs this executor and passes it to a driver; every other rank calls
-    :func:`appfl.vsim.mpi.run_worker`. Client ``i`` in ``client_ids`` order is homed
-    on rank ``1 + i % W`` for ``W`` workers, so a client's state never moves and
-    every cohort spreads evenly.
+    :func:`appfl.vsim.mpi.run_worker`. Each client is homed on one worker, so its
+    state never moves. Given expected durations, homes balance the expected work
+    (see :func:`assign_homes`); otherwise client ``i`` in ``client_ids`` order is
+    homed on rank ``1 + i % W`` for ``W`` workers.
 
     :param comm: Communicator spanning the coordinator (rank 0) and the workers. It
         is duplicated, so other traffic on it cannot interfere.
@@ -46,6 +133,10 @@ class MPIExecutor(DeferredExecutor):
     :param stall_timeout: Seconds without any progress before :meth:`result` gives
         up and reports what is outstanding on each worker.
     :param logger: Optional logger with ``info``/``warning`` (e.g. a VsimLogger).
+    :param durations: Expected virtual duration of one task per client, used only
+        to place clients on workers. ``None`` keeps ``i % W``.
+    :param mode: Driver mode the placement balances for: ``"async"``, or a sync mode.
+    :param max_in_flight: async only: the driver's ``max_in_flight``.
     """
 
     def __init__(
@@ -58,6 +149,9 @@ class MPIExecutor(DeferredExecutor):
         prefetch_mb: float = 1024.0,
         stall_timeout: float = 1800.0,
         logger=None,
+        durations: Optional[Mapping[str, float]] = None,
+        mode: str = "async",
+        max_in_flight: Optional[int] = None,
     ):
         from mpi4py import MPI
 
@@ -78,9 +172,15 @@ class MPIExecutor(DeferredExecutor):
         self.client_ids = list(client_ids)
         if len(set(self.client_ids)) != len(self.client_ids):
             raise ValueError("client_ids must be unique")
-        self.homes = {
-            cid: 1 + i % self.num_workers for i, cid in enumerate(self.client_ids)
-        }
+        self.homes = assign_homes(
+            self.client_ids, self.num_workers, durations, mode, max_in_flight
+        )
+        if durations is None:
+            self._placement = "i % W"
+        elif mode.startswith("sync"):
+            self._placement = "dealt in order of expected duration"
+        else:
+            self._placement = "packed by expected update rate"
         self.context = context
         self.log_dir = log_dir or ""
         self.calibration_runs = max(1, int(calibration_runs))
@@ -93,6 +193,7 @@ class MPIExecutor(DeferredExecutor):
         self._steps: Dict[str, int] = {}
         self._tasks: Dict[int, Dict] = {}
         self._need: List = []  # sorted (deadline, tid) of unconsumed tasks
+        self._remaining: Optional[int] = None  # results the driver may still consume
         self._fetching: Dict[int, Dict] = {}
         self._fetched_bytes = 0
         self._prefetch_dirty = False
@@ -111,6 +212,8 @@ class MPIExecutor(DeferredExecutor):
             "tasks": 0,
             "results": 0,
             "discarded": 0,
+            "dropped": 0,
+            "dropped_unsent": 0,
             "model_sends": 0,
             "model_sends_saved": 0,
             "broadcasts": 0,
@@ -202,7 +305,9 @@ class MPIExecutor(DeferredExecutor):
         self._info(
             f"MPI executor: {self.num_workers} workers on {len(hosts)} node(s), "
             f"{len(self.client_ids)} clients, devices: "
-            f"{sorted({r['device'] for r in replies})}"
+            f"{sorted({r['device'] for r in replies})}, torch threads per worker: "
+            f"{sorted({r['threads'] for r in replies})}, client homes: "
+            f"{self._placement}"
         )
         if idle:
             self._warning(
@@ -238,12 +343,21 @@ class MPIExecutor(DeferredExecutor):
     def submit(
         self, cid: str, version: int, params, deadline: float, seed: Optional[int]
     ) -> TaskHandle:
-        """Send a TASK to the client's home worker, with the model if it lacks it."""
+        """
+        Send a TASK to the client's home worker, with the model if it lacks it.
+
+        A task that can never be consumed (see :meth:`set_remaining`) is not sent.
+        """
         version = int(version)
         worker = self.homes[cid]
         tid = self._next_tid
         self._next_tid += 1
         handle = TaskHandle(tid, cid, version, float(deadline))
+        self._stats["tasks"] += 1
+        if self._beyond_horizon(handle.deadline):
+            self._stats["dropped"] += 1
+            self._stats["dropped_unsent"] += 1
+            return handle
         message = {
             "kind": P.TASK,
             "tid": tid,
@@ -269,15 +383,28 @@ class MPIExecutor(DeferredExecutor):
 
         self._tasks[tid] = {"handle": handle, "worker": worker, "state": "queued"}
         bisect.insort(self._need, (handle.deadline, tid))
-        self._stats["tasks"] += 1
+        self._drop_unreachable()  # the new deadline may pull the horizon in
         self._progress()
         return handle
+
+    def set_remaining(self, count: Optional[int]) -> None:
+        """
+        Drop every task past the ``count``-th smallest pending deadline.
+
+        The driver consumes at most ``count`` more results, in deadline order, so
+        those tasks can never be consumed. Tasks submitted later are checked too.
+        """
+        self._remaining = None if count is None else max(0, int(count))
+        self._drop_unreachable()
 
     def result(self, handle: TaskHandle):
         """Block until ``handle``'s local model is here; return (model, meta)."""
         record = self._tasks.get(handle.tid)
         if record is None:
-            raise RuntimeError(f"Task {handle.tid} is unknown or already consumed")
+            raise RuntimeError(
+                f"Task {handle.tid} is unknown, already consumed, or was dropped "
+                f"because the driver declared it would never consume it"
+            )
         started = time.perf_counter()
         self._last_activity = started
         while record["state"] != "received":
@@ -299,20 +426,10 @@ class MPIExecutor(DeferredExecutor):
     def discard(self, handle: TaskHandle) -> None:
         """Tell the worker to drop the task or its held result."""
         record = self._tasks.get(handle.tid)
-        if record is None:
+        if record is None or record["state"] == "discarded":
             return
         self._stats["discarded"] += 1
-        state = record["state"]
-        if state in ("queued", "ready"):
-            self._send_ctrl(record["worker"], {"kind": P.DROP, "tid": handle.tid})
-            self._forget(handle.tid)
-        elif state == "fetching":
-            # The payload is already on its way; free it once received.
-            self._remove_need(record)
-            record["state"] = "discarded"
-        elif state == "received":
-            self._fetched_bytes -= record["nbytes"]
-            self._forget(handle.tid)
+        self._release(record)
 
     def shutdown(self) -> Dict:
         """Stop the workers, drain every transfer, free the communicator."""
@@ -384,6 +501,52 @@ class MPIExecutor(DeferredExecutor):
             if record["state"] == "ready" and record["nbytes"] <= budget:
                 self._fetch(tid)
                 budget -= record["nbytes"]
+
+    def _release(self, record: Dict) -> None:
+        """Forget a task: drop it on its worker, or free its payload once here."""
+        tid = record["handle"].tid
+        state = record["state"]
+        if state in ("queued", "ready"):
+            self._send_ctrl(record["worker"], {"kind": P.DROP, "tid": tid})
+            self._forget(tid)
+        elif state == "fetching":
+            # The payload is already on its way; free it once received.
+            self._remove_need(record)
+            record["state"] = "discarded"
+        elif state == "received":
+            self._fetched_bytes -= record["nbytes"]
+            self._forget(tid)
+
+    def _beyond_horizon(self, deadline: float) -> bool:
+        """Whether a task due at ``deadline``, if submitted now, is never consumed."""
+        remaining = self._remaining
+        if remaining is None:
+            return False
+        if remaining == 0:
+            return True
+        return len(self._need) >= remaining and deadline > self._need[remaining - 1][0]
+
+    def _drop_unreachable(self) -> None:
+        """
+        Drop pending tasks due after the ``r``-th smallest pending deadline.
+
+        With ``r`` results left to consume, the driver has consumed them all by that
+        deadline, whatever it submits later: later tasks can only add arrivals. Ties
+        with that deadline are kept.
+        """
+        remaining = self._remaining
+        if remaining is None or len(self._need) <= remaining:
+            return
+        cut = 0
+        if remaining > 0:
+            horizon = self._need[remaining - 1][0]
+            cut = bisect.bisect_right(self._need, (horizon, float("inf")))
+        unreachable = self._need[cut:]
+        for _, tid in unreachable:
+            self._stats["dropped"] += 1
+            self._release(self._tasks[tid])
+        if unreachable:
+            self._prefetch_dirty = True  # dropped prefetches free budget
 
     def _remove_need(self, record: Dict) -> None:
         handle = record["handle"]
@@ -496,6 +659,7 @@ class MPIExecutor(DeferredExecutor):
         busy = sum(stats.get("busy_seconds", 0.0) for stats in self._byes.values())
         summary = dict(self._stats)
         summary.update(
+            trained=sum(stats.get("tasks", 0) for stats in self._byes.values()),
             workers=self.num_workers,
             wall_seconds=wall,
             worker_busy_seconds=busy,

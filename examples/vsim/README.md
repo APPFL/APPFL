@@ -179,9 +179,12 @@ mpiexec -n $((NNODES * 4)) --ppn 4 python vsim/run_vsim.py --executor mpi \
 
 Workers on a node are mapped to its visible GPUs round-robin. If the launcher
 pins `CUDA_VISIBLE_DEVICES` to one GPU per rank, each worker uses `cuda:0`. More
-ranks than GPUs puts several workers on one GPU. Worker output goes to
-`vsim_logs/run_<timestamp>/worker_<rank>.log`, and per-client log files are
-turned off on workers (each `ClientAgent` would otherwise hold four open files).
+ranks than GPUs puts several workers on one GPU. On CPU, each worker uses one
+torch thread unless `OMP_NUM_THREADS` is set; torch would otherwise start one
+thread per core in every rank, which made an 8-worker run 1.85x slower. Worker
+output goes to `vsim_logs/run_<timestamp>/worker_<rank>.log`, and per-client log
+files are turned off on workers (each `ClientAgent` would otherwise hold four
+open files).
 
 **What moves, and how often.** The event loop never waits on physical training to
 order events, and model traffic stays off the critical path:
@@ -193,9 +196,21 @@ order events, and model traffic stays off the critical path:
   the value so `--base_step_time` can pin it. Per-task measured durations are not
   supported with MPI: they would serialize the async event loop and depend on
   which GPU ran the task.
-- Client `i` lives on worker `1 + i % W`, so its state never moves. Workers train
-  in order of virtual completion time, so the result the event loop needs next is
-  trained first. A training thread runs alongside a thread that serves transfers.
+- Each client lives on one worker, so its state never moves. Every task costs a
+  worker about the same physical time, but fast virtual clients are dispatched
+  (async) or accepted (sync) more often, so the runner places clients by their
+  expected duration, estimated from the profiles and the configured step count.
+  Async runs pack each client's expected update rate onto the least-loaded worker,
+  largest first; sync runs deal clients round-robin in order of duration, so the
+  clients a barrier accepts spread evenly. In epoch mode, where step counts
+  depend on each client's data, client `i` lives on worker `1 + i % W`.
+- Workers train in order of virtual completion time, so the result the event loop
+  needs next is trained first. A training thread runs alongside a thread that
+  serves transfers.
+- An async run ends at its `num_global_epochs`-th arrival. With `r` arrivals
+  left, that arrival comes no later than the `r`-th earliest pending completion,
+  because later dispatches can only add arrivals. Tasks due after it are never
+  consumed, so they are not sent, or are dropped on their workers.
 - Models are sent as raw byte buffers, never pickled. A global model version goes
   to a worker at most once: sync rounds broadcast it once (`Ibcast`); async
   dispatches send it only to a worker that lacks it. Local models are fetched in
@@ -232,7 +247,8 @@ workers idle while their clients are not in flight. Rank 0 holds the global
 model, at most `prefetch_mb` of fetched local models, and in sync modes the
 round's accepted models, as APPFL's `SyncScheduler` always does. The run ends
 with an execution summary: setup and run time, worker utilization, time rank 0
-spent waiting, model sends and sends avoided, broadcasts, and megabytes moved.
+spent waiting, tasks trained, used and dropped, model sends and sends avoided,
+broadcasts, and megabytes moved.
 
 **Requirements and limits.**
 
@@ -242,7 +258,10 @@ spent waiting, model sends and sends avoided, broadcasts, and megabytes moved.
 - Local models must be plain tensor state dicts (compression is not supported).
 - Each model must be smaller than 2 GiB.
 - Library use: build `appfl.vsim.mpi.MPIExecutor` on rank 0, pass it to a driver
-  as `executor=`, and call `appfl.vsim.mpi.run_worker` on every other rank. See
+  as `executor=`, and call `appfl.vsim.mpi.run_worker` on every other rank. Pass
+  the executor `durations`, `mode` and `max_in_flight` to balance homes, and the
+  async driver `target_epochs` when its scheduler counts one epoch per arrival
+  (as `AsyncScheduler` does), so unconsumable tasks are dropped. See
   `run_vsim.py`.
 
 ## Scope

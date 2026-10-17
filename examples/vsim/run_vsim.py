@@ -19,12 +19,14 @@ import argparse
 import gc
 import json
 import math
+import os
 import random
 import traceback
 from datetime import datetime
 
 from omegaconf import OmegaConf
 from appfl.agent import ServerAgent, ClientAgent
+from appfl.algorithm.scheduler import AsyncScheduler
 from appfl.vsim import AsyncSimDriver, SyncSimDriver, ClientProfile, VsimLogger
 
 
@@ -99,6 +101,29 @@ def build_profiles(client_ids, sim_cfg, seed):
             band = 300.0
         profiles[cid] = ClientProfile(compute_factor=cf, bandwidth=band)
     return profiles
+
+
+def estimate_durations(profiles, train_configs, step_time, model_bytes):
+    """
+    Estimate every client's task duration before any client is built.
+
+    The MPI executor uses the estimates only to place clients on workers, so they
+    must rank clients and weigh compute against communication, but need not equal
+    the simulated durations. A calibrated step time is unknown until the workers
+    start, so without `base_step_time` communication is left out.
+
+    :return: Dict mapping client_id to seconds, or None in epoch mode, where the
+        step count depends on each client's data.
+    """
+    if train_configs.get("mode") != "step":
+        return None
+    steps = int(train_configs.num_local_steps)
+    if step_time is None:
+        return {cid: p.compute_time(1.0, steps) for cid, p in profiles.items()}
+    return {
+        cid: p.duration(float(step_time), steps, model_bytes)
+        for cid, p in profiles.items()
+    }
 
 
 def parse_args():
@@ -316,32 +341,16 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
     server_agent = ServerAgent(server_agent_config=server_config)
     client_cfg_from_server = server_agent.get_client_configs()
     client_ids = [f"Client{i + 1}" for i in range(args.num_clients)]
+    target_epochs = server_config.server_configs.get("num_global_epochs", 100)
 
-    executor, client_agents = None, None
-    if comm is not None:
-        from appfl.vsim.mpi import MPIExecutor
+    # ---- resolve mode from CLI or config ----
+    mode = args.mode
+    if mode == "async":
+        cfg_mode = sim_cfg.get("mode", "async") if sim_cfg else "async"
+        if cfg_mode.startswith("sync"):
+            mode = cfg_mode
 
-        mpi_cfg = sim_cfg.get("mpi", {}) if sim_cfg else {}
-        executor = MPIExecutor(
-            comm,
-            client_ids,
-            # Plain containers pickle cleanly; the *_source entries carry the
-            # model/loss/metric code, so workers need no access to those files.
-            context=OmegaConf.to_container(client_cfg_from_server, resolve=True),
-            log_dir=log_dir,
-            calibration_runs=mpi_cfg.get("calibration_runs", 2),
-            prefetch_mb=mpi_cfg.get("prefetch_mb", 1024),
-            stall_timeout=mpi_cfg.get("stall_timeout", 1800),
-            logger=logger,
-        )
-    else:
-        client_agents = [
-            make_client(args, i, client_cfg_from_server, args.device)
-            for i in range(args.num_clients)
-        ]
-        client_ids = [c.get_id() for c in client_agents]
-
-    # ---- profiles + driver ----
+    # ---- profiles (before the executor, which places clients by them) ----
     if args.profiles_json:
         profiles = build_profiles_from_json(client_ids, args.profiles_json)
     else:
@@ -357,14 +366,49 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
             }
         )
 
-    target_epochs = server_config.server_configs.get("num_global_epochs", 100)
+    executor, client_agents = None, None
+    if comm is not None:
+        from appfl.vsim.mpi import MPIExecutor
 
-    # ---- resolve mode from CLI or config ----
-    mode = args.mode
-    if mode == "async":
-        cfg_mode = sim_cfg.get("mode", "async") if sim_cfg else "async"
-        if cfg_mode.startswith("sync"):
-            mode = cfg_mode
+        if args.device == "cpu" and "OMP_NUM_THREADS" not in os.environ:
+            logger.warning(
+                "OMP_NUM_THREADS is not set, so every CPU worker uses one torch "
+                "thread. Set it to choose another count, and use the same value "
+                "for an in-process run whose models should match bit for bit."
+            )
+        model = server_agent.model
+        model_bytes = 0.0
+        if model is not None:
+            model_bytes = compression_ratio * sum(
+                t.numel() * t.element_size() for t in model.state_dict().values()
+            )
+        mpi_cfg = sim_cfg.get("mpi", {}) if sim_cfg else {}
+        executor = MPIExecutor(
+            comm,
+            client_ids,
+            # Plain containers pickle cleanly; the *_source entries carry the
+            # model/loss/metric code, so workers need no access to those files.
+            context=OmegaConf.to_container(client_cfg_from_server, resolve=True),
+            log_dir=log_dir,
+            calibration_runs=mpi_cfg.get("calibration_runs", 2),
+            prefetch_mb=mpi_cfg.get("prefetch_mb", 1024),
+            stall_timeout=mpi_cfg.get("stall_timeout", 1800),
+            logger=logger,
+            # Balance the expected work per worker rather than the client count.
+            durations=estimate_durations(
+                profiles,
+                client_cfg_from_server.train_configs,
+                base_step_time,
+                model_bytes,
+            ),
+            mode=mode,
+            max_in_flight=max_in_flight,
+        )
+    else:
+        client_agents = [
+            make_client(args, i, client_cfg_from_server, args.device)
+            for i in range(args.num_clients)
+        ]
 
     # The simulator times raw tensor bytes, so an enabled compressor has to be
     # declared: it cannot know the achieved ratio without running the compressor.
@@ -395,6 +439,13 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
     if mode == "async":
         driver = AsyncSimDriver(
             max_in_flight=max_in_flight,
+            # AsyncScheduler counts one epoch per arrival, so the run ends after
+            # num_global_epochs arrivals and an executor can skip tasks past them.
+            target_epochs=(
+                target_epochs
+                if isinstance(server_agent.scheduler, AsyncScheduler)
+                else None
+            ),
             **common_kw,
         )
     else:
@@ -439,6 +490,9 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
                 "wall": f"{stats['wall_seconds']:.1f}s",
                 "utilization": f"{100 * stats['worker_utilization']:.0f}%",
                 "stall": f"{stats['stall_seconds']:.1f}s",
+                "trained": stats["trained"],
+                "used": stats["results"],
+                "dropped": stats["dropped"],
                 "model_sends": stats["model_sends"],
                 "sends_saved": stats["model_sends_saved"],
                 "broadcasts": stats["broadcasts"],
