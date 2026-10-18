@@ -11,8 +11,9 @@ Setup uses blocking collectives in a fixed order: ``bcast`` of the HELLO dict,
 
 Coordinator to worker:
 
-- ``TASK`` ``{tid, cid, version, deadline, seed[, schema, nbytes]}``: queue local
-  training. A ``TAG_MODEL`` payload follows only when ``schema`` is present.
+- ``TASK`` ``{tid, cid, version, deadline, seed, round[, schema, nbytes]}``: queue
+  local training. A ``TAG_MODEL`` payload follows only when ``schema`` is present.
+  ``round`` counts the client's earlier tasks, on whichever workers they ran.
 - ``BCAST`` ``{version, schema, nbytes}``: the worker joins an ``Ibcast`` of that
   global model (sync rounds publish each version once to every worker).
 - ``FETCH`` ``{tid}``: send the held result on ``TAG_RESULT``, then free it.
@@ -22,7 +23,11 @@ Coordinator to worker:
 
 Worker to coordinator:
 
-- ``DONE`` ``{tid, meta, schema, nbytes, busy}``: a result is held and can be fetched.
+- ``DONE`` ``{tid, rank, meta, schema, nbytes, busy}``: a result is held and can be
+  fetched.
+- ``GONE`` ``{tid, rank}``: a dropped task left the worker without a result. Every
+  TASK is answered by exactly one DONE or GONE, so the coordinator always knows how
+  many tasks each worker holds.
 - ``ERROR`` ``{tid, rank, traceback}``: training or a protocol step failed.
 - ``BYE`` ``{stats}``: the worker's last message.
 
@@ -43,6 +48,7 @@ FETCH = "fetch"
 DROP = "drop"
 SHUTDOWN = "shutdown"
 DONE = "done"
+GONE = "gone"
 ERROR = "error"
 BYE = "bye"
 

@@ -4,6 +4,14 @@ Rank 0 keeps the virtual clock and the APPFL server agent, and hands local train
 to worker ranks through this executor. Small control messages are pickled, while
 models move as raw byte buffers (see :mod:`appfl.vsim.mpi.protocol`).
 
+Placement is dynamic by default. Submitted tasks wait on rank 0 in ``(deadline,
+tid)`` order, and a worker with a free slot gets the earliest one, so no worker
+idles while another has a backlog. A worker holds at most ``queue_depth`` tasks,
+one by default: then the earliest-deadline task always goes to the next worker to
+become idle. Per-task seeding makes a result independent of where its task ran.
+Clients whose state must stay on one worker can be pinned to their home worker,
+and ``placement="static"`` pins them all.
+
 The coordinator never blocks in a send. It blocks only inside :meth:`result`, while
 polling for the one result the event loop needs next. Results are fetched ahead of
 need in ``(deadline, tid)`` order, the order the drivers consume them in, within a
@@ -12,16 +20,22 @@ byte budget, so transfers overlap with training on the workers.
 
 import bisect
 import gc
+import heapq
+import math
 import statistics
 import time
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, Iterable, List, Mapping, Optional
 
 from ..codec import pack_state, unpack_state
 from ..executor import DeferredExecutor, TaskHandle
 from . import protocol as P
 
 _MIN_BACKOFF = 5e-5
-_MAX_BACKOFF = 2e-3
+# Rank 0 polls only while it waits for a result, and a worker may be waiting for
+# it to notice a DONE and send the next task, so it polls often.
+_MAX_BACKOFF = 5e-4
+
+PLACEMENTS = ("dynamic", "static")
 
 
 def assign_homes(
@@ -32,13 +46,16 @@ def assign_homes(
     max_in_flight: Optional[int] = None,
 ) -> Dict[str, int]:
     """
-    Choose the worker rank, ``1`` to ``num_workers``, that hosts each client.
+    Choose the home worker rank, ``1`` to ``num_workers``, of each client.
 
-    A worker trains every task of the clients it hosts, and every task takes about
-    the same physical time whatever the client's virtual duration, so a good
-    placement evens out the number of tasks each worker must train. Without
-    ``durations``, client ``i`` goes to rank ``1 + i % num_workers``. With an
-    expected virtual duration per client:
+    A worker builds its home clients at startup and reports their step counts.
+    Under static placement, and for pinned clients, the home worker also trains
+    every task of the client; dynamic placement trains unpinned clients anywhere and
+    uses homes only as a tie-break. Every task takes about the same physical time
+    whatever the client's virtual duration, so a good static placement evens out
+    the number of tasks each worker must train. Without ``durations``, client ``i``
+    goes to rank ``1 + i % num_workers``. With an expected virtual duration per
+    client:
 
     - async: a client in flight completes once per duration, so clients are
       packed by expected update rate, largest first, each onto the worker with the
@@ -115,10 +132,11 @@ class MPIExecutor(DeferredExecutor):
     Train vsim clients on MPI worker ranks while rank 0 runs the event loop.
 
     Rank 0 constructs this executor and passes it to a driver; every other rank calls
-    :func:`appfl.vsim.mpi.run_worker`. Each client is homed on one worker, so its
-    state never moves. Given expected durations, homes balance the expected work
-    (see :func:`assign_homes`); otherwise client ``i`` in ``client_ids`` order is
-    homed on rank ``1 + i % W`` for ``W`` workers.
+    :func:`appfl.vsim.mpi.run_worker`. Every client has a home worker (see
+    :func:`assign_homes`), which builds it at startup and reports its step count.
+    With ``placement="dynamic"``, a task of an unpinned client trains on whichever
+    worker frees up first; with ``"static"``, every task trains on its client's home,
+    so client state never moves.
 
     :param comm: Communicator spanning the coordinator (rank 0) and the workers. It
         is duplicated, so other traffic on it cannot interfere.
@@ -134,9 +152,21 @@ class MPIExecutor(DeferredExecutor):
         up and reports what is outstanding on each worker.
     :param logger: Optional logger with ``info``/``warning`` (e.g. a VsimLogger).
     :param durations: Expected virtual duration of one task per client, used only
-        to place clients on workers. ``None`` keeps ``i % W``.
-    :param mode: Driver mode the placement balances for: ``"async"``, or a sync mode.
+        to choose homes. ``None`` keeps ``i % W``.
+    :param mode: Driver mode the homes balance for: ``"async"``, or a sync mode.
     :param max_in_flight: async only: the driver's ``max_in_flight``.
+    :param placement: ``"dynamic"`` (default): the earliest-deadline waiting task
+        goes to the first worker with a free slot. ``"static"``: every task trains on
+        its client's home worker, as soon as it is submitted.
+    :param pinned: Clients whose tasks always train on their home worker under
+        dynamic placement, e.g. clients with differential-privacy accounting or
+        personalized layers.
+    :param queue_depth: Dynamic placement: tasks a worker holds at once, the one
+        training included. ``1`` (default) keeps the deadline order global, but a
+        worker idles for the few milliseconds its next task and model take to
+        arrive. ``2`` hides that, which pays off for tasks of tens of milliseconds
+        or very large models, but a queued task then sometimes runs before a more
+        urgent one submitted after it.
     """
 
     def __init__(
@@ -152,6 +182,9 @@ class MPIExecutor(DeferredExecutor):
         durations: Optional[Mapping[str, float]] = None,
         mode: str = "async",
         max_in_flight: Optional[int] = None,
+        placement: str = "dynamic",
+        pinned: Optional[Iterable[str]] = None,
+        queue_depth: int = 1,
     ):
         from mpi4py import MPI
 
@@ -162,6 +195,20 @@ class MPIExecutor(DeferredExecutor):
                 "MPIExecutor needs at least one worker rank; launch with "
                 "`mpiexec -n <1 + workers> ...`."
             )
+        if placement not in PLACEMENTS:
+            raise ValueError(
+                f"placement must be one of {PLACEMENTS}; got {placement!r}"
+            )
+        if int(queue_depth) < 1:
+            raise ValueError(f"queue_depth must be at least 1; got {queue_depth}")
+        self.client_ids = list(client_ids)
+        if len(set(self.client_ids)) != len(self.client_ids):
+            raise ValueError("client_ids must be unique")
+        pinned = set(self.client_ids if placement == "static" else (pinned or ()))
+        unknown = sorted(pinned.difference(self.client_ids))
+        if unknown:
+            raise ValueError(f"pinned names unknown clients {unknown[:5]}")
+
         self._MPI = MPI
         self.comm = comm.Dup()
         # Workers split off a worker-only communicator; Split is collective.
@@ -169,18 +216,20 @@ class MPIExecutor(DeferredExecutor):
         self.num_workers = self.comm.Get_size() - 1
         self._workers = list(range(1, self.num_workers + 1))
 
-        self.client_ids = list(client_ids)
-        if len(set(self.client_ids)) != len(self.client_ids):
-            raise ValueError("client_ids must be unique")
         self.homes = assign_homes(
             self.client_ids, self.num_workers, durations, mode, max_in_flight
         )
         if durations is None:
-            self._placement = "i % W"
+            self._home_rule = "i % W"
         elif mode.startswith("sync"):
-            self._placement = "dealt in order of expected duration"
+            self._home_rule = "dealt in order of expected duration"
         else:
-            self._placement = "packed by expected update rate"
+            self._home_rule = "packed by expected update rate"
+        self.placement = placement
+        self.pinned = frozenset(pinned)
+        self.queue_depth = int(queue_depth)
+        # Static placement sends every task to its home at once, however many.
+        self._slots = math.inf if placement == "static" else self.queue_depth
         self.context = context
         self.log_dir = log_dir or ""
         self.calibration_runs = max(1, int(calibration_runs))
@@ -198,8 +247,23 @@ class MPIExecutor(DeferredExecutor):
         self._fetched_bytes = 0
         self._prefetch_dirty = False
         self._next_tid = 0
-        self._last_version: Dict[int, int] = {}
-        self._packed = None  # (version, schema, buffer) of the newest packed model
+        # Placement: tasks waiting on rank 0 for a worker, as (deadline, tid) heaps
+        # with lazy deletion; one shared heap, one per home for pinned clients.
+        self._pool: List = []
+        self._held: Dict[int, List] = {w: [] for w in self._workers}
+        self._assigned: Dict[int, int] = {}  # tid -> worker, until DONE or GONE
+        self._load = {w: 0 for w in self._workers}  # tasks a worker holds
+        self._started_at = {w: 0.0 for w in self._workers}  # its current task began
+        self._task_time = {w: 0.0 for w in self._workers}  # mean training time
+        self._finished = {w: 0 for w in self._workers}  # tasks reported DONE
+        self._built = {w: set() for w in self._workers}  # clients it has built
+        self._rounds: Dict[str, int] = {}  # tasks submitted per client
+        self._assign_dirty = False
+        # Global models, packed once per version, kept while a waiting task needs
+        # them; the newest stays for later submits and publishes of that version.
+        self._models: Dict[int, Dict] = {}
+        self._newest_model: Optional[int] = None
+        self._last_version: Dict[int, int] = {}  # newest version each worker holds
         self._sends: List = []  # (request, buffer kept alive until completion)
         self._byes: Dict[int, Dict] = {}
         self._shutting_down = False
@@ -214,6 +278,7 @@ class MPIExecutor(DeferredExecutor):
             "discarded": 0,
             "dropped": 0,
             "dropped_unsent": 0,
+            "released_waiting": 0,
             "model_sends": 0,
             "model_sends_saved": 0,
             "broadcasts": 0,
@@ -223,6 +288,8 @@ class MPIExecutor(DeferredExecutor):
             "pack_seconds": 0.0,
             "setup_seconds": 0.0,
             "peak_prefetched_bytes": 0,
+            "peak_waiting_models": 0,
+            "assigned_away": 0,
         }
 
     # ---------- DeferredExecutor interface ----------
@@ -235,7 +302,8 @@ class MPIExecutor(DeferredExecutor):
 
         MPI = self._MPI
         version = int(version)
-        schema, buf = self._pack(version, init_model)
+        model = self._model(version, init_model)
+        schema, buf = model["schema"], model["buf"]
         hello = {
             "kind": P.HELLO,
             "client_ids": self.client_ids,
@@ -267,6 +335,7 @@ class MPIExecutor(DeferredExecutor):
         for reply in replies:
             self.worker_info[reply["rank"]] = reply
             self._steps.update(reply["census"])
+            self._built[reply["rank"]].update(reply["census"])
         missing = [cid for cid in self.client_ids if cid not in self._steps]
         if missing:
             raise RuntimeError(f"No worker reported a step count for {missing[:5]}")
@@ -299,17 +368,25 @@ class MPIExecutor(DeferredExecutor):
 
         self._stats["setup_seconds"] = time.perf_counter() - self._started
         self._started = time.perf_counter()  # wall and utilization cover the run
+        for w in self._workers:
+            self._started_at[w] = self._started
 
         hosts = sorted({r["host"] for r in replies})
-        idle = [r["rank"] for r in replies if r["clients"] == 0]
+        if self.placement == "static":
+            placement = f"static (homes {self._home_rule})"
+        else:
+            placement = (
+                f"dynamic, {self.queue_depth} task(s) per worker, "
+                f"{len(self.pinned)} pinned client(s) (homes {self._home_rule})"
+            )
         self._info(
             f"MPI executor: {self.num_workers} workers on {len(hosts)} node(s), "
             f"{len(self.client_ids)} clients, devices: "
             f"{sorted({r['device'] for r in replies})}, torch threads per worker: "
-            f"{sorted({r['threads'] for r in replies})}, client homes: "
-            f"{self._placement}"
+            f"{sorted({r['threads'] for r in replies})}, placement: {placement}"
         )
-        if idle:
+        idle = [r["rank"] for r in replies if r["clients"] == 0]
+        if idle and self.placement == "static":
             self._warning(
                 f"{len(idle)} worker(s) host no client (num_clients < workers): "
                 f"ranks {idle[:8]}"
@@ -324,32 +401,31 @@ class MPIExecutor(DeferredExecutor):
         version = int(version)
         if all(self._last_version[w] == version for w in self._workers):
             return
-        schema, buf = self._pack(version, params)
+        model = self._model(version, params)
         header = {
             "kind": P.BCAST,
             "version": version,
-            "schema": schema,
-            "nbytes": int(buf.numel()),
+            "schema": model["schema"],
+            "nbytes": int(model["buf"].numel()),
         }
         for w in self._workers:
             self._send_ctrl(w, header)
-        request = self.comm.Ibcast([buf.numpy(), self._MPI.BYTE], root=0)
-        self._sends.append((request, buf))
+        request = self.comm.Ibcast([model["buf"].numpy(), self._MPI.BYTE], root=0)
+        self._sends.append((request, model["buf"]))
         for w in self._workers:
-            self._last_version[w] = version
+            self._last_version[w] = max(self._last_version[w], version)
         self._stats["broadcasts"] += 1
-        self._stats["bytes_to_workers"] += int(buf.numel()) * self.num_workers
+        self._stats["bytes_to_workers"] += int(model["buf"].numel()) * self.num_workers
 
     def submit(
         self, cid: str, version: int, params, deadline: float, seed: Optional[int]
     ) -> TaskHandle:
         """
-        Send a TASK to the client's home worker, with the model if it lacks it.
+        Queue a task for the next free worker (its client's home, if pinned).
 
         A task that can never be consumed (see :meth:`set_remaining`) is not sent.
         """
         version = int(version)
-        worker = self.homes[cid]
         tid = self._next_tid
         self._next_tid += 1
         handle = TaskHandle(tid, cid, version, float(deadline))
@@ -358,32 +434,29 @@ class MPIExecutor(DeferredExecutor):
             self._stats["dropped"] += 1
             self._stats["dropped_unsent"] += 1
             return handle
-        message = {
-            "kind": P.TASK,
-            "tid": tid,
-            "cid": cid,
-            "version": version,
-            "deadline": handle.deadline,
+        model = self._model(version, params)
+        model["waiting"] += 1
+        rounds = self._rounds.get(cid, 0)
+        self._rounds[cid] = rounds + 1
+        self._tasks[tid] = {
+            "handle": handle,
+            "worker": None,
+            "state": "waiting",
             "seed": seed,
+            "round": rounds,
+            "model": model,
         }
-        if self._last_version[worker] != version:
-            schema, buf = self._pack(version, params)
-            message["schema"], message["nbytes"] = schema, int(buf.numel())
-            self._send_ctrl(worker, message)
-            request = self.comm.Isend(
-                [buf.numpy(), self._MPI.BYTE], dest=worker, tag=P.TAG_MODEL
-            )
-            self._sends.append((request, buf))
-            self._last_version[worker] = version
-            self._stats["model_sends"] += 1
-            self._stats["bytes_to_workers"] += int(buf.numel())
+        key = (handle.deadline, tid)
+        if cid in self.pinned:
+            heapq.heappush(self._held[self.homes[cid]], key)
         else:
-            self._send_ctrl(worker, message)
-            self._stats["model_sends_saved"] += 1
-
-        self._tasks[tid] = {"handle": handle, "worker": worker, "state": "queued"}
-        bisect.insort(self._need, (handle.deadline, tid))
+            heapq.heappush(self._pool, key)
+        bisect.insort(self._need, key)
         self._drop_unreachable()  # the new deadline may pull the horizon in
+        self._assign_dirty = True
+        self._stats["peak_waiting_models"] = max(
+            self._stats["peak_waiting_models"], len(self._models)
+        )
         self._progress()
         return handle
 
@@ -424,7 +497,7 @@ class MPIExecutor(DeferredExecutor):
         return model, meta
 
     def discard(self, handle: TaskHandle) -> None:
-        """Tell the worker to drop the task or its held result."""
+        """Forget the task: unqueue it, or tell its worker to drop it or its result."""
         record = self._tasks.get(handle.tid)
         if record is None or record["state"] == "discarded":
             return
@@ -445,16 +518,18 @@ class MPIExecutor(DeferredExecutor):
         pending += [record["req"] for record in self._fetching.values()]
         self._MPI.Request.Waitall(pending)
         self._sends, self._fetching = [], {}
+        self._models.clear()
         self.comm.Free()
         self._closed = True
         self._summary = self._summarize()
         return self._summary
 
     # ---------- internals ----------
-    def _pack(self, version: int, params):
-        """Return (schema, buffer) for ``version``, packing ``params`` only once."""
-        if self._packed is not None and self._packed[0] == version:
-            return self._packed[1], self._packed[2]
+    def _model(self, version: int, params) -> Dict:
+        """Return the packed global model ``version``, packing ``params`` once."""
+        entry = self._models.get(version)
+        if entry is not None:
+            return entry
         if params is None:
             raise RuntimeError(
                 f"Global model version {version} was neither published nor supplied."
@@ -463,12 +538,142 @@ class MPIExecutor(DeferredExecutor):
         schema, buf = pack_state(params)
         self._stats["pack_seconds"] += time.perf_counter() - started
         P.check_payload_size(int(buf.numel()))
-        self._packed = (version, schema, buf)
-        return schema, buf
+        entry = {"version": version, "schema": schema, "buf": buf, "waiting": 0}
+        self._models[version] = entry
+        if self._newest_model is None or version > self._newest_model:
+            previous = self._newest_model
+            self._newest_model = version
+            if previous is not None and not self._models[previous]["waiting"]:
+                del self._models[previous]
+        return entry
+
+    def _unref_model(self, entry: Dict) -> None:
+        """A waiting task no longer needs ``entry``; free it unless it is the newest."""
+        entry["waiting"] -= 1
+        version = entry["version"]
+        if not entry["waiting"] and version != self._newest_model:
+            self._models.pop(version, None)
 
     def _send_ctrl(self, worker: int, message: Dict) -> None:
         request = self.comm.isend(message, dest=worker, tag=P.TAG_CTRL)
         self._sends.append((request, None))
+
+    def _assign(self) -> None:
+        """Give waiting tasks to workers with free slots, earliest deadline first."""
+        self._assign_dirty = False
+        if self._shutting_down:
+            return
+        while True:
+            free = [w for w in self._workers if self._load[w] < self._slots]
+            if not free:
+                return
+            best, home = self._peek(self._pool), None
+            for w in free:
+                key = self._peek(self._held[w])
+                if key is not None and (best is None or key < best):
+                    best, home = key, w
+            if best is None:
+                return
+            if home is None:
+                heapq.heappop(self._pool)
+                worker = self._choose_worker(free, self._tasks[best[1]])
+            else:
+                heapq.heappop(self._held[home])
+                worker = home
+            self._send_task(worker, self._tasks[best[1]])
+
+    def _peek(self, heap: List):
+        """Return the earliest live (deadline, tid) of ``heap``, or ``None``."""
+        while heap:
+            record = self._tasks.get(heap[0][1])
+            if record is not None and record["state"] == "waiting":
+                return heap[0]
+            heapq.heappop(heap)  # released while waiting
+        return None
+
+    def _choose_worker(self, free: List[int], record: Dict) -> int:
+        """
+        Pick a worker for ``record`` among those with a free slot.
+
+        The task goes where it should finish first, from each worker's mean
+        training time and, for a busy worker, when its current task started. Every
+        worker within a tenth of a task of the soonest qualifies, so on uniform
+        hardware an idle worker wins and timing noise decides nothing. Among those,
+        the idle ones come first, then a worker that already holds the task's
+        global model (no transfer), then one that has built the client, then the
+        client's home.
+        """
+        handle = record["handle"]
+        home = self.homes[handle.cid]
+        now = time.perf_counter()
+        finish = {}
+        for w in free:
+            start = now
+            if self._load[w]:
+                held = self._load[w] * self._task_time[w]
+                start = max(now, self._started_at[w] + held)
+            finish[w] = start + self._task_time[w]
+        soonest = min(free, key=finish.get)
+        cutoff = finish[soonest] + 0.1 * self._task_time[soonest]
+
+        def rank(w):
+            return (
+                self._load[w],
+                self._last_version[w] != handle.version,
+                handle.cid not in self._built[w],
+                w != home,
+                w,
+            )
+
+        return min((w for w in free if finish[w] <= cutoff), key=rank)
+
+    def _send_task(self, worker: int, record: Dict) -> None:
+        """Send a waiting task to ``worker``, with its global model if needed."""
+        handle = record["handle"]
+        model = record.pop("model")
+        message = {
+            "kind": P.TASK,
+            "tid": handle.tid,
+            "cid": handle.cid,
+            "version": handle.version,
+            "deadline": handle.deadline,
+            "seed": record["seed"],
+            "round": record["round"],
+        }
+        # A worker always keeps the newest version it received.
+        if self._last_version[worker] != handle.version:
+            buf = model["buf"]
+            message["schema"], message["nbytes"] = model["schema"], int(buf.numel())
+            self._send_ctrl(worker, message)
+            request = self.comm.Isend(
+                [buf.numpy(), self._MPI.BYTE], dest=worker, tag=P.TAG_MODEL
+            )
+            self._sends.append((request, buf))
+            self._last_version[worker] = max(self._last_version[worker], handle.version)
+            self._stats["model_sends"] += 1
+            self._stats["bytes_to_workers"] += int(buf.numel())
+        else:
+            self._send_ctrl(worker, message)
+            self._stats["model_sends_saved"] += 1
+        self._unref_model(model)
+        record.update(worker=worker, state="queued")
+        if self._load[worker] == 0:
+            self._started_at[worker] = time.perf_counter()
+        self._load[worker] += 1
+        self._assigned[handle.tid] = worker
+        self._built[worker].add(handle.cid)
+        if worker != self.homes[handle.cid]:
+            self._stats["assigned_away"] += 1
+
+    def _slot_freed(self, tid: int) -> None:
+        """A worker answered ``tid`` with DONE or GONE: it holds one task fewer."""
+        worker = self._assigned.pop(tid, None)
+        if worker is None:
+            return
+        self._load[worker] -= 1
+        if self._load[worker]:
+            self._started_at[worker] = time.perf_counter()  # its next task began
+        self._assign_dirty = True
 
     def _fetch(self, tid: int) -> None:
         """Post the receive for a ready result, then ask its worker to send it."""
@@ -503,10 +708,14 @@ class MPIExecutor(DeferredExecutor):
                 budget -= record["nbytes"]
 
     def _release(self, record: Dict) -> None:
-        """Forget a task: drop it on its worker, or free its payload once here."""
+        """Forget a task: unqueue it, drop it on its worker, or free its payload."""
         tid = record["handle"].tid
         state = record["state"]
-        if state in ("queued", "ready"):
+        if state == "waiting":
+            self._stats["released_waiting"] += 1
+            self._unref_model(record.pop("model"))
+            self._forget(tid)  # its heap entry is skipped from now on
+        elif state in ("queued", "ready"):
             self._send_ctrl(record["worker"], {"kind": P.DROP, "tid": tid})
             self._forget(tid)
         elif state == "fetching":
@@ -564,6 +773,8 @@ class MPIExecutor(DeferredExecutor):
         """Handle incoming control messages and finished transfers."""
         active = self._drain_ctrl()
         active = self._test_requests() or active
+        if self._assign_dirty:
+            self._assign()
         if self._prefetch_dirty:
             self._prefetch()
         now = time.perf_counter()
@@ -588,6 +799,8 @@ class MPIExecutor(DeferredExecutor):
             kind = message["kind"]
             if kind == P.DONE:
                 self._on_done(message)
+            elif kind == P.GONE:
+                self._slot_freed(message["tid"])
             elif kind == P.BYE:
                 self._byes[source] = message["stats"]
             elif kind == P.ERROR:
@@ -600,6 +813,15 @@ class MPIExecutor(DeferredExecutor):
         return received
 
     def _on_done(self, message: Dict) -> None:
+        worker = self._assigned.get(message["tid"])
+        if worker is not None and message.get("busy") is not None:
+            # A worker's first task also initializes CUDA and cuDNN; skip it.
+            self._finished[worker] += 1
+            if self._finished[worker] > 1:
+                seen = self._task_time[worker]
+                busy = float(message["busy"])
+                self._task_time[worker] = 0.8 * seen + 0.2 * busy if seen else busy
+        self._slot_freed(message["tid"])
         record = self._tasks.get(message["tid"])
         if record is None or record["state"] != "queued" or self._shutting_down:
             return  # dropped or discarded in the meantime
@@ -639,12 +861,14 @@ class MPIExecutor(DeferredExecutor):
             f"No progress for {self.stall_timeout:.0f}s "
             f"(stall_timeout); outstanding tasks per worker:"
         ]
-        per_worker: Dict[int, Dict[str, int]] = {}
+        per_worker: Dict = {}
         for record in self._tasks.values():
-            counts = per_worker.setdefault(record["worker"], {})
+            counts = per_worker.setdefault(record["worker"] or 0, {})
             counts[record["state"]] = counts.get(record["state"], 0) + 1
         for worker in sorted(per_worker):
-            lines.append(f"  rank {worker}: {per_worker[worker]}")
+            where = f"rank {worker}" if worker else "waiting on rank 0"
+            lines.append(f"  {where}: {per_worker[worker]}")
+        lines.append(f"  tasks held per worker: {self._load}")
         if self._need:
             deadline, tid = self._need[0]
             record = self._tasks[tid]
@@ -659,6 +883,9 @@ class MPIExecutor(DeferredExecutor):
         busy = sum(stats.get("busy_seconds", 0.0) for stats in self._byes.values())
         summary = dict(self._stats)
         summary.update(
+            placement=self.placement,
+            queue_depth=self.queue_depth,
+            pinned=len(self.pinned),
             trained=sum(stats.get("tasks", 0) for stats in self._byes.values()),
             workers=self.num_workers,
             wall_seconds=wall,

@@ -9,8 +9,8 @@ Run from the examples/ directory (relative ./resources paths in the config):
     python vsim/run_vsim.py --num_clients 2 --seed 42
 
 Multi-GPU / multi-node: launch under MPI with ``--executor mpi``. Rank 0 runs the
-event loop and the server; every other rank hosts a share of the clients on one
-device (one rank per GPU):
+event loop and the server; every other rank trains clients on one device (one rank
+per GPU), each task on whichever worker frees up first:
     mpiexec -n 5 python vsim/run_vsim.py --executor mpi --device cuda \
         --num_clients 100 --verify
 """
@@ -215,8 +215,16 @@ def parse_args():
         default=None,
         choices=["inprocess", "mpi"],
         help="where clients train: inprocess (serial, default) or mpi (rank 0 runs "
-        "the event loop, every other rank hosts clients; launch with mpiexec); "
+        "the event loop, every other rank trains clients; launch with mpiexec); "
         "overrides simulator.executor",
+    )
+    parser.add_argument(
+        "--placement",
+        type=str,
+        default=None,
+        choices=["dynamic", "static"],
+        help="mpi: dynamic trains each task on the first free worker, static on "
+        "its client's home worker; overrides simulator.mpi.placement",
     )
     parser.add_argument(
         "--save_history",
@@ -231,16 +239,17 @@ def make_client_config(args, index, device, file_logging=True):
     """
     Build the configuration of client ``index`` (0-based) from --client_config.
 
-    :param file_logging: Keep the client's log file. MPI workers turn it off:
-        every ClientAgent opens four file handlers, so a worker hosting hundreds
-        of clients would run out of file descriptors.
+    :param file_logging: Keep the client's log file, and for the first client the
+        partition plot. MPI workers turn both off: every ClientAgent opens four
+        file handlers, so a worker hosting hundreds of clients would run out of
+        file descriptors, and several workers may build the first client.
     """
     config = OmegaConf.load(args.client_config)
     config.client_id = f"Client{index + 1}"
     config.train_configs.device = device
     config.data_configs.dataset_kwargs.num_clients = args.num_clients
     config.data_configs.dataset_kwargs.client_id = index
-    config.data_configs.dataset_kwargs.visualization = index == 0
+    config.data_configs.dataset_kwargs.visualization = index == 0 and file_logging
     if args.partition is not None:
         config.data_configs.dataset_kwargs.partition_strategy = args.partition
     if args.alpha is not None:
@@ -259,8 +268,36 @@ def make_client(args, index, server_client_configs, device, file_logging=True):
     return client
 
 
-def serve_worker(args, comm):
+def mpi_settings(args, server_config):
+    """
+    Decide how MPI workers hold clients and where tasks train; every rank agrees.
+
+    VanillaTrainer clients carry no state between tasks beyond a round counter, so
+    each worker serves them all from one shared ClientAgent and any worker may train
+    any client. Other trainers, and Opacus privacy accounting, keep state per
+    client: those clients are full ClientAgents trained on their home worker.
+
+    :return: Dict with ``placement``, ``shared`` (workers use a SharedAgentPool),
+        ``pinned`` and ``queue_depth``.
+    """
+    sim_cfg = server_config.server_configs.get("simulator", {}) or {}
+    mpi_cfg = sim_cfg.get("mpi", {}) or {}
+    train = server_config.client_configs.train_configs
+    shared = train.get("trainer", None) == "VanillaTrainer" and not (
+        train.get("use_dp", False) and train.get("dp_mechanism", "laplace") == "opacus"
+    )
+    default = "dynamic" if shared else "static"
+    return {
+        "placement": args.placement or mpi_cfg.get("placement", default),
+        "shared": shared,
+        "pinned": list(mpi_cfg.get("pinned", None) or []),
+        "queue_depth": int(mpi_cfg.get("queue_depth", 1)),
+    }
+
+
+def serve_worker(args, comm, server_config):
     """Run this rank as an MPI worker until the coordinator shuts it down."""
+    from appfl.vsim import SharedAgentPool, load_client_datasets
     from appfl.vsim.mpi import run_worker
 
     index = {f"Client{i + 1}": i for i in range(args.num_clients)}
@@ -270,7 +307,16 @@ def serve_worker(args, comm):
             args, index[cid], OmegaConf.create(context), device, file_logging=False
         )
 
-    run_worker(comm, make_worker_client, device=args.device)
+    def load_worker_data(cid, context, device):
+        config = make_client_config(args, index[cid], device, file_logging=False)
+        return load_client_datasets(config)
+
+    if mpi_settings(args, server_config)["shared"]:
+        # One model and trainer per worker, whichever clients it trains.
+        make = SharedAgentPool(make_worker_client, load_worker_data)
+    else:
+        make = make_worker_client
+    run_worker(comm, make, device=args.device)
 
 
 def main():
@@ -290,7 +336,7 @@ def main():
         comm = MPI.COMM_WORLD
         log_dir = comm.bcast(log_dir, root=0)
         if comm.Get_rank() != 0:
-            serve_worker(args, comm)
+            serve_worker(args, comm, server_config)
             return
     logger = VsimLogger(logging_id="vsim", file_dir=log_dir, file_name="vsim")
     try:
@@ -383,6 +429,13 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
                 t.numel() * t.element_size() for t in model.state_dict().values()
             )
         mpi_cfg = sim_cfg.get("mpi", {}) if sim_cfg else {}
+        settings = mpi_settings(args, server_config)
+        if settings["placement"] == "dynamic" and not settings["shared"]:
+            raise ValueError(
+                "Dynamic placement trains a client on any worker, so it needs "
+                "clients without per-client state (VanillaTrainer without Opacus "
+                "privacy accounting). Use `--placement static` for these clients."
+            )
         executor = MPIExecutor(
             comm,
             client_ids,
@@ -394,7 +447,8 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
             prefetch_mb=mpi_cfg.get("prefetch_mb", 1024),
             stall_timeout=mpi_cfg.get("stall_timeout", 1800),
             logger=logger,
-            # Balance the expected work per worker rather than the client count.
+            # Homes balance the expected work per worker rather than the client
+            # count: they decide where static and pinned clients train.
             durations=estimate_durations(
                 profiles,
                 client_cfg_from_server.train_configs,
@@ -403,6 +457,9 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
             ),
             mode=mode,
             max_in_flight=max_in_flight,
+            placement=settings["placement"],
+            pinned=settings["pinned"],
+            queue_depth=settings["queue_depth"],
         )
     else:
         client_agents = [
@@ -463,16 +520,25 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
         )
 
     if executor is not None and mode == "async":
-        per_worker = math.ceil(max_in_flight / executor.num_workers)
-        logger.info(
-            f"in-flight model state: about {per_worker} model(s), "
-            f"{per_worker * driver._raw_model_bytes / 2**20:.1f} MiB, per worker"
-        )
-        if max_in_flight < 4 * executor.num_workers:
-            logger.warning(
-                f"max_in_flight={max_in_flight} is below 4x the {executor.num_workers} "
-                f"workers; with clients pinned to their home workers some workers "
-                f"will idle"
+        mib = driver._raw_model_bytes / 2**20
+        if executor.placement == "static":
+            per_worker = math.ceil(max_in_flight / executor.num_workers)
+            logger.info(
+                f"in-flight model state: about {per_worker} model(s), "
+                f"{per_worker * mib:.1f} MiB, per worker"
+            )
+            if max_in_flight < 4 * executor.num_workers:
+                logger.warning(
+                    f"max_in_flight={max_in_flight} is below 4x the "
+                    f"{executor.num_workers} workers; with clients pinned to their "
+                    f"home workers some workers will idle"
+                )
+        else:
+            logger.info(
+                f"in-flight model state: at most {executor.queue_depth + 1} global "
+                f"model(s), {(executor.queue_depth + 1) * mib:.1f} MiB, per worker; "
+                f"rank 0 keeps the global model of every task still waiting for a "
+                f"worker, at most {max_in_flight * mib:.1f} MiB"
             )
 
     # APPFL calls gc.collect() on every update; freezing the long-lived objects
