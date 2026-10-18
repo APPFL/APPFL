@@ -27,6 +27,8 @@ class AsyncSimDriver(BaseSimDriver):
     aggregators without modification.
     """
 
+    _flat_kind = "async"
+
     def __init__(
         self,
         server_agent,
@@ -41,6 +43,7 @@ class AsyncSimDriver(BaseSimDriver):
         executor=None,
         task_seeding: bool = True,
         target_epochs: Optional[int] = None,
+        flat_aggregation: bool = True,
     ):
         """
         :param max_in_flight: Maximum clients dispatched but not yet arrived. It
@@ -54,6 +57,8 @@ class AsyncSimDriver(BaseSimDriver):
             remain, so tasks that can never be consumed are not trained. The
             driver raises if an arrival does not advance the count. Unused
             in-process.
+        :param flat_aggregation: With FedAsyncAggregator, aggregate on a packed
+            global model (see :class:`BaseSimDriver`).
         """
         super().__init__(
             server_agent,
@@ -66,6 +71,7 @@ class AsyncSimDriver(BaseSimDriver):
             compression_ratio=compression_ratio,
             executor=executor,
             task_seeding=task_seeding,
+            flat_aggregation=flat_aggregation,
         )
         self.max_in_flight = max(1, int(max_in_flight))
         self.target_epochs = None if target_epochs is None else int(target_epochs)
@@ -152,6 +158,8 @@ class AsyncSimDriver(BaseSimDriver):
         if self.executor is not None:
             for pending in self._pending.values():
                 self.executor.discard(pending["handle"])
+        if self._flat is not None:
+            self._flat.sync_server()
         self.logger.log_banner(
             "Simulation finished",
             {
@@ -184,7 +192,10 @@ class AsyncSimDriver(BaseSimDriver):
         # `client_id` lets the aggregator record which global version this client
         # trains from; without it staleness is measured from the client's previous
         # upload, which over-counts whenever a client idles between dispatches.
-        global_params = self.server.get_parameters(serial_run=True, client_id=cid)
+        if self._flat is not None:
+            global_params = self._flat.dispatch(cid)
+        else:
+            global_params = self.server.get_parameters(serial_run=True, client_id=cid)
         seed = self._next_seed(cid)
 
         if self.executor is None:
@@ -229,6 +240,10 @@ class AsyncSimDriver(BaseSimDriver):
         p = self._pending.pop(cid)
         if self.executor is None:
             local_model, meta = p["local_model"], p["meta"]
+        elif self._flat is not None:
+            # Packed, so the update can be written straight into the received buffer.
+            local_model, meta = self.executor.result_packed(p["handle"])
+            self._check_steps(cid, meta)
         else:
             local_model, meta = self.executor.result(p["handle"])
             self._check_steps(cid, meta)
@@ -239,19 +254,23 @@ class AsyncSimDriver(BaseSimDriver):
         meta["virtual_time"] = completion_time
         meta["dispatch_time"] = p["dispatch_time"]
 
-        local_model = {
-            k: v.cpu() if hasattr(v, "cpu") else v for k, v in local_model.items()
-        }
-
         # Captured before the update: `global_update` increments the epoch counter,
         # so reading it afterwards would make staleness 0 impossible.
         epoch_before = self._cur_epoch()
 
-        global_model = self.server.global_update(
-            client_id=cid, local_model=local_model, blocking=False, **meta
-        )
-        if hasattr(global_model, "result"):
-            global_model = global_model.result()
+        global_model = None
+        if self._flat is not None and not self._flat.update(cid, local_model):
+            self._leave_flat_path(cid)
+        if self._flat is None:
+            local_model = {
+                k: v.cpu() if hasattr(v, "cpu") else v
+                for k, v in self._as_state_dict(local_model).items()
+            }
+            global_model = self.server.global_update(
+                client_id=cid, local_model=local_model, blocking=False, **meta
+            )
+            if hasattr(global_model, "result"):
+                global_model = global_model.result()
 
         epoch_now = self._cur_epoch()
         self._check_epoch_advanced(epoch_before, epoch_now)
@@ -285,6 +304,8 @@ class AsyncSimDriver(BaseSimDriver):
         )
 
         if self.eval_every and (epoch_now % self.eval_every == 0):
+            if self._flat is not None:
+                global_model = self._flat.state_dict()
             g = self._global_eval(global_model)
             if g is not None:
                 rec["global_val_loss"], rec["global_val_accuracy"] = g

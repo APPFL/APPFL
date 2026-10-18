@@ -434,6 +434,9 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
         compression_ratio=compression_ratio,
         executor=executor,
         task_seeding=bool(sim_cfg.get("task_seeding", True)) if sim_cfg else True,
+        flat_aggregation=(
+            bool(sim_cfg.get("flat_aggregation", True)) if sim_cfg else True
+        ),
     )
 
     if mode == "async":

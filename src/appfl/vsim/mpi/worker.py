@@ -512,6 +512,8 @@ class _Worker:
             module = getattr(getattr(client, "trainer", None), "model", None)
             if module is not None and hasattr(module, "to"):
                 module.to("cpu")
-        packed_schema, packed = pack_state(model)
+        # In the global model's byte layout, so the coordinator can aggregate the
+        # result with flat-buffer operations; any order of names unpacks the same.
+        packed_schema, packed = pack_state(model, layout=schema)
         P.check_payload_size(int(packed.numel()))
         return {"meta": meta, "schema": packed_schema, "buf": packed, "busy": busy}

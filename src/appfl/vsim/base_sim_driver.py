@@ -16,6 +16,8 @@ import heapq
 import random
 from typing import Dict, List, Optional
 
+from .codec import PackedState, unpack_state
+from .flat_aggregation import make_flat_aggregation
 from .logger import ensure_table_logger
 from .seeding import rng_guard, task_seed
 
@@ -27,6 +29,9 @@ class BaseSimDriver:
     post-simulation verification. Subclasses implement ``run()`` and
     event-handling logic for their scheduling model (async or sync).
     """
+
+    #: Kind of flat-buffer aggregation the subclass can use: "async" or "sync".
+    _flat_kind: Optional[str] = None
 
     def __init__(
         self,
@@ -40,6 +45,7 @@ class BaseSimDriver:
         compression_ratio: float = 1.0,
         executor=None,
         task_seeding: bool = True,
+        flat_aggregation: bool = True,
     ):
         """
         Initialize the simulation driver with server/client agents and models.
@@ -67,6 +73,11 @@ class BaseSimDriver:
         :param task_seeding: Seed the global RNGs per task from (seed, client,
             selection count), so a client's local training does not depend on
             which clients trained before it or where it runs.
+        :param flat_aggregation: With FedAsync (async driver) or FedAvg (sync
+            driver), keep the global model as one packed buffer and aggregate into
+            it in place rather than through the server agent (see
+            :mod:`appfl.vsim.flat_aggregation`). Models are bit-identical either
+            way; servers it does not cover use the agent regardless.
         """
         # A private generator, not `random.seed()`: seeding the module-global RNG
         # here would perturb every other consumer in the process (client data
@@ -115,13 +126,21 @@ class BaseSimDriver:
         self._raw_model_bytes = self._state_bytes(init_model)
         # Transfer times are driven by what actually goes over the wire.
         self._model_bytes = self._raw_model_bytes * compression_ratio
+        self._flat = None
+        aggregation = "server agent"
+        if flat_aggregation and self._flat_kind is not None:
+            self._flat, aggregation = make_flat_aggregation(
+                self.server, init_model, self._flat_kind, executor
+            )
         if executor is None:
             for client in client_agents:
                 client.load_parameters(init_model)
             step_source = "measured" if base_step_time is None else f"{base_step_time}s"
         else:
+            # Started from the flat global model's buffer, workers pack their results
+            # in its layout.
             executor.setup(
-                init_model,
+                self._flat.params() if self._flat is not None else init_model,
                 version=self.server.scheduler.get_num_global_epochs(),
                 calibrate=base_step_time is None,
             )
@@ -143,6 +162,7 @@ class BaseSimDriver:
                 "step_time": step_source,
                 "eval_every": self.eval_every or "off",
                 "seed": seed,
+                "aggregation": aggregation,
             },
         )
 
@@ -305,6 +325,28 @@ class BaseSimDriver:
             self.logger.warning(f"global eval: load_state_dict failed: {e}")
             return None
         return self.server.server_validate()
+
+    # ---------- flat-buffer aggregation ----------
+    def _leave_flat_path(self, cid: str):
+        """
+        Hand aggregation back to the server agent for the rest of the run.
+
+        Called when ``cid``'s local model does not hold exactly the global model's
+        tensors, which only the server agent's own rules can aggregate.
+        """
+        self._flat.sync_server()
+        self._flat = None
+        self.logger.warning(
+            f"{cid}'s local model holds other tensors than the global model; the "
+            f"server agent aggregates from here on"
+        )
+
+    @staticmethod
+    def _as_state_dict(local):
+        """Return a local model as a state dict, viewing into it if it is packed."""
+        if isinstance(local, PackedState):
+            return unpack_state(local.schema, local.buffer)
+        return local
 
     # ---------- verification ----------
     def verify(self, target_epochs):

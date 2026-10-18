@@ -8,6 +8,11 @@ The coordinator never blocks in a send. It blocks only inside :meth:`result`, wh
 polling for the one result the event loop needs next. Results are fetched ahead of
 need in ``(deadline, tid)`` order, the order the drivers consume them in, within a
 byte budget, so transfers overlap with training on the workers.
+
+A global model handed over packed is sent from its own buffer, and
+:meth:`result_packed` hands over the buffer a result arrived in. Buffers given back
+through :meth:`recycle` receive later results, so the coordinator's model memory is
+allocated once rather than per transfer.
 """
 
 import bisect
@@ -16,7 +21,7 @@ import statistics
 import time
 from typing import Dict, List, Mapping, Optional
 
-from ..codec import pack_state, unpack_state
+from ..codec import PackedState, pack_state, unpack_state
 from ..executor import DeferredExecutor, TaskHandle
 from . import protocol as P
 
@@ -139,6 +144,8 @@ class MPIExecutor(DeferredExecutor):
     :param max_in_flight: async only: the driver's ``max_in_flight``.
     """
 
+    accepts_packed = True
+
     def __init__(
         self,
         comm,
@@ -201,6 +208,9 @@ class MPIExecutor(DeferredExecutor):
         self._last_version: Dict[int, int] = {}
         self._packed = None  # (version, schema, buffer) of the newest packed model
         self._sends: List = []  # (request, buffer kept alive until completion)
+        self._spare: Dict[int, List] = {}  # nbytes -> buffers free for receives
+        self._spare_bytes = 0
+        self._retired: List = []  # recycled buffers that may still be sending
         self._byes: Dict[int, Dict] = {}
         self._shutting_down = False
         self._closed = False
@@ -223,6 +233,8 @@ class MPIExecutor(DeferredExecutor):
             "pack_seconds": 0.0,
             "setup_seconds": 0.0,
             "peak_prefetched_bytes": 0,
+            "buffers_allocated": 0,
+            "buffers_reused": 0,
         }
 
     # ---------- DeferredExecutor interface ----------
@@ -399,6 +411,15 @@ class MPIExecutor(DeferredExecutor):
 
     def result(self, handle: TaskHandle):
         """Block until ``handle``'s local model is here; return (model, meta)."""
+        packed, meta = self.result_packed(handle)
+        return unpack_state(packed.schema, packed.buffer), meta
+
+    def result_packed(self, handle: TaskHandle):
+        """
+        Like :meth:`result`, but return the local model as a
+        :class:`~appfl.vsim.codec.PackedState` of the buffer it arrived in. The
+        caller owns that buffer, and may give it back through :meth:`recycle`.
+        """
         record = self._tasks.get(handle.tid)
         if record is None:
             raise RuntimeError(
@@ -413,7 +434,7 @@ class MPIExecutor(DeferredExecutor):
             self._progress(block=True)
         self._stats["stall_seconds"] += time.perf_counter() - started
 
-        model = unpack_state(record["schema"], record["buf"])
+        packed = PackedState(record["schema"], record["buf"])
         meta = record["meta"]
         self._fetched_bytes -= record["nbytes"]
         self._stats["results"] += 1
@@ -421,7 +442,14 @@ class MPIExecutor(DeferredExecutor):
         self._forget(handle.tid)
         self._prefetch_dirty = True
         self._progress()
-        return model, meta
+        return packed, meta
+
+    def recycle(self, buffer) -> None:
+        """
+        Take back a buffer from :meth:`result_packed` or a packed global model, to
+        receive later results into once no send of it is pending.
+        """
+        self._retired.append(buffer)
 
     def discard(self, handle: TaskHandle) -> None:
         """Tell the worker to drop the task or its held result."""
@@ -452,19 +480,53 @@ class MPIExecutor(DeferredExecutor):
 
     # ---------- internals ----------
     def _pack(self, version: int, params):
-        """Return (schema, buffer) for ``version``, packing ``params`` only once."""
+        """
+        Return (schema, buffer) for ``version``, packing ``params`` only once.
+
+        A :class:`~appfl.vsim.codec.PackedState` is sent from its own buffer, which
+        its owner no longer writes to.
+        """
         if self._packed is not None and self._packed[0] == version:
             return self._packed[1], self._packed[2]
         if params is None:
             raise RuntimeError(
                 f"Global model version {version} was neither published nor supplied."
             )
-        started = time.perf_counter()
-        schema, buf = pack_state(params)
-        self._stats["pack_seconds"] += time.perf_counter() - started
+        if isinstance(params, PackedState):
+            schema, buf = params
+        else:
+            started = time.perf_counter()
+            schema, buf = pack_state(params)
+            self._stats["pack_seconds"] += time.perf_counter() - started
         P.check_payload_size(int(buf.numel()))
         self._packed = (version, schema, buf)
         return schema, buf
+
+    def _take_buffer(self, nbytes: int):
+        """Return a receive buffer of ``nbytes``, reusing a recycled one if free."""
+        import torch
+
+        if self._retired:
+            sending = {id(keep) for _, keep in self._sends if keep is not None}
+            if self._packed is not None:
+                sending.add(id(self._packed[2]))  # may be sent again
+            busy = []
+            for buf in self._retired:
+                size = int(buf.numel())
+                if id(buf) in sending:
+                    busy.append(buf)
+                elif self._spare_bytes <= self.prefetch_bytes:
+                    # Spares beyond the prefetch budget are freed instead.
+                    self._spare.setdefault(size, []).append(buf)
+                    self._spare_bytes += size
+            self._retired = busy
+        spare = self._spare.get(nbytes)
+        if spare:
+            self._spare_bytes -= nbytes
+            self._stats["buffers_reused"] += 1
+            return spare.pop()
+        self._stats["buffers_allocated"] += 1
+        return torch.empty(nbytes, dtype=torch.uint8)
 
     def _send_ctrl(self, worker: int, message: Dict) -> None:
         request = self.comm.isend(message, dest=worker, tag=P.TAG_CTRL)
@@ -472,10 +534,8 @@ class MPIExecutor(DeferredExecutor):
 
     def _fetch(self, tid: int) -> None:
         """Post the receive for a ready result, then ask its worker to send it."""
-        import torch
-
         record = self._tasks[tid]
-        buf = torch.empty(record["nbytes"], dtype=torch.uint8)
+        buf = self._take_buffer(record["nbytes"])
         record["req"] = self.comm.Irecv(
             [buf.numpy(), self._MPI.BYTE], source=record["worker"], tag=P.TAG_RESULT
         )
@@ -515,6 +575,7 @@ class MPIExecutor(DeferredExecutor):
             record["state"] = "discarded"
         elif state == "received":
             self._fetched_bytes -= record["nbytes"]
+            self._retired.append(record["buf"])
             self._forget(tid)
 
     def _beyond_horizon(self, deadline: float) -> bool:
@@ -629,6 +690,7 @@ class MPIExecutor(DeferredExecutor):
                 record["req"] = None
                 if record["state"] == "discarded":
                     self._fetched_bytes -= record["nbytes"]
+                    self._retired.append(record["buf"])
                     self._tasks.pop(tid, None)
                 else:
                     record["state"] = "received"

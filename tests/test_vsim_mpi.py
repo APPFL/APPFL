@@ -245,7 +245,7 @@ def test_mpi_calibrates_step_time():
 
 
 # ------------------ real APPFL agents ------------------ #
-def _server_config(name, tmp_dir, num_clients, epochs):
+def _server_config(name, tmp_dir, num_clients, epochs, model="CNN"):
     from appfl.agent import ServerAgent
 
     cfg = OmegaConf.load(os.path.join(RESOURCES, "configs", name))
@@ -257,8 +257,9 @@ def _server_config(name, tmp_dir, num_clients, epochs):
     train.loss_fn_path = os.path.join(RESOURCES, "loss", "celoss.py")
     train.metric_path = os.path.join(RESOURCES, "metric", "acc.py")
     cfg.client_configs.model_configs.model_path = os.path.join(
-        RESOURCES, "model", "cnn.py"
+        RESOURCES, "model", "cnn_bn.py" if model == "CNNBN" else "cnn.py"
     )
+    cfg.client_configs.model_configs.model_name = model
     cfg.client_configs.model_configs.model_kwargs.num_pixel = 16
     cfg.server_configs.num_clients = num_clients
     cfg.server_configs.num_global_epochs = epochs
@@ -288,13 +289,13 @@ def _make_real_client(cid, context, device):
     return client
 
 
-def _real_driver(kind, tmp_dir, executor):
+def _real_driver(kind, tmp_dir, executor, model="CNN", flat=True):
     ids = [f"Client{i + 1}" for i in range(4)]
     profiles = {cid: ClientProfile(compute_factor=1.0 + i) for i, cid in enumerate(ids)}
     if kind == "fedasync":
-        server = _server_config("server_fedasync.yaml", tmp_dir, 4, 8)
+        server = _server_config("server_fedasync.yaml", tmp_dir, 4, 8, model)
     else:
-        server = _server_config("server_fedavg.yaml", tmp_dir, 4, 3)
+        server = _server_config("server_fedavg.yaml", tmp_dir, 4, 3, model)
     context = OmegaConf.to_container(server.get_client_configs(), resolve=True)
     clients = None
     if executor is None:
@@ -307,7 +308,13 @@ def _real_driver(kind, tmp_dir, executor):
             mode="async" if kind == "fedasync" else "sync",
             max_in_flight=3,
         )
-    common = dict(logger=_logger(), seed=3, base_step_time=0.01, executor=executor)
+    common = dict(
+        logger=_logger(),
+        seed=3,
+        base_step_time=0.01,
+        executor=executor,
+        flat_aggregation=flat,
+    )
     if kind == "fedasync":
         # AsyncScheduler counts one epoch per arrival, so the executor may drop
         # tasks past the 8th arrival.
@@ -332,31 +339,44 @@ def _real_driver(kind, tmp_dir, executor):
     return driver, server, executor
 
 
-def test_mpi_real_agents_match_in_process(tmp_path):
+@pytest.mark.parametrize("model", ["CNN", "CNNBN"])
+def test_mpi_real_agents_match_in_process(tmp_path, model):
+    """The reference aggregates through the server agent; the MPI run on the flat
+    path, with every model version sent from its own buffer."""
     torch.set_num_threads(1)
 
     @_executors(2)
     def run(new_executor):
         results = {}
         for kind in ("fedasync", "fedavg"):
-            reference, ref_server, _ = _real_driver(kind, str(tmp_path), None)
+            reference, ref_server, _ = _real_driver(
+                kind, str(tmp_path), None, model, flat=False
+            )
             reference.run()
-            driver, server, executor = _real_driver(kind, str(tmp_path), new_executor)
+            driver, server, executor = _real_driver(
+                kind, str(tmp_path), new_executor, model
+            )
+            on_flat_path = driver._flat is not None
             driver.run()
-            executor.shutdown()
+            stats = executor.shutdown()
             results[kind] = (
                 reference.history,
                 driver.history,
                 ref_server.get_parameters(serial_run=True),
                 server.get_parameters(serial_run=True),
+                on_flat_path and driver._flat is not None,
+                stats,
             )
         return results
 
     out = _on_rank0(MPI.COMM_WORLD, run, _make_real_client)
     if out is None:
         return
-    for kind, (ref_history, history, ref_model, model) in out.items():
+    for kind, (ref_history, history, ref_state, state, flat, stats) in out.items():
+        assert flat, kind
         assert history == ref_history, kind
-        assert list(model) == list(ref_model), kind
-        for name in model:
-            assert torch.equal(model[name], ref_model[name]), (kind, name)
+        assert list(state) == list(ref_state), kind
+        for name in state:
+            assert torch.equal(state[name], ref_state[name]), (kind, name)
+        assert stats["pack_seconds"] == 0.0, kind  # rank 0 never packed a model
+        assert stats["buffers_reused"] > 0, kind
