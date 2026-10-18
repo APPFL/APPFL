@@ -134,6 +134,9 @@ class MPIExecutor(DeferredExecutor):
         output on the console.
     :param calibration_runs: ``train()`` calls per worker when calibrating the step
         time; all but the last are warm-up.
+    :param warmup_runs: Without calibration, ``train()`` calls per worker on a
+        throwaway client before the run, so that CUDA/cuDNN start-up stays out of
+        each worker's first task. Results do not change; ``0`` skips the warm-up.
     :param prefetch_mb: Budget, in MiB, for results fetched ahead of need.
     :param stall_timeout: Seconds without any progress before :meth:`result` gives
         up and reports what is outstanding on each worker.
@@ -153,6 +156,7 @@ class MPIExecutor(DeferredExecutor):
         context=None,
         log_dir: str = "",
         calibration_runs: int = 2,
+        warmup_runs: int = 1,
         prefetch_mb: float = 1024.0,
         stall_timeout: float = 1800.0,
         logger=None,
@@ -191,6 +195,7 @@ class MPIExecutor(DeferredExecutor):
         self.context = context
         self.log_dir = log_dir or ""
         self.calibration_runs = max(1, int(calibration_runs))
+        self.warmup_runs = max(0, int(warmup_runs))
         self.prefetch_bytes = int(float(prefetch_mb) * 2**20)
         self.stall_timeout = float(stall_timeout)
         self.logger = logger
@@ -242,6 +247,7 @@ class MPIExecutor(DeferredExecutor):
         """
         Start the workers: send configuration and the initial model, then collect
         each worker's step census (and calibration time when ``calibrate``).
+        Without calibration, workers warm up first (see ``warmup_runs``).
         """
         import torch
 
@@ -256,6 +262,8 @@ class MPIExecutor(DeferredExecutor):
             "log_dir": self.log_dir,
             "calibrate": bool(calibrate),
             "calibration_runs": self.calibration_runs,
+            # Calibration trains a throwaway client already.
+            "warmup_runs": 0 if calibrate else self.warmup_runs,
             "version": version,
             "schema": schema,
             "nbytes": int(buf.numel()),
@@ -301,6 +309,13 @@ class MPIExecutor(DeferredExecutor):
                     "calibration times differ by more than 20% across workers; "
                     "the hardware may be heterogeneous or shared"
                 )
+
+        warmups = [r["warmup_seconds"] for r in replies if r.get("warmup_seconds")]
+        if warmups:
+            self._info(
+                f"warm-up: {hello['warmup_runs']} train() call(s) per worker on a "
+                f"throwaway client, {min(warmups):.2f}s to {max(warmups):.2f}s"
+            )
 
         # APPFL calls gc.collect() on every update and download (optimize_memory).
         # Freezing the long-lived setup objects keeps those collections cheap; with

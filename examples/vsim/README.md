@@ -86,6 +86,8 @@ server_configs:
     executor: inprocess         # inprocess | mpi (--executor overrides)
     mpi:                        # used with --executor mpi
       calibration_runs: 2       # train() calls per worker; the last one is timed
+      warmup_runs: 1            # with base_step_time: train() calls per worker
+                                # before the run (0 = none; see below)
       prefetch_mb: 1024         # results fetched ahead of need, rank 0 budget
       stall_timeout: 1800       # seconds without progress before aborting
     heterogeneity:
@@ -196,6 +198,16 @@ thread per core in every rank, which made an 8-worker run 1.85x slower. Worker
 output goes to `vsim_logs/run_<timestamp>/worker_<rank>.log`, and per-client log
 files are turned off on workers (each `ClientAgent` would otherwise hold four
 open files).
+
+With a fixed `base_step_time`, each worker also trains a throwaway client
+`warmup_runs` times (default 1) before the run starts, on the thread that trains
+its tasks. CUDA and cuDNN start-up then happens during setup rather than in each
+worker's first task: in 32-GPU ResNet-18 runs on freshly allocated nodes, first
+tasks took 0.3 s with the warm-up and up to 4 s without, against 0.25 s for later
+tasks. The throwaway client trains under a seed of its own and the global RNG
+states are restored afterwards, so models and histories are the same with or
+without the warm-up; `warmup_runs: 0` skips it. Calibration needs no warm-up,
+since it trains a throwaway client anyway.
 
 **What moves, and how often.** The event loop never waits on physical training to
 order events, and model traffic stays off the critical path:

@@ -391,6 +391,7 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
             context=OmegaConf.to_container(client_cfg_from_server, resolve=True),
             log_dir=log_dir,
             calibration_runs=mpi_cfg.get("calibration_runs", 2),
+            warmup_runs=mpi_cfg.get("warmup_runs", 1),
             prefetch_mb=mpi_cfg.get("prefetch_mb", 1024),
             stall_timeout=mpi_cfg.get("stall_timeout", 1800),
             logger=logger,
