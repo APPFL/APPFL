@@ -138,7 +138,9 @@ def _plan_layout(init_model, named_parameters, kind: str):
         else:
             group = "other"
         groups[group].append(name)
-    layout = make_layout(init_model, [name for group in _GROUPS for name in groups[group]])
+    layout = make_layout(
+        init_model, [name for group in _GROUPS for name in groups[group]]
+    )
     where = {name: (start, nbytes) for name, _, _, start, nbytes in layout}
     regions = {}
     for group, names in groups.items():
