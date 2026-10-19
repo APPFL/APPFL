@@ -1,9 +1,10 @@
-import copy
 import argparse
+import copy
+
 import numpy as np
 from mpi4py import MPI
-from typing import List
 from omegaconf import OmegaConf
+
 from appfl.agent import ClientAgent, ServerAgent
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 
@@ -40,7 +41,7 @@ if rank == 0:
     server_communicator.serve()
 else:
     # Create client agents for each client in the batch
-    client_agents: List[ClientAgent] = []
+    client_agents: list[ClientAgent] = []
     client_agent_config = OmegaConf.load(args.client_config)
     for batch_idx, client_id in enumerate(client_batch[rank - 1]):
         client_agent_config.client_id = f"Client{client_id}"

@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
 
 
 @dataclass
@@ -11,4 +10,4 @@ class ClientTask:
     success: bool = False
     start_time: float = -1
     end_time: float = -1
-    log: Optional[Dict] = field(default_factory=dict)
+    log: dict | None = field(default_factory=dict)

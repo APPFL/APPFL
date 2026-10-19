@@ -1,13 +1,16 @@
-import gc
 import copy
+import gc
+from collections import OrderedDict
+from typing import Any
+
 import torch
 from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import BaseAggregator
-from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
-    safe_inplace_operation,
     optimize_memory_cleanup,
+    safe_inplace_operation,
 )
 
 
@@ -19,9 +22,9 @@ class FedCompassAggregator(BaseAggregator):
 
     def __init__(
         self,
-        model: Optional[torch.nn.Module] = None,
+        model: torch.nn.Module | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         self.model = model
         self.logger = logger
@@ -47,12 +50,12 @@ class FedCompassAggregator(BaseAggregator):
 
     def aggregate(
         self,
-        client_id: Optional[Union[str, int]] = None,
-        local_model: Optional[Union[Dict, OrderedDict]] = None,
-        local_models: Optional[Dict[Union[str, int], Union[Dict, OrderedDict]]] = None,
-        staleness: Optional[Union[int, Dict[Union[str, int], int]]] = None,
+        client_id: str | int | None = None,
+        local_model: dict | OrderedDict | None = None,
+        local_models: dict[str | int, dict | OrderedDict] | None = None,
+        staleness: int | dict[str | int, int] | None = None,
         **kwargs,
-    ) -> Dict:
+    ) -> dict:
         # Memory optimization: Initialize global state efficiently
         if self.global_state is None:
             if client_id is not None and local_model is not None:
@@ -345,7 +348,7 @@ class FedCompassAggregator(BaseAggregator):
         else:
             return {k: v.clone() for k, v in self.global_state.items()}
 
-    def get_parameters(self, **kwargs) -> Dict:
+    def get_parameters(self, **kwargs) -> dict:
         """
         The aggregator can deal with three general aggregation cases:
 

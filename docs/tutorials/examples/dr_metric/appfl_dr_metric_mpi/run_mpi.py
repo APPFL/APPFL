@@ -1,7 +1,9 @@
 import argparse
+
 from mpi4py import MPI
 from omegaconf import OmegaConf
 from resources.cadre_module import CADREModule
+
 from appfl.agent import ServerAgent
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 

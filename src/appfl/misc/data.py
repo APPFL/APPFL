@@ -3,15 +3,16 @@ Miscellaneous data classes and processing functions for federated learning.
 """
 
 import os
-import torch
 import pathlib
-import numpy as np
-import matplotlib.pyplot as plt
-from torch.utils import data
-from typing import List, Optional
-from .deprecation import deprecated
-import pandas as pd
 import random
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+from torch.utils import data
+
+from .deprecation import deprecated
 
 
 class Dataset(data.Dataset):
@@ -45,10 +46,10 @@ class Dataset(data.Dataset):
 
 def plot_distribution(
     num_clients: int,
-    classes_samples: List[int],
+    classes_samples: list[int],
     sample_matrix: np.ndarray,
-    output_dirname: Optional[str],
-    output_filename: Optional[str],
+    output_dirname: str | None,
+    output_filename: str | None,
 ):
     """
     Visualize the data distribution among clients for different classes.
@@ -123,7 +124,7 @@ def plot_distribution(
 def iid_partition(
     train_dataset: data.Dataset,
     num_clients: int,
-) -> List[data.Dataset]:
+) -> list[data.Dataset]:
     """
     Partition a `torch.utils.data.Dataset` into `num_clients` clients chunks in an IID manner.
     :param train_dataset: the training dataset
@@ -151,8 +152,8 @@ def class_noniid_partition(
     train_dataset: data.Dataset,
     num_clients: int,
     visualization: bool = False,
-    output_dirname: Optional[str] = None,
-    output_filename: Optional[str] = None,
+    output_dirname: str | None = None,
+    output_filename: str | None = None,
     seed: int = 42,
     num_of_classes=10,
     Cmin=None,
@@ -298,8 +299,8 @@ def class_noniid_partition_binary(
     num_clients: int,
     min_class_ratio: float = 0.1,  # Minimum proportion for minority class (ensures both classes exist)
     visualization: bool = False,
-    output_dirname: Optional[str] = None,
-    output_filename: Optional[str] = None,
+    output_dirname: str | None = None,
+    output_filename: str | None = None,
     seed: int = 42,
     **kwargs,
 ):
@@ -390,8 +391,8 @@ def dirichlet_noniid_partition(
     train_dataset: data.Dataset,
     num_clients: int,
     visualization: bool = False,
-    output_dirname: Optional[str] = None,
-    output_filename: Optional[str] = None,
+    output_dirname: str | None = None,
+    output_filename: str | None = None,
     alpha1: int = 8,
     alpha2: int = 0.5,
     seed: int = 42,
@@ -493,7 +494,7 @@ def dirichlet_noniid_partition(
 def iid_partition_df(
     train_df: pd.DataFrame,
     num_clients: int,
-) -> List[pd.DataFrame]:
+) -> list[pd.DataFrame]:
     """
     Partition a pandas DataFrame into `num_clients` chunks in an IID manner.
 
@@ -518,13 +519,13 @@ def class_noniid_partition_df(
     num_clients: int,
     label_col: str = "label",
     visualization: bool = False,
-    output_dirname: Optional[str] = None,
-    output_filename: Optional[str] = None,
+    output_dirname: str | None = None,
+    output_filename: str | None = None,
     seed: int = 42,
     Cmin=None,
     Cmax=None,
     **kwargs,
-) -> List[pd.DataFrame]:
+) -> list[pd.DataFrame]:
     """
     Partition a pandas DataFrame into `num_clients` in a non-IID manner by
     letting each client only have a subset of all classes.
@@ -641,13 +642,13 @@ def dirichlet_noniid_partition_df(
     num_clients: int,
     label_col: str = "label",
     visualization: bool = False,
-    output_dirname: Optional[str] = None,
-    output_filename: Optional[str] = None,
+    output_dirname: str | None = None,
+    output_filename: str | None = None,
     alpha1: float = 8,
     alpha2: float = 0.5,
     seed: int = 42,
     **kwargs,
-) -> List[pd.DataFrame]:
+) -> list[pd.DataFrame]:
     """
     Partition a pandas DataFrame into `num_clients` using two Dirichlet distributions:
       1) one for how many total samples each client gets,
@@ -751,11 +752,11 @@ def column_based_partition_df(
     label_col: str,
     partition_col: str,
     visualization: bool = False,
-    output_dirname: Optional[str] = None,
-    output_filename: Optional[str] = None,
-    random_seed: Optional[int] = 42,
+    output_dirname: str | None = None,
+    output_filename: str | None = None,
+    random_seed: int | None = 42,
     **kwargs,
-) -> List[pd.DataFrame]:
+) -> list[pd.DataFrame]:
     """
     Partition a dataframe into a list of dataframes based on the unique values in `partition_col`.
     If #classes >= #clients, distribute classes across clients as evenly as possible.

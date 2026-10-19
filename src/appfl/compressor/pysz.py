@@ -2,8 +2,9 @@
 Python API for SZ2/SZ3
 """
 
-import sys
 import ctypes
+import sys
+
 import numpy as np
 
 
