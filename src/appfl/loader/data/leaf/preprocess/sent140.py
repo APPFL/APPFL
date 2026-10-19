@@ -1,11 +1,10 @@
-import os
-import re
 import json
 import logging
+import os
+import re
+from collections import OrderedDict, defaultdict
 
 import pandas as pd
-
-from collections import defaultdict, OrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -188,8 +187,8 @@ def preprocess(root):
             .groupby("user")
             .agg(
                 {
-                    "text": lambda x: [i for i in x],
-                    "target": lambda y: [label for label in y],
+                    "text": lambda x: [*x],
+                    "target": lambda y: [*y],
                 }
             )
             .rename(columns={"text": "x", "target": "y"})
