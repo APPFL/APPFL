@@ -3,6 +3,7 @@ import io
 import copy
 import grpc
 import time
+import uuid
 import yaml
 import torch
 import random
@@ -13,7 +14,7 @@ import threading
 from typing import Optional
 from datetime import datetime
 from omegaconf import OmegaConf
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_pre_signed_s3
 from .grpc_communicator_pb2 import (
     UpdateGlobalModelRequest,
@@ -63,6 +64,19 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self._load_google_drive(server_agent.server_agent_config)
         self._num_connected_clients = 0
         self._total_num_clients = self.server_agent.get_num_clients()
+
+        # Polling mode: acknowledge each request immediately with a PENDING ticket, and let the
+        # client poll for the result every `poll_interval` seconds. This keeps every RPC short,
+        # so gateways with an idle timeout in front of the server do not cut off waiting clients.
+        self.use_polling = kwargs.get("use_polling", False)
+        self.poll_interval = kwargs.get("poll_interval", 5.0)
+        self._pending_results = {}  # ticket -> (Future of (response, model_bytes), response type)
+        self._pending_lock = threading.Lock()
+        self._executor = (
+            ThreadPoolExecutor(max_workers=kwargs.get("max_workers", 128))
+            if self.use_polling
+            else None
+        )
 
         # Streamed aggregation configuration
         self.use_model_chunking = kwargs.get("use_model_chunking", False)
@@ -152,69 +166,16 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
-            use_s3 = meta_data.get("_use_s3", False)
-            model_key = None
-            model_url = None
-            if use_s3:
-                model_key = meta_data.get("model_key", None)
-                model_url = meta_data.get("model_url", None)
-
-            model = self.server_agent.get_parameters(**meta_data, blocking=True)
-            response_meta_data = {}
-            if isinstance(model, tuple):
-                model, response_meta_data = model
-
-            if use_s3:
-                model = send_model_by_pre_signed_s3(
+            if self.use_polling:
+                yield from self._defer(
+                    GetGlobalModelRespone,
+                    self._get_global_model_result,
                     request.header.client_id,
-                    self.experiment_id,
-                    "grpc",
-                    model,
-                    model_key=model_key,
-                    model_url=model_url,
-                    logger=self.logger,
+                    meta_data,
                 )
-
-            serialized_meta_data = yaml.dump(response_meta_data)
-            if self.use_proxystore:
-                model = self.proxystore.proxy(model)
-
-            if self.use_colab_connector:
-                model = self.colab_connector.upload(
-                    model, f"init_global_model{int(time.time())}.pt"
-                )
-
-            # Optimized protocol: Stream metadata separately from model data
-            if self.optimize_memory:
-                # Step 1: Send metadata-only message (no model bytes)
-                metadata_proto = GetGlobalModelRespone(
-                    header=ServerHeader(status=ServerStatus.RUN),
-                    global_model=b"",  # Empty - signals that model data follows separately
-                    meta_data=serialized_meta_data,
-                )
-                yield from proto_to_databuffer(
-                    metadata_proto, max_message_size=self.max_message_size
-                )
-
-                # Step 2: Serialize model and stream raw bytes directly (bypasses protobuf parsing)
-                model_serialized = serialize_model(model)
-
-                yield from self._stream_raw_bytes(
-                    model_serialized, self.max_message_size
-                )
-
-                # Cleanup
-                del model_serialized
-                gc.collect()
             else:
-                model_serialized = serialize_model(model)
-                response_proto = GetGlobalModelRespone(
-                    header=ServerHeader(status=ServerStatus.RUN),
-                    global_model=model_serialized,
-                    meta_data=serialized_meta_data,
-                )
-                yield from proto_to_databuffer(
-                    response_proto, max_message_size=self.max_message_size
+                yield from self._stream_response(
+                    *self._get_global_model_result(request.header.client_id, meta_data)
                 )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
@@ -323,27 +284,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
-            if meta_data.get("_use_proxystore", False):
-                local_model_proxy = deserialize_model(local_model)
-                local_model = extract(local_model_proxy)
-
-                if self.optimize_memory:
-                    optimize_memory_cleanup(local_model_proxy, force_gc=True)
-            if meta_data.get("_use_colab_connector", False):
-                local_model = deserialize_model(local_model)
-                local_model = self.colab_connector.load_model(
-                    local_model["model_drive_path"]
-                )
-            use_s3 = meta_data.get("_use_s3", False)
-            if use_s3:
-                model_key = meta_data.get("model_key", None)
-                model_url = meta_data.get("model_url", None)
-                local_model = extract_model_from_s3(
-                    client_id,
-                    self.experiment_id,
-                    "grpc",
-                    deserialize_model(local_model),
-                )
 
             # Streamed aggregation: chunk metadata is passed through to aggregator
             if self.use_model_chunking and "_chunk_idx" in meta_data:
@@ -419,81 +359,25 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                                 f"Received metadata from {request.header.client_id}:\n{pprint.pformat(meta_data_print)}"
                             )
 
-            global_model = self.server_agent.global_update(
-                client_id, local_model, blocking=True, **meta_data
-            )
-
-            # Memory optimization: Clear local model immediately after processing
-            if self.optimize_memory:
-                del local_model
-                gc.collect()
-
-            meta_data = {}
-            if isinstance(global_model, tuple):
-                global_model, meta_data = global_model
-
-            if self.use_proxystore:
-                global_model = self.proxystore.proxy(global_model)
-            if self.use_colab_connector:
-                global_model = self.colab_connector.upload(
-                    global_model, f"global_model{int(time.time())}.pt"
+            if self.use_polling:
+                yield from self._defer(
+                    UpdateGlobalModelResponse,
+                    self._update_global_model_result,
+                    client_id,
+                    local_model,
+                    meta_data,
                 )
-            if use_s3:
-                global_model = send_model_by_pre_signed_s3(
-                    request.header.client_id,
-                    self.experiment_id,
-                    "grpc",
-                    global_model,
-                    model_key=model_key,
-                    model_url=model_url,
-                    logger=self.logger,
-                )
-
-            meta_data = yaml.dump(meta_data)
-
-            status = (
-                ServerStatus.DONE
-                if self.server_agent.training_finished()
-                else ServerStatus.RUN
-            )
-
-            # Optimized protocol: Stream metadata separately from model data
-            if self.optimize_memory:
-                # Step 1: Send metadata-only message (no model bytes)
-                metadata_proto = UpdateGlobalModelResponse(
-                    header=ServerHeader(status=status),
-                    global_model=b"",  # Empty - signals that model data follows separately
-                    meta_data=meta_data,
-                )
-                for bytes_chunk in self._proto_to_databuffer_optimized(
-                    metadata_proto, max_message_size=self.max_message_size
-                ):
-                    yield bytes_chunk
-
-                # Step 2: Serialize and stream model data directly
-                global_model_serialized = self._serialize_model_optimized(global_model)
-                del global_model
-                gc.collect()
-
-                yield from self._stream_raw_bytes(
-                    global_model_serialized, self.max_message_size
-                )
-
-                # Final cleanup
-                del global_model_serialized
-                gc.collect()
             else:
-                # Original protocol: Embed model in protobuf (backward compatible)
-                global_model_serialized = serialize_model(global_model)
-                response = UpdateGlobalModelResponse(
-                    header=ServerHeader(status=status),
-                    global_model=global_model_serialized,
-                    meta_data=meta_data,
+                response, global_model_serialized = self._update_global_model_result(
+                    client_id, local_model, meta_data
                 )
-                for bytes_chunk in proto_to_databuffer(
-                    response, max_message_size=self.max_message_size
-                ):
-                    yield bytes_chunk
+
+                # Memory optimization: Clear local model before streaming the response
+                if self.optimize_memory:
+                    del local_model
+                    gc.collect()
+
+                yield from self._stream_response(response, global_model_serialized)
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -535,58 +419,20 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
-            if action == "set_sample_size":
-                assert "sample_size" in meta_data, (
-                    "The metadata should contain parameter `sample_size`."
-                )
-                ret_val = self.server_agent.set_sample_size(client_id, **meta_data)
-                if ret_val is None:
-                    response = CustomActionResponse(
-                        header=ServerHeader(status=ServerStatus.RUN),
-                    )
-                else:
-                    if isinstance(ret_val, Future):
-                        ret_val = ret_val.result()
-                    results = yaml.dump(ret_val)
-                    response = CustomActionResponse(
-                        header=ServerHeader(status=ServerStatus.RUN),
-                        results=results,
-                    )
-            elif action == "close_connection":
-                self.server_agent.close_connection(client_id)
-                response = CustomActionResponse(
-                    header=ServerHeader(status=ServerStatus.DONE),
-                )
-            elif action == "get_data_readiness_report":
-                num_clients = self.server_agent.get_num_clients()
-                if not hasattr(self, "_dr_metrics_lock"):
-                    self._dr_metrics = {}
-                    self._dr_metrics_futures = {}
-                    self._dr_metrics_lock = threading.Lock()
-                with self._dr_metrics_lock:
-                    for k, v in meta_data.items():
-                        if k not in self._dr_metrics:
-                            self._dr_metrics[k] = {}
-                        self._dr_metrics[k][client_id] = v
-                    _dr_metric_future = Future()
-                    self._dr_metrics_futures[client_id] = _dr_metric_future
-                    if len(self._dr_metrics_futures) == num_clients:
-                        self.server_agent.data_readiness_report(self._dr_metrics)
-                        for client_id, future in self._dr_metrics_futures.items():
-                            future.set_result(None)
-                        self._dr_metrics = {}
-                        self._dr_metrics_futures = {}
-                # waiting for the data readiness report to be generated for synchronization
-                _dr_metric_future.result()
-                response = CustomActionResponse(
-                    header=ServerHeader(status=ServerStatus.DONE),
+            # `close_connection` returns at once, and the server may shut down right after the
+            # last one, before a client could poll for its result, so it is never deferred.
+            if self.use_polling and action != "close_connection":
+                yield from self._defer(
+                    CustomActionResponse,
+                    self._custom_action_result,
+                    client_id,
+                    action,
+                    meta_data,
                 )
             else:
-                raise NotImplementedError(f"Custom action {action} is not implemented.")
-            for bytes in proto_to_databuffer(
-                response, max_message_size=self.max_message_size
-            ):
-                yield bytes
+                yield from self._stream_response(
+                    *self._custom_action_result(client_id, action, meta_data)
+                )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -594,6 +440,260 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details("Server error occurred!")
             raise e
+
+    def PollResult(self, request, context):
+        """
+        Return the result of a request that the server acknowledged with a PENDING ticket (polling
+        mode), or another PENDING response if the result is not ready yet. Returns are sent back as
+        a stream of messages, in the same format as the response of the acknowledged request.
+        :param: `request.header.client_id`: A unique client ID
+        :param: `request.ticket`: The ticket from the PENDING response
+        """
+        try:
+            with self._pending_lock:
+                pending = self._pending_results.get(request.ticket)
+            if pending is None:
+                raise KeyError(
+                    f"Unknown ticket {request.ticket} from client {request.header.client_id}"
+                )
+            future, response_type = pending
+            if not future.done():
+                yield from proto_to_databuffer(
+                    self._pending_response(response_type, request.ticket),
+                    max_message_size=self.max_message_size,
+                )
+                return
+            if future.exception() is not None:
+                with self._pending_lock:
+                    self._pending_results.pop(request.ticket, None)
+                raise future.exception()
+            yield from self._stream_response(*future.result())
+            # Only drop the result once fully streamed, so the client can poll again if the transfer fails
+            with self._pending_lock:
+                self._pending_results.pop(request.ticket, None)
+        except Exception as e:
+            logging.error("An error occurred", exc_info=True)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details("Server error occurred!")
+            raise e
+
+    def _get_global_model_result(self, client_id, meta_data):
+        """
+        Get the global model for a `GetGlobalModel` request, blocking until it is available.
+        :return: the response protobuf and the serialized global model
+        """
+        use_s3 = meta_data.get("_use_s3", False)
+        model_key = None
+        model_url = None
+        if use_s3:
+            model_key = meta_data.get("model_key", None)
+            model_url = meta_data.get("model_url", None)
+
+        model = self.server_agent.get_parameters(**meta_data, blocking=True)
+        response_meta_data = {}
+        if isinstance(model, tuple):
+            model, response_meta_data = model
+
+        if use_s3:
+            model = send_model_by_pre_signed_s3(
+                client_id,
+                self.experiment_id,
+                "grpc",
+                model,
+                model_key=model_key,
+                model_url=model_url,
+                logger=self.logger,
+            )
+
+        serialized_meta_data = yaml.dump(response_meta_data)
+        if self.use_proxystore:
+            model = self.proxystore.proxy(model)
+
+        if self.use_colab_connector:
+            model = self.colab_connector.upload(
+                model, f"init_global_model{int(time.time())}.pt"
+            )
+
+        response = GetGlobalModelRespone(
+            header=ServerHeader(status=ServerStatus.RUN),
+            meta_data=serialized_meta_data,
+        )
+        return response, serialize_model(model)
+
+    def _update_global_model_result(self, client_id, local_model, meta_data):
+        """
+        Update the global model with a client's local model for an `UpdateGlobalModel` request,
+        blocking until the updated global model is available.
+        :return: the response protobuf and the serialized global model
+        """
+        # Fetching the local model from the transport may take long, so it is done here to
+        # be deferred in polling mode, instead of before the PENDING acknowledgment
+        if meta_data.get("_use_proxystore", False):
+            local_model_proxy = deserialize_model(local_model)
+            local_model = extract(local_model_proxy)
+
+            if self.optimize_memory:
+                optimize_memory_cleanup(local_model_proxy, force_gc=True)
+        if meta_data.get("_use_colab_connector", False):
+            local_model = deserialize_model(local_model)
+            local_model = self.colab_connector.load_model(
+                local_model["model_drive_path"]
+            )
+        if meta_data.get("_use_s3", False):
+            local_model = extract_model_from_s3(
+                client_id,
+                self.experiment_id,
+                "grpc",
+                deserialize_model(local_model),
+            )
+
+        global_model = self.server_agent.global_update(
+            client_id, local_model, blocking=True, **meta_data
+        )
+
+        # Memory optimization: Clear local model immediately after processing
+        if self.optimize_memory:
+            del local_model
+            gc.collect()
+
+        response_meta_data = {}
+        if isinstance(global_model, tuple):
+            global_model, response_meta_data = global_model
+
+        if self.use_proxystore:
+            global_model = self.proxystore.proxy(global_model)
+        if self.use_colab_connector:
+            global_model = self.colab_connector.upload(
+                global_model, f"global_model{int(time.time())}.pt"
+            )
+        if meta_data.get("_use_s3", False):
+            global_model = send_model_by_pre_signed_s3(
+                client_id,
+                self.experiment_id,
+                "grpc",
+                global_model,
+                model_key=meta_data.get("model_key", None),
+                model_url=meta_data.get("model_url", None),
+                logger=self.logger,
+            )
+
+        status = (
+            ServerStatus.DONE
+            if self.server_agent.training_finished()
+            else ServerStatus.RUN
+        )
+        response = UpdateGlobalModelResponse(
+            header=ServerHeader(status=status),
+            meta_data=yaml.dump(response_meta_data),
+        )
+        if self.optimize_memory:
+            global_model_serialized = self._serialize_model_optimized(global_model)
+        else:
+            global_model_serialized = serialize_model(global_model)
+        return response, global_model_serialized
+
+    def _custom_action_result(self, client_id, action, meta_data):
+        """
+        Perform a custom action for an `InvokeCustomAction` request, blocking until it is done.
+        :return: the response protobuf and `None` (no model to send back)
+        """
+        if action == "set_sample_size":
+            assert "sample_size" in meta_data, (
+                "The metadata should contain parameter `sample_size`."
+            )
+            ret_val = self.server_agent.set_sample_size(client_id, **meta_data)
+            if ret_val is None:
+                response = CustomActionResponse(
+                    header=ServerHeader(status=ServerStatus.RUN),
+                )
+            else:
+                if isinstance(ret_val, Future):
+                    ret_val = ret_val.result()
+                results = yaml.dump(ret_val)
+                response = CustomActionResponse(
+                    header=ServerHeader(status=ServerStatus.RUN),
+                    results=results,
+                )
+        elif action == "close_connection":
+            self.server_agent.close_connection(client_id)
+            response = CustomActionResponse(
+                header=ServerHeader(status=ServerStatus.DONE),
+            )
+        elif action == "get_data_readiness_report":
+            num_clients = self.server_agent.get_num_clients()
+            if not hasattr(self, "_dr_metrics_lock"):
+                self._dr_metrics = {}
+                self._dr_metrics_futures = {}
+                self._dr_metrics_lock = threading.Lock()
+            with self._dr_metrics_lock:
+                for k, v in meta_data.items():
+                    if k not in self._dr_metrics:
+                        self._dr_metrics[k] = {}
+                    self._dr_metrics[k][client_id] = v
+                _dr_metric_future = Future()
+                self._dr_metrics_futures[client_id] = _dr_metric_future
+                if len(self._dr_metrics_futures) == num_clients:
+                    self.server_agent.data_readiness_report(self._dr_metrics)
+                    for client_id, future in self._dr_metrics_futures.items():
+                        future.set_result(None)
+                    self._dr_metrics = {}
+                    self._dr_metrics_futures = {}
+            # waiting for the data readiness report to be generated for synchronization
+            _dr_metric_future.result()
+            response = CustomActionResponse(
+                header=ServerHeader(status=ServerStatus.DONE),
+            )
+        else:
+            raise NotImplementedError(f"Custom action {action} is not implemented.")
+        return response, None
+
+    def _defer(self, response_type, compute, *args):
+        """
+        Polling mode: run `compute(*args)` in the background, and immediately acknowledge the
+        request with a PENDING response carrying the ticket for the client to poll the result.
+        """
+        ticket = uuid.uuid4().hex
+        with self._pending_lock:
+            self._pending_results[ticket] = (
+                self._executor.submit(compute, *args),
+                response_type,
+            )
+        yield from proto_to_databuffer(
+            self._pending_response(response_type, ticket),
+            max_message_size=self.max_message_size,
+        )
+
+    def _pending_response(self, response_type, ticket):
+        return response_type(
+            header=ServerHeader(
+                status=ServerStatus.PENDING,
+                ticket=ticket,
+                poll_interval=self.poll_interval,
+            )
+        )
+
+    def _stream_response(self, response, model_serialized=None):
+        """
+        Stream a response protobuf, and the serialized model (if any), as `DataBuffer` messages.
+        """
+        if model_serialized is None:
+            yield from proto_to_databuffer(
+                response, max_message_size=self.max_message_size
+            )
+        elif self.optimize_memory:
+            # Optimized protocol: Stream metadata-only message (empty `global_model` signals
+            # that model data follows separately), then the raw model bytes
+            response.global_model = b""
+            yield from self._proto_to_databuffer_optimized(
+                response, max_message_size=self.max_message_size
+            )
+            yield from self._stream_raw_bytes(model_serialized, self.max_message_size)
+        else:
+            # Original protocol: Embed model in protobuf (backward compatible)
+            response.global_model = model_serialized
+            yield from proto_to_databuffer(
+                response, max_message_size=self.max_message_size
+            )
 
     def cleanup(self):
         """Cleanup the server communicator."""
@@ -605,6 +705,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 self.proxystore.close()
         if self.colab_connector is not None:
             self.colab_connector.cleanup()
+        if self._executor is not None:
+            self._executor.shutdown(wait=False)
 
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
