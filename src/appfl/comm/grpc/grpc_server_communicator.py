@@ -72,7 +72,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.poll_interval = kwargs.get("poll_interval", 5.0)
         self._pending_results = {}  # ticket -> (Future of (response, model_bytes), response type)
         self._pending_lock = threading.Lock()
-        # Results may wait on a barrier across all clients, so size the pool like the gRPC server
         self._executor = (
             ThreadPoolExecutor(max_workers=kwargs.get("max_workers", 128))
             if self.use_polling
@@ -168,17 +167,16 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
             if self.use_polling:
-                self.logger.debug("Using polling mode for GetGlobalModel request")
                 yield from self._defer(
                     GetGlobalModelRespone,
                     self._get_global_model_result,
                     request.header.client_id,
                     meta_data,
                 )
-                return
-            yield from self._stream_response(
-                *self._get_global_model_result(request.header.client_id, meta_data)
-            )
+            else:
+                yield from self._stream_response(
+                    *self._get_global_model_result(request.header.client_id, meta_data)
+                )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -286,24 +284,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
-            if meta_data.get("_use_proxystore", False):
-                local_model_proxy = deserialize_model(local_model)
-                local_model = extract(local_model_proxy)
-
-                if self.optimize_memory:
-                    optimize_memory_cleanup(local_model_proxy, force_gc=True)
-            if meta_data.get("_use_colab_connector", False):
-                local_model = deserialize_model(local_model)
-                local_model = self.colab_connector.load_model(
-                    local_model["model_drive_path"]
-                )
-            if meta_data.get("_use_s3", False):
-                local_model = extract_model_from_s3(
-                    client_id,
-                    self.experiment_id,
-                    "grpc",
-                    deserialize_model(local_model),
-                )
 
             # Streamed aggregation: chunk metadata is passed through to aggregator
             if self.use_model_chunking and "_chunk_idx" in meta_data:
@@ -380,7 +360,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                             )
 
             if self.use_polling:
-                self.logger.debug("Using polling mode for UpdateGlobalModel request")
                 yield from self._defer(
                     UpdateGlobalModelResponse,
                     self._update_global_model_result,
@@ -388,17 +367,17 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     local_model,
                     meta_data,
                 )
-                return
-            response, global_model_serialized = self._update_global_model_result(
-                client_id, local_model, meta_data
-            )
+            else:
+                response, global_model_serialized = self._update_global_model_result(
+                    client_id, local_model, meta_data
+                )
 
-            # Memory optimization: Clear local model before streaming the response
-            if self.optimize_memory:
-                del local_model
-                gc.collect()
+                # Memory optimization: Clear local model before streaming the response
+                if self.optimize_memory:
+                    del local_model
+                    gc.collect()
 
-            yield from self._stream_response(response, global_model_serialized)
+                yield from self._stream_response(response, global_model_serialized)
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -443,7 +422,6 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             # `close_connection` returns at once, and the server may shut down right after the
             # last one, before a client could poll for its result, so it is never deferred.
             if self.use_polling and action != "close_connection":
-                self.logger.debug("Using polling mode for InvokeCustomAction request")
                 yield from self._defer(
                     CustomActionResponse,
                     self._custom_action_result,
@@ -451,10 +429,10 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     action,
                     meta_data,
                 )
-                return
-            yield from self._stream_response(
-                *self._custom_action_result(client_id, action, meta_data)
-            )
+            else:
+                yield from self._stream_response(
+                    *self._custom_action_result(client_id, action, meta_data)
+                )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -548,6 +526,27 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         blocking until the updated global model is available.
         :return: the response protobuf and the serialized global model
         """
+        # Fetching the local model from the transport may take long, so it is done here to
+        # be deferred in polling mode, instead of before the PENDING acknowledgment
+        if meta_data.get("_use_proxystore", False):
+            local_model_proxy = deserialize_model(local_model)
+            local_model = extract(local_model_proxy)
+
+            if self.optimize_memory:
+                optimize_memory_cleanup(local_model_proxy, force_gc=True)
+        if meta_data.get("_use_colab_connector", False):
+            local_model = deserialize_model(local_model)
+            local_model = self.colab_connector.load_model(
+                local_model["model_drive_path"]
+            )
+        if meta_data.get("_use_s3", False):
+            local_model = extract_model_from_s3(
+                client_id,
+                self.experiment_id,
+                "grpc",
+                deserialize_model(local_model),
+            )
+
         global_model = self.server_agent.global_update(
             client_id, local_model, blocking=True, **meta_data
         )
