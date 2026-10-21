@@ -33,7 +33,12 @@ from .grpc_communicator_pb2_grpc import GRPCCommunicatorServicer
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
 from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
-from .utils import proto_to_databuffer, serialize_model, deserialize_model
+from .utils import (
+    proto_to_databuffer,
+    response_chunk_size,
+    serialize_model,
+    deserialize_model,
+)
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
     optimize_memory_cleanup,
@@ -70,7 +75,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         # so gateways with an idle timeout in front of the server do not cut off waiting clients.
         self.use_polling = kwargs.get("use_polling", False)
         self.poll_interval = kwargs.get("poll_interval", 5.0)
-        self._pending_results = {}  # ticket -> (Future of (response, model_bytes), response type)
+        self._pending_results = {}  # ticket -> (Future of (response, model_bytes), response type, chunk size)
         self._pending_lock = threading.Lock()
         self._executor = (
             ThreadPoolExecutor(max_workers=kwargs.get("max_workers", 128))
@@ -166,16 +171,19 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
+            chunk_size = self._response_chunk_size(meta_data)
             if self.use_polling:
                 yield from self._defer(
                     GetGlobalModelRespone,
+                    chunk_size,
                     self._get_global_model_result,
                     request.header.client_id,
                     meta_data,
                 )
             else:
                 yield from self._stream_response(
-                    *self._get_global_model_result(request.header.client_id, meta_data)
+                    *self._get_global_model_result(request.header.client_id, meta_data),
+                    chunk_size=chunk_size,
                 )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
@@ -284,6 +292,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
+            chunk_size = self._response_chunk_size(meta_data)
 
             # Streamed aggregation: chunk metadata is passed through to aggregator
             if self.use_model_chunking and "_chunk_idx" in meta_data:
@@ -362,6 +371,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             if self.use_polling:
                 yield from self._defer(
                     UpdateGlobalModelResponse,
+                    chunk_size,
                     self._update_global_model_result,
                     client_id,
                     local_model,
@@ -377,7 +387,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     del local_model
                     gc.collect()
 
-                yield from self._stream_response(response, global_model_serialized)
+                yield from self._stream_response(
+                    response, global_model_serialized, chunk_size=chunk_size
+                )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -419,11 +431,13 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
+            chunk_size = self._response_chunk_size(meta_data)
             # `close_connection` returns at once, and the server may shut down right after the
             # last one, before a client could poll for its result, so it is never deferred.
             if self.use_polling and action != "close_connection":
                 yield from self._defer(
                     CustomActionResponse,
+                    chunk_size,
                     self._custom_action_result,
                     client_id,
                     action,
@@ -431,7 +445,8 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 )
             else:
                 yield from self._stream_response(
-                    *self._custom_action_result(client_id, action, meta_data)
+                    *self._custom_action_result(client_id, action, meta_data),
+                    chunk_size=chunk_size,
                 )
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
@@ -456,18 +471,18 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 raise KeyError(
                     f"Unknown ticket {request.ticket} from client {request.header.client_id}"
                 )
-            future, response_type = pending
+            future, response_type, chunk_size = pending
             if not future.done():
                 yield from proto_to_databuffer(
                     self._pending_response(response_type, request.ticket),
-                    max_message_size=self.max_message_size,
+                    max_message_size=chunk_size,
                 )
                 return
             if future.exception() is not None:
                 with self._pending_lock:
                     self._pending_results.pop(request.ticket, None)
                 raise future.exception()
-            yield from self._stream_response(*future.result())
+            yield from self._stream_response(*future.result(), chunk_size=chunk_size)
             # Only drop the result once fully streamed, so the client can poll again if the transfer fails
             with self._pending_lock:
                 self._pending_results.pop(request.ticket, None)
@@ -647,7 +662,16 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             raise NotImplementedError(f"Custom action {action} is not implemented.")
         return response, None
 
-    def _defer(self, response_type, compute, *args):
+    def _response_chunk_size(self, meta_data):
+        """
+        Chunk size for the responses to a request: the smaller of the server's `max_message_size` and
+        the one the client declares in `meta_data`, so that every chunk fits the client's receive limit.
+        """
+        chunk_size = response_chunk_size(self.max_message_size, meta_data)
+        meta_data.pop("max_message_size", None)
+        return chunk_size
+
+    def _defer(self, response_type, chunk_size, compute, *args):
         """
         Polling mode: run `compute(*args)` in the background, and immediately acknowledge the
         request with a PENDING response carrying the ticket for the client to poll the result.
@@ -657,10 +681,11 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             self._pending_results[ticket] = (
                 self._executor.submit(compute, *args),
                 response_type,
+                chunk_size,
             )
         yield from proto_to_databuffer(
             self._pending_response(response_type, ticket),
-            max_message_size=self.max_message_size,
+            max_message_size=chunk_size,
         )
 
     def _pending_response(self, response_type, ticket):
@@ -672,28 +697,25 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             )
         )
 
-    def _stream_response(self, response, model_serialized=None):
+    def _stream_response(self, response, model_serialized=None, *, chunk_size):
         """
-        Stream a response protobuf, and the serialized model (if any), as `DataBuffer` messages.
+        Stream a response protobuf, and the serialized model (if any), as `DataBuffer` messages
+        of at most `chunk_size` bytes.
         """
         if model_serialized is None:
-            yield from proto_to_databuffer(
-                response, max_message_size=self.max_message_size
-            )
+            yield from proto_to_databuffer(response, max_message_size=chunk_size)
         elif self.optimize_memory:
             # Optimized protocol: Stream metadata-only message (empty `global_model` signals
             # that model data follows separately), then the raw model bytes
             response.global_model = b""
             yield from self._proto_to_databuffer_optimized(
-                response, max_message_size=self.max_message_size
+                response, max_message_size=chunk_size
             )
-            yield from self._stream_raw_bytes(model_serialized, self.max_message_size)
+            yield from self._stream_raw_bytes(model_serialized, chunk_size)
         else:
             # Original protocol: Embed model in protobuf (backward compatible)
             response.global_model = model_serialized
-            yield from proto_to_databuffer(
-                response, max_message_size=self.max_message_size
-            )
+            yield from proto_to_databuffer(response, max_message_size=chunk_size)
 
     def cleanup(self):
         """Cleanup the server communicator."""

@@ -160,6 +160,8 @@ class GRPCClientCommunicator:
         if self.use_model_chunking:
             kwargs["_request_chunked"] = True
 
+        # Declare what this client can receive, so the server chunks the model to fit it
+        kwargs["max_message_size"] = self.max_message_size
         meta_data = yaml.dump(kwargs)
         request = GetGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
@@ -266,6 +268,8 @@ class GRPCClientCommunicator:
             kwargs["model_url"] = local_model_url
             kwargs["_use_s3"] = True
 
+        # Declare what this client can receive, so the server chunks the model to fit it
+        kwargs["max_message_size"] = self.max_message_size
         meta_data = yaml.dump(kwargs)
 
         # Serialize the local model
@@ -512,6 +516,8 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
+        # Declare what this client can receive, so the server chunks the results to fit it
+        kwargs["max_message_size"] = self.max_message_size
         meta_data = yaml.dump(kwargs)
         request = CustomActionRequest(
             header=ClientHeader(client_id=client_id),
