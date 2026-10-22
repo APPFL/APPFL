@@ -85,7 +85,7 @@ class GetGlobalModelRequest(_message.Message):
         meta_data: _Optional[str] = ...,
     ) -> None: ...
 
-class GetGlobalModelRespone(_message.Message):
+class GetGlobalModelResponse(_message.Message):
     __slots__ = ("header", "global_model", "meta_data")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]

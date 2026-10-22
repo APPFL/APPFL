@@ -14,15 +14,15 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x17grpc_communicator.proto\" \n\nDataBuffer\x12\x12\n\ndata_bytes\x18\x01 \x01(\x0c\"!\n\x0c\x43lientHeader\x12\x11\n\tclient_id\x18\x01 \x01(\t\"T\n\x0cServerHeader\x12\x1d\n\x06status\x18\x01 \x01(\x0e\x32\r.ServerStatus\x12\x0e\n\x06ticket\x18\x02 \x01(\t\x12\x15\n\rpoll_interval\x18\x03 \x01(\x02\"H\n\x14\x43onfigurationRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"M\n\x15\x43onfigurationResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x15\n\rconfiguration\x18\x02 \x01(\t\"I\n\x15GetGlobalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"_\n\x15GetGlobalModelRespone\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"a\n\x18UpdateGlobalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x13\n\x0blocal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"c\n\x19UpdateGlobalModelResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"W\n\x13\x43ustomActionRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x0e\n\x06\x61\x63tion\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"F\n\x14\x43ustomActionResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x0f\n\x07results\x18\x02 \x01(\t\"<\n\x0bPollRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x0e\n\x06ticket\x18\x02 \x01(\t*9\n\x0cServerStatus\x12\x07\n\x03RUN\x10\x00\x12\x08\n\x04\x44ONE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\x12\x0b\n\x07PENDING\x10\x03\x32\xec\x02\n\x10GRPCCommunicator\x12\x43\n\x10GetConfiguration\x12\x15.ConfigurationRequest\x1a\x16.ConfigurationResponse\"\x00\x12@\n\x16GetConfigurationStream\x12\x15.ConfigurationRequest\x1a\x0b.DataBuffer\"\x00\x30\x01\x12\x39\n\x0eGetGlobalModel\x12\x16.GetGlobalModelRequest\x1a\x0b.DataBuffer\"\x00\x30\x01\x12\x33\n\x11UpdateGlobalModel\x12\x0b.DataBuffer\x1a\x0b.DataBuffer\"\x00(\x01\x30\x01\x12\x34\n\x12InvokeCustomAction\x12\x0b.DataBuffer\x1a\x0b.DataBuffer\"\x00(\x01\x30\x01\x12+\n\nPollResult\x12\x0c.PollRequest\x1a\x0b.DataBuffer\"\x00\x30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x17grpc_communicator.proto\" \n\nDataBuffer\x12\x12\n\ndata_bytes\x18\x01 \x01(\x0c\"!\n\x0c\x43lientHeader\x12\x11\n\tclient_id\x18\x01 \x01(\t\"T\n\x0cServerHeader\x12\x1d\n\x06status\x18\x01 \x01(\x0e\x32\r.ServerStatus\x12\x0e\n\x06ticket\x18\x02 \x01(\t\x12\x15\n\rpoll_interval\x18\x03 \x01(\x02\"H\n\x14\x43onfigurationRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"M\n\x15\x43onfigurationResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x15\n\rconfiguration\x18\x02 \x01(\t\"I\n\x15GetGlobalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x11\n\tmeta_data\x18\x02 \x01(\t\"`\n\x16GetGlobalModelResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"a\n\x18UpdateGlobalModelRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x13\n\x0blocal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"c\n\x19UpdateGlobalModelResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x14\n\x0cglobal_model\x18\x02 \x01(\x0c\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"W\n\x13\x43ustomActionRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x0e\n\x06\x61\x63tion\x18\x02 \x01(\t\x12\x11\n\tmeta_data\x18\x03 \x01(\t\"F\n\x14\x43ustomActionResponse\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ServerHeader\x12\x0f\n\x07results\x18\x02 \x01(\t\"<\n\x0bPollRequest\x12\x1d\n\x06header\x18\x01 \x01(\x0b\x32\r.ClientHeader\x12\x0e\n\x06ticket\x18\x02 \x01(\t*9\n\x0cServerStatus\x12\x07\n\x03RUN\x10\x00\x12\x08\n\x04\x44ONE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\x12\x0b\n\x07PENDING\x10\x03\x32\xec\x02\n\x10GRPCCommunicator\x12\x43\n\x10GetConfiguration\x12\x15.ConfigurationRequest\x1a\x16.ConfigurationResponse\"\x00\x12@\n\x16GetConfigurationStream\x12\x15.ConfigurationRequest\x1a\x0b.DataBuffer\"\x00\x30\x01\x12\x39\n\x0eGetGlobalModel\x12\x16.GetGlobalModelRequest\x1a\x0b.DataBuffer\"\x00\x30\x01\x12\x33\n\x11UpdateGlobalModel\x12\x0b.DataBuffer\x1a\x0b.DataBuffer\"\x00(\x01\x30\x01\x12\x34\n\x12InvokeCustomAction\x12\x0b.DataBuffer\x1a\x0b.DataBuffer\"\x00(\x01\x30\x01\x12+\n\nPollResult\x12\x0c.PollRequest\x1a\x0b.DataBuffer\"\x00\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'grpc_communicator_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_SERVERSTATUS']._serialized_start=930
-  _globals['_SERVERSTATUS']._serialized_end=987
+  _globals['_SERVERSTATUS']._serialized_start=931
+  _globals['_SERVERSTATUS']._serialized_end=988
   _globals['_DATABUFFER']._serialized_start=27
   _globals['_DATABUFFER']._serialized_end=59
   _globals['_CLIENTHEADER']._serialized_start=61
@@ -35,18 +35,18 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_CONFIGURATIONRESPONSE']._serialized_end=333
   _globals['_GETGLOBALMODELREQUEST']._serialized_start=335
   _globals['_GETGLOBALMODELREQUEST']._serialized_end=408
-  _globals['_GETGLOBALMODELRESPONE']._serialized_start=410
-  _globals['_GETGLOBALMODELRESPONE']._serialized_end=505
-  _globals['_UPDATEGLOBALMODELREQUEST']._serialized_start=507
-  _globals['_UPDATEGLOBALMODELREQUEST']._serialized_end=604
-  _globals['_UPDATEGLOBALMODELRESPONSE']._serialized_start=606
-  _globals['_UPDATEGLOBALMODELRESPONSE']._serialized_end=705
-  _globals['_CUSTOMACTIONREQUEST']._serialized_start=707
-  _globals['_CUSTOMACTIONREQUEST']._serialized_end=794
-  _globals['_CUSTOMACTIONRESPONSE']._serialized_start=796
-  _globals['_CUSTOMACTIONRESPONSE']._serialized_end=866
-  _globals['_POLLREQUEST']._serialized_start=868
-  _globals['_POLLREQUEST']._serialized_end=928
-  _globals['_GRPCCOMMUNICATOR']._serialized_start=990
-  _globals['_GRPCCOMMUNICATOR']._serialized_end=1354
+  _globals['_GETGLOBALMODELRESPONSE']._serialized_start=410
+  _globals['_GETGLOBALMODELRESPONSE']._serialized_end=506
+  _globals['_UPDATEGLOBALMODELREQUEST']._serialized_start=508
+  _globals['_UPDATEGLOBALMODELREQUEST']._serialized_end=605
+  _globals['_UPDATEGLOBALMODELRESPONSE']._serialized_start=607
+  _globals['_UPDATEGLOBALMODELRESPONSE']._serialized_end=706
+  _globals['_CUSTOMACTIONREQUEST']._serialized_start=708
+  _globals['_CUSTOMACTIONREQUEST']._serialized_end=795
+  _globals['_CUSTOMACTIONRESPONSE']._serialized_start=797
+  _globals['_CUSTOMACTIONRESPONSE']._serialized_end=867
+  _globals['_POLLREQUEST']._serialized_start=869
+  _globals['_POLLREQUEST']._serialized_end=929
+  _globals['_GRPCCOMMUNICATOR']._serialized_start=991
+  _globals['_GRPCCOMMUNICATOR']._serialized_end=1355
 # @@protoc_insertion_point(module_scope)
