@@ -15,7 +15,7 @@ from .grpc_communicator_pb2 import (
     ConfigurationRequest,
     ConfigurationResponse,
     GetGlobalModelRequest,
-    GetGlobalModelRespone,
+    GetGlobalModelResponse,
     UpdateGlobalModelRequest,
     UpdateGlobalModelResponse,
     CustomActionRequest,
@@ -185,7 +185,7 @@ class GRPCClientCommunicator:
             # New protocol: metadata and model data are separate
             response, model_bytes = self._receive_with_polling(
                 self.stub.GetGlobalModel(request, timeout=3600),
-                GetGlobalModelRespone,
+                GetGlobalModelResponse,
                 client_id,
             )
 
@@ -200,7 +200,7 @@ class GRPCClientCommunicator:
             # Original protocol: model embedded in protobuf
             response, _ = self._receive_with_polling(
                 self.stub.GetGlobalModel(request, timeout=3600),
-                GetGlobalModelRespone,
+                GetGlobalModelResponse,
                 client_id,
             )
 
@@ -832,7 +832,7 @@ class GRPCClientCommunicator:
         - model_bytes: Raw model bytes when the optimized protocol sends the model separately, else `None`
         """
         if self.optimize_memory and response_type in (
-            GetGlobalModelRespone,
+            GetGlobalModelResponse,
             UpdateGlobalModelResponse,
         ):
             return self._receive_metadata_and_model_optimized(

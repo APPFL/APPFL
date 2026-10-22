@@ -50,7 +50,7 @@ message GetGlobalModelRequest {
   string meta_data = 2;
 }
 
-message GetGlobalModelRespone {
+message GetGlobalModelResponse {
   ServerHeader header = 1;
   bytes global_model = 2;
   string meta_data = 3;

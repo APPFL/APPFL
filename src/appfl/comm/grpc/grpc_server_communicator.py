@@ -20,7 +20,7 @@ from .grpc_communicator_pb2 import (
     UpdateGlobalModelRequest,
     UpdateGlobalModelResponse,
     ConfigurationResponse,
-    GetGlobalModelRespone,
+    GetGlobalModelResponse,
     CustomActionRequest,
     CustomActionResponse,
     ServerHeader,
@@ -200,7 +200,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             chunk_size = self._response_chunk_size(meta_data)
             if self.use_polling:
                 yield from self._defer(
-                    GetGlobalModelRespone,
+                    GetGlobalModelResponse,
                     chunk_size,
                     self._get_global_model_result,
                     request.header.client_id,
@@ -555,7 +555,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 model, f"init_global_model{int(time.time())}.pt"
             )
 
-        response = GetGlobalModelRespone(
+        response = GetGlobalModelResponse(
             header=ServerHeader(status=ServerStatus.RUN),
             meta_data=serialized_meta_data,
         )

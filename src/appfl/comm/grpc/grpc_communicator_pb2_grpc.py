@@ -81,8 +81,7 @@ class GRPCCommunicatorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetConfigurationStream(self, request, context):
-        """Same as `GetConfiguration`, streamed as chunks so that configurations of any size fit
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
