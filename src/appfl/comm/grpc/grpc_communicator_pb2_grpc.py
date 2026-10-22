@@ -44,6 +44,11 @@ class GRPCCommunicatorStub(object):
                 request_serializer=grpc__communicator__pb2.ConfigurationRequest.SerializeToString,
                 response_deserializer=grpc__communicator__pb2.ConfigurationResponse.FromString,
                 _registered_method=True)
+        self.GetConfigurationStream = channel.unary_stream(
+                '/GRPCCommunicator/GetConfigurationStream',
+                request_serializer=grpc__communicator__pb2.ConfigurationRequest.SerializeToString,
+                response_deserializer=grpc__communicator__pb2.DataBuffer.FromString,
+                _registered_method=True)
         self.GetGlobalModel = channel.unary_stream(
                 '/GRPCCommunicator/GetGlobalModel',
                 request_serializer=grpc__communicator__pb2.GetGlobalModelRequest.SerializeToString,
@@ -71,6 +76,13 @@ class GRPCCommunicatorServicer(object):
 
     def GetConfiguration(self, request, context):
         """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetConfigurationStream(self, request, context):
+        """Same as `GetConfiguration`, streamed as chunks so that configurations of any size fit
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -106,6 +118,11 @@ def add_GRPCCommunicatorServicer_to_server(servicer, server):
                     servicer.GetConfiguration,
                     request_deserializer=grpc__communicator__pb2.ConfigurationRequest.FromString,
                     response_serializer=grpc__communicator__pb2.ConfigurationResponse.SerializeToString,
+            ),
+            'GetConfigurationStream': grpc.unary_stream_rpc_method_handler(
+                    servicer.GetConfigurationStream,
+                    request_deserializer=grpc__communicator__pb2.ConfigurationRequest.FromString,
+                    response_serializer=grpc__communicator__pb2.DataBuffer.SerializeToString,
             ),
             'GetGlobalModel': grpc.unary_stream_rpc_method_handler(
                     servicer.GetGlobalModel,
@@ -155,6 +172,33 @@ class GRPCCommunicator(object):
             '/GRPCCommunicator/GetConfiguration',
             grpc__communicator__pb2.ConfigurationRequest.SerializeToString,
             grpc__communicator__pb2.ConfigurationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetConfigurationStream(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/GRPCCommunicator/GetConfigurationStream',
+            grpc__communicator__pb2.ConfigurationRequest.SerializeToString,
+            grpc__communicator__pb2.DataBuffer.FromString,
             options,
             channel_credentials,
             insecure,

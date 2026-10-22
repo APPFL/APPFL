@@ -118,29 +118,12 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         :param: `request.meta_data`: YAML serialized metadata dictionary (if needed)
         :return `response.header.status`: Server status
         :return `response.configuration`: YAML serialized FL configurations
+
+        The response is a single message, so it is limited by the message sizes on both sides.
+        Clients use `GetConfigurationStream` instead, and this is kept for older clients.
         """
-        self._num_connected_clients += 1
         try:
-            self.logger.info(
-                f"Received [{self._num_connected_clients}/{self._total_num_clients}] GetConfiguration request from client {request.header.client_id}"
-            )
-            if len(request.meta_data) == 0:
-                meta_data = {}
-            else:
-                meta_data = deserialize_yaml(
-                    request.meta_data,
-                    trusted=self.kwargs.get("trusted", False)
-                    or self.kwargs.get("use_authenticator", False),
-                    warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
-                )
-            client_configs = self.server_agent.get_client_configs(**meta_data)
-            client_configs["experiment_id"] = self.experiment_id
-            client_configs = OmegaConf.to_container(client_configs, resolve=True)
-            client_configs_serialized = yaml.dump(client_configs)
-            response = ConfigurationResponse(
-                header=ServerHeader(status=ServerStatus.RUN),
-                configuration=client_configs_serialized,
-            )
+            response, _ = self._get_configuration_result(request)
             return response
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
@@ -149,6 +132,49 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details("Server error occurred!")
             raise e
+
+    def GetConfigurationStream(self, request, context):
+        """
+        Same as `GetConfiguration`, but the response is sent back as a stream of messages, so that
+        configurations of any size fit within the message sizes of both sides.
+        """
+        try:
+            response, chunk_size = self._get_configuration_result(request)
+            yield from self._stream_response(response, chunk_size=chunk_size)
+        except Exception as e:
+            logging.error("An error occurred", exc_info=True)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details("Server error occurred!")
+            raise e
+
+    def _get_configuration_result(self, request):
+        """
+        Get the FL configurations shared among all clients for a configuration request.
+        :return: the response protobuf and the chunk size for streaming it to the client
+        """
+        self._num_connected_clients += 1
+        self.logger.info(
+            f"Received [{self._num_connected_clients}/{self._total_num_clients}] GetConfiguration request from client {request.header.client_id}"
+        )
+        if len(request.meta_data) == 0:
+            meta_data = {}
+        else:
+            meta_data = deserialize_yaml(
+                request.meta_data,
+                trusted=self.kwargs.get("trusted", False)
+                or self.kwargs.get("use_authenticator", False),
+                warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
+            )
+        chunk_size = self._response_chunk_size(meta_data)
+        client_configs = self.server_agent.get_client_configs(**meta_data)
+        client_configs["experiment_id"] = self.experiment_id
+        client_configs = OmegaConf.to_container(client_configs, resolve=True)
+        client_configs_serialized = yaml.dump(client_configs)
+        response = ConfigurationResponse(
+            header=ServerHeader(status=ServerStatus.RUN),
+            configuration=client_configs_serialized,
+        )
+        return response, chunk_size
 
     def GetGlobalModel(self, request, context):
         """

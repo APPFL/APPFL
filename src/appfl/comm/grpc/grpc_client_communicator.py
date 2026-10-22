@@ -13,6 +13,7 @@ from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_s3
 from .grpc_communicator_pb2 import (
     ClientHeader,
     ConfigurationRequest,
+    ConfigurationResponse,
     GetGlobalModelRequest,
     GetGlobalModelRespone,
     UpdateGlobalModelRequest,
@@ -116,12 +117,24 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
+        # Declare what this client can receive, so the server chunks the configurations to fit it
+        kwargs["max_message_size"] = self.max_message_size
         meta_data = yaml.dump(kwargs)
         request = ConfigurationRequest(
             header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
         )
-        response = self.stub.GetConfiguration(request, timeout=3600)
+        try:
+            response, _ = self._receive_response(
+                self.stub.GetConfigurationStream(request, timeout=3600),
+                ConfigurationResponse,
+            )
+        except grpc.RpcError as e:
+            self.logger.error(f"Error occurred while requesting configuration: {e}")
+            if e.code() != grpc.StatusCode.UNIMPLEMENTED:
+                raise
+            # Servers older than `GetConfigurationStream` send configurations as a single message
+            response = self.stub.GetConfiguration(request, timeout=3600)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
@@ -818,7 +831,10 @@ class GRPCClientCommunicator:
         Receive a response streamed by the server. Returns: (response_proto, model_bytes)
         - model_bytes: Raw model bytes when the optimized protocol sends the model separately, else `None`
         """
-        if self.optimize_memory and response_type is not CustomActionResponse:
+        if self.optimize_memory and response_type in (
+            GetGlobalModelRespone,
+            UpdateGlobalModelResponse,
+        ):
             return self._receive_metadata_and_model_optimized(
                 stream_iterator, response_type
             )

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 service GRPCCommunicator {
   rpc GetConfiguration (ConfigurationRequest) returns (ConfigurationResponse) {}
+  rpc GetConfigurationStream (ConfigurationRequest) returns (stream DataBuffer) {}
   rpc GetGlobalModel (GetGlobalModelRequest) returns (stream DataBuffer) {}
   rpc UpdateGlobalModel (stream DataBuffer) returns (stream DataBuffer) {}
   rpc InvokeCustomAction (stream DataBuffer) returns (stream DataBuffer) {}
