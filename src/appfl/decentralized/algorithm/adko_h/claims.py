@@ -19,6 +19,12 @@ Two messages do it, and both ride along with the ordinary knowledge token:
 Both are small, structured and already quantized to a region plus a number, which is also what
 a randomized-response channel would need if differential privacy is added later; nothing here
 carries a raw design point or a raw outcome.
+
+One arm (``AgentConfig.share_detail``) widens the channel on purpose, to find out whether prose
+is worth its bits: the full hypothesis rather than a truncation, the planner's own sentence
+about what its last campaign taught it, and the box this campaign's hits fell in. The last of
+those is still region language, so the invariant above holds -- a box over the planner's own
+coordinates, not the molecule that was run.
 """
 
 from __future__ import annotations
@@ -41,6 +47,12 @@ VERDICT_KEEP = 10
 #: measured against the token it rides on, and prose is what makes it heavy.
 CLAIM_CHARS = 100
 VERDICT_CHARS = 140
+#: Characters allowed on the detailed channel (``AgentConfig.share_detail``), which trades
+#: token size for prose: the full hypothesis, a sentence of the planner's own account of its
+#: last campaign, and the box its hits fell in. Whether that prose is worth the bits is the
+#: question the ``adkoh3-rich`` arm asks.
+DETAIL_CHARS = 400
+NOTE_CHARS = 240
 
 
 @dataclass
@@ -55,13 +67,19 @@ class Claim:
     round: int = 0
     expires: int = 0
     ttl: int = CLAIM_TTL
+    #: The planner's sentence to its neighbours, sent only on the detailed channel.
+    note: str = ""
 
     @property
     def key(self) -> Tuple[int, str]:
         return (int(self.origin), str(self.claim_id))
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        """The wire form. An empty note is left out, so a non-detailed claim weighs what it did."""
+        d = asdict(self)
+        if not d["note"]:
+            d.pop("note")
+        return d
 
 
 @dataclass
@@ -86,6 +104,11 @@ class Verdict:
     hits: Optional[int] = None
     hit_families: Optional[int] = None
     best: Optional[float] = None
+    #: The detailed channel (``AgentConfig.share_detail``): the planner's own sentence about
+    #: what it had just learned, and the box this campaign's hits actually fell in -- which is
+    #: region language, the same vocabulary a claim already travels in, not a design point.
+    note: str = ""
+    hit_box: Any = None
 
     @property
     def key(self) -> Tuple[int, str]:
@@ -103,13 +126,22 @@ class Verdict:
             f"({self.metric} {v} vs {self.op} {self.threshold:g})"
         )
         if self.hits is None:
-            return test
+            return test + self._detail(space)
         where = f" in {region_of(space, self.region).label(space)}" if space is not None else ""
         best = "n/a" if self.best is None else f"{self.best:.3g}"
         return (
             f"{test}; found{where}: {self.hits} hits and {self.hit_families} new hit families "
-            f"in {self.spent} experiments, best score {best}"
+            f"in {self.spent} experiments, best score {best}" + self._detail(space)
         )
+
+    def _detail(self, space=None) -> str:
+        """The detailed channel's additions, when it is on: where the hits sat, and the note."""
+        out = ""
+        if self.hit_box is not None and space is not None:
+            out += f"; its hits sat in {region_of(space, self.hit_box).label(space)}"
+        if self.note:
+            out += f'; a{self.origin} notes: "{self.note}"'
+        return out
 
     def to_dict(self) -> Dict[str, Any]:
         """The wire form. Findings an arm does not share are left out, not sent as nulls."""
@@ -117,6 +149,10 @@ class Verdict:
         for k in _FINDINGS:
             if d[k] is None:
                 d.pop(k)
+        if not d["note"]:
+            d.pop("note")
+        if d["hit_box"] is None:
+            d.pop("hit_box")
         return d
 
 
@@ -244,6 +280,7 @@ class ClaimStore:
         rows = [
             f"[a{c.origin}] {region_of(self.space, c.region).label(self.space)} "
             f"rule={c.rule} until round {c.expires}: {c.hypothesis or '(none)'}"
+            + (f'; a{c.origin} notes: "{c.note}"' if c.note else "")
             for c in self.active(now)
         ]
         return "\n".join(rows) if rows else "(none)"

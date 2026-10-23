@@ -32,6 +32,10 @@ from appfl.decentralized.algorithm.adko_h.llm import build_planner
 from appfl.decentralized.algorithm.adko_h.loop import RunConfig, run
 from appfl.decentralized.algorithm.adko_h.surrogate import GP
 
+#: ADKO v2's continuous input channel, in units of a coordinate's spread: 0.05 on a unit range
+#: is about 0.17 of the PMO embedding's per-coordinate SD. The settled arms carry it.
+V2_NOISE = 0.1732
+
 #: The arms the screen compares. Each is a configuration, not a code path.
 ARMS: Dict[str, Dict[str, Any]] = {
     # no language model at all
@@ -52,6 +56,48 @@ ARMS: Dict[str, Dict[str, Any]] = {
     "adkoh2": {"planner": "llm", "prompt": "v2", "claim_weight": 0.0, "share_hits": True},
     "adkoh2-noclaims": {"planner": "llm", "prompt": "v2", "claims_on": False},
     "adkoh2-noclaims-blind": {"planner": "llm", "prompt": "v2", "claims_on": False, "blind": True},
+    # The composed method: prompt v2, claims carrying findings, no claim penalty, the objective
+    # named, and the token's input channel noisy -- which is ADKO v2's channel, so the arm is
+    # self-contained and nobody has to remember a flag. Each ablation below differs from it in
+    # exactly one switch; `adkoh3` without the noise is `adkoh2`, which is already measured, so
+    # the noise ablation costs nothing and is not an arm.
+    "adkoh3": {
+        "planner": "llm",
+        "prompt": "v2",
+        "claim_weight": 0.0,
+        "share_hits": True,
+        "token_noise": V2_NOISE,
+    },
+    "adkoh3-blind": {  # the objective not named: what knowing the benchmark is worth, composed
+        "planner": "llm",
+        "prompt": "v2",
+        "claim_weight": 0.0,
+        "share_hits": True,
+        "token_noise": V2_NOISE,
+        "blind": True,
+    },
+    "adkoh3-nofindings": {  # claims and verdicts, but a verdict says only whether its test held
+        "planner": "llm",
+        "prompt": "v2",
+        "claim_weight": 0.0,
+        "share_hits": False,
+        "token_noise": V2_NOISE,
+    },
+    "adkoh3-penalty": {  # the same claims, with v1's steer-away penalty put back
+        "planner": "llm",
+        "prompt": "v2",
+        "claim_weight": 1.0,
+        "share_hits": True,
+        "token_noise": V2_NOISE,
+    },
+    "adkoh3-rich": {  # the same claims, on the detailed channel: full text, a note, a hit box
+        "planner": "llm",
+        "prompt": "v2",
+        "claim_weight": 0.0,
+        "share_hits": True,
+        "token_noise": V2_NOISE,
+        "share_detail": True,
+    },
 }
 #: Arm keys that configure the planner or the problem rather than the agents.
 _NOT_AGENT = ("planner", "prompt", "blind")
@@ -100,6 +146,9 @@ def parse(argv=None) -> argparse.Namespace:
                    help="the planner prompt; overrides the arm's (v1 unless the arm says v2)")
     g.add_argument("--blind-objective", action="store_true",
                    help="do not name the objective in the planner's prompt")
+    g.add_argument("--share-detail", action="store_true",
+                   help="widen the campaign channel: full hypothesis, a sentence the planner "
+                        "writes for its neighbours, and the box a campaign's hits fell in")
     g.add_argument("--random-center", default="uniform", choices=("uniform", "pool"),
                    help="random planner: centre boxes anywhere, or on a random candidate")
     g.add_argument("--random-widths", default=None,
@@ -169,6 +218,14 @@ def main(argv=None) -> int:
     planner_kind = args.planner or arm["planner"]
     prompt = args.prompt or arm.get("prompt", "v1")
     blind = bool(args.blind_objective or arm.get("blind", False))
+    # The planner has to be asked for the note the detailed channel carries, so the schema and
+    # the token cannot disagree about whether it exists.
+    detail = bool(args.share_detail or arm.get("share_detail", False))
+    arm["share_detail"] = detail
+    # An explicit --token-noise wins; otherwise the arm's own level, otherwise none.
+    if args.token_noise:
+        arm["token_noise"] = args.token_noise
+    arm.setdefault("token_noise", 0.0)
     for key in _NOT_AGENT:
         arm.pop(key, None)
     label = args.label or (f"{args.arm}-{args.rule}" if args.rule else args.arm)
@@ -215,6 +272,7 @@ def main(argv=None) -> int:
                 use_cache=not args.no_llm_cache,
                 budget_range=(args.campaign_min, args.campaign_max),
                 prompt=prompt,
+                note=detail,
             )
         cfg = RunConfig(
             rounds=args.rounds,
@@ -235,7 +293,6 @@ def main(argv=None) -> int:
                 pool_size=args.pool_size,
                 budget_range=(args.campaign_min, args.campaign_max),
                 force_rule=args.rule,
-                token_noise=args.token_noise,
                 skip_peer_inputs=args.skip_peer_inputs,
                 skip_radius=args.skip_radius,
                 hit_threshold=args.hit_threshold,

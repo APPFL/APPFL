@@ -89,6 +89,11 @@ python -m appfl.decentralized.algorithm.adko_h.run --problem synthetic --arm adk
 | `adkoh-nofootprint` | served model | Tokens carry no descriptor or family key. Is the shared footprint what prevents duplication? |
 | `adkoh2`, `adkoh2-noclaims` | served model | Prompt v2: the planner is told what a hit is and what each campaign found. Can it then use its levers? |
 | `adkoh2-noclaims-blind` | served model | Prompt v2 without the objective's name. What is knowing the benchmark worth? |
+| `adkoh3` | served model | The parts that paid, composed: prompt v2, claims carrying findings, no claim penalty, the objective named, v2's noisy input channel. The method as it would ship. |
+| `adkoh3-blind` | served model | …without the objective's name. Composed, what is knowing the benchmark worth? |
+| `adkoh3-nofindings` | served model | Claims and verdicts still travel, but a verdict reports only whether its own test held. Is it the findings or the channel? |
+| `adkoh3-penalty` | served model | The same claims with v1's steer-away penalty back. Does the fence still cost hits once claims carry evidence? |
+| `adkoh3-rich` | served model | The detailed channel: the full hypothesis, a sentence the planner writes for its neighbours, and the box its hits fell in. Is prose worth its bits? |
 
 Other problems and graphs are flags, not scripts: `--problem synthetic` (free: continuous
 inputs, a descriptor and family keys, like an expensive simulator would give), `--topology random_regular --degree 4` (or `ring`, `fully_connected`,

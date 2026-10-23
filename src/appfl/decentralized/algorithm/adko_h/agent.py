@@ -44,6 +44,8 @@ from appfl.decentralized.algorithm.adko_h.claims import (
     CLAIM_CHARS,
     CLAIM_SLACK,
     CLAIM_TTL,
+    DETAIL_CHARS,
+    NOTE_CHARS,
     VERDICT_CHARS,
     VERDICT_TTL,
     Claim,
@@ -51,6 +53,7 @@ from appfl.decentralized.algorithm.adko_h.claims import (
     Verdict,
 )
 from appfl.decentralized.algorithm.adko_h.problem import Candidates, Outcome, Pick, Problem
+from appfl.decentralized.algorithm.adko_h.region import KIND_CAT
 from appfl.decentralized.algorithm.adko_h.token import HToken, encode, quantize_descriptor
 from appfl.decentralized.algorithm.adko_v2.components import Surrogate
 from appfl.decentralized.algorithm.adko_v2.knowledge_token import Quantizer, score_against
@@ -109,6 +112,10 @@ class AgentConfig:
             planner is told. ``None`` leaves hits undefined.
         share_hits: verdicts carry what the campaign found (hits, new hit families, best score)
             as well as whether its own test passed.
+        share_detail: widen the campaign channel to prose. Claims and verdicts carry the full
+            hypothesis instead of a truncation, the planner is asked for one sentence to its
+            neighbours and that sentence travels, and a verdict says which box its hits fell
+            in. The arm that asks whether the words are worth the bits; implies ``share_text``.
     """
 
     weights: ReasoningWeights = field(default_factory=ReasoningWeights)
@@ -136,6 +143,7 @@ class AgentConfig:
     skip_radius: float = 0.0
     hit_threshold: Optional[float] = None
     share_hits: bool = False
+    share_detail: bool = False
 
 
 class ADKOHAgent:
@@ -286,6 +294,7 @@ class ADKOHAgent:
             "n_families": len({f for f in self._fams if f}),
             "n_peer_families": len(self._peer_fams),
             "base_rates": self._base_rates(),
+            "share_detail": self.cfg.share_detail,
             "recent": [
                 {**c.to_dict(self.space), "found": self._found(c)} for c in self.campaigns[-6:]
             ],
@@ -355,6 +364,7 @@ class ADKOHAgent:
                 budget=int(design.get("budget", self.cfg.default_budget)),
                 hypothesis=str(design.get("hypothesis", ""))[:300],
                 rationale=str(design.get("rationale", ""))[:600],
+                note=str(design.get("note", ""))[:NOTE_CHARS],
                 test=design.get("test") or Test(),
                 p_success=float(design.get("p_success", 0.5)),
                 claim_id=f"a{self.index}c{len(self.campaigns)}",
@@ -372,13 +382,46 @@ class ADKOHAgent:
                     claim_id=c.claim_id,
                     region=c.region.pack(self.space),
                     rule=c.rule,
-                    hypothesis=c.hypothesis[:CLAIM_CHARS] if self.cfg.share_text else "",
+                    hypothesis=self._claim_text(c),
                     round=rnd,
                     expires=rnd + c.budget + CLAIM_SLACK,
                     ttl=self.cfg.claim_ttl,
+                    note=c.note if self.cfg.share_detail else "",
                 )
             )
         return c
+
+    def _verdict_chars(self) -> int:
+        """How much of the hypothesis a verdict carries, by channel width."""
+        if self.cfg.share_detail:
+            return DETAIL_CHARS
+        return VERDICT_CHARS if self.cfg.share_text else 80
+
+    def _claim_text(self, c: Campaign) -> str:
+        """The hypothesis a claim carries: nothing, a truncation, or all of it."""
+        if self.cfg.share_detail:
+            return c.hypothesis[:DETAIL_CHARS]
+        return c.hypothesis[:CLAIM_CHARS] if self.cfg.share_text else ""
+
+    def _hit_box(self, c: Campaign):
+        """The tightest box over this campaign's hits, packed for the wire, or ``None``.
+
+        A box, not the points: region language is what a claim already travels in, so saying
+        where the hits were adds no kind of information the channel did not already carry.
+        """
+        rows = [r for r in c.runs if r.get("F") is not None and self._is_hit(float(r["score"]))]
+        if not rows:
+            return None
+        F = np.atleast_2d(np.asarray([r["F"] for r in rows], dtype=float))
+        bounds: Dict[str, Any] = {}
+        picks: Dict[str, Any] = {}
+        for i, d in enumerate(self.space.dims):
+            col = F[:, i]
+            if d.kind == KIND_CAT:
+                picks[d.name] = sorted({int(round(v)) for v in col})
+            else:
+                bounds[d.name] = [float(col.min()), float(col.max())]
+        return self.space.region(bounds=bounds, picks=picks).pack(self.space)
 
     def _intersect(self, a, b):
         """The tighter of two regions, coordinate by coordinate."""
@@ -522,6 +565,14 @@ class ADKOHAgent:
                     "point": self.problem.label(int(pick.key), pick.meta),
                     "score": round(float(out.score), 6),
                     "family": out.family,
+                    # Only the detailed channel needs where a hit sat, and only in region
+                    # coordinates; keeping it off by default leaves every other arm's records
+                    # byte for byte what they were.
+                    **(
+                        {"F": [float(v) for v in np.ravel(pick.F)]}
+                        if self.cfg.share_detail
+                        else {}
+                    ),
                 }
             )
             if last or c.done:
@@ -538,9 +589,11 @@ class ADKOHAgent:
                         op=v["op"],
                         threshold=v["threshold"],
                         success=v["success"],
-                        hypothesis=c.hypothesis[: VERDICT_CHARS if self.cfg.share_text else 80],
+                        hypothesis=c.hypothesis[: self._verdict_chars()],
                         round=rnd,
                         ttl=self.cfg.verdict_ttl,
+                        note=c.note if self.cfg.share_detail else "",
+                        hit_box=self._hit_box(c) if self.cfg.share_detail else None,
                         **(
                             {}
                             if found is None

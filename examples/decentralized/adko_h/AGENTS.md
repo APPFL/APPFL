@@ -49,6 +49,8 @@ for arms planned through MAG; `report.py` to read results.
 | `adkoh-noclaims`, `-noterritory`, `-nofootprint` | ablations of coordination, starting territories, shared outcome footprint |
 | `adkoh2`, `adkoh2-noclaims` | prompt v2: hits defined, what each campaign found, base rates, no default rule; claims as evidence (no penalty) |
 | `adkoh2-noclaims-blind` | prompt v2 without naming the objective — what knowing the benchmark is worth |
+| `adkoh3` | the parts that paid, composed: prompt v2, claims carrying findings, no penalty, the objective named, v2's noisy input channel (in the arm, so no flag) |
+| `adkoh3-blind`, `-nofindings`, `-penalty`, `-rich` | one part off each: the objective unnamed, verdicts without findings, the steer-away penalty back, the detailed channel on. `adkoh3` minus the noise is `adkoh2`, so that ablation needs no arm. |
 
 `--rule <name>` fixes the rule of every campaign. On a no-planner arm, how far the fixed-rule
 arms land apart is the headroom a campaign planner has; measure it on a new problem before
@@ -58,7 +60,11 @@ Two switches apply to any arm. `--skip-peer-inputs` leaves out candidates a neig
 shows were already run (agents otherwise re-run each other's experiments). `--token-noise`
 adds Gaussian noise to the input a token carries, in units of each coordinate's spread (v2's
 continuous channel is 0.17); with it, give `--skip-radius` a distance that covers the noise,
-since an exact match no longer happens.
+since an exact match no longer happens. `--share-detail` widens the campaign channel to prose:
+the full hypothesis instead of a truncation, one sentence the planner is asked to write for its
+neighbours (a `note` field in the same call, so it costs output tokens and not a second
+request), and the box a campaign's hits fell in. It raises bits per token by a few hundred,
+which the run record reports, so the question it asks is whether the words earn them.
 
 ## MAG (the AmSC Model Access Gateway)
 

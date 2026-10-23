@@ -161,6 +161,8 @@ class Campaign:
         budget: how many experiments to spend before judging.
         hypothesis: one line, stated before the data exists.
         rationale: why this region and rule, in the planner's own words.
+        note: one sentence for the neighbours, written when this campaign opened: what the
+            previous one taught. Only the detailed channel sends it.
         test: what would count as being right.
         p_success: the planner's stated probability that the test passes.
         claim_id: this agent's id for the campaign, ``a{source}c{n}``; what a verdict cites.
@@ -172,6 +174,7 @@ class Campaign:
     budget: int = 5
     hypothesis: str = ""
     rationale: str = ""
+    note: str = ""
     test: Test = field(default_factory=Test)
     p_success: float = 0.5
     claim_id: str = ""
@@ -241,6 +244,7 @@ class Campaign:
             "spent": self.spent,
             "hypothesis": self.hypothesis,
             "rationale": self.rationale,
+            "note": self.note,
             "test": self.test.to_dict(),
             "p_success": self.p_success,
             "started": self.started,

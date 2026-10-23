@@ -176,6 +176,15 @@ _CLAIMS_V2 = """
 Neighbours' claims show where they are working now, and their verdicts show what their \
 campaigns found. Use both as evidence, as you would your own results."""
 
+_NOTE_V2 = """
+
+Your neighbours cannot see your results. The only account of them they get is one sentence \
+you write, which travels with your claim and your verdict. Also answer with:
+
+7. note -- one sentence to your neighbours: what your last campaign taught you about where \
+hits are. Write what you would want from them: which coordinates mattered, what did not work, \
+and how sure you are. It is not read by any rule, only by other planners."""
+
 _METRICS_V2 = """- new_hit_families: families among this campaign's hits that nobody had reported to me \
 when it started (an integer)
 - hits: how many of this campaign's outcomes are hits (an integer)
@@ -188,8 +197,11 @@ at its start, in standardized descriptor units (1.0 is about one standard deviat
 
 
 def system_v2(ctx: Dict[str, Any]) -> str:
-    """The version-2 system prompt; the paragraph on claims only when the arm has them."""
-    return _SYSTEM_V2 + (_CLAIMS_V2 if ctx.get("claims_on", True) else "")
+    """The version-2 system prompt; the claims paragraph and the note only when the arm has them."""
+    out = _SYSTEM_V2 + (_CLAIMS_V2 if ctx.get("claims_on", True) else "")
+    if ctx.get("claims_on", True) and ctx.get("share_detail"):
+        out += _NOTE_V2
+    return out
 
 
 def _rates(r: Optional[Dict[str, Any]]) -> str:

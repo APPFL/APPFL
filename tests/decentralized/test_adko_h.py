@@ -958,6 +958,174 @@ class TestPromptV2(unittest.TestCase):
         self.assertGreater(rec["campaigns"]["n"], 0)
 
 
+class TestDetailChannel(unittest.TestCase):
+    """The wide campaign channel: full text, the planner's note, and where the hits were."""
+
+    def agent(self, **kw):
+        from appfl.decentralized.algorithm.adko_h.agent import ADKOHAgent
+
+        return ADKOHAgent("Agent0", 0, GP(), Synthetic(seed=0),
+                          AgentConfig(hit_threshold=0.6, **kw),
+                          neighbor_indices=[1], degree=1, planner=object())
+
+    def test_an_empty_note_stays_off_the_wire(self):
+        self.assertNotIn("note", Claim(origin=1, claim_id="a1c0").to_dict())
+        d = Verdict(origin=1, claim_id="a1c0").to_dict()
+        self.assertNotIn("note", d)
+        self.assertNotIn("hit_box", d)
+
+    def test_a_detailed_claim_and_verdict_carry_what_they_were_given(self):
+        c = Claim(origin=1, claim_id="a1c0", note="small rings looked dead")
+        self.assertEqual(c.to_dict()["note"], "small rings looked dead")
+        sp = space2()
+        v = Verdict(origin=2, claim_id="a2c1", region=sp.full().pack(sp), metric="hits",
+                    value=3.0, threshold=2.0, success=True, hypothesis="mid x is rich",
+                    spent=10, hits=3, hit_families=2, best=0.71,
+                    note="x near 5 pays, s=a does not", hit_box=sp.region(bounds={"x": [4.0, 6.0]}).pack(sp))
+        line = v.line(sp)
+        self.assertIn("3 hits", line)
+        self.assertIn("its hits sat in", line)
+        self.assertIn("x near 5 pays", line)
+
+    def test_a_verdict_without_findings_still_shows_its_note(self):
+        v = Verdict(origin=3, claim_id="a3c0", metric="hits", threshold=1.0, note="nothing here")
+        self.assertIn("nothing here", v.line())
+
+    def test_the_schema_asks_for_a_note_only_when_detail_is_on(self):
+        plain = hschema.campaign_format(space2(), metrics=hschema.METRICS_V2)
+        rich = hschema.campaign_format(space2(), metrics=hschema.METRICS_V2, note=True)
+        self.assertNotIn("note", plain["schema"]["properties"])
+        self.assertIn("note", rich["schema"]["properties"])
+        self.assertIn("note", rich["schema"]["required"])
+
+    def test_the_parser_keeps_a_note(self):
+        d = hschema.parse(space2(), {"region": {"x": [1.0, 2.0]}, "rule": "adko", "budget": 5,
+                                     "note": "x low is empty",
+                                     "test": {"metric": "hits", "op": ">=", "threshold": 1}})
+        self.assertEqual(d["note"], "x low is empty")
+
+    def test_the_detailed_prompt_asks_for_the_note_and_the_plain_one_does_not(self):
+        from appfl.decentralized.algorithm.adko_h.llm import prompts
+
+        rich = prompts.system_v2(self.agent(share_detail=True).plan_context(5))
+        plain = prompts.system_v2(self.agent().plan_context(5))
+        self.assertIn("one sentence to your neighbours", rich)
+        self.assertNotIn("one sentence to your neighbours", plain)
+        # Without claims there is nobody to write to, so the note is not asked for either.
+        off = prompts.system_v2(self.agent(share_detail=True, claims_on=False).plan_context(5))
+        self.assertNotIn("one sentence to your neighbours", off)
+
+    def test_the_hit_box_covers_the_hits_and_leaves_the_misses_out(self):
+        a = self.agent(share_detail=True)
+        sp = a.space
+        c = a.set_campaign({"region": sp.full(), "rule": "adko", "budget": 4,
+                            "note": "worth a look"}, 0)
+        names = [d.name for d in sp.dims]
+        for score, F in ((0.9, [0.2] * len(names)), (0.1, [0.9] * len(names)),
+                         (0.7, [0.4] * len(names))):
+            c.runs.append({"round": 0, "key": 0, "point": "p", "score": score,
+                           "family": "f", "F": F})
+        box = a._hit_box(c)
+        region = sp.unpack(box)
+        for name in names:
+            lo, hi = region.bounds[name]
+            self.assertAlmostEqual(lo, 0.2, places=6)
+            self.assertAlmostEqual(hi, 0.4, places=6)
+
+    def test_no_hits_means_no_box(self):
+        a = self.agent(share_detail=True)
+        c = a.set_campaign({"region": a.space.full(), "rule": "adko", "budget": 2}, 0)
+        c.runs.append({"round": 0, "key": 0, "point": "p", "score": 0.1, "family": "f",
+                       "F": [0.5] * len(a.space.dims)})
+        self.assertIsNone(a._hit_box(c))
+
+    def test_the_note_reaches_a_neighbour_through_claim_and_verdict(self):
+        a = self.agent(share_detail=True, share_hits=True, claim_weight=0.0)
+        a.set_campaign({"region": a.space.full(), "rule": "adko", "budget": 3,
+                        "note": "mid range pays"}, 0)
+        claims, _ = a.claims.outbox()
+        self.assertEqual(claims[0].note, "mid range pays")
+
+    def test_a_detailed_run_is_still_a_run(self):
+        problem = Synthetic(seed=0)
+        planner = build_planner(problem.region_space, "mock", seed=0, prompt="v2", note=True)
+        cfg = RunConfig(
+            rounds=14, agents=3, seed=0, topology="random_regular",
+            topology_kwargs={"k": 2, "seed": 0}, planner="llm", start_points=6,
+            agent_cfg=AgentConfig(warmup_rounds=2, pool_size=64, hit_threshold=0.6,
+                                  share_hits=True, share_detail=True, claim_weight=0.0),
+        )
+        rec = run(problem, GP, cfg, planner=planner)
+        planner.close()
+        self.assertGreater(rec["campaigns"]["n"], 0)
+
+
+class TestComposedArms(unittest.TestCase):
+    """The composed arm and its ablations must differ from it in exactly one switch each."""
+
+    def test_each_ablation_takes_one_part_off(self):
+        from appfl.decentralized.algorithm.adko_h.run import ARMS
+
+        base = ARMS["adkoh3"]
+        for name, key in (("adkoh3-blind", "blind"),
+                          ("adkoh3-nofindings", "share_hits"),
+                          ("adkoh3-penalty", "claim_weight"),
+                          ("adkoh3-rich", "share_detail")):
+            diff = {
+                k for k in set(base) | set(ARMS[name])
+                if base.get(k, False) != ARMS[name].get(k, False)
+            }
+            self.assertEqual(diff, {key}, f"{name} differs from adkoh3 in {diff}")
+
+    def test_the_composed_arm_is_v2_named_with_claims_that_carry_findings_and_no_fence(self):
+        from appfl.decentralized.algorithm.adko_h.run import ARMS, V2_NOISE
+
+        a = ARMS["adkoh3"]
+        self.assertEqual((a["prompt"], a["claim_weight"], a["share_hits"], a["token_noise"]),
+                         ("v2", 0.0, True, V2_NOISE))
+        self.assertNotIn("claims_on", a)  # claims are on; only the penalty is off
+        self.assertNotIn("blind", a)  # the objective is named; blind is the ablation
+
+    def test_the_noise_ablation_is_adkoh2_so_it_needs_no_arm(self):
+        from appfl.decentralized.algorithm.adko_h.run import ARMS
+
+        quiet = {k: v for k, v in ARMS["adkoh3"].items() if k != "token_noise"}
+        self.assertEqual(quiet, ARMS["adkoh2"])
+
+    def test_an_arms_noise_applies_without_a_flag_and_a_flag_overrides_it(self):
+        from appfl.decentralized.algorithm.adko_h.run import V2_NOISE, main, parse
+
+        for argv, want in (
+            (["--arm", "adkoh3", "--planner", "mock"], V2_NOISE),
+            (["--arm", "adkoh3", "--planner", "mock", "--token-noise", "0.5"], 0.5),
+            (["--arm", "adko"], 0.0),
+        ):
+            with self.subTest(argv=argv):
+                parse(argv + ["--problem", "synthetic", "--rounds", "0"])  # argv is legal
+        # The level reaches AgentConfig, which is what the run actually uses.
+        seen = {}
+        import appfl.decentralized.algorithm.adko_h.run as runmod
+
+        real = runmod.run
+        runmod.run = lambda problem, gp, cfg, **kw: (
+            seen.setdefault("noise", cfg.agent_cfg.token_noise),
+            {"endpoints": {"distinct_families": 0, "diverse_hits": 0, "n_circles": 0,
+                           "hull_volume": 0.0, "auc_top10": 0.0, "best": 0.0},
+             "campaigns": {"n": 0, "passed": 0, "calibration": {"brier": None}},
+             "bits_per_token": 0.0, "seconds": 0, "planner": {}},
+        )[1]
+        import contextlib
+        import io
+
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                main(["--problem", "synthetic", "--arm", "adkoh3", "--planner", "mock",
+                      "--rounds", "4", "--agents", "2", "--seeds", "0"])
+            self.assertAlmostEqual(seen["noise"], V2_NOISE)
+        finally:
+            runmod.run = real
+
+
 @unittest.skipUnless(os.environ.get("ADKO_PMO_POOL"), "set ADKO_PMO_POOL to run the PMO tests")
 class TestPMO(unittest.TestCase):
     @classmethod

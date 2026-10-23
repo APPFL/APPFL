@@ -29,9 +29,14 @@ METRICS_V2 = ("new_hit_families", "hits") + METRICS
 
 
 def campaign_format(
-    space: RegionSpace, metrics: tuple = METRICS, budget_range=None
+    space: RegionSpace, metrics: tuple = METRICS, budget_range=None, note: bool = False
 ) -> Dict[str, Any]:
-    """A ``json_schema`` response format for one campaign design."""
+    """A ``json_schema`` response format for one campaign design.
+
+    ``note`` adds the one field the detailed channel needs: a sentence addressed to the
+    neighbours rather than to the agent itself. It is asked for in the same call as the design,
+    so a richer channel costs output tokens and not a second request.
+    """
     lo, hi = tuple(budget_range) if budget_range else BUDGET_RANGE
     props: Dict[str, Any] = {}
     for d in space.dims:
@@ -87,6 +92,15 @@ def campaign_format(
             },
         },
     }
+    if note:
+        schema["required"].append("note")
+        schema["properties"]["note"] = {
+            "type": "string",
+            "description": (
+                "one sentence to your neighbours: what your last campaign taught you about "
+                "where hits are, in your own words"
+            ),
+        }
     return {"type": "json_schema", "name": "campaign", "schema": schema, "strict": True}
 
 
@@ -130,6 +144,7 @@ def parse(space: RegionSpace, data: Optional[Dict[str, Any]]) -> Optional[Dict[s
         "budget": int(data.get("budget", 5)) if str(data.get("budget", "")).strip() != "" else 5,
         "hypothesis": str(data.get("hypothesis", "")),
         "rationale": str(data.get("rationale", "")),
+        "note": str(data.get("note", "")),
         "test": test,
         "p_success": float(data.get("p_success", 0.5)),
         "source": "llm",

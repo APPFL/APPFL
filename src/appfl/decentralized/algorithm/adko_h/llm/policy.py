@@ -55,6 +55,8 @@ class CampaignPolicy:
         max_tokens: completion cap, reasoning included.
         prompt: ``"v1"`` (the first screen's prompt) or ``"v2"`` (hits, findings, base rates;
             see ``prompts.py``). The version also sets which test metrics the schema allows.
+        note: ask for the sentence the detailed channel carries to the neighbours. Set from
+            ``AgentConfig.share_detail``, so the schema and the token agree.
     """
 
     def __init__(
@@ -71,6 +73,7 @@ class CampaignPolicy:
         budget_range=None,
         max_error_rate: float = 0.2,
         prompt: str = "v1",
+        note: bool = False,
     ):
         if prompt not in ("v1", "v2"):
             raise ValueError(f"prompt must be 'v1' or 'v2', got {prompt!r}")
@@ -87,6 +90,7 @@ class CampaignPolicy:
             space,
             metrics=schema.METRICS_V2 if prompt == "v2" else schema.METRICS,
             budget_range=self.budget_range,
+            note=bool(note) and prompt == "v2",
         )
         self.rng = np.random.default_rng([int(seed), 31337])
         self.dir = Path(run_dir) if run_dir else None
