@@ -435,6 +435,45 @@ class TestRequestBody(unittest.TestCase):
         other = dict(self.ctx, round=8)
         self.assertNotEqual(chat_request(self.policy._request(other))["seed"], a["seed"])
 
+    def test_the_sdk_takes_the_body_and_sends_the_vllm_fields(self):
+        # Through the real openai SDK to a fake server. create() raises TypeError on a keyword
+        # it does not know (chat_template_kwargs), before any request leaves; the fields must
+        # still reach the server at the top level of the JSON, where vLLM reads them.
+        import asyncio
+        import json
+
+        try:  # openai >= 3 is built on httpx2
+            import httpx2 as httpx
+        except ImportError:
+            import httpx
+        from openai import AsyncOpenAI
+
+        from appfl.decentralized.algorithm.adko_v2.llm.client import LocalClient
+
+        sent = []
+
+        def reply(req):
+            sent.append(json.loads(req.content))
+            return httpx.Response(200, json={
+                "id": "x", "object": "chat.completion", "created": 0, "model": "m",
+                "choices": [{"index": 0, "finish_reason": "stop",
+                             "message": {"role": "assistant", "content": "{}"}}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            })
+
+        client = LocalClient("http://vllm.test/v1")
+        client.api = AsyncOpenAI(
+            base_url="http://vllm.test/v1", api_key="local", max_retries=0,
+            http_client=httpx.AsyncClient(transport=httpx.MockTransport(reply)),
+        )
+        out = asyncio.run(client.complete(self.policy._request(self.ctx)))
+        self.assertEqual(out["status"], "stop")
+        self.assertTrue(sent[0]["chat_template_kwargs"]["enable_thinking"])
+        self.assertEqual(sent[0]["reasoning_effort"], "low")
+        self.assertEqual(sent[0]["temperature"], 0.2)
+        self.assertIn("seed", sent[0])
+        self.assertNotIn("extra_body", sent[0])
+
     def test_a_fenced_or_chatty_reply_still_parses(self):
         from appfl.decentralized.algorithm.adko_h.llm.policy import _json
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import inspect
 import itertools
 import json
 import random
@@ -156,6 +157,18 @@ def unpack_chat(resp):
             "status": choice.finish_reason}
 
 
+def sdk_body(create, body):
+    """APPFL: ``body`` as ``create(**body)`` takes it. Fields the SDK has no
+    argument for (vLLM's ``chat_template_kwargs``) raise TypeError before any
+    request is sent, so they move to ``extra_body``, which the SDK merges into
+    the JSON: the server receives the same fields."""
+    known = inspect.signature(create).parameters
+    extra = {k: body.pop(k) for k in [k for k in body if k not in known]}
+    if extra:
+        body["extra_body"] = {**body.get("extra_body", {}), **extra}
+    return body
+
+
 class LocalClient:
     """An open model on our own GPU behind vLLM's OpenAI-compatible server:
     free, and it returns the full reasoning trace."""
@@ -171,7 +184,7 @@ class LocalClient:
 
     async def complete(self, request, ctx=None):
         import openai
-        body = chat_request(request)
+        body = sdk_body(self.api.chat.completions.create, chat_request(request))
         async with self.sem:
             try:
                 resp = await self.api.chat.completions.create(**body)
