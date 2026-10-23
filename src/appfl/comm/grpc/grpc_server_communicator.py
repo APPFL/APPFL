@@ -39,6 +39,13 @@ from .utils import (
     serialize_model,
     deserialize_model,
 )
+from .compatibility import (
+    APPFL_VERSION,
+    APPFL_VERSION_HEADER,
+    CLIENT_RULES,
+    IncompatibleVersionError,
+    check_peer_version,
+)
 from appfl.misc.memory_utils import (
     efficient_bytearray_concatenation,
     optimize_memory_cleanup,
@@ -77,6 +84,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.poll_interval = kwargs.get("poll_interval", 5.0)
         self._pending_results = {}  # ticket -> (Future of (response, model_bytes), response type, chunk size)
         self._pending_lock = threading.Lock()
+        self.client_versions = {}  # client ID -> APPFL version, `None` if older than 1.12.0
+        self._incompatible_clients = {}  # client ID -> why its requests are rejected
+        self._client_versions_lock = threading.Lock()
         self._executor = (
             ThreadPoolExecutor(max_workers=kwargs.get("max_workers", 128))
             if self.use_polling
@@ -123,8 +133,11 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         Clients use `GetConfigurationStream` instead, and this is kept for older clients.
         """
         try:
-            response, _ = self._get_configuration_result(request)
+            response, _ = self._get_configuration_result(request, context)
             return response
+        except IncompatibleVersionError as e:
+            # Reject the client with why, as its requests would fail anyway
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -139,15 +152,18 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         configurations of any size fit within the message sizes of both sides.
         """
         try:
-            response, chunk_size = self._get_configuration_result(request)
+            response, chunk_size = self._get_configuration_result(request, context)
             yield from self._stream_response(response, chunk_size=chunk_size)
+        except IncompatibleVersionError as e:
+            # Reject the client with why, as its requests would fail anyway
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details("Server error occurred!")
             raise e
 
-    def _get_configuration_result(self, request):
+    def _get_configuration_result(self, request, context):
         """
         Get the FL configurations shared among all clients for a configuration request.
         :return: the response protobuf and the chunk size for streaming it to the client
@@ -165,7 +181,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 or self.kwargs.get("use_authenticator", False),
                 warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
             )
-        chunk_size = self._response_chunk_size(meta_data)
+        chunk_size = self._process_client_meta(
+            context, request.header.client_id, meta_data
+        )
         client_configs = self.server_agent.get_client_configs(**meta_data)
         client_configs["experiment_id"] = self.experiment_id
         client_configs = OmegaConf.to_container(client_configs, resolve=True)
@@ -197,7 +215,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
-            chunk_size = self._response_chunk_size(meta_data)
+            chunk_size = self._process_client_meta(
+                context, request.header.client_id, meta_data
+            )
             if self.use_polling:
                 yield from self._defer(
                     GetGlobalModelResponse,
@@ -211,6 +231,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     *self._get_global_model_result(request.header.client_id, meta_data),
                     chunk_size=chunk_size,
                 )
+        except IncompatibleVersionError as e:
+            # Reject the client with why, as its requests would fail anyway
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -318,7 +341,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
-            chunk_size = self._response_chunk_size(meta_data)
+            chunk_size = self._process_client_meta(context, client_id, meta_data)
 
             # Streamed aggregation: chunk metadata is passed through to aggregator
             if self.use_model_chunking and "_chunk_idx" in meta_data:
@@ -416,6 +439,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                 yield from self._stream_response(
                     response, global_model_serialized, chunk_size=chunk_size
                 )
+        except IncompatibleVersionError as e:
+            # Reject the client with why, as its requests would fail anyway
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -457,7 +483,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     or self.kwargs.get("use_authenticator", False),
                     warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `grpc_configs` or use an authenticator.",
                 )
-            chunk_size = self._response_chunk_size(meta_data)
+            chunk_size = self._process_client_meta(context, client_id, meta_data)
             # `close_connection` returns at once, and the server may shut down right after the
             # last one, before a client could poll for its result, so it is never deferred.
             if self.use_polling and action != "close_connection":
@@ -474,6 +500,9 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
                     *self._custom_action_result(client_id, action, meta_data),
                     chunk_size=chunk_size,
                 )
+        except IncompatibleVersionError as e:
+            # Reject the client with why, as its requests would fail anyway
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
         except Exception as e:
             logging.error("An error occurred", exc_info=True)
             # Handle the exception in a way that's appropriate for your application
@@ -688,11 +717,44 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
             raise NotImplementedError(f"Custom action {action} is not implemented.")
         return response, None
 
-    def _response_chunk_size(self, meta_data):
+    def _process_client_meta(self, context, client_id, meta_data):
         """
-        Chunk size for the responses to a request: the smaller of the server's `max_message_size` and
-        the one the client declares in `meta_data`, so that every chunk fits the client's receive limit.
+        Exchange APPFL versions with the client, and process the transport keys in the `meta_data`
+        of a request.
+
+        - The server sends its APPFL version in the `appfl-version` response header. The client's
+          version, from its request header, is recorded in `client_versions` and checked against
+          `CLIENT_RULES` whenever it changes. Clients older than APPFL 1.12.0 send no version.
+        - `max_message_size` is popped, as it is for the communicator, not the server agent: the
+          response chunk size is the smaller of the server's `max_message_size` and the client's, so
+          that every chunk fits the client's receive limit.
+
+        :return: the chunk size for the responses to the request
+        :raises IncompatibleVersionError: if the client's version breaks an "error" rule
         """
+        context.send_initial_metadata(((APPFL_VERSION_HEADER, APPFL_VERSION),))
+        client_version = dict(context.invocation_metadata()).get(APPFL_VERSION_HEADER)
+        with self._client_versions_lock:
+            changed = (
+                client_id not in self.client_versions
+                or self.client_versions[client_id] != client_version
+            )
+            self.client_versions[client_id] = client_version
+            if changed:
+                errors = []
+                for level, message in check_peer_version(
+                    f"client {client_id}", client_version, CLIENT_RULES, self
+                ):
+                    getattr(self.logger, level)(message)
+                    if level == "error":
+                        errors.append(message)
+                if errors:
+                    self._incompatible_clients[client_id] = " ".join(errors)
+                else:
+                    self._incompatible_clients.pop(client_id, None)
+            error = self._incompatible_clients.get(client_id)
+        if error is not None:
+            raise IncompatibleVersionError(error)
         chunk_size = response_chunk_size(self.max_message_size, meta_data)
         meta_data.pop("max_message_size", None)
         return chunk_size

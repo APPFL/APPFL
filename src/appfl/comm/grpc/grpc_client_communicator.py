@@ -24,6 +24,7 @@ from .grpc_communicator_pb2 import (
     ServerStatus,
 )
 from .grpc_communicator_pb2_grpc import GRPCCommunicatorStub
+from .compatibility import VersionCheckInterceptor
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
 from appfl.comm.grpc import (
@@ -99,6 +100,8 @@ class GRPCClientCommunicator:
             max_message_size=max_message_size,
         )
         grpc.channel_ready_future(channel).result(timeout=3600)
+        # Exchange APPFL versions with the server in the headers of each RPC
+        channel = grpc.intercept_channel(channel, VersionCheckInterceptor(self))
         self.stub = GRPCCommunicatorStub(channel)
         self._use_authenticator = use_authenticator
         self.kwargs = kwargs
@@ -130,7 +133,6 @@ class GRPCClientCommunicator:
                 ConfigurationResponse,
             )
         except grpc.RpcError as e:
-            self.logger.error(f"Error occurred while requesting configuration: {e}")
             if e.code() != grpc.StatusCode.UNIMPLEMENTED:
                 raise
             # Servers older than `GetConfigurationStream` send configurations as a single message
@@ -755,9 +757,10 @@ class GRPCClientCommunicator:
                 metadata_size = len(metadata_bytes)
                 break
             except Exception:
-                self.logger.info(
-                    f"Metadata parsing failed with first {i} chunks, trying more."
-                )
+                if self.logger:
+                    self.logger.info(
+                        f"Metadata parsing failed with first {i} chunks, trying more."
+                    )
                 continue
 
         if metadata_size == 0:
