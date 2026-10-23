@@ -3,6 +3,66 @@
 Newest first. One entry per finding: date, what was run (oracle, arms, seeds, budget, model),
 the number, and what it means. Numbers come from `report.py` or `run.json`, never from memory.
 
+## 2026-10-23 — batches 1–2: the first planner's regions were a prior; feedback about hits makes it plan
+
+`zaleplon_mpo` with the first screen's settings (10 agents × 1,000 rounds, random 4-regular
+graph, seeds 42–49, campaigns of 20–60; the two region controls use 30, as that planner chose).
+Code `4c03c879`. A rerun of `adko` with it reproduced all 8 seeds of the first screen record for
+record. Planner arms through MAG: 40 runs, 0 errors, 0 fallbacks.
+
+| Arm | Regions from | diverse hits | vs `adko` (p, every seed) | AUC top-10 | $/run |
+|---|---|---|---|---|---|
+| `adko` | — | 186.1 | – | 0.472 | – |
+| `adko-skip` | — | 203.3 | +17.1 (0.195, no) | 0.469 | – |
+| `adko-noise` | — | 201.6 | +15.5 (0.078, no) | 0.472 | – |
+| `adko-noise-skip` | — | 198.8 | +12.6 (0.070, no) | 0.469 | – |
+| `random-region` | random boxes on pool molecules, the planner's size | 171.3 | −14.9 (0.086, no) | 0.468 | – |
+| `replay-regions` | the first `adkoh-noclaims` planner's regions, replayed | 229.1 | +43.0 (0.008, yes) | 0.476 | – |
+| `adkoh`, Haiku | `claude-haiku-5-5@amazon`, prompt v1 | 126.4 | −59.8 (0.008, worse) | 0.464 | 0.24 |
+| `adkoh-noclaims`, Haiku | the same, claims off | 215.0 | +28.9 (0.016, no) | 0.472 | 0.20 |
+| `adkoh2-noclaims` | `claude-sonnet-5-5-medium@amazon`, prompt v2 | 250.0 | +63.9 (0.016, no) | 0.474 | 2.35 |
+| `adkoh2-noclaims-blind` | the same, objective not named | 308.0 | +121.9 (0.008, yes) | 0.482 (yes) | 2.32 |
+| `adkoh2` | prompt v2, claims carry findings, no claim penalty | **336.0** | +149.9 (0.008, yes) | **0.489** (yes) | 3.63 |
+
+For comparison, the first screen: `adkoh-noclaims` 227.0, `adkoh` 147.3, `adko-div` 198.8.
+
+- **The first planner's gain was where its regions sit, not planning.** Replayed in random order
+  with no model, its regions give 229.1 against the planner's own 227.0 (+2.1, p = 0.63). Both
+  beat random boxes of the same size at every seed (+57.9, +55.8). The rule's yield inside a
+  region is the same for random and planner boxes (about 2.5×); what differs is the hit share
+  inside them (0.91% against 1.36%; the pool's is 0.80%).
+- **Prompt v2 makes the planner learn during a run.** v2 defines a hit, feeds back each
+  campaign's hits, gives the agent's base rates, adds the tests `hits` and `new_hit_families`, lists
+  the rules without a default and drops the instruction to work elsewhere. Region quality under v1
+  is flat from the first campaign to the last (1.3–1.4%). Under v2 it rises to 1.6–1.7% (named,
+  no claims), 2.0% (blind) and 3.1% (claims carrying findings). v2 agents keep a region after a
+  campaign with 3 or more hits (overlap with the previous region 0.94) and leave after none
+  (0.63); v1 agents moved every time (0.07).
+- **Claims help once they carry findings.** In `adkoh2`, 24% of campaigns move into a region where
+  a neighbour just found 3 or more hits, and they hit 7.0% of the time (other moves 3.7%, staying
+  7.4%). Without verdicts, v2 agents almost never make that move (2% and 0.4% of campaigns).
+  `adkoh2` beats `adkoh2-noclaims` by +86.0 at every seed.
+- **Naming the objective anchors the planner.** The named v2 planner centres regions at logP 2.5
+  (IQR 2.5–2.75), near zaleplon's own properties, which it cites. The pool's hits sit at logP 3.6
+  (3.1–4.1). Blind regions centre at 3.25, and blind beats named by +58.0 at every seed. Named and
+  without claims, v2 gains only +23.0 over v1 (6 of 8 seeds, p = 0.15).
+- **v2's tests carry information.** 53–58% pass, against 96–99.5% under v1. Brier skill against
+  the base rate is about 0 (−0.02 to +0.01): calibrated, not yet discriminating.
+- **Haiku with prompt v1** picks richer regions than Sonnet when claims are off (hit share 1.93%
+  against 1.37%), but runs 38% of those campaigns under `explore` or `novelty`, which hit about 1%
+  against 4.1% under `adko`. Net −12.0 against Sonnet without claims (not significant) and −20.9
+  with claims (every seed), at $0.20–0.24 a run.
+- **Skipping reported inputs** sends 412 (exact match) or 616 (with noise, radius 0.30) more of the
+  10,000 evaluations to new molecules, at every seed; diverse hits +12.6 to +17.1, not
+  significant. Token noise at v2's level (0.173 of each coordinate's spread) costs nothing
+  measurable. It defeats an exact-match skip but not a radius one: its 99% displacement (0.27) is
+  far below the distance to the nearest other molecule (median 0.82). The v2 arms repeat more
+  (7,770–8,232 distinct molecules against 8,777); skipping there is untested.
+- **Cost.** $69.91 for the 40 MAG runs, pilot included. Prompt v2 is cheaper per run than v1
+  ($2.32–3.63 against $4.21–5.12) because it drops the two lists of 20 scaffold SMILES.
+- **Not yet shown:** which part of v2 does the work; claims with findings and a blind objective
+  together; any other oracle.
+
 ## 2026-10-23 — first full screen with a MAG planner: claims cost hits
 
 `zaleplon_mpo`, 10 agents × 1,000 rounds (10,000 evaluations), random 4-regular graph, seeds
