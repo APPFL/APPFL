@@ -29,7 +29,7 @@ if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
   conda create -y -n "$ENV_NAME" "python=$PYVER"
 fi
 conda run -n "$ENV_NAME" pip install --upgrade \
-  "numpy>=1.26" "scipy>=1.11" "rdkit>=2024.3" "openai>=1.40"
+  "numpy>=1.26" "scipy>=1.11" "rdkit>=2024.3" "openai>=1.40" omegaconf  # adko_v2 imports it
 
 echo "== molecule pool into $ADKO_DATA"
 mkdir -p "$ADKO_DATA"
