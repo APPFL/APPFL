@@ -33,6 +33,7 @@ from appfl.decentralized.topology.base import Topology
 from appfl.decentralized.topology.custom import Custom
 from appfl.decentralized.topology.fully_connected import FullyConnected
 from appfl.decentralized.topology.random_geometric import RandomGeometric
+from appfl.decentralized.topology.random_regular import RandomRegular
 from appfl.decentralized.topology.ring import Ring
 from appfl.decentralized.topology.star import Star
 
@@ -42,6 +43,7 @@ __all__ = [
     "Ring",
     "Star",
     "RandomGeometric",
+    "RandomRegular",
     "Custom",
     "build_topology",
 ]
@@ -52,6 +54,7 @@ _REGISTRY = {
     "ring": Ring,
     "star": Star,
     "random_geometric": RandomGeometric,
+    "random_regular": RandomRegular,
     "custom": Custom,
 }
 
