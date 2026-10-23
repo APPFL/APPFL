@@ -24,7 +24,8 @@
 #     ARM=$ARM sbatch -p <cpu-partition> examples/decentralized/adko_h/screen.sbatch
 #   done
 #
-# Variables: ARM, ORACLE, ROUNDS, AGENTS, SEED0, DEGREE, TOPOLOGY, POOL_SIZE, HIT.
+# Variables: ARM, ORACLE, ROUNDS, AGENTS, SEED0, DEGREE, TOPOLOGY, POOL_SIZE, HIT,
+# CAMPAIGN_MIN, CAMPAIGN_MAX.
 set -eu
 
 ARM=${ARM:-adko}
@@ -36,6 +37,8 @@ TOPOLOGY=${TOPOLOGY:-random_regular}
 DEGREE=${DEGREE:-4}
 POOL_SIZE=${POOL_SIZE:-256}
 HIT=${HIT:-0.4}
+CAMPAIGN_MIN=${CAMPAIGN_MIN:-20}  # campaigns of 20-60 at the full budget (README); run.py's
+CAMPAIGN_MAX=${CAMPAIGN_MAX:-60}  # own default of 2-10 would mean ~4x the model calls
 ADKO_H=${ADKO_H:?set ADKO_H to the APPFL checkout that contains src/appfl}
 DATA=${ADKO_DATA:?set ADKO_DATA to a writable directory}
 RESULTS=${ADKO_RESULTS:-$DATA/results}
@@ -73,6 +76,7 @@ exec conda run -n "${ADKO_ENV:-adko_h}" --no-capture-output \
     --rounds "$ROUNDS" --agents "$AGENTS" --seeds "$SEED" \
     --topology "$TOPOLOGY" --degree "$DEGREE" --pool-size "$POOL_SIZE" \
     --hit-threshold "$HIT" --start-points 20 --warmup 3 \
+    --campaign-min "$CAMPAIGN_MIN" --campaign-max "$CAMPAIGN_MAX" \
     --llm-model "${ADKO_LLM_MODEL:-Qwen/Qwen3.8-27B-FP8}" \
     --llm-thinking "${ADKO_LLM_THINKING:-low}" \
     --out "$RESULTS/$ORACLE"
