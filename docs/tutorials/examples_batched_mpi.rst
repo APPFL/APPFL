@@ -1,12 +1,12 @@
 Example: Running a Batched MPI Example
 =======================================
 
-In this example, we will show how to run FL training with batched MPI communication, i.e., each MPI process represents multiple clients. The example script is available at `examples/mpi/run_batched_mpi.py <https://github.com/APPFL/APPFL/blob/main/examples/mpi/run_batched_mpi.py>`_.
+In this example, we show how to run FL training with batched MPI communication, i.e., each MPI process represents multiple clients. The example script is available at `examples/mpi/run_batched_mpi.py <https://github.com/APPFL/APPFL/blob/main/examples/mpi/run_batched_mpi.py>`_.
 
 Difference between Non-Batched and Batched MPI
 ----------------------------------------------
 
-Below shows the difference between the non-batched and batched MPI examples.
+The following shows the difference between the non-batched and batched MPI examples.
 
 .. note::
 
@@ -47,7 +47,7 @@ Below shows the difference between the non-batched and batched MPI examples.
         server_communicator.serve()
     else:
         # Set client configurations and create client agent
-    -   client_agent_config = OmegaConf.load(args.client_config)
+        client_agent_config = OmegaConf.load(args.client_config)
     -   client_agent_config.client_id = f'Client{rank}'
     -   client_agent_config.data_configs.dataset_kwargs.num_clients = num_clients
     -   client_agent_config.data_configs.dataset_kwargs.client_id = rank - 1
@@ -117,13 +117,13 @@ Below shows the difference between the non-batched and batched MPI examples.
     +           client_agent.load_parameters(new_global_model)
         client_communicator.invoke_custom_action(action='close_connection')
 
-Below summarizes the main changes made to the script:
+The main changes to the script are summarized below:
 
 - The script evenly splits the clients into batches for each rank (lines 18-20), and initializes the client agents for each batch (lines 41-47).
 - When creating the client MPI communicator for batched MPI, the script passes the client IDs of the batch to the communicator (line 50).
 - For the invoked custom actions, the keyword arguments are passed as a dictionary ``kwargs`` with client IDs as keys (lines 64-68, 73-77).
 - For updating the global model, the script passes a dictionary of trained local models with client IDs as keys (lines 83-87).
-- For the metadata returned from the server, it is a dictionary with client IDs as keys, and a dictionary of metadata as values (line 89).
+- The metadata returned from the server is a dictionary with client IDs as keys and dictionaries of metadata as values (line 89).
 
 Running Batched MPI Example
 ---------------------------
@@ -145,9 +145,9 @@ You can also run the batched MPI example with the following command to simulate 
 Extra: Running the Batched MPI Example for Asynchronous FL
 ----------------------------------------------------------
 
-Though it is not very logical to run batched MPI communication with asynchronous FL training, you can still have each MPI process represent multiple clients running serially and sending updates asynchronously.
+Although it is not very natural to combine batched MPI communication with asynchronous FL training, you can still have each MPI process represent multiple clients running serially and sending updates asynchronously.
 
-Below shows the changes needed in local training part to run the batched MPI example with asynchronous FL training. The example script is available at `examples/mpi/run_batched_mpi.py <https://github.com/APPFL/APPFL/blob/main/examples/mpi/run_batched_mpi_async.py>`_.
+The following shows the changes needed in the local training part to run the batched MPI example with asynchronous FL training. The example script is available at `examples/mpi/run_batched_mpi_async.py <https://github.com/APPFL/APPFL/blob/main/examples/mpi/run_batched_mpi_async.py>`_.
 
 .. code-block:: diff
     :linenos:
@@ -185,7 +185,7 @@ Below shows the changes needed in local training part to run the batched MPI exa
     +       break
     client_communicator.invoke_custom_action(action='close_connection')
 
-The main change made to the script is that: the client MPI process sends ``update_global_model`` request serially for each client in the batch and specify its client ID (line 16).
+The main change is that the client MPI process sends an ``update_global_model`` request serially for each client in the batch, specifying its client ID (line 16).
 
 You can run the batched MPI example with the following command to simulate 10 clients with 6 MPI processes, where one process is the server and the rest are clients, so each MPI client process represents two clients.
 

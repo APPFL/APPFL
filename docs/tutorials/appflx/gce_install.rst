@@ -5,7 +5,7 @@ This page describes how to install a `Globus Compute <https://globus-compute.rea
 
 .. note::
 
-	Gloubus Compute endpoint is only supported on linux machine. Please check this `documentation <./gce_install_win.rst>`_ for installing the endpoint on Windows machine using WSL.
+	The Globus Compute endpoint is only supported on Linux machines. Please check this :doc:`documentation <gce_install_win>` for installing the endpoint on a Windows machine using WSL.
 
 .. note::
 
@@ -14,17 +14,17 @@ This page describes how to install a `Globus Compute <https://globus-compute.rea
 Conda environment
 -----------------
 
-We highly recommend to create a new conda virtual environment to install all the required packages for setting Globus Compute endpoint.
+We highly recommend creating a new conda virtual environment in which to install all the packages required for setting up a Globus Compute endpoint.
 
 .. code-block:: bash
 
-	conda create -n appfl python=3.10 --y
+	conda create -n appfl python=3.10 -y
 	conda activate appfl
 
 Package Installation
 --------------------
 
-You just need to install the ``appfl`` package to your conda environment. You can either install it from PyPI or from the source code.
+You just need to install the ``appfl`` package in your conda environment, either from PyPI or from source.
 
 .. code-block:: bash
 
@@ -38,20 +38,20 @@ You just need to install the ``appfl`` package to your conda environment. You ca
 Create Globus Account
 ---------------------
 
-If you do not have a globus account yet, please create a Globus account `here <https://app.globus.org/>`_.
+If you do not have a Globus account yet, please create one `here <https://app.globus.org/>`_.
 
 .. note::
 
-	If you can find your organization in Globus, it is highly recommended to use your organization account to log in to Globus as that makes it easier for your collaborators to verify your identity. Otherwise, you can register a Globus account using your commonly-used email address.
+	If you can find your organization in Globus, it is highly recommended to use your organization account to log in to Globus as this makes it easier for your collaborators to verify your identity. Otherwise, you can register a Globus account using your commonly used email address.
 
-Setup a Globus Compute Endpoint
-----------------------
+Set Up a Globus Compute Endpoint
+--------------------------------
 
-Setup a Globus Compute endpoint using the following command. Please replace ``<ENDPOINT_NAME>`` with your own name such as ``anl-aws-gpu-01``.
+Set up a Globus Compute endpoint using the following command. Please replace ``<ENDPOINT_NAME>`` with a name of your own, such as ``anl-aws-gpu-01``.
 
 .. note::
 
-	You might be required to login with Globus when configuring the endpoint. Please follow the prompt instructions and finish the authentication steps.
+	You might be required to log in with Globus when configuring the endpoint. Please follow the prompts to finish the authentication steps.
 
 .. code-block:: bash
 
@@ -60,11 +60,11 @@ Setup a Globus Compute endpoint using the following command. Please replace ``<E
 Configure the Endpoint
 ----------------------
 
-The command above will create a configuration file ``$HOME/.globus_compute/<ENDPOINT_NAME>/config.yaml``. You should update this file with appropriate configurations for the computing resource you are using before starting the endpoint. We provide few suggestions on setting this configuration file.
+The command above creates a configuration file ``$HOME/.globus_compute/<ENDPOINT_NAME>/config.yaml``. Before starting the endpoint, update this file with the appropriate configurations for the computing resource you are using. Here are a few suggestions for setting up this configuration file:
 
-	- If you are using your own linux machine or some virtual machines provided by cloud service provider such as AWS EC2 or Azure virtual machine, you probably do not need change most part of the config.py file. You just need to specify the number of blocks you want to allocate to the endpoint.
+	- If you are using your own Linux machine or a virtual machine from a cloud service provider, such as AWS EC2 or Azure, you probably do not need to change most of the ``config.yaml`` file. You just need to specify the number of blocks you want to allocate to the endpoint.
 
-	- If you are using any supercomputer as your computing resources which uses some scheduler such as Slurm to allocate resources, you can find some example configurations for various supercomputers `here <https://globus-compute.readthedocs.io/en/stable/endpoints/endpoint_examples.html#>`_.
+	- If you are using a supercomputer that allocates resources with a scheduler such as Slurm, you can find example configurations for various supercomputers `here <https://globus-compute.readthedocs.io/en/stable/endpoints/endpoint_examples.html#>`_.
 
 .. note::
 
@@ -73,7 +73,7 @@ The command above will create a configuration file ``$HOME/.globus_compute/<ENDP
 Start the Endpoint
 ------------------
 
-Now you can start the endpoint using the following command by replacing ``<ENDPOINT_NAME>`` with your endpoint name. It should be noted that the working directory of the endpoint is ``$HOME/.globus_compute/<ENDPOINT_NAME>/tasks_working_dir``.
+Now you can start the endpoint using the following command, replacing ``<ENDPOINT_NAME>`` with your endpoint name. Note that the working directory of the endpoint is ``$HOME/.globus_compute/<ENDPOINT_NAME>/tasks_working_dir``.
 
 .. code-block:: bash
 
@@ -84,10 +84,10 @@ Now you can start the endpoint using the following command by replacing ``<ENDPO
 	Whenever you start your endpoint, you should start it in the **created conda environment**.
 
 
-Get your Endpoint Id
+Get Your Endpoint ID
 --------------------
 
-The following command will print the id of your created endpoint.
+The following command prints the ID of your endpoint.
 
 .. code-block:: bash
 
@@ -97,7 +97,7 @@ The following command will print the id of your created endpoint.
 Run A Simple Test
 -----------------
 
-You can create a python script (e.g. ``test.py``) by copying the following codes to test if you have successfully set up a Globus Compute endpoint. You need to put your own endpoint id into the script, and you should see the printed result computed by your endpoint.
+To test whether you have successfully set up a Globus Compute endpoint, create a Python script (e.g., ``test.py``) by copying the following code. Put your own endpoint ID into the script, and you should see the result computed by your endpoint printed.
 
 .. literalinclude:: ./endpoint.py
     :language: python
@@ -106,4 +106,4 @@ You can create a python script (e.g. ``test.py``) by copying the following codes
 Provide Your Endpoint to APPFLx Developer
 -----------------------------------------
 
-Dear APPFLx collaborators, currently, we have to ask the Globus Compute developers to manually add your endpoint id to a certain globus group for usage in experiments, and this process cannot be automated now for some safety reasons. Please provide your endpoint id to us via Slack, and we will register the endpoint for you.
+Dear APPFLx collaborators: currently, we have to ask the Globus Compute developers to manually add your endpoint ID to a specific Globus group before it can be used in experiments, and this process cannot be automated yet for security reasons. Please provide your endpoint ID to us via Slack, and we will register the endpoint for you.

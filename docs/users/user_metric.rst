@@ -20,7 +20,7 @@ Users can define custom evaluation metric functions for their applications. The 
             y_pred = y_pred.argmax(axis=1)
         return 100*np.sum(y_pred==y_true)/y_pred.shape[0]
 
-To use the defined metric function during the FL experiment, you need to provide the absolute/relative path to the metric definition file and the name of the metric function. For example, to use the accuracy metric defined above, you can add the following lines to the server configuration file, where ``do_validation`` means to perform validation after each local training round, ``do_pre_validation`` means to perform validation before each local training round (i.e., validate the global model).
+To use the defined metric function during the FL experiment, provide the absolute/relative path to the metric definition file and the name of the metric function. For example, to use the accuracy metric defined above, add the following lines to the server configuration file, where ``do_validation`` performs validation after each local training round, and ``do_pre_validation`` performs validation before each local training round (i.e., validates the received global model).
 
 .. code-block:: yaml
 

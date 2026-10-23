@@ -3,11 +3,11 @@ Adding new aggregators
 
 .. note::
 
-    We always welcome you to contribute your increments to ``APPFL`` by creating a pull request.
+    We always welcome your contributions to ``APPFL`` via pull requests.
 
-To add new aggregators to ``APPFL``,  you can create your own aggregator class by inheriting the ``appfl.algorithm.aggregator.BaseAggregator`` and defining the following functions:
+To add new aggregators to ``APPFL``, you can create your own aggregator class by inheriting from ``appfl.algorithm.aggregator.BaseAggregator`` and defining the following functions:
 
-- ``aggregate``: Take a list of local models (for synchronous FL) or one local model (for asynchronous FL) or both (for asynchronous FL) as the input and return the updated global model parameters.
+- ``aggregate``: Take a list of local models (for synchronous FL), one local model (for asynchronous FL), or either (for semi-asynchronous FL) as input, and return the updated global model parameters.
 - ``get_parameters``: Directly return the current global model parameters.
 
 .. code-block:: python
@@ -34,7 +34,7 @@ To add new aggregators to ``APPFL``,  you can create your own aggregator class b
             """Return global model parameters"""
             pass
 
-You may add any configuration parameters into your aggregator and access them using ``self.aggregator_configs.your_config_param``. When you start the FL experiment, you can specify the aggregator configuration parameter values in the server configuration file in the following way:
+You may add any configuration parameters to your aggregator and access them using ``self.aggregator_configs.your_config_param``. When you start the FL experiment, you can specify the aggregator configuration parameter values in the server configuration file in the following way:
 
 .. code-block:: yaml
 

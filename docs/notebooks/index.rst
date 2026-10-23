@@ -1,7 +1,7 @@
 Example Notebooks
 =================
 
-This section provides a collection of notebooks for tutorial.
+This section provides a collection of tutorial notebooks.
 
 .. toctree::
     :maxdepth: 1
@@ -16,7 +16,7 @@ Colab Notebooks
 
 We also provide a collection of tutorial notebooks that can be run on Google Colab.
 
-Running a gRPC federated learning experiments with two clients
+Running a gRPC federated learning experiment with two clients
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - `Launching FL Server <https://colab.research.google.com/drive/1V9yFygwASxeIqHS8alxJWZ9FsPkSCyLK?usp=sharing>`_

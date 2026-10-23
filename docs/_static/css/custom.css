@@ -33,3 +33,523 @@
     width: 75px;
     height: 75px;
 }
+
+/* ==========================================================================
+   Landing page (docs/index.rst). Everything is scoped to .appfl-landing and
+   built on Furo's color variables, so light and dark modes both work.
+   ========================================================================== */
+
+body {
+    --al-yellow: #F7B500;
+    --al-blue: #005F9E;
+    --al-accent: #005F9E;
+    --al-accent-soft: rgba(0, 95, 158, 0.08);
+    --al-yellow-soft: rgba(247, 181, 0, 0.16);
+    --al-yellow-text: #8A6100;
+    --al-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.08);
+}
+
+body[data-theme="dark"] {
+    --al-accent: #5AB0F0;
+    --al-accent-soft: rgba(90, 176, 240, 0.12);
+    --al-yellow-soft: rgba(247, 181, 0, 0.14);
+    --al-yellow-text: #F7C948;
+    --al-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) {
+        --al-accent: #5AB0F0;
+        --al-accent-soft: rgba(90, 176, 240, 0.12);
+        --al-yellow-soft: rgba(247, 181, 0, 0.14);
+        --al-yellow-text: #F7C948;
+        --al-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+}
+
+/* Give the landing page more room than Furo's 46em reading column. */
+.content:has(.appfl-landing) {
+    width: min(76em, 100%);
+}
+
+/* The RST title stays for <title> and navigation but is replaced visually by the hero. */
+article section:has(> .appfl-landing) > h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.appfl-landing a,
+.appfl-landing a:visited {
+    text-decoration: none;
+}
+
+.appfl-landing h2,
+.appfl-landing h3 {
+    font-family: var(--font-stack);
+}
+
+/* ---------- Hero ---------- */
+
+.appfl-landing .al-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: center;
+    margin-top: 1rem;
+    padding: 2.75rem 2.25rem;
+    border: 1px solid var(--color-background-border);
+    border-radius: 20px;
+    background:
+        radial-gradient(36rem 18rem at 0% 0%, var(--al-yellow-soft), transparent 70%),
+        radial-gradient(36rem 22rem at 100% 100%, var(--al-accent-soft), transparent 70%),
+        var(--color-background-primary);
+}
+
+.appfl-landing .al-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem 0.25rem 0.3rem;
+    border: 1px solid var(--color-background-border);
+    border-radius: 999px;
+    background: var(--color-background-primary);
+    color: var(--color-foreground-secondary);
+    font-size: 0.8rem;
+}
+
+.appfl-landing .al-pill:hover {
+    border-color: var(--al-accent);
+    color: var(--color-foreground-primary);
+}
+
+.appfl-landing .al-pill-tag {
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: var(--al-yellow);
+    color: #1f1a00;
+    font-weight: 700;
+    font-size: 0.72rem;
+}
+
+.appfl-landing .al-hero-title {
+    margin: 1.1rem 0 1rem;
+    color: var(--color-foreground-primary);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.appfl-landing .al-accent {
+    color: var(--al-accent);
+}
+
+.appfl-landing .al-hero-sub {
+    margin: 0 0 1.75rem;
+    max-width: 38rem;
+    color: var(--color-foreground-secondary);
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+.appfl-landing .al-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.appfl-landing .al-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 1.2rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.appfl-landing .al-btn:hover {
+    transform: translateY(-1px);
+}
+
+.appfl-landing .al-btn-primary,
+.appfl-landing .al-btn-primary:visited {
+    background: var(--al-blue);
+    color: #ffffff;
+}
+
+.appfl-landing .al-btn-primary:hover {
+    background: #004a7c;
+    color: #ffffff;
+}
+
+.appfl-landing .al-btn-secondary,
+.appfl-landing .al-btn-secondary:visited {
+    border-color: var(--color-background-border);
+    background: var(--color-background-primary);
+    color: var(--color-foreground-primary);
+}
+
+.appfl-landing .al-btn-secondary:hover {
+    border-color: var(--color-foreground-muted);
+}
+
+.appfl-landing .al-btn-ghost,
+.appfl-landing .al-btn-ghost:visited {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+    color: var(--al-accent);
+}
+
+.appfl-landing .al-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 1.5rem;
+}
+
+.appfl-landing .al-badges img {
+    height: 20px;
+}
+
+/* Terminal mock-up: dark in both themes. */
+.appfl-landing .al-terminal {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: #0d1117;
+    box-shadow: var(--al-shadow);
+}
+
+.appfl-landing .al-terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.appfl-landing .al-terminal-bar span {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #3a3f47;
+}
+
+.appfl-landing .al-terminal-bar span:first-child {
+    background: #ff5f57;
+}
+
+.appfl-landing .al-terminal-bar span:nth-child(2) {
+    background: #febc2e;
+}
+
+.appfl-landing .al-terminal-bar span:nth-child(3) {
+    background: #28c840;
+}
+
+.appfl-landing .al-terminal-bar em {
+    margin-left: auto;
+    color: #8b949e;
+    font-size: 0.75rem;
+    font-style: normal;
+}
+
+.appfl-landing .al-terminal pre {
+    margin: 0;
+    padding: 1rem 1.1rem 1.2rem;
+    overflow-x: auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #e6edf3;
+    font-family: var(--font-stack--monospace);
+    font-size: 0.76rem;
+    line-height: 1.65;
+}
+
+.appfl-landing .al-terminal .c {
+    color: #8b949e;
+}
+
+.appfl-landing .al-terminal .p {
+    color: var(--al-yellow);
+    user-select: none;
+}
+
+/* ---------- Sections ---------- */
+
+.appfl-landing .al-section {
+    margin-top: 4.5rem;
+}
+
+.appfl-landing .al-section-head {
+    margin-bottom: 1.75rem;
+}
+
+.appfl-landing .al-section-head.al-center {
+    text-align: center;
+}
+
+.appfl-landing .al-eyebrow {
+    margin: 0 0 0.35rem;
+    color: var(--al-accent);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.appfl-landing .al-section-head h2 {
+    margin: 0 0 0.5rem;
+    color: var(--color-foreground-primary);
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+    font-weight: 750;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+}
+
+.appfl-landing .al-section-head p:not(.al-eyebrow) {
+    margin: 0;
+    max-width: 44rem;
+    color: var(--color-foreground-secondary);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.appfl-landing .al-grid,
+.appfl-landing .al-pillars {
+    display: grid;
+    gap: 1rem;
+}
+
+.appfl-landing .al-pillars,
+.appfl-landing .al-grid-3 {
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.appfl-landing .al-grid-4 {
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.appfl-landing .al-grid-5 {
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+/* ---------- Cards ---------- */
+
+.appfl-landing .al-card,
+.appfl-landing .al-card:visited {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 1.25rem 1.3rem;
+    border: 1px solid var(--color-background-border);
+    border-radius: 14px;
+    background: var(--color-background-primary);
+    color: var(--color-foreground-primary);
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.appfl-landing .al-card:hover {
+    border-color: var(--al-accent);
+    box-shadow: var(--al-shadow);
+    color: var(--color-foreground-primary);
+    transform: translateY(-2px);
+}
+
+.appfl-landing .al-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--color-foreground-primary);
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.appfl-landing .al-card p {
+    margin: 0;
+    color: var(--color-foreground-secondary);
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.appfl-landing .al-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.35rem;
+    border-radius: 10px;
+    background: var(--al-accent-soft);
+}
+
+.appfl-landing .al-icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+    fill: none;
+    stroke: var(--al-accent);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.appfl-landing .al-dot {
+    flex: none;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--al-yellow);
+}
+
+.appfl-landing .al-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+}
+
+.appfl-landing .al-chips span {
+    padding: 0.12rem 0.55rem;
+    border: 1px solid var(--color-background-border);
+    border-radius: 999px;
+    background: var(--color-background-secondary);
+    color: var(--color-foreground-secondary);
+    font-size: 0.72rem;
+}
+
+.appfl-landing .al-tag {
+    align-self: flex-start;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.appfl-landing .al-tag-sim {
+    background: var(--al-yellow-soft);
+    color: var(--al-yellow-text);
+}
+
+.appfl-landing .al-tag-dep {
+    background: var(--al-accent-soft);
+    color: var(--al-accent);
+}
+
+.appfl-landing .al-social,
+.appfl-landing .al-social:visited {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.9rem;
+}
+
+.appfl-landing .al-social svg {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--color-foreground-primary);
+}
+
+.appfl-landing .al-social div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+/* ---------- Install tabs ---------- */
+
+.appfl-landing .al-install {
+    --sd-color-tabs-label-active: var(--al-accent);
+    --sd-color-tabs-underline-active: var(--al-accent);
+    --sd-color-tabs-label-hover: var(--al-accent);
+    --sd-color-tabs-underline-hover: var(--color-foreground-muted);
+    margin-top: 0;
+    padding: 0.5rem 1.1rem 0.25rem;
+    border: 1px solid var(--color-background-border);
+    border-radius: 14px;
+    background: var(--color-background-primary);
+}
+
+.appfl-landing .al-install > label {
+    font-size: 0.9rem;
+}
+
+.appfl-landing .al-note {
+    margin: 0.75rem 0 0;
+    color: var(--color-foreground-secondary);
+    font-size: 0.88rem;
+}
+
+.appfl-landing .al-note a {
+    color: var(--al-accent);
+}
+
+/* ---------- Logos, citation ---------- */
+
+.appfl-landing .al-logos {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.appfl-landing .al-logos img {
+    width: auto;
+    max-width: 9.5rem;
+    height: 3.25rem;
+    padding: 0.55rem 0.85rem;
+    object-fit: contain;
+    border: 1px solid var(--color-background-border);
+    border-radius: 10px;
+    background: #ffffff;
+    filter: grayscale(1);
+    opacity: 0.85;
+    transition: filter 0.2s, opacity 0.2s;
+}
+
+.appfl-landing .al-logos img:hover {
+    filter: none;
+    opacity: 1;
+}
+
+.appfl-landing .al-ack {
+    margin: 2rem 0 1rem;
+    color: var(--color-foreground-muted);
+    font-size: 0.82rem;
+}
+
+/* ---------- Small screens ---------- */
+
+@media (max-width: 60em) {
+    .appfl-landing .al-hero {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2rem;
+        padding: 2rem 1.5rem;
+    }
+}
+
+@media (max-width: 40em) {
+    .appfl-landing .al-hero {
+        padding: 1.5rem 1rem;
+        border-radius: 14px;
+    }
+
+    .appfl-landing .al-section {
+        margin-top: 3.25rem;
+    }
+}
