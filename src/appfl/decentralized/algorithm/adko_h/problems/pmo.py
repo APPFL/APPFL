@@ -64,6 +64,9 @@ class PMO(Problem):
         embed_dim: width of the frozen fingerprint projection the agents share.
         seed: fixes the projection and the descriptor basis, so every agent and every arm of a
             comparison embeds a molecule identically.
+        blind: describe the objective to the planner without naming it. A model that knows
+            the benchmark can aim at its answer; a real application offers no such prior, and
+            this is how to measure what that knowledge was worth.
     """
 
     maximize = True
@@ -77,6 +80,7 @@ class PMO(Problem):
         embed_dim: int = 32,
         seed: int = 0,
         verbose: bool = False,
+        blind: bool = False,
     ):
         path = Path(pool_path or os.environ.get(POOL_ENV, ""))
         if not path.is_file():
@@ -94,6 +98,8 @@ class PMO(Problem):
             [Dim(k, "real", lo, hi, meaning=m) for k, lo, hi, m in PROPERTIES]
         )
         self._F, self._X, self._Z = self._tables(int(embed_dim), int(seed))
+        self._x_scale = np.maximum(self._X.std(axis=0), 1e-12)
+        self.blind = bool(blind)
         self._scaffolds: Dict[int, str] = {}
         self._cache: Dict[int, float] = {}
         #: Oracle calls, which is what PMO charges a method for.
@@ -216,11 +222,31 @@ class PMO(Problem):
     def label(self, key: int, meta: Any = None) -> str:
         return meta if isinstance(meta, str) else self.smiles[int(key)]
 
+    def input_scale(self) -> np.ndarray:
+        """The frozen embedding's per-coordinate standard deviation over the whole pool."""
+        return self._x_scale
+
     def describe(self) -> Dict[str, Any]:
+        objective = (
+            "a hidden objective"
+            if self.blind
+            else f"the PMO objective '{self.oracle_name}'"
+        )
+        hints = (
+            "Properties are correlated: high logP tends to come with low TPSA, and QED "
+            "falls off above about 500 daltons."
+        )
+        if not self.blind:
+            hints += (
+                " Similarity and rediscovery objectives "
+                "reward a narrow region near the target's properties; MPO objectives reward "
+                "hitting several property windows at once, so a region that fixes the easy "
+                "properties and leaves one free is often more informative than a tight box."
+            )
         return {
             "task": (
-                f"Search a fixed pool of {self.n:,} purchasable molecules under the PMO "
-                f"objective '{self.oracle_name}', which scores each molecule in [0, 1]. The "
+                f"Search a fixed pool of {self.n:,} purchasable molecules under "
+                f"{objective}, which scores each molecule in [0, 1]. The "
                 "run is judged on how many *distinct* scaffolds it finds at a high score, not "
                 "on the single best molecule, so a region that yields one good series "
                 "repeatedly is worth less than two regions yielding different series."
@@ -230,12 +256,6 @@ class PMO(Problem):
                 "descriptor, and the molecule's Bemis-Murcko scaffold, which is the family "
                 "key. A new family means a structurally different core."
             ),
-            "hints": (
-                "Properties are correlated: high logP tends to come with low TPSA, and QED "
-                "falls off above about 500 daltons. Similarity and rediscovery objectives "
-                "reward a narrow region near the target's properties; MPO objectives reward "
-                "hitting several property windows at once, so a region that fixes the easy "
-                "properties and leaves one free is often more informative than a tight box."
-            ),
+            "hints": hints,
             "dims": self.region_space.describe(),
         }

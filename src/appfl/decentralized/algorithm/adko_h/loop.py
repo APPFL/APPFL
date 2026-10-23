@@ -25,13 +25,13 @@ import json
 import time
 from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from appfl.decentralized.algorithm.adko_h import metrics as hmetrics
 from appfl.decentralized.algorithm.adko_h.agent import ADKOHAgent, AgentConfig
-from appfl.decentralized.algorithm.adko_h.campaign import BUDGET_RANGE, random_design
+from appfl.decentralized.algorithm.adko_h.campaign import BUDGET_RANGE, Test, random_design
 from appfl.decentralized.algorithm.adko_h.problem import Pick, Problem
 from appfl.decentralized.topology import build_topology
 
@@ -47,12 +47,20 @@ class RunConfig:
         topology: a name from APPFL's topology registry.
         topology_kwargs: that topology's arguments, e.g. ``{"k": 4, "seed": 0}``.
         agent_cfg: the method's configuration, shared by every agent.
-        planner: ``"none"`` (plain ADKO over a pool), ``"random"`` (the campaign control) or
-            ``"llm"`` (a planner object must be passed to :func:`run`).
+        planner: ``"none"`` (plain ADKO over a pool), ``"random"`` (the campaign control),
+            ``"replay"`` (designs replayed from ``replay_from``) or ``"llm"`` (a planner object
+            must be passed to :func:`run`).
         start_points: shared initial experiments, loaded into every agent and not charged to
             the budget -- the reference comparisons do this so arms are paired by seed.
         circle_threshold: distance for the ``n_circles`` endpoint.
         hit_threshold: score above which an outcome counts as a hit for ``diverse_hits``.
+        random_center: where the random planner centres its boxes: ``"uniform"`` anywhere in
+            the unit cube, or ``"pool"`` on a randomly drawn candidate, so boxes sit where
+            candidates exist.
+        random_widths: the random planner's half-width per region coordinate (normalized
+            units); ``None`` draws one random half-width per box.
+        replay_from: a JSON list of designs (``bounds``, ``picks``, and optionally ``rule``,
+            ``budget``, ``test``) for the replay planner.
     """
 
     rounds: int = 50
@@ -66,6 +74,9 @@ class RunConfig:
     start_points: int = 0
     circle_threshold: float = 0.75
     hit_threshold: float = 0.8
+    random_center: str = "uniform"
+    random_widths: Optional[Tuple[float, ...]] = None
+    replay_from: Optional[str] = None
 
 
 class RandomPlanner:
@@ -73,21 +84,89 @@ class RandomPlanner:
 
     The arm that says whether ADKO-H's gain is the planning or merely the structure -- regions,
     budgets, claims and verdicts all still happen, just without anything thinking about them.
+
+    Args:
+        anchor: draws a unit-cube point to centre each box on (e.g. a random candidate's
+            normalized coordinates); ``None`` centres boxes uniformly in the cube.
+        widths: one half-width per region coordinate; ``None`` draws one per box.
     """
 
-    def __init__(self, space, seed: int = 0, budget_range=None):
+    def __init__(self, space, seed: int = 0, budget_range=None, anchor=None, widths=None):
         self.space = space
         self.budget_range = tuple(budget_range) if budget_range else BUDGET_RANGE
         self.rng = np.random.default_rng([seed, 7])
+        self.anchor = anchor
+        self.widths = None if widths is None else tuple(float(w) for w in widths)
         self.totals: Dict[str, float] = {"calls": 0, "designs": 0}
 
     def plan(self, contexts: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
         self.totals["calls"] += 1
         self.totals["designs"] += len(contexts)
         return [
-            random_design(self.space, self.rng, budget_range=self.budget_range)
+            random_design(
+                self.space,
+                self.rng,
+                budget_range=self.budget_range,
+                center=None if self.anchor is None else self.anchor(self.rng),
+                widths=self.widths,
+            )
             for _ in contexts
         ]
+
+    def record_outcome(self, campaign, verdict) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+
+class ReplayPlanner:
+    """Another arm's designs, replayed in random order: its regions without its reasons.
+
+    Each request draws one design from the list, so the replayed regions keep their
+    distribution and lose their timing and their context -- whose history they answered, and
+    when. Comparing this with the arm that produced them separates what a planner's regions
+    are worth on their own (a prior a single call could capture) from what it gains by
+    choosing them for this agent at this moment.
+    """
+
+    def __init__(self, space, designs: Sequence[Dict[str, Any]], seed: int = 0, budget_range=None):
+        if not designs:
+            raise ValueError("a replay planner needs at least one design")
+        self.space = space
+        self.designs = list(designs)
+        self.budget_range = tuple(budget_range) if budget_range else BUDGET_RANGE
+        self.rng = np.random.default_rng([seed, 11])
+        self.totals: Dict[str, float] = {"calls": 0, "designs": 0}
+
+    @classmethod
+    def from_file(cls, space, path: str, seed: int = 0, budget_range=None) -> "ReplayPlanner":
+        return cls(space, json.loads(Path(path).read_text()), seed, budget_range)
+
+    def plan(self, contexts: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        self.totals["calls"] += 1
+        self.totals["designs"] += len(contexts)
+        out = []
+        for _ in contexts:
+            d = self.designs[int(self.rng.integers(len(self.designs)))]
+            t = d.get("test") or {}
+            out.append(
+                {
+                    "region": self.space.region(bounds=d.get("bounds"), picks=d.get("picks")),
+                    "rule": str(d.get("rule", "adko")),
+                    "budget": int(d.get("budget", self.budget_range[0])),
+                    "hypothesis": "replayed design",
+                    "rationale": str(d.get("origin", "replay")),
+                    "test": Test(
+                        metric=str(t.get("metric", "new_families")),
+                        op=str(t.get("op", ">=")),
+                        threshold=float(t.get("threshold", 1.0)),
+                    ),
+                    "p_success": 0.5,
+                    "source": "replay",
+                }
+            )
+        return out
 
     def record_outcome(self, campaign, verdict) -> None:
         return None
@@ -112,7 +191,18 @@ def run(
     space = problem.region_space
 
     if planner is None and cfg.planner == "random":
-        planner = RandomPlanner(space, cfg.seed, cfg.agent_cfg.budget_range)
+        anchor = None
+        if cfg.random_center == "pool":
+            anchor = lambda rng: space.normalize(problem.pool(rng, 1).F)[0]  # noqa: E731
+        elif cfg.random_center != "uniform":
+            raise ValueError(f"random_center must be 'uniform' or 'pool', got {cfg.random_center!r}")
+        planner = RandomPlanner(
+            space, cfg.seed, cfg.agent_cfg.budget_range, anchor=anchor, widths=cfg.random_widths
+        )
+    elif planner is None and cfg.planner == "replay":
+        if not cfg.replay_from:
+            raise ValueError("the replay planner needs replay_from: a JSON list of designs")
+        planner = ReplayPlanner.from_file(space, cfg.replay_from, cfg.seed, cfg.agent_cfg.budget_range)
 
     start, start_out, scale = _shared_start(problem, cfg)
     centers = space.centers(cfg.agents, cfg.seed) if cfg.agent_cfg.territory else None
@@ -248,6 +338,10 @@ def _finish(problem, cfg, topo, agents, rounds, planner, secs) -> Dict[str, Any]
             "best": max(scores) if scores else 0.0,
             "diverse_hits": hmetrics.diverse_hits(scores, fams, cfg.hit_threshold),
             "redundancy": hmetrics.redundancy(X, 1e-6),
+            # Experiments are counted when run, so one re-run by another agent costs budget;
+            # PMO counts distinct oracle calls. The two differ by the federation's repeats.
+            "distinct_keys": len({r["key"] for r in recs}),
+            "skipped_reported": int(sum(r.get("d_skipped", 0) or 0 for r in recs)),
             "load_balance": hmetrics.load_balance([r["agent"] for r in recs]),
         },
         "campaigns": {

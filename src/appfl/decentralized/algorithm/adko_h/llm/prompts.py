@@ -15,11 +15,20 @@ Three rules shaped this text, each from something the L3 screen got wrong:
 
 The text is kept short on purpose: it is sent once per campaign per agent, and at a thousand
 agents the prompt is the cost.
+
+``SYSTEM_V2`` and :func:`user_v2` are the second version, written after the first full PMO
+screen showed what the first one taught: a planner judged only on its own test optimizes that
+test. Version 1 offered ``adko`` as "the default", told the planner to work elsewhere when a
+neighbour had claimed a region, scaled the new-family test for campaigns of 2-10, and fed back
+nothing but whether each test held. Its planners kept away from each other's productive regions,
+always chose ``adko``, and wrote tests that passed 97% of the time. Version 2 defines a hit, feeds
+back what each campaign found by that measure, gives the base rates a test should be set
+against, describes the rules by what they trade, and presents claims as evidence.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 SYSTEM = """You plan experimental campaigns for one laboratory in a federation of independent \
 laboratories. Each laboratory runs its own experiments and can only exchange small signals \
@@ -128,4 +137,147 @@ when it started (an integer; 1 is a modest claim, 3 is bold).
 at its start, in standardized descriptor units (1.0 is about one standard deviation).
 - hull_growth: how much this campaign grows the convex hull of known outcomes.
 - max_objective: the best score this campaign reaches.
+Answer with the JSON object only."""
+
+
+# -- version 2 ---------------------------------------------------------------------------------
+
+_SYSTEM_V2 = """You plan experimental campaigns for one laboratory in a federation of independent \
+laboratories. Each laboratory runs its own experiments and can only exchange small signals \
+with its neighbours; there is no central coordinator and no shared database of results.
+
+You do not choose experiments. A calibrated numeric rule chooses every experiment inside the \
+region you pick, so the region decides what the rule can find. For the next campaign you choose:
+
+1. region   -- an interval per coordinate, or null to leave that coordinate free
+2. rule     -- how to choose inside the region:
+   - adko    : my model plus my neighbours' signals; goes for high scores near what the team \
+has found
+   - indep   : my model alone, ignoring neighbours
+   - exploit : my model's predicted best; the narrowest search
+   - explore : where my model is least certain; broad coverage, few high scores
+   - novelty : furthest from everything anyone is known to have run; new kinds of outcome, \
+rarely high scores
+3. budget   -- how many experiments this campaign gets before it is judged
+4. hypothesis -- one sentence saying what you expect to find there, stated now
+5. test     -- a metric, >= or <=, and a threshold, computed from the campaign's data when the \
+budget is spent
+6. p_success -- your probability that the test passes
+
+The run is judged on hits: distinct families among outcomes that score at least the hit \
+threshold. A region that yields many new families but no hits adds nothing to that count.
+
+Your p_success is scored against what happens. Set the threshold from your base rates so that \
+you expect the test to pass about half the time: a test that is sure to pass, or sure to fail, \
+tells you nothing."""
+
+_CLAIMS_V2 = """
+
+Neighbours' claims show where they are working now, and their verdicts show what their \
+campaigns found. Use both as evidence, as you would your own results."""
+
+_METRICS_V2 = """- new_hit_families: families among this campaign's hits that nobody had reported to me \
+when it started (an integer)
+- hits: how many of this campaign's outcomes are hits (an integer)
+- new_families: families in this campaign that nobody had reported to me when it started \
+(an integer)
+- novel_distance: how far this campaign's most isolated outcome lands from every outcome known \
+at its start, in standardized descriptor units (1.0 is about one standard deviation)
+- hull_growth: how much this campaign grows the convex hull of known outcomes
+- max_objective: the best score this campaign reaches"""
+
+
+def system_v2(ctx: Dict[str, Any]) -> str:
+    """The version-2 system prompt; the paragraph on claims only when the arm has them."""
+    return _SYSTEM_V2 + (_CLAIMS_V2 if ctx.get("claims_on", True) else "")
+
+
+def _rates(r: Optional[Dict[str, Any]]) -> str:
+    if not r:
+        return "(none of my campaigns has finished yet)"
+    return (
+        f"over my {r['campaigns']} finished campaigns ({r['experiments']} experiments), per "
+        f"experiment: {r['new_families']:.2f} new families, {r['hits']:.3f} hits, "
+        f"{r['new_hit_families']:.3f} new hit families"
+    )
+
+
+def _recent(items: List[Dict[str, Any]]) -> str:
+    if not items:
+        return "(this is your first campaign)"
+    out = []
+    for c in items:
+        f = c.get("found") or {}
+        v = c.get("verdict") or {}
+        test = (
+            f"test {v.get('metric')} {v.get('op')} {float(v.get('threshold', 0)):g}: "
+            f"{'HELD' if v.get('success') else 'FAILED'} (value {v.get('value')})"
+            if v
+            else "test still running"
+        )
+        out.append(
+            f"- {c.get('region_label')} rule={c.get('rule')} budget={c.get('budget')}: "
+            f"{f.get('spent', 0)} experiments, {f.get('hits', 0)} hits, "
+            f"{f.get('new_hit_families', 0)} new hit families, {f.get('new_families', 0)} new "
+            f"families, best {f.get('best')}, mean {f.get('mean')}; {test}"
+        )
+    return "\n".join(out)
+
+
+def user_v2(ctx: Dict[str, Any]) -> str:
+    """The version-2 user message: the endpoint, what recent campaigns found, base rates."""
+    p = ctx.get("problem", {})
+    thr = ctx.get("hit_threshold")
+    hit = (
+        f"An outcome is a hit when its score is at least {thr:g}."
+        if thr is not None
+        else "No hit threshold is set."
+    )
+    first = (
+        f"This is your first campaign. Your assigned starting territory is: {ctx['territory']}. "
+        "Start inside it, and narrow it if you have a reason to."
+        if ctx.get("first_campaign")
+        else "You may work anywhere in the space."
+    )
+    claims = (
+        f"""
+## My neighbours' active claims (regions they are working in now)
+{ctx.get('active_claims', '(none)')}
+
+## Verdicts that reached me (theirs and mine), with what each campaign found
+{ctx.get('verdicts', '(nothing yet)')}
+"""
+        if ctx.get("claims_on", True)
+        else ""
+    )
+    lo, hi = ctx.get("budget_range", [2, 10])
+    return f"""## Task
+{p.get('task', '')}
+
+## What an outcome is
+{p.get('outcome', '')}
+{hit}
+
+## Design space coordinates
+{ctx.get('dims', '')}
+
+## Domain notes
+{p.get('hints', '')}
+
+## My laboratory (agent {ctx.get('agent')}, round {ctx.get('round')})
+Experiments I have run: {ctx.get('n_evaluated')}
+My best so far:
+{_rows(ctx.get('best', []))}
+Distinct families: I have found {ctx.get('n_families', 0)}; my neighbours have reported \
+{ctx.get('n_peer_families', 0)}.
+My base rates: {_rates(ctx.get('base_rates'))}.
+
+## My recent campaigns, oldest first, with what each found
+{_recent(ctx.get('recent', []))}
+{claims}
+## Choose the next campaign
+{first}
+Budget must be between {lo} and {hi} experiments.
+Test metrics:
+{_METRICS_V2}
 Answer with the JSON object only."""

@@ -95,6 +95,11 @@ class TestRegion(unittest.TestCase):
         masks = [self.sp.cell_mask(self.F, centers, i) for i in range(4)]
         np.testing.assert_array_equal(np.sum(masks, axis=0), [1, 1, 1, 1])
 
+    def test_box_around_takes_a_half_width_per_coordinate(self):
+        sp = RegionSpace([Dim("a", "real", 0.0, 10.0), Dim("b", "real", 0.0, 2.0)])
+        self.assertEqual(sp.box_around([0.5, 0.5], [0.1, 0.25]).bounds, {"a": (4.0, 6.0), "b": (0.5, 1.5)})
+        self.assertEqual(sp.box_around([0.5, 0.5], 0.1).bounds, sp.box_around([0.5, 0.5], [0.1, 0.1]).bounds)
+
 
 class TestCampaign(unittest.TestCase):
     def test_metrics(self):
@@ -157,6 +162,25 @@ class TestCampaign(unittest.TestCase):
             self.assertLessEqual(c.budget, 10)
             self.assertLessEqual(c.region.share(sp), 1.0)
 
+    def test_random_design_can_be_centred_and_shaped(self):
+        sp = RegionSpace([Dim("a", "real", 0.0, 10.0), Dim("b", "real", 0.0, 2.0)])
+        d = random_design(sp, np.random.default_rng(0), center=[0.5, 0.5], widths=[0.1, 0.25])
+        self.assertEqual(d["region"].bounds, {"a": (4.0, 6.0), "b": (0.5, 1.5)})
+
+    def test_hit_metrics_count_only_outcomes_past_the_threshold(self):
+        ev = Evidence(
+            scores=np.array([0.9, 0.2, 0.7, 0.95]),
+            families=["a", "b", "c", "a"],
+            known_families={"c"},
+            hit_threshold=0.6,
+        )
+        self.assertEqual(Test("hits").value(ev), 3.0)
+        self.assertEqual(Test("new_hit_families").value(ev), 1.0)  # c was known; b missed
+        self.assertEqual(Test("new_families").value(ev), 2.0)
+        self.assertEqual(Test("hits").value(Evidence(scores=np.array([0.9]))), 0.0)  # no threshold
+        low = Evidence(scores=np.array([0.1, 0.5]), families=["x", "y"], hit_threshold=0.2, maximize=False)
+        self.assertEqual(Test("new_hit_families").value(low), 1.0)
+
 
 class TestClaims(unittest.TestCase):
     def setUp(self):
@@ -210,6 +234,20 @@ class TestClaims(unittest.TestCase):
     def test_digests_never_crash_when_empty(self):
         self.assertEqual(self.store.digest(), "(nothing yet)")
         self.assertEqual(self.store.claim_digest(0), "(none)")
+
+    def test_findings_ride_on_a_verdict_only_when_shared(self):
+        bare = Verdict(origin=1, claim_id="a1c0", metric="new_families", value=3.0, success=True)
+        self.assertFalse({"spent", "hits", "hit_families", "best"} & set(bare.to_dict()))
+        self.assertNotIn("found", bare.line(self.sp))
+        rich = Verdict(
+            origin=1, claim_id="a1c0", region=self.region.pack(self.sp), metric="new_families",
+            value=3.0, success=True, spent=30, hits=4, hit_families=3, best=0.47,
+        )
+        self.assertEqual(rich.to_dict()["hits"], 4)
+        line = rich.line(self.sp)
+        self.assertIn("4 hits", line)
+        self.assertIn("x[0,5]", line)
+        self.assertEqual(Verdict(**rich.to_dict()).hit_families, 3)  # survives a relay
 
 
 class TestRules(unittest.TestCase):
@@ -738,6 +776,188 @@ class TestFootprint(unittest.TestCase):
         self.assertAlmostEqual(float(d[0]), 0.0)
 
 
+class TestPlanners(unittest.TestCase):
+    """The controls a planner's regions are compared with: random boxes, and its own replayed."""
+
+    def test_random_boxes_sit_on_anchors_with_the_given_widths(self):
+        from appfl.decentralized.algorithm.adko_h.loop import RandomPlanner
+
+        rp = RandomPlanner(space2(), seed=0, anchor=lambda rng: np.array([0.3, 0.0]), widths=[0.05, 0.0])
+        for d in rp.plan([{}, {}, {}]):
+            self.assertEqual(d["region"].bounds["x"], (2.5, 3.5))
+
+    def test_replay_draws_only_the_listed_designs(self):
+        from appfl.decentralized.algorithm.adko_h.loop import ReplayPlanner
+
+        sp = space2()
+        designs = [
+            {"bounds": {"x": [1.0, 2.0]}, "picks": {}, "rule": "explore", "budget": 7,
+             "test": {"metric": "hits", "op": ">=", "threshold": 2}},
+            {"bounds": {"x": [6.0, 9.0]}, "picks": {"s": [2]}},
+        ]
+        got = ReplayPlanner(sp, designs, seed=0).plan([{}] * 20)
+        self.assertEqual({d["region"].label(sp) for d in got}, {"x[1,2]", "x[6,9] s{c}"})
+        one = next(d for d in got if d["region"].label(sp) == "x[1,2]")
+        self.assertEqual((one["rule"], one["budget"], one["test"].metric), ("explore", 7, "hits"))
+        again = ReplayPlanner(sp, designs, seed=0).plan([{}] * 20)
+        self.assertEqual([d["region"].label(sp) for d in again], [d["region"].label(sp) for d in got])
+
+    def test_a_fixed_rule_overrides_the_planner(self):
+        rec = short("random-region", rounds=14, planner="random", force_rule="adko", claims_on=False)
+        self.assertGreater(rec["campaigns"]["n"], 0)
+        self.assertEqual(set(rec["campaigns"]["rules"]), {"adko"})
+
+    def test_replay_arm_runs_from_a_file(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "designs.json"
+            path.write_text(json.dumps([{"bounds": {"x1": [0.0, 0.4], "x3": [0.1, 0.5]}, "picks": {}}]))
+            cfg = RunConfig(
+                rounds=12, agents=3, seed=0, topology="random_regular",
+                topology_kwargs={"k": 2, "seed": 0}, planner="replay", replay_from=str(path),
+                start_points=6, agent_cfg=AgentConfig(warmup_rounds=2, pool_size=64, claims_on=False),
+            )
+            rec = run(Synthetic(seed=0), GP, cfg)
+        self.assertGreater(rec["campaigns"]["n"], 0)
+        self.assertGreaterEqual(rec["planner"]["designs"], rec["campaigns"]["n"])  # + unfinished
+
+
+class FixedPool:
+    """Sixteen fixed points on a diagonal, so a skipped point is visibly missing from a pool."""
+
+    problem_id = "fixed16"
+    maximize = True
+    kernel = "euclidean"
+
+    def __init__(self, n: int = 16):
+        self.region_space = RegionSpace([Dim("x", "real", 0.0, 1.0)])
+        self.X = np.repeat(np.linspace(0.0, 1.0, n)[:, None], 2, axis=1)
+
+    def pool(self, rng, n, exclude=None, region=None):
+        from appfl.decentralized.algorithm.adko_h.problem import Candidates
+
+        idx = np.setdiff1d(np.arange(len(self.X)), np.asarray(list(exclude or []), dtype=np.int64))
+        take = np.sort(rng.choice(idx, size=min(int(n), len(idx)), replace=False)) if len(idx) else idx
+        return Candidates(key=take, X=self.X[take], F=self.X[take, :1], meta=[None] * len(take))
+
+    def evaluate(self, picks):
+        from appfl.decentralized.algorithm.adko_h.problem import Outcome
+
+        return [Outcome(score=float(p.X[0]), descriptor=np.zeros(0), family="") for p in picks]
+
+    def privatize(self, X, rng):
+        return np.asarray(X, dtype=float)
+
+    def input_scale(self):
+        return None
+
+    def label(self, key, meta=None):
+        return str(key)
+
+    def describe(self):
+        return {"task": "", "outcome": "", "hints": "", "dims": self.region_space.describe()}
+
+
+class TestSkipAndNoise(unittest.TestCase):
+    """Skipping what neighbours ran, and what noise on the shared input does to it."""
+
+    def agent(self, **kw):
+        from appfl.decentralized.algorithm.adko_h.agent import ADKOHAgent
+
+        self.problem = FixedPool()
+        return ADKOHAgent(
+            "Agent0", 0, GP(), self.problem, AgentConfig(pool_size=16, warmup_rounds=0, **kw),
+            neighbor_indices=[1], degree=1,
+        )
+
+    def reported(self, a, x):
+        a.observe([encode(agent_id="Agent1", source=1, round=0, x_shared=list(x), u=0.5,
+                          history=[0.5], quantizer=Quantizer(8))])
+
+    def test_a_reported_input_leaves_the_pool(self):
+        a = self.agent(skip_peer_inputs=True)
+        self.reported(a, self.problem.X[5])
+        a.propose(1)
+        self.assertNotIn(5, set(a._cands.key))
+        self.assertEqual(len(a._cands), 15)
+        self.assertEqual(a.diag["skipped"], 1)
+
+    def test_without_skipping_it_stays(self):
+        a = self.agent()
+        self.reported(a, self.problem.X[5])
+        a.propose(1)
+        self.assertIn(5, set(a._cands.key))
+
+    def test_noise_defeats_an_exact_match_but_not_a_radius(self):
+        exact = self.agent(skip_peer_inputs=True)
+        self.reported(exact, self.problem.X[5] + 0.01)  # the input as a noisy token reports it
+        exact.propose(1)
+        self.assertIn(5, set(exact._cands.key))
+        near = self.agent(skip_peer_inputs=True, skip_radius=0.03)
+        self.reported(near, self.problem.X[5] + 0.01)
+        near.propose(1)
+        self.assertNotIn(5, set(near._cands.key))
+
+    def test_token_noise_moves_the_shared_input_not_my_own(self):
+        a = self.agent(token_noise=0.5)
+        pick = a.propose(0)
+        tok = a.complete(pick, self.problem.evaluate([pick])[0], 0)
+        self.assertFalse(np.allclose(tok.x, pick.X))
+        np.testing.assert_array_equal(a._X[-1], pick.X)
+        b = self.agent()
+        pb = b.propose(0)
+        tb = b.complete(pb, self.problem.evaluate([pb])[0], 0)
+        np.testing.assert_array_equal(tb.x, pb.X)
+
+
+class TestPromptV2(unittest.TestCase):
+    def ctx(self, **kw):
+        from appfl.decentralized.algorithm.adko_h.agent import ADKOHAgent
+
+        a = ADKOHAgent("Agent0", 0, GP(), Synthetic(seed=0), AgentConfig(hit_threshold=0.6, **kw),
+                       neighbor_indices=[1], degree=1, planner=object())
+        return a.plan_context(5)
+
+    def test_v2_defines_hits_and_drops_the_old_steering(self):
+        from appfl.decentralized.algorithm.adko_h.llm import prompts
+
+        ctx = self.ctx()
+        system, user = prompts.system_v2(ctx), prompts.user_v2(ctx)
+        self.assertIn("at least 0.6", user)
+        self.assertIn("base rates", user)
+        self.assertNotIn("The default", system)
+        self.assertNotIn("working elsewhere", system)
+        self.assertNotIn("1 is a modest claim", user)
+        self.assertIn("claims", system)
+        self.assertIn("active claims", user)
+
+    def test_v2_without_claims_does_not_mention_them(self):
+        from appfl.decentralized.algorithm.adko_h.llm import prompts
+
+        ctx = self.ctx(claims_on=False)
+        self.assertNotIn("claims", prompts.system_v2(ctx))
+        self.assertNotIn("active claims", prompts.user_v2(ctx))
+
+    def test_v2_schema_allows_the_hit_metrics(self):
+        fmt = hschema.campaign_format(space2(), metrics=hschema.METRICS_V2)
+        self.assertIn("new_hit_families", fmt["schema"]["properties"]["test"]["properties"]["metric"]["enum"])
+
+    def test_a_v2_run_judges_campaigns_and_shares_findings(self):
+        problem = Synthetic(seed=0)
+        planner = build_planner(problem.region_space, "mock", seed=0, prompt="v2")
+        cfg = RunConfig(
+            rounds=14, agents=3, seed=0, topology="random_regular", topology_kwargs={"k": 2, "seed": 0},
+            planner="llm", start_points=6,
+            agent_cfg=AgentConfig(warmup_rounds=2, pool_size=64, hit_threshold=0.6, share_hits=True,
+                                  claim_weight=0.0),
+        )
+        rec = run(problem, GP, cfg, planner=planner)
+        planner.close()
+        self.assertGreater(rec["campaigns"]["n"], 0)
+
+
 @unittest.skipUnless(os.environ.get("ADKO_PMO_POOL"), "set ADKO_PMO_POOL to run the PMO tests")
 class TestPMO(unittest.TestCase):
     @classmethod
@@ -776,6 +996,19 @@ class TestPMO(unittest.TestCase):
         self.problem.evaluate(picks)
         self.problem.evaluate(picks)
         self.assertEqual(self.problem.calls - before, 2)
+
+    def test_a_blind_description_does_not_name_the_objective(self):
+        from appfl.decentralized.algorithm.adko_h.problems.pmo import PMO
+
+        blind = PMO("qed", limit=2000, blind=True).describe()
+        self.assertNotIn("objective 'qed'", blind["task"])
+        self.assertIn("hidden objective", blind["task"])
+        self.assertIn("objective 'qed'", self.problem.describe()["task"])
+
+    def test_input_scale_is_the_embedding_spread(self):
+        s = self.problem.input_scale()
+        self.assertEqual(s.shape, (32,))
+        self.assertTrue(np.all(s > 0))
 
 
 if __name__ == "__main__":

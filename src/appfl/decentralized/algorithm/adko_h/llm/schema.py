@@ -24,6 +24,8 @@ from appfl.decentralized.algorithm.adko_h.region import KIND_CAT, RegionSpace
 #: Tests the planner may write. ``novel_distance`` and ``hull_growth`` are in descriptor units,
 #: which the prompt states, so a threshold is meaningful rather than guessed.
 METRICS = ("new_families", "novel_distance", "hull_growth", "max_objective")
+#: Version 2 adds the hit metrics, so a test can be about the endpoint itself.
+METRICS_V2 = ("new_hit_families", "hits") + METRICS
 
 
 def campaign_format(

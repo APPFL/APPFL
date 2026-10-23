@@ -25,7 +25,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 from appfl.decentralized.algorithm.adko_h.agent import AgentConfig
 from appfl.decentralized.algorithm.adko_h.llm import build_planner
@@ -39,12 +39,22 @@ ARMS: Dict[str, Dict[str, Any]] = {
     "adko-div": {"planner": "none", "novelty_weight": 1.0},
     # campaigns, no language model: does the structure alone do the work?
     "random-campaign": {"planner": "random"},
+    # what regions alone are worth, with claims off: random boxes (run with --random-center
+    # pool and the planner's widths), and another arm's own regions replayed (--replay-from)
+    "random-region": {"planner": "random", "claims_on": False},
+    "replay-regions": {"planner": "replay", "claims_on": False},
     # campaigns planned by a model
     "adkoh": {"planner": "llm"},
     "adkoh-noclaims": {"planner": "llm", "claims_on": False},
     "adkoh-noterritory": {"planner": "llm", "territory": False},
     "adkoh-nofootprint": {"planner": "llm", "share_descriptor": False, "share_family": False},
+    # the version-2 prompt: hits, findings and base rates; claims as evidence, not a fence
+    "adkoh2": {"planner": "llm", "prompt": "v2", "claim_weight": 0.0, "share_hits": True},
+    "adkoh2-noclaims": {"planner": "llm", "prompt": "v2", "claims_on": False},
+    "adkoh2-noclaims-blind": {"planner": "llm", "prompt": "v2", "claims_on": False, "blind": True},
 }
+#: Arm keys that configure the planner or the problem rather than the agents.
+_NOT_AGENT = ("planner", "prompt", "blind")
 
 
 def parse(argv=None) -> argparse.Namespace:
@@ -69,13 +79,34 @@ def parse(argv=None) -> argparse.Namespace:
     g.add_argument("--out", default=None, help="results root; nothing is written without it")
     g.add_argument("--label", default=None, help="overrides the arm name in the record")
     g.add_argument("--rule", default=None,
-                   help="fix the rule for a no-planner arm (adko, indep, exploit, explore, "
-                        "novelty): measures how much choosing a rule can be worth")
+                   help="fix the rule (adko, indep, exploit, explore, novelty) of every "
+                        "campaign: a no-planner arm's measures how much choosing a rule can be "
+                        "worth; a planner arm's keeps the planner's regions only")
+    g.add_argument("--token-noise", type=float, default=0.0,
+                   help="Gaussian noise on the input a token carries, in units of each "
+                        "coordinate's spread; v2's continuous channel is 0.17")
+    g.add_argument("--skip-peer-inputs", action="store_true",
+                   help="leave out candidates a neighbour's token shows were already run")
+    g.add_argument("--skip-radius", type=float, default=0.0,
+                   help="distance within which a candidate counts as reported (0: the same "
+                        "input); with --token-noise it should cover the noise")
     g.add_argument("--verbose", action="store_true")
 
     g = p.add_argument_group("planner")
-    g.add_argument("--planner", default=None, choices=("none", "random", "mock", "vllm", "mag"),
+    g.add_argument("--planner", default=None,
+                   choices=("none", "random", "replay", "mock", "vllm", "mag"),
                    help="overrides the arm's default; an LLM arm needs mock, vllm or mag")
+    g.add_argument("--prompt", default=None, choices=("v1", "v2"),
+                   help="the planner prompt; overrides the arm's (v1 unless the arm says v2)")
+    g.add_argument("--blind-objective", action="store_true",
+                   help="do not name the objective in the planner's prompt")
+    g.add_argument("--random-center", default="uniform", choices=("uniform", "pool"),
+                   help="random planner: centre boxes anywhere, or on a random candidate")
+    g.add_argument("--random-widths", default=None,
+                   help="random planner: half-widths per region coordinate in normalized "
+                        "units, comma-separated (one value applies to all)")
+    g.add_argument("--replay-from", default=None,
+                   help="replay planner: JSON list of designs (bounds, picks, rule, budget, test)")
     g.add_argument("--llm-url", default=os.environ.get("ADKO_LLM_BASE_URL"))
     g.add_argument("--llm-model", default=None,
                    help="vllm: default Qwen/Qwen3.8-27B-FP8. mag: required, e.g. "
@@ -110,7 +141,7 @@ def seeds_of(spec: str) -> List[int]:
     return out
 
 
-def make_problem(args: argparse.Namespace, seed: int):
+def make_problem(args: argparse.Namespace, seed: int, blind: bool = False):
     if args.problem == "pmo":
         from appfl.decentralized.algorithm.adko_h.problems.pmo import PMO
 
@@ -121,17 +152,25 @@ def make_problem(args: argparse.Namespace, seed: int):
             embed_dim=args.embed_dim,
             seed=0,  # the embedding is frozen across seeds: every arm sees one space
             verbose=args.verbose,
+            blind=blind,
         )
     from appfl.decentralized.algorithm.adko_h.problems.synthetic import Synthetic
 
     return Synthetic(seed=seed)
 
 
+def _floats(spec: Optional[str]) -> Optional[Tuple[float, ...]]:
+    return None if spec is None else tuple(float(v) for v in str(spec).split(",") if v.strip())
+
+
 def main(argv=None) -> int:
     args = parse(argv)
     arm = dict(ARMS[args.arm])
-    planner_kind = args.planner or arm.pop("planner")
-    arm.pop("planner", None)
+    planner_kind = args.planner or arm["planner"]
+    prompt = args.prompt or arm.get("prompt", "v1")
+    blind = bool(args.blind_objective or arm.get("blind", False))
+    for key in _NOT_AGENT:
+        arm.pop(key, None)
     label = args.label or (f"{args.arm}-{args.rule}" if args.rule else args.arm)
 
     topo_kwargs: Dict[str, Any] = {}
@@ -155,7 +194,7 @@ def main(argv=None) -> int:
                              "no spending cap is not something to start by accident")
 
     for seed in seeds_of(args.seeds):
-        problem = make_problem(args, seed)
+        problem = make_problem(args, seed, blind)
         out = (
             str(Path(args.out) / f"{problem.problem_id.replace(':', '-')}" / label / f"seed{seed}")
             if args.out
@@ -175,6 +214,7 @@ def main(argv=None) -> int:
                 max_tokens=args.llm_max_tokens,
                 use_cache=not args.no_llm_cache,
                 budget_range=(args.campaign_min, args.campaign_max),
+                prompt=prompt,
             )
         cfg = RunConfig(
             rounds=args.rounds,
@@ -187,11 +227,18 @@ def main(argv=None) -> int:
             start_points=args.start_points,
             circle_threshold=args.circle_threshold,
             hit_threshold=args.hit_threshold,
+            random_center=args.random_center,
+            random_widths=_floats(args.random_widths),
+            replay_from=args.replay_from,
             agent_cfg=AgentConfig(
                 warmup_rounds=args.warmup,
                 pool_size=args.pool_size,
                 budget_range=(args.campaign_min, args.campaign_max),
                 force_rule=args.rule,
+                token_noise=args.token_noise,
+                skip_peer_inputs=args.skip_peer_inputs,
+                skip_radius=args.skip_radius,
+                hit_threshold=args.hit_threshold,
                 **arm,
             ),
         )

@@ -19,7 +19,7 @@ model can reason about and a hypothesis can be judged against.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -280,22 +280,28 @@ class RegionSpace:
         d = ((U[:, None, :] - C[None, :, :]) ** 2).sum(axis=2)
         return np.argmin(d, axis=1) == int(which)
 
-    def box_around(self, center: Sequence[float], half_width: float = 0.25) -> Region:
+    def box_around(
+        self, center: Sequence[float], half_width: Union[float, Sequence[float]] = 0.25
+    ) -> Region:
         """A region of the given half-width (in normalized units) about a unit-cube point.
 
         How a territory becomes something the planner can read and narrow: the first campaign
-        is handed this box rather than a bare Voronoi cell.
+        is handed this box rather than a bare Voronoi cell. ``half_width`` is one number for
+        every coordinate, or one per coordinate in the space's order -- which is how a control
+        draws boxes shaped like the ones a planner actually chose.
         """
         c = np.asarray(center, dtype=float)
+        hw = np.broadcast_to(np.asarray(half_width, dtype=float), (len(self.dims),))
         bounds: Dict[str, Sequence[float]] = {}
         picks: Dict[str, Sequence[int]] = {}
         for i, d in enumerate(self.dims):
             u = float(np.clip(c[i] if i < len(c) else 0.5, 0.0, 1.0))
+            h = float(hw[i])
             if d.kind == KIND_CAT:
                 k = int(round(u * (len(d.options) - 1)))
-                span = max(int(round(half_width * len(d.options))), 1)
+                span = max(int(round(h * len(d.options))), 1)
                 picks[d.name] = list(range(max(k - span, 0), min(k + span + 1, len(d.options))))
             else:
                 mid = d.lo + u * d.span
-                bounds[d.name] = (mid - half_width * d.span, mid + half_width * d.span)
+                bounds[d.name] = (mid - h * d.span, mid + h * d.span)
         return self.region(bounds=bounds, picks=picks)

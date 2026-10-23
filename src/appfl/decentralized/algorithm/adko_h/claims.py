@@ -79,21 +79,48 @@ class Verdict:
     hypothesis: str = ""
     round: int = 0
     ttl: int = VERDICT_TTL
+    #: What the campaign found, for arms that share it (``AgentConfig.share_hits``): its
+    #: experiments, hits, hit families nobody had reported, and best score. A test outcome
+    #: alone says whether a planner was right about its own claim, not where the hits are.
+    spent: Optional[int] = None
+    hits: Optional[int] = None
+    hit_families: Optional[int] = None
+    best: Optional[float] = None
 
     @property
     def key(self) -> Tuple[int, str]:
         return (int(self.origin), str(self.claim_id))
 
-    def line(self) -> str:
-        """One line for a prompt: what was tried, and whether it worked."""
+    def line(self, space=None) -> str:
+        """One line for a prompt: what was tried, and whether it worked.
+
+        With the campaign's findings on board, the line also says where it looked (when
+        ``space`` is given) and what it found there.
+        """
         v = "n/a" if self.value is None else f"{self.value:g}"
-        return (
+        test = (
             f"[a{self.origin}] {'HELD' if self.success else 'FAILED'}: {self.hypothesis or '(none)'} "
             f"({self.metric} {v} vs {self.op} {self.threshold:g})"
         )
+        if self.hits is None:
+            return test
+        where = f" in {region_of(space, self.region).label(space)}" if space is not None else ""
+        best = "n/a" if self.best is None else f"{self.best:.3g}"
+        return (
+            f"{test}; found{where}: {self.hits} hits and {self.hit_families} new hit families "
+            f"in {self.spent} experiments, best score {best}"
+        )
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        """The wire form. Findings an arm does not share are left out, not sent as nulls."""
+        d = asdict(self)
+        for k in _FINDINGS:
+            if d[k] is None:
+                d.pop(k)
+        return d
+
+
+_FINDINGS = ("spent", "hits", "hit_families", "best")
 
 
 def region_of(space, data: Any):
@@ -209,7 +236,7 @@ class ClaimStore:
 
     def digest(self, n: Optional[int] = None) -> str:
         """The verdict block for a prompt: what peers have tested, newest first."""
-        lines = [v.line() for v in self.recent_verdicts(n)]
+        lines = [v.line(self.space) for v in self.recent_verdicts(n)]
         return "\n".join(lines) if lines else "(nothing yet)"
 
     def claim_digest(self, now: int) -> str:

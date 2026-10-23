@@ -51,10 +51,34 @@ class Evidence:
     known_families: Set[str] = field(default_factory=set)
     hull_before: float = 0.0
     hull_after: float = 0.0
+    #: What counts as a hit, for the hit metrics; ``None`` means nothing does.
+    hit_threshold: Optional[float] = None
+    maximize: bool = True
+
+    def hit_mask(self) -> np.ndarray:
+        """Which of the campaign's outcomes are hits: at or past the threshold."""
+        s = np.asarray(self.scores, dtype=float)
+        if self.hit_threshold is None or s.size == 0:
+            return np.zeros(s.size, dtype=bool)
+        return s >= self.hit_threshold if self.maximize else s <= self.hit_threshold
 
 
 def _new_families(ev: Evidence) -> float:
     return float(len({f for f in ev.families if f} - ev.known_families))
+
+
+def _hits(ev: Evidence) -> float:
+    return float(np.count_nonzero(ev.hit_mask()))
+
+
+def _new_hit_families(ev: Evidence) -> float:
+    """Families among the campaign's hits that nobody had reported when it started.
+
+    The campaign's own increment to a diverse-hits endpoint, which ``new_families`` is not:
+    on a large pool almost every experiment finds a new family, and almost none is a hit.
+    """
+    hit = ev.hit_mask()
+    return float(len({f for f, h in zip(ev.families, hit) if h and f} - ev.known_families))
 
 
 def _novel_distance(ev: Evidence) -> float:
@@ -87,6 +111,8 @@ TESTS: Dict[str, Callable[[Evidence], float]] = {
     "hull_growth": _hull_growth,
     "max_objective": _max_objective,
     "mean_objective": _mean_objective,
+    "hits": _hits,
+    "new_hit_families": _new_hit_families,
 }
 OPS = (">=", "<=")
 
@@ -228,15 +254,23 @@ def random_design(
     rng: np.random.Generator,
     half_width: Tuple[float, float] = (0.1, 0.4),
     budget_range: Tuple[int, int] = BUDGET_RANGE,
+    center: Optional[Sequence[float]] = None,
+    widths: Optional[Sequence[float]] = None,
 ) -> Dict[str, Any]:
     """A campaign design drawn at random -- the control arm's planner.
 
     Matched to the LLM arm in *lifecycle*, not in content: same call sites, same budget range,
     same tests, same claims and verdicts. Whatever the LLM arm wins over this is the planning,
     not the machinery around it.
+
+    By default the box sits anywhere in the unit cube with one random half-width, which on a
+    clumped pool leaves many boxes nearly empty. ``center`` (a unit-cube point, e.g. a pool
+    member's normalized coordinates) and ``widths`` (one half-width per coordinate) draw boxes
+    where candidates exist and shaped like a planner's, which is the control a planner's
+    regions should be compared with.
     """
-    center = rng.random(len(space))
-    hw = float(rng.uniform(*half_width))
+    center = rng.random(len(space)) if center is None else np.asarray(center, dtype=float)
+    hw = float(rng.uniform(*half_width)) if widths is None else widths
     region = space.box_around(center, hw)
     metric = str(rng.choice(["new_families", "novel_distance", "hull_growth"]))
     threshold = {

@@ -160,6 +160,14 @@ class Problem(ABC):
         """The embedding as it goes onto a token. Identity by default, as in v2."""
         return np.asarray(X, dtype=float)
 
+    def input_scale(self) -> Optional[np.ndarray]:
+        """Per-coordinate spread of the embedding, the unit ``AgentConfig.token_noise`` is in.
+
+        ``None`` means 1 for every coordinate. A problem whose coordinates have very different
+        spreads should return them, so one noise level means the same thing on each.
+        """
+        return None
+
     def descriptor_dim(self) -> int:
         """Dimension of :attr:`Outcome.descriptor`; 0 when the problem has none."""
         return 0

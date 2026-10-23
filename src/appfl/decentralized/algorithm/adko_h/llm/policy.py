@@ -53,6 +53,8 @@ class CampaignPolicy:
             stops. Below it, a failed call becomes a logged random design; above it, the arm
             would be the random control under another name.
         max_tokens: completion cap, reasoning included.
+        prompt: ``"v1"`` (the first screen's prompt) or ``"v2"`` (hits, findings, base rates;
+            see ``prompts.py``). The version also sets which test metrics the schema allows.
     """
 
     def __init__(
@@ -68,7 +70,10 @@ class CampaignPolicy:
         use_cache: bool = True,
         budget_range=None,
         max_error_rate: float = 0.2,
+        prompt: str = "v1",
     ):
+        if prompt not in ("v1", "v2"):
+            raise ValueError(f"prompt must be 'v1' or 'v2', got {prompt!r}")
         self.client = client
         self.space = space
         self.model = str(model)
@@ -77,7 +82,12 @@ class CampaignPolicy:
         self.thinking = thinking
         self.max_tokens = int(max_tokens)
         self.budget_range = tuple(budget_range) if budget_range else None
-        self.format = schema.campaign_format(space, budget_range=self.budget_range)
+        self.prompt = prompt
+        self.format = schema.campaign_format(
+            space,
+            metrics=schema.METRICS_V2 if prompt == "v2" else schema.METRICS,
+            budget_range=self.budget_range,
+        )
         self.rng = np.random.default_rng([int(seed), 31337])
         self.dir = Path(run_dir) if run_dir else None
         self.cache = None
@@ -224,10 +234,11 @@ class CampaignPolicy:
     # -- internals --------------------------------------------------------------------------
 
     def _request(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
+        v2 = self.prompt == "v2"
         req = {
             "model": self.model,
-            "instructions": prompts.SYSTEM,
-            "input": prompts.user(ctx),
+            "instructions": prompts.system_v2(ctx) if v2 else prompts.SYSTEM,
+            "input": prompts.user_v2(ctx) if v2 else prompts.user(ctx),
             "reasoning": {"effort": self.thinking or "low", "summary": "auto"},
             "text": {"format": self.format},
             "store": False,

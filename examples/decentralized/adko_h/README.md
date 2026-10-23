@@ -81,10 +81,14 @@ python -m appfl.decentralized.algorithm.adko_h.run --problem synthetic --arm adk
 | `adko` | none | ADKO v2's settled method over a sampled pool. The baseline everything is paired against. |
 | `adko-div` | none | …plus a novelty bonus. **The arm the LLM has to beat**: diversity pressure without tokens. |
 | `random-campaign` | random | The campaign lifecycle with random designs. Separates the structure from the planning. |
+| `random-region` | random | Claims off, random boxes placed where candidates are and sized like a planner's. Are regions alone worth it? |
+| `replay-regions` | replay | Claims off, a planner arm's own regions in random order. A fixed prior, or planning? |
 | `adkoh` | served model | The method. |
 | `adkoh-noclaims` | served model | Claims and verdicts off. Is the coordination doing the work? |
 | `adkoh-noterritory` | served model | No starting Voronoi cell. Do agents divide the space by message alone? |
 | `adkoh-nofootprint` | served model | Tokens carry no descriptor or family key. Is the shared footprint what prevents duplication? |
+| `adkoh2`, `adkoh2-noclaims` | served model | Prompt v2: the planner is told what a hit is and what each campaign found. Can it then use its levers? |
+| `adkoh2-noclaims-blind` | served model | Prompt v2 without the objective's name. What is knowing the benchmark worth? |
 
 Other problems and graphs are flags, not scripts: `--problem synthetic` (free: continuous
 inputs, a descriptor and family keys, like an expensive simulator would give), `--topology random_regular --degree 4` (or `ring`, `fully_connected`,

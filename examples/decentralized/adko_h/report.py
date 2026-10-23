@@ -23,7 +23,15 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 #: Endpoints worth a column, in the order the paper reads them.
-METRICS = ("distinct_families", "diverse_hits", "n_circles", "hull_volume", "auc_top10", "best")
+METRICS = (
+    "distinct_families",
+    "diverse_hits",
+    "n_circles",
+    "hull_volume",
+    "auc_top10",
+    "best",
+    "distinct_keys",
+)
 
 
 def load(roots: Sequence[str]) -> Dict[str, Dict[int, dict]]:
@@ -97,7 +105,7 @@ def table(data: Dict[str, Dict[int, dict]], metric: str, baseline: str) -> List[
             continue
         mean = sum(vals) / len(vals)
         sd = (sum((v - mean) ** 2 for v in vals) / max(len(vals) - 1, 1)) ** 0.5
-        shared = sorted(set(col) & set(base))
+        shared = sorted(s for s in set(col) & set(base) if not math.isnan(col[s] - base[s]))
         diffs = [col[s] - base[s] for s in shared]
         if arm == baseline or not diffs:
             rows.append(f"{arm:20s} {len(vals):3d} {mean:9.3f} {sd:8.3f} {'--':>12s} {'--':>7s} {'--':>10s}")

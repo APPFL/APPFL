@@ -87,13 +87,28 @@ class AgentConfig:
         territory: confine the first campaign to the agent's own Voronoi cell.
         default_budget: campaign length when there is no planner (the plain-ADKO arm runs one
             open-ended campaign instead).
-        force_rule: the rule the no-planner arm uses for its open-ended campaign. How much the
-            endpoint moves across the five rules is how much headroom a planner that chooses
-            rules has at all; if they all score alike, ADKO-H cannot win by choosing between
-            them and the honest thing is to know that before spending a GPU on it.
+        force_rule: the rule the no-planner arm uses for its open-ended campaign, and, when set,
+            the rule of every planned campaign too. How much the endpoint moves across the five
+            rules is how much headroom a planner that chooses rules has at all; if they all
+            score alike, ADKO-H cannot win by choosing between them and the honest thing is to
+            know that before spending a GPU on it. Fixing it under a planner keeps that planner's
+            regions and takes the rule out of the comparison.
         budget_range: what a campaign's budget is clamped to, and what the planner is told it
             may ask for. Set it from the run's size: it decides how many language-model calls
             a run costs, since one campaign is one call.
+        token_noise: Gaussian noise on the input a token carries, in units of the problem's
+            per-coordinate ``input_scale``. v2's continuous channel adds 0.05 on a unit range,
+            about 0.17 of a coordinate's spread. The agent's own model keeps the true input.
+        skip_peer_inputs: leave out of the candidate pool anything a neighbour's token shows was
+            already run. Without it agents re-run each other's experiments: the exclusion covers
+            only their own history and the round's other picks.
+        skip_radius: how close a candidate must be to a reported input to be skipped. ``0``
+            means the same input; with ``token_noise`` the reported input has moved, so this
+            should cover the noise.
+        hit_threshold: the score that makes an outcome a hit, for the hit tests and what the
+            planner is told. ``None`` leaves hits undefined.
+        share_hits: verdicts carry what the campaign found (hits, new hit families, best score)
+            as well as whether its own test passed.
     """
 
     weights: ReasoningWeights = field(default_factory=ReasoningWeights)
@@ -116,6 +131,11 @@ class AgentConfig:
     default_budget: int = 5
     budget_range: Tuple[int, int] = BUDGET_RANGE
     force_rule: Optional[str] = None
+    token_noise: float = 0.0
+    skip_peer_inputs: bool = False
+    skip_radius: float = 0.0
+    hit_threshold: Optional[float] = None
+    share_hits: bool = False
 
 
 class ADKOHAgent:
@@ -258,6 +278,53 @@ class ADKOHAgent:
             "active_claims": self.claims.claim_digest(rnd),
             "verdicts": self.claims.digest(),
             "history": [c.to_dict(self.space) for c in self.campaigns[-3:]],
+            # What a planner needs to judge regions by the endpoint rather than by its own
+            # test: what each recent campaign found, and the rates its tests should be set
+            # against. Prompts that do not use these ignore them.
+            "hit_threshold": self.cfg.hit_threshold,
+            "claims_on": self.cfg.claims_on,
+            "n_families": len({f for f in self._fams if f}),
+            "n_peer_families": len(self._peer_fams),
+            "base_rates": self._base_rates(),
+            "recent": [
+                {**c.to_dict(self.space), "found": self._found(c)} for c in self.campaigns[-6:]
+            ],
+        }
+
+    def _is_hit(self, score: float) -> bool:
+        t = self.cfg.hit_threshold
+        if t is None:
+            return False
+        return score >= t if self.problem.maximize else score <= t
+
+    def _found(self, c: Campaign) -> Dict[str, Any]:
+        """What a campaign found, measured the way the endpoint is, against its own baseline."""
+        known = c.baseline.get("known_families", set())
+        scores = [float(r["score"]) for r in c.runs]
+        fams = {r["family"] for r in c.runs if r["family"]}
+        hit_fams = {r["family"] for r in c.runs if r["family"] and self._is_hit(float(r["score"]))}
+        best = (max(scores) if self.problem.maximize else min(scores)) if scores else None
+        return {
+            "spent": len(c.runs),
+            "hits": int(sum(self._is_hit(s) for s in scores)),
+            "new_hit_families": len(hit_fams - known),
+            "new_families": len(fams - known),
+            "best": None if best is None else round(best, 4),
+            "mean": round(float(np.mean(scores)), 4) if scores else None,
+        }
+
+    def _base_rates(self) -> Optional[Dict[str, float]]:
+        """Per-experiment rates over this agent's finished campaigns: what a test should beat."""
+        done = [self._found(c) for c in self.campaigns if c.verdict is not None]
+        n = sum(f["spent"] for f in done)
+        if not n:
+            return None
+        return {
+            "campaigns": len(done),
+            "experiments": n,
+            "new_families": sum(f["new_families"] for f in done) / n,
+            "hits": sum(f["hits"] for f in done) / n,
+            "new_hit_families": sum(f["new_hit_families"] for f in done) / n,
         }
 
     def set_campaign(self, design: Optional[Dict[str, Any]], rnd: int) -> Campaign:
@@ -284,7 +351,7 @@ class ADKOHAgent:
                 region = self._intersect(region, self.territory_region())
             c = Campaign(
                 region=region,
-                rule=hrules.valid_rule(design.get("rule", "adko")),
+                rule=hrules.valid_rule(self.cfg.force_rule or design.get("rule", "adko")),
                 budget=int(design.get("budget", self.cfg.default_budget)),
                 hypothesis=str(design.get("hypothesis", ""))[:300],
                 rationale=str(design.get("rationale", ""))[:600],
@@ -350,6 +417,9 @@ class ADKOHAgent:
         region = self.territory_region() if warm or c is None else c.region
         exclude = sorted(self._keys | {int(k) for k in taken})
         cands = self.problem.pool(self.rng, self.cfg.pool_size, exclude, region)
+        skipped = 0
+        if self.cfg.skip_peer_inputs and self._peer_X:
+            cands, skipped = self._skip_reported(cands, exclude, region)
         self._cands = cands
         if len(cands) == 0:
             raise RuntimeError(f"{self.problem.problem_id}: empty candidate pool at round {rnd}")
@@ -363,8 +433,41 @@ class ADKOHAgent:
         else:
             i = self._score_pick(cands, mask, rnd, c)
             rule, claim_id = c.rule, c.claim_id
+        if self.cfg.skip_peer_inputs:
+            self.diag["skipped"] = skipped
         key, X, F, meta = cands.row(i)
         return Pick(agent=self.index, key=key, X=X, F=F, meta=meta, rule=rule, claim_id=claim_id)
+
+    def _skip_reported(self, cands: Candidates, exclude: Sequence[int], region) -> Tuple[Candidates, int]:
+        """Drop candidates a neighbour's token shows were already run; top the pool back up.
+
+        Tokens carry inputs, not keys, so a candidate counts as reported when it lies within
+        ``skip_radius`` of a reported input (``0``: the same input). Refills come from the same
+        region with everything drawn so far excluded, at most three times, so a region that
+        neighbours have mined out leaves a smaller pool rather than a stall -- and if nothing at
+        all is left, the original draw stands.
+        """
+        known = np.asarray(self._peer_X, dtype=float)
+        tol = max(float(self.cfg.skip_radius), 1e-9)
+        ok = hrules.nearest_distance(cands.X, known) > tol
+        skipped = int(np.count_nonzero(~ok))
+        if not skipped:
+            return cands, 0
+        parts, have = [_take(cands, ok)], int(np.count_nonzero(ok))
+        drawn = set(int(k) for k in exclude) | {int(k) for k in cands.key}
+        for _ in range(3):
+            if have >= self.cfg.pool_size:
+                break
+            more = self.problem.pool(self.rng, self.cfg.pool_size - have, sorted(drawn), region)
+            if len(more) == 0:
+                break
+            drawn |= {int(k) for k in more.key}
+            ok = hrules.nearest_distance(more.X, known) > tol
+            skipped += int(np.count_nonzero(~ok))
+            parts.append(_take(more, ok))
+            have += int(np.count_nonzero(ok))
+        out = _join(parts)
+        return (out if len(out) else cands), skipped
 
     def _score_pick(self, cands: Candidates, mask: np.ndarray, rnd: int, c: Campaign) -> int:
         w = self.cfg.weights
@@ -425,6 +528,7 @@ class ADKOHAgent:
                 v = c.judge(self._evidence(c))
                 insight = self._insight(c, v)
                 if self.cfg.claims_on:
+                    found = self._found(c) if self.cfg.share_hits else None
                     verdict = Verdict(
                         origin=self.index,
                         claim_id=c.claim_id,
@@ -437,16 +541,29 @@ class ADKOHAgent:
                         hypothesis=c.hypothesis[: VERDICT_CHARS if self.cfg.share_text else 80],
                         round=rnd,
                         ttl=self.cfg.verdict_ttl,
+                        **(
+                            {}
+                            if found is None
+                            else {
+                                "spent": found["spent"],
+                                "hits": found["hits"],
+                                "hit_families": found["new_hit_families"],
+                                "best": found["best"],
+                            }
+                        ),
                     )
                     self.claims.settle(verdict)
                 if self.planner is not None:
                     getattr(self.planner, "record_outcome", lambda *a, **k: None)(c, v)
         claims_out, verdicts_out = self.claims.outbox() if self.cfg.claims_on else ([], [])
+        x_shared = self.problem.privatize(pick.X, self.token_rng)
+        if self.cfg.token_noise > 0:
+            x_shared = self._jitter(x_shared)
         tok = encode(
             agent_id=self.agent_id,
             source=self.index,
             round=rnd,
-            x_shared=self.problem.privatize(pick.X, self.token_rng),
+            x_shared=x_shared,
             u=self._u[-1],
             history=self._u,
             quantizer=self.quantizer,
@@ -543,7 +660,16 @@ class ADKOHAgent:
             known_families=set(c.baseline.get("known_families", set())),
             hull_before=float(c.baseline.get("hull", 0.0)),
             hull_after=hmetrics.hull_volume(after),
+            hit_threshold=self.cfg.hit_threshold,
+            maximize=self.problem.maximize,
         )
+
+    def _jitter(self, x) -> np.ndarray:
+        """v2's continuous input channel: Gaussian noise on the shared input, per coordinate."""
+        x = np.asarray(x, dtype=float)
+        scale = self.problem.input_scale()
+        s = np.ones(x.shape) if scale is None else np.broadcast_to(np.asarray(scale, dtype=float), x.shape)
+        return x + self.token_rng.normal(0.0, 1.0, size=x.shape) * (self.cfg.token_noise * s)
 
     def _shared_descriptor(self, z: np.ndarray) -> List[float]:
         if not self.cfg.share_descriptor or self.descriptor_scale is None:
@@ -623,3 +749,25 @@ class ADKOHAgent:
             "trust": None if self.trust is None else self.trust.snapshot(),
             "records": self.records,
         }
+
+
+def _take(c: Candidates, mask: np.ndarray) -> Candidates:
+    """The rows of a pool where ``mask`` holds."""
+    idx = np.flatnonzero(mask)
+    meta = list(c.meta)
+    return Candidates(
+        key=np.asarray(c.key)[idx],
+        X=np.asarray(c.X)[idx],
+        F=np.asarray(c.F)[idx],
+        meta=[meta[i] for i in idx] if meta else [],
+    )
+
+
+def _join(parts: Sequence[Candidates]) -> Candidates:
+    """Several pools as one, in order."""
+    return Candidates(
+        key=np.concatenate([np.asarray(p.key) for p in parts]),
+        X=np.vstack([np.asarray(p.X) for p in parts]),
+        F=np.vstack([np.asarray(p.F) for p in parts]),
+        meta=[m for p in parts for m in p.meta],
+    )

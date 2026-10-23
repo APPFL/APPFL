@@ -43,11 +43,22 @@ for arms planned through MAG; `report.py` to read results.
 | `adko` | the baseline every other arm is paired against |
 | `adko-div` | adds a novelty bonus without a model (weight `AgentConfig.novelty_weight`) |
 | `random-campaign` | same campaign lifecycle, random designs — separates structure from planning |
+| `random-region` | claims off, random boxes (`--random-center pool --random-widths ...` puts them where candidates are, sized like a planner's) — are any regions worth it? |
+| `replay-regions` | claims off, a planner arm's own regions replayed in random order (`--replay-from`) — a fixed prior, or planning? |
 | `adkoh` | the method |
 | `adkoh-noclaims`, `-noterritory`, `-nofootprint` | ablations of coordination, starting territories, shared outcome footprint |
+| `adkoh2`, `adkoh2-noclaims` | prompt v2: hits defined, what each campaign found, base rates, no default rule; claims as evidence (no penalty) |
+| `adkoh2-noclaims-blind` | prompt v2 without naming the objective — what knowing the benchmark is worth |
 
-`--rule <name>` fixes the rule of a no-planner arm. How far the fixed-rule arms land apart is
-the headroom a campaign planner has; measure it on a new problem before spending on a model.
+`--rule <name>` fixes the rule of every campaign. On a no-planner arm, how far the fixed-rule
+arms land apart is the headroom a campaign planner has; measure it on a new problem before
+spending on a model. On a planner arm it keeps the planner's regions and takes the rule out.
+
+Two switches apply to any arm. `--skip-peer-inputs` leaves out candidates a neighbour's token
+shows were already run (agents otherwise re-run each other's experiments). `--token-noise`
+adds Gaussian noise to the input a token carries, in units of each coordinate's spread (v2's
+continuous channel is 0.17); with it, give `--skip-radius` a distance that covers the noise,
+since an exact match no longer happens.
 
 ## MAG (the AmSC Model Access Gateway)
 
