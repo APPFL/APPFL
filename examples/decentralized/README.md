@@ -1,6 +1,6 @@
 # Decentralized optimization on APPFL
 
-A federation of agents that each optimize over their own slice of a design space and exchange **knowledge tokens** — compact statements about what worked — rather than models or raw data. [ADKO](../../src/appfl/decentralized/algorithm/adko) is the reference algorithm; the infrastructure under it is APPFL's decentralized FL layer, unchanged.
+A federation of agents that each optimize over their own slice of a design space and exchange **knowledge tokens** — compact statements about what worked — rather than models or raw data. [ADKO](../../src/appfl/decentralized/algorithm/adko) is the reference algorithm, and [ADKO v2](../../src/appfl/decentralized/algorithm/adko_v2) — the method its v2 study settled on — runs through the same launchers; the infrastructure under both is APPFL's decentralized FL layer, unchanged.
 
 A node here is an [`appfl.agent.DeOptNodeAgent`](../../src/appfl/agent/deopt_node.py): a `DFLNodeAgent` whose payload is tokens instead of model parameters. That is the whole adaptation, because a DFL round and an optimization round are the same three steps:
 
@@ -19,15 +19,15 @@ examples/decentralized/
     └── run_relay.py        for sites that cannot accept inbound connections
 ```
 
-All commands are run from `examples`. **Which launcher you run decides the transport; which config you pass decides the experiment.** Two experiments are provided:
+All commands are run from `examples`. **Which launcher you run decides the transport; which config you pass decides the experiment** — the algorithm included: a config names it with `algorithm: adko_v2`, and one that names none runs ADKO. Three experiments are provided:
 
-| | `toy1d` | `suzuki` |
-| --- | --- | --- |
-| what it is | a synthetic 1-D yield curve | the Suzuki–Miyaura coupling study from the ADKO paper |
-| a design point | a float in `[0, 1]` | five category ids — 3,696 measured reactions |
-| the oracle | a closed-form function | the measured `suzuki_edbo` lookup table |
-| extra dependencies | none | BoTorch, GPyTorch, Olympus |
-| what it is for | checking that the transports agree | reproducing a published result |
+| | `toy1d` | `suzuki` | `suzuki_v2` |
+| --- | --- | --- | --- |
+| what it is | a synthetic 1-D yield curve | the Suzuki–Miyaura coupling study from the ADKO paper | the same study under ADKO v2 |
+| a design point | a float in `[0, 1]` | five category ids — 3,696 measured reactions | the same |
+| the oracle | a closed-form function | the measured `suzuki_edbo` lookup table | the same table, vendored beside the evaluator |
+| extra dependencies | none | BoTorch, GPyTorch, Olympus | BoTorch, GPyTorch |
+| what it is for | checking that the transports agree | reproducing a published result | reproducing the v2 reference bit for bit |
 
 `toy1d` is the default everywhere, because it runs in seconds and is what the cross-transport equivalence below is measured on. The next three sections apply unchanged to `suzuki` — pass its config instead.
 
@@ -125,6 +125,29 @@ python decentralized/grpc/run_site.py --config ./decentralized/resources/configs
 
 A lab that cannot accept inbound connections publishes through `run_relay.py` exactly as in the mixed toy example — point its `grpc_configs` at the relay instead of giving it a `server_uri`, and its peers' `recv_from` entries at the relay for it. Nothing about the experiment changes.
 
+## ADKO v2: the settled method
+
+[`adko_v2`](../../src/appfl/decentralized/algorithm/adko_v2) is the method the ADKO v2 study settled on (arm `ADKO-v2f-odds-bit`), one configuration everywhere:
+
+- the score `R = mu + 2 sigma + 2 G - 2 Lambda`, with the peer terms rescaled by `match_rms`;
+- 8-bit tokens: a result's robust score against its lab's running median, clipped to ±1;
+- one token a round, flagged when it is the lab's new best; receivers keep each peer's newest flagged token past FIFO;
+- a FIFO memory of 3 rounds, and trust with odds weights `t/(1-t)`.
+
+The `suzuki_v2` configs run it on the Suzuki study as the v2 study ran it: 4 labs, 5 shared warmup rounds plus 95 rounds of the method, HET or IID. Unlike the v1 example, HET runs with any number of labs (lab `i` gets solvent `i mod 4`), and the oracle is the table the v2 reference vendors, so Olympus is not needed:
+
+```bash
+python decentralized/serial/run_serial.py \
+    --config ./decentralized/resources/configs/suzuki_v2/simulation/node_0_het.yaml \
+    --seed 42 --results_path ./output/adko_v2_het_seed42.json
+mpirun -n 8 python decentralized/mpi/run_mpi.py \
+    --config ./decentralized/resources/configs/suzuki_v2/simulation/node_0_iid.yaml
+python decentralized/grpc/run_site.py \
+    --config ./decentralized/resources/configs/suzuki_v2/distributed/node_0.yaml   # and 1..3
+```
+
+`--seed` overrides the config's run seed. `--results_path` writes the run record in the v2 reference's own JSON schema (`steps`, `calibration`, `trust`, `token_log`, `best_int`, `system_best`), so its analytics read an APPFL run unchanged; MPI writes it from rank 0, and a gRPC site writes its own lab's. The optional L3 planner (language-model proposals) is in the package, `adko_v2/llm/`, and is not wired into these examples yet.
+
 ## The equivalence this is anchored to
 
 Serial is the control run. The toy 1-D experiment produces the same results under all four paths, and the same results as the original `daisy/prototype` implementation:
@@ -138,6 +161,15 @@ grpc mixed relay  vs mpi               identical   (2 sites served, 2 relayed)
 
 The traffic numbers matching is the stronger claim: four independent gRPC processes, each metering only its own sends, sum to the MPI total exactly. Budget enforcement and metering live in `DeOptNodeAgent._payload_to_publish`, which every transport passes through, rather than in each communicator — which is why the accounting survives distribution.
 
+ADKO v2 is anchored to its own reference, the v2 study's reference implementation. The serial launcher's run record was compared with the reference's, field by field with `==`: every lab's pick and yield, all four score terms at the pick, the round's calibration, every trust value and every token:
+
+```text
+adko_v2 serial vs the v2 reference   bit-identical   HET and IID, seeds 42, 43, 44, 82 (100 rounds)
+                                     bit-identical   trust off; a ring; 8 labs (60 rounds)
+```
+
+One caveat, which belongs to the platform rather than to either implementation: on macOS, Apple Accelerate's float64 triangular solve with a single right-hand side is not bit-reproducible from one process to the next once the matrix reaches 64 rows, and GP fitting uses it. So from a lab's 64th observation on, the reference does not reproduce *itself* bit for bit (GP hyperparameters move in the 13th digit; in these runs no pick changed), and this implementation differs from it by the same amount. The comparison above ran both sides with that one solve made reproducible — done as a two-column solve, identically in both processes — and changed nothing in either implementation. Single-threaded BLAS (`OMP_NUM_THREADS=1`, `VECLIB_MAXIMUM_THREADS=1`) is assumed throughout, as the reference's own run scripts set it.
+
 ## Configuration
 
 One file per node, and that file is complete. Centralized FL splits configuration in two because a server holds what the clients must agree on; a decentralized federation has no server, so a node's config describes everything it needs — who it talks to, what it optimizes, over what space.
@@ -150,13 +182,17 @@ resources/configs/
 │   └── relay/
 │       ├── node_{0..3}.yaml          explicit; sites 0,1 serve, sites 2,3 publish to the relay
 │       └── relay.yaml                the relay's own endpoint and limits
-└── suzuki/
-    ├── simulation/node_0_het.yaml    from_topo; one solvent per agent, exactly four agents
-    ├── simulation/node_0_iid.yaml    from_topo; the control arm, at any size
+├── suzuki/
+│   ├── simulation/node_0_het.yaml    from_topo; one solvent per agent, exactly four agents
+│   ├── simulation/node_0_iid.yaml    from_topo; the control arm, at any size
+│   └── distributed/node_{0..3}.yaml  explicit; the HET arm as four deployed labs
+└── suzuki_v2/                        `algorithm: adko_v2`, the settled v2 method
+    ├── simulation/node_0_het.yaml    from_topo; lab i runs solvent i mod 4, at any size
+    ├── simulation/node_0_iid.yaml    from_topo; every lab may run every reaction
     └── distributed/node_{0..3}.yaml  explicit; the HET arm as four deployed labs
 ```
 
-The algorithm blocks are identical across all of them; only `node_id`, `node_index`, `neighbors` and `comm_configs` differ. `node_index` is a site's position in the federation: it sets the RNG seed offset, and in a heterogeneous experiment it also selects that site's slice of the design space — so the ids are part of the experiment, not labels.
+Within an experiment the algorithm blocks are identical across all of them; only `node_id`, `node_index`, `neighbors` and `comm_configs` differ. `node_index` is a site's position in the federation: it sets the RNG seed offset, and in a heterogeneous experiment it also selects that site's slice of the design space — so the ids are part of the experiment, not labels. A top-level `algorithm` key names the algorithm the launchers build (`adko`, the default, or `adko_v2`); `resources/algorithms.py` is the one place that maps it to a package.
 
 ### Resources a config names
 
@@ -166,15 +202,21 @@ The algorithm blocks are identical across all of them; only `node_id`, `node_ind
 resources/
 ├── space/                              the agent's slice of the design space -- its "data"
 │   ├── toy1d_space.py                  an interval of the real line
-│   └── suzuki_space.py                 the 3,696-reaction grid, and the solvent split
+│   ├── suzuki_space.py                 the 3,696-reaction grid, and the solvent split
+│   └── suzuki_v2_space.py              the same for ADKO v2: token noise, the shared warmup
 ├── surrogate/                          the model the agent fits to its own measurements
 │   ├── kernel_surrogate.py             a kernel-weighted estimator
-│   └── categorical_gp_surrogate.py     a BoTorch GP over categorical inputs
+│   ├── categorical_gp_surrogate.py     a BoTorch GP over categorical inputs
+│   └── categorical_gp_v2.py            the same GP, standardized, as ADKO v2 reads it
 ├── evaluator/                          the oracle; ADKO Algorithm 1 step 9
 │   ├── toy_yield.py                    a closed-form yield curve
-│   └── suzuki_lookup.py                the measured `suzuki_edbo` yield table
+│   ├── suzuki_lookup.py                the measured `suzuki_edbo` yield table, via Olympus
+│   ├── suzuki_table.py                 the same table, read from the file beside it
+│   └── suzuki_edbo.csv                 3,696 rows; Olympus' data (MIT), as the v2 reference vendors it
+├── algorithms.py                       maps a config's `algorithm` to a package
 ├── llm_cli.py                          optional LM flags, shared by every launcher
-└── reporting.py                        the summary block each launcher prints
+├── reporting.py                        the summary block each launcher prints
+└── run_record.py                       ADKO v2 run records, in the reference's JSON schema
 ```
 
 Swapping experiments is swapping those three paths; nothing in `appfl.decentralized` or in any launcher knows which experiment is running.

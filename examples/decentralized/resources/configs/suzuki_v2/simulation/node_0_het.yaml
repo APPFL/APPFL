@@ -1,0 +1,86 @@
+# Suzuki-Miyaura, ADKO v2 (the settled method), heterogeneous (HET) -- node 0.
+#
+# Four laboratories, lab i restricted to solvent i mod 4. A neighbour's token is then the only
+# route to another solvent's chemistry. This is the v2 study's HET setting: 4 labs, 5 shared
+# warmup rounds plus 95 rounds of the method, seeds 42-61 (and 82-181 for the confirmation).
+#
+# The method is ADKO_V2_FINDINGS.md's "The method", arm ADKO-v2f-odds-bit; every value in
+# `algorithm_configs` below is its default and is spelled out only so it can be read.
+#
+# One file per node, complete on its own: the simulation launchers derive nodes 1..n-1 from
+# this one by changing `node_id` and `space_configs.space_kwargs.agent_index`, and in HET that
+# index picks the lab's solvent. Any number of labs works; with eight, two share each solvent.
+#
+#   python decentralized/serial/run_serial.py \
+#       --config ./decentralized/resources/configs/suzuki_v2/simulation/node_0_het.yaml
+#   mpirun -n 4 python decentralized/mpi/run_mpi.py \
+#       --config ./decentralized/resources/configs/suzuki_v2/simulation/node_0_het.yaml
+#
+# Needs BoTorch and GPyTorch.
+
+algorithm: "adko_v2"            # which algorithm the launchers build; v1 configs omit it
+
+node_id: "agent-0"
+
+num_epochs: 100                 # rounds of {act -> exchange tokens -> observe}
+seed: 42                        # the run seed; every lab's private streams derive from it
+
+neighbors:
+  mode: from_topo               # simulation: derive the graph, assign ids to match
+  topology: fully_connected     # the reference's `complete` graph
+  topology_kwargs: {}
+  num_nodes: 4
+  id_prefix: "agent-"           # the index picks the solvent, so names are part of the setup
+
+algorithm_configs:
+  warmup_rounds: 5              # the shared warmup: the same points in every arm
+  objective: "maximize"         # a reaction yield in [0, 100]
+
+  # R = mu + beta*sigma + lam*G - gamma*Lambda, with G and Lambda rescaled by match_rms.
+  weights:
+    beta: 2.0
+    lam: 2.0
+    gamma: 2.0
+    kernel: "hamming"           # categorical inputs
+    bandwidth: 0.5              # sigma: 0.5 under Hamming distance (1 for Euclidean)
+    eps: 0.05                   # floor on RMS_Z(G0 + P0)
+
+  q_bits: 8                     # q = round(127 a) / 127, a = clip((y - median) / (1.4826 MAD))
+  memory_rounds: 3              # FIFO memory of 3 rounds = 3 x degree tokens
+  trust: true                   # odds weights t/(1-t); false weighs peers equally
+  trust_eta: 0.1                # Bush-Mosteller learning rate
+
+surrogate_configs:
+  # BoTorch's categorical GP on standardized yields, refit after every observation.
+  surrogate_path: "./decentralized/resources/surrogate/categorical_gp_v2.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs: {}
+
+# The lab's slice of the 3,696-reaction grid. A point is five category ids:
+# (electrophile, nucleophile, base, ligand, solvent).
+space_configs:
+  space_path: "./decentralized/resources/space/suzuki_v2_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 0              # set by the launcher for every other node; picks the solvent
+    num_agents: 4               # set by the launcher from the federation size
+    iid_mode: false             # HET: one solvent per lab
+
+# The oracle: the measured `suzuki_edbo` table, vendored beside the evaluator.
+evaluator_configs:
+  evaluator_path: "./decentralized/resources/evaluator/suzuki_table.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
+  cost_seconds: 0.0             # a table lookup; the real cost is a bench experiment
+
+train_configs:
+  logging_output_dirname: "./output"
+
+comm_configs:
+  budget_configs:
+    # One token per neighbour per round -- the settled method never sends more.
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:                 # used by grpc/run_site.py only
+    server_uri: "localhost:50051"
+    use_ssl: false

@@ -1,0 +1,85 @@
+# Suzuki-Miyaura, ADKO v2 (the settled method), HET -- site 3 of four, deployed.
+#
+# One laboratory: it runs solvent 3 (MeOH) and nothing else, which is the whole reason it
+# has neighbours. A deployed site names its own neighbours and where to reach each one, and
+# holds nothing about the federation beyond that -- `mode: explicit`.
+#
+#   python decentralized/grpc/run_site.py \
+#       --config ./decentralized/resources/configs/suzuki_v2/distributed/node_3.yaml
+#
+# The algorithm blocks are identical to ../simulation/node_0_het.yaml; only the identity, the
+# neighbours and the endpoint differ. Needs BoTorch, GPyTorch and grpcio.
+
+algorithm: "adko_v2"
+
+node_id: "agent-3"
+node_index: 3                   # this site's position: its tokens' source and its private streams
+
+num_epochs: 100
+seed: 42
+
+neighbors:
+  mode: "explicit"
+  # Who may collect MY tokens.
+  send_to: ["agent-0", "agent-1", "agent-2"]
+  # Whose tokens I collect, and where: their own address, or the relay they publish through.
+  recv_from:
+    - node_id: "agent-0"
+      server_uri: "localhost:50051"
+    - node_id: "agent-1"
+      server_uri: "localhost:50052"
+    - node_id: "agent-2"
+      server_uri: "localhost:50053"
+
+algorithm_configs:
+  warmup_rounds: 5              # the shared warmup: the same points in every arm
+  objective: "maximize"         # a reaction yield in [0, 100]
+
+  # R = mu + beta*sigma + lam*G - gamma*Lambda, with G and Lambda rescaled by match_rms.
+  weights:
+    beta: 2.0
+    lam: 2.0
+    gamma: 2.0
+    kernel: "hamming"           # categorical inputs
+    bandwidth: 0.5              # sigma: 0.5 under Hamming distance (1 for Euclidean)
+    eps: 0.05                   # floor on RMS_Z(G0 + P0)
+
+  q_bits: 8                     # q = round(127 a) / 127, a = clip((y - median) / (1.4826 MAD))
+  memory_rounds: 3              # FIFO memory of 3 rounds = 3 x degree tokens
+  trust: true                   # odds weights t/(1-t); false weighs peers equally
+  trust_eta: 0.1                # Bush-Mosteller learning rate
+
+surrogate_configs:
+  # BoTorch's categorical GP on standardized yields, refit after every observation.
+  surrogate_path: "./decentralized/resources/surrogate/categorical_gp_v2.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs: {}
+
+# The lab's slice of the 3,696-reaction grid. A point is five category ids:
+# (electrophile, nucleophile, base, ligand, solvent).
+space_configs:
+  space_path: "./decentralized/resources/space/suzuki_v2_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 3              # this site's solvent -- MeOH; must equal node_index
+    num_agents: 4
+    iid_mode: false
+
+# The oracle: the measured `suzuki_edbo` table, vendored beside the evaluator.
+evaluator_configs:
+  evaluator_path: "./decentralized/resources/evaluator/suzuki_table.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
+  cost_seconds: 0.0             # a table lookup; the real cost is a bench experiment
+
+train_configs:
+  logging_output_dirname: "./output"
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:
+    server_uri: "localhost:50054"
+    max_message_size: 1048576
+    use_ssl: False

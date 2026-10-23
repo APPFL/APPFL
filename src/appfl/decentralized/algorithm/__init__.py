@@ -15,6 +15,10 @@ Currently implemented:
 * :mod:`~appfl.decentralized.algorithm.adko` -- Agentic Decentralized Knowledge Optimization
   (Rillo et al., arXiv:2605.07863). Decentralized Bayesian optimization in which agents hold
   private surrogates and exchange one compact token per neighbour per round.
+* :mod:`~appfl.decentralized.algorithm.adko_v2` -- ADKO v2, the method the v2 study settled
+  on: 8-bit robust-score tokens with a best-so-far bit, a 3-round FIFO memory, odds-weighted
+  trust and a ``match_rms``-calibrated peer field, plus the optional L3 language-model
+  planner. Reproduces the v2 reference implementation bit for bit.
 """
 
 __all__ = []

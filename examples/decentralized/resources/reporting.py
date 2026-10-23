@@ -27,8 +27,19 @@ def format_point(x: Any) -> str:
     return f"{x:.3f}" if isinstance(x, (int, float)) else f"{x}"
 
 
+def health(agent: Any) -> str:
+    """The one per-agent number worth watching: ``eta_bar`` for v1, mean trust for v2."""
+    if hasattr(agent, "mean_token_fidelity"):
+        return f"eta_bar={agent.mean_token_fidelity():.3f}"
+    trust = agent.mean_trust() if hasattr(agent, "mean_trust") else None
+    return "trust=off" if trust is None else f"trust={trust:.3f}"
+
+
 def print_config(agents: Sequence[Any]) -> None:
     if not agents:
+        return
+    if hasattr(agents[0], "describe"):  # ADKO v2 describes itself
+        print(f"config              : {agents[0].describe()}")
         return
     weights = agents[0].weights
     print(
@@ -47,7 +58,7 @@ def print_agent(agent: Any, rank: Optional[int] = None) -> None:
     print(
         f"  {agent.agent_id}{where} {describe_slice(agent)}  "
         f"best x={format_point(best[0])} yield={best[1]:.1f}  "
-        f"eta_bar={agent.mean_token_fidelity():.3f}"
+        f"{health(agent)}"
     )
 
 
@@ -90,6 +101,9 @@ def report(
     trace = getattr(meter, "mean_fidelity_by_round", None)
     if trace:
         print(f"eta_bar (last round): {trace[-1]:.3f}")
+    trust = getattr(meter, "mean_trust_by_round", None)
+    if trust:
+        print(f"trust (last round)  : {trust[-1]:.3f}")
     print_llm(
         [
             a.language_model.stats()
