@@ -39,6 +39,7 @@ def _aidrin_meta_metrics(csv_path: Path) -> Dict:
     """Run AIDRIN (or fallback) on the site CSV and return a summary dict."""
     try:
         from aidrin import Inspector
+
         inspector = Inspector(data=str(csv_path), label=None)
         result = inspector.assess(
             metrics=["completeness", "duplicates", "outliers", "correlations"]
@@ -63,7 +64,9 @@ def _aidrin_meta_metrics(csv_path: Path) -> Dict:
         return {
             "completeness": round(completeness, 4),
             "duplicate_fraction": round(dup_frac, 4),
-            "outlier_fraction": round(float(np.mean(outlier_fracs)) if outlier_fracs else 0.0, 4),
+            "outlier_fraction": round(
+                float(np.mean(outlier_fracs)) if outlier_fracs else 0.0, 4
+            ),
             "_source": "fallback_pandas",
         }
 
@@ -105,12 +108,9 @@ def check_site_data(
             print(msg)
 
     # --- Resolve candidate training files (mirrors FastaChunkDataset logic) ---
-    all_fasta = sorted(
-        list(fasta_dir.glob("*.fna")) + list(fasta_dir.glob("*.fastq"))
-    )
+    all_fasta = sorted(list(fasta_dir.glob("*.fna")) + list(fasta_dir.glob("*.fastq")))
     candidates = [
-        f for f in all_fasta
-        if not any(ex in f.name for ex in current_exclude)
+        f for f in all_fasta if not any(ex in f.name for ex in current_exclude)
     ]
     if max_files:
         candidates = sorted(candidates, key=lambda f: f.stat().st_size)[:max_files]
@@ -128,10 +128,10 @@ def check_site_data(
     log(f"[AIDRIN] Running assessment on {aidrin_csv.name} ...")
     meta = _aidrin_meta_metrics(aidrin_csv)
     log(
-        f"[AIDRIN] CSV quality — completeness={meta.get('completeness','?')}, "
-        f"dup_frac={meta.get('duplicate_fraction','?')}, "
-        f"outlier_frac={meta.get('outlier_fraction','?')} "
-        f"(source={meta.get('_source','?')})"
+        f"[AIDRIN] CSV quality — completeness={meta.get('completeness', '?')}, "
+        f"dup_frac={meta.get('duplicate_fraction', '?')}, "
+        f"outlier_frac={meta.get('outlier_fraction', '?')} "
+        f"(source={meta.get('_source', '?')})"
     )
 
     # --- Build mgm_id → DRISEE lookup ---
@@ -156,7 +156,7 @@ def check_site_data(
         if drisee is None:
             status, reason = "contaminated", f"mgm_id '{mgm_id}' not in AIDRIN CSV"
         elif isinstance(drisee, float) and np.isnan(drisee):
-            status, reason = "contaminated", f"drisee_score_raw is NaN"
+            status, reason = "contaminated", "drisee_score_raw is NaN"
         elif float(drisee) > drisee_threshold:
             status = "contaminated"
             reason = f"drisee_score_raw={drisee:.2f} > threshold={drisee_threshold}"
