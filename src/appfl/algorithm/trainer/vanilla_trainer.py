@@ -38,6 +38,12 @@ class VanillaTrainer(BaseTrainer):
         as well as the number of local epochs or steps.
     """
 
+    # Name of the metric used as the x-axis for all wandb charts. Logging against
+    # the federated learning round keeps every client on a common axis, instead of
+    # the implicit wandb step which advances once per `wandb.log` call and so
+    # differs between clients that share a run.
+    _WANDB_STEP_METRIC = "round"
+
     def __init__(
         self,
         model: Optional[Module] = None,
@@ -70,6 +76,7 @@ class VanillaTrainer(BaseTrainer):
             batch_size=self.train_configs.get("train_batch_size", 32),
             shuffle=self.train_configs.get("train_data_shuffle", True),
             num_workers=self.train_configs.get("num_workers", 0),
+            drop_last=self.train_configs.get("train_drop_last", False),
         )
         self.val_dataloader = (
             DataLoader(
@@ -87,6 +94,8 @@ class VanillaTrainer(BaseTrainer):
         ):
             self.enabled_wandb = True
             self.wandb_logging_id = self.train_configs.wandb_logging_id
+            wandb.define_metric(self._WANDB_STEP_METRIC, hidden=True)
+            wandb.define_metric("*", step_metric=self._WANDB_STEP_METRIC)
         else:
             self.enabled_wandb = False
         self._sanity_check()
@@ -100,14 +109,38 @@ class VanillaTrainer(BaseTrainer):
         ):
             self.privacy_engine = PrivacyEngine()
 
+    def _wandb_log(self, metrics: dict, round_value: float) -> None:
+        """
+        Log metrics to wandb against the federated learning round.
+
+        :param metrics: the metrics to log, already prefixed with the client id.
+        :param round_value: the value of the `round` x-axis for these metrics. It may
+            be fractional to place several points inside a single round, e.g. one per
+            local epoch.
+        """
+        wandb.log({**metrics, self._WANDB_STEP_METRIC: round_value})
+
     def train(self, **kwargs):
         """
         Train the model for a certain number of local epochs or steps and store the mode state
         (probably with perturbation for differential privacy) in `self.model_state`.
         """
+        if "queue_delay" in kwargs:
+            time.sleep(max(0.0, float(kwargs["queue_delay"])))
+        if "local_steps" in kwargs:
+            self.train_configs.num_local_steps = kwargs["local_steps"]
+        if "learning_rate" in kwargs:
+            self.train_configs.optim_args.lr = kwargs["learning_rate"]
         if "round" in kwargs:
             self.round = kwargs["round"]
         self.val_results = {"round": self.round + 1}
+
+        if "start_time" in kwargs:
+            self.val_results["queue_time"] = time.time() - kwargs["start_time"]
+        if "queue_delay" in kwargs:
+            self.val_results["queue_delay"] = kwargs["queue_delay"]
+        if "origin_round" in kwargs:
+            self.val_results["origin_round"] = kwargs["origin_round"]
 
         # Store the previous model state for gradient computation
         send_gradient = self.train_configs.get("send_gradient", False)
@@ -182,11 +215,12 @@ class VanillaTrainer(BaseTrainer):
                     content.insert(1, 0)
                 self.logger.log_content(content)
                 if self.enabled_wandb:
-                    wandb.log(
+                    self._wandb_log(
                         {
                             f"{self.wandb_logging_id}/val-loss (before train)": val_loss,
                             f"{self.wandb_logging_id}/val-accuracy (before train)": val_accuracy,
-                        }
+                        },
+                        self.round,
                     )
 
         # Start training
@@ -216,6 +250,12 @@ class VanillaTrainer(BaseTrainer):
             )
 
         if self.train_configs.mode == "epoch":
+            # Report the step count in epoch mode too, so downstream consumers that
+            # reason in steps (e.g. the virtual-time simulator) work in both modes.
+            steps_per_epoch = len(self.train_dataloader)
+            total_local_steps = self.train_configs.num_local_epochs * steps_per_epoch
+            self.val_results["current_local_steps"] = total_local_steps
+            total_train_time = 0.0
             for epoch in range(self.train_configs.num_local_epochs):
                 start_time = time.time()
                 train_loss, target_true, target_pred = 0, [], []
@@ -238,14 +278,16 @@ class VanillaTrainer(BaseTrainer):
                     self.val_results["val_loss"].append(val_loss)
                     self.val_results["val_accuracy"].append(val_accuracy)
                 per_epoch_time = time.time() - start_time
+                total_train_time += per_epoch_time
                 if self.enabled_wandb:
-                    wandb.log(
+                    self._wandb_log(
                         {
                             f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
                             f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
                             f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
                             f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
-                        }
+                        },
+                        self.round + (epoch + 1) / self.train_configs.num_local_epochs,
                     )
                 self.logger.log_content(
                     [self.round, epoch, per_epoch_time, train_loss, train_accuracy]
@@ -272,6 +314,10 @@ class VanillaTrainer(BaseTrainer):
                             val_accuracy,
                         ]
                     )
+                )
+            if total_local_steps > 0:
+                self.val_results["compute_second_per_step"] = (
+                    total_train_time / total_local_steps
                 )
         else:
             self.val_results["current_local_steps"] = self.train_configs.num_local_steps
@@ -320,14 +366,22 @@ class VanillaTrainer(BaseTrainer):
                 self.val_results["val_loss"] = val_loss
                 self.val_results["val_accuracy"] = val_accuracy
             per_step_time = time.time() - start_time
+            if "slowdown" in kwargs and float(kwargs["slowdown"]) > 1.0:
+                slow_padding = per_step_time * (float(kwargs["slowdown"]) - 1.0)
+                time.sleep(slow_padding)
+                per_step_time += slow_padding
+            self.val_results["compute_second_per_step"] = (
+                per_step_time / self.train_configs.num_local_steps
+            )
             if self.enabled_wandb:
-                wandb.log(
+                self._wandb_log(
                     {
                         f"{self.wandb_logging_id}/train-loss (during train)": train_loss,
                         f"{self.wandb_logging_id}/train-accuracy (during train)": train_accuracy,
                         f"{self.wandb_logging_id}/val-loss (during train)": val_loss,
                         f"{self.wandb_logging_id}/val-accuracy (during train)": val_accuracy,
-                    }
+                    },
+                    self.round + 1,
                 )
             self.logger.log_content(
                 [self.round, per_step_time, train_loss, train_accuracy]

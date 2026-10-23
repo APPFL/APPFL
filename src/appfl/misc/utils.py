@@ -3,6 +3,7 @@ import re
 import ast
 import sys
 import copy
+import stat
 import yaml
 import torch
 import random
@@ -18,6 +19,64 @@ import torch.nn as nn
 from omegaconf import DictConfig
 from .deprecation import deprecated
 from typing import Any, Optional, Union, Tuple, List, Dict
+
+
+def _ensure_secure_dir(path: pathlib.Path) -> None:
+    """Create `path` with mode 0o700 if missing, then verify it is a real
+    directory (not a symlink), owned by the current user, and has mode
+    exactly 0o700. Raises PermissionError if the verification fails."""
+    try:
+        path.mkdir(mode=0o700, exist_ok=False)
+    except FileExistsError:
+        pass
+    os.chmod(path, 0o700)
+    st = os.lstat(path)
+    if not stat.S_ISDIR(st.st_mode):
+        raise PermissionError(f"{path} is not a directory (or is a symlink)")
+    if hasattr(os, "getuid") and st.st_uid != os.getuid():
+        raise PermissionError(
+            f"{path} is owned by uid {st.st_uid}, expected {os.getuid()}"
+        )
+    mode_bits = stat.S_IMODE(st.st_mode)
+    if mode_bits & (stat.S_IRWXG | stat.S_IRWXO):
+        raise PermissionError(
+            f"{path} has insecure mode {oct(mode_bits)}; expected 0o700"
+        )
+
+
+def secure_appfl_dir(*parts: str) -> str:
+    """Return a path under the user's APPFL working tree, creating any
+    missing components with mode 0o700.
+
+    Tries `$HOME/.appfl/<parts...>` first. If the home directory is
+    read-only (common in containers), falls back to
+    `/tmp/.appfl-<uid>/<parts...>` — the uid suffix prevents a co-tenant
+    from pre-creating the directory and trapping the operator's writes.
+
+    Every directory from the `.appfl(-uid)` root down to the leaf is
+    created (or verified) with mode 0o700 and owned by the current user;
+    symlinked components are refused.
+    """
+    if hasattr(os, "getuid"):
+        fallback_root = pathlib.Path("/tmp") / f".appfl-{os.getuid()}"
+    else:
+        fallback_root = pathlib.Path("/tmp") / ".appfl"
+    candidates = [pathlib.Path.home() / ".appfl", fallback_root]
+
+    last_err: Optional[Exception] = None
+    for root in candidates:
+        try:
+            _ensure_secure_dir(root)
+            current = root
+            for part in parts:
+                current = current / part
+                _ensure_secure_dir(current)
+            return str(current)
+        except OSError as e:
+            last_err = e
+            continue
+    assert last_err is not None
+    raise last_err
 
 
 @deprecated(silent=True)
@@ -297,16 +356,7 @@ def create_instance_from_file_source(source, class_name=None, *args, **kwargs):
     :param args: Positional arguments to be passed to the class constructor
     """
     # Create a temporary file to store the source code
-    _home = pathlib.Path.home()
-    dirname = osp.join(_home, ".appfl", "tmp")
-    try:
-        if not osp.exists(dirname):
-            pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
-    except OSError:
-        # Fallback to /tmp/.appfl if home directory is read-only (e.g., in containers)
-        dirname = osp.join("/tmp", ".appfl", "tmp")
-        if not osp.exists(dirname):
-            pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+    dirname = secure_appfl_dir("tmp")
     file_path = osp.join(dirname, f"{id_generator()}.py")
     with open(file_path, "w") as file:
         file.write(source)
@@ -329,16 +379,7 @@ def get_function_from_file_source(source, function_name=None):
     :return: The function object, or None if retrieval fails.
     """
     # Create a temporary file to store the source code
-    _home = pathlib.Path.home()
-    dirname = osp.join(_home, ".appfl", "tmp")
-    try:
-        if not osp.exists(dirname):
-            pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
-    except OSError:
-        # Fallback to /tmp/.appfl if home directory is read-only (e.g., in containers)
-        dirname = osp.join("/tmp", ".appfl", "tmp")
-        if not osp.exists(dirname):
-            pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+    dirname = secure_appfl_dir("tmp")
     file_path = osp.join(dirname, f"{id_generator()}.py")
     with open(file_path, "w") as file:
         file.write(source)

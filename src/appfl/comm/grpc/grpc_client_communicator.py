@@ -13,15 +13,18 @@ from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_s3
 from .grpc_communicator_pb2 import (
     ClientHeader,
     ConfigurationRequest,
+    ConfigurationResponse,
     GetGlobalModelRequest,
-    GetGlobalModelRespone,
+    GetGlobalModelResponse,
     UpdateGlobalModelRequest,
     UpdateGlobalModelResponse,
     CustomActionRequest,
     CustomActionResponse,
+    PollRequest,
     ServerStatus,
 )
 from .grpc_communicator_pb2_grpc import GRPCCommunicatorStub
+from .compatibility import VersionCheckInterceptor
 from omegaconf import OmegaConf, DictConfig
 from typing import Union, Dict, OrderedDict, Tuple, Optional, Any
 from appfl.comm.grpc import (
@@ -39,6 +42,9 @@ from appfl.misc.memory_utils import (
     get_state_dict_memory_info,
     split_state_dict_by_size,
 )
+
+# Consecutive polls dropped with UNAVAILABLE (e.g. by a gateway) to tolerate before giving up
+_MAX_POLL_RETRIES = 5
 
 
 class GRPCClientCommunicator:
@@ -94,6 +100,8 @@ class GRPCClientCommunicator:
             max_message_size=max_message_size,
         )
         grpc.channel_ready_future(channel).result(timeout=3600)
+        # Exchange APPFL versions with the server in the headers of each RPC
+        channel = grpc.intercept_channel(channel, VersionCheckInterceptor(self))
         self.stub = GRPCCommunicatorStub(channel)
         self._use_authenticator = use_authenticator
         self.kwargs = kwargs
@@ -112,12 +120,23 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
+        # Declare what this client can receive, so the server chunks the configurations to fit it
+        kwargs["max_message_size"] = self.max_message_size
         meta_data = yaml.dump(kwargs)
         request = ConfigurationRequest(
             header=ClientHeader(client_id=client_id),
             meta_data=meta_data,
         )
-        response = self.stub.GetConfiguration(request, timeout=3600)
+        try:
+            response, _ = self._receive_response(
+                self.stub.GetConfigurationStream(request, timeout=3600),
+                ConfigurationResponse,
+            )
+        except grpc.RpcError as e:
+            if e.code() != grpc.StatusCode.UNIMPLEMENTED:
+                raise
+            # Servers older than `GetConfigurationStream` send configurations as a single message
+            response = self.stub.GetConfiguration(request, timeout=3600)
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
         configuration = OmegaConf.create(response.configuration)
@@ -156,6 +175,8 @@ class GRPCClientCommunicator:
         if self.use_model_chunking:
             kwargs["_request_chunked"] = True
 
+        # Declare what this client can receive, so the server chunks the model to fit it
+        kwargs["max_message_size"] = self.max_message_size
         meta_data = yaml.dump(kwargs)
         request = GetGlobalModelRequest(
             header=ClientHeader(client_id=client_id),
@@ -164,8 +185,10 @@ class GRPCClientCommunicator:
         # Use optimized protocol when optimize_memory is enabled
         if self.optimize_memory:
             # New protocol: metadata and model data are separate
-            response, model_bytes = self._receive_metadata_and_model_optimized(
-                self.stub.GetGlobalModel(request, timeout=3600), GetGlobalModelRespone
+            response, model_bytes = self._receive_with_polling(
+                self.stub.GetGlobalModel(request, timeout=3600),
+                GetGlobalModelResponse,
+                client_id,
             )
 
             if response.header.status == ServerStatus.ERROR:
@@ -177,21 +200,11 @@ class GRPCClientCommunicator:
             gc.collect()
         else:
             # Original protocol: model embedded in protobuf
-            data_chunks = []
-            chunk_count = 0
-            for byte_chunk in self.stub.GetGlobalModel(request, timeout=3600):
-                data_chunks.append(byte_chunk.data_bytes)
-                chunk_count += 1
-
-            # Efficiently concatenate and parse
-            byte_received = efficient_bytearray_concatenation(
-                data_chunks, optimize_memory=False
+            response, _ = self._receive_with_polling(
+                self.stub.GetGlobalModel(request, timeout=3600),
+                GetGlobalModelResponse,
+                client_id,
             )
-            response = GetGlobalModelRespone()
-            response.ParseFromString(byte_received)
-
-            optimize_memory_cleanup(data_chunks, byte_received, force_gc=True)
-            del data_chunks, byte_received
 
             if response.header.status == ServerStatus.ERROR:
                 raise Exception("Server returned an error, stopping the client.")
@@ -270,6 +283,8 @@ class GRPCClientCommunicator:
             kwargs["model_url"] = local_model_url
             kwargs["_use_s3"] = True
 
+        # Declare what this client can receive, so the server chunks the model to fit it
+        kwargs["max_message_size"] = self.max_message_size
         meta_data = yaml.dump(kwargs)
 
         # Serialize the local model
@@ -302,9 +317,10 @@ class GRPCClientCommunicator:
             gc.collect()
 
             # Receive response using optimized protocol
-            response, model_bytes = self._receive_metadata_and_model_optimized(
+            response, model_bytes = self._receive_with_polling(
                 self.stub.UpdateGlobalModel(request_generator, timeout=3600),
                 UpdateGlobalModelResponse,
+                client_id,
             )
 
             if response.header.status == ServerStatus.ERROR:
@@ -327,14 +343,16 @@ class GRPCClientCommunicator:
                 meta_data=meta_data,
             )
 
-            byte_received = b""
-            for byte_chunk in self.stub.UpdateGlobalModel(
-                proto_to_databuffer(request, max_message_size=self.max_message_size),
-                timeout=3600,
-            ):
-                byte_received += byte_chunk.data_bytes
-            response = UpdateGlobalModelResponse()
-            response.ParseFromString(byte_received)
+            response, _ = self._receive_with_polling(
+                self.stub.UpdateGlobalModel(
+                    proto_to_databuffer(
+                        request, max_message_size=self.max_message_size
+                    ),
+                    timeout=3600,
+                ),
+                UpdateGlobalModelResponse,
+                client_id,
+            )
 
             if response.header.status == ServerStatus.ERROR:
                 raise Exception("Server returned an error, stopping the client.")
@@ -513,20 +531,22 @@ class GRPCClientCommunicator:
             del kwargs["_client_id"]
         else:
             client_id = str(self.client_id)
+        # Declare what this client can receive, so the server chunks the results to fit it
+        kwargs["max_message_size"] = self.max_message_size
         meta_data = yaml.dump(kwargs)
         request = CustomActionRequest(
             header=ClientHeader(client_id=client_id),
             action=action,
             meta_data=meta_data,
         )
-        byte_received = b""
-        for byte in self.stub.InvokeCustomAction(
-            proto_to_databuffer(request, max_message_size=self.max_message_size),
-            timeout=3600,
-        ):
-            byte_received += byte.data_bytes
-        response = CustomActionResponse()
-        response.ParseFromString(byte_received)
+        response, _ = self._receive_with_polling(
+            self.stub.InvokeCustomAction(
+                proto_to_databuffer(request, max_message_size=self.max_message_size),
+                timeout=3600,
+            ),
+            CustomActionResponse,
+            client_id,
+        )
         if response.header.status == ServerStatus.ERROR:
             raise Exception("Server returned an error, stopping the client.")
 
@@ -737,9 +757,10 @@ class GRPCClientCommunicator:
                 metadata_size = len(metadata_bytes)
                 break
             except Exception:
-                self.logger.info(
-                    f"Metadata parsing failed with first {i} chunks, trying more."
-                )
+                if self.logger:
+                    self.logger.info(
+                        f"Metadata parsing failed with first {i} chunks, trying more."
+                    )
                 continue
 
         if metadata_size == 0:
@@ -773,3 +794,58 @@ class GRPCClientCommunicator:
         else:
             del all_chunks
             return response, response.global_model
+
+    def _receive_with_polling(self, stream_iterator, response_type, client_id):
+        """
+        Receive a response streamed by the server. If the server acknowledged the request with a
+        PENDING ticket (polling mode), poll for the result at the interval the server asked for.
+        Returns: (response_proto, model_bytes)
+        - model_bytes: Raw model bytes when the optimized protocol sends the model separately, else `None`
+        """
+        response, model_bytes = self._receive_response(stream_iterator, response_type)
+        num_failed_polls = 0
+        while response.header.status == ServerStatus.PENDING:
+            time.sleep(response.header.poll_interval)
+            request = PollRequest(
+                header=ClientHeader(client_id=client_id),
+                ticket=response.header.ticket,
+            )
+            try:
+                response, model_bytes = self._receive_response(
+                    self.stub.PollResult(request, timeout=3600), response_type
+                )
+                num_failed_polls = 0
+            except grpc.RpcError as e:
+                # Polling is idempotent, so retry polls that a gateway dropped
+                num_failed_polls += 1
+                if (
+                    e.code() != grpc.StatusCode.UNAVAILABLE
+                    or num_failed_polls > _MAX_POLL_RETRIES
+                ):
+                    raise
+                if self.logger:
+                    self.logger.info(
+                        f"Polling for the result failed ({e.details()}), retrying [{num_failed_polls}/{_MAX_POLL_RETRIES}]"
+                    )
+        return response, model_bytes
+
+    def _receive_response(self, stream_iterator, response_type):
+        """
+        Receive a response streamed by the server. Returns: (response_proto, model_bytes)
+        - model_bytes: Raw model bytes when the optimized protocol sends the model separately, else `None`
+        """
+        if self.optimize_memory and response_type in (
+            GetGlobalModelResponse,
+            UpdateGlobalModelResponse,
+        ):
+            return self._receive_metadata_and_model_optimized(
+                stream_iterator, response_type
+            )
+        data_chunks = [byte_chunk.data_bytes for byte_chunk in stream_iterator]
+        byte_received = efficient_bytearray_concatenation(
+            data_chunks, optimize_memory=False
+        )
+        response = response_type()
+        response.ParseFromString(byte_received)
+        optimize_memory_cleanup(data_chunks, byte_received, force_gc=True)
+        return response, None

@@ -28,6 +28,17 @@ Users then can install the compressors by running the following command:
 .. note::
     SZx is not open source so we omit its installation here. Please install it manually by contacting the author.
 
+``ZFPCompressor`` additionally requires the ``zfpy`` package, which is **not** installed by default.
+The ``zfpy`` wheels are built against the numpy 1.x ABI and fail to import under ``numpy>=2.0.0``,
+so APPFL does not constrain numpy for everyone else. If you want to use ZFP, install the ``zfp`` extra,
+which pulls in ``zfpy`` along with a compatible ``numpy<2.0.0``:
+
+.. code-block:: bash
+
+    pip install "appfl[zfp]"
+
+All other compressors (``SZ2Compressor``, ``SZ3Compressor``, ``SZxCompressor``) work fine with numpy 2.x.
+
 Functionalities
 ---------------
 

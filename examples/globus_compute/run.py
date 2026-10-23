@@ -26,6 +26,7 @@ argparser.add_argument(
 argparser.add_argument(
     "--openid_token", required=False, help="Globus OpenID authentication token"
 )
+argparser.add_argument("--get_sample_size", action="store_true")
 args = argparser.parse_args()
 
 # Load server and client agents configurations
@@ -64,11 +65,12 @@ server_agent.logger.info(
 )
 
 # Get sample size from clients
-server_agent.logger.info("[Clients] Requesting sample sizes from all clients...")
-server_communicator.send_task_to_all_clients(task_name="get_sample_size")
-sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
-for client_endpoint_id, sample_size in sample_size_ret.items():
-    server_agent.set_sample_size(client_endpoint_id, sample_size["sample_size"])
+if args.get_sample_size:
+    server_agent.logger.info("[Clients] Requesting sample sizes from all clients...")
+    server_communicator.send_task_to_all_clients(task_name="get_sample_size")
+    sample_size_ret = server_communicator.recv_result_from_all_clients()[1]
+    for client_endpoint_id, sample_size in sample_size_ret.items():
+        server_agent.set_sample_size(client_endpoint_id, sample_size["sample_size"])
     server_agent.logger.info(
         f"[Client {client_endpoint_id}] Sample size: {sample_size['sample_size']}"
     )
@@ -106,9 +108,15 @@ if (
 
 # Train the model
 server_agent.logger.info("Starting Federated Learning Training")
+init_model = server_agent.get_parameters(globus_compute_run=True)
+if isinstance(init_model, tuple):
+    init_model, metadata = init_model[0], init_model[1]
+else:
+    metadata = {}
 server_communicator.send_task_to_all_clients(
     task_name="train",
-    model=server_agent.get_parameters(globus_compute_run=True),
+    model=init_model,
+    metadata=metadata,
     need_model_response=True,
 )
 

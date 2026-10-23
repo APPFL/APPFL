@@ -67,7 +67,7 @@ class Config:
     output_dirname: str = "output"
     output_filename: str = "result"
 
-    logginginfo: DictConfig = OmegaConf.create({})
+    logginginfo: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
     summary_file: str = ""
 
     # Personalization options
@@ -84,27 +84,31 @@ class Config:
     authenticator: str = "Globus"  # "Globus", "Naive"
     uri: str = "localhost:50051"
 
-    operator: DictConfig = OmegaConf.create({"id": 1})
-    server: DictConfig = OmegaConf.create(
-        {
-            "id": 1,
-            "authenticator_kwargs": {
-                "is_fl_server": True,
-                "globus_group_id": "77c1c74b-a33b-11ed-8951-7b5a369c0a53",
-            },
-            "server_certificate_key": "default",
-            "server_certificate": "default",
-            "max_workers": 10,
-        }
+    operator: DictConfig = field(default_factory=lambda: OmegaConf.create({"id": 1}))
+    server: DictConfig = field(
+        default_factory=lambda: OmegaConf.create(
+            {
+                "id": 1,
+                "authenticator_kwargs": {
+                    "is_fl_server": True,
+                    "globus_group_id": "77c1c74b-a33b-11ed-8951-7b5a369c0a53",
+                },
+                "server_certificate_key": "default",
+                "server_certificate": "default",
+                "max_workers": 10,
+            }
+        )
     )
-    client: DictConfig = OmegaConf.create(
-        {
-            "id": 1,
-            "root_certificates": "default",
-            "authenticator_kwargs": {
-                "is_fl_server": False,
-            },
-        }
+    client: DictConfig = field(
+        default_factory=lambda: OmegaConf.create(
+            {
+                "id": 1,
+                "root_certificates": "default",
+                "authenticator_kwargs": {
+                    "is_fl_server": False,
+                },
+            }
+        )
     )
 
     # Lossy compression enabling
@@ -156,8 +160,8 @@ class GlobusComputeClientConfig:
     device: str = "cpu"
     output_dir: str = "./output"
     data_dir: str = "./datasets"
-    get_data: DictConfig = OmegaConf.create({})
-    data_pipeline: DictConfig = OmegaConf.create({})
+    get_data: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
+    data_pipeline: DictConfig = field(default_factory=lambda: OmegaConf.create({}))
 
 
 @dataclass
@@ -190,7 +194,7 @@ class GlobusComputeConfig(Config):
     dataset: str = ""
     loss: str = "CrossEntropy"
     model_kwargs: Dict = field(default_factory=dict)
-    server: GlobusComputeServerConfig
+    server: GlobusComputeServerConfig = field(default_factory=GlobusComputeServerConfig)
     logging_tasks: List = field(default_factory=list)
     hf_model_arc: str = ""
     hf_model_weights: str = ""

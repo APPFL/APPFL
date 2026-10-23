@@ -24,13 +24,6 @@ for i, (k, v) in enumerate(authors.items()):
 with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
-if sys.version_info >= (3, 9):
-    numpy_version = "numpy==1.26.4"
-    zfpy_version = "zfpy"
-else:
-    numpy_version = "numpy"  # Default numpy version for Python < 3.9
-    zfpy_version = "zfpy==1.0.0"
-
 if sys.version_info >= (3, 10):
     wandb_version = "wandb"
     globus_sdk_version = "globus-sdk>=4.4.1"
@@ -44,7 +37,7 @@ else:
 
 setuptools.setup(
     name="appfl",
-    version="1.10.0",
+    version="1.12.0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -62,11 +55,11 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     include_package_data=True,
     package_data={
-        "": ["*.sh", "*.crt", "*.key"],
+        "": ["*.sh"],
     },
     python_requires=">=3.8",
     install_requires=[
-        numpy_version,
+        "numpy",
         "torch",
         "grpcio",
         "grpcio-tools",
@@ -74,10 +67,14 @@ setuptools.setup(
         globus_sdk_version,
         globus_compute_sdk_version,
         globus_compute_endpoint_version,
+        # >=2.6.0: older PyJWT crashes on Keycloak's JWKS response, which
+        # includes a non-signing RSA-OAEP encryption key alongside the RS256
+        # signing key.
+        "PyJWT[crypto]>=2.6.0",
+        "requests",
         "boto3",
         "botocore",
         "lz4",
-        zfpy_version,
         "zstd",
         "blosc",
         "python-xz",
@@ -110,6 +107,8 @@ setuptools.setup(
             "furo",
         ],
         "examples": [
+            "datasets==4.8.5; python_version >= '3.9'",
+            "datasets; python_version < '3.9'",
             "opencv-python",
             "pyarrow",
             "fastparquet",
@@ -118,15 +117,27 @@ setuptools.setup(
             "wget",
             "torchvision",
             "tensorboard",
+            "Pillow",
         ],
         "monai": ["monai[all]==1.2.0"],
+        "lightning": ["lightning>=2.0", "mlflow"],
         "mpi": ["mpi4py"],
+        # The ZFP lossy compressor is optional: zfpy wheels are built against
+        # the numpy 1.x ABI and fail to import under numpy>=2.0.0. Installing
+        # this extra pins numpy accordingly; everything else in APPFL works
+        # fine with numpy 2.x.
+        "zfp": [
+            "zfpy; python_version >= '3.9'",
+            "zfpy==1.0.0; python_version < '3.9'",
+            "numpy<2.0.0",
+        ],
     },
     entry_points={
         "console_scripts": [
             "appfl-auth=appfl.login_manager.globus.cli:auth",
             "appfl-install-compressor=appfl.compressor.install:install_compressor",
             "appfl-setup-ssl=appfl.comm.grpc.setup_ssl:setup_ssl",
+            "appfl-install-skill=appfl.cli.install_skill:main",
         ],
     },
 )
