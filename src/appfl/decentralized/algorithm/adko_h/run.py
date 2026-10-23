@@ -150,7 +150,7 @@ def main(argv=None) -> int:
             args.llm_max_tokens = 16000 if planner_kind == "mag" else 4096
         if args.llm_temperature is None and planner_kind != "mag":
             args.llm_temperature = 0.2
-        if planner_kind == "mag" and not os.environ.get("MAG_BUDGET"):
+        if planner_kind == "mag" and not (os.environ.get("MAG_BUDGET") and os.environ.get("MAG_LEDGER")):
             raise SystemExit("--planner mag needs MAG_LEDGER and MAG_BUDGET set: a run with "
                              "no spending cap is not something to start by accident")
 
