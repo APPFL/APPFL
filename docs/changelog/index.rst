@@ -1,6 +1,27 @@
 Changelog
 =========
 
+appfl v1.12.0
+-------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add a polling mode to the gRPC communicators for servers behind proxies or load balancers with an idle timeout (e.g., ``504 Gateway Timeout`` after 60 seconds). With ``use_polling: True`` on the server, long-running requests are acknowledged immediately with a ticket and clients poll for the result every ``poll_interval`` seconds sent by the server, so clients need no extra configuration. [`Documentation <https://appfl.ai/en/latest/users/communicator.html#grpc-polling-mode>`_].
+- The gRPC server and clients no longer need the same ``max_message_size``: each client declares its own in every request and the server chunks its responses to the smaller of the two, while the server accepts incoming messages of up to 256 MB (configurable with ``max_receive_message_size``). [`Documentation <https://appfl.ai/en/latest/users/communicator.html#grpc-message-size>`_].
+- Stream gRPC configuration responses through the new ``GetConfigurationStream`` RPC, so configurations of any size fit the message size limits, with a fallback to ``GetConfiguration`` for older servers.
+- Exchange APPFL versions between the gRPC server and clients, and check them against compatibility rules: the server rejects clients that would always fail (e.g., clients older than 1.12.0 against a polling server) with a message to upgrade them, and both sides warn about versions that may fail or recommend upgrading the older side. [`Documentation <https://appfl.ai/en/latest/users/communicator.html#grpc-version-compatibility>`_].
+- Add a prototype ``LightningTrainer`` for PyTorch Lightning models with MLflow logging, installable via the new ``lightning`` extra. [`Documentation <https://github.com/APPFL/APPFL/tree/main/examples/lightning>`_].
+- Add AIDRIN data readiness notebook tutorials for running APPFL on NERSC. [`Documentation <https://github.com/APPFL/APPFL/tree/main/examples/notebook_tutorials/mnist_aidrin_nersc>`_].
+- Document gRPC message size, model chunking, polling mode and version compatibility in the communicator user guide.
+
+Bug Fixes
+~~~~~~~~~
+
+- Use ``default_factory`` for ``DictConfig`` defaults in the configuration dataclasses, for compatibility with ``omegaconf`` 2.4.
+- Enable SSL in the default client notebooks for NERSC.
+- Rename the gRPC message ``GetGlobalModelRespone`` to ``GetGlobalModelResponse``; the wire format is unchanged, so this is compatible with older peers.
+
 appfl v1.11.0
 -------------
 
