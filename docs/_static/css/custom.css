@@ -109,34 +109,8 @@ article section:has(> .appfl-landing) > h1 {
         var(--color-background-primary);
 }
 
-.appfl-landing .al-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.75rem 0.25rem 0.3rem;
-    border: 1px solid var(--color-background-border);
-    border-radius: 999px;
-    background: var(--color-background-primary);
-    color: var(--color-foreground-secondary);
-    font-size: 0.8rem;
-}
-
-.appfl-landing .al-pill:hover {
-    border-color: var(--al-accent);
-    color: var(--color-foreground-primary);
-}
-
-.appfl-landing .al-pill-tag {
-    padding: 0.1rem 0.55rem;
-    border-radius: 999px;
-    background: var(--al-yellow);
-    color: #1f1a00;
-    font-weight: 700;
-    font-size: 0.72rem;
-}
-
 .appfl-landing .al-hero-title {
-    margin: 1.1rem 0 1rem;
+    margin: 0 0 1rem;
     color: var(--color-foreground-primary);
     font-size: clamp(2rem, 4vw, 3rem);
     font-weight: 800;
@@ -332,9 +306,13 @@ article section:has(> .appfl-landing) > h1 {
     gap: 1rem;
 }
 
-.appfl-landing .al-pillars,
-.appfl-landing .al-grid-3 {
+.appfl-landing .al-pillars {
     grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+/* Fixed three columns on wide screens; see the breakpoints below */
+.appfl-landing .al-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .appfl-landing .al-grid-4 {
@@ -501,30 +479,161 @@ article section:has(> .appfl-landing) > h1 {
 
 /* ---------- Logos, citation ---------- */
 
-.appfl-landing .al-logos {
+/* Collaborator logos: a single row that scrolls in a loop (pauses on hover).
+   The band stays white in dark mode because most logos have dark artwork. */
+.appfl-landing .al-marquee {
+    overflow: hidden;
+    padding: 1.75rem 0;
+    border: 1px solid var(--color-background-border);
+    border-radius: 16px;
+    background: #ffffff;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+.appfl-landing .al-marquee-track {
     display: flex;
+    width: max-content;
+    animation: al-marquee 60s linear infinite;
+}
+
+.appfl-landing .al-marquee.is-paused .al-marquee-track {
+    animation-play-state: paused;
+}
+
+.appfl-landing .al-marquee-group {
+    display: flex;
+    align-items: center;
+    gap: 3.5rem;
+    padding-right: 3.5rem;
+}
+
+.appfl-landing .al-marquee-group img {
+    width: auto;
+    max-width: 12rem;
+    height: 4.5rem;
+    object-fit: contain;
+}
+
+@keyframes al-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+/* Sits right under the hero, so it needs less space above than other sections */
+.appfl-landing #institutions {
+    margin-top: 2.5rem;
+}
+
+.appfl-landing .al-collab-title {
+    margin: 0 0 1rem;
+    text-align: center;
+    color: var(--color-foreground-secondary);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* "Show all" and icon-only pause/play controls, bottom right of the band */
+.appfl-landing .al-marquee-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.appfl-landing .al-marquee-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.25rem;
+    padding: 0 0.85rem;
+    border: 1px solid var(--color-background-border);
+    border-radius: 6px;
+    background: var(--color-background-secondary);
+    color: var(--color-foreground-secondary);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.appfl-landing .al-marquee-btn:hover,
+.appfl-landing .al-marquee-btn:focus-visible {
+    background: var(--color-background-primary);
+    color: var(--color-foreground-primary);
+}
+
+.appfl-landing .al-marquee-toggle {
+    width: 2.25rem;
+    padding: 0;
+}
+
+/* Nothing moves in the expanded view, so the pause control has no job */
+.appfl-landing .al-marquee.is-expanded ~ .al-marquee-controls .al-marquee-toggle {
+    display: none;
+}
+
+.appfl-landing .al-marquee-toggle svg {
+    width: 0.9rem;
+    height: 0.9rem;
+    fill: currentColor;
+}
+
+.appfl-landing .al-marquee-toggle .al-icon-play,
+.appfl-landing .al-marquee-toggle.is-paused .al-icon-pause {
+    display: none;
+}
+
+.appfl-landing .al-marquee-toggle.is-paused .al-icon-play {
+    display: block;
+}
+
+/* "Show all": stop the loop and lay every logo out in wrapped rows */
+.appfl-landing .al-marquee.is-expanded {
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+
+.appfl-landing .al-marquee.is-expanded .al-marquee-track {
+    width: auto;
+    animation: none;
+}
+
+.appfl-landing .al-marquee.is-expanded .al-marquee-group {
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.75rem;
+    gap: 2rem 3rem;
+    padding: 0 1.5rem;
 }
 
-.appfl-landing .al-logos img {
-    width: auto;
-    max-width: 9.5rem;
-    height: 3.25rem;
-    padding: 0.55rem 0.85rem;
-    object-fit: contain;
-    border: 1px solid var(--color-background-border);
-    border-radius: 10px;
-    background: #ffffff;
-    filter: grayscale(1);
-    opacity: 0.85;
-    transition: filter 0.2s, opacity 0.2s;
+.appfl-landing .al-marquee.is-expanded .al-marquee-group[aria-hidden="true"] {
+    display: none;
 }
 
-.appfl-landing .al-logos img:hover {
-    filter: none;
-    opacity: 1;
+/* No motion requested: same wrapped layout as "Show all", with no controls */
+@media (prefers-reduced-motion: reduce) {
+    .appfl-landing .al-marquee {
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+
+    .appfl-landing .al-marquee-track {
+        width: auto;
+        animation: none;
+    }
+
+    .appfl-landing .al-marquee-group {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 2rem 3rem;
+        padding: 0 1.5rem;
+    }
+
+    .appfl-landing .al-marquee-group[aria-hidden="true"],
+    .appfl-landing .al-marquee-controls {
+        display: none;
+    }
 }
 
 .appfl-landing .al-ack {
@@ -536,6 +645,10 @@ article section:has(> .appfl-landing) > h1 {
 /* ---------- Small screens ---------- */
 
 @media (max-width: 60em) {
+    .appfl-landing .al-grid-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .appfl-landing .al-hero {
         grid-template-columns: minmax(0, 1fr);
         gap: 2rem;
@@ -544,6 +657,20 @@ article section:has(> .appfl-landing) > h1 {
 }
 
 @media (max-width: 40em) {
+    .appfl-landing .al-grid-3 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .appfl-landing .al-marquee-group {
+        gap: 2.25rem;
+        padding-right: 2.25rem;
+    }
+
+    .appfl-landing .al-marquee-group img {
+        max-width: 8.5rem;
+        height: 3.25rem;
+    }
+
     .appfl-landing .al-hero {
         padding: 1.5rem 1rem;
         border-radius: 14px;

@@ -15,11 +15,6 @@ APPFL
 
       <section class="al-hero">
         <div class="al-hero-text">
-          <a class="al-pill" href="changelog/index.html">
-            <span class="al-pill-tag">New</span>
-            v1.12: gRPC polling, model chunking &amp; version checks
-            <span aria-hidden="true">&rarr;</span>
-          </a>
           <p class="al-hero-title">
             Privacy-preserving federated learning, <span class="al-accent">from simulation to deployment.</span>
           </p>
@@ -60,6 +55,66 @@ APPFL
       <span class="p">$</span> mpiexec -n 6 python mpi/run_mpi.py \
           --server_config resources/configs/mnist/server_fedcompass.yaml \
           --client_config resources/configs/mnist/client_1.yaml</pre>
+        </div>
+      </section>
+
+      <section class="al-section" id="institutions">
+        <p class="al-collab-title">Built together with researchers across national labs and universities</p>
+        <div class="al-marquee">
+          <div class="al-marquee-track">
+            <div class="al-marquee-group">
+              <img src="_static/anl.png" alt="Argonne National Laboratory">
+              <img src="_static/uchicago.png" alt="University of Chicago">
+              <img src="_static/ornl.png" alt="Oak Ridge National Laboratory">
+              <img src="_static/LANL-logo.png" alt="Los Alamos National Laboratory">
+              <img src="_static/LLNL-logo.png" alt="Lawrence Livermore National Laboratory">
+              <img src="_static/berkeley-logo.png" alt="Lawrence Berkeley National Laboratory">
+              <img src="_static/sandia.png" alt="Sandia National Laboratories">
+              <img src="_static/uiuc.png" alt="University of Illinois Urbana-Champaign">
+              <img src="_static/NYU-Logo.png" alt="New York University">
+              <img src="_static/Iowa-State-University-Logo.png" alt="Iowa State University">
+              <img src="_static/asu.png" alt="Arizona State University">
+              <img src="_static/osu.svg" alt="Ohio State University">
+              <img src="_static/git.png" alt="Georgia Institute of Technology">
+              <img src="_static/ucsc.png" alt="UC Santa Cruz">
+              <img src="_static/uc_merced.png" alt="UC Merced">
+              <img src="_static/uw.png" alt="University of Washington">
+              <img src="_static/cambridge.png" alt="University of Cambridge">
+              <img src="_static/broad.png" alt="Broad Institute">
+              <img src="_static/monai.png" alt="MONAI">
+            </div>
+            <!-- Duplicate group so the loop is seamless; hidden from screen readers -->
+            <div class="al-marquee-group" aria-hidden="true">
+              <img src="_static/anl.png" alt="">
+              <img src="_static/uchicago.png" alt="">
+              <img src="_static/ornl.png" alt="">
+              <img src="_static/LANL-logo.png" alt="">
+              <img src="_static/LLNL-logo.png" alt="">
+              <img src="_static/berkeley-logo.png" alt="">
+              <img src="_static/sandia.png" alt="">
+              <img src="_static/uiuc.png" alt="">
+              <img src="_static/NYU-Logo.png" alt="">
+              <img src="_static/Iowa-State-University-Logo.png" alt="">
+              <img src="_static/asu.png" alt="">
+              <img src="_static/osu.svg" alt="">
+              <img src="_static/git.png" alt="">
+              <img src="_static/ucsc.png" alt="">
+              <img src="_static/uc_merced.png" alt="">
+              <img src="_static/uw.png" alt="">
+              <img src="_static/cambridge.png" alt="">
+              <img src="_static/broad.png" alt="">
+              <img src="_static/monai.png" alt="">
+            </div>
+          </div>
+        </div>
+        <div class="al-marquee-controls">
+          <button type="button" class="al-marquee-btn al-marquee-expand" aria-expanded="false"
+                  onclick="var e=this.closest('section').querySelector('.al-marquee').classList.toggle('is-expanded');this.setAttribute('aria-expanded',e);this.textContent=e?'Show less':'Show all';">Show all</button>
+          <button type="button" class="al-marquee-btn al-marquee-toggle" aria-label="Pause logo animation" title="Pause"
+                  onclick="var p=this.closest('section').querySelector('.al-marquee').classList.toggle('is-paused');this.classList.toggle('is-paused',p);this.setAttribute('aria-label',(p?'Play':'Pause')+' logo animation');this.title=p?'Play':'Pause';">
+            <svg class="al-icon-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="2.5" width="3" height="11" rx="0.75"/><rect x="9.5" y="2.5" width="3" height="11" rx="0.75"/></svg>
+            <svg class="al-icon-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.6v10.8a.6.6 0 0 0 .92.5l8.3-5.4a.6.6 0 0 0 0-1L5.42 2.1a.6.6 0 0 0-.92.5z"/></svg>
+          </button>
         </div>
       </section>
 
@@ -238,28 +293,6 @@ APPFL
         </div>
       </section>
 
-      <section class="al-section" id="institutions">
-        <div class="al-section-head al-center">
-          <p class="al-eyebrow">Collaborating institutions</p>
-        </div>
-        <div class="al-logos">
-          <img src="_static/anl.png" alt="Argonne National Laboratory">
-          <img src="_static/uchicago.png" alt="University of Chicago">
-          <img src="_static/uiuc.png" alt="University of Illinois Urbana-Champaign">
-          <img src="_static/asu.png" alt="Arizona State University">
-          <img src="_static/osu.svg" alt="Ohio State University">
-          <img src="_static/ucsc.png" alt="UC Santa Cruz">
-          <img src="_static/git.png" alt="Georgia Institute of Technology">
-          <img src="_static/cambridge.png" alt="University of Cambridge">
-          <img src="_static/uc_merced.png" alt="UC Merced">
-          <img src="_static/broad.png" alt="Broad Institute">
-          <img src="_static/uw.png" alt="University of Washington">
-          <img src="_static/monai.png" alt="MONAI">
-          <img src="_static/sandia.png" alt="Sandia National Laboratories">
-          <img src="_static/ornl.png" alt="Oak Ridge National Laboratory">
-        </div>
-      </section>
-
       <section class="al-section" id="citation">
         <div class="al-section-head">
           <p class="al-eyebrow">Citation</p>
@@ -270,11 +303,13 @@ APPFL
 
    .. code-block:: latex
 
-      @article{li2024advances,
-         title={Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework},
-         author={Li, Zilinghan and He, Shilan and Yang, Ze and Ryu, Minseok and Kim, Kibaek and Madduri, Ravi},
-         journal={arXiv preprint arXiv:2409.11585},
-         year={2024}
+      @inproceedings{li2025advances,
+        title={Advances in appfl: A comprehensive and extensible federated learning framework},
+        author={Li, Zilinghan and He, Shilan and Yang, Ze and Ryu, Minseok and Kim, Kibaek and Madduri, Ravi},
+        booktitle={2025 IEEE 25th International Symposium on Cluster, Cloud and Internet Computing (CCGrid)},
+        pages={01--11},
+        year={2025},
+        organization={IEEE}
       }
 
       @inproceedings{ryu2022appfl,
