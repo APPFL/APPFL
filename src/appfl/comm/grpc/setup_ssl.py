@@ -1,6 +1,9 @@
 import os
 import pathlib
+import re
 import subprocess
+
+_SAFE_PATH_RE = re.compile(r"^/[A-Za-z0-9_./-]*$")
 
 
 def setup_ssl():
@@ -17,15 +20,22 @@ def setup_ssl():
         )
         if not ssl_dir:
             ssl_dir = default_ssl_dir
+        ssl_dir = os.path.abspath(os.path.expanduser(ssl_dir))
+        if not _SAFE_PATH_RE.match(ssl_dir):
+            print(
+                "Invalid directory: only absolute paths containing letters, "
+                "digits, '.', '_', '-', and '/' are allowed. Please try again."
+            )
+            continue
         try:
             if not os.path.exists(ssl_dir):
                 pathlib.Path(ssl_dir).mkdir(parents=True, exist_ok=True)
             if not os.path.isdir(ssl_dir):
-                raise Exception
+                raise NotADirectoryError(ssl_dir)
             for f in os.listdir(ssl_dir):
                 os.remove(os.path.join(ssl_dir, f))
-        except:  # noqa E722
-            print("Invalid directory, please try again")
+        except OSError as e:
+            print(f"Invalid directory ({e}), please try again")
             continue
         break
 
@@ -118,7 +128,7 @@ openssl x509 \\
     -CA $CERT_DIR/ca.crt \\
     -CAkey $CERT_DIR/ca.key \\
     -CAcreateserial \\
-    -out $CERT_DIR/server.pem \\
+    -out $CERT_DIR/server.crt \\
     -days 365 \\
     -sha256 \\
     -extfile {conf_file} \\
@@ -129,13 +139,12 @@ openssl x509 \\
     with open(script_file, "w") as f:
         f.write(script_content)
 
-    # Make the script executable
-    os.system(f"chmod +x {script_file}")
+    os.chmod(script_file, 0o700)
     try:
         subprocess.run([script_file], check=True)
         print_str = f"Please copy the CA certificate {os.path.join(ssl_dir, 'ca.crt')} to the client machines"
         print("=" * len(print_str))
-        print(f"SSL certificate stored in {os.path.join(ssl_dir, 'server.pem')}")
+        print(f"SSL certificate stored in {os.path.join(ssl_dir, 'server.crt')}")
         print(f"SSL private key stored in {os.path.join(ssl_dir, 'server.key')}")
         print(f"CA certificate stored in  {os.path.join(ssl_dir, 'ca.crt')}")
         print(print_str)

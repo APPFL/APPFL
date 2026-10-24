@@ -1,6 +1,55 @@
 Changelog
 =========
 
+appfl v1.12.0
+-------------
+
+New Features
+~~~~~~~~~~~~
+
+- Add a polling mode to the gRPC communicators for servers behind proxies or load balancers with an idle timeout (e.g., ``504 Gateway Timeout`` after 60 seconds). With ``use_polling: True`` on the server, long-running requests are acknowledged immediately with a ticket and clients poll for the result every ``poll_interval`` seconds sent by the server, so clients need no extra configuration. [`Documentation <https://appfl.ai/en/latest/users/communicator.html#grpc-polling-mode>`_].
+- The gRPC server and clients no longer need the same ``max_message_size``: each client declares its own in every request and the server chunks its responses to the smaller of the two, while the server accepts incoming messages of up to 256 MB (configurable with ``max_receive_message_size``). [`Documentation <https://appfl.ai/en/latest/users/communicator.html#grpc-message-size>`_].
+- Stream gRPC configuration responses through the new ``GetConfigurationStream`` RPC, so configurations of any size fit the message size limits, with a fallback to ``GetConfiguration`` for older servers.
+- Exchange APPFL versions between the gRPC server and clients, and check them against compatibility rules: the server rejects clients that would always fail (e.g., clients older than 1.12.0 against a polling server) with a message to upgrade them, and both sides warn about versions that may fail or recommend upgrading the older side. [`Documentation <https://appfl.ai/en/latest/users/communicator.html#grpc-version-compatibility>`_].
+- Add a prototype ``LightningTrainer`` for PyTorch Lightning models with MLflow logging, installable via the new ``lightning`` extra. [`Documentation <https://github.com/APPFL/APPFL/tree/main/examples/lightning>`_].
+- Add AIDRIN data readiness notebook tutorials for running APPFL on NERSC. [`Documentation <https://github.com/APPFL/APPFL/tree/main/examples/notebook_tutorials/mnist_aidrin_nersc>`_].
+- Document gRPC message size, model chunking, polling mode and version compatibility in the communicator user guide.
+
+Bug Fixes
+~~~~~~~~~
+
+- Use ``default_factory`` for ``DictConfig`` defaults in the configuration dataclasses, for compatibility with ``omegaconf`` 2.4.
+- Enable SSL in the default client notebooks for NERSC.
+- Rename the gRPC message ``GetGlobalModelRespone`` to ``GetGlobalModelResponse``; the wire format is unchanged, so this is compatible with older peers.
+
+appfl v1.11.0
+-------------
+
+New Features
+~~~~~~~~~~~~
+
+- Introduce ``appfl.vsim``, a virtual-time federated learning simulation engine from `@Sungmin Kang <https://github.com/sungminkg>`_, which trains all clients serially on a single CPU/GPU while reconstructing the wall-clock behavior of a real federation with a virtual clock. It ships synchronous and asynchronous drivers together with configurable client availability, communication, and compute models. [`Documentation <https://github.com/APPFL/APPFL/tree/main/examples/vsim>`_].
+- Add a Keycloak-based authenticator for FL client/server authentication from `@Abhijit Chunduru <https://github.com/Abhijit4-debug>`_.
+- Integrate DIMAT into APPFL, together with a gRPC example, from `@Minh Pham <https://github.com/mnpham0417>`_.
+- Add simulation data loaders and support for user-provided external datasets in ``appfl.sim`` from `@Seok-Ju (Adam) Hahn <https://github.com/vaseline555>`_.
+- Add a federated GWAS example running on GA4GH TES endpoints, with documentation from `@Matthew Joel <https://github.com/mfjoel01>`_. [`Documentation <https://github.com/APPFL/APPFL/tree/main/examples/resources/config_tes/gwas>`_].
+- Add an APPFL agent skill for coding agents, installable via the new ``appfl-install-skill`` command.
+- Add a federated learning example on the Bridge2AI voice dataset.
+- Add a prototype scikit-learn trainer for non-deep-learning federated models.
+- Relax the ``numpy`` version requirement to allow ``numpy`` 2.x dependencies, reported by `@Étienne Bourbeau <https://github.com/bourdeet>`_ in `#433 <https://github.com/APPFL/APPFL/issues/433>`_.
+- Add a ``wandb_configs.exp_id`` option so that all clients of a federation can log into a single Weights & Biases run, which is useful when each client runs in its own process (e.g. gRPC). If unset, the id assigned by the server is used when available, otherwise a random one is generated.
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix a series of security issues reported and fixed by `@Matthieu Dorier <https://github.com/mdorier>`_, including: preventing shell injection when setting up SSL certificates via ``appfl-setup-ssl``, requiring an explicit ``auth_token`` in ``NaiveAuthenticator``, no longer shipping the test SSL certificates and private key in the released wheel, creating APPFL working directories with ``0o700`` permissions and a uid-namespaced ``/tmp`` fallback, enforcing owner-only permissions on the Globus token store directory and database, refusing AWS credentials files with insecure permissions, and using randomly named temporary files while refusing symlinks in TES client writes.
+- Tune the gRPC keepalive defaults so long-idle FL channels are not dropped, from `@Matthieu Dorier <https://github.com/mdorier>`_.
+- Fix the scheduling logic and logging of the ``QueueScheduler``, from `@Emon Dey <https://github.com/Emon-dey>`_.
+- Guard against a divide-by-zero (NaN) crash in ``dirichlet_noniid_partition``, from `@Sungmin Kang <https://github.com/sungminkg>`_.
+- Rename ``server.pem`` to ``server.crt`` for consistent naming of generated SSL certificates.
+- Log client metrics to Weights & Biases against the federated learning round rather than the implicit wandb step, so that all clients share a common x-axis instead of being spread over interleaved steps.
+- Lazily import ``Pillow`` so that it is only required when actually used.
+
 appfl v1.10.0
 -------------
 

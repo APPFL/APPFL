@@ -19,12 +19,16 @@ from metric.utils import get_metric
 import appfl.run_grpc_server as grpc_server
 import appfl.run_grpc_client as grpc_client
 from dataloader.coronahack_dataloader import get_corona
-from appfl.comm.grpc import (
-    load_credential_from_file,
-    ROOT_CERTIFICATE,
-    SERVER_CERTIFICATE,
-    SERVER_CERTIFICATE_KEY,
-)
+from appfl.comm.grpc import load_credential_from_file
+
+
+def _require_cert(arg_value, flag_name):
+    if arg_value == "default":
+        raise SystemExit(
+            f"--{flag_name} must point to a real PEM file: appfl no longer "
+            "ships test certificates. Run `appfl-setup-ssl` first."
+        )
+    return load_credential_from_file(arg_value)
 
 
 parser = argparse.ArgumentParser()
@@ -162,20 +166,14 @@ def main():
     cfg.uri = args.uri
     cfg.use_ssl = args.use_ssl
     cfg.use_authenticator = args.use_authenticator
-    cfg.server.server_certificate_key = (
-        load_credential_from_file(args.server_certificate_key)
-        if args.server_certificate_key != "default"
-        else SERVER_CERTIFICATE_KEY
+    cfg.server.server_certificate_key = _require_cert(
+        args.server_certificate_key, "server_certificate_key"
     )
-    cfg.server.server_certificate = (
-        load_credential_from_file(args.server_certificate)
-        if args.server_certificate != "default"
-        else SERVER_CERTIFICATE
+    cfg.server.server_certificate = _require_cert(
+        args.server_certificate, "server_certificate"
     )
-    cfg.client.root_certificates = (
-        load_credential_from_file(args.root_certificates)
-        if args.root_certificates != "default"
-        else ROOT_CERTIFICATE
+    cfg.client.root_certificates = _require_cert(
+        args.root_certificates, "root_certificates"
     )
     if args.authenticator == "Globus":
         cfg.server.authenticator_kwargs.is_fl_server = True

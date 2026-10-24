@@ -112,11 +112,13 @@ In the design of the APPFL framework, we essentially create the server agent and
 ## :page_facing_up: Citation
 If you find APPFL useful for your research or development, please consider citing the following papers:
 ```
-@article{li2024advances,
-  title={Advances in APPFL: A Comprehensive and Extensible Federated Learning Framework},
+@inproceedings{li2025advances,
+  title={Advances in APPFL: A comprehensive and extensible federated learning framework},
   author={Li, Zilinghan and He, Shilan and Yang, Ze and Ryu, Minseok and Kim, Kibaek and Madduri, Ravi},
-  journal={arXiv preprint arXiv:2409.11585},
-  year={2024}
+  booktitle={2025 IEEE 25th International Symposium on Cluster, Cloud and Internet Computing (CCGrid)},
+  pages={01--11},
+  year={2025},
+  organization={IEEE}
 }
 
 @inproceedings{ryu2022appfl,

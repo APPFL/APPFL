@@ -6,7 +6,7 @@ import time
 import grpc
 from concurrent import futures
 from .grpc_communicator_pb2_grpc import add_GRPCCommunicatorServicer_to_server
-from .utils import load_credential_from_file
+from .utils import load_credential_from_file, MAX_RECEIVE_MESSAGE_BYTES
 from .auth import APPFLAuthMetadataInterceptor
 from typing import Any, Optional, Union, Dict
 from appfl.misc.utils import get_appfl_authenticator
@@ -24,11 +24,13 @@ def serve(
     authenticator: Optional[str] = None,
     authenticator_args: Dict[str, Any] = {},
     max_message_size: int = 2 * 1024 * 1024,
+    max_receive_message_size: Optional[int] = None,
     max_workers: int = 128,
     **kwargs,
 ):
     """
     Serve a gRPC servicer.
+
     :param: server_uri: The uri to serve the gRPC server at.
     :param servicer: The gRPC servicer to serve.
     :param use_ssl: Whether to use SSL/TLS to authenticate the server and encrypt communicated data.
@@ -38,7 +40,11 @@ def serve(
     :param ca_certificate: The PEM-encoded CA certificate as a byte string, or `None` to use an insecure server.
     :param authenticator: The name of the authenticator to use for authenticating the client in each RPC.
     :param authenticator_args: The arguments to pass to the authenticator.
-    :param max_message_size: The maximum message size in bytes.
+    :param max_message_size: The maximum size in bytes of each message the server sends. Responses are
+        chunked to the smaller of this and the `max_message_size` a client declares in its requests.
+    :param max_receive_message_size: The maximum size in bytes of each message the server receives,
+        large so that clients can send with whatever `max_message_size` they set. Defaults to the larger
+        of `MAX_RECEIVE_MESSAGE_BYTES` (256 MB) and `max_message_size`.
     :param max_workers: The maximum number of workers to use for the server.
     """
     assert not (use_authenticator and not use_ssl), (
@@ -57,12 +63,19 @@ def serve(
             "Authenticator must be provided if use_authenticator is True"
         )
         authenticator = get_appfl_authenticator(authenticator, authenticator_args)
+    if max_receive_message_size is None:
+        max_receive_message_size = max(MAX_RECEIVE_MESSAGE_BYTES, max_message_size)
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
         options=[
             ("grpc.max_concurrent_streams", max_workers),
             ("grpc.max_send_message_length", max_message_size),
-            ("grpc.max_receive_message_length", max_message_size),
+            ("grpc.max_receive_message_length", max_receive_message_size),
+            ("grpc.keepalive_time_ms", 60000),
+            ("grpc.keepalive_timeout_ms", 20000),
+            ("grpc.keepalive_permit_without_calls", 1),
+            ("grpc.http2.max_pings_without_data", 0),
+            ("grpc.http2.min_ping_interval_without_data_ms", 10000),
         ],
         interceptors=(APPFLAuthMetadataInterceptor(authenticator),)
         if use_authenticator

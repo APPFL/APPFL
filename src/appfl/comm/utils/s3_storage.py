@@ -1,14 +1,65 @@
 import os
 import csv
+import stat
 import sys
 import time
 import boto3
-import pathlib
 import requests
+import warnings
 import os.path as osp
 from typing import Optional
 from botocore.exceptions import ClientError
-from appfl.misc.utils import dump_data_to_file, load_data_from_file, id_generator
+from appfl.misc.utils import (
+    dump_data_to_file,
+    load_data_from_file,
+    id_generator,
+    secure_appfl_dir,
+)
+
+
+def _open_credentials_file_securely(path: str):
+    """Open an AWS credentials file, refusing to read it if the file's
+    permissions or ownership would let another local user view it.
+
+    The check is performed on the same file descriptor that is returned to
+    the caller (TOCTOU-safe). On Windows the POSIX permission model does
+    not apply, so the check is skipped with a warning.
+
+    Returns a text-mode file object positioned at the start of the file.
+    Raises PermissionError if the file is unsafe.
+    """
+    if os.name != "posix":
+        warnings.warn(
+            f"Cannot enforce AWS credentials file permissions on {os.name}; "
+            "ensure the file is readable only by the current user.",
+            stacklevel=2,
+        )
+        return open(path, encoding="utf-8")  # noqa: SIM115
+
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        st = os.fstat(fd)
+    except Exception:
+        os.close(fd)
+        raise
+
+    mode_bits = stat.S_IMODE(st.st_mode)
+    bad_bits = mode_bits & (stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
+    if bad_bits:
+        os.close(fd)
+        raise PermissionError(
+            f"AWS credentials file {path!r} has insecure permissions "
+            f"{oct(mode_bits)}; refusing to read. Run "
+            f"`chmod 600 {path}` (and ensure the file is owned by the current user)."
+        )
+    if st.st_uid != os.getuid():
+        os.close(fd)
+        raise PermissionError(
+            f"AWS credentials file {path!r} is not owned by the current user "
+            f"(uid={os.getuid()}, file uid={st.st_uid}); refusing to read."
+        )
+
+    return os.fdopen(fd, "r", encoding="utf-8")
 
 
 class LargeObjectWrapper:
@@ -53,18 +104,14 @@ class CloudStorage:
             new_inst = cls.__new__(cls)
             new_inst.bucket = s3_bucket
 
-            # Set s3_tmp_dir with fallback for read-only containers
+            # Set s3_tmp_dir with fallback for read-only containers.
+            # secure_appfl_dir handles the home/`/tmp` fallback and enforces
+            # 0o700 / current-user ownership on every component.
             if s3_tmp_dir is None:
-                try:
-                    s3_tmp_dir = str(pathlib.Path.home() / ".appfl" / "s3_tmp_dir")
-                    pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
-                except OSError:
-                    # Fallback to /tmp/.appfl if home directory is read-only
-                    s3_tmp_dir = "/tmp/.appfl/s3_tmp_dir"
-                    pathlib.Path(s3_tmp_dir).mkdir(parents=True, exist_ok=True)
+                s3_tmp_dir = secure_appfl_dir("s3_tmp_dir")
             s3_kwargs = {}
             if s3_creds_file is not None:
-                with open(s3_creds_file) as file:
+                with _open_credentials_file_securely(s3_creds_file) as file:
                     reader = csv.reader(file)
                     keys = next(reader)
                     s3_kwargs = {

@@ -38,10 +38,11 @@ def create_grpc_channel(
     channel_options = [
         ("grpc.max_send_message_length", max_message_size),
         ("grpc.max_receive_message_length", max_message_size),
-        ("grpc.keepalive_time_ms", 7200000),
-        ("grpc.keepalive_timeout_ms", 7200000),
-        ("grpc.http2.min_time_between_pings_ms", 7200000),
-        ("grpc.http2.timeout_ms", 7200000),
+        ("grpc.keepalive_time_ms", 30000),
+        ("grpc.keepalive_timeout_ms", 20000),
+        ("grpc.keepalive_permit_without_calls", 1),
+        ("grpc.http2.max_pings_without_data", 0),
+        ("grpc.http2.min_time_between_pings_ms", 10000),
     ]
     if use_ssl:
         if root_certificate is not None:

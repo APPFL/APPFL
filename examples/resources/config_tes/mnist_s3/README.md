@@ -13,7 +13,7 @@ export AWS_ACCESS_KEY_ID="your-access-key"
 export AWS_SECRET_ACCESS_KEY="your-secret-key"
 
 # Docker image
-docker build -f examples/tes/Dockerfile -t appfl/client:latest .
+docker build --no-cache -f examples/tes/Dockerfile -t appfl/client:latest .
 ```
 
 ## Create a Remote TES Endpoint on AWS EC2

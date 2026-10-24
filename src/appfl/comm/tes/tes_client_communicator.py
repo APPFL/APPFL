@@ -1,8 +1,28 @@
 import json
+import os
 import pickle
 import argparse
+import tempfile
 from omegaconf import OmegaConf
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
+
+
+def _mkstemp_path(suffix: str) -> str:
+    """Atomically create a fresh, owner-only (0o600) temp file and return
+    its path. The random name defeats co-tenant symlink-race attacks that
+    target predictable shared-tmp names."""
+    fd, path = tempfile.mkstemp(prefix="appfl-tes-", suffix=suffix)
+    os.close(fd)
+    return path
+
+
+def _safe_open_for_write(path: str, binary: bool):
+    """Open `path` for writing, refusing to follow a symlink at the final
+    component. Truncates if the file already exists and is a regular file
+    owned by the same caller. Returns a file object."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW
+    fd = os.open(path, flags, 0o600)
+    return os.fdopen(fd, "wb" if binary else "w")
 
 
 class TESClientCommunicator:
@@ -41,7 +61,7 @@ class TESClientCommunicator:
     def save_model_to_path(self, model: Any, output_path: str):
         """Save model to file path."""
         try:
-            with open(output_path, "wb") as f:
+            with _safe_open_for_write(output_path, binary=True) as f:
                 pickle.dump(model, f)
         except Exception as e:
             raise RuntimeError(f"Failed to save model to {output_path}: {e}")
@@ -49,7 +69,7 @@ class TESClientCommunicator:
     def save_logs_to_path(self, logs: Dict, logs_path: str):
         """Save training logs to JSON file path."""
         try:
-            with open(logs_path, "w") as f:
+            with _safe_open_for_write(logs_path, binary=False) as f:
                 json.dump(logs, f, indent=2)
         except Exception as e:
             raise RuntimeError(f"Failed to save logs to {logs_path}: {e}")
@@ -105,8 +125,8 @@ class TESClientCommunicator:
         task_name: str,
         model_path: str = None,
         metadata_path: str = None,
-        output_path: str = "/tmp/output_model.pkl",
-        logs_path: str = "/tmp/training_logs.json",
+        output_path: Optional[str] = None,
+        logs_path: Optional[str] = None,
     ) -> Tuple[str, str]:
         """
         Execute a federated learning task within the TES container.
@@ -124,6 +144,11 @@ class TESClientCommunicator:
         Returns:
             Tuple of (output_path, logs_path) for the results
         """
+        if output_path is None:
+            output_path = _mkstemp_path(".pkl")
+        if logs_path is None:
+            logs_path = _mkstemp_path(".json")
+
         try:
             import time
             from appfl.comm.utils.executor import (
@@ -195,10 +220,14 @@ def tes_client_entry_point():
     parser.add_argument("--model-path", help="Path to input model file")
     parser.add_argument("--metadata-path", help="Path to metadata JSON file")
     parser.add_argument(
-        "--output-path", default="/tmp/output_model.pkl", help="Path for output model"
+        "--output-path",
+        default=None,
+        help="Path for output model. If omitted, a fresh tempfile is created.",
     )
     parser.add_argument(
-        "--logs-path", default="/tmp/training_logs.json", help="Path for training logs"
+        "--logs-path",
+        default=None,
+        help="Path for training logs. If omitted, a fresh tempfile is created.",
     )
     args = parser.parse_args()
 

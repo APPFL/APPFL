@@ -30,7 +30,7 @@ In this example, we show how to enable SSL encrypted gRPC communication between 
     Certificate request self-signature ok
     subject=C=US, ST=Illinois, O=APPFL, CN=localhost
     =============================================================================
-    SSL certificate stored in /home/.appfl/ssl/server.pem
+    SSL certificate stored in /home/.appfl/ssl/server.crt
     SSL private key stored in /home/.appfl/ssl/server.key
     CA certificate stored in  /home/.appfl/ssl/ca.crt
     Please copy the CA certificate /home/.appfl/ssl/ca.crt to the client machines
@@ -41,7 +41,7 @@ In this example, we show how to enable SSL encrypted gRPC communication between 
 
 ``appfl-setup-ssl`` will generate three files needed for SSL encrypted gRPC communication in the specified directory (by default, ``~/.appfl/ssl``):
 
-- ``server.pem``: SSL certificate for the server.
+- ``server.crt``: SSL certificate for the server.
 - ``server.key``: SSL private key for the server.
 - ``ca.crt``: CA certificate for the server.
 
@@ -61,7 +61,7 @@ We use this `server configuration file <https://github.com/APPFL/APPFL/blob/main
             max_message_size: 1048576
             use_ssl: True # Enable SSL encrypted gRPC communication
             server_certificate_key: "/home/.appfl/ssl/server.key" # Path to the server SSL private key
-            server_certificate: "/home/.appfl/ssl/server.pem" # Path to the server SSL certificate
+            server_certificate: "/home/.appfl/ssl/server.crt" # Path to the server SSL certificate
             ca_certificate: "/home.appfl/ssl/ca.crt" # Path to the CA certificate
             # Additional authentication configurations
             use_authenticator: True
