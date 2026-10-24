@@ -11,8 +11,33 @@ import torchvision
 import torchvision.transforms as transforms
 from appfl.misc.data import (
     Dataset,
+    cache_per_process,
     class_noniid_partition,
 )
+
+CIFAR_MEAN = [0.4914, 0.4822, 0.4465]
+CIFAR_STD = [0.2470, 0.2435, 0.2616]
+
+
+def load_test_dataset(dir: str):
+    """Convert the normalized CIFAR-10 test set into a tensor dataset."""
+    test_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        ]
+    )
+
+    test_data_raw = torchvision.datasets.CIFAR10(
+        dir, download=True, train=False, transform=test_transform
+    )
+
+    test_data_input = []
+    test_data_label = []
+    for idx in range(len(test_data_raw)):
+        test_data_input.append(test_data_raw[idx][0].tolist())
+        test_data_label.append(test_data_raw[idx][1])
+    return Dataset(torch.FloatTensor(test_data_input), torch.tensor(test_data_label))
 
 
 def get_cifar10(
@@ -27,37 +52,20 @@ def get_cifar10(
     """
     dir = os.getcwd() + "/datasets/RawData"
 
-    cifar_mean = [0.4914, 0.4822, 0.4465]
-    cifar_std = [0.2470, 0.2435, 0.2616]
-
     train_transform = transforms.Compose(
         [
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(32, padding=4),
             transforms.ToTensor(),
-            transforms.Normalize(cifar_mean, cifar_std),
+            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
         ]
     )
 
-    test_transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize(cifar_mean, cifar_std),
-        ]
-    )
-
-    test_data_raw = torchvision.datasets.CIFAR10(
-        dir, download=True, train=False, transform=test_transform
-    )
-
-    test_data_input = []
-    test_data_label = []
-    for idx in range(len(test_data_raw)):
-        test_data_input.append(test_data_raw[idx][0].tolist())
-        test_data_label.append(test_data_raw[idx][1])
-    test_dataset = Dataset(
-        torch.FloatTensor(test_data_input), torch.tensor(test_data_label)
-    )
+    # The test set is converted once per process and shared by all its clients.
+    # The partition is not: it applies the random flips and crops above, which
+    # draw from torch's global RNG, so each client's data depends on the RNG
+    # state when its client is created.
+    test_dataset = cache_per_process("cifar10_dimat.test", load_test_dataset, dir=dir)
 
     train_data_raw = torchvision.datasets.CIFAR10(
         dir, download=True, train=True, transform=train_transform
