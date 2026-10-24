@@ -9,7 +9,7 @@ Example: Run FL Experiment using Globus Compute
         </div>
     </div>
 
-This tutorial describes how to run federated learning experiments on APPFL using Globus Compute as the communication backend. All the code snippets needed for this tutorial is available at the ``examples`` directory of the APPFL repository at `here <https://github.com/APPFL/APPFL/tree/main/examples>`_.
+This tutorial describes how to run federated learning experiments with APPFL using Globus Compute as the communication backend. All the code needed for this tutorial is available in the `examples <https://github.com/APPFL/APPFL/tree/main/examples>`_ directory of the APPFL repository.
 
 .. note::
 
@@ -18,20 +18,20 @@ This tutorial describes how to run federated learning experiments on APPFL using
 Installation
 ------------
 
-First, both the client and the server should install the APPFL package on their local machines. Below shows how to install the APPFL package from its source code. For more information, please refer to the `APPFL documentation <https://appfl.ai/en/latest/install/index.html>`_.
+First, both the client and the server should install the APPFL package on their local machines. The following shows how to install the APPFL package from source. For more information, please refer to the `APPFL documentation <https://appfl.ai/en/latest/install/index.html>`_.
 
 .. code-block:: bash
 
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
-    conda create -n appfl python=3.10 --y
+    conda create -n appfl python=3.10 -y
     conda activate appfl
     pip install -e ".[examples]"
 
 Creating Globus Compute Endpoint on Client Machines
 ---------------------------------------------------
 
-User can create a Globus Compute endpoint on their local machine by the following command. However, it should be noted that the endpoint created in this manner is only accessible by the user who created it, thus only suitable for testing purposes. To create a shared endpoint for a real federated learning experiment, please follow the `guidance below <#creating-shared-globus-compute-endpoint-on-client-machines>`_.
+Users can create a Globus Compute endpoint on their local machine with the following command. Note, however, that an endpoint created in this manner is only accessible to the user who created it, and is thus only suitable for testing purposes. To create a shared endpoint for a real federated learning experiment, please follow the `guidance below <#creating-shared-globus-compute-endpoint-on-client-machines>`_.
 
 .. code-block:: bash
 
@@ -40,9 +40,9 @@ User can create a Globus Compute endpoint on their local machine by the followin
 
 .. note::
 
-    You can replace ``appfl-endpoint`` any endpoint name you like.
+    You can replace ``appfl-endpoint`` with any endpoint name you like.
 
-Then you will be asked to configure the endpoint. If you are using your local computer, you can use the default configuration. If you are using an HPC or cloud machine, you need to modify the configuration file at ``~/.globus-compute/appfl-endpoint/config.yaml``. Below, we show a sample configuration file for `Polaris <https://www.alcf.anl.gov/polaris>`_:
+Then you will be asked to configure the endpoint. If you are using your local computer, you can use the default configuration. If you are using an HPC or cloud machine, you need to modify the configuration file at ``~/.globus_compute/appfl-endpoint/config.yaml``. Below, we show a sample configuration file for `Polaris <https://www.alcf.anl.gov/polaris>`_:
 
 .. code-block:: yaml
 
@@ -71,9 +71,9 @@ Then you will be asked to configure the endpoint. If you are using your local co
 
 .. note::
 
-    It is recommended to set ``max_idletime`` (in seconds) to a large value to avoid the endpoint being shut down by the Globus Compute service when there is no task running.
+    It is recommended to set ``max_idletime`` (in seconds) to a large value to prevent the Globus Compute service from shutting down the endpoint when no tasks are running.
 
-After the configuration, you can start the endpoint by the following command:
+After the configuration, you can start the endpoint with the following command:
 
 .. code-block:: bash
 
@@ -82,11 +82,11 @@ After the configuration, you can start the endpoint by the following command:
 Creating Shared Globus Compute Endpoint on Client Machines
 ----------------------------------------------------------
 
-To create shared Globus Compute endpoints for a real federated learning experiment among a group of trusted clients on their machines, the group of trusted users need to find a "leading server" to create a shared Globus service account and share it with the other users to generate needed credentials for starting the endpoints. Below shows how to generate such credentials:
+To create shared Globus Compute endpoints for a real federated learning experiment among a group of trusted clients on their machines, the group of trusted users needs a "leading server" to create a shared Globus service account and share it with the other users, who then generate the credentials needed to start their endpoints. The following steps show how to generate such credentials:
 
-1. The leading server needs to go to the `Globus Developer Console <https://app.globus.org/settings/developers/>`_, and click *Register a service account or application credential for automation*. Then the leader can either register application under an existing project or create a new project (It is highly recommended to create a new project for each federation). In the popped out *App Registration* form, the leader just needs to give the App an arbitrary name and click *Register App*.
+1. The leading server needs to go to the `Globus Developer Console <https://app.globus.org/settings/developers/>`_, and click *Register a service account or application credential for automation*. The leader can then either register the application under an existing project or create a new project (it is highly recommended to create a new project for each federation). In the *App Registration* form that pops up, the leader just needs to give the app an arbitrary name and click *Register App*.
 
-2. Click the created application to go to the application details page. You see be shown something like the image below. First, the leading server needs to notedown the *Client UUID*. Then, click *Add Client Secret* to generate a client secret, and notedown the *Client Secret*.
+2. Click the created application to go to the application details page. You should see something like the image below. First, the leading server needs to note down the *Client UUID*. Then, click *Add Client Secret* to generate a client secret, and note down the *Client Secret*.
 
 .. raw:: html
 
@@ -96,7 +96,7 @@ To create shared Globus Compute endpoints for a real federated learning experime
         </div>
     </div>
 
-3. The leading server then needs to go back the corresponding Project page, and click *Roles*, which will show the information like below. Click *Assign New Role*. Then select *User* and enter the Globus ID/email of trusted client users to assign them the Administrator role.
+3. The leading server then goes back to the corresponding project page and clicks *Roles*, which shows information like the image below. Click *Assign New Role*. Then select *User* and enter the Globus ID/email of the trusted client users to assign them the Administrator role.
 
 .. raw:: html
 
@@ -106,9 +106,9 @@ To create shared Globus Compute endpoints for a real federated learning experime
         </div>
     </div>
 
-4. For all trusted client users, once they are added to the Project, they also need to go to the `Globus Developer Console <https://app.globus.org/settings/developers/>`_, find the registered App under the corresponding project. Notedown the *Client UUID*, click *Add Client Secret* to generate a client secret for themselves, and notedown the *Client Secret*.
+4. Once the trusted client users are added to the project, each of them also needs to go to the `Globus Developer Console <https://app.globus.org/settings/developers/>`_ and find the registered app under the corresponding project, note down the *Client UUID*, click *Add Client Secret* to generate a client secret for themselves, and note down the *Client Secret*.
 
-5. For all clients, after they generate the *Client UUID* and *Client Secret*, they need to run the following commands before creating the shared endpoint:
+5. After obtaining the *Client UUID* and *Client Secret*, each client needs to run the following commands before creating the shared endpoint:
 
 .. code-block:: bash
 
@@ -117,7 +117,7 @@ To create shared Globus Compute endpoints for a real federated learning experime
 
 .. note::
 
-    The ``GLOBUS_COMPUTE_CLIENT_ID`` is the same for all the clients and the server, while the ``GLOBUS_COMPUTE_CLIENT_SECRET`` is unique for each client, and they need to generate it by themselves on the Globus Developer Console. Anyone with a valid globus compute client secret is able to use other endpoints with the same globus compute client ID.
+    The ``GLOBUS_COMPUTE_CLIENT_ID`` is the same for all the clients and the server, while the ``GLOBUS_COMPUTE_CLIENT_SECRET`` is unique to each client, who must generate it on the Globus Developer Console. Anyone with a valid Globus Compute client secret can use the other endpoints associated with the same Globus Compute client ID.
 
 .. warning::
 
@@ -125,16 +125,16 @@ To create shared Globus Compute endpoints for a real federated learning experime
 
 6. Then, the clients can create the endpoints by following the same steps as `above <#creating-globus-compute-endpoint-on-client-machines>`_.
 
-7. It should be noted that the server machine should also set its corresponding *Client UUID* and *Client Secret* as environment variables before running the federated learning experiment.
+7. Note that the server machine should also set its corresponding *Client UUID* and *Client Secret* as environment variables before running the federated learning experiment.
 
 .. note::
 
-    A sample experiment log using four shared endpoints on ALCF's Polaris, Sophia, Aurora, and NCSA's Delta supercomputers is available at `here <https://github.com/APPFL/APPFL/blob/main/docs/_static/sample_log.txt>`_.
+    A sample experiment log using four shared endpoints on ALCF's Polaris, Sophia, Aurora, and NCSA's Delta supercomputers is available `here <https://github.com/APPFL/APPFL/blob/main/docs/_static/sample_log.txt>`_.
 
 Client Configurations
 ---------------------
 
-The server needs to collect certain information from the client to run the federated learning experiment. Below is an example of a client configuration file. It is available at ``examples/resources/configs_gc/clients.yaml`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/clients.yaml>`_.
+The server needs to collect certain information from the client to run the federated learning experiment. Below is an example of a client configuration file. It is available at ``examples/resources/config_gc/mnist/clients.yaml`` in the APPFL repository (`link <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/clients.yaml>`_).
 
 .. code-block:: yaml
 
@@ -177,22 +177,22 @@ The server needs to collect certain information from the client to run the feder
           partition_strategy: "class_noniid"
           visualization: False
 
-It should be noted that the client configuration file actually resides on the server machine, and the contents of the file are shared by the clients. Specifically, there are three main parts in the client configuration file:
+Note that the client configuration file actually resides on the server machine, and its contents are provided by the clients. Specifically, the client configuration file has three main parts:
 
-- ``endpoint_id``: It is the Globus Compute Endpoint ID of the client machine.
-- ``train_configs``: It contains the training configurations for the client, including the device to run the training, logging configurations, etc.
-- ``data_configs``: It contains the information of a dataloader python file defined and shared by the clients to the server (located at ``dataset_path`` on the server machine). The dataloader file should contain a function (specified by ``dataset_name``) which can load the client's local private dataset when it is executing on the client's machine.
+- ``endpoint_id``: The Globus Compute endpoint ID of the client machine.
+- ``train_configs``: The training configurations for the client, including the device for training, logging configurations, etc.
+- ``data_configs``: Information about a dataloader Python file written by the client and shared with the server (located at ``dataset_path`` on the server machine). The dataloader file should contain a function (specified by ``dataset_name``) that loads the client's local private dataset when executed on the client's machine.
 
 .. note::
 
-    When the data loader function is executed on the client's machine, it's default working directory is ``~/.globus-compute/appfl-endpoint/tasks_working_dir``.
+    When the data loader function is executed on the client's machine, its default working directory is ``~/.globus_compute/appfl-endpoint/tasks_working_dir``.
 
 Server Configurations
 ---------------------
 
-We have provide three sample server configuration files available at ``examples/resources/config_gc`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/>`_. The detailed description of the server configuration file can be found in the `APPFL documentation <https://appfl.ai/en/latest/users/server_agent.html#configurations>`_.
+We provide several sample server configuration files in ``examples/resources/config_gc/mnist`` of the APPFL repository (`link <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/>`_). A detailed description of the server configuration file can be found in the `APPFL documentation <https://appfl.ai/en/latest/users/server_agent.html#configurations>`_.
 
-It should be noted that ``client_configs.comm_configs.s3_configs`` is optional and should be set only if the user wants to use AWS S3 for data transmission (Globus Compute limits data transmission size to 10 MB, so models larger than 10 MB should be transmitted using AWS S3). Specifically, ``enable_s3`` to use AWS S3 for model transfer, ``s3_bucket`` field should be set to the name of the S3 bucket that the user wants to use, and ``s3_creds_file`` is a CSV file containing the AWS credentials. The CSV file should have the following format. Alternatively, the server can set these information before running the experiment via the ``aws configure`` command.
+Note that ``client_configs.comm_configs.s3_configs`` is optional and should be set only if you want to use AWS S3 for data transmission (Globus Compute limits the data transmission size to 10 MB, so models larger than 10 MB should be transmitted using AWS S3). Specifically, set ``enable_s3`` to use AWS S3 for model transfer, set ``s3_bucket`` to the name of the S3 bucket you want to use, and set ``s3_creds_file`` to a CSV file containing the AWS credentials in the following format. Alternatively, the server can set this information via the ``aws configure`` command before running the experiment.
 
 .. code-block:: csv
 
@@ -202,13 +202,13 @@ It should be noted that ``client_configs.comm_configs.s3_configs`` is optional a
 Running the Experiment
 ----------------------
 
-We provide a sample experiment launching script at ``examples/globus_compute/run.py``, and user can run the experiment by the following command.
+We provide a sample experiment launch script at ``examples/globus_compute/run.py``, and you can run the experiment with the following command.
 
 .. code-block:: bash
 
     python globus_compute/run.py
 
-User can take this script as a reference and starting point to run their own federated learning experiments using Globus Compute as the communication backend.
+You can use this script as a reference and starting point for running your own federated learning experiments using Globus Compute as the communication backend.
 
 Extra: Integration with ProxyStore
 ----------------------------------
@@ -224,15 +224,15 @@ Extra: Integration with ProxyStore
 Prepare the ProxyStore Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As Globus Compute limits the data transmission size for the function inputs and outputs to several Megabytes, it is not suitable for transmitting large models. To address this issue, users can integrate Globus Compute with `ProxyStore <https://docs.proxystore.dev/latest/>`_, which facilitates efficient data flow in distributed computing applications.
+As Globus Compute limits the size of function inputs and outputs to several megabytes, it is not suitable for transmitting large models. To address this issue, users can integrate Globus Compute with `ProxyStore <https://docs.proxystore.dev/latest/>`_, which facilitates efficient data flow in distributed computing applications.
 
-By default, a `ProxyStore endpoint <https://docs.proxystore.dev/latest/guides/endpoints/>`_ connects to ProxyStore's cloud-hosted relay server, which uses Globus Auth for identity and access management. To use the provided relay server, users need to do a one-time-per-system authentication using the following command:
+By default, a `ProxyStore endpoint <https://docs.proxystore.dev/latest/guides/endpoints/>`_ connects to ProxyStore's cloud-hosted relay server, which uses Globus Auth for identity and access management. To use the provided relay server, users need to authenticate once per system using the following command:
 
 .. code-block:: bash
 
     proxystore-globus-auth login
 
-User can then create an endpoint using the following command:
+You can then create an endpoint using the following command:
 
 .. code-block:: bash
 
@@ -244,9 +244,9 @@ User can then create an endpoint using the following command:
 
 .. note::
 
-    User can change endpoint configuration at ``~/.local/share/proxystore/my-endpoint/config.toml`` to  change maximum object size or use their own relay server.
+    You can change the endpoint configuration at ``~/.local/share/proxystore/my-endpoint/config.toml`` to change the maximum object size or to use your own relay server.
 
-After creating the endpoint and finishing the configuration (if needed), user can start the endpoint by the following command:
+After creating the endpoint and finishing the configuration (if needed), start the endpoint with the following command:
 
 .. code-block:: bash
 
@@ -254,14 +254,14 @@ After creating the endpoint and finishing the configuration (if needed), user ca
 
 .. note::
 
-  For debugging the endpoint, user can refer to the official `ProxyStore documentation <https://docs.proxystore.dev/latest/guides/endpoints-debugging/>`_.
+  For debugging the endpoint, refer to the official `ProxyStore documentation <https://docs.proxystore.dev/latest/guides/endpoints-debugging/>`_.
 
 Configure for Federated Learning
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-With ProxyStore endpoints installed on the client/server which would like to use ProxyStore to transfer model parameters, user needs to collect all endpoints ids and put them in the both the server and client configuration files as ``comm_configs.proxystore_configs``. It should be noted that you only need to specify such configuration for site that you would like to use ProxyStore to transfer model parameters, although you would like to use it for all sites most of the time.
+Once ProxyStore endpoints are installed on the clients/server that want to use ProxyStore to transfer model parameters, collect all the endpoint IDs and put them in both the server and client configuration files under ``comm_configs.proxystore_configs``. Note that you only need to specify this configuration for the sites that use ProxyStore to transfer model parameters, although most of the time you will want to use it for all sites.
 
-Below shows how to configure the server configuration file. A full sample configuration file is available at ``examples/resources/configs_gc/server_fedavg_proxystore.yaml`` in the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/server_fedavg_proxystore.yaml>`_.
+The following shows how to configure the server configuration file. A full sample configuration file is available at ``examples/resources/config_gc/mnist/server_fedavg_proxystore.yaml`` in the APPFL repository (`link <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/server_fedavg_proxystore.yaml>`_).
 
 .. code-block:: yaml
 
@@ -277,7 +277,7 @@ Below shows how to configure the server configuration file. A full sample config
           connector_configs:
             endpoints: ["endpoint_id_1", "endpoint_id_2", ...] # List of all endpoint ids for server and clients
 
-Below shows how to configure the client configuration file. A full sample configuration file is available at ``examples/resources/configs_gc/clients_proxystore.yaml`` in the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/clients_proxystore.yaml>`_.
+The following shows how to configure the client configuration file. A full sample configuration file is available at ``examples/resources/config_gc/mnist/clients_proxystore.yaml`` in the APPFL repository (`link <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/mnist/clients_proxystore.yaml>`_).
 
 .. code-block:: yaml
 
@@ -303,7 +303,7 @@ Below shows how to configure the client configuration file. A full sample config
 Running the Experiment
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-After configuring the server and client configuration files, user can run the federated learning experiment using the same script as before by providing the new paths to the configuration files.
+After configuring the server and client configuration files, you can run the federated learning experiment using the same script as before, providing the new paths to the configuration files.
 
 .. code-block:: bash
 
@@ -322,12 +322,12 @@ Extra: Integration with ProxyStore on Polaris
         </div>
     </div>
 
-In this section, we show how to launch a Globus Compute endpoint on ALCF's Polaris supercomputer and use ProxyStore Endpoint to transfer model parameters between the server and clients.
+In this section, we show how to launch a Globus Compute endpoint on ALCF's Polaris supercomputer and use a ProxyStore endpoint to transfer model parameters between the server and clients.
 
 Prepare the ProxyStore Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-One of the most tricky parts of Polaris is that its compute node does not have internet access, with the exception of HTTP, HTTPS, and FTP through a proxy server. Therefore, **users have to start their ProxyStore endpoint on a login node** with internet access. The started endpoint acts as proxy for data transmission traffic between the compute nodes and the ProxyStore relay server, which listens on ``http://<login_node_id>:<port>``. When you start the endpoint with the command ``proxystore-endpoint start <endpoint_name>``, the endpoint log at ``~/.local/share/proxystore/<endpoint_name>/log.txt`` should look like something below:
+One of the trickiest parts of Polaris is that its compute nodes do not have internet access, except for HTTP, HTTPS, and FTP through a proxy server. Therefore, **users have to start their ProxyStore endpoint on a login node** with internet access. The started endpoint acts as a proxy for data transmission traffic between the compute nodes and the ProxyStore relay server, which listens on ``http://<login_node_id>:<port>``. When you start the endpoint with the command ``proxystore-endpoint start <endpoint_name>``, the endpoint log at ``~/.local/share/proxystore/<endpoint_name>/log.txt`` should look like the following:
 
 .. code-block:: bash
 
@@ -358,12 +358,12 @@ One of the most tricky parts of Polaris is that its compute node does not have i
 
 .. note::
 
-  It is important to make sure that the endpoint is started by checking its log. For example, the port your endpoint is listening on might be in use and might cause error like: ``[Errno 98] error while attempting to bind on address ('10.201.0.56', 8765): address already in use``.
+  It is important to check the log to make sure that the endpoint has started. For example, the port your endpoint is listening on might already be in use, causing an error like: ``[Errno 98] error while attempting to bind on address ('10.201.0.56', 8765): address already in use``.
 
 Prepare the Globus Compute Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After starting the ProxyStore endpoint on Polaris login node, user can create a Globus Compute endpoint with the following configuration. **It should be noted that compared with the configuration above, we specifically unset the** ``http_proxy/HTTP_PROXY`` **environment variable so that the compute node can access the ProxyStore endpoint on the login node.**
+After starting the ProxyStore endpoint on a Polaris login node, you can create a Globus Compute endpoint with the following configuration. **Note that, compared with the configuration above, we specifically unset the** ``http_proxy/HTTP_PROXY`` **environment variables so that the compute node can access the ProxyStore endpoint on the login node.**
 
 .. code-block:: yaml
 
@@ -390,14 +390,14 @@ After starting the ProxyStore endpoint on Polaris login node, user can create a 
       type: SimpleStrategy
     type: HighThroughputEngine
 
-After the configuration, user can start the Globus Compute endpoint and configure the FL experiments as described in the previous sections.
+After the configuration, you can start the Globus Compute endpoint and configure the FL experiments as described in the previous sections.
 
 Additional Debugging Tips
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Test Local ProxyStore Endpoint**:
 
-To test if your local ProxyStore endpoint (e.g., ``my-endpoint``) is working, you can use the following command to check if a random object exists in the endpoint store, and it is expected to return a ``False``.
+To test if your local ProxyStore endpoint (e.g., ``my-endpoint``) is working, you can use the following command to check whether a random object exists in the endpoint store, which is expected to return ``False``.
 
 .. code-block:: bash
 
@@ -407,7 +407,7 @@ To test if your local ProxyStore endpoint (e.g., ``my-endpoint``) is working, yo
 
 **Test Remote ProxyStore Endpoint**:
 
-Consider you have an endpoint running on system A with UUID ``aaaa0259-5a8c-454b-b17d-61f010d874d4`` and name ``endpoint-a``, and another on System B with UUID ``bbbbab4d-c73a-44ee-a316-58ec8857e83a`` and name ``endpoint-b``. You want to test the peer connection between two endpoints on system A, then you can request the endpoint on system A to invoke an ``exists`` operatoin on the endpoint on system B via the following command:
+Suppose you have an endpoint running on system A with UUID ``aaaa0259-5a8c-454b-b17d-61f010d874d4`` and name ``endpoint-a``, and another on system B with UUID ``bbbbab4d-c73a-44ee-a316-58ec8857e83a`` and name ``endpoint-b``. To test the peer connection between the two endpoints from system A, you can request the endpoint on system A to invoke an ``exists`` operation on the endpoint on system B via the following command:
 
 .. code-block:: bash
 
@@ -417,4 +417,4 @@ Consider you have an endpoint running on system A with UUID ``aaaa0259-5a8c-454b
 
 .. note::
 
-  For more detailed endpoint debugging tips, we refer users to the official `ProxyStore documentation <https://docs.proxystore.dev/latest/guides/endpoints-debugging/>`_.
+  For more detailed endpoint debugging tips, refer to the official `ProxyStore documentation <https://docs.proxystore.dev/latest/guides/endpoints-debugging/>`_.

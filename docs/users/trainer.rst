@@ -1,7 +1,7 @@
 APPFL Trainer
 =============
 
-APPFL local trainer is the main building blocking of the APPFL client agent for training the model locally. All trainers are inherited from the base class ``BaseTrainer``. If user wants to implement a custom trainer, they need to inherit from the ``BaseTrainer`` and implement the abstract methods ``get_parameters`` and ``train``.
+The APPFL local trainer is the main building block of the APPFL client agent and trains the model locally. All trainers inherit from the base class ``BaseTrainer``. To implement a custom trainer, inherit from ``BaseTrainer`` and implement the abstract methods ``get_parameters`` and ``train``.
 
 .. code:: python
 
@@ -33,7 +33,7 @@ APPFL local trainer is the main building blocking of the APPFL client agent for 
         @abc.abstractmethod
         def get_parameters(self) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
-            Return local model parameters and optional metadata to be send for
+            Return local model parameters and optional metadata to be sent to the
             server and used by the server aggregator.
             """
 
@@ -43,11 +43,11 @@ APPFL local trainer is the main building blocking of the APPFL client agent for 
             Train the model.
             """
 
-For the input parameters of the trainer (e.g., model, loss_fn), they are loaded from the client-specific configuration file as well as the configurations sent by the server, and processed by the ``ClientAgent`` before initializing the trainer.
+The input parameters of the trainer (e.g., ``model``, ``loss_fn``) are loaded from the client-specific configuration file and the configurations sent by the server, and are processed by the ``ClientAgent`` before the trainer is initialized.
 
 .. note::
 
-    - If you find that some parameters are useless for your usecase, for example, your trainer works well for a hardcoded loss function and evaluation metric function, just ignore the loss function part in the configuration file and it will be loaded as ``None`` in the trainer.
+    - If some parameters are not needed for your use case (for example, your trainer uses a hardcoded loss function and evaluation metric), simply omit them from the configuration file, and they will be passed to the trainer as ``None``.
     - If you need additional parameters for your trainer, just put them under ``client_configs.train_configs`` in the configuration file and they will be passed to the trainer as ``**kwargs``.
 
     .. code:: yaml
@@ -60,7 +60,7 @@ For the input parameters of the trainer (e.g., model, loss_fn), they are loaded 
                 num_local_steps: 100
                 optim: "Adam"
                 optim_args:
-                lr: 0.001
+                  lr: 0.001
                 # Loss function
                 loss_fn_path: "./loss/celoss.py"
                 loss_fn_name: "CELoss"
