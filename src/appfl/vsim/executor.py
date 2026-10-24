@@ -41,10 +41,20 @@ class DeferredExecutor(ABC):
       this list, so it must not depend on startup timing.
     - ``step_time``: calibrated seconds per local step after :meth:`setup`, or
       ``None`` when no calibration was requested.
+
+    An executor that moves models as packed buffers can also set
+    ``accepts_packed`` and override :meth:`result_packed` and :meth:`recycle`, so a
+    driver that keeps the global model packed (see
+    :mod:`appfl.vsim.flat_aggregation`) never copies a model on its side.
     """
 
     client_ids: List[str]
     step_time: Optional[float] = None
+    #: Whether :meth:`setup`, :meth:`publish` and :meth:`submit` accept the global
+    #: model as a :class:`~appfl.vsim.codec.PackedState`, which they then send as
+    #: is. The caller never writes to that buffer again. Otherwise drivers pass a
+    #: state dict.
+    accepts_packed: bool = False
 
     @abstractmethod
     def setup(self, init_model, version: int, calibrate: bool) -> None:
@@ -88,6 +98,27 @@ class DeferredExecutor(ABC):
     @abstractmethod
     def result(self, handle: TaskHandle) -> Tuple[Any, Dict]:
         """Block until the task has trained; return ``(local_model, meta)``."""
+
+    def result_packed(self, handle: TaskHandle) -> Tuple[Any, Dict]:
+        """
+        Like :meth:`result`, but the local model may come back packed.
+
+        An executor that receives models as packed buffers returns a
+        :class:`~appfl.vsim.codec.PackedState` and hands its buffer over: the
+        caller may write to it, and passes it to :meth:`recycle` once done. The
+        default returns :meth:`result`.
+        """
+        return self.result(handle)
+
+    def recycle(self, buffer) -> None:
+        """
+        Take back a model buffer the caller no longer uses, to reuse its memory.
+
+        ``buffer`` came from :meth:`result_packed`, or was passed to
+        :meth:`publish` or :meth:`submit` as a packed global model, so a send of it
+        may still be in progress; the executor reuses it only after that send. The
+        caller must not touch it again. The default does nothing.
+        """
 
     @abstractmethod
     def discard(self, handle: TaskHandle) -> None:

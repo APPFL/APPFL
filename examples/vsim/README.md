@@ -82,9 +82,12 @@ server_configs:
     compression_ratio: 1.0      # fraction of the model actually sent (1.0 = raw)
     eval_every: 0               # 0 disables global validation
     task_seeding: true          # seed each local-training task (see below)
+    flat_aggregation: true      # FedAsync/FedAvg on a packed global model (see below)
     executor: inprocess         # inprocess | mpi (--executor overrides)
     mpi:                        # used with --executor mpi
       calibration_runs: 2       # train() calls per worker; the last one is timed
+      warmup_runs: 1            # with base_step_time: train() calls per worker
+                                # before the run (0 = none; see below)
       prefetch_mb: 1024         # results fetched ahead of need, rank 0 budget
       stall_timeout: 1800       # seconds without progress before aborting
     heterogeneity:
@@ -112,6 +115,16 @@ afterwards. A client's batch order therefore does not depend on how many clients
 trained before it in the same process or on which GPU it ran, so the in-process
 engine and an MPI run produce the same trajectory. Set it to `false` to keep the
 unseeded behavior of earlier releases.
+
+`flat_aggregation` applies to `FedAsyncAggregator` with `AsyncScheduler` and to
+`FedAvgAggregator` with `SyncScheduler`, with float32 parameters. The drivers then
+keep the global model as one packed buffer and aggregate into it with a few
+whole-buffer operations, instead of calling the server agent per update. These are
+the aggregators' own operations in the same order, so models and histories are
+bit-identical to the agent's path, and the server agent holds the final model
+after the run. With `--executor mpi` the packed model is sent as is, and sync
+rounds add each model as it arrives rather than after the barrier. Other
+aggregators always go through the agent.
 
 To replay a fixed heterogeneity setup rather than sampling one, pass
 `--profiles_json` a file of explicit per-client values:
@@ -186,6 +199,16 @@ output goes to `vsim_logs/run_<timestamp>/worker_<rank>.log`, and per-client log
 files are turned off on workers (each `ClientAgent` would otherwise hold four
 open files).
 
+With a fixed `base_step_time`, each worker also trains a throwaway client
+`warmup_runs` times (default 1) before the run starts, on the thread that trains
+its tasks. CUDA and cuDNN start-up then happens during setup rather than in each
+worker's first task: in 32-GPU ResNet-18 runs on freshly allocated nodes, first
+tasks took 0.3 s with the warm-up and up to 4 s without, against 0.25 s for later
+tasks. The throwaway client trains under a seed of its own and the global RNG
+states are restored afterwards, so models and histories are the same with or
+without the warm-up; `warmup_runs: 0` skips it. Calibration needs no warm-up,
+since it trains a throwaway client anyway.
+
 **What moves, and how often.** The event loop never waits on physical training to
 order events, and model traffic stays off the critical path:
 
@@ -245,7 +268,8 @@ worker, about `ceil(max_in_flight / W)` copies per worker; the runner prints the
 estimate. Keep `max_in_flight` at four or more times the number of workers, or
 workers idle while their clients are not in flight. Rank 0 holds the global
 model, at most `prefetch_mb` of fetched local models, and in sync modes the
-round's accepted models, as APPFL's `SyncScheduler` always does. The run ends
+round's accepted models, as APPFL's `SyncScheduler` always does (with
+`flat_aggregation`, one running sum instead). The run ends
 with an execution summary: setup and run time, worker utilization, time rank 0
 spent waiting, tasks trained, used and dropped, model sends and sends avoided,
 broadcasts, and megabytes moved.

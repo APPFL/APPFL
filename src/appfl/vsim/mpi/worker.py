@@ -4,7 +4,9 @@ Each worker rank hosts its share of the virtual clients and trains them on one
 device. The main thread makes every MPI call (receiving tasks and models, joining
 broadcasts, sending results on request), while a training thread runs local training
 in ``(deadline, tid)`` order. The task the coordinator is waiting for therefore
-trains next, and transfers overlap with training.
+trains next, and transfers overlap with training. Unless the coordinator calibrates,
+the training thread first warms up on a throwaway client during setup, so the first
+task does not pay CUDA/cuDNN start-up.
 """
 
 import gc
@@ -133,6 +135,7 @@ class _Worker:
             "tasks": 0,
             "dropped": 0,
             "busy_seconds": 0.0,
+            "warmup_seconds": 0.0,
             "bytes_in": 0,
             "bytes_out": 0,
         }
@@ -179,6 +182,19 @@ class _Worker:
                         failure = traceback.format_exc()
                 self.node_comm.Barrier()
 
+        # Started before READY so that the warm-up runs on the thread that trains:
+        # torch keeps cuDNN execution plans and cuBLAS/cuDNN handles per thread.
+        warm_up = failure is None and hello["warmup_runs"] > 0
+        started = queue.Queue()
+        self.thread = threading.Thread(
+            target=self._train_loop,
+            args=(hello if warm_up else None, started),
+            name="vsim-trainer",
+            daemon=True,
+        )
+        self.thread.start()
+        failure = failure or started.get()
+
         self.stats.update(device=self.device, clients=len(self.clients))
         if failure is None:
             reply = {
@@ -190,6 +206,7 @@ class _Worker:
                 "clients": len(self.clients),
                 "census": census,
                 "step_time": step_time,
+                "warmup_seconds": self.stats["warmup_seconds"] if warm_up else None,
             }
         else:
             reply = {"kind": P.ERROR, "rank": self.rank, "traceback": failure}
@@ -243,6 +260,29 @@ class _Worker:
             )
         return float(step_time)
 
+    def _warm_up(self, hello) -> None:
+        """
+        Train a throwaway client ``warmup_runs`` times on the task path, so that
+        CUDA/cuDNN start-up and other first-call costs are paid here rather than
+        inside the run. Building the client and training it draw from the global
+        RNGs under a seed of their own, restored afterwards, so neither the hosted
+        clients nor the RNG streams change.
+        """
+        home = [cid for cid in hello["client_ids"] if hello["homes"][cid] == self.rank]
+        cid = home[0] if home else hello["client_ids"][0]
+        with self.cv:
+            entry = self.versions[hello["version"]]
+        started = time.perf_counter()
+        with rng_guard(task_seed(0, f"warmup:{cid}", self.rank)):
+            client = self.make_client(cid, hello["context"], self.device)
+            for _ in range(int(hello["warmup_runs"])):
+                self._train_client(client, None, entry["schema"], entry["buf"])
+        del client, entry
+        # No empty_cache(): the first task reuses the allocator's cached blocks, as
+        # later tasks do.
+        gc.collect()
+        self.stats["warmup_seconds"] = time.perf_counter() - started
+
     def _redirect_output(self, log_dir: str) -> None:
         if not log_dir:
             return
@@ -258,10 +298,6 @@ class _Worker:
     # ---------- main loop ----------
     def serve(self) -> None:
         MPI = self.MPI
-        self.thread = threading.Thread(
-            target=self._train_loop, name="vsim-trainer", daemon=True
-        )
-        self.thread.start()
         status = MPI.Status()
         backoff = _MIN_BACKOFF
         while True:
@@ -451,11 +487,23 @@ class _Worker:
         self.comm.Free()
 
     # ---------- training thread ----------
-    def _train_loop(self) -> None:
-        if self.device.startswith("cuda"):
-            import torch
+    def _train_loop(self, warmup, started) -> None:
+        """
+        Train queued tasks until shutdown. First set this thread's device and, given
+        the HELLO message as ``warmup``, warm up; then put ``None``, or the traceback
+        of a failure, on ``started``.
+        """
+        try:
+            if self.device.startswith("cuda"):
+                import torch
 
-            torch.cuda.set_device(self.device)  # the current device is per thread
+                torch.cuda.set_device(self.device)  # the current device is per thread
+            if warmup is not None:
+                self._warm_up(warmup)
+        except BaseException:
+            started.put(traceback.format_exc())
+            return
+        started.put(None)
         while True:
             with self.cv:
                 task = None
@@ -495,10 +543,12 @@ class _Worker:
         return None
 
     def _train(self, task: Dict, schema, buf) -> Dict:
-        client = self.clients[task["cid"]]
+        return self._train_client(self.clients[task["cid"]], task["seed"], schema, buf)
+
+    def _train_client(self, client, seed, schema, buf) -> Dict:
         state = unpack_state(schema, buf)
         started = time.perf_counter()
-        with rng_guard(task["seed"]):
+        with rng_guard(seed):
             client.load_parameters(state)
             client.train()
             result = client.get_parameters()
@@ -512,6 +562,8 @@ class _Worker:
             module = getattr(getattr(client, "trainer", None), "model", None)
             if module is not None and hasattr(module, "to"):
                 module.to("cpu")
-        packed_schema, packed = pack_state(model)
+        # In the global model's byte layout, so the coordinator can aggregate the
+        # result with flat-buffer operations; any order of names unpacks the same.
+        packed_schema, packed = pack_state(model, layout=schema)
         P.check_payload_size(int(packed.numel()))
         return {"meta": meta, "schema": packed_schema, "buf": packed, "busy": busy}

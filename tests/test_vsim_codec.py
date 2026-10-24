@@ -4,7 +4,13 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from appfl.vsim.codec import pack_state, schema_nbytes, unpack_state  # noqa: E402
+from appfl.vsim.codec import (  # noqa: E402
+    make_layout,
+    pack_state,
+    same_layout,
+    schema_nbytes,
+    unpack_state,
+)
 
 
 def _state():
@@ -81,3 +87,78 @@ def test_schema_is_plain_python():
 def test_cuda_tensors_are_packed_from_host_copies():
     schema, buf = pack_state({"w": torch.ones(3, device="cuda")})
     assert torch.equal(unpack_state(schema, buf)["w"], torch.ones(3))
+
+
+# ------------------------------ layouts ------------------------------ #
+def _model_state():
+    return {
+        "conv.weight": torch.randn(4, 3),
+        "bn.weight": torch.randn(4),
+        "bn.running_mean": torch.randn(4),
+        "bn.num_batches_tracked": torch.tensor(5, dtype=torch.int64),
+        "fc.bias": torch.randn(7),
+    }
+
+
+def test_make_layout_follows_the_given_order_and_keeps_the_schema_order():
+    state = _model_state()
+    order = ["conv.weight", "bn.weight", "fc.bias", "bn.running_mean"]
+    order.append("bn.num_batches_tracked")
+    layout = make_layout(state, order)
+    assert [entry[0] for entry in layout] == list(state)
+    starts = {name: start for name, _, _, start, _ in layout}
+    assert [starts[name] for name in order] == sorted(starts.values())
+    assert all(start % 64 == 0 for start in starts.values())
+    schema, buf = pack_state(state, layout=layout)
+    assert schema == layout and buf.numel() == schema_nbytes(layout)
+    out = unpack_state(schema, buf)
+    assert list(out) == list(state)
+    assert all(torch.equal(out[name], state[name]) for name in state)
+
+
+def test_make_layout_rejects_an_order_that_is_not_a_permutation():
+    state = _model_state()
+    with pytest.raises(ValueError, match="exactly once"):
+        make_layout(state, list(state)[:-1])
+    with pytest.raises(ValueError, match="exactly once"):
+        make_layout(state, list(state) + ["conv.weight"])
+
+
+def test_pack_state_reuses_a_layout_in_any_name_order():
+    state = _model_state()
+    layout = make_layout(state, list(reversed(state)))
+    shuffled = {name: state[name] for name in ["fc.bias", *list(state)[:-1]]}
+    schema, buf = pack_state(shuffled, layout=layout)
+    assert [entry[0] for entry in schema] == list(shuffled)  # the state's order
+    assert same_layout(schema, layout) and schema != layout
+    out = unpack_state(schema, buf)
+    assert list(out) == list(shuffled)
+    assert all(torch.equal(out[name], state[name]) for name in state)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda s: s.pop("fc.bias"),
+        lambda s: s.update(extra=torch.zeros(2)),
+        lambda s: s.update({"fc.bias": torch.zeros(8)}),
+        lambda s: s.update({"fc.bias": torch.zeros(7, dtype=torch.float64)}),
+    ],
+    ids=["missing", "extra", "shape", "dtype"],
+)
+def test_pack_state_lays_out_a_different_state_in_its_own_order(change):
+    state = _model_state()
+    layout = make_layout(state, list(reversed(state)))
+    change(state)
+    schema, buf = pack_state(state, layout=layout)
+    assert schema == make_layout(state) and not same_layout(schema, layout)
+    out = unpack_state(schema, buf)
+    assert all(torch.equal(out[name], state[name]) for name in state)
+
+
+def test_same_layout_compares_placement_not_order():
+    state = _model_state()
+    layout = make_layout(state)
+    assert same_layout(layout, list(reversed(layout)))
+    assert not same_layout(layout, make_layout(state, list(reversed(state))))
+    assert not same_layout(layout, layout[:-1])

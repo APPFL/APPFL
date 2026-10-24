@@ -10,6 +10,7 @@ import gc
 import logging
 import os
 import sys
+import threading
 import traceback
 
 import pytest
@@ -108,6 +109,35 @@ def _make_tensor_client(cid, context, device):
     return _TensorClient(cid)
 
 
+class _CountingClient(_TensorClient):
+    """
+    Adds its count of train() calls to the model, draws from the global RNG when
+    built, and records the threads that train it. A warm-up that trained a hosted
+    client would therefore change the results, and one that drew from the RNG
+    outside a guard would move the worker's RNG stream.
+    """
+
+    def __init__(self, cid):
+        super().__init__(cid)
+        self.w = torch.randn(4096)  # initialization, replaced by load_parameters
+        self.trained = 0
+        self.threads = set()
+
+    def train(self, **kw):
+        super().train(**kw)
+        self.trained += 1
+        self.w = self.w + self.trained
+        self.threads.add(threading.current_thread().name)
+
+
+_BUILT = []  # the _CountingClients this rank built, in order
+
+
+def _make_counting_client(cid, context, device):
+    _BUILT.append(_CountingClient(cid))
+    return _BUILT[-1]
+
+
 def _logger():
     lg = logging.getLogger("vsim_mpi_test")
     lg.handlers.clear()
@@ -123,8 +153,10 @@ PROFILES = {
 DURATIONS = {cid: profile.compute_factor for cid, profile in PROFILES.items()}
 
 
-def _tensor_driver(mode, executor, base_step_time=0.01, target_epochs=None):
-    clients = None if executor else [_TensorClient(cid) for cid in IDS]
+def _tensor_driver(
+    mode, executor, base_step_time=0.01, target_epochs=None, client=_TensorClient
+):
+    clients = None if executor else [client(cid) for cid in IDS]
     if mode == "async":
         server = _TensorServer(30)
         driver = AsyncSimDriver(
@@ -235,17 +267,82 @@ def test_mpi_calibrates_step_time():
         step_time = driver.base_step_time
         driver.run()
         executor.shutdown()
-        return step_time, executor.step_time
+        return step_time, executor.step_time, executor.worker_info
 
     out = _on_rank0(MPI.COMM_WORLD, run, _make_tensor_client)
     if out is None:
         return
-    step_time, calibrated = out
+    step_time, calibrated, info = out
     assert step_time == calibrated == pytest.approx(0.004)
+    # Calibration warms the workers up; no separate warm-up runs.
+    assert all(reply["warmup_seconds"] is None for reply in info.values())
+
+
+def test_mpi_warmup_leaves_models_identical():
+    """
+    Each worker warms up on a throwaway client, on its training thread, and leaves
+    its hosted clients and its RNG stream as they were: runs without and with a
+    warm-up both match the in-process engine bit for bit.
+    """
+    torch.set_num_threads(1)
+    comm = MPI.COMM_WORLD
+    warmups = (0, 2)
+    if comm.Get_rank() != 0:
+        reports = []
+        for _ in warmups:
+            _BUILT.clear()
+            torch.manual_seed(5)  # both runs start from the same RNG state
+            run_worker(comm, _make_counting_client)
+            reports.append(
+                {
+                    "rng": torch.random.get_rng_state(),
+                    "trained": [client.trained for client in _BUILT],
+                    "threads": set().union(*(client.threads for client in _BUILT)),
+                }
+            )
+        comm.gather(reports, root=0)
+        return
+
+    try:
+        # Async without a target drops no task, so each consumed result comes from
+        # the client's same-numbered training in both engines: the counts match.
+        reference, ref_server = _tensor_driver("async", None, client=_CountingClient)
+        reference.run()
+        runs = []
+        for warmup_runs in warmups:
+            executor = MPIExecutor(
+                comm, IDS, stall_timeout=120, warmup_runs=warmup_runs
+            )
+            driver, server = _tensor_driver("async", executor)
+            driver.run()
+            executor.shutdown()
+            runs.append((driver.history, server, executor.worker_info))
+    except BaseException:
+        traceback.print_exc()
+        sys.stderr.flush()
+        comm.Abort(1)
+    reports = comm.gather(None, root=0)[1:]
+
+    for warmup_runs, (history, server, info) in zip(warmups, runs):
+        assert history == reference.history, warmup_runs
+        assert server.updates == ref_server.updates, warmup_runs
+        assert torch.equal(server.w, ref_server.w), warmup_runs
+        warmed = [reply["warmup_seconds"] is not None for reply in info.values()]
+        assert warmed == [warmup_runs > 0] * len(info)
+    for without, with_warmup in reports:
+        # The throwaway client is built last and trained warmup_runs times. How often
+        # a hosted client trained depends on how many tasks still in flight at the
+        # end were trained before SHUTDOWN, so hosted clients are checked through
+        # the results above, which count their trainings.
+        assert len(with_warmup["trained"]) == len(without["trained"]) + 1
+        assert with_warmup["trained"][-1] == warmups[1]
+        assert torch.equal(with_warmup["rng"], without["rng"])
+        assert with_warmup["threads"] == {"vsim-trainer"}
+        assert without["threads"] <= {"vsim-trainer"}
 
 
 # ------------------ real APPFL agents ------------------ #
-def _server_config(name, tmp_dir, num_clients, epochs):
+def _server_config(name, tmp_dir, num_clients, epochs, model="CNN"):
     from appfl.agent import ServerAgent
 
     cfg = OmegaConf.load(os.path.join(RESOURCES, "configs", name))
@@ -257,8 +354,9 @@ def _server_config(name, tmp_dir, num_clients, epochs):
     train.loss_fn_path = os.path.join(RESOURCES, "loss", "celoss.py")
     train.metric_path = os.path.join(RESOURCES, "metric", "acc.py")
     cfg.client_configs.model_configs.model_path = os.path.join(
-        RESOURCES, "model", "cnn.py"
+        RESOURCES, "model", "cnn_bn.py" if model == "CNNBN" else "cnn.py"
     )
+    cfg.client_configs.model_configs.model_name = model
     cfg.client_configs.model_configs.model_kwargs.num_pixel = 16
     cfg.server_configs.num_clients = num_clients
     cfg.server_configs.num_global_epochs = epochs
@@ -288,13 +386,13 @@ def _make_real_client(cid, context, device):
     return client
 
 
-def _real_driver(kind, tmp_dir, executor):
+def _real_driver(kind, tmp_dir, executor, model="CNN", flat=True):
     ids = [f"Client{i + 1}" for i in range(4)]
     profiles = {cid: ClientProfile(compute_factor=1.0 + i) for i, cid in enumerate(ids)}
     if kind == "fedasync":
-        server = _server_config("server_fedasync.yaml", tmp_dir, 4, 8)
+        server = _server_config("server_fedasync.yaml", tmp_dir, 4, 8, model)
     else:
-        server = _server_config("server_fedavg.yaml", tmp_dir, 4, 3)
+        server = _server_config("server_fedavg.yaml", tmp_dir, 4, 3, model)
     context = OmegaConf.to_container(server.get_client_configs(), resolve=True)
     clients = None
     if executor is None:
@@ -307,7 +405,13 @@ def _real_driver(kind, tmp_dir, executor):
             mode="async" if kind == "fedasync" else "sync",
             max_in_flight=3,
         )
-    common = dict(logger=_logger(), seed=3, base_step_time=0.01, executor=executor)
+    common = dict(
+        logger=_logger(),
+        seed=3,
+        base_step_time=0.01,
+        executor=executor,
+        flat_aggregation=flat,
+    )
     if kind == "fedasync":
         # AsyncScheduler counts one epoch per arrival, so the executor may drop
         # tasks past the 8th arrival.
@@ -332,31 +436,44 @@ def _real_driver(kind, tmp_dir, executor):
     return driver, server, executor
 
 
-def test_mpi_real_agents_match_in_process(tmp_path):
+@pytest.mark.parametrize("model", ["CNN", "CNNBN"])
+def test_mpi_real_agents_match_in_process(tmp_path, model):
+    """The reference aggregates through the server agent; the MPI run on the flat
+    path, with every model version sent from its own buffer."""
     torch.set_num_threads(1)
 
     @_executors(2)
     def run(new_executor):
         results = {}
         for kind in ("fedasync", "fedavg"):
-            reference, ref_server, _ = _real_driver(kind, str(tmp_path), None)
+            reference, ref_server, _ = _real_driver(
+                kind, str(tmp_path), None, model, flat=False
+            )
             reference.run()
-            driver, server, executor = _real_driver(kind, str(tmp_path), new_executor)
+            driver, server, executor = _real_driver(
+                kind, str(tmp_path), new_executor, model
+            )
+            on_flat_path = driver._flat is not None
             driver.run()
-            executor.shutdown()
+            stats = executor.shutdown()
             results[kind] = (
                 reference.history,
                 driver.history,
                 ref_server.get_parameters(serial_run=True),
                 server.get_parameters(serial_run=True),
+                on_flat_path and driver._flat is not None,
+                stats,
             )
         return results
 
     out = _on_rank0(MPI.COMM_WORLD, run, _make_real_client)
     if out is None:
         return
-    for kind, (ref_history, history, ref_model, model) in out.items():
+    for kind, (ref_history, history, ref_state, state, flat, stats) in out.items():
+        assert flat, kind
         assert history == ref_history, kind
-        assert list(model) == list(ref_model), kind
-        for name in model:
-            assert torch.equal(model[name], ref_model[name]), (kind, name)
+        assert list(state) == list(ref_state), kind
+        for name in state:
+            assert torch.equal(state[name], ref_state[name]), (kind, name)
+        assert stats["pack_seconds"] == 0.0, kind  # rank 0 never packed a model
+        assert stats["buffers_reused"] > 0, kind

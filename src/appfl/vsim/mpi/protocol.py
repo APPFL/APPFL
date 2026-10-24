@@ -23,6 +23,8 @@ Coordinator to worker:
 Worker to coordinator:
 
 - ``DONE`` ``{tid, meta, schema, nbytes, busy}``: a result is held and can be fetched.
+  It is packed in the byte layout of the global model the task trained from, when
+  it holds the same tensors.
 - ``ERROR`` ``{tid, rank, traceback}``: training or a protocol step failed.
 - ``BYE`` ``{stats}``: the worker's last message.
 
