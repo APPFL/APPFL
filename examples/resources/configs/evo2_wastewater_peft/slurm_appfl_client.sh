@@ -20,11 +20,7 @@ mkdir -p logs
 module load conda
 conda activate $EVO2_BASE/envs/evo2_fl_env312
 
-# proxy.nersc.gov:3128 is NOT reachable from this account's compute nodes (verified
-# via srun probe on job 55783196: direct TCP to the FL server and to pypi.org both
-# succeeded, but the proxy host timed out). Setting https_proxy here previously made
-# grpc hang indefinitely trying to tunnel through a dead proxy instead of connecting
-# directly, which does work. Do not reintroduce it without re-verifying reachability.
+
 unset http_proxy HTTP_PROXY https_proxy HTTPS_PROXY || true
 
 export PIP_CACHE_DIR=$EVO2_BASE/.pip_cache
