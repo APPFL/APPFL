@@ -11,12 +11,11 @@ bash setup_perlmutter_environment.sh /pscratch/sd/<u>/<your-username>/dbforge/ev
 
 This creates the env at
 `/pscratch/sd/<u>/<your-username>/dbforge/evo2_metagenomics/envs/evo2_fl_env312`.
-Edit the `EVO2_BASE=`/`DBFORGE_ROOT=` lines in both `slurm_appfl_client.sh`
+Edit the `EVO2_BASE=` and `DBFORGE_ROOT=` lines in both `slurm_appfl_client.sh`
 and `launch_client.sh` to your own paths before running them.
 
 Inside `./resources/configs/evo2_wastewater_peft/client_perlmutter.yaml` edit
-`trainer_path` and the `base_data`/`model_path`/`evo2_dir`/`aidrin_csv` paths
-to your own username.
+`trainer_path` path to your own username.
 
 ## Batch job
 
