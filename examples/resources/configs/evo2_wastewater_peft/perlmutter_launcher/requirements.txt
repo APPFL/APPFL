@@ -1,0 +1,13 @@
+# Perlmutter env for the Evo2 wastewater-PEFT federated client.
+#
+# Unlike Polaris, flash-attn/mamba-ssm/causal-conv1d don't need a separate
+# --no-build-isolation step here — `pip install evo2` pulls in `vtx`, which
+# installs flash-attn itself. There's also no need to wire up CUDA_HOME /
+# LD_LIBRARY_PATH manually: the PyTorch cu128 wheel is self-contained.
+#
+# See setup_perlmutter_environment.sh for the install order (torch first,
+# with the cu128 index, then appfl, then evo2).
+
+torch  # installed separately via --index-url https://download.pytorch.org/whl/cu128
+appfl>=1.12.0  # first tagged release with the gRPC polling feature
+evo2  # pulls in biopython, huggingface_hub, vtx (-> flash-attn)
