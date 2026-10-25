@@ -1,0 +1,31 @@
+# DB-FORGE wastewater metagenomics federated PEFT case study
+# Pip-installable Python dependencies.
+#
+# This covers everything EXCEPT flash-attn, mamba-ssm, causal-conv1d, and
+# Evo2 itself, which require CUDA compilation and are installed separately
+# by setup_polaris_environment.sh (--no-build-isolation, after the conda env and
+# CUDA module are active). Listing them here would not work correctly
+# since pip would attempt to build them without the required modules
+# loaded first.
+#
+# download_data.py only needs `requests` — if you are only running the
+# download step (e.g. on a login node, before requesting GPU time), you
+# can skip the rest of this file and just run:
+#
+#     pip install requests
+
+# --- Download / data pipeline ---
+requests>=2.31
+
+# --- Federated learning / data readiness ---
+# (versions intentionally unpinned beyond a floor; exact pins to be
+# confirmed against the working Polaris environment)
+numpy>=1.24
+pandas>=2.0
+
+# --- Training / evaluation ---
+# torch is installed transitively as a transformer-engine dependency by
+# setup_polaris_environment.sh; listed here for clarity but not installed
+# directly from this file on Polaris.
+# torch==2.7.1
+# transformer-engine==2.3.0
