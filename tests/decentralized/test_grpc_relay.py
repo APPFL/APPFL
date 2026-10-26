@@ -20,7 +20,9 @@ def free_port() -> int:
 def start_relay(expected_nodes, max_message_size=2 * 1024 * 1024):
     uri = f"localhost:{free_port()}"
     servicer = GRPCRelayServicer(
-        max_message_size=max_message_size, expected_nodes=expected_nodes, wait_timeout=30
+        max_message_size=max_message_size,
+        expected_nodes=expected_nodes,
+        wait_timeout=30,
     )
     thread = threading.Thread(
         target=serve_relay,
@@ -59,7 +61,9 @@ def run_together(communicators, rounds, payload_of):
             except Exception as exc:  # noqa: BLE001
                 errors.append((node, exc))
 
-    threads = [threading.Thread(target=run, args=(n, c)) for n, c in communicators.items()]
+    threads = [
+        threading.Thread(target=run, args=(n, c)) for n, c in communicators.items()
+    ]
     for t in threads:
         t.start()
     for t in threads:
@@ -91,17 +95,27 @@ def test_the_relay_refuses_a_collector_the_publisher_did_not_authorize():
     relay_uri, servicer, _ = start_relay(expected_nodes=None)
     # Publishes only: giving it a recv_from would make it wait on a peer that never exists.
     publisher = GRPCPeerCommunicator(
-        node_id="Node0", send_to=["Node1"], recv_from={},
-        relay_server_uri=relay_uri, connect_timeout=30, wait_timeout=10,
+        node_id="Node0",
+        send_to=["Node1"],
+        recv_from={},
+        relay_server_uri=relay_uri,
+        connect_timeout=30,
+        wait_timeout=10,
     )  # authorizes Node1 only
     intruder = GRPCPeerCommunicator(
-        node_id="Intruder", send_to=[], recv_from={"Node0": relay_uri},
-        relay_server_uri=relay_uri, connect_timeout=30, wait_timeout=10,
+        node_id="Intruder",
+        send_to=[],
+        recv_from={"Node0": relay_uri},
+        relay_server_uri=relay_uri,
+        connect_timeout=30,
+        wait_timeout=10,
     )
     publisher.start()
     intruder.start()
     try:
-        publisher.exchange(0, {"w": torch.zeros(1)})  # publishes, declaring send_to=[Node1]
+        publisher.exchange(
+            0, {"w": torch.zeros(1)}
+        )  # publishes, declaring send_to=[Node1]
         with pytest.raises(grpc.RpcError) as caught:
             intruder.exchange(0, {"w": torch.zeros(1)})
         assert caught.value.code() == grpc.StatusCode.PERMISSION_DENIED
@@ -119,8 +133,13 @@ def test_a_publisher_configured_larger_than_the_relay_is_accepted():
     """
     relay_uri, _, _ = start_relay(expected_nodes=None, max_message_size=64 * 1024)
     big = GRPCPeerCommunicator(
-        node_id="Big", send_to=["Other"], recv_from={}, relay_server_uri=relay_uri,
-        max_message_size=4 * 1024 * 1024, connect_timeout=30, wait_timeout=30,
+        node_id="Big",
+        send_to=["Other"],
+        recv_from={},
+        relay_server_uri=relay_uri,
+        max_message_size=4 * 1024 * 1024,
+        connect_timeout=30,
+        wait_timeout=30,
     )
     big.start()
     try:
@@ -162,12 +181,20 @@ def test_an_intruder_that_asks_before_the_publish_is_still_refused():
     """
     relay_uri, _, _ = start_relay(expected_nodes=None)
     publisher = GRPCPeerCommunicator(
-        node_id="Node0", send_to=["Node1"], recv_from={},
-        relay_server_uri=relay_uri, connect_timeout=30, wait_timeout=20,
+        node_id="Node0",
+        send_to=["Node1"],
+        recv_from={},
+        relay_server_uri=relay_uri,
+        connect_timeout=30,
+        wait_timeout=20,
     )
     intruder = GRPCPeerCommunicator(
-        node_id="Intruder", send_to=[], recv_from={"Node0": relay_uri},
-        relay_server_uri=relay_uri, connect_timeout=30, wait_timeout=20,
+        node_id="Intruder",
+        send_to=[],
+        recv_from={"Node0": relay_uri},
+        relay_server_uri=relay_uri,
+        connect_timeout=30,
+        wait_timeout=20,
     )
     publisher.start()
     intruder.start()
@@ -184,7 +211,9 @@ def test_an_intruder_that_asks_before_the_publish_is_still_refused():
     try:
         asking.start()
         time.sleep(1.0)  # let it park in store.get while the relay still has no list
-        publisher.exchange(0, {"w": torch.zeros(1)})  # the list arrives now: send_to=[Node1]
+        publisher.exchange(
+            0, {"w": torch.zeros(1)}
+        )  # the list arrives now: send_to=[Node1]
         asking.join(timeout=30)
         assert not asking.is_alive(), "the intruder's request never returned"
         assert outcome == [grpc.StatusCode.PERMISSION_DENIED], (
@@ -204,8 +233,12 @@ def test_a_target_nobody_publishes_does_not_keep_the_relay_waiting():
     """
     relay_uri, servicer, _ = start_relay(expected_nodes=None)
     node = GRPCPeerCommunicator(
-        node_id="Node0", send_to=[], recv_from={"Ghost": relay_uri},
-        relay_server_uri=relay_uri, connect_timeout=30, wait_timeout=3,
+        node_id="Node0",
+        send_to=[],
+        recv_from={"Ghost": relay_uri},
+        relay_server_uri=relay_uri,
+        connect_timeout=30,
+        wait_timeout=3,
     )
     node.start()
     try:
@@ -228,12 +261,20 @@ def test_the_relay_waits_for_collectors_not_only_publishers():
     """
     relay_uri, servicer, _ = start_relay(expected_nodes=None)
     publisher = GRPCPeerCommunicator(
-        node_id="Pub", send_to=["Col"], recv_from={},
-        relay_server_uri=relay_uri, connect_timeout=30, wait_timeout=10,
+        node_id="Pub",
+        send_to=["Col"],
+        recv_from={},
+        relay_server_uri=relay_uri,
+        connect_timeout=30,
+        wait_timeout=10,
     )
     collector = GRPCPeerCommunicator(  # serves itself; only collects through the relay
-        node_id="Col", send_to=[], recv_from={"Pub": relay_uri},
-        server_uri=f"localhost:{free_port()}", connect_timeout=30, wait_timeout=10,
+        node_id="Col",
+        send_to=[],
+        recv_from={"Pub": relay_uri},
+        server_uri=f"localhost:{free_port()}",
+        connect_timeout=30,
+        wait_timeout=10,
     )
     publisher.start()
     collector.start()
