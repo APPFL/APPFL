@@ -11,7 +11,7 @@ from appfl.comm.grpc.grpc_communicator_pb2 import (
     CustomActionRequest,
     CustomActionResponse,
     GetGlobalModelRequest,
-    GetGlobalModelRespone,
+    GetGlobalModelResponse,
     ServerHeader,
     ServerStatus,
     UpdateGlobalModelRequest,
@@ -103,7 +103,7 @@ class GRPCPeerServicer(GRPCCommunicatorServicer):
         except TimeoutError as exc:
             context.abort(grpc.StatusCode.DEADLINE_EXCEEDED, str(exc))
 
-        response = GetGlobalModelRespone(
+        response = GetGlobalModelResponse(
             header=ServerHeader(status=ServerStatus.RUN),
             global_model=data,
             meta_data=yaml.dump({"round_id": round_id}),
@@ -426,7 +426,7 @@ class GRPCPeerCommunicator:
                 request, timeout=self.wait_timeout
             ):
                 chunks += chunk.data_bytes
-            response = GetGlobalModelRespone()
+            response = GetGlobalModelResponse()
             response.ParseFromString(chunks)
             if response.header.status == ServerStatus.ERROR:
                 raise RuntimeError(f"{peer_id} returned an error for round {round_id}")

@@ -8,7 +8,7 @@ from typing import Any, Optional
 from appfl.comm.grpc.grpc_communicator_pb2 import (
     CustomActionRequest,
     CustomActionResponse,
-    GetGlobalModelRespone,
+    GetGlobalModelResponse,
     ServerHeader,
     ServerStatus,
     UpdateGlobalModelRequest,
@@ -147,7 +147,7 @@ class GRPCRelayServicer(GRPCCommunicatorServicer):
                 grpc.StatusCode.PERMISSION_DENIED,
                 f"{target} did not authorize {requester} to collect its payloads",
             )
-        response = GetGlobalModelRespone(
+        response = GetGlobalModelResponse(
             header=ServerHeader(status=ServerStatus.RUN),
             global_model=data,
             meta_data=yaml.dump({"round_id": round_id, "target": target}),
