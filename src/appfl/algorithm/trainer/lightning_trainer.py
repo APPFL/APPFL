@@ -1,8 +1,10 @@
-import time
 import logging
-from typing import Any, Dict, Optional
+import time
+from typing import Any
+
 from omegaconf import DictConfig
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
+
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 
 try:
@@ -27,7 +29,7 @@ class _RoundMLFlowLogger(MLFlowLogger):
         super().__init__(*args, **kwargs)
         self.step_offset = 0
 
-    def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None):
+    def log_metrics(self, metrics: dict[str, float], step: int | None = None):
         if step is not None:
             step += self.step_offset
         super().log_metrics(metrics, step)
@@ -54,10 +56,10 @@ class LightningTrainer(BaseTrainer):
         self,
         model: "pl.LightningModule",
         train_dataset: Dataset,
-        val_dataset: Optional[Dataset] = None,
+        val_dataset: Dataset | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
-        client_id: Optional[str] = None,
+        logger: Any | None = None,
+        client_id: str | None = None,
         **kwargs,
     ):
         super().__init__(

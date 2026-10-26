@@ -5,7 +5,7 @@ This module provides TES-based distributed federated learning communication,
 following the same architectural patterns as Globus Compute and Ray communicators.
 """
 
-from .tes_server_communicator import TESServerCommunicator
 from .tes_client_communicator import TESClientCommunicator
+from .tes_server_communicator import TESServerCommunicator
 
-__all__ = ["TESServerCommunicator", "TESClientCommunicator"]
+__all__ = ["TESClientCommunicator", "TESServerCommunicator"]

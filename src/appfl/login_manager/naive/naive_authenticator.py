@@ -1,6 +1,6 @@
 import hmac
 import warnings
-from typing import Dict
+
 from appfl.login_manager import BaseAuthenticator
 
 
@@ -38,7 +38,7 @@ class NaiveAuthenticator(BaseAuthenticator):
         )
         self.auth_token = auth_token
 
-    def get_auth_token(self) -> Dict[str, str]:
+    def get_auth_token(self) -> dict[str, str]:
         return {
             "auth_token": self.auth_token,
         }

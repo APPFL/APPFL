@@ -1,6 +1,6 @@
-import os
 import json
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def preprocess(root):
     def _convert_to_json(path, celebrities, targets):
         all_data = {}
 
-        celeb_keys = [c for c in celebrities]
+        celeb_keys = [*celebrities]
         num_samples = [len(celebrities[c]) for c in celeb_keys]
         data = {c: {"x": celebrities[c], "y": targets[c]} for c in celebrities}
 

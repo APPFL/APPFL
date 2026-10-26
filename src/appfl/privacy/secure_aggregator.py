@@ -1,8 +1,9 @@
-import hmac
 import hashlib
-import struct
+import hmac
 import math
-from typing import Dict, Tuple, Iterable, List
+import struct
+from collections.abc import Iterable
+
 import torch
 
 
@@ -115,8 +116,8 @@ class SecureAggregator:
     # ---- helpers ----
     @staticmethod
     def flatten_state_dict(
-        sd: Dict[str, torch.Tensor],
-    ) -> Tuple[torch.Tensor, List[Tuple[str, Tuple[int, ...]]]]:
+        sd: dict[str, torch.Tensor],
+    ) -> tuple[torch.Tensor, list[tuple[str, tuple[int, ...]]]]:
         """
         Flatten a state dictionary into a single 1D tensor.
 
@@ -151,9 +152,9 @@ class SecureAggregator:
     @staticmethod
     def unflatten_to_state_dict(
         flat: torch.Tensor,
-        shapes: List[Tuple[str, Tuple[int, ...]]],
+        shapes: list[tuple[str, tuple[int, ...]]],
         device: torch.device,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """
         Reconstruct a state dictionary from a flattened tensor.
 
@@ -295,8 +296,8 @@ class SecureAggregator:
         return mask
 
     def mask_update(
-        self, delta_state: Dict[str, torch.Tensor], round_id: int
-    ) -> Tuple[torch.Tensor, List[Tuple[str, Tuple[int, ...]]]]:
+        self, delta_state: dict[str, torch.Tensor], round_id: int
+    ) -> tuple[torch.Tensor, list[tuple[str, tuple[int, ...]]]]:
         """
         Mask a model update (delta) for secure aggregation.
 
