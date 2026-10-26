@@ -1,6 +1,7 @@
 logs
 log
 data
+tests/decentralized
 !src/appfl/loader/data/
 !src/appfl/loader/data/**
 examples/resources/configs/gwas/sites-data
