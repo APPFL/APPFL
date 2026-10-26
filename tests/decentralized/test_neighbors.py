@@ -23,7 +23,9 @@ def block(**kwargs):
 
 
 def test_from_topo_derives_neighbors_and_builds_its_own_graph():
-    config = block(mode="from_topo", topology="ring", topology_kwargs={"k": 1}, num_nodes=6)
+    config = block(
+        mode="from_topo", topology="ring", topology_kwargs={"k": 1}, num_nodes=6
+    )
     view = resolve_neighbors(config, "Node0")
     assert list(view.recv_from) == ["Node1", "Node5"]
     assert view.send_to == ["Node1", "Node5"]
@@ -45,14 +47,18 @@ def test_from_topo_rejects_a_node_id_it_did_not_generate():
 
 
 def test_from_topo_produces_symmetric_lists_for_an_undirected_graph():
-    views = resolve_all_neighbors_from_topology(build_topology("star", generated_node_ids(5)))
+    views = resolve_all_neighbors_from_topology(
+        build_topology("star", generated_node_ids(5))
+    )
     for node_id, view in views.items():
         assert view.send_to == list(view.recv_from)
 
 
 def test_from_topo_produces_asymmetric_lists_for_a_directed_graph():
     ids = generated_node_ids(3)
-    cycle = Custom(ids, directed=True, edges=[[ids[i], ids[(i + 1) % 3]] for i in range(3)])
+    cycle = Custom(
+        ids, directed=True, edges=[[ids[i], ids[(i + 1) % 3]] for i in range(3)]
+    )
     views = resolve_all_neighbors_from_topology(cycle)
     # Node0 sends to Node1 and receives from Node2 -- the distinction the two lists exist for.
     assert views["Node0"].send_to == ["Node1"]
@@ -147,7 +153,8 @@ def test_empty_send_to_is_unrestricted_not_asymmetric():
 
 def test_send_to_is_enforced_when_it_is_given():
     view = resolve_neighbors(
-        block(mode="explicit", send_to=["Node1"], recv_from=[{"node_id": "Node1"}]), "Node0"
+        block(mode="explicit", send_to=["Node1"], recv_from=[{"node_id": "Node1"}]),
+        "Node0",
     )
     assert view.may_serve("Node1") is True
     assert view.may_serve("Node9") is False
@@ -168,9 +175,7 @@ def test_weights_default_to_uniform_over_the_closed_neighborhood():
 
 
 def test_explicit_weights_leave_the_remainder_to_the_node_itself():
-    view = Neighbors(
-        send_to=["B"], recv_from={"B": None}, weights={"B": 0.25}
-    )
+    view = Neighbors(send_to=["B"], recv_from={"B": None}, weights={"B": 0.25})
     assert view.mixing_weights("A") == {"B": 0.25, "A": pytest.approx(0.75)}
 
 
@@ -185,9 +190,7 @@ def test_partially_specified_weights_are_rejected():
 
 
 def test_weights_that_leave_nothing_for_the_node_are_rejected():
-    view = Neighbors(
-        send_to=["B"], recv_from={"B": None}, weights={"B": 1.5}
-    )
+    view = Neighbors(send_to=["B"], recv_from={"B": None}, weights={"B": 1.5})
     with pytest.raises(ValueError, match="no weight for"):
         view.mixing_weights("A")
 
@@ -199,6 +202,8 @@ def test_an_isolated_node_keeps_all_of_its_own_weight():
 def test_a_weight_for_a_peer_that_sends_nothing_is_rejected():
     """The one risk of keeping weights in their own mapping: it can name a peer `recv_from`
     does not, and a weight with nothing to apply to is a mistake rather than a no-op."""
-    view = Neighbors(send_to=["B"], recv_from={"B": None}, weights={"B": 0.3, "Ghost": 0.2})
+    view = Neighbors(
+        send_to=["B"], recv_from={"B": None}, weights={"B": 0.3, "Ghost": 0.2}
+    )
     with pytest.raises(ValueError, match="which this node does not"):
         view.mixing_weights("A")

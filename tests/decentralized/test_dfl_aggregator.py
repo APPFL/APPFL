@@ -47,7 +47,9 @@ def test_weights_are_normalized_rather_than_trusted(aggregator):
 
 def test_neighbor_models_may_be_a_list(aggregator):
     """No ids to key on, so weights cannot apply -- it falls back to a plain average."""
-    assert value(aggregator.aggregate(LOCAL, list(PEERS.values()), "A")) == pytest.approx(10.0)
+    assert value(
+        aggregator.aggregate(LOCAL, list(PEERS.values()), "A")
+    ) == pytest.approx(10.0)
 
 
 def test_an_isolated_node_keeps_its_own_model(aggregator):

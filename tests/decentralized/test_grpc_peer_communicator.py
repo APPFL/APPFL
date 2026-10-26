@@ -67,7 +67,8 @@ def run_concurrently(communicators, rounds, payload_of):
                 errors.append((node, exc))
 
     threads = [
-        threading.Thread(target=run, args=(node, c)) for node, c in communicators.items()
+        threading.Thread(target=run, args=(node, c))
+        for node, c in communicators.items()
     ]
     for thread in threads:
         thread.start()
@@ -92,7 +93,9 @@ def test_two_peers_exchange_over_the_wire():
 def test_rounds_do_not_bleed_into_each_other():
     nodes = ["Node0", "Node1"]
     communicators = build(nodes, {"Node0": ["Node1"], "Node1": ["Node0"]})
-    results = run_concurrently(communicators, 4, lambda node, r: {"from": node, "round": r})
+    results = run_concurrently(
+        communicators, 4, lambda node, r: {"from": node, "round": r}
+    )
     for node, rounds in results.items():
         for round_id, received in enumerate(rounds):
             for peer, payload in received.items():
@@ -104,7 +107,9 @@ def test_the_payload_is_opaque():
     nodes = ["Node0", "Node1"]
     communicators = build(nodes, {"Node0": ["Node1"], "Node1": ["Node0"]})
     results = run_concurrently(
-        communicators, 1, lambda node, r: {"note": f"hello from {node}", "items": [1, 2]}
+        communicators,
+        1,
+        lambda node, r: {"note": f"hello from {node}", "items": [1, 2]},
     )
     assert results["Node0"][0]["Node1"]["note"] == "hello from Node1"
     assert results["Node0"][0]["Node1"]["items"] == [1, 2]
@@ -112,7 +117,11 @@ def test_the_payload_is_opaque():
 
 def test_a_ring_of_three_exchanges_only_with_its_neighbors():
     nodes = ["Node0", "Node1", "Node2"]
-    edges = {"Node0": ["Node1", "Node2"], "Node1": ["Node0", "Node2"], "Node2": ["Node0", "Node1"]}
+    edges = {
+        "Node0": ["Node1", "Node2"],
+        "Node1": ["Node0", "Node2"],
+        "Node2": ["Node0", "Node1"],
+    }
     communicators = build(nodes, edges)
     results = run_concurrently(communicators, 2, lambda node, r: {"from": node})
     for node, rounds in results.items():
@@ -155,7 +164,9 @@ def test_a_peer_outside_send_to_is_refused():
 
 def test_worker_count_is_derived_from_the_peers_served():
     communicator = GRPCPeerCommunicator(
-        node_id="Node0", server_uri="localhost:1", send_to=[f"N{i}" for i in range(20)],
+        node_id="Node0",
+        server_uri="localhost:1",
+        send_to=[f"N{i}" for i in range(20)],
         recv_from={},
     )
     assert communicator.max_workers == 20 + GRPCPeerCommunicator.WORKER_HEADROOM
@@ -188,14 +199,22 @@ def test_peers_that_disagree_about_message_size_still_exchange():
 
     uris = {"Big": f"localhost:{free_port()}", "Small": f"localhost:{free_port()}"}
     big = GRPCPeerCommunicator(
-        node_id="Big", server_uri=uris["Big"], send_to=["Small"],
-        recv_from={}, max_message_size=4 * 1024 * 1024,
-        connect_timeout=30, wait_timeout=30,
+        node_id="Big",
+        server_uri=uris["Big"],
+        send_to=["Small"],
+        recv_from={},
+        max_message_size=4 * 1024 * 1024,
+        connect_timeout=30,
+        wait_timeout=30,
     )
     small = GRPCPeerCommunicator(
-        node_id="Small", server_uri=uris["Small"], send_to=[],
-        recv_from={"Big": uris["Big"]}, max_message_size=64 * 1024,
-        connect_timeout=30, wait_timeout=30,
+        node_id="Small",
+        server_uri=uris["Small"],
+        send_to=[],
+        recv_from={"Big": uris["Big"]},
+        max_message_size=64 * 1024,
+        connect_timeout=30,
+        wait_timeout=30,
     )
     big.start()
     small.start()

@@ -158,7 +158,9 @@ def test_a_published_round_is_served_even_after_the_node_moves_on(tmp_path):
 
     served = agent.get_parameters(round_id=0)
     for name, tensor in round_zero.items():
-        assert torch.allclose(served[name], tensor), "round 0 was overwritten by a later round"
+        assert torch.allclose(served[name], tensor), (
+            "round 0 was overwritten by a later round"
+        )
     later = agent.get_parameters(round_id=1)["fc.weight"]
     assert not torch.allclose(later, round_zero["fc.weight"])
 
@@ -191,7 +193,8 @@ def test_get_parameters_without_a_round_returns_the_latest(tmp_path):
     agent.train()
     agent.train()
     assert torch.allclose(
-        agent.get_parameters()["fc.weight"], agent.get_parameters(round_id=1)["fc.weight"]
+        agent.get_parameters()["fc.weight"],
+        agent.get_parameters(round_id=1)["fc.weight"],
     )
 
 
@@ -279,9 +282,7 @@ def test_nodes_running_in_parallel_stay_round_aligned(tmp_path, num_nodes, round
                     for peer_id in agent.neighbors.recv_from
                 }
                 mixed = agent.aggregate_parameters(peers)
-                results[agent.get_id()].append(
-                    {k: v.clone() for k, v in mixed.items()}
-                )
+                results[agent.get_id()].append({k: v.clone() for k, v in mixed.items()})
         except Exception as exc:  # noqa: BLE001 -- re-raised in the main thread below
             errors.append(exc)
 
@@ -291,7 +292,9 @@ def test_nodes_running_in_parallel_stay_round_aligned(tmp_path, num_nodes, round
     for thread in threads:
         thread.join(timeout=60)
 
-    assert not [t for t in threads if t.is_alive()], "a node deadlocked waiting for a peer"
+    assert not [t for t in threads if t.is_alive()], (
+        "a node deadlocked waiting for a peer"
+    )
     assert not errors, f"a node raised: {errors[0]!r}"
 
     reference = results["Node0"]

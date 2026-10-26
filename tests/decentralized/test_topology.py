@@ -17,9 +17,18 @@ IDS = [f"Node{i}" for i in range(6)]
 
 
 def test_build_topology_resolves_every_registered_name():
-    for name in ("fully_connected", "complete", "ring", "star", "random_geometric", "custom"):
+    for name in (
+        "fully_connected",
+        "complete",
+        "ring",
+        "star",
+        "random_geometric",
+        "custom",
+    ):
         kwargs = (
-            {"edges": [["Node0", "Node1"], ["Node1", "Node0"]]} if name == "custom" else {}
+            {"edges": [["Node0", "Node1"], ["Node1", "Node0"]]}
+            if name == "custom"
+            else {}
         )
         assert isinstance(build_topology(name, IDS, **kwargs), Topology)
 
@@ -60,7 +69,9 @@ def test_no_topology_makes_a_node_its_own_neighbor():
 def test_fully_connected_fiedler_equals_node_count():
     for n in (3, 5, 9):
         ids = [f"N{i}" for i in range(n)]
-        assert build_topology("fully_connected", ids).fiedler_value() == pytest.approx(n)
+        assert build_topology("fully_connected", ids).fiedler_value() == pytest.approx(
+            n
+        )
 
 
 def test_ring_connectivity_decays_with_size_and_grows_with_k():
@@ -91,11 +102,16 @@ def test_star_rejects_a_hub_that_is_not_a_node():
 
 
 def test_mixing_weights_sum_to_one_over_the_closed_neighborhood():
-    for name, kwargs in [("ring", {"k": 2}), ("star", {}), ("random_geometric", {"radius": 0.4})]:
+    for name, kwargs in [
+        ("ring", {"k": 2}),
+        ("star", {}),
+        ("random_geometric", {"radius": 0.4}),
+    ]:
         topology = build_topology(name, IDS, **kwargs)
         for node in IDS:
             total = topology.mixing_weight(node, node) + sum(
-                topology.mixing_weight(node, peer) for peer in topology.in_neighbors(node)
+                topology.mixing_weight(node, peer)
+                for peer in topology.in_neighbors(node)
             )
             assert total == pytest.approx(1.0)
 
@@ -148,7 +164,9 @@ def test_custom_repairs_an_inconsistent_adjacency_map():
 
 
 def test_custom_directed_keeps_edges_one_way():
-    topology = Custom(IDS[:3], directed=True, edges=[["Node0", "Node1"], ["Node1", "Node2"]])
+    topology = Custom(
+        IDS[:3], directed=True, edges=[["Node0", "Node1"], ["Node1", "Node2"]]
+    )
     assert topology.directed is True
     assert topology.out_neighbors("Node0") == ["Node1"]
     assert topology.in_neighbors("Node0") == []
@@ -159,7 +177,9 @@ def test_custom_directed_keeps_edges_one_way():
 
 def test_directed_needs_strong_connectivity_not_symmetrized_connectivity():
     """The check that a symmetrized Fiedler value would get wrong."""
-    chain = Custom(IDS[:3], directed=True, edges=[["Node0", "Node1"], ["Node1", "Node2"]])
+    chain = Custom(
+        IDS[:3], directed=True, edges=[["Node0", "Node1"], ["Node1", "Node2"]]
+    )
     assert chain.is_connected() is False
     assert chain.is_strongly_connected() is False
     assert chain.fiedler_value() > 0  # symmetrized, it looks connected -- and is not
@@ -210,9 +230,13 @@ def test_describe_reports_the_connectivity_measure_that_applies():
 
 def test_edge_count_counts_each_undirected_edge_once():
     n = len(IDS)
-    assert build_topology("fully_connected", IDS).describe()["n_edges"] == n * (n - 1) // 2
+    assert (
+        build_topology("fully_connected", IDS).describe()["n_edges"] == n * (n - 1) // 2
+    )
     assert build_topology("ring", IDS, k=1).describe()["n_edges"] == len(IDS)
-    directed = Custom(IDS[:3], directed=True, edges=[["Node0", "Node1"], ["Node1", "Node2"]])
+    directed = Custom(
+        IDS[:3], directed=True, edges=[["Node0", "Node1"], ["Node1", "Node2"]]
+    )
     assert directed.describe()["n_edges"] == 2
 
 
@@ -243,7 +267,11 @@ def test_draw_handles_a_directed_graph_and_long_labels(tmp_path):
     topology = Custom(
         sites,
         directed=True,
-        edges=[["anl-alcf", "ornl-olcf"], ["ornl-olcf", "nersc"], ["nersc", "anl-alcf"]],
+        edges=[
+            ["anl-alcf", "ornl-olcf"],
+            ["ornl-olcf", "nersc"],
+            ["nersc", "anl-alcf"],
+        ],
     )
     path = tmp_path / "directed.png"
     topology.draw(path=str(path))

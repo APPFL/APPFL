@@ -99,9 +99,7 @@ def test_identity_must_match_this_rank(world):
     comm, ids, me = world
     other = ids[(comm.Get_rank() + 1) % len(ids)]
     with pytest.raises(ValueError, match="in the roster but this process is rank"):
-        MPIPeerCommunicator(
-            comm, node_id=other, node_ids=ids, send_to=[], recv_from=[]
-        )
+        MPIPeerCommunicator(comm, node_id=other, node_ids=ids, send_to=[], recv_from=[])
 
 
 def test_an_unknown_peer_is_rejected(world):
@@ -112,7 +110,9 @@ def test_an_unknown_peer_is_rejected(world):
         )
 
 
-def test_an_oversized_payload_is_refused_rather_than_failing_inside_mpi(world, monkeypatch):
+def test_an_oversized_payload_is_refused_rather_than_failing_inside_mpi(
+    world, monkeypatch
+):
     comm, ids, me = world
     peers = fully_connected(me, ids)
     communicator = MPIPeerCommunicator(
