@@ -13,7 +13,7 @@ becomes compute-aware without a line of its own changing. See ``budget.py``.
 from __future__ import annotations
 
 import random
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Sequence
 
 from appfl.decentralized.protocol import AgentProtocol
 from appfl.decentralized.algorithm.adko.baseline import BaseBaseline
@@ -41,7 +41,7 @@ from appfl.decentralized.algorithm.adko.reasoning import (
 class ADKOAgent(AgentProtocol):
     """One ADKO agent. Private surrogate, private data, token-only communication.
 
-    :param evaluator: runs the actual experiment or simulation, ``phi_point -> y``. 
+    :param evaluator: runs the actual experiment or simulation, ``phi_point -> y``.
     :param mixing_weight: ``agent_id -> pi_ij``. To reproduce the paper, bind
         ``topology.uniform_weight`` -- that is what the reference uses. Returns 0 for
         non-neighbors, so tokens arriving by an unexpected path are ignored rather than
@@ -63,9 +63,9 @@ class ADKOAgent(AgentProtocol):
         evaluator: Callable[[Any], float],
         mixing_weight: Callable[[str], float],
         baseline: BaseBaseline,
-        language_model: Optional[LanguageModel] = None,
-        pruner: Optional[TokenPruner] = None,
-        weights: Optional[ReasoningWeights] = None,
+        language_model: LanguageModel | None = None,
+        pruner: TokenPruner | None = None,
+        weights: ReasoningWeights | None = None,
         token_budget: int = 40,
         n_lm_candidates: int = 10,
         n_local_candidates: int = 10,
@@ -73,13 +73,12 @@ class ADKOAgent(AgentProtocol):
         emit_insight: bool = True,
         objective: str = "maximize",
         warmup_rounds: int = 5,
-        total_proposals: Optional[int] = None,
+        total_proposals: int | None = None,
         seed: int = 0,
         include_own_tokens: bool = True,
-        embedding_privatizer: Optional[
-            Callable[[Sequence[float]], Sequence[float]]
-        ] = None,
-        warmup_points: Optional[Sequence[Any]] = None,
+        embedding_privatizer: None
+        | (Callable[[Sequence[float]], Sequence[float]]) = None,
+        warmup_points: Sequence[Any] | None = None,
     ):
         self.agent_id = agent_id
         self.surrogate = surrogate
@@ -103,10 +102,10 @@ class ADKOAgent(AgentProtocol):
         self.warmup_points = list(warmup_points) if warmup_points is not None else None
 
         # Private state. None of this is ever transmitted (Constraint 3.1).
-        self.token_memory: List[KnowledgeToken] = []
-        self._observations: List[float] = []
-        self._points: List[Any] = []
-        self._inbox: List[KnowledgeToken] = []
+        self.token_memory: list[KnowledgeToken] = []
+        self._observations: list[float] = []
+        self._points: list[Any] = []
+        self._inbox: list[KnowledgeToken] = []
         # Points already evaluated, keyed by their embedding, so the candidate pool can
         # exclude them. The reference does this by subtracting its observed set from the
         # full grid (`run_suzuki.py::_unobserved_candidates`); re-proposing a point that has
@@ -115,7 +114,7 @@ class ADKOAgent(AgentProtocol):
         self._best_round: int = -1
         #: Reasoning score formulation terms for the last non-warmup round; ``None`` in warmup. Written by
         #: :meth:`act`, read by drivers that log per-step traces.
-        self.last_decision: Optional[Dict[str, Any]] = None
+        self.last_decision: dict[str, Any] | None = None
 
     # -- AgentProtocol -----------------------------------------------------------------
 
@@ -123,7 +122,7 @@ class ADKOAgent(AgentProtocol):
         """Stage incoming peer tokens; they are merged at the top of the next round."""
         self._inbox.extend(tokens)
 
-    def act(self, round_idx: int) -> List[KnowledgeToken]:
+    def act(self, round_idx: int) -> list[KnowledgeToken]:
         """One full ADKO round. Returns the token to broadcast (zero or one, per 3.2)."""
         # Step 1: token aggregation.
         self.token_memory = merge(self.token_memory, self._inbox)
@@ -239,7 +238,7 @@ class ADKOAgent(AgentProtocol):
         """``run_suzuki.py:1146`` -- random until enough rounds *and* enough observations."""
         return round_idx < self.warmup_rounds or len(self._observations) < 2
 
-    def _warmup_point(self, round_idx: int) -> Optional[Any]:
+    def _warmup_point(self, round_idx: int) -> Any | None:
         """Return the injected warmup point for this round, if one exists."""
         if self.warmup_points is None or round_idx >= len(self.warmup_points):
             return None
@@ -250,7 +249,7 @@ class ADKOAgent(AgentProtocol):
         does not make the same categorical point look like two."""
         return tuple(round(float(v), 9) for v in embedding)
 
-    def _unobserved(self) -> Optional[List[Any]]:
+    def _unobserved(self) -> list[Any] | None:
         """This agent's allowed points minus the ones it has already measured.
 
         ``None`` when the space cannot be enumerated -- a continuous space -- in which case
@@ -266,7 +265,7 @@ class ADKOAgent(AgentProtocol):
             if self._key(self.space.embed(point)) not in self._observed_keys
         ]
 
-    def _propose_random(self) -> Optional[Any]:
+    def _propose_random(self) -> Any | None:
         """Warmup, and the fallback when the candidate pool collapses."""
         pool = self._unobserved()
         if pool is not None:
@@ -274,7 +273,7 @@ class ADKOAgent(AgentProtocol):
         sampled = self.space.sample(1)
         return sampled[0] if sampled else None
 
-    def _progress(self) -> Dict[str, Any]:
+    def _progress(self) -> dict[str, Any]:
         """What the reference's propose prompt calls the progress block.
 
         Lets the model tell "this region is promising and unexplored" from "this region is
@@ -297,7 +296,7 @@ class ADKOAgent(AgentProtocol):
             ),
         }
 
-    def _generate_candidates(self) -> List[Any]:
+    def _generate_candidates(self) -> list[Any]:
         """Steps 3-4. Mirrors ``run_suzuki.py::propose``'s pool construction.
 
         Three cases, in the reference's own order:
@@ -313,7 +312,7 @@ class ADKOAgent(AgentProtocol):
         """
         unobserved = self._unobserved()
 
-        lm_picks: List[Any] = []
+        lm_picks: list[Any] = []
         if self.language_model is not None:
             proposed = self.language_model.propose(
                 self.token_memory,
@@ -361,7 +360,7 @@ class ADKOAgent(AgentProtocol):
 
     # -- inspection --------------------------------------------------------------------
 
-    def best_so_far(self) -> Optional[Tuple[Any, float]]:
+    def best_so_far(self) -> tuple[Any, float] | None:
         if not self._observations:
             return None
         best_idx = max(
@@ -375,7 +374,7 @@ class ADKOAgent(AgentProtocol):
             return 1.0
         return sum(k.fidelity() for k in self.token_memory) / len(self.token_memory)
 
-    def state_dict(self) -> Dict[str, Any]:
+    def state_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "observations": list(self._observations),

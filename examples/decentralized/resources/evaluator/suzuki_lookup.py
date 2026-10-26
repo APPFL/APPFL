@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Callable, Dict, Optional, Sequence, Tuple
+from typing import Callable, Sequence
 
 _SPACE_DIR = Path(__file__).resolve().parents[1] / "space"
 if str(_SPACE_DIR) not in sys.path:
@@ -20,7 +20,7 @@ from suzuki_space import build_lookup_table, make_evaluator  # noqa: E402
 
 #: Loading the Olympus dataset takes seconds and every agent in a serial run asks for the
 #: same table, so it is built once per process.
-_LOOKUP: Optional[Dict[Tuple[int, ...], float]] = None
+_LOOKUP: dict[tuple[int, ...], float] | None = None
 
 
 def get_evaluator() -> Callable[[Sequence[int]], float]:

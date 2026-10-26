@@ -14,14 +14,14 @@ across real institutions. Algorithm-specific traces subclass :class:`Meter` -- s
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Sequence
+from typing import Any, Callable, Sequence
 
 from appfl.decentralized.protocol import TokenProtocol
 
 
 def metered_evaluator(
     evaluator: Callable[[Any], float],
-    meter: "Meter",
+    meter: Meter,
     cost_seconds: float = 0.0,
 ) -> Callable[[Any], float]:
     """Wrap an agent's evaluation callable so every call is counted.
@@ -59,7 +59,7 @@ class Meter:
     tokens_dropped_budget: int = 0
     evaluations: int = 0
     compute_seconds: float = 0.0
-    best_by_round: List[float] = field(default_factory=list)
+    best_by_round: list[float] = field(default_factory=list)
 
     def record_sent(self, tokens: Sequence[TokenProtocol]) -> None:
         """Count one delivery of ``tokens`` to one neighbor."""
@@ -78,7 +78,7 @@ class Meter:
         """Communication efficiency: the x-axis of a coordination-scaling curve."""
         return 0.0 if self.evaluations == 0 else self.bits_sent / self.evaluations
 
-    def merge(self, other: "Meter") -> None:
+    def merge(self, other: Meter) -> None:
         """Fold another meter in. Used to reduce per-rank meters onto rank 0 after an MPI run."""
         self.bits_sent += other.bits_sent
         self.messages_sent += other.messages_sent

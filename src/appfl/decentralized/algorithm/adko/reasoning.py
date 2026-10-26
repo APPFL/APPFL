@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Callable, Iterable, Sequence
 
 from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken, Signal
 
@@ -116,7 +116,7 @@ class ReasoningWeights:
     @classmethod
     def many_task(
         cls, dim: int = 10, target_similarity: float = 0.2
-    ) -> "ReasoningWeights":
+    ) -> ReasoningWeights:
         """Return the Rillo et al. (ADKO) v2 defaults."""
         return cls(
             beta=2.0,
@@ -130,7 +130,7 @@ class ReasoningWeights:
         )
 
     @classmethod
-    def suzuki(cls) -> "ReasoningWeights":
+    def suzuki(cls) -> ReasoningWeights:
         """Return the Suzuki benchmark defaults."""
         # intended to replicate the suzuki benchmark configuration.
         return cls(
@@ -149,8 +149,8 @@ def peer_terms(
     candidate_embedding: Sequence[float],
     token_memory: Iterable[KnowledgeToken],
     mixing_weight: Callable[[str], float],
-    weights: Optional[ReasoningWeights] = None,
-) -> Tuple[float, float]:
+    weights: ReasoningWeights | None = None,
+) -> tuple[float, float]:
     """Return peer attraction ``G`` and avoidance ``Lambda``.
 
     For each source, tokens contribute ``w_k S(theta, theta_k)`` where
@@ -165,9 +165,9 @@ def peer_terms(
     """
     weights = weights or ReasoningWeights()
 
-    by_source: Dict[str, List[KnowledgeToken]] = (
-        {}
-    )  # group tokens by their respective agent --- matches the per-neighbor source aggretation idea where success and failure terms are computed per neighbor then aggregated over neighbors.
+    by_source: dict[
+        str, list[KnowledgeToken]
+    ] = {}  # group tokens by their respective agent --- matches the per-neighbor source aggretation idea where success and failure terms are computed per neighbor then aggregated over neighbors.
     for token in token_memory:
         by_source.setdefault(token.provenance.agent_id, []).append(token)
 
@@ -177,7 +177,6 @@ def peer_terms(
 
     # for each neighbor/source j compute its contribution to both successes and failures
     for source_id, tokens in by_source.items():
-
         # drop the sources that are not neighbors in the graph, satisfying the paper's neighborhood (N_i) assumption
         if mixing_weight(source_id) <= 0.0:
             continue
@@ -231,7 +230,7 @@ def peer_terms_batch(
     candidate_embeddings: Sequence[Sequence[float]],
     token_memory: Sequence[KnowledgeToken],
     mixing_weight: Callable[[str], float],
-    weights: Optional[ReasoningWeights] = None,
+    weights: ReasoningWeights | None = None,
 ):
     """Vectorized :func:`peer_terms` for many candidates.
 
@@ -258,7 +257,7 @@ def peer_terms_batch(
     if candidates.ndim == 1:
         candidates = candidates.reshape(n, -1)
 
-    by_source: Dict[str, List[KnowledgeToken]] = {}
+    by_source: dict[str, list[KnowledgeToken]] = {}
     for token in usable:
         by_source.setdefault(token.provenance.agent_id, []).append(token)
 
@@ -336,11 +335,11 @@ def score_candidates(
     candidates: Sequence[
         Sequence[float]
     ],  # list of candidate points represented as embeddings (\phi(\theta))
-    posteriors: Sequence[Tuple[float, float]],  # list of (\mu, \sigma)
+    posteriors: Sequence[tuple[float, float]],  # list of (\mu, \sigma)
     token_memory: Sequence[KnowledgeToken],  # K_i^t
     mixing_weight: Callable[[str], float],  # \pi_{ij}
-    weights: Optional[ReasoningWeights] = None,  # hyperparam presets
-) -> Dict[int, float]:
+    weights: ReasoningWeights | None = None,  # hyperparam presets
+) -> dict[int, float]:
     """Return ADKO scores keyed by candidate index.
 
     Args:
@@ -363,7 +362,7 @@ def score_candidates(
     except ImportError:
         pass
 
-    scores: Dict[int, float] = {}
+    scores: dict[int, float] = {}
     for idx, (embedding, (mu, sigma)) in enumerate(zip(candidates, posteriors)):
         attraction, avoidance = peer_terms(
             embedding, token_memory, mixing_weight, weights

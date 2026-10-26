@@ -175,4 +175,3 @@ class DeOptNodeAgent(DFLNodeAgent):
                 else "-",
             ]
         )
-

@@ -9,7 +9,6 @@ without exposing the raw history used to choose ``b``.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Tuple
 
 
 class BaseBaseline(ABC):
@@ -80,5 +79,5 @@ class BaseBaseline(ABC):
         """
 
     @abstractmethod
-    def current(self) -> Tuple[float, float]:
+    def current(self) -> tuple[float, float]:
         """Return ``(baseline, scale)`` to encode the next token with."""

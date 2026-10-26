@@ -7,7 +7,7 @@ config, instantiated once per agent, and never transmitted (ADKO Constraint 3.1)
 from __future__ import annotations
 
 import math
-from typing import List, Sequence, Tuple
+from typing import Sequence
 
 from appfl.decentralized.algorithm.adko import Surrogate
 
@@ -23,10 +23,12 @@ class KernelSurrogate(Surrogate):
     def __init__(self, bandwidth: float = 0.05, prior_sigma: float = 1.0):
         self.bandwidth = bandwidth
         self.prior_sigma = prior_sigma
-        self.xs: List[float] = []
-        self.ys: List[float] = []
+        self.xs: list[float] = []
+        self.ys: list[float] = []
 
-    def posterior(self, candidates: Sequence[Sequence[float]]) -> List[Tuple[float, float]]:
+    def posterior(
+        self, candidates: Sequence[Sequence[float]]
+    ) -> list[tuple[float, float]]:
         """Return **standardized** ``(mu, sigma)``.
 
         Standardizing here is not cosmetic. The peer terms G and Lambda are normalized into

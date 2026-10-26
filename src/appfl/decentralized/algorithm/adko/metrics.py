@@ -15,7 +15,7 @@ Wire it in through the round driver's existing ``on_round_end`` hook::
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List, Sequence
+from typing import Any, Sequence
 
 from appfl.decentralized.metrics import Meter
 
@@ -24,7 +24,7 @@ from appfl.decentralized.metrics import Meter
 class ADKOMeter(Meter):
     """:class:`Meter` plus ADKO's per-round fidelity trace."""
 
-    mean_fidelity_by_round: List[float] = field(default_factory=list)
+    mean_fidelity_by_round: list[float] = field(default_factory=list)
 
     def record_fidelity(self, agents: Sequence[Any]) -> None:
         """Append this round's ``eta_bar``, averaged across agents.
@@ -38,9 +38,7 @@ class ADKOMeter(Meter):
         or a non-ADKO agent sharing the transport -- is not an error.
         """
         fidelities = [
-            a.mean_token_fidelity()
-            for a in agents
-            if hasattr(a, "mean_token_fidelity")
+            a.mean_token_fidelity() for a in agents if hasattr(a, "mean_token_fidelity")
         ]
         if fidelities:
             self.mean_fidelity_by_round.append(sum(fidelities) / len(fidelities))

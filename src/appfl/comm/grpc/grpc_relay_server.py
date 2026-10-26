@@ -105,7 +105,9 @@ class GRPCRelayServicer(GRPCCommunicatorServicer):
             f"({len(request.local_model)} bytes) for {sorted(send_to) or 'anyone'}"
         )
 
-        response = UpdateGlobalModelResponse(header=ServerHeader(status=ServerStatus.RUN))
+        response = UpdateGlobalModelResponse(
+            header=ServerHeader(status=ServerStatus.RUN)
+        )
         yield from proto_to_databuffer(
             response,
             max_message_size=response_chunk_size(self.max_message_size, meta_data),
@@ -223,7 +225,9 @@ def serve_relay(
             key = load_credential_from_file(key)
         if isinstance(certificate, str):
             certificate = load_credential_from_file(certificate)
-        server.add_secure_port(server_uri, grpc.ssl_server_credentials(((key, certificate),)))
+        server.add_secure_port(
+            server_uri, grpc.ssl_server_credentials(((key, certificate),))
+        )
     else:
         server.add_insecure_port(server_uri)
     server.start()

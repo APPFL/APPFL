@@ -20,7 +20,6 @@ in early rounds or flat histories.
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
 
 from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseline
 from appfl.decentralized.algorithm.adko.baseline.running_median_baseline import median
@@ -29,7 +28,7 @@ from appfl.decentralized.algorithm.adko.baseline.running_median_baseline import 
 class MaxDeviationBaseline(BaseBaseline):
     def __init__(
         self,
-        fixed_threshold: Optional[float] = None,
+        fixed_threshold: float | None = None,
         warmup_baseline: float = 0.0,
         warmup_scale: float = 1.0,
         mode: str = "per_obs",  # "per_obs" | "current"
@@ -42,7 +41,7 @@ class MaxDeviationBaseline(BaseBaseline):
         self.warmup_scale = float(warmup_scale)
         self.mode = mode
         self.min_scale = float(min_scale)
-        self._history: List[float] = []
+        self._history: list[float] = []
         self._running_max: float = 0.0
 
     def _baseline(self) -> float:
@@ -67,7 +66,7 @@ class MaxDeviationBaseline(BaseBaseline):
             if dev > self._running_max:
                 self._running_max = dev
 
-    def current(self) -> Tuple[float, float]:
+    def current(self) -> tuple[float, float]:
         """
         Returns (b, scale) used for the next token encoding. There are two modes:
         1. per_obs (default): scale = max observed |y-b| (running max) with a min_scale floor

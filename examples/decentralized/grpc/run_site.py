@@ -67,7 +67,7 @@ budget = CommBudget(
     ),
 )
 
-# No topology: this site has none, and does not need one. 
+# No topology: this site has none, and does not need one.
 algorithm_agent = create_agent(
     node_config, neighbors, meter, llm_config=llm_config_from_args(args)
 )

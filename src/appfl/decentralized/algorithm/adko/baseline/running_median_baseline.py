@@ -8,12 +8,11 @@ confidence.
 
 from __future__ import annotations
 
-from typing import List, Tuple
 
 from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseline
 
 
-def median(values: List[float]) -> float:
+def median(values: list[float]) -> float:
     """Return the median value."""
     ordered = sorted(values)
     n = len(ordered)
@@ -21,7 +20,7 @@ def median(values: List[float]) -> float:
     return ordered[mid] if n % 2 else 0.5 * (ordered[mid - 1] + ordered[mid])
 
 
-def standard_deviation(values: List[float]) -> float:
+def standard_deviation(values: list[float]) -> float:
     if len(values) < 2:
         return 0.0
     mean = sum(values) / len(values)
@@ -41,12 +40,12 @@ class RunningMedianBaseline(BaseBaseline):
     def __init__(self, warmup_baseline: float = 0.0, warmup_scale: float = 1.0):
         self.warmup_baseline = float(warmup_baseline)
         self.warmup_scale = float(warmup_scale)
-        self._history: List[float] = []
+        self._history: list[float] = []
 
     def observe(self, observation: float) -> None:
         self._history.append(float(observation))
 
-    def current(self) -> Tuple[float, float]:
+    def current(self) -> tuple[float, float]:
         if not self._history:
             return self.warmup_baseline, self.warmup_scale
         baseline = median(self._history)

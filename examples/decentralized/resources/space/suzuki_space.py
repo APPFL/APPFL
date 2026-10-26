@@ -13,14 +13,14 @@ means looking up its measured reaction yield, not running a synthetic objective.
 from __future__ import annotations
 
 from itertools import product
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Sequence
 
 import numpy as np
 
 from appfl.decentralized.algorithm.adko import DesignSpace
 
 # Ordered SMILES from the reference. The index is the category ID, so order matters.
-PARAM_OPTIONS: Tuple[Tuple[str, ...], ...] = (
+PARAM_OPTIONS: tuple[tuple[str, ...], ...] = (
     (  # dim 0: electrophile -- 4 options
         "ClC1=CC=C(N=CC=C2)C2=C1",
         "BrC1=CC=C(N=CC=C2)C2=C1",
@@ -63,7 +63,7 @@ PARAM_OPTIONS: Tuple[Tuple[str, ...], ...] = (
 )
 
 D = len(PARAM_OPTIONS)
-N_OPTS_PER_DIM: Tuple[int, ...] = tuple(len(opts) for opts in PARAM_OPTIONS)
+N_OPTS_PER_DIM: tuple[int, ...] = tuple(len(opts) for opts in PARAM_OPTIONS)
 TOTAL_COMBOS = int(np.prod(N_OPTS_PER_DIM))  # 3,696 reactions
 
 SOLVENT_DIM = 4  # HET splits agents by solvent.
@@ -74,12 +74,12 @@ ALL_CANDIDATES_INT = np.array(
 )
 
 
-def decode_int_to_smiles(x_int: Sequence[int]) -> List[str]:
+def decode_int_to_smiles(x_int: Sequence[int]) -> list[str]:
     """Convert category IDs to the corresponding SMILES strings."""
     return [PARAM_OPTIONS[d][int(x_int[d])] for d in range(D)]
 
 
-def build_lookup_table() -> Dict[Tuple[int, ...], float]:
+def build_lookup_table() -> dict[tuple[int, ...], float]:
     """Load ``suzuki_edbo`` as ``{category_tuple: mean_yield}``.
 
     Yields are percentages in ``[0, 100]``. If the raw dataset contains repeated
@@ -94,7 +94,7 @@ def build_lookup_table() -> Dict[Tuple[int, ...], float]:
 
     smiles_to_idx = [{opts[i]: i for i in range(len(opts))} for opts in PARAM_OPTIONS]
 
-    agg: Dict[Tuple[int, ...], List[float]] = {}
+    agg: dict[tuple[int, ...], list[float]] = {}
     for row in data:
         smiles_key = tuple(str(v) for v in row[:n_params])
         try:
@@ -108,7 +108,7 @@ def build_lookup_table() -> Dict[Tuple[int, ...], float]:
     return {k: float(np.mean(v)) for k, v in agg.items()}
 
 
-def make_evaluator(lookup: Dict[Tuple[int, ...], float]):
+def make_evaluator(lookup: dict[tuple[int, ...], float]):
     """Return the local objective ``design point -> yield``.
 
     This is ADKO Algorithm 1 step 9: the only time an agent touches ground truth.
@@ -150,17 +150,17 @@ class SuzukiSpace(DesignSpace):
                 ALL_CANDIDATES_INT[:, SOLVENT_DIM] == self.agent_index
             ]
         # Store once because `enumerate()` is called every round.
-        self._allowed: List[Tuple[int, ...]] = [
+        self._allowed: list[tuple[int, ...]] = [
             tuple(int(v) for v in row) for row in allowed
         ]
 
-    def embed(self, point: Sequence[int]) -> List[float]:
+    def embed(self, point: Sequence[int]) -> list[float]:
         return [float(v) for v in point]
 
-    def enumerate(self) -> List[Tuple[int, ...]]:
+    def enumerate(self) -> list[tuple[int, ...]]:
         return self._allowed
 
-    def sample(self, n: int, seed: Optional[int] = None) -> List[Tuple[int, ...]]:
+    def sample(self, n: int, seed: int | None = None) -> list[tuple[int, ...]]:
         rng = np.random.default_rng(seed) if seed is not None else self._rng
         idx = rng.integers(0, len(self._allowed), size=n)
         return [self._allowed[int(i)] for i in idx]
@@ -168,7 +168,7 @@ class SuzukiSpace(DesignSpace):
 
 def flip_categories(
     point: Sequence[float], p_noise: float, rng: np.random.Generator
-) -> List[float]:
+) -> list[float]:
     """Apply reference-style token-location noise.
 
     Each category is independently replaced by a different valid category with

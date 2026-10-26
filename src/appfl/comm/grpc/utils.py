@@ -5,6 +5,7 @@ from .grpc_communicator_pb2 import DataBuffer
 
 MAX_RECEIVE_MESSAGE_BYTES: int = 256 * 1024 * 1024
 
+
 def response_chunk_size(
     own_max_message_size: int, meta_data: Optional[Dict[str, Any]] = None
 ) -> int:

@@ -10,7 +10,7 @@ only needs it to predict an expected value ``mu(theta)`` and uncertainty
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Sequence
 
 from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken
 
@@ -26,7 +26,7 @@ class Surrogate(ABC):
     @abstractmethod
     def posterior(
         self, candidates: Sequence[Sequence[float]]
-    ) -> List[Tuple[float, float]]:
+    ) -> list[tuple[float, float]]:
         """Return ``(mu, sigma)`` for each candidate embedding."""
 
     @abstractmethod
@@ -45,11 +45,11 @@ class LanguageModel(ABC):
     def propose(
         self,
         token_memory: Sequence[KnowledgeToken],
-        space: "DesignSpace",
+        space: DesignSpace,
         n: int,
-        history: Optional[Sequence[Tuple[Any, float]]] = None,
-        progress: Optional[Dict[str, Any]] = None,
-    ) -> List[Any]:
+        history: Sequence[tuple[Any, float]] | None = None,
+        progress: dict[str, Any] | None = None,
+    ) -> list[Any]:
         """Return candidate design points.
 
         Args:
@@ -63,7 +63,7 @@ class LanguageModel(ABC):
     @abstractmethod
     def encode_insight(
         self, embedding: Sequence[float], observation: float, threshold: float
-    ) -> Optional[str]:
+    ) -> str | None:
         """Return optional insight ``z`` for an outgoing token.
 
         Args:
@@ -82,18 +82,18 @@ class DesignSpace(ABC):
     """
 
     @abstractmethod
-    def embed(self, point: Any) -> List[float]:
+    def embed(self, point: Any) -> list[float]:
         """``phi(theta)``. Non-invertible."""
 
     @abstractmethod
-    def sample(self, n: int, seed: Optional[int] = None) -> List[Any]:
+    def sample(self, n: int, seed: int | None = None) -> list[Any]:
         """Draw candidate design points, for the exploration perturbations in step 4."""
 
-    def enumerate(self) -> Optional[List[Any]]:
+    def enumerate(self) -> list[Any] | None:
         """Return all feasible points, or ``None`` if the space is not enumerable."""
         return None
 
-    def local_perturbations(self, around: Any, n: int) -> List[Any]:
+    def local_perturbations(self, around: Any, n: int) -> list[Any]:
         """Algorithm 1 step 4: exploitation perturbations near the current best.
 
         Default falls back to uniform sampling; override for spaces where "near" is
@@ -114,7 +114,7 @@ class DesignSpace(ABC):
             f"LanguageModel; it tells the model what this agent may choose."
         )
 
-    def parse(self, payload: Any) -> Optional[Any]:
+    def parse(self, payload: Any) -> Any | None:
         """Turn one LM-proposed JSON value into a design point, or ``None`` to reject it.
 
         This is a trust boundary: the model will occasionally return values outside the

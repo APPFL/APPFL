@@ -18,7 +18,7 @@ second algorithm reuse the communicators, ``topology/`` and ``budget.py`` unchan
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, runtime_checkable
+from typing import Any, Protocol, Sequence, runtime_checkable
 
 
 @runtime_checkable
@@ -64,16 +64,16 @@ class AgentProtocol(ABC):
         """
 
     @abstractmethod
-    def act(self, round_idx: int) -> List[TokenProtocol]:
+    def act(self, round_idx: int) -> list[TokenProtocol]:
         """Run one round; return tokens to broadcast (at most one per ADKO Constraint 3.2)."""
 
-    def state_dict(self) -> Dict[str, Any]:
+    def state_dict(self) -> dict[str, Any]:
         """For checkpointing long HPC runs. Default: not checkpointable."""
         return {}
 
-    def load_state_dict(self, state: Dict[str, Any]) -> None:
+    def load_state_dict(self, state: dict[str, Any]) -> None:
         return None
 
-    def best_so_far(self) -> Optional[Tuple[Any, float]]:
+    def best_so_far(self) -> tuple[Any, float] | None:
         """``(design_point, observation)``. Read by the evaluation harness, never by peers."""
         return None

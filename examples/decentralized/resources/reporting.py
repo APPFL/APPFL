@@ -6,7 +6,7 @@ claim is only checkable if the three print the same thing. ``diff`` is the test.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 # `appfl.decentralized` has an empty __init__ on this branch -- import from the submodule
 from appfl.decentralized.metrics import Meter
@@ -39,7 +39,7 @@ def print_config(agents: Sequence[Any]) -> None:
     print(f"baseline            : {type(agents[0].baseline).__name__}")
 
 
-def print_agent(agent: Any, rank: Optional[int] = None) -> None:
+def print_agent(agent: Any, rank: int | None = None) -> None:
     best = agent.best_so_far()
     if best is None:
         return
@@ -51,7 +51,7 @@ def print_agent(agent: Any, rank: Optional[int] = None) -> None:
     )
 
 
-def print_totals(meter: Meter, n_rounds: int, optimum: Optional[float] = None) -> None:
+def print_totals(meter: Meter, n_rounds: int, optimum: float | None = None) -> None:
     if meter.best_by_round:
         suffix = f"  (true optimum {optimum:.1f})" if optimum is not None else ""
         print(f"federation best     : {max(meter.best_by_round):.1f}{suffix}")
@@ -78,7 +78,7 @@ def report(
     agents: Sequence[Any],
     meter: Meter,
     n_rounds: int,
-    optimum: Optional[float] = None,
+    optimum: float | None = None,
 ) -> None:
     """The block a serial or MPI run ends with. Identical fields, identical order."""
     print(f"\n=== {label} ===")

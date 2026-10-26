@@ -10,12 +10,12 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable
 
 from omegaconf import Container, DictConfig, OmegaConf
 
 
-def as_kwargs(node: Any) -> Dict[str, Any]:
+def as_kwargs(node: Any) -> dict[str, Any]:
     """A plain dict from a config node that may be absent, empty, or already a dict.
 
     Needed because an empty ``DictConfig`` is falsy, so the usual ``node or {}`` turns it into
@@ -28,7 +28,7 @@ def as_kwargs(node: Any) -> Dict[str, Any]:
     return dict(node)
 
 
-def resolve_path(path: Union[str, Path], base_dir: Optional[Union[str, Path]] = None) -> Path:
+def resolve_path(path: str | Path, base_dir: str | Path | None = None) -> Path:
     """Resolve a config-supplied path against the working directory, then ``base_dir``.
 
     APPFL's FL examples require you to run from ``examples/``; accepting a second origin lets
@@ -45,7 +45,7 @@ def resolve_path(path: Union[str, Path], base_dir: Optional[Union[str, Path]] = 
     raise FileNotFoundError(str(path))
 
 
-def load_callable(path: Union[str, Path], name: str) -> Callable[..., Any]:
+def load_callable(path: str | Path, name: str) -> Callable[..., Any]:
     """Import ``name`` from the file at ``path``.
 
     Equivalent to :func:`appfl.misc.get_function_from_file`, except that an import error
@@ -67,7 +67,7 @@ def load_callable(path: Union[str, Path], name: str) -> Callable[..., Any]:
     return getattr(module, name)
 
 
-def agent_ids(federation_config: DictConfig) -> List[str]:
+def agent_ids(federation_config: DictConfig) -> list[str]:
     """``agent-0 ... agent-N``, unless the config names them explicitly.
 
     Explicit names matter in a real deployment, where an agent id is a site rather than an

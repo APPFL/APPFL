@@ -37,9 +37,7 @@ def roster_from_config(config: Any) -> list[str]:
     named = config.get("node_ids", None)
     if named:
         return [str(node_id) for node_id in named]
-    return generated_node_ids(
-        config["num_nodes"], str(config.get("id_prefix", "Node"))
-    )
+    return generated_node_ids(config["num_nodes"], str(config.get("id_prefix", "Node")))
 
 
 def build_topology_from_config(config: Any) -> Topology:

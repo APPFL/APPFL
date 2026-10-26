@@ -22,7 +22,7 @@ Schema, under ``agent_configs.algorithm_configs`` in the federation config::
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional
+from typing import Callable
 
 from omegaconf import DictConfig
 
@@ -44,20 +44,20 @@ from appfl.decentralized.algorithm.adko.reasoning import ReasoningWeights
 
 __all__ = ["PRUNERS", "WEIGHT_PRESETS", "create_weights", "create_agent"]
 
-PRUNERS: Dict[str, Callable[..., object]] = {
+PRUNERS: dict[str, Callable[..., object]] = {
     "fidelity": FidelityAwarePruner,
     "confidence": ConfidencePruner,
     "fifo": FIFOPruner,
     "random": RandomPruner,
 }
 
-WEIGHT_PRESETS: Dict[str, Callable[..., ReasoningWeights]] = {
+WEIGHT_PRESETS: dict[str, Callable[..., ReasoningWeights]] = {
     "many_task": ReasoningWeights.many_task,
     "suzuki": ReasoningWeights.suzuki,
 }
 
 
-def create_weights(config: Optional[DictConfig]) -> ReasoningWeights:
+def create_weights(config: DictConfig | None) -> ReasoningWeights:
     """Eq. (1)'s weights: a published preset, then any explicit overrides on top.
 
     Presets exist because ``beta``, ``lam`` and ``gamma`` are not independent knobs -- the
@@ -90,7 +90,7 @@ def create_weights(config: Optional[DictConfig]) -> ReasoningWeights:
 
 
 def _mixing_weight(
-    agent_id: str, neighbors: Neighbors, topology: Optional[Topology]
+    agent_id: str, neighbors: Neighbors, topology: Topology | None
 ) -> Callable[[str], float]:
     """``pi_ij`` as a function of the peer id, from whichever source this node has.
 
@@ -119,8 +119,8 @@ def create_agent(
     node_config: DictConfig,
     neighbors: Neighbors,
     meter: Meter,
-    llm_config: Optional[LLMConfig] = None,
-    topology: Optional[Topology] = None,
+    llm_config: LLMConfig | None = None,
+    topology: Topology | None = None,
 ) -> ADKOAgent:
     """Build one agent from one node's config: once per node, whatever the transport.
 
@@ -172,7 +172,9 @@ def create_agent(
     pruner_configs = as_kwargs(algorithm.get("pruner", None))
     pruner_name = str(pruner_configs.get("pruner", "fidelity"))
     if pruner_name not in PRUNERS:
-        raise ValueError(f"unknown pruner {pruner_name!r}; available: {sorted(PRUNERS)}")
+        raise ValueError(
+            f"unknown pruner {pruner_name!r}; available: {sorted(PRUNERS)}"
+        )
 
     return ADKOAgent(
         agent_id=agent_id,
@@ -195,7 +197,9 @@ def create_agent(
             if llm_config is not None and llm_config.enabled
             else None
         ),
-        pruner=PRUNERS[pruner_name](**as_kwargs(pruner_configs.get("pruner_kwargs", None))),
+        pruner=PRUNERS[pruner_name](
+            **as_kwargs(pruner_configs.get("pruner_kwargs", None))
+        ),
         weights=create_weights(algorithm.get("weights", None)),
         token_budget=int(algorithm.get("token_budget", 40)),
         n_lm_candidates=int(algorithm.get("n_lm_candidates", 10)),

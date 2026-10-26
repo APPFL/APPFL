@@ -8,7 +8,6 @@ federation.
 
 from __future__ import annotations
 
-from typing import Tuple
 
 from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseline
 
@@ -31,5 +30,5 @@ class FixedBaseline(BaseBaseline):
         """No-op: a fixed baseline does not learn from local history."""
         return None
 
-    def current(self) -> Tuple[float, float]:
+    def current(self) -> tuple[float, float]:
         return self.threshold, self.scale

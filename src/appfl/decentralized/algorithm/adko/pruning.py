@@ -9,7 +9,7 @@ fidelity ``eta_bar`` under the memory budget.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Sequence
+from typing import Sequence
 
 from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken
 
@@ -20,7 +20,7 @@ class TokenPruner(ABC):
     @abstractmethod
     def prune(
         self, tokens: Sequence[KnowledgeToken], budget: int, current_round: int
-    ) -> List[KnowledgeToken]:
+    ) -> list[KnowledgeToken]:
         """Return at most ``budget`` tokens to retain."""
 
 
@@ -44,7 +44,7 @@ class FidelityAwarePruner(TokenPruner):
 
     def prune(
         self, tokens: Sequence[KnowledgeToken], budget: int, current_round: int
-    ) -> List[KnowledgeToken]:
+    ) -> list[KnowledgeToken]:
         if len(tokens) <= budget:
             return list(tokens)
         ranked = sorted(
@@ -70,7 +70,7 @@ class ConfidencePruner(TokenPruner):
 
     def prune(
         self, tokens: Sequence[KnowledgeToken], budget: int, current_round: int
-    ) -> List[KnowledgeToken]:
+    ) -> list[KnowledgeToken]:
         if len(tokens) <= budget:
             return list(tokens)
         ranked = sorted(
@@ -93,7 +93,7 @@ class RandomPruner(TokenPruner):
 
     def prune(
         self, tokens: Sequence[KnowledgeToken], budget: int, current_round: int
-    ) -> List[KnowledgeToken]:
+    ) -> list[KnowledgeToken]:
         import random
 
         if len(tokens) <= budget:
@@ -107,7 +107,7 @@ class FIFOPruner(TokenPruner):
 
     def prune(
         self, tokens: Sequence[KnowledgeToken], budget: int, current_round: int
-    ) -> List[KnowledgeToken]:
+    ) -> list[KnowledgeToken]:
         if len(tokens) <= budget:
             return list(tokens)
         return sorted(tokens, key=lambda k: k.provenance.round, reverse=True)[:budget]
@@ -115,7 +115,7 @@ class FIFOPruner(TokenPruner):
 
 def merge(
     own: Sequence[KnowledgeToken], incoming: Sequence[KnowledgeToken]
-) -> List[KnowledgeToken]:
+) -> list[KnowledgeToken]:
     """ADKO Algorithm 1 step 1, ``MERGE(K_i^{t-1}, {k_j^{t-1}})``.
 
     Deduplicates on ``token_id``, since under a graph with cycles the same token can arrive
@@ -123,7 +123,7 @@ def merge(
     term ``G_i`` in proportion to how well-connected the sender happens to be.
     """
     seen = set()
-    merged: List[KnowledgeToken] = []
+    merged: list[KnowledgeToken] = []
     for token in list(own) + list(incoming):
         if token.provenance.token_id in seen:
             continue

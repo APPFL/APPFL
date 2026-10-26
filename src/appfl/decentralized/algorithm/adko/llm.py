@@ -37,7 +37,7 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Sequence
 
 from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken, Signal
 from appfl.decentralized.algorithm.adko.components import DesignSpace, LanguageModel
@@ -64,27 +64,27 @@ class LLMConfig:
     """
 
     enabled: bool = False
-    base_url: Optional[str] = None
-    api_key: Optional[str] = None
+    base_url: str | None = None
+    api_key: str | None = None
     model: str = "gpt-4o-mini"
-    temperature: Optional[float] = 0.7
-    max_output_tokens: Optional[int] = 512
+    temperature: float | None = 0.7
+    max_output_tokens: int | None = 512
     #: Which parameter name carries the output cap. Newer reasoning models on some gateways
     #: reject ``max_tokens`` and want ``max_completion_tokens``; set ``None`` to send neither
     #: and let the server decide, which is what an unfamiliar proxy usually wants.
-    token_limit_param: Optional[str] = "max_tokens"
+    token_limit_param: str | None = "max_tokens"
     timeout_seconds: float = 60.0
     max_retries: int = 3
     backoff_base: float = 2.0
     allow_remote: bool = False
     propose: bool = True
     emit_insight: bool = True
-    cache_path: Optional[str] = None
+    cache_path: str | None = None
     verbose: bool = False
-    extra_body: Dict[str, Any] = field(default_factory=dict)
+    extra_body: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_env(cls, **overrides: Any) -> "LLMConfig":
+    def from_env(cls, **overrides: Any) -> LLMConfig:
         """Build from environment variables, then apply explicit overrides.
 
         ``APPFL_DECENTRALIZED_LLM_{ENABLED,BASE_URL,API_KEY,MODEL,ALLOW_REMOTE,CACHE}``, with
@@ -94,7 +94,11 @@ class LLMConfig:
 
         def flag(name: str, default: bool) -> bool:
             raw = os.environ.get(name)
-            return default if raw is None else raw.strip().lower() in ("1", "true", "yes", "on")
+            return (
+                default
+                if raw is None
+                else raw.strip().lower() in ("1", "true", "yes", "on")
+            )
 
         config = cls(
             enabled=flag("APPFL_DECENTRALIZED_LLM_ENABLED", False),
@@ -166,7 +170,9 @@ class _PromptCache:
 
         self._sqlite3 = sqlite3
         self.path = path
-        self._conn = sqlite3.connect(path, check_same_thread=False, timeout=busy_timeout)
+        self._conn = sqlite3.connect(
+            path, check_same_thread=False, timeout=busy_timeout
+        )
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS prompts ("
@@ -180,7 +186,7 @@ class _PromptCache:
 
         return hashlib.sha256(f"{model}\x00{prompt}".encode()).hexdigest()
 
-    def get(self, model: str, prompt: str) -> Optional[str]:
+    def get(self, model: str, prompt: str) -> str | None:
         row = self._conn.execute(
             "SELECT response FROM prompts WHERE key = ?", (self.key(model, prompt),)
         ).fetchone()
@@ -199,7 +205,7 @@ class _PromptCache:
             pass
 
 
-def _parse_json_object(text: str) -> Optional[Any]:
+def _parse_json_object(text: str) -> Any | None:
     """Pull a JSON object or array out of a model response.
 
     Models wrap JSON in prose and fenced code blocks no matter how firmly the prompt asks
@@ -229,7 +235,7 @@ class OpenAILanguageModel(LanguageModel):
     """:class:`LanguageModel` over any OpenAI-compatible chat-completions endpoint.
 
     Every failure path degrades rather than raises: a timeout, a rate limit, or an
-    unparseable response yields an empty proposal list or a ``None`` insight, and the agent
+    unparsable response yields an empty proposal list or a ``None`` insight, and the agent
     continues on the LM-free path. A 40-round federated run must not die because one endpoint
     hiccuped in round 12.
     """
@@ -255,7 +261,7 @@ class OpenAILanguageModel(LanguageModel):
                 raise ImportError(
                     "LLM support needs the openai package: pip install openai"
                 ) from exc
-            kwargs: Dict[str, Any] = {
+            kwargs: dict[str, Any] = {
                 "api_key": self.config.api_key,
                 "timeout": self.config.timeout_seconds,
                 "max_retries": 0,  # retries handled here, so backoff is observable
@@ -265,7 +271,7 @@ class OpenAILanguageModel(LanguageModel):
             self._client = OpenAI(**kwargs)
         return self._client
 
-    def _complete(self, prompt: str, kind: str) -> Optional[str]:
+    def _complete(self, prompt: str, kind: str) -> str | None:
         """One chat completion, cached and retried. ``None`` on give-up."""
         import time
 
@@ -275,7 +281,7 @@ class OpenAILanguageModel(LanguageModel):
                 self.cache_hits += 1
                 return cached
 
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self.config.max_retries):
             try:
                 # Only send parameters that were actually configured. Company gateways and
@@ -289,8 +295,13 @@ class OpenAILanguageModel(LanguageModel):
                 }
                 if self.config.temperature is not None:
                     call_kwargs["temperature"] = self.config.temperature
-                if self.config.max_output_tokens is not None and self.config.token_limit_param:
-                    call_kwargs[self.config.token_limit_param] = self.config.max_output_tokens
+                if (
+                    self.config.max_output_tokens is not None
+                    and self.config.token_limit_param
+                ):
+                    call_kwargs[self.config.token_limit_param] = (
+                        self.config.max_output_tokens
+                    )
                 call_kwargs.update(self.config.extra_body)
                 response = self._get_client().chat.completions.create(**call_kwargs)
                 text = (response.choices[0].message.content or "").strip()
@@ -305,8 +316,10 @@ class OpenAILanguageModel(LanguageModel):
 
         self.failures += 1
         if self.config.verbose:
-            print(f"[llm:{self.agent_id}] {kind} failed after "
-                  f"{self.config.max_retries} attempts: {last_error}")
+            print(
+                f"[llm:{self.agent_id}] {kind} failed after "
+                f"{self.config.max_retries} attempts: {last_error}"
+            )
         return None
 
     # -- LanguageModel -----------------------------------------------------------------
@@ -316,9 +329,9 @@ class OpenAILanguageModel(LanguageModel):
         token_memory: Sequence[KnowledgeToken],
         space: DesignSpace,
         n: int,
-        history: Optional[Sequence[Any]] = None,
-        progress: Optional[Dict[str, Any]] = None,
-    ) -> List[Any]:
+        history: Sequence[Any] | None = None,
+        progress: dict[str, Any] | None = None,
+    ) -> list[Any]:
         """Algorithm 1 step 3. Peer tokens in, candidate design points out.
 
         Carries no raw observations -- only what peers already published plus the space
@@ -338,7 +351,7 @@ class OpenAILanguageModel(LanguageModel):
         if not isinstance(parsed, list):
             return []
 
-        points: List[Any] = []
+        points: list[Any] = []
         for item in parsed[:n]:
             try:
                 point = space.parse(item)
@@ -352,7 +365,7 @@ class OpenAILanguageModel(LanguageModel):
 
     def encode_insight(
         self, embedding: Sequence[float], observation: float, threshold: float
-    ) -> Optional[str]:
+    ) -> str | None:
         """Algorithm 1 step 10. One sentence explaining the outcome, for peers to reuse.
 
         Three regimes, following the reference: confident success, confident failure, and a
@@ -378,7 +391,7 @@ class OpenAILanguageModel(LanguageModel):
     # -- prompts -----------------------------------------------------------------------
 
     @staticmethod
-    def _format_progress(progress: Optional[Dict[str, Any]]) -> str:
+    def _format_progress(progress: dict[str, Any] | None) -> str:
         if not progress:
             return "  (no observations yet)"
         best = progress.get("best_y")
@@ -390,7 +403,7 @@ class OpenAILanguageModel(LanguageModel):
         )
 
     @staticmethod
-    def _format_history(history: Optional[Sequence[Any]], limit: int = 8) -> str:
+    def _format_history(history: Sequence[Any] | None, limit: int = 8) -> str:
         """This laboratory's own results. Local -- it goes to the agent's own model, never
         to a peer, and it is what lets the model exploit rather than only react."""
         if not history:
@@ -403,8 +416,8 @@ class OpenAILanguageModel(LanguageModel):
         token_memory: Sequence[KnowledgeToken],
         space: DesignSpace,
         n: int,
-        history: Optional[Sequence[Any]] = None,
-        progress: Optional[Dict[str, Any]] = None,
+        history: Sequence[Any] | None = None,
+        progress: dict[str, Any] | None = None,
     ) -> str:
         return (
             "You are helping one laboratory in a federation choose which experiments to run "
@@ -462,7 +475,9 @@ class OpenAILanguageModel(LanguageModel):
         )
 
     @staticmethod
-    def _format_peer_tokens(token_memory: Sequence[KnowledgeToken], limit: int = 12) -> str:
+    def _format_peer_tokens(
+        token_memory: Sequence[KnowledgeToken], limit: int = 12
+    ) -> str:
         """Render peer tokens for the prompt. Only published fields, never local state.
 
         Ordered by fidelity so the strongest evidence survives the context budget, and
@@ -487,7 +502,7 @@ class OpenAILanguageModel(LanguageModel):
             lines.append(line)
         return "\n".join(lines)
 
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         """Call accounting, for reporting what an LLM arm actually cost."""
         return {
             "calls": self.calls,
@@ -498,7 +513,7 @@ class OpenAILanguageModel(LanguageModel):
 
 def build_language_model(
     config: LLMConfig, agent_id: str = ""
-) -> Optional[OpenAILanguageModel]:
+) -> OpenAILanguageModel | None:
     """Return a model, or ``None`` when disabled.
 
     The single switch the rest of the code needs: ``ADKOAgent(language_model=None)`` is the

@@ -8,7 +8,7 @@ separate -- one is part of the system, the other watches it.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from typing import Sequence
 
 from appfl.decentralized.protocol import TokenProtocol
 
@@ -26,10 +26,10 @@ class CommBudget:
     magnitude, and that gap is the argument for the whole approach at DOE scale.
     """
 
-    bits_per_neighbor_per_round: Optional[int] = None
+    bits_per_neighbor_per_round: int | None = None
     tokens_per_neighbor_per_round: int = 1  # "at most one token" in the paper
 
-    def admits(self, tokens: Sequence[TokenProtocol]) -> List[TokenProtocol]:
+    def admits(self, tokens: Sequence[TokenProtocol]) -> list[TokenProtocol]:
         """Trim an outgoing batch to what the budget permits for a single neighbour."""
         allowed = list(tokens)[: self.tokens_per_neighbor_per_round]
         if self.bits_per_neighbor_per_round is None:

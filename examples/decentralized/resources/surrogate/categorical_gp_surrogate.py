@@ -14,7 +14,7 @@ as the normalized peer terms ``G`` and ``Lambda``.
 from __future__ import annotations
 
 import warnings
-from typing import List, Optional, Sequence, Tuple
+from typing import Sequence
 
 import numpy as np
 import torch
@@ -65,15 +65,15 @@ class CategoricalGPSurrogate(Surrogate):
     BATCH_SIZE = 1000
 
     def __init__(self) -> None:
-        self._X: List[List[float]] = []
-        self._y: List[float] = []
-        self._gp: Optional[CategoricalSingleTaskGP] = None
+        self._X: list[list[float]] = []
+        self._y: list[float] = []
+        self._gp: CategoricalSingleTaskGP | None = None
         self._y_mean = 0.0
         self._y_std = 1.0
 
     def posterior(
         self, candidates: Sequence[Sequence[float]]
-    ) -> List[Tuple[float, float]]:
+    ) -> list[tuple[float, float]]:
         n = len(candidates)
         # With fewer than two observations, use the reference's flat prior.
         if self._gp is None or len(self._y) < 2 or n == 0:
@@ -83,8 +83,8 @@ class CategoricalGPSurrogate(Surrogate):
 
         Xc = torch.from_numpy(np.asarray(candidates, dtype=np.float64))
         self._gp.eval()
-        mus: List[np.ndarray] = []
-        sigmas: List[np.ndarray] = []
+        mus: list[np.ndarray] = []
+        sigmas: list[np.ndarray] = []
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             for i in range(0, Xc.shape[0], self.BATCH_SIZE):
                 posterior = self._gp.posterior(Xc[i : i + self.BATCH_SIZE])
@@ -96,9 +96,7 @@ class CategoricalGPSurrogate(Surrogate):
         sigma_all = np.concatenate(sigmas)
         return list(zip(mu_all.tolist(), sigma_all.tolist()))
 
-    def posterior_arrays(
-        self, candidates: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def posterior_arrays(self, candidates: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Return posterior arrays for the full-grid scoring path."""
         n = len(candidates)
         if self._gp is None or len(self._y) < 2 or n == 0:
@@ -108,8 +106,8 @@ class CategoricalGPSurrogate(Surrogate):
 
         Xc = torch.from_numpy(np.asarray(candidates, dtype=np.float64))
         self._gp.eval()
-        mus: List[np.ndarray] = []
-        sigmas: List[np.ndarray] = []
+        mus: list[np.ndarray] = []
+        sigmas: list[np.ndarray] = []
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             for i in range(0, Xc.shape[0], self.BATCH_SIZE):
                 posterior = self._gp.posterior(Xc[i : i + self.BATCH_SIZE])
@@ -134,9 +132,7 @@ class CategoricalGPSurrogate(Surrogate):
         # Fit on standardized yields so GP terms stay comparable to peer terms.
         self._y_mean = float(y.mean())
         self._y_std = float(y.std()) if y.std() > 0 else 1.0
-        y_std_t = torch.from_numpy(
-            ((y - self._y_mean) / self._y_std).reshape(-1, 1)
-        )
+        y_std_t = torch.from_numpy(((y - self._y_mean) / self._y_std).reshape(-1, 1))
         gp = CategoricalSingleTaskGP(X, y_std_t).double()
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
         with warnings.catch_warnings():

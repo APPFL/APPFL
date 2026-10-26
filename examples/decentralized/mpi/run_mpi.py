@@ -5,7 +5,6 @@ mpirun -n 4 python decentralized/mpi/run_mpi.py
 mpirun -n 8 python decentralized/mpi/run_mpi.py --num_rounds 10
 """
 
-
 import sys
 import copy
 import argparse
@@ -34,7 +33,9 @@ from reporting import (  # noqa: E402
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(
-    "--config", type=str, default="./decentralized/resources/configs/toy1d/simulation/node_0.yaml"
+    "--config",
+    type=str,
+    default="./decentralized/resources/configs/toy1d/simulation/node_0.yaml",
 )
 argparser.add_argument("--num_rounds", type=int, default=None)
 add_llm_arguments(argparser)
@@ -88,7 +89,9 @@ communicator = MPIPeerCommunicator(
     node_id=node_id,
     node_ids=node_ids,
     send_to=neighbors.send_to,
-    recv_from=list(neighbors.recv_from), # recv_from is a dict_keys view, but MPIPeerCommunicator wants a list of ids
+    recv_from=list(
+        neighbors.recv_from
+    ),  # recv_from is a dict_keys view, but MPIPeerCommunicator wants a list of ids
 )
 
 for round_idx in range(n_rounds):

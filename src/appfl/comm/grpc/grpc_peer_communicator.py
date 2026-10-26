@@ -187,7 +187,7 @@ class GRPCPeerCommunicator:
         logger: Optional[Any] = None,
     ) -> None:
         self.node_id = str(node_id)
-        # Exactly one of `server_uri` or `relay_server_uri`: a node either serves its own payloads or 
+        # Exactly one of `server_uri` or `relay_server_uri`: a node either serves its own payloads or
         # publishes them to a relay. A site behind NAT can only do the second.
         self.server_uri = server_uri
         self.relay_server_uri = relay_server_uri
@@ -323,9 +323,7 @@ class GRPCPeerCommunicator:
             reached = sorted(p for p, u in self.recv_from.items() if u == uri)
             if reached:
                 roles.append(f"collecting {reached} from it")
-            self.logger.info(
-                f"[{self.node_id}] connected to {uri}: {', '.join(roles)}"
-            )
+            self.logger.info(f"[{self.node_id}] connected to {uri}: {', '.join(roles)}")
         self.logger.info(
             f"[{self.node_id}] ready: collecting from {sorted(self.recv_from)}"
         )
@@ -459,4 +457,6 @@ class GRPCPeerCommunicator:
         response = UpdateGlobalModelResponse()
         response.ParseFromString(received)
         if response.header.status == ServerStatus.ERROR:
-            raise RuntimeError(f"the relay rejected round {round_id} from {self.node_id}")
+            raise RuntimeError(
+                f"the relay rejected round {round_id} from {self.node_id}"
+            )

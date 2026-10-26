@@ -88,7 +88,9 @@ def get_appfl_baseline(
     try:
         BaselineClass = getattr(module, canonical)
     except AttributeError:
-        available = sorted(set(_ALIASES) | {n for n in __all__ if n.endswith("Baseline")})
+        available = sorted(
+            set(_ALIASES) | {n for n in __all__ if n.endswith("Baseline")}
+        )
         raise ValueError(
             f"Invalid baseline name: {baseline_name!r}. Built-ins: {available}. "
             f"For a custom baseline, pass baseline_path to load it from a file."

@@ -20,7 +20,11 @@ from appfl.decentralized.algorithm.adko.knowledge_token import (
     binary_entropy,
     encode_token,
 )
-from appfl.decentralized.algorithm.adko.components import DesignSpace, LanguageModel, Surrogate
+from appfl.decentralized.algorithm.adko.components import (
+    DesignSpace,
+    LanguageModel,
+    Surrogate,
+)
 from appfl.decentralized.algorithm.adko.baseline import (
     BaseBaseline,
     FixedBaseline,
@@ -104,6 +108,7 @@ __all__ = [
     "build_language_model",
 ]
 
+
 def _allow_tokens_through_torch_serialization() -> None:
     """Declare the token types as safe for ``torch.load``.
 
@@ -122,5 +127,6 @@ def _allow_tokens_through_torch_serialization() -> None:
     add_safe_globals = getattr(torch.serialization, "add_safe_globals", None)
     if add_safe_globals is not None:
         add_safe_globals([KnowledgeToken, Provenance, Signal])
+
 
 _allow_tokens_through_torch_serialization()

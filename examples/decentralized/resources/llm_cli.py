@@ -17,52 +17,72 @@ from appfl.decentralized.algorithm.adko import LLMConfig
 def add_llm_arguments(parser: argparse.ArgumentParser) -> None:
     group = parser.add_argument_group("LLM (ADKO Algorithm 1 steps 3 and 10)")
     group.add_argument(
-        "--llm", action="store_true",
+        "--llm",
+        action="store_true",
         help="enable the language model; omit for the LM-free ablation arm",
     )
     group.add_argument(
-        "--llm_base_url", default=None,
+        "--llm_base_url",
+        default=None,
         help="OpenAI-compatible endpoint (vLLM, Argo, gateway). Omit for the OpenAI API.",
     )
     group.add_argument(
-        "--llm_api_key", default=None,
+        "--llm_api_key",
+        default=None,
         help="bearer token; defaults to $APPFL_DECENTRALIZED_LLM_API_KEY or $OPENAI_API_KEY",
     )
-    group.add_argument("--llm_model", default=None, help="model name (default gpt-4o-mini)")
     group.add_argument(
-        "--llm_temperature", type=float, default=None,
+        "--llm_model", default=None, help="model name (default gpt-4o-mini)"
+    )
+    group.add_argument(
+        "--llm_temperature",
+        type=float,
+        default=None,
         help="sampling temperature; pass --llm-no-temperature to omit it entirely",
     )
     group.add_argument(
-        "--llm_no_temperature", action="store_true",
+        "--llm_no_temperature",
+        action="store_true",
         help="do not send temperature at all (some reasoning models reject any non-default)",
     )
     group.add_argument(
-        "--llm_max_tokens", type=int, default=None, help="output cap (default 512)",
+        "--llm_max_tokens",
+        type=int,
+        default=None,
+        help="output cap (default 512)",
     )
     group.add_argument(
-        "--llm_token_param", default=None,
+        "--llm_token_param",
+        default=None,
         choices=["max_tokens", "max_completion_tokens", "none"],
         help="which key carries the output cap; 'none' omits it and lets the server decide",
     )
-    group.add_argument("--llm_timeout", type=float, default=None, help="seconds per call")
     group.add_argument(
-        "--llm_cache", default=None,
+        "--llm_timeout", type=float, default=None, help="seconds per call"
+    )
+    group.add_argument(
+        "--llm_cache",
+        default=None,
         help="SQLite prompt cache path; strongly recommended for multi-seed sweeps",
     )
     group.add_argument(
-        "--llm_allow_remote", action="store_true",
+        "--llm_allow_remote",
+        action="store_true",
         help="permit sending raw observations to a non-local endpoint (see llm.py warning)",
     )
     group.add_argument(
-        "--llm_no_insight", action="store_true",
+        "--llm_no_insight",
+        action="store_true",
         help="skip the z field; candidate proposal only, which never sees raw observations",
     )
     group.add_argument(
-        "--llm_no_propose", action="store_true",
+        "--llm_no_propose",
+        action="store_true",
         help="skip candidate proposal; write insights only",
     )
-    group.add_argument("--llm_verbose", action="store_true", help="log endpoint failures")
+    group.add_argument(
+        "--llm_verbose", action="store_true", help="log endpoint failures"
+    )
 
 
 def llm_config_from_args(args: argparse.Namespace) -> LLMConfig:

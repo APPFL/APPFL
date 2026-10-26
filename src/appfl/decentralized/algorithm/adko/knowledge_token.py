@@ -38,7 +38,7 @@ import math
 import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Sequence
 
 
 class Signal(str, Enum):
@@ -83,9 +83,9 @@ class KnowledgeToken:
 
     signal: Signal
     advantage: float  # c in [0, 1]
-    embedding: List[float] = field(default_factory=list)  # phi(theta)
-    insight: Optional[str] = None  # z, optional LM text
-    insight_model: Optional[str] = None  # which LM wrote z, for the bias/noise study
+    embedding: list[float] = field(default_factory=list)  # phi(theta)
+    insight: str | None = None  # z, optional LM text
+    insight_model: str | None = None  # which LM wrote z, for the bias/noise study
     space_id: str = ""
     provenance: Provenance = field(default_factory=Provenance)
 
@@ -119,7 +119,7 @@ class KnowledgeToken:
 
     # -- wire format ------------------------------------------------------------------
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     def serialize(self) -> bytes:
@@ -132,7 +132,7 @@ class KnowledgeToken:
         return json.dumps(self.to_dict(), separators=(",", ":"), default=str).encode()
 
     @classmethod
-    def deserialize(cls, raw: bytes) -> "KnowledgeToken":
+    def deserialize(cls, raw: bytes) -> KnowledgeToken:
         d = json.loads(raw.decode())
         return cls(
             signal=Signal(d["signal"]),
@@ -165,8 +165,8 @@ def encode_token(
     scale: float,
     embedding: Sequence[float],
     space_id: str = "",
-    insight: Optional[str] = None,
-    insight_model: Optional[str] = None,
+    insight: str | None = None,
+    insight_model: str | None = None,
     objective: str = "maximize",
 ) -> KnowledgeToken:
     """ADKO Algorithm 1 step 10, ``M_i.ENCODE(theta, y, tau)``, without the LM part.

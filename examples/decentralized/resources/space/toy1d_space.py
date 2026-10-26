@@ -15,13 +15,13 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any, Sequence
 
 from appfl.decentralized.algorithm.adko import DesignSpace
 
 #: The four windows of the published toy configuration. Only ``agent-1``'s window contains
 #: the true peak, which is the shape that makes a neighbour's token worth anything.
-DEFAULT_WINDOWS: Tuple[Tuple[float, float], ...] = (
+DEFAULT_WINDOWS: tuple[tuple[float, float], ...] = (
     (0.00, 0.30),
     (0.25, 0.50),
     (0.45, 0.75),
@@ -29,7 +29,7 @@ DEFAULT_WINDOWS: Tuple[Tuple[float, float], ...] = (
 )
 
 
-def even_windows(num_agents: int, overlap: float = 0.2) -> List[Tuple[float, float]]:
+def even_windows(num_agents: int, overlap: float = 0.2) -> list[tuple[float, float]]:
     """``num_agents`` equal slices of [0, 1], each widened by ``overlap`` of its own width.
 
     Used when the launcher is given an agent count other than four -- an MPI scaling run, for
@@ -59,14 +59,14 @@ class Interval1D(DesignSpace):
         self.n_bins = n_bins
         self.rng = random.Random(seed)
 
-    def embed(self, point: Any) -> List[float]:
+    def embed(self, point: Any) -> list[float]:
         return [round(point * self.n_bins) / self.n_bins]
 
-    def sample(self, n: int, seed: Optional[int] = None) -> List[Any]:
+    def sample(self, n: int, seed: int | None = None) -> list[Any]:
         rng = random.Random(seed) if seed is not None else self.rng
         return [rng.uniform(self.lo, self.hi) for _ in range(n)]
 
-    def enumerate(self) -> Optional[List[Any]]:
+    def enumerate(self) -> list[Any] | None:
         """The quantization grid restricted to this agent's window.
 
         Enumerable on purpose: it puts this toy on the reference's code path -- score the
@@ -78,9 +78,10 @@ class Interval1D(DesignSpace):
         hi = int(math.floor(self.hi * self.n_bins))
         return [i * step for i in range(lo, hi + 1)]
 
-    def local_perturbations(self, around: Any, n: int) -> List[Any]:
+    def local_perturbations(self, around: Any, n: int) -> list[Any]:
         return [
-            min(self.hi, max(self.lo, around + self.rng.gauss(0, 0.05))) for _ in range(n)
+            min(self.hi, max(self.lo, around + self.rng.gauss(0, 0.05)))
+            for _ in range(n)
         ]
 
     # -- hooks used only when an LLM is attached --------------------------------------
@@ -93,7 +94,7 @@ class Interval1D(DesignSpace):
             f"better; yields run 0-100."
         )
 
-    def parse(self, payload: Any) -> Optional[Any]:
+    def parse(self, payload: Any) -> Any | None:
         """Accept a number or {"x": number} inside this slice; reject anything else.
 
         Rejecting rather than clamping is deliberate: a clamped candidate looks like a real
@@ -111,7 +112,7 @@ class Interval1D(DesignSpace):
 def get_design_space(
     agent_index: int = 0,
     num_agents: int = len(DEFAULT_WINDOWS),
-    windows: Optional[Sequence[Sequence[float]]] = None,
+    windows: Sequence[Sequence[float]] | None = None,
     n_bins: int = 50,
     seed: int = 0,
 ) -> Interval1D:
