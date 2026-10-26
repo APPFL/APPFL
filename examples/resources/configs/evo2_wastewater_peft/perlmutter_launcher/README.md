@@ -8,9 +8,8 @@ Build your own with:
 bash setup_perlmutter_environment.sh /pscratch/sd/<u>/<your-username>/dbforge/evo2_metagenomics
 ```
 
-No GPU needed to build the env — this can run on a login node, unlike Polaris
-(where `setup_polaris_environment.sh` compiles flash-attn/mamba-ssm and needs
-`nvidia-smi` present).
+Compiles flash-attn from source like Polaris does, but doesn't need a GPU
+present to do it — runs fine on a login node.
 
 This creates the env at
 `/pscratch/sd/<u>/<your-username>/dbforge/evo2_metagenomics/envs/evo2_fl_env312`.

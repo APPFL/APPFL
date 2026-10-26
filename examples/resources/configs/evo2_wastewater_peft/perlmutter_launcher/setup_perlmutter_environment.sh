@@ -19,30 +19,36 @@ TRITON_CACHE_DIR="${BASE_DIR}/.triton_cache"
 mkdir -p "${PIP_CACHE_DIR}" "${TMPDIR}" "${TRITON_CACHE_DIR}"
 
 module load conda
+module load cudatoolkit/12.4
+module load gcc-native/12.3
+
+export CC=/usr/bin/gcc-12
+export CXX=/usr/bin/g++-12
+export CUDAHOSTCXX=/usr/bin/g++-12
 export PIP_CACHE_DIR TMPDIR TRITON_CACHE_DIR
 
 conda create -y -p "${ENV_DIR}" python=3.12
 conda activate "${ENV_DIR}"
 
-# PyTorch with the CUDA 12.8 build matching Perlmutter's A100 driver.
-# Install this BEFORE appfl: appfl's own requirement is just "torch" with no
-# version pin, so once this is installed, installing appfl afterward won't
-# touch it or swap in a different CUDA build.
-pip install torch --index-url https://download.pytorch.org/whl/cu128
+# torch + torchvision together, same cu128 index, before appfl: appfl pulls
+# in an unpinned torchvision that otherwise mismatches torch's CUDA version.
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 
-# appfl >= 1.12.0 — this is the first tagged release with the gRPC polling
-# feature, needed for long-running FL rounds behind a public TLS relay
-# (e.g. APPFLx). Pulls in grpc, pandas, numpy, and most other deps.
 pip install "appfl>=1.12.0"
 
-# Evo2 — pulls in biopython, huggingface_hub, and vtx (which itself installs
-# flash-attn, the actual GPU kernels for Evo2's architecture).
+# flash-attn needs its own --no-build-isolation build; evo2/vtx don't pull
+# in a working one. MAX_JOBS caps nvcc parallelism so it doesn't OOM.
+export MAX_JOBS=2
+pip install flash-attn --no-build-isolation
+
 pip install evo2
 
 python3 -c "
-import torch, appfl, evo2
+import torch, evo2, flash_attn
+from appfl.agent.client import ClientAgent
 print('PyTorch:', torch.__version__, '| CUDA:', torch.cuda.is_available())
-print('evo2 OK')
+print('Flash Attention:', flash_attn.__version__)
+print('evo2 OK, appfl.agent.client OK')
 "
 
 echo "Env ready at ${ENV_DIR}"
