@@ -74,7 +74,7 @@ class Neighbors:
             )
         if not self.weights:
             uniform = 1.0 / (len(self.recv_from) + 1)
-            return {peer: uniform for peer in self.recv_from} | {local_id: uniform}
+            return {**{peer: uniform for peer in self.recv_from}, local_id: uniform}
         if len(self.weights) != len(self.recv_from):
             missing = sorted(set(self.recv_from) - set(self.weights))
             raise ValueError(
