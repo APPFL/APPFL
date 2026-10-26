@@ -1,4 +1,4 @@
-"""Loading the things a config names: callables, paths, keyword blocks.
+"""Loading the things a config names: callables, keyword blocks, agent ids.
 
 What a decentralized run needs that OmegaConf does not give for free. The federation-wide
 loaders that used to live here are gone: on this branch a node's config is complete on its
@@ -26,23 +26,6 @@ def as_kwargs(node: Any) -> dict[str, Any]:
     if isinstance(node, Container):
         return OmegaConf.to_container(node, resolve=True) or {}
     return dict(node)
-
-
-def resolve_path(path: str | Path, base_dir: str | Path | None = None) -> Path:
-    """Resolve a config-supplied path against the working directory, then ``base_dir``.
-
-    APPFL's FL examples require you to run from ``examples/``; accepting a second origin lets
-    a launcher be invoked from anywhere, which matters once launchers live in subdirectories.
-    """
-    candidate = Path(path)
-    if candidate.is_absolute() or candidate.exists():
-        return candidate
-    if base_dir is not None:
-        fallback = Path(base_dir) / path
-        if fallback.exists():
-            return fallback
-        raise FileNotFoundError(f"{path} (also tried {fallback})")
-    raise FileNotFoundError(str(path))
 
 
 def load_callable(path: str | Path, name: str) -> Callable[..., Any]:

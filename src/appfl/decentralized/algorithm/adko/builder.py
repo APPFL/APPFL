@@ -130,8 +130,8 @@ def create_agent(
 
     One config, complete on its own: the federation-wide file this used to be paired with is
     gone, so what was ``federation_config.agent_configs.algorithm_configs`` is now just
-    ``node_config.algorithm_configs``. Resource paths are expected to be absolute already;
-    :func:`appfl.decentralized.config.resolve_path` is what a launcher resolves them with.
+    ``node_config.algorithm_configs``. Resource paths are resolved as given, so they are
+    relative to the working directory -- which every launcher expects to be ``examples/``.
 
     :param neighbors: who this node exchanges with. In a deployment it is all the node knows
         about the federation, which is why the mixing weight comes from here when no graph is
