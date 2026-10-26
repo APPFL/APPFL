@@ -30,14 +30,12 @@ export PIP_CACHE_DIR TMPDIR TRITON_CACHE_DIR
 conda create -y -p "${ENV_DIR}" python=3.12
 conda activate "${ENV_DIR}"
 
-# torch + torchvision together, same cu128 index, before appfl: appfl pulls
-# in an unpinned torchvision that otherwise mismatches torch's CUDA version.
+
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 
 pip install "appfl>=1.12.0"
 
-# flash-attn needs its own --no-build-isolation build; evo2/vtx don't pull
-# in a working one. MAX_JOBS caps nvcc parallelism so it doesn't OOM.
+
 export MAX_JOBS=2
 pip install flash-attn --no-build-isolation
 
