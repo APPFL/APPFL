@@ -1,12 +1,10 @@
 APPFL Communicator
 ==================
 
-The APPFL communicator is used for exchanging
+The APPFL communicator exchanges the following data between the server and client agents for the tasks they run:
 
-- various types of model data (e.g. parameters, gradients, compressed bytes, etc.)
-- metadata such as configurations, control signals, etc.
-
-for different tasks on the server/client agent side to run.
+- various types of model data (e.g., parameters, gradients, compressed bytes, etc.)
+- metadata, such as configurations, control signals, etc.
 
 In APPFL, we support the following types of communication protocols:
 
@@ -19,24 +17,25 @@ gRPC: Google Remote Procedure Call
 
 gRPC can be used either for simulating federated learning on a single machine or cluster, or for running federated learning on real-world distributed machines. It is composed of two parts:
 
-- gRPC Server Communicator (``appfl.comm.grpc.GRPCServerCommunicator``) which creates a server for listening to incoming requests from clients for various tasks.
-- gRPC Client Communicator (``appfl.comm.grpc.GRPCClientCommunicator``) which sends requests to the server for various tasks.
+- gRPC Server Communicator (``appfl.comm.grpc.GRPCServerCommunicator``), which creates a server that listens for incoming requests from clients for various tasks.
+- gRPC Client Communicator (``appfl.comm.grpc.GRPCClientCommunicator``), which sends requests to the server for various tasks.
 
 gRPC Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the server side, the server only needs to create an instance of ``GRPCServerCommunicator`` and call the ``serve`` method (available in ``appfl.comm.grpc``) to start the server. The server will listen to incoming requests from clients for various tasks.
+On the server side, you only need to create an instance of ``GRPCServerCommunicator`` and call the ``serve`` function (available in ``appfl.comm.grpc``) to start the server, which then listens for incoming requests from clients.
 
 The server can handle the following tasks:
 
-- Get configurations that are shared among all clients via the ``GetConfiguration`` method.
+- Get configurations that are shared among all clients via the ``GetConfigurationStream`` method (or ``GetConfiguration``, kept for clients older than APPFL 1.12.0).
 - Get the global model via the ``GetGlobalModel`` method.
 - Update the global model with the local model from the client via the ``UpdateGlobalModel`` method.
-- Invoke custom action on the server via the ``InvokeCustomAction`` method.
+- Invoke a custom action on the server via the ``InvokeCustomAction`` method.
+- Return the result of a request acknowledged in :ref:`polling mode <gRPC Polling Mode>` via the ``PollResult`` method.
 
 .. note::
 
-    You can add any custom tasks by implementing the corresponding methods in the ``InvokeCustomAction`` class.
+    You can add custom tasks by implementing the corresponding handlers in the ``InvokeCustomAction`` method.
 
 .. code:: python
 
@@ -50,9 +49,17 @@ The server can handle the following tasks:
             """
             Creates a gRPC server communicator.
             :param `server_agent`: `ServerAgent` object
-            :param `max_message_size`: Maximum message size in bytes to be sent/received.
-                Object size larger than this will be split into multiple messages.
+            :param `max_message_size`: Maximum message size in bytes to be sent. Responses are
+                split into messages of at most the smaller of this and the `max_message_size`
+                declared by the client (see "gRPC Message Size" below).
             :param `logger`: A logger object for logging messages
+            :param `use_polling`: Whether to acknowledge requests immediately and let clients poll
+                for the results (see "gRPC Polling Mode" below). Defaults to `False`.
+            :param `poll_interval`: Seconds between two polls of a client in polling mode.
+                Defaults to `5.0`.
+            :param `use_model_chunking`: Whether to send and aggregate large models chunk by chunk
+                (see "gRPC Model Chunking" below). Defaults to `False`.
+            :param `model_chunk_size`: Maximum size in bytes of each model chunk. Defaults to 1 GB.
             """
 
         def GetConfiguration(self, request, context):
@@ -103,11 +110,11 @@ The server can handle the following tasks:
 gRPC Client Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-During the federated learning process, the client can communicate to the server by invoking corresponding methods in the ``GRPCClientCommunicator`` class. For example, after a client finish a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
+During the federated learning process, the client communicates with the server by invoking the corresponding methods of the ``GRPCClientCommunicator`` class. For example, after a client finishes a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
 
 .. note::
 
-    You can add any custom tasks by implementing the corresponding methods in the ``invoke_custom_action`` class. Also make sure that the server has the corresponding handler codes implemented in the ``InvokeCustomAction`` method.
+    You can request custom tasks from the server via the ``invoke_custom_action`` method. Make sure that the server has the corresponding handlers implemented in the ``InvokeCustomAction`` method.
 
 .. code:: python
 
@@ -135,7 +142,12 @@ During the federated learning process, the client can communicate to the server 
             :param root_certificate: The PEM-encoded root certificates as a byte string, or `None` to retrieve them from a default location chosen by gRPC runtime.
             :param authenticator: The name of the authenticator to use for authenticating the client in each RPC.
             :param authenticator_args: The arguments to pass to the authenticator.
-            :param max_message_size: The maximum message size in bytes.
+            :param max_message_size: The maximum size in bytes of each message the client sends
+                and receives. The client declares it to the server in every request, so the server
+                splits its responses to fit.
+            :param use_model_chunking: Whether to send and receive large models chunk by chunk
+                (see "gRPC Model Chunking" below). Defaults to `False`.
+            :param model_chunk_size: Maximum size in bytes of each model chunk. Defaults to 1 GB.
             """
 
         def get_configuration(self, **kwargs) -> DictConfig:
@@ -171,17 +183,129 @@ During the federated learning process, the client can communicate to the server 
 Example Usage (gRPC)
 ~~~~~~~~~~~~~~~~~~~~
 
-Below shows an example on how to start a server using `GRPCServerCommunicator`, which waits for incoming requests from clients.
+The following example shows how to start a server using ``GRPCServerCommunicator``, which waits for incoming requests from clients.
 
 .. literalinclude:: ../../examples/grpc/run_server.py
     :language: python
     :caption: Running Federated Learning with gRPC Server Communicator.
 
-To interact with the server and start an FL experiment, you can start a client using `GRPCClientCommunicator` as shown below.
+To interact with the server and start an FL experiment, you can start a client using ``GRPCClientCommunicator`` as shown below.
 
 .. literalinclude:: ../../examples/grpc/run_client.py
     :language: python
     :caption: Running Federated Learning with gRPC Client Communicator.
+
+All the server options below are set in ``server_configs.comm_configs.grpc_configs`` of the server configuration, which ``run_server.py`` passes to both ``GRPCServerCommunicator`` and ``serve``.
+
+gRPC Message Size
+~~~~~~~~~~~~~~~~~
+
+gRPC limits the size of each single message, so models, configurations and other large data are split into chunks of ``0.9 * max_message_size`` bytes. Since APPFL 1.12.0, the server and the clients do **not** need to use the same ``max_message_size``:
+
+- The server accepts incoming messages of up to 256 MB (or its own ``max_message_size`` if larger), so clients can send with any ``max_message_size`` up to that. It can be changed with ``max_receive_message_size`` in the server's ``grpc_configs``.
+- Each client declares its ``max_message_size`` in every request, and the server splits its response for that client into chunks of the smaller of its own ``max_message_size`` and the client's.
+
+.. code-block:: yaml
+
+    # Server
+    server_configs:
+      comm_configs:
+        grpc_configs:
+          server_uri: localhost:50051
+          max_message_size: 1048576            # largest message the server sends
+          max_receive_message_size: 268435456  # optional, largest message the server accepts
+
+    # Client
+    comm_configs:
+      grpc_configs:
+        server_uri: localhost:50051
+        max_message_size: 2097152              # largest message the client sends and receives
+
+.. note::
+
+    Servers older than APPFL 1.12.0 require ``max_message_size`` to be the same on the server and all clients. A client connecting to such a server logs a warning that messages over the size limit of either side fail, and that upgrading APPFL on the server fixes it (see :ref:`gRPC Version Compatibility`).
+
+    Likewise, clients older than APPFL 1.12.0 do not declare their ``max_message_size`` in the request, so the server sends them messages up to its own ``max_message_size``, which fail if the client's is smaller. The server logs a warning to upgrade APPFL on such a client when it connects.
+
+gRPC Model Chunking
+~~~~~~~~~~~~~~~~~~~
+
+Splitting into messages of ``max_message_size`` lets a model of any size pass through gRPC, but each side still holds the whole serialized model in memory, and the server holds the local models of all clients at once while aggregating them. For large models, such as LLMs, this can exceed the memory of the server or the clients.
+
+With model chunking, the model itself is split into chunks of whole parameters, sorted by name, of at most ``model_chunk_size`` bytes each (a single parameter larger than that is a chunk on its own). Each chunk is sent, aggregated and returned as a separate request, so only one chunk of each model is in memory at a time:
+
+- ``UpdateGlobalModel``: when its local model is larger than ``model_chunk_size``, a client sends it chunk by chunk. For each chunk, the server aggregates that chunk of all clients, and returns the aggregated chunk, which the client merges into the new global model.
+- ``GetGlobalModel``: when the global model is larger than ``model_chunk_size``, the server returns its first chunk with the total number of chunks, and the client requests the other chunks one by one and merges them.
+
+Models smaller than ``model_chunk_size`` are sent as a whole as usual. Model chunking is enabled on both the server and the clients:
+
+.. code-block:: yaml
+
+    # Server
+    server_configs:
+      comm_configs:
+        grpc_configs:
+          server_uri: localhost:50051
+          max_message_size: 1048576
+          use_model_chunking: True      # default: False
+          model_chunk_size: 104857600   # 100 MB, default: 1 GB
+
+    # Client
+    comm_configs:
+      grpc_configs:
+        server_uri: localhost:50051
+        max_message_size: 1048576
+        use_model_chunking: True
+        model_chunk_size: 104857600
+
+.. note::
+
+    - Use the same ``model_chunk_size`` on the server and all clients. The server aggregates each chunk by the parameter names of the first client, so the local models of all clients must be split the same way, and the server splits the global model by its own ``model_chunk_size``.
+    - Model chunking is supported with the ``FedAvgAggregator`` only, and the server fails at start with any other aggregator. It does not support secure aggregation.
+    - Each model chunk is still split into messages of ``max_message_size`` (see :ref:`gRPC Message Size`), and goes through S3, ProxyStore or Colab transfer if configured. In polling mode, each chunk is a separate request with its own ticket (see :ref:`gRPC Polling Mode`).
+    - The local model must be a state dictionary. Models sent as bytes are not chunked.
+
+See `examples/memory_profiling <https://github.com/APPFL/APPFL/tree/main/examples/memory_profiling>`_ for the memory savings on ResNet and LLM models.
+
+gRPC Polling Mode
+~~~~~~~~~~~~~~~~~
+
+Some requests wait on the server before they return. For example, with a synchronous scheduler, ``UpdateGlobalModel`` returns only after all clients have sent their local models. When the server sits behind a proxy or load balancer with an idle timeout (e.g., 60 seconds on AWS Application Load Balancers or nginx), such a request is cut off with an error like ``504 Gateway Timeout``, even though the server is still working on it.
+
+In polling mode, the server acknowledges each such request immediately with a ticket and computes the result in the background. The client then polls the server every ``poll_interval`` seconds with the ``PollResult`` method until the result is ready, so every single call stays short. Polling mode is enabled on the server only:
+
+.. code-block:: yaml
+
+    server_configs:
+      comm_configs:
+        grpc_configs:
+          server_uri: localhost:50051
+          max_message_size: 1048576
+          use_polling: True   # default: False
+          poll_interval: 5    # seconds between two polls, default: 5
+
+Clients need no extra configuration: they poll whenever the server acknowledges a request with a ticket, and use the ``poll_interval`` sent by the server.
+
+.. note::
+
+    - ``GetGlobalModel``, ``UpdateGlobalModel`` and ``InvokeCustomAction`` (except ``close_connection``) are acknowledged in polling mode. Configurations are returned immediately.
+    - Each request waiting for its result uses one background worker on the server, so the server's ``max_workers`` (default: 128) should be at least the number of clients.
+    - A smaller ``poll_interval`` reduces the waiting time after a result is ready, at the cost of more requests. With model chunking (see :ref:`gRPC Model Chunking`), each chunk is a separate request, so a smaller ``poll_interval`` such as ``1`` is recommended.
+    - Clients older than APPFL 1.12.0 do not support polling mode. The server logs an error and rejects every request of such a client, which then fails with a message to upgrade APPFL on it (see :ref:`gRPC Version Compatibility`).
+
+gRPC Version Compatibility
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since APPFL 1.12.0, the server and the clients tell each other their APPFL versions in the ``appfl-version`` gRPC header of every request and response. Older peers ignore the header, so it never reaches their metadata or configurations. A side that sends no version runs APPFL older than 1.12.0. The server records the version of each client in ``GRPCServerCommunicator.client_versions``.
+
+The server checks the version of each client on its first request, and again whenever it changes. A client checks the version of the server on the first response of any request, so clients that never request the configurations are checked as well. Each rule for a feature in use has a level:
+
+- **error**: requests with the older side always fail, e.g., a client older than 1.12.0 connecting to a server in polling mode. The server logs an error and rejects every request of such a client with ``FAILED_PRECONDITION`` and a message to upgrade APPFL on the client, so even clients without this check stop before training, with the reason in their error. A client logs an error and raises ``IncompatibleVersionError`` on that request and every later one.
+- **warning**: requests with the older side may fail, depending on the ``max_message_size`` of both sides, e.g., a server older than 1.12.0 fails messages over the size limit of either side, and a client older than 1.12.0 fails messages from a server with a larger ``max_message_size``. The warning names the version to upgrade the older side to, in case requests fail.
+
+When no rule applies but the two sides run different minor versions (e.g., 1.12.x and 1.13.x), an **info** message recommends upgrading the older side.
+
+Pre-releases count as their release, e.g., ``1.12.0.dev0`` as ``1.12.0``. The rules are defined in ``appfl/comm/grpc/compatibility.py``: to add one, append a ``CompatibilityRule`` (the first version the other side needs, when the rule applies, what goes wrong otherwise, and its level, ``"error"`` or ``"warning"``) to ``CLIENT_RULES`` (checked by the server against each client) or ``SERVER_RULES`` (checked by the clients against the server).
 
 
 MPI: Message Passing Interface
@@ -189,28 +313,28 @@ MPI: Message Passing Interface
 
 MPI can be used for simulating federated learning on a single machine or a cluster of machines. It is composed of two parts:
 
-- MPI Server Communicator (``appfl.comm.mpi.MPIServerCommunicator``) which starts a server to listen to incoming requests from clients for various tasks.
-- MPI Client Communicator (``appfl.comm.mpi.MPIClientCommunicator``) which sends requests to the server for various tasks.
+- MPI Server Communicator (``appfl.comm.mpi.MPIServerCommunicator``), which starts a server that listens for incoming requests from clients for various tasks.
+- MPI Client Communicator (``appfl.comm.mpi.MPIClientCommunicator``), which sends requests to the server for various tasks.
 
 MPI Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the server side, the server only needs to create an instance of ``MPIServerCommunicator`` and call the ``serve`` method to start the server. The server will listen to incoming requests from clients for various tasks.
+On the server side, you only need to create an instance of ``MPIServerCommunicator`` and call its ``serve`` method to start the server, which then listens for incoming requests from clients.
 
 The server can handle the following tasks:
 
 - Get configurations that are shared among all clients via the ``_get_configuration`` method.
 - Get the global model via the ``_get_global_model`` method.
 - Update the global model with the local model from the client via the ``_update_global_model`` method.
-- Invoke custom action on the server via the ``_invoke_custom_action`` method.
+- Invoke a custom action on the server via the ``_invoke_custom_action`` method.
 
 .. note::
 
-    The server will automatically stop itself after reaching the specified ``num_global_epochs``.
+    The server automatically stops after reaching the specified ``num_global_epochs``.
 
 .. note::
 
-    You can add any custom tasks by implementing the corresponding methods in the ``_invoke_custom_action`` class.
+    You can add custom tasks by implementing the corresponding handlers in the ``_invoke_custom_action`` method.
 
 .. code:: python
 
@@ -293,11 +417,11 @@ The server can handle the following tasks:
 MPI Client Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-During the federated learning process, the client can communicates to the server by invoking corresponding methods in the ``MPIClientCommunicator`` class. For example, after a client finish a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
+During the federated learning process, the client communicates with the server by invoking the corresponding methods of the ``MPIClientCommunicator`` class. For example, after a client finishes a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
 
 .. note::
 
-    You can add any custom tasks by implementing the corresponding methods in the ``invoke_custom_action`` class. Also make sure that the server has the corresponding handler codes implemented in the ``_invoke_custom_action`` method.
+    You can request custom tasks from the server via the ``invoke_custom_action`` method. Make sure that the server has the corresponding handlers implemented in the ``_invoke_custom_action`` method.
 
 .. code:: python
 
@@ -308,7 +432,7 @@ During the federated learning process, the client can communicates to the server
         :param comm: the MPI communicator from mpi4py
         :param server_rank: the rank of the server in the MPI communicator
         :param client_id: [optional] an optional client ID for one client for logging purposes, mutually exclusive with client_ids
-        :param client_ids: [optional] a list of client IDs for a batched clients,
+        :param client_ids: [optional] a list of client IDs for batched clients,
             this is only required when the MPI process represents multiple clients
         """
 
@@ -418,15 +542,15 @@ Here is an example of how to use the MPI communicator in APPFL to start FL exper
 Globus Compute
 --------------
 
-`Globus Compute <https://globus-compute.readthedocs.io/>`_ is a distributed function as a service platform, which can be used for running federated learning on real-world distributed machines. It can turn each client into an endpoint which can be patched with remote functions on the server side to run federated learning tasks. It is composed of two parts:
+`Globus Compute <https://globus-compute.readthedocs.io/>`_ is a distributed function-as-a-service platform that can be used for running federated learning on real-world distributed machines. It turns each client into an endpoint to which the server can dispatch remote functions to run federated learning tasks. It is composed of two parts:
 
-- Globus Compute Server Communicator (``appfl.comm.globus_compute.GlobusComputeServerCommunicator``), which can send task to the client endpoints and receive the results.
+- Globus Compute Server Communicator (``appfl.comm.globus_compute.GlobusComputeServerCommunicator``), which sends tasks to the client endpoints and receives the results.
 - Globus Compute Client Entry Point (``appfl.comm.globus_compute.GlobusComputeClientCommunicator.globus_compute_client_entry_point``), which is the entry point for the client to execute the task and send the results back to the server.
 
 Globus Compute Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Globus Compute is a server-driven communication protocol, where the server sends tasks to the clients and receives the results to control the FL process. It is composed of the following methods to send tasks to the clients and receive the results:
+Globus Compute is a server-driven communication protocol, where the server sends tasks to the clients and receives the results to control the FL process. The server communicator provides the following methods to send tasks to the clients and receive the results:
 
 .. code:: python
 
@@ -501,7 +625,7 @@ Globus Compute is a server-driven communication protocol, where the server sends
             pass
 
         def shutdown_all_clients(self):
-            """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
+            """Cancel all the running tasks on the clients and shut down the Globus Compute executor."""
             pass
 
         def cancel_all_tasks(self):
@@ -511,7 +635,7 @@ Globus Compute is a server-driven communication protocol, where the server sends
 Globus Compute Client Entry Point
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For all tasks the server sent to the client, the tasks should be implemented in the client entry point function, which is the entry point for the client to execute the task and send the results back to the server. Below shows the current client entry point function which only supports the ``get_sample_size`` and ``train`` tasks. User can freely add more tasks by implementing the corresponding functions in the client entry point.
+Every task that the server sends to the clients must be implemented in the client entry point function, which executes the task on the client and sends the results back to the server. Below is a simplified version of the client entry point function, showing the ``get_sample_size`` and ``train`` tasks. Users can freely add more tasks by implementing them in the client entry point.
 
 .. code:: python
 

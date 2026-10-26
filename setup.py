@@ -37,7 +37,7 @@ else:
 
 setuptools.setup(
     name="appfl",
-    version="1.11.0",
+    version="1.12.0",
     author=AUTHOR,
     description="An open-source package for privacy-preserving federated learning",
     long_description=long_description,
@@ -120,6 +120,7 @@ setuptools.setup(
             "Pillow",
         ],
         "monai": ["monai[all]==1.2.0"],
+        "lightning": ["lightning>=2.0", "mlflow"],
         "mpi": ["mpi4py"],
         # The ZFP lossy compressor is optional: zfpy wheels are built against
         # the numpy 1.x ABI and fail to import under numpy>=2.0.0. Installing

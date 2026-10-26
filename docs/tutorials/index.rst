@@ -1,7 +1,7 @@
 Tutorials
 =========
 
-We present a collection of tutorials for APPFL framework.
+We present a collection of tutorials for the APPFL framework.
 
 .. toctree::
     :maxdepth: 1
