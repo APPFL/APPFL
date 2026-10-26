@@ -1,32 +1,23 @@
 # Polaris client launcher
 
-## First-time env setup 
+## Env
 
-Build your own with:
+The conda env is already built and shared at `/lus/grand/projects/GeomicVar/envs/db_forge_evo2`, usable by anyone in the GeomicVar group. Both `pbs_appfl_client.sh` and `launch_client.sh` already point at it, so there is nothing to set up.
 
-```bash
-qsub -I -l select=1:system=polaris:ncpus=32:ngpus=1 \
-     -l walltime=01:00:00 -l filesystems=grand \
-     -q debug -A GeomicVar
+`setup_polaris_environment.sh` is the script that built it. Keep it around in case the env ever needs to be rebuilt.
 
-bash setup_polaris_environment.sh /lus/grand/projects/GeomicVar/<your-username>/db-forge
-```
-
-This creates the env at `/lus/grand/projects/GeomicVar/<your-username>/db-forge/envs/db_forge_evo2`.
-Edit the `ENV=` line in both `pbs_appfl_client.sh` and `launch_client.sh` to that path before running them.
-
-Inside `./resources/configs/evo2_wastewater_peft/client_polaris.yaml` edit the `trainer_path` to your username
+Before running either launcher, edit `trainer_path` in `../client_polaris.yaml` to point at your own APPFL checkout.
 
 ## Batch job
 
 ```bash
-cd /home/<your-username>/APPFL/examples/resources/configs/evo2_wastewater_peft/polaris_launcher
+cd /home/<your-username>/APPFL-evo2-wastewater/examples/resources/configs/evo2_wastewater_peft/polaris_launcher
 qsub pbs_appfl_client.sh
 ```
 
 ## Interactive job
 
-1. First get an interactive job
+1. Get an interactive job
 
 ```bash
 qsub -I -l select=1:system=polaris:ncpus=32:ngpus=4 \
@@ -37,6 +28,6 @@ qsub -I -l select=1:system=polaris:ncpus=32:ngpus=4 \
 2. Then launch
 
 ```bash
-cd /home/<your-username>/APPFL/examples/resources/configs/evo2_wastewater_peft/polaris_launcher
+cd /home/<your-username>/APPFL-evo2-wastewater/examples/resources/configs/evo2_wastewater_peft/polaris_launcher
 bash launch_client.sh
 ```

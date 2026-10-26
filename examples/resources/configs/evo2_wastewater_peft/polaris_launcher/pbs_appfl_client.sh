@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-ENV=/lus/grand/projects/GeomicVar/<username>/evo2_metagenomics/envs/evo2_env312
+ENV=/lus/grand/projects/GeomicVar/envs/db_forge_evo2
 PY=/soft/applications/conda/2025-09-25/mconda3/bin/python3
 
 export CUDA_HOME=/soft/compilers/cudatoolkit/cuda-12.6.0
