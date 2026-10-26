@@ -3,13 +3,16 @@ Serve a gRPC server
 """
 
 import time
-import grpc
 from concurrent import futures
-from .grpc_communicator_pb2_grpc import add_GRPCCommunicatorServicer_to_server
-from .utils import load_credential_from_file, MAX_RECEIVE_MESSAGE_BYTES
-from .auth import APPFLAuthMetadataInterceptor
-from typing import Any, Optional, Union, Dict
+from typing import Any
+
+import grpc
+
 from appfl.misc.utils import get_appfl_authenticator
+
+from .auth import APPFLAuthMetadataInterceptor
+from .grpc_communicator_pb2_grpc import add_GRPCCommunicatorServicer_to_server
+from .utils import MAX_RECEIVE_MESSAGE_BYTES, load_credential_from_file
 
 
 def serve(
@@ -18,13 +21,13 @@ def serve(
     server_uri: str,
     use_ssl: bool = False,
     use_authenticator: bool = False,
-    server_certificate_key: Optional[Union[bytes, str]] = None,
-    server_certificate: Optional[Union[bytes, str]] = None,
-    ca_certificate: Optional[Union[bytes, str]] = None,
-    authenticator: Optional[str] = None,
-    authenticator_args: Dict[str, Any] = {},
+    server_certificate_key: bytes | str | None = None,
+    server_certificate: bytes | str | None = None,
+    ca_certificate: bytes | str | None = None,
+    authenticator: str | None = None,
+    authenticator_args: dict[str, Any] = {},
     max_message_size: int = 2 * 1024 * 1024,
-    max_receive_message_size: Optional[int] = None,
+    max_receive_message_size: int | None = None,
     max_workers: int = 128,
     **kwargs,
 ):

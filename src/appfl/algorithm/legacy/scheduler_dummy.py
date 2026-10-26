@@ -1,5 +1,6 @@
 import copy
 from typing import Any
+
 from appfl.misc.deprecation import deprecated
 
 

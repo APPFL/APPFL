@@ -1,13 +1,15 @@
 import io
+from typing import Any
+
 import torch
-from typing import Any, Dict, Optional
+
 from .grpc_communicator_pb2 import DataBuffer
 
 MAX_RECEIVE_MESSAGE_BYTES: int = 256 * 1024 * 1024
 
 
 def response_chunk_size(
-    own_max_message_size: int, meta_data: Optional[Dict[str, Any]] = None
+    own_max_message_size: int, meta_data: dict[str, Any] | None = None
 ) -> int:
     """Chunk a response to the smaller of what this server sends and what the caller accepts.
 
@@ -27,9 +29,7 @@ def proto_to_databuffer(proto, max_message_size=(2 * 1024 * 1024)):
     max_message_size = int(0.9 * max_message_size)
     data_bytes = proto.SerializeToString()
     data_bytes_size = len(data_bytes)
-    message_size = (
-        data_bytes_size if max_message_size > data_bytes_size else max_message_size
-    )
+    message_size = min(max_message_size, data_bytes_size)
 
     for i in range(0, data_bytes_size, message_size):
         chunk = data_bytes[i : i + message_size]
