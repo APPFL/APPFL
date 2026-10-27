@@ -28,6 +28,8 @@ class SyncSimDriver(BaseSimDriver):
     arrivals within a fixed time window).
     """
 
+    _flat_kind = "sync"
+
     def __init__(
         self,
         server_agent,
@@ -47,7 +49,14 @@ class SyncSimDriver(BaseSimDriver):
         target_rounds: int = 100,
         executor=None,
         task_seeding: bool = True,
+        flat_aggregation: bool = True,
     ):
+        """
+        :param flat_aggregation: With FedAvgAggregator, aggregate on a packed global
+            model (see :class:`BaseSimDriver`). With an executor, each round's
+            models are then summed as they arrive, so the barrier waits only for
+            the last one.
+        """
         super().__init__(
             server_agent,
             client_agents,
@@ -59,6 +68,7 @@ class SyncSimDriver(BaseSimDriver):
             compression_ratio=compression_ratio,
             executor=executor,
             task_seeding=task_seeding,
+            flat_aggregation=flat_aggregation,
         )
         self.participants_per_round = max(1, int(participants_per_round))
         self.mode = mode
@@ -135,7 +145,7 @@ class SyncSimDriver(BaseSimDriver):
         seeds = {cid: self._next_seed(cid) for cid in selected}
 
         if self.executor is None:
-            global_params = self.server.get_parameters(serial_run=True)
+            global_params = self._global_params()
         for cid in selected:
             profile = self.profiles[cid]
             if self.executor is None:
@@ -163,22 +173,52 @@ class SyncSimDriver(BaseSimDriver):
         The global model is published once for the round, every accepted client is
         submitted with its completion time as the deadline (so workers train them in
         aggregation order), and each result is stored in its completion dict for
-        :meth:`_aggregate_round`, which then runs unchanged.
+        :meth:`_aggregate_round`. With flat aggregation, each result is instead
+        added to the round's sum as soon as it arrives, while later ones train.
 
         :param accepted: Completion dicts accepted by the barrier, in arrival order.
         """
-        global_params = self.server.get_parameters(serial_run=True)
         version = self.server.scheduler.get_num_global_epochs()
-        self.executor.publish(version, global_params)
+        self.executor.publish(version, self._global_params(packed=True))
         handles = [
             self.executor.submit(
                 c["cid"], version, None, c["completion_time"], c["seed"]
             )
             for c in accepted
         ]
+        if self._flat is not None:
+            self._flat.begin_round([c["cid"] for c in accepted])
         for c, handle in zip(accepted, handles):
-            c["local_model"], c["meta"] = self.executor.result(handle)
+            if self._flat is None:
+                c["local_model"], c["meta"] = self.executor.result(handle)
+            else:
+                local_model, c["meta"] = self.executor.result_packed(handle)
+                if not self._add_to_round(c["cid"], local_model):
+                    c["local_model"] = self._as_state_dict(local_model)
             self._check_steps(c["cid"], c["meta"])
+
+    def _global_params(self, packed: bool = False):
+        """The current global model: packed for the executor if ``packed`` and the
+        flat path is on, else as a state dict."""
+        if self._flat is None:
+            return self.server.get_parameters(serial_run=True)
+        return self._flat.params() if packed else self._flat.state_dict()
+
+    def _add_to_round(self, cid: str, local_model) -> bool:
+        """
+        Add a local model to the flat round's sum; return False if the server agent
+        must aggregate it instead, which is possible only before the first model.
+        """
+        if self._flat.add(cid, local_model):
+            return True
+        if self._flat.updates or self._flat.round_started:
+            raise RuntimeError(
+                f"{cid}'s local model holds other tensors than the global model, "
+                f"but earlier models of this run were aggregated on the flat path; "
+                f"set flat_aggregation=False for this federation"
+            )
+        self._leave_flat_path(cid)
+        return False
 
     # ---------- barrier logic ----------
     def _apply_barrier(self, completions, t_start):
@@ -268,7 +308,18 @@ class SyncSimDriver(BaseSimDriver):
         Only the clients that passed the barrier are submitted, so the scheduler is
         told to fire at that count rather than at the configured federation size.
         The configured value is restored afterwards, leaving the scheduler as found.
+
+        On the flat path the round's models are already summed when an executor
+        trained them, and only the final step is left.
         """
+        if self._flat is not None and self.executor is None:
+            self._flat.begin_round([c["cid"] for c in accepted])
+            for c in accepted:
+                if not self._add_to_round(c["cid"], c["local_model"]):
+                    break
+        if self._flat is not None:
+            self._flat.finish()
+            return
         scheduler = self.server.scheduler
         previous_num_clients = scheduler.num_clients
         scheduler.set_num_clients(len(accepted))
@@ -358,8 +409,7 @@ class SyncSimDriver(BaseSimDriver):
         self._record_round(t_start, t_barrier, accepted, discarded, skipped=False)
 
         if self.eval_every and (self._round + 1) % self.eval_every == 0:
-            global_model = self.server.get_parameters(serial_run=True)
-            g = self._global_eval(global_model)
+            g = self._global_eval(self._global_params())
             if g is not None:
                 self.history[-1]["global_val_loss"] = g[0]
                 self.history[-1]["global_val_accuracy"] = g[1]
@@ -412,6 +462,8 @@ class SyncSimDriver(BaseSimDriver):
                     break
             if self.server.training_finished():
                 break
+        if self._flat is not None:
+            self._flat.sync_server()
         self.logger.log_banner(
             "Simulation finished",
             {
