@@ -30,24 +30,28 @@ export PIP_CACHE_DIR TMPDIR TRITON_CACHE_DIR
 conda create -y -p "${ENV_DIR}" python=3.12
 conda activate "${ENV_DIR}"
 
-# torch + torchvision together, same cu128 index, before appfl: appfl pulls
-# in an unpinned torchvision that otherwise mismatches torch's CUDA version.
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 
-pip install "appfl>=1.12.0"
+CONSTRAINTS_FILE="${TMPDIR}/torch-constraints.txt"
+python3 -c "import torch; print(f'torch=={torch.__version__.split(chr(43))[0]}')" > "${CONSTRAINTS_FILE}"
+python3 -c "import torchvision; print(f'torchvision=={torchvision.__version__.split(chr(43))[0]}')" >> "${CONSTRAINTS_FILE}"
 
-# flash-attn needs its own --no-build-isolation build; evo2/vtx don't pull
-# in a working one. MAX_JOBS caps nvcc parallelism so it doesn't OOM.
 export MAX_JOBS=2
-pip install flash-attn --no-build-isolation
+pip install flash-attn --no-build-isolation -c "${CONSTRAINTS_FILE}"
 
-pip install evo2
+pip install evo2 -c "${CONSTRAINTS_FILE}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APPFL_REPO_ROOT="$(cd "${SCRIPT_DIR}" && git rev-parse --show-toplevel)"
+pip install "${APPFL_REPO_ROOT}" -c "${CONSTRAINTS_FILE}"
 
 python3 -c "
-import torch, evo2, flash_attn
+import torch, torchvision, evo2, flash_attn, appfl
 from appfl.agent.client import ClientAgent
 print('PyTorch:', torch.__version__, '| CUDA:', torch.cuda.is_available())
+print('torchvision:', torchvision.__version__)
 print('Flash Attention:', flash_attn.__version__)
+print('APPFL:', appfl.__version__)
 print('evo2 OK, appfl.agent.client OK')
 "
 
