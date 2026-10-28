@@ -1,16 +1,11 @@
-import os
 import time
 import logging
-import pathlib
 from datetime import datetime
 from abc import abstractmethod
 from omegaconf import OmegaConf
-from proxystore.store import Store
-from proxystore.proxy import Proxy, extract
 from appfl.comm.utils.config import ClientTask
 from appfl.logger import ServerAgentFileLogger
-from appfl.misc.utils import get_proxystore_connector
-from appfl.comm.utils.s3_storage import CloudStorage
+from appfl.comm.base.model_transfer_helper import ModelTransferHelper
 from appfl.config import ClientAgentConfig, ServerAgentConfig
 from typing import List, Optional, Union, Dict, OrderedDict, Tuple, Any
 
@@ -28,13 +23,27 @@ class BaseServerCommunicator:
         self.logger = logger if logger is not None else self._default_logger()
         self.experiment_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         self._sanity_check()
-        self._check_and_initialize_s3(server_agent_config)
-        self._load_proxystore(server_agent_config)
+        self._init_storage(server_agent_config)
+        self.executing_tasks: Dict[str, ClientTask] = {}
+        self.executing_task_futs: Dict[Any, str] = {}
+
+    def _init_storage(self, server_agent_config):
+        """
+        Initialize the model-transfer storage backends (AWS S3 and ProxyStore).
+
+        This is a hook so that subclasses which delegate model transfer to
+        per-client backends (e.g., the ``ServerDrivenCommunicator``) can override
+        it to a no-op and let each backend own its own storage.
+        """
+        self.use_s3bucket = ModelTransferHelper.init_s3(
+            server_agent_config, self.logger, self.comm_type, self.experiment_id
+        )
+        self.use_proxystore, self.proxystore = ModelTransferHelper.init_proxystore(
+            server_agent_config, self.logger
+        )
         assert not (self.use_proxystore and self.use_s3bucket), (
             "Proxystore and S3 bucket cannot be used together."
         )
-        self.executing_tasks: Dict[str, ClientTask] = {}
-        self.executing_task_futs: Dict[Any, str] = {}
 
     @abstractmethod
     def send_task_to_all_clients(
@@ -115,6 +124,10 @@ class BaseServerCommunicator:
         logger.addHandler(s_handler)
         return logger
 
+    def _parse_result(self, result):
+        """Parse a client result, downloading the model from S3/ProxyStore if needed."""
+        return ModelTransferHelper.parse_result(result, self.use_s3bucket)
+
     def _register_task(self, task_id, task_fut, client_id, task_name):
         """
         Register new client task to the list of executing tasks - call after task submission.
@@ -128,123 +141,6 @@ class BaseServerCommunicator:
             )
         )
         self.executing_task_futs[task_fut] = task_id
-
-    def _check_and_initialize_s3(self, server_agent_config):
-        # check if s3 enable
-        self.use_s3bucket = False
-        s3_bucket = None
-        if hasattr(server_agent_config.server_configs, "comm_configs") and hasattr(
-            server_agent_config.server_configs.comm_configs, "s3_configs"
-        ):
-            self.use_s3bucket = (
-                server_agent_config.server_configs.comm_configs.s3_configs.get(
-                    "enable_s3", False
-                )
-            )
-            s3_bucket = server_agent_config.server_configs.comm_configs.s3_configs.get(
-                "s3_bucket", None
-            )
-            self.use_s3bucket = self.use_s3bucket and s3_bucket is not None
-        # backward compatibility for globus compute
-        if (
-            hasattr(server_agent_config.server_configs, "comm_configs")
-            and hasattr(
-                server_agent_config.server_configs.comm_configs,
-                "globus_compute_configs",
-            )
-            and hasattr(
-                server_agent_config.server_configs.comm_configs.globus_compute_configs,
-                "s3_bucket",
-            )
-        ):
-            self.logger.warning(
-                "[Deprecation] Use of globus_compute_configs in server configs is deprecated. Moving forward use s3_configs key to configure AWS S3 you can find new examples here https://github.com/APPFL/APPFL/blob/main/examples/resources/config_gc/"
-            )
-            s3_bucket = server_agent_config.server_configs.comm_configs.globus_compute_configs.get(
-                "s3_bucket", None
-            )
-            self.use_s3bucket = s3_bucket is not None
-            # copy globus_compute_configs to s3_configs
-            server_agent_config.server_configs.comm_configs.s3_configs = (
-                server_agent_config.server_configs.comm_configs.globus_compute_configs
-            )
-            server_agent_config.server_configs.comm_configs.s3_configs["enable_s3"] = (
-                self.use_s3bucket
-            )
-
-        if self.use_s3bucket:
-            self.logger.info(f"Using S3 bucket {s3_bucket} for model transfer.")
-            s3_creds_file = (
-                server_agent_config.server_configs.comm_configs.s3_configs.get(
-                    "s3_creds_file", None
-                )
-            )
-            s3_temp_dir_default = str(
-                pathlib.Path.home()
-                / ".appfl"
-                / self.comm_type
-                / "server"
-                / self.experiment_id
-            )
-            s3_temp_dir = (
-                server_agent_config.server_configs.comm_configs.s3_configs.get(
-                    "s3_temp_dir", s3_temp_dir_default
-                )
-            )
-            if not os.path.exists(s3_temp_dir):
-                pathlib.Path(s3_temp_dir).mkdir(parents=True, exist_ok=True)
-            CloudStorage.init(s3_bucket, s3_creds_file, s3_temp_dir, self.logger)
-
-    def _load_proxystore(self, server_agent_config) -> None:
-        """
-        Create the proxystore for storing and sending model parameters from the server to the clients.
-        """
-        self.proxystore = None
-        self.use_proxystore = False
-        if (
-            hasattr(server_agent_config.server_configs, "comm_configs")
-            and hasattr(
-                server_agent_config.server_configs.comm_configs, "proxystore_configs"
-            )
-            and server_agent_config.server_configs.comm_configs.proxystore_configs.get(
-                "enable_proxystore", False
-            )
-        ):
-            self.use_proxystore = True
-            self.proxystore = Store(
-                name="server-proxystore",
-                connector=get_proxystore_connector(
-                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type,
-                    server_agent_config.server_configs.comm_configs.proxystore_configs.connector_configs,
-                ),
-            )
-            self.logger.info(
-                f"Server using proxystore for model transfer with store: {server_agent_config.server_configs.comm_configs.proxystore_configs.connector_type}."
-            )
-
-    def _parse_result(self, result):
-        """
-        Parse the returned results from the client.
-        The results can be composed of two parts:
-        - Model parameters (can be model, gradients, compressed model, etc.)
-        - Metadata (may contain additional information such as logs, etc.)
-        :param `result`: The result returned from the client.
-        :return `model`: The model parameters returned from the client
-        :return `metadata`: The metadata returned from the client
-        """
-        if isinstance(result, tuple):
-            model, metadata = result
-        else:
-            model, metadata = result, {}
-        # Download model from S3 bucket or ProxyStore if necessary
-        if isinstance(model, Proxy):
-            model = extract(model)
-        if self.use_s3bucket:
-            if CloudStorage.is_cloud_storage_object(model):
-                model = CloudStorage.download_object(
-                    model, delete_cloud=True, delete_local=True
-                )
-        return model, metadata
 
     def _sanity_check(self):
         # Sanity check for number of clients

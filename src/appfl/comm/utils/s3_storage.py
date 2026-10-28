@@ -64,7 +64,8 @@ def _open_credentials_file_securely(path: str):
 
 class LargeObjectWrapper:
     # 3 MB maximum size limit for direct upload
-    MAX_SIZE_LIMIT = 3 * 1024 * 1024
+    # MAX_SIZE_LIMIT = 3 * 1024 * 1024
+    MAX_SIZE_LIMIT = 1
 
     def __init__(self, data, name: str):
         self.data = data
@@ -72,7 +73,34 @@ class LargeObjectWrapper:
 
     @property
     def size(self):
-        return sys.getsizeof(self.data)
+        """
+        Best-effort byte size of the wrapped payload.
+
+        ``sys.getsizeof`` only reports the shallow size of a container (e.g. the
+        dict overhead of a ``state_dict``), not the tensor storage inside it, so it
+        is unusable for deciding whether a model can be sent directly. Instead, sum
+        the real byte size of tensors and recurse into common containers, falling
+        back to ``sys.getsizeof`` for other leaf objects.
+        """
+        if isinstance(self.data, (bytes, bytearray)):
+            return len(self.data)
+        try:
+            import torch
+        except ImportError:
+            torch = None
+
+        def _sz(obj):
+            if torch is not None and torch.is_tensor(obj):
+                return obj.element_size() * obj.nelement()
+            if isinstance(obj, (bytes, bytearray)):
+                return len(obj)
+            if isinstance(obj, dict):
+                return sum(_sz(v) for v in obj.values())
+            if isinstance(obj, (list, tuple, set)):
+                return sum(_sz(v) for v in obj)
+            return sys.getsizeof(obj)
+
+        return _sz(self.data)
 
     @property
     def can_send_directly(self):
@@ -421,9 +449,9 @@ class CloudStorage:
             try:
                 cs.client.delete_object(Bucket=cs.bucket, Key=obj)
                 if cs.logger is not None:
-                    cs.logger.info(f"Successfully cleaned object {obj} on S3")
+                    cs.logger.info(f"Cleaned up S3 object: s3://{cs.bucket}/{obj}")
                 else:
-                    print(f"Successfully cleaned object {obj} on S3")
+                    print(f"Cleaned up S3 object: s3://{cs.bucket}/{obj}")
             except Exception as e:
                 if cs.logger is not None:
                     cs.logger.info(f"Error in cleaning object {obj} on S3 {e}")
