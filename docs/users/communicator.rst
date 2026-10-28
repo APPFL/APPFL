@@ -1,12 +1,10 @@
 APPFL Communicator
 ==================
 
-The APPFL communicator is used for exchanging
+The APPFL communicator exchanges the following data between the server and client agents for the tasks they run:
 
-- various types of model data (e.g. parameters, gradients, compressed bytes, etc.)
-- metadata such as configurations, control signals, etc.
-
-for different tasks on the server/client agent side to run.
+- various types of model data (e.g., parameters, gradients, compressed bytes, etc.)
+- metadata, such as configurations, control signals, etc.
 
 In APPFL, we support the following types of communication protocols:
 
@@ -19,25 +17,25 @@ gRPC: Google Remote Procedure Call
 
 gRPC can be used either for simulating federated learning on a single machine or cluster, or for running federated learning on real-world distributed machines. It is composed of two parts:
 
-- gRPC Server Communicator (``appfl.comm.grpc.GRPCServerCommunicator``) which creates a server for listening to incoming requests from clients for various tasks.
-- gRPC Client Communicator (``appfl.comm.grpc.GRPCClientCommunicator``) which sends requests to the server for various tasks.
+- gRPC Server Communicator (``appfl.comm.grpc.GRPCServerCommunicator``), which creates a server that listens for incoming requests from clients for various tasks.
+- gRPC Client Communicator (``appfl.comm.grpc.GRPCClientCommunicator``), which sends requests to the server for various tasks.
 
 gRPC Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the server side, the server only needs to create an instance of ``GRPCServerCommunicator`` and call the ``serve`` method (available in ``appfl.comm.grpc``) to start the server. The server will listen to incoming requests from clients for various tasks.
+On the server side, you only need to create an instance of ``GRPCServerCommunicator`` and call the ``serve`` function (available in ``appfl.comm.grpc``) to start the server, which then listens for incoming requests from clients.
 
 The server can handle the following tasks:
 
 - Get configurations that are shared among all clients via the ``GetConfigurationStream`` method (or ``GetConfiguration``, kept for clients older than APPFL 1.12.0).
 - Get the global model via the ``GetGlobalModel`` method.
 - Update the global model with the local model from the client via the ``UpdateGlobalModel`` method.
-- Invoke custom action on the server via the ``InvokeCustomAction`` method.
+- Invoke a custom action on the server via the ``InvokeCustomAction`` method.
 - Return the result of a request acknowledged in :ref:`polling mode <gRPC Polling Mode>` via the ``PollResult`` method.
 
 .. note::
 
-    You can add any custom tasks by implementing the corresponding methods in the ``InvokeCustomAction`` class.
+    You can add custom tasks by implementing the corresponding handlers in the ``InvokeCustomAction`` method.
 
 .. code:: python
 
@@ -112,11 +110,11 @@ The server can handle the following tasks:
 gRPC Client Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-During the federated learning process, the client can communicate to the server by invoking corresponding methods in the ``GRPCClientCommunicator`` class. For example, after a client finish a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
+During the federated learning process, the client communicates with the server by invoking the corresponding methods of the ``GRPCClientCommunicator`` class. For example, after a client finishes a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
 
 .. note::
 
-    You can add any custom tasks by implementing the corresponding methods in the ``invoke_custom_action`` class. Also make sure that the server has the corresponding handler codes implemented in the ``InvokeCustomAction`` method.
+    You can request custom tasks from the server via the ``invoke_custom_action`` method. Make sure that the server has the corresponding handlers implemented in the ``InvokeCustomAction`` method.
 
 .. code:: python
 
@@ -185,13 +183,13 @@ During the federated learning process, the client can communicate to the server 
 Example Usage (gRPC)
 ~~~~~~~~~~~~~~~~~~~~
 
-Below shows an example on how to start a server using `GRPCServerCommunicator`, which waits for incoming requests from clients.
+The following example shows how to start a server using ``GRPCServerCommunicator``, which waits for incoming requests from clients.
 
 .. literalinclude:: ../../examples/grpc/run_server.py
     :language: python
     :caption: Running Federated Learning with gRPC Server Communicator.
 
-To interact with the server and start an FL experiment, you can start a client using `GRPCClientCommunicator` as shown below.
+To interact with the server and start an FL experiment, you can start a client using ``GRPCClientCommunicator`` as shown below.
 
 .. literalinclude:: ../../examples/grpc/run_client.py
     :language: python
@@ -315,28 +313,28 @@ MPI: Message Passing Interface
 
 MPI can be used for simulating federated learning on a single machine or a cluster of machines. It is composed of two parts:
 
-- MPI Server Communicator (``appfl.comm.mpi.MPIServerCommunicator``) which starts a server to listen to incoming requests from clients for various tasks.
-- MPI Client Communicator (``appfl.comm.mpi.MPIClientCommunicator``) which sends requests to the server for various tasks.
+- MPI Server Communicator (``appfl.comm.mpi.MPIServerCommunicator``), which starts a server that listens for incoming requests from clients for various tasks.
+- MPI Client Communicator (``appfl.comm.mpi.MPIClientCommunicator``), which sends requests to the server for various tasks.
 
 MPI Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the server side, the server only needs to create an instance of ``MPIServerCommunicator`` and call the ``serve`` method to start the server. The server will listen to incoming requests from clients for various tasks.
+On the server side, you only need to create an instance of ``MPIServerCommunicator`` and call its ``serve`` method to start the server, which then listens for incoming requests from clients.
 
 The server can handle the following tasks:
 
 - Get configurations that are shared among all clients via the ``_get_configuration`` method.
 - Get the global model via the ``_get_global_model`` method.
 - Update the global model with the local model from the client via the ``_update_global_model`` method.
-- Invoke custom action on the server via the ``_invoke_custom_action`` method.
+- Invoke a custom action on the server via the ``_invoke_custom_action`` method.
 
 .. note::
 
-    The server will automatically stop itself after reaching the specified ``num_global_epochs``.
+    The server automatically stops after reaching the specified ``num_global_epochs``.
 
 .. note::
 
-    You can add any custom tasks by implementing the corresponding methods in the ``_invoke_custom_action`` class.
+    You can add custom tasks by implementing the corresponding handlers in the ``_invoke_custom_action`` method.
 
 .. code:: python
 
@@ -419,11 +417,11 @@ The server can handle the following tasks:
 MPI Client Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-During the federated learning process, the client can communicates to the server by invoking corresponding methods in the ``MPIClientCommunicator`` class. For example, after a client finish a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
+During the federated learning process, the client communicates with the server by invoking the corresponding methods of the ``MPIClientCommunicator`` class. For example, after a client finishes a local training round, it can send the local model to the server for global aggregation by calling the ``update_global_model`` method.
 
 .. note::
 
-    You can add any custom tasks by implementing the corresponding methods in the ``invoke_custom_action`` class. Also make sure that the server has the corresponding handler codes implemented in the ``_invoke_custom_action`` method.
+    You can request custom tasks from the server via the ``invoke_custom_action`` method. Make sure that the server has the corresponding handlers implemented in the ``_invoke_custom_action`` method.
 
 .. code:: python
 
@@ -434,7 +432,7 @@ During the federated learning process, the client can communicates to the server
         :param comm: the MPI communicator from mpi4py
         :param server_rank: the rank of the server in the MPI communicator
         :param client_id: [optional] an optional client ID for one client for logging purposes, mutually exclusive with client_ids
-        :param client_ids: [optional] a list of client IDs for a batched clients,
+        :param client_ids: [optional] a list of client IDs for batched clients,
             this is only required when the MPI process represents multiple clients
         """
 
@@ -544,15 +542,15 @@ Here is an example of how to use the MPI communicator in APPFL to start FL exper
 Globus Compute
 --------------
 
-`Globus Compute <https://globus-compute.readthedocs.io/>`_ is a distributed function as a service platform, which can be used for running federated learning on real-world distributed machines. It can turn each client into an endpoint which can be patched with remote functions on the server side to run federated learning tasks. It is composed of two parts:
+`Globus Compute <https://globus-compute.readthedocs.io/>`_ is a distributed function-as-a-service platform that can be used for running federated learning on real-world distributed machines. It turns each client into an endpoint to which the server can dispatch remote functions to run federated learning tasks. It is composed of two parts:
 
-- Globus Compute Server Communicator (``appfl.comm.globus_compute.GlobusComputeServerCommunicator``), which can send task to the client endpoints and receive the results.
+- Globus Compute Server Communicator (``appfl.comm.globus_compute.GlobusComputeServerCommunicator``), which sends tasks to the client endpoints and receives the results.
 - Globus Compute Client Entry Point (``appfl.comm.globus_compute.GlobusComputeClientCommunicator.globus_compute_client_entry_point``), which is the entry point for the client to execute the task and send the results back to the server.
 
 Globus Compute Server Communicator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Globus Compute is a server-driven communication protocol, where the server sends tasks to the clients and receives the results to control the FL process. It is composed of the following methods to send tasks to the clients and receive the results:
+Globus Compute is a server-driven communication protocol, where the server sends tasks to the clients and receives the results to control the FL process. The server communicator provides the following methods to send tasks to the clients and receive the results:
 
 .. code:: python
 
@@ -627,7 +625,7 @@ Globus Compute is a server-driven communication protocol, where the server sends
             pass
 
         def shutdown_all_clients(self):
-            """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
+            """Cancel all the running tasks on the clients and shut down the Globus Compute executor."""
             pass
 
         def cancel_all_tasks(self):
@@ -637,7 +635,7 @@ Globus Compute is a server-driven communication protocol, where the server sends
 Globus Compute Client Entry Point
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For all tasks the server sent to the client, the tasks should be implemented in the client entry point function, which is the entry point for the client to execute the task and send the results back to the server. Below shows the current client entry point function which only supports the ``get_sample_size`` and ``train`` tasks. User can freely add more tasks by implementing the corresponding functions in the client entry point.
+Every task that the server sends to the clients must be implemented in the client entry point function, which executes the task on the client and sends the results back to the server. Below is a simplified version of the client entry point function, showing the ``get_sample_size`` and ``train`` tasks. Users can freely add more tasks by implementing them in the client entry point.
 
 .. code:: python
 

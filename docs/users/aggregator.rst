@@ -4,11 +4,11 @@ APPFL Aggregator
 Functionalities
 ---------------
 
-The APPFL Aggregator is used for aggregating one or more client local model(s) to update the global model. Depending on the synchroneity of the FL algorithm, the aggregator can take
+The APPFL Aggregator aggregates one or more client local models to update the global model. Depending on the synchronicity of the FL algorithm, the aggregator can take
 
 - only one client model to update the global model (for asynchronous FL)
 - a list of client models to update the global model (for synchronous FL)
-- one or a list of client models to update the global model (for asynchronous FL)
+- either one client model or a list of client models to update the global model (for semi-asynchronous FL, e.g., FedCompass)
 
 
 The aggregator has the following three main functionalities.
@@ -39,7 +39,7 @@ The aggregator has the following three main functionalities.
                 self.client_sample_size = {}
             self.client_sample_size[client_id] = sample_size
 
-To define a new aggregate, you need to inherit the ``BaseAggregator`` class and implement the ``aggregate`` and ``get_parameters`` methods. You can also define additional methods as needed.
+To define a new aggregator, inherit from the ``BaseAggregator`` class and implement the ``aggregate`` and ``get_parameters`` methods. You can also define additional methods as needed.
 
 Available Aggregators
 ---------------------

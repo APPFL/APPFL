@@ -1,0 +1,103 @@
+# Toy 1-D ADKO experiment -- site 3, one of four peer-to-peer sites.
+#
+# A deployed site: this file names its own neighbors and where to reach each one, and holds
+# nothing about the federation beyond that. There is no roster here and no graph -- which is
+# what `mode: explicit` means, and why it is the only mode a real deployment can use.
+#
+#   python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/distributed/node_3.yaml
+
+node_id: "agent-3"
+node_index: 3               # this site's position; sets its RNG seed offset
+
+num_epochs: 40                  # rounds of {act -> exchange tokens -> observe}
+seed: 0
+known_optimum: 100.0            # printed alongside the federation best, when known
+
+# Who this node exchanges tokens with. `id_prefix` keeps the agents named `agent-0..3`:
+# in the heterogeneous arm the index selects the agent's slice of the design space, so the
+# names are part of the experiment rather than labels.
+
+neighbors:
+  mode: "explicit"
+  # Who may collect MY tokens. A peer not on this list is refused -- by this site's
+  # own servicer when it serves, or by the relay, which builds its permission map out
+  # of what each publisher declares on every publish.
+  send_to: ["agent-0", "agent-1", "agent-2"]
+  # Whose tokens I collect. `server_uri` is simply where to reach them: their own
+  # address if they serve, or the relay they publish through if they do not. The
+  # collecting side sends the same request either way, which is why mixing needs no
+  # new code.
+  recv_from:
+    - node_id: "agent-0"
+      server_uri: "localhost:50051"
+    - node_id: "agent-1"
+      server_uri: "localhost:50052"
+    - node_id: "agent-2"
+      server_uri: "localhost:50053"
+
+# No `aggregator`: this node publishes knowledge tokens, not model parameters, and merges
+# what it receives itself. See appfl.agent.DeOptNodeAgent.
+
+algorithm_configs:
+  # ADKO Algorithm 1
+  warmup_rounds: 5              # random proposals before the surrogate is trusted
+  token_budget: 40              # tokens an agent keeps in memory
+  alpha_tau: 0.01               # fidelity decay rate, exp(-alpha * age)
+  objective: "maximize"
+  emit_insight: false           # the z field; ignored unless an LLM is attached
+  total_proposals: null         # null -> unbounded; set for a fixed evaluation budget
+  n_local_candidates: 10
+
+  # Eq. (1): R = mu + beta*sigma + lam*G - gamma*Lambda.
+  # A preset fixes the whole configuration -- weights, distance, kernel, normalization --
+  # because those are not independent knobs. Any field listed below the preset overrides it.
+  weights:
+    preset: "many_task"
+    dim: 1                      # sets the similarity bandwidth for this many dimensions
+
+  baseline:                     # what counts as SUCCESS in the token's s field
+    baseline: "running_median"
+    baseline_kwargs: {}
+
+  pruner:                       # which token to drop when memory is full
+    pruner: "confidence"        # fidelity | confidence | fifo | random
+    pruner_kwargs: {}
+
+surrogate_configs:
+  surrogate_path: "./decentralized/resources/surrogate/kernel_surrogate.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs:
+    bandwidth: 0.05
+    prior_sigma: 1.0
+
+# The agent's slice of the design space -- its "data".
+space_configs:
+  space_path: "./decentralized/resources/space/toy1d_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 3              # this site's slice of the design space
+    num_agents: 4
+    seed: 0
+    n_bins: 50                  # quantization applied before anything is shared
+
+# The oracle -- ADKO Algorithm 1 step 9, the only place ground truth is touched.
+evaluator_configs:
+  evaluator_path: "./decentralized/resources/evaluator/toy_yield.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
+  cost_seconds: 1.0             # price an instant stand-in as a real experiment
+
+train_configs:
+  logging_output_dirname: "./output"
+
+
+comm_configs:
+  budget_configs:
+    # ADKO Constraint 3.2: at most one token of at most B bits per neighbor per round.
+    # null means unlimited, which is the reference's own setting.
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:
+    server_uri: "localhost:50054"
+    max_message_size: 1048576
+    use_ssl: False

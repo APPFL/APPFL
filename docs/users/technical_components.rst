@@ -5,9 +5,9 @@ APPFL Components
    :width: 90%
    :align: center
 
-In the design of the APPFL framework, we essentially create the *server agent* and *client agent* using six main building blocks (Aggregator, Scheduler, Trainer, Privacy, Communicator, and Compressor) to run various FL experiments.
+The APPFL framework builds the *server agent* and *client agent* from six main building blocks (Aggregator, Scheduler, Trainer, Privacy, Communicator, and Compressor) to run various FL experiments.
 
-First, let's take a look at the server agent, client agent, and communicator on a high level.
+First, let's take a high-level look at the server agent, client agent, and communicator.
 
 .. toctree::
    :maxdepth: 1

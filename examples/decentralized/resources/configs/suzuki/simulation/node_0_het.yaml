@@ -1,0 +1,106 @@
+# Suzuki-Miyaura ADKO, heterogeneous (HET) -- node 0 of four.
+#
+# Four laboratories, each able to run exactly one of the four solvents. A neighbour's token
+# is therefore the only route to another solvent's chemistry: with the exchange switched off,
+# three quarters of the 3,696-reaction grid is unreachable for any one agent. That is what
+# makes this the arm worth measuring.
+#
+# Hyperparameters follow the reference ADKO study's `main_noniid_llmoff.json`
+# (b2 l4 g32 s0p5 t50 tb40 a0p01), the LM-free arm.
+#
+# One file per node, complete on its own: the simulation launchers derive nodes 1..3 from
+# this one by changing `node_id` and `space_configs.space_kwargs.agent_index` -- and in HET
+# that index *is* the solvent index, so deriving the nodes is what lays out the experiment.
+# The federation must have exactly four nodes; the space refuses any other count.
+#
+#   python decentralized/serial/run_serial.py \
+#       --config ./decentralized/resources/configs/suzuki/simulation/node_0_het.yaml
+#   mpirun -n 4 python decentralized/mpi/run_mpi.py \
+#       --config ./decentralized/resources/configs/suzuki/simulation/node_0_het.yaml
+#
+# Needs BoTorch, GPyTorch and Olympus; see ../../../../README.md.
+
+node_id: "agent-0"
+
+num_epochs: 200                 # rounds of {act -> exchange tokens -> observe}
+seed: 42                        # the reference's SEED_BASE
+# No `known_optimum`: the best yield in the table is a property of the dataset, and printing
+# a number nobody has checked against it would be worse than printing none.
+
+# Who this node exchanges tokens with. `id_prefix` keeps the agents named `agent-0..3`: the
+# index selects the agent's solvent, so the names are part of the experiment, not labels.
+neighbors:
+  mode: from_topo               # simulation: derive the graph, assign ids to match
+  topology: fully_connected     # the reference calls this `complete`
+  topology_kwargs: {}
+  num_nodes: 4                  # one agent per solvent -- not a default but a requirement
+  id_prefix: "agent-"
+
+# No `aggregator`: this node publishes knowledge tokens, not model parameters, and merges
+# what it receives itself. See appfl.agent.DeOptNodeAgent.
+
+algorithm_configs:
+  # ADKO Algorithm 1, with the Suzuki study's hyperparameters.
+  warmup_rounds: 5              # random proposals before the surrogate is trusted
+  token_budget: 40              # tokens an agent keeps in memory (tb40)
+  alpha_tau: 0.01               # fidelity decay rate, exp(-alpha * age)  (a0p01)
+  objective: "maximize"         # the measurement is a reaction yield in [0, 100]
+  emit_insight: false           # the LM-free arm (the reference's use_llm: false)
+  total_proposals: null         # null -> unbounded; set for a fixed evaluation budget
+  n_local_candidates: 10
+
+  # Eq. (1): R = mu + beta*sigma + lam*G - gamma*Lambda.
+  # The preset fixes the whole configuration -- weights, distance, kernel, normalization --
+  # because those are not independent knobs. Fields listed below it override it.
+  weights:
+    preset: "suzuki"            # beta 2, lam 4, gamma 32, Hamming, fidelity-weighted
+    sigma_s: 0.5                # similarity_bw in the reference config  (s0p5)
+
+  baseline:                     # what counts as SUCCESS in the token's s field
+    baseline: "fixed"           # a fixed yield threshold, not a running quantile
+    baseline_kwargs:
+      threshold: 50.0           # tau  (t50)
+      scale: 50.0               # max(tau, 100 - tau)
+
+  pruner:                       # which token to drop when memory is full
+    pruner: "fidelity"          # fidelity | confidence | fifo | random
+    pruner_kwargs:
+      alpha_tau: 0.01
+
+surrogate_configs:
+  # Categorical GP: a ScaleKernel over BoTorch's CategoricalKernel, refit every observation.
+  surrogate_path: "./decentralized/resources/surrogate/categorical_gp_surrogate.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs: {}          # every knob the reference exposes is fixed by the kernel
+
+# The agent's slice of the design space -- its "data". A design point is a tuple of five
+# category ids: (electrophile, nucleophile, base, ligand, solvent).
+space_configs:
+  space_path: "./decentralized/resources/space/suzuki_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 0              # in HET this is also the solvent index
+    num_agents: 4               # HET splits by solvent, and there are exactly four
+    iid_mode: false             # `agent_index` is this agent's one permitted solvent
+    seed: 42
+
+# The oracle -- ADKO Algorithm 1 step 9, the only place ground truth is touched. Evaluating a
+# point is a lookup in the measured `suzuki_edbo` table, not a synthetic objective.
+evaluator_configs:
+  evaluator_path: "./decentralized/resources/evaluator/suzuki_lookup.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
+  cost_seconds: 0.0             # a table lookup; the real cost is a bench experiment
+
+train_configs:
+  logging_output_dirname: "./output"
+
+comm_configs:
+  budget_configs:
+    # ADKO Constraint 3.2: at most one token of at most B bits per neighbor per round.
+    # null is the reference's own setting for this study.
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:                 # used by grpc/run_site.py only
+    server_uri: "localhost:50051"
+    use_ssl: false
