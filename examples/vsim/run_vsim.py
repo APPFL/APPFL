@@ -1,19 +1,32 @@
-"""Entry point for the virtual-time asynchronous FL simulator (v1).
+"""Entry point for the virtual-time FL simulator (async and sync).
 
 Async counterpart of examples/serial/run_serial.py. Reuses APPFL ServerAgent /
-ClientAgent and drives them with AsyncSimDriver (virtual-time event queue).
+ClientAgent and drives them with AsyncSimDriver or SyncSimDriver (virtual-time
+event queue).
 
 Run from the examples/ directory (relative ./resources paths in the config):
     cd examples
     python vsim/run_vsim.py --num_clients 2 --seed 42
+
+Multi-GPU / multi-node: launch under MPI with ``--executor mpi``. Rank 0 runs the
+event loop and the server; every other rank hosts a share of the clients on one
+device (one rank per GPU):
+    mpiexec -n 5 python vsim/run_vsim.py --executor mpi --device cuda \
+        --num_clients 100 --verify
 """
 
 import argparse
+import gc
+import json
+import math
+import os
 import random
+import traceback
 from datetime import datetime
 
 from omegaconf import OmegaConf
 from appfl.agent import ServerAgent, ClientAgent
+from appfl.algorithm.scheduler import AsyncScheduler
 from appfl.vsim import AsyncSimDriver, SyncSimDriver, ClientProfile, VsimLogger
 
 
@@ -90,7 +103,32 @@ def build_profiles(client_ids, sim_cfg, seed):
     return profiles
 
 
-def main():
+def estimate_durations(profiles, train_configs, step_time, model_bytes, ratio):
+    """
+    Estimate every client's task duration before any client is built.
+
+    The MPI executor uses the estimates only to place clients on workers, so they
+    must rank clients and weigh compute against communication, but need not equal
+    the simulated durations. A calibrated step time is unknown until the workers
+    start, so without `base_step_time` communication is left out.
+
+    :param model_bytes: Raw model size. As in the drivers, downloads are timed at
+        this size and uploads at `ratio` (simulator.compression_ratio) times it.
+    :return: Dict mapping client_id to seconds, or None in epoch mode, where the
+        step count depends on each client's data.
+    """
+    if train_configs.get("mode") != "step":
+        return None
+    steps = int(train_configs.num_local_steps)
+    if step_time is None:
+        return {cid: p.compute_time(1.0, steps) for cid, p in profiles.items()}
+    return {
+        cid: p.duration(float(step_time), steps, model_bytes, ratio * model_bytes)
+        for cid, p in profiles.items()
+    }
+
+
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--server_config", type=str, default="./vsim/config_vsim_fedasync.yaml"
@@ -173,14 +211,103 @@ def main():
         choices=["async", "sync_count", "sync_window"],
         help="simulation mode: async | sync_count | sync_window",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--executor",
+        type=str,
+        default=None,
+        choices=["inprocess", "mpi"],
+        help="where clients train: inprocess (serial, default) or mpi (rank 0 runs "
+        "the event loop, every other rank hosts clients; launch with mpiexec); "
+        "overrides simulator.executor",
+    )
+    parser.add_argument(
+        "--save_history",
+        type=str,
+        default=None,
+        help="write driver.history to this JSON file (e.g. to compare runs)",
+    )
+    return parser.parse_args()
 
-    # ---- logger (console + file) ----
-    log_dir = f"./vsim_logs/run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    logger = VsimLogger(logging_id="vsim", file_dir=log_dir, file_name="vsim")
 
-    # ---- configs ----
+def make_client_config(args, index, device, file_logging=True):
+    """
+    Build the configuration of client ``index`` (0-based) from --client_config.
+
+    :param file_logging: Keep the client's log file. MPI workers turn it off:
+        every ClientAgent opens four file handlers, so a worker hosting hundreds
+        of clients would run out of file descriptors.
+    """
+    config = OmegaConf.load(args.client_config)
+    config.client_id = f"Client{index + 1}"
+    config.train_configs.device = device
+    config.data_configs.dataset_kwargs.num_clients = args.num_clients
+    config.data_configs.dataset_kwargs.client_id = index
+    config.data_configs.dataset_kwargs.visualization = index == 0
+    if args.partition is not None:
+        config.data_configs.dataset_kwargs.partition_strategy = args.partition
+    if args.alpha is not None:
+        config.data_configs.dataset_kwargs.alpha2 = args.alpha * args.num_classes
+    if not file_logging:
+        config.train_configs.logging_output_filename = ""
+    return config
+
+
+def make_client(args, index, server_client_configs, device, file_logging=True):
+    """Create client ``index`` and load the configuration shared by the server."""
+    client = ClientAgent(
+        client_agent_config=make_client_config(args, index, device, file_logging)
+    )
+    client.load_config(server_client_configs)
+    return client
+
+
+def serve_worker(args, comm):
+    """Run this rank as an MPI worker until the coordinator shuts it down."""
+    from appfl.vsim.mpi import run_worker
+
+    index = {f"Client{i + 1}": i for i in range(args.num_clients)}
+
+    def make_worker_client(cid, context, device):
+        return make_client(
+            args, index[cid], OmegaConf.create(context), device, file_logging=False
+        )
+
+    run_worker(comm, make_worker_client, device=args.device)
+
+
+def main():
+    args = parse_args()
+
     server_config = OmegaConf.load(args.server_config)
+    sim_cfg = server_config.server_configs.get("simulator", {})
+    executor_kind = args.executor or (sim_cfg.get("executor") if sim_cfg else None)
+    executor_kind = executor_kind or "inprocess"
+
+    # ---- logger (console + file); with MPI, rank 0 picks the run directory ----
+    comm = None
+    log_dir = f"./vsim_logs/run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    if executor_kind == "mpi":
+        from mpi4py import MPI
+
+        comm = MPI.COMM_WORLD
+        log_dir = comm.bcast(log_dir, root=0)
+        if comm.Get_rank() != 0:
+            serve_worker(args, comm)
+            return
+    logger = VsimLogger(logging_id="vsim", file_dir=log_dir, file_name="vsim")
+    try:
+        run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger)
+    except BaseException:
+        if comm is None:
+            raise
+        # Workers would otherwise wait for this rank forever.
+        logger.error(f"simulation failed:\n{traceback.format_exc()}")
+        comm.Abort(1)
+
+
+def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
+    """Build the server, clients (or MPI executor) and driver; run and report."""
+    # ---- configs ----
     server_config.server_configs.num_clients = args.num_clients
     server_config.server_configs.device = args.device
     if args.num_global_epochs is not None:
@@ -189,7 +316,6 @@ def main():
         server_config.client_configs.train_configs.num_local_steps = (
             args.num_local_steps
         )
-    sim_cfg = server_config.server_configs.get("simulator", {})
     seed = args.seed if args.seed is not None else sim_cfg.get("seed", 42)
     max_in_flight = (
         args.max_in_flight
@@ -215,35 +341,18 @@ def main():
         vdc.dataset_kwargs.num_clients = args.num_clients
 
     server_agent = ServerAgent(server_agent_config=server_config)
-
-    client_configs = [
-        OmegaConf.load(args.client_config) for _ in range(args.num_clients)
-    ]
-    for i in range(args.num_clients):
-        client_configs[i].client_id = f"Client{i + 1}"
-        client_configs[i].train_configs.device = args.device
-        client_configs[i].data_configs.dataset_kwargs.num_clients = args.num_clients
-        client_configs[i].data_configs.dataset_kwargs.client_id = i
-        client_configs[i].data_configs.dataset_kwargs.visualization = i == 0
-        if args.partition is not None:
-            client_configs[
-                i
-            ].data_configs.dataset_kwargs.partition_strategy = args.partition
-        if args.alpha is not None:
-            client_configs[i].data_configs.dataset_kwargs.alpha2 = (
-                args.alpha * args.num_classes
-            )
-
-    client_agents = [
-        ClientAgent(client_agent_config=client_configs[i])
-        for i in range(args.num_clients)
-    ]
     client_cfg_from_server = server_agent.get_client_configs()
-    for c in client_agents:
-        c.load_config(client_cfg_from_server)
+    client_ids = [f"Client{i + 1}" for i in range(args.num_clients)]
+    target_epochs = server_config.server_configs.get("num_global_epochs", 100)
 
-    # ---- profiles + driver ----
-    client_ids = [c.get_id() for c in client_agents]
+    # ---- resolve mode from CLI or config ----
+    mode = args.mode
+    if mode == "async":
+        cfg_mode = sim_cfg.get("mode", "async") if sim_cfg else "async"
+        if cfg_mode.startswith("sync"):
+            mode = cfg_mode
+
+    # ---- profiles (before the executor, which places clients by them) ----
     if args.profiles_json:
         profiles = build_profiles_from_json(client_ids, args.profiles_json)
     else:
@@ -259,27 +368,71 @@ def main():
             }
         )
 
-    target_epochs = server_config.server_configs.get("num_global_epochs", 100)
-
-    # ---- resolve mode from CLI or config ----
-    mode = args.mode
-    if mode == "async":
-        cfg_mode = sim_cfg.get("mode", "async") if sim_cfg else "async"
-        if cfg_mode.startswith("sync"):
-            mode = cfg_mode
-
     # Clients that compress return the payload itself, and the simulator times
     # each upload from its length, so a declared ratio has nothing left to model.
     compressor_cfg = server_config.client_configs.get("comm_configs", {}).get(
         "compressor_configs", {}
     )
-    if compressor_cfg.get("enable_compression", False) and compression_ratio != 1.0:
+    compress = compressor_cfg.get("enable_compression", False)
+    if compress and comm is not None:
+        raise ValueError(
+            "--executor mpi moves local models as plain tensor state dicts and fixes "
+            "every duration before training, so clients cannot compress. Turn off "
+            "enable_compression in comm_configs and model the compressor with "
+            "simulator.compression_ratio instead."
+        )
+    if compress and compression_ratio != 1.0:
         logger.warning(
             "Compression is enabled in comm_configs, so uploads are timed from the "
             "compressed payloads and simulator.compression_ratio="
             f"{compression_ratio} is ignored. Set `compression_ratio` only to "
             "model a compressor that is not run."
         )
+
+    executor, client_agents = None, None
+    if comm is not None:
+        from appfl.vsim.mpi import MPIExecutor
+
+        if args.device == "cpu" and "OMP_NUM_THREADS" not in os.environ:
+            logger.warning(
+                "OMP_NUM_THREADS is not set, so every CPU worker uses one torch "
+                "thread. Set it to choose another count, and use the same value "
+                "for an in-process run whose models should match bit for bit."
+            )
+        model = server_agent.model
+        model_bytes = 0.0
+        if model is not None:
+            model_bytes = sum(
+                t.numel() * t.element_size() for t in model.state_dict().values()
+            )
+        mpi_cfg = sim_cfg.get("mpi", {}) if sim_cfg else {}
+        executor = MPIExecutor(
+            comm,
+            client_ids,
+            # Plain containers pickle cleanly; the *_source entries carry the
+            # model/loss/metric code, so workers need no access to those files.
+            context=OmegaConf.to_container(client_cfg_from_server, resolve=True),
+            log_dir=log_dir,
+            calibration_runs=mpi_cfg.get("calibration_runs", 2),
+            prefetch_mb=mpi_cfg.get("prefetch_mb", 1024),
+            stall_timeout=mpi_cfg.get("stall_timeout", 1800),
+            logger=logger,
+            # Balance the expected work per worker rather than the client count.
+            durations=estimate_durations(
+                profiles,
+                client_cfg_from_server.train_configs,
+                base_step_time,
+                model_bytes,
+                compression_ratio,
+            ),
+            mode=mode,
+            max_in_flight=max_in_flight,
+        )
+    else:
+        client_agents = [
+            make_client(args, i, client_cfg_from_server, args.device)
+            for i in range(args.num_clients)
+        ]
 
     common_kw = dict(
         server_agent=server_agent,
@@ -290,11 +443,20 @@ def main():
         base_step_time=base_step_time,
         eval_every=eval_every,
         compression_ratio=compression_ratio,
+        executor=executor,
+        task_seeding=bool(sim_cfg.get("task_seeding", True)) if sim_cfg else True,
     )
 
     if mode == "async":
         driver = AsyncSimDriver(
             max_in_flight=max_in_flight,
+            # AsyncScheduler counts one epoch per arrival, so the run ends after
+            # num_global_epochs arrivals and an executor can skip tasks past them.
+            target_epochs=(
+                target_epochs
+                if isinstance(server_agent.scheduler, AsyncScheduler)
+                else None
+            ),
             **common_kw,
         )
     else:
@@ -311,7 +473,44 @@ def main():
             **common_kw,
         )
 
+    if executor is not None and mode == "async":
+        per_worker = math.ceil(max_in_flight / executor.num_workers)
+        logger.info(
+            f"in-flight model state: about {per_worker} model(s), "
+            f"{per_worker * driver._raw_model_bytes / 2**20:.1f} MiB, per worker"
+        )
+        if max_in_flight < 4 * executor.num_workers:
+            logger.warning(
+                f"max_in_flight={max_in_flight} is below 4x the {executor.num_workers} "
+                f"workers; with clients pinned to their home workers some workers "
+                f"will idle"
+            )
+
+    # APPFL calls gc.collect() on every update; freezing the long-lived objects
+    # built so far keeps each collection cheap (the MPI executor does this too).
+    gc.collect()
+    gc.freeze()
     driver.run()
+    if executor is not None:
+        stats = executor.shutdown()
+        logger.log_banner(
+            "Execution summary",
+            {
+                "workers": stats["workers"],
+                "setup": f"{stats['setup_seconds']:.1f}s",
+                "wall": f"{stats['wall_seconds']:.1f}s",
+                "utilization": f"{100 * stats['worker_utilization']:.0f}%",
+                "stall": f"{stats['stall_seconds']:.1f}s",
+                "trained": stats["trained"],
+                "used": stats["results"],
+                "dropped": stats["dropped"],
+                "model_sends": stats["model_sends"],
+                "sends_saved": stats["model_sends_saved"],
+                "broadcasts": stats["broadcasts"],
+                "MB_out": f"{stats['bytes_to_workers'] / 1e6:.1f}",
+                "MB_in": f"{stats['bytes_from_workers'] / 1e6:.1f}",
+            },
+        )
 
     # ---- summary ----
     if mode == "async":
@@ -372,6 +571,10 @@ def main():
             "ALL CHECKS PASSED" if all(bool_checks) else "SOME CHECKS FAILED",
             {"max_active": driver._max_active},
         )
+    if args.save_history:
+        with open(args.save_history, "w") as f:
+            json.dump(driver.history, f, indent=1)
+        logger.info(f"history written to {args.save_history}")
     logger.info(f"log dir: {log_dir}")
 
 

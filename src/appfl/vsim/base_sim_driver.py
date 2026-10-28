@@ -3,6 +3,13 @@
 Extracts common state, utilities, and verification logic shared by the async
 and sync drivers. Subclasses implement run() and the
 event-handling methods specific to their scheduling model.
+
+Local training runs in one of two ways. Without an executor, clients train eagerly
+in this process and each duration comes from the trainer's own timing metadata.
+With a :class:`~appfl.vsim.executor.DeferredExecutor`, training runs elsewhere (for
+example on MPI workers), so every duration is computed when the client is
+dispatched from a fixed or calibrated per-step time, and the event loop only blocks
+when it needs a specific result.
 """
 
 import heapq
@@ -10,6 +17,7 @@ import random
 from typing import Dict, List, Optional
 
 from .logger import ensure_table_logger
+from .seeding import rng_guard, task_seed
 
 
 class BaseSimDriver:
@@ -23,13 +31,15 @@ class BaseSimDriver:
     def __init__(
         self,
         server_agent,
-        client_agents: List,
+        client_agents: Optional[List],
         profiles: Dict,
         logger,
         seed: int = 42,
         base_step_time: Optional[float] = None,
         eval_every: int = 0,
         compression_ratio: float = 1.0,
+        executor=None,
+        task_seeding: bool = True,
     ):
         """
         Initialize the simulation driver with server/client agents and models.
@@ -40,26 +50,46 @@ class BaseSimDriver:
         names and verifies its own.
 
         :param server_agent: APPFL ServerAgent instance.
-        :param client_agents: List of APPFL ClientAgent instances.
+        :param client_agents: List of APPFL ClientAgent instances. May be ``None``
+            when ``executor`` hosts the clients.
         :param profiles: Dict mapping client_id to ClientProfile.
         :param logger: Python logger for simulation output.
         :param seed: RNG seed for reproducibility.
-        :param base_step_time: Fixed per-step compute time (s); None = measured.
+        :param base_step_time: Fixed per-step compute time (s); None = measured
+            in-process, or calibrated by ``executor``.
         :param eval_every: Global evaluation frequency (0 = off).
         :param compression_ratio: Fraction of the raw model size a client uploads
             (1.0 = uncompressed, 0.25 = 4x compression), for modelling a
             compressor that is not run. A client that compresses for real returns
             ``bytes``, and its upload is timed from their length instead.
             Downloads are always the raw model: APPFL compresses only
-            client-to-server traffic.
+            client-to-server traffic. With an executor every duration is fixed
+            before training, so uploads are timed at this declared size.
+        :param executor: Optional :class:`~appfl.vsim.executor.DeferredExecutor`
+            that trains clients outside this process. ``None`` trains them here.
+        :param task_seeding: Seed the global RNGs per task from (seed, client,
+            selection count), so a client's local training does not depend on
+            which clients trained before it or where it runs.
         """
         # A private generator, not `random.seed()`: seeding the module-global RNG
         # here would perturb every other consumer in the process (client data
         # partitioning has already run by this point), and any unrelated draw from
         # it would in turn shift this simulation's dispatch order.
         self._rng = random.Random(seed)
+        self._seed = seed
         self.server = server_agent
-        self.clients = {c.get_id(): c for c in client_agents}
+        self.executor = executor
+        self.task_seeding = bool(task_seeding)
+        if executor is None:
+            if client_agents is None:
+                raise ValueError("client_agents is required when no executor is given")
+            self.clients = {c.get_id(): c for c in client_agents}
+            self.client_ids = list(self.clients)
+        else:
+            # Order matters: dispatch sampling draws from this list, so it must be
+            # the configured client order, identical on every run.
+            self.clients = {}
+            self.client_ids = list(executor.client_ids)
         self.profiles = profiles
         self.logger = ensure_table_logger(logger)
         self.base_step_time = base_step_time
@@ -71,6 +101,7 @@ class BaseSimDriver:
         self.active = set()
         self._pending: Dict = {}
         self.history: List[Dict] = []
+        self._selections: Dict[str, int] = {}
 
         self._max_active = 0
         self._mono_violations = 0
@@ -88,18 +119,32 @@ class BaseSimDriver:
         # upload of an update the client did not already compress to bytes.
         self._raw_model_bytes = self._state_bytes(init_model)
         self._model_bytes = self._raw_model_bytes * compression_ratio
-        for client in client_agents:
-            client.load_parameters(init_model)
+        if executor is None:
+            for client in client_agents:
+                client.load_parameters(init_model)
+            step_source = "measured" if base_step_time is None else f"{base_step_time}s"
+        else:
+            executor.setup(
+                init_model,
+                version=self.server.scheduler.get_num_global_epochs(),
+                calibrate=base_step_time is None,
+            )
+            if base_step_time is None:
+                self.base_step_time = self._calibrated_step_time()
+                step_source = f"{self.base_step_time:.6g}s (calibrated)"
+            else:
+                step_source = f"{base_step_time}s"
 
         self.logger.log_banner(
             f"APPFL virtual-time simulation — {type(self).__name__}",
             {
-                "clients": len(self.clients),
+                "clients": len(self.client_ids),
+                "executor": (
+                    "in-process" if executor is None else type(executor).__name__
+                ),
                 "model": f"{self._raw_model_bytes / 1e6:.2f} MB",
                 "compression_ratio": compression_ratio,
-                "step_time": (
-                    "measured" if base_step_time is None else f"{base_step_time}s"
-                ),
+                "step_time": step_source,
                 "eval_every": self.eval_every or "off",
                 "seed": seed,
             },
@@ -201,6 +246,83 @@ class BaseSimDriver:
             f"`server_configs.simulator` to supply a fixed per-step time (a step "
             f"count is still required from the trainer)."
         )
+
+    def _calibrated_step_time(self) -> float:
+        """Return the executor's calibrated per-step time, or raise if it has none."""
+        step_time = self.executor.step_time
+        if step_time is None or float(step_time) <= 0:
+            raise RuntimeError(
+                f"{type(self.executor).__name__} trains clients outside this "
+                f"process, so every duration must be known when the client is "
+                f"dispatched. Set `base_step_time` under `server_configs.simulator`, "
+                f"or use an executor that calibrates one (got step_time="
+                f"{step_time!r})."
+            )
+        return float(step_time)
+
+    def _next_seed(self, cid: str) -> Optional[int]:
+        """
+        Count one selection of ``cid`` and return the seed for its task.
+
+        Every selection is counted, including clients a sync barrier later
+        discards, so a client's k-th task gets the same seed whether or not the
+        discarded tasks were physically trained.
+
+        :param cid: Client identifier.
+        :return: Task seed, or ``None`` when task seeding is disabled.
+        """
+        count = self._selections.get(cid, 0)
+        self._selections[cid] = count + 1
+        return task_seed(self._seed, cid, count) if self.task_seeding else None
+
+    def _train_in_process(self, cid: str, params, seed: Optional[int]):
+        """
+        Train one client in this process from ``params``.
+
+        :param cid: Client identifier.
+        :param params: Global model the client trains from.
+        :param seed: Task seed applied around training, or ``None``.
+        :return: Tuple of (local_model, meta).
+        """
+        client = self.clients[cid]
+        with rng_guard(seed):
+            client.load_parameters(params)
+            client.train()
+            result = client.get_parameters()
+        if isinstance(result, tuple):
+            return result[0], dict(result[1])
+        return result, {}
+
+    def _apriori_duration(self, cid: str, profile):
+        """
+        Compute a client's duration at dispatch, before it has trained.
+
+        Uses the executor's census step count with the fixed or calibrated
+        per-step time, through the same arithmetic as :meth:`_client_duration`.
+        The upload is timed at the declared size, as for an uncompressed update
+        in-process: a compressed payload's length is unknown before training,
+        and executors move plain tensor state dicts only.
+        """
+        steps = self.executor.expected_steps(cid)
+        return self._client_duration(cid, profile, {"current_local_steps": steps})
+
+    def _check_steps(self, cid: str, meta: Dict):
+        """
+        Fail if a remotely trained client ran a different number of steps.
+
+        The duration was fixed at dispatch from the census, so a mismatch means the
+        virtual schedule no longer describes what was trained.
+        """
+        expected = self.executor.expected_steps(cid)
+        reported = meta.get("current_local_steps")
+        if reported is None or int(reported) != int(expected):
+            raise RuntimeError(
+                f"Client {cid} reported current_local_steps={reported!r}, but its "
+                f"virtual duration was computed at dispatch from {expected} steps. "
+                f"The step count must be predictable before training for "
+                f"distributed simulation (for example, not Poisson-sampled DP "
+                f"batches)."
+            )
 
     def _push(self, vtime: float, etype: str, cid: str):
         """
