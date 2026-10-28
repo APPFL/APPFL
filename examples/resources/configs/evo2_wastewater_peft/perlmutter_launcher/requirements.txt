@@ -1,0 +1,7 @@
+# See setup_perlmutter_environment.sh for install order and flags.
+
+torch
+torchvision
+appfl>=1.12.0
+flash-attn  # installed separately with --no-build-isolation
+evo2
