@@ -73,9 +73,7 @@ class Evo2PEFTTrainer(BaseTrainer):
             if getattr(train_configs, "aidrin_csv", "")
             else None
         )
-        self._drisee_threshold = float(
-            getattr(train_configs, "drisee_threshold", 20.0)
-        )
+        self._drisee_threshold = float(getattr(train_configs, "drisee_threshold", 20.0))
         self._debug_payload = bool(getattr(train_configs, "debug_payload", False))
 
         if self.logger:

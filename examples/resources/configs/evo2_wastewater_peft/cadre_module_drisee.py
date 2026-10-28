@@ -58,9 +58,9 @@ class CADREModuleDRISEE(BaseCADREModule):
             drisee_threshold=drisee_threshold,
         )
         return {
-            "n_clean":        report.get("n_clean", 0),
+            "n_clean": report.get("n_clean", 0),
             "n_contaminated": report.get("n_contaminated", 0),
-            "site_ready":     report.get("site_ready", True),
+            "site_ready": report.get("site_ready", True),
             "drisee_threshold": drisee_threshold,
         }
 

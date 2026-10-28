@@ -34,7 +34,9 @@ def main():
     client_config = client_comm.get_configuration()
     client_agent.load_config(client_config)  # triggers trainer __init__ + AIDRIN check
 
-    aidrin_report = getattr(getattr(client_agent, "trainer", None), "_aidrin_report", {})
+    aidrin_report = getattr(
+        getattr(client_agent, "trainer", None), "_aidrin_report", {}
+    )
 
     init_global_model = client_comm.get_global_model(init_model=True)
     client_agent.load_parameters(init_global_model)
