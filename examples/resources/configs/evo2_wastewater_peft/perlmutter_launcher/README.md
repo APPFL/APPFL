@@ -1,5 +1,11 @@
 # Perlmutter client launcher
 
+## Paths to configure before running
+
+- `../client_perlmutter.yaml`: `trainer_path`, `server_uri`
+- `slurm_appfl_client.sh`: `SCRATCH_BASE`, `DBFORGE_ROOT`, and the `run_client_evo2.py` script path and `--config` path on the final command line
+- `launch_client.sh`: `SCRATCH_BASE`, `DBFORGE_ROOT`, and the `run_client_evo2.py` script path and `--config` path on the final command line
+
 ## Env
 
 The conda env is already built and shared at

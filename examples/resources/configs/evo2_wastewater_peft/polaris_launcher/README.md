@@ -1,5 +1,11 @@
 # Polaris client launcher
 
+## Paths to configure before running
+
+- `../client_polaris.yaml`: `trainer_path`
+- `pbs_appfl_client.sh`: the `run_client_evo2.py` script path and `--config` path on the final command line
+- `launch_client.sh`: the `run_client_evo2.py` script path and `--config` path on the final command line
+
 ## Env
 
 The conda env is already built and shared at `/lus/grand/projects/GeomicVar/envs/db_forge_evo2`, usable by anyone in the GeomicVar group. Both `pbs_appfl_client.sh` and `launch_client.sh` already point at it, so there is nothing to set up.
