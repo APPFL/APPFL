@@ -33,12 +33,15 @@ For each client, the basic duration is
 
 ```text
 compute = seconds_per_step * local_steps * compute_factor
-communication = 2 * wire_bytes * 8 / (bandwidth * 1e6)
+communication = (model_bytes + upload_bytes) * 8 / (bandwidth * 1e6)
 duration = compute + communication
 ```
 
 `bandwidth` is Mbps in the standard networking sense — 10^6 bits per second.
-`wire_bytes` is the raw model size scaled by `compression_ratio`.
+`model_bytes` is the raw model size: as in APPFL, the server always sends the
+model uncompressed. `upload_bytes` is the client's update as sent: the length
+of the compressed payload when `enable_compression` is set, and otherwise the
+raw model size scaled by `compression_ratio`.
 
 By default, `seconds_per_step` comes from APPFL trainer metadata for the actual
 local training task. Set `base_step_time` to supply a fixed seconds-per-step
@@ -79,7 +82,7 @@ server_configs:
     max_in_flight: 4            # async: dispatched but not yet arrived
     base_step_time: null        # seconds/step; null uses trainer measurement
                                 # (calibrated once at startup with --executor mpi)
-    compression_ratio: 1.0      # fraction of the model actually sent (1.0 = raw)
+    compression_ratio: 1.0      # modelled upload / model size (1.0 = raw)
     eval_every: 0               # 0 disables global validation
     task_seeding: true          # seed each local-training task (see below)
     executor: inprocess         # inprocess | mpi (--executor overrides)
@@ -125,13 +128,15 @@ Clients may be keyed by id or by position, and `delay` is accepted as a synonym
 for `compute_factor`.
 
 `compute_factor` is a multiplicative slowdown. `bandwidth` is symmetric Mbps
-and communication includes one model download and one upload. The simulator
-measures raw tensor bytes and cannot know what a compressor would achieve
-without running it, so if `enable_compression` is set in `comm_configs`, declare
-the expected ratio via `compression_ratio`; otherwise transfers are modelled
-uncompressed and the runner warns. A fixed seed and
-fixed `base_step_time` make the virtual schedule reproducible; measured trainer
-time can vary with hardware load.
+and communication includes one model download and one upload. APPFL compresses
+only what clients send, so downloads are always timed at the raw model size.
+If `enable_compression` is set in `comm_configs`, clients run the compressor
+and each upload is timed from the actual length of its payload. To model a
+compressor without running it, leave compression off and set
+`compression_ratio` instead. The ratio is ignored when clients compress, and
+the runner warns if both are set. A fixed seed and fixed `base_step_time` make
+the virtual schedule reproducible; measured trainer time can vary with hardware
+load.
 
 ## Outputs and verification
 
@@ -255,7 +260,9 @@ broadcasts, and megabytes moved.
 - The trainer's step count must be known before training: VanillaTrainer in step
   or epoch mode, or a client exposing `expected_local_steps()`. Poisson-sampled
   differential-privacy batches are rejected.
-- Local models must be plain tensor state dicts (compression is not supported).
+- Local models must be plain tensor state dicts, so clients cannot run a
+  compressor (`enable_compression`); model one with `compression_ratio` instead.
+  Every duration is fixed before training, so uploads are timed at that ratio.
 - Each model must be smaller than 2 GiB.
 - Library use: build `appfl.vsim.mpi.MPIExecutor` on rank 0, pass it to a driver
   as `executor=`, and call `appfl.vsim.mpi.run_worker` on every other rank. Pass
@@ -266,6 +273,6 @@ broadcasts, and megabytes moved.
 
 ## Scope
 
-This engine does not model directional or congested links, dynamic availability,
+This engine does not model asymmetric or congested links, dynamic availability,
 or timeout policies. Those capabilities should be added as separate extensions
 without changing the virtual-time ordering contract defined here.

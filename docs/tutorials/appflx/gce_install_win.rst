@@ -1,7 +1,7 @@
 Endpoint Installation Using WSL
 ===============================
 
-This page describes how to install a `Globus Compute <https://globus-compute.readthedocs.io/en/stable/>`_ compute endpoint for federated learning (FL) clients on Windows machine using WSL.
+This page describes how to install a `Globus Compute <https://globus-compute.readthedocs.io/en/stable/>`_ compute endpoint for federated learning (FL) clients on a Windows machine using WSL.
 
 
 Install WSL
@@ -13,7 +13,7 @@ Follow `Install WSL | Microsoft Learn <https://learn.microsoft.com/en-us/windows
 Install conda in WSL
 --------------------
 
-1. Update and upgrade WSL Linux distribution
+1. Update and upgrade the WSL Linux distribution
 
 .. code-block:: bash
 
@@ -46,9 +46,9 @@ Install conda in WSL
 
 .. code-block:: bash
 
-	conda -version
+	conda --version
 
 Endpoint Installation
 ---------------------
 
-Follow `Endpoint Installation <./gce_install.rst>`_.
+Follow :doc:`Endpoint Installation <gce_install>`.

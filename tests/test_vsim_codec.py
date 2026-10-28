@@ -66,6 +66,12 @@ def test_non_tensor_values_are_rejected():
         pack_state({"w": torch.zeros(2), "lr": 0.1})
 
 
+def test_compressed_payloads_are_rejected():
+    # A client with enable_compression returns its update as bytes.
+    with pytest.raises(TypeError, match="Disable model compression"):
+        pack_state(b"compressed update")
+
+
 def test_schema_is_plain_python():
     """The schema is pickled into MPI headers, so it must hold no torch objects."""
     import pickle

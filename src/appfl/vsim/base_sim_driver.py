@@ -58,10 +58,13 @@ class BaseSimDriver:
         :param base_step_time: Fixed per-step compute time (s); None = measured
             in-process, or calibrated by ``executor``.
         :param eval_every: Global evaluation frequency (0 = off).
-        :param compression_ratio: Fraction of the raw model size actually sent
-            (1.0 = uncompressed, 0.25 = 4x compression). The simulator times the
-            bytes on the wire, and cannot know a compressor's real ratio without
-            running it, so an enabled compressor must be declared here.
+        :param compression_ratio: Fraction of the raw model size a client uploads
+            (1.0 = uncompressed, 0.25 = 4x compression), for modelling a
+            compressor that is not run. A client that compresses for real returns
+            ``bytes``, and its upload is timed from their length instead.
+            Downloads are always the raw model: APPFL compresses only
+            client-to-server traffic. With an executor every duration is fixed
+            before training, so uploads are timed at this declared size.
         :param executor: Optional :class:`~appfl.vsim.executor.DeferredExecutor`
             that trains clients outside this process. ``None`` trains them here.
         :param task_seeding: Seed the global RNGs per task from (seed, client,
@@ -112,8 +115,9 @@ class BaseSimDriver:
         self.compression_ratio = compression_ratio
 
         init_model = self.server.get_parameters(serial_run=True)
+        # Every download is the raw model. The declared ratio applies only to the
+        # upload of an update the client did not already compress to bytes.
         self._raw_model_bytes = self._state_bytes(init_model)
-        # Transfer times are driven by what actually goes over the wire.
         self._model_bytes = self._raw_model_bytes * compression_ratio
         if executor is None:
             for client in client_agents:
@@ -139,7 +143,7 @@ class BaseSimDriver:
                     "in-process" if executor is None else type(executor).__name__
                 ),
                 "model": f"{self._raw_model_bytes / 1e6:.2f} MB",
-                "on_wire": f"{self._model_bytes / 1e6:.2f} MB",
+                "compression_ratio": compression_ratio,
                 "step_time": step_source,
                 "eval_every": self.eval_every or "off",
                 "seed": seed,
@@ -162,7 +166,39 @@ class BaseSimDriver:
                     total += v.numel() * v.element_size()
         return total
 
-    def _client_duration(self, cid: str, profile, meta: Dict):
+    def _upload_size(self, local_model) -> float:
+        """
+        Bytes a client's update puts on the uplink.
+
+        A client with compression enabled returns the serialized payload, whose
+        length is exactly what it sends. Any other update is taken to be the size
+        of the global model, scaled by the declared ``compression_ratio``.
+
+        :param local_model: Update returned by the client's ``get_parameters``.
+        :return: Upload size in bytes.
+        """
+        if isinstance(local_model, bytes):
+            return len(local_model)
+        return self._model_bytes
+
+    @staticmethod
+    def _to_cpu(local_model):
+        """
+        Move a client's update to the CPU for aggregation.
+
+        A compressed update is ``bytes``, which ``ServerAgent.global_update``
+        decompresses itself, so it is passed through untouched.
+
+        :param local_model: Update returned by the client's ``get_parameters``.
+        :return: The update, ready for ``global_update``.
+        """
+        if isinstance(local_model, bytes):
+            return local_model
+        return {k: v.cpu() if hasattr(v, "cpu") else v for k, v in local_model.items()}
+
+    def _client_duration(
+        self, cid: str, profile, meta: Dict, upload_bytes: Optional[float] = None
+    ):
         """
         Derive a client's virtual duration from its training metadata.
 
@@ -175,6 +211,8 @@ class BaseSimDriver:
         :param cid: Client identifier, used in the error message.
         :param profile: The client's :class:`ClientProfile`.
         :param meta: Metadata returned by the client's trainer.
+        :param upload_bytes: Size of the client's update, from
+            :meth:`_upload_size`. Defaults to the declared upload size.
         :return: Tuple of (compute_time, comm_time, duration), all in seconds.
         """
         steps = meta.get("current_local_steps")
@@ -190,8 +228,10 @@ class BaseSimDriver:
         if cps is None or float(cps) <= 0:
             self._raise_missing_metadata(cid, missing or "base_step_time", cps)
 
+        if upload_bytes is None:
+            upload_bytes = self._model_bytes
         comp = profile.compute_time(float(cps), int(steps))
-        comm = profile.comm_time(self._model_bytes)
+        comm = profile.comm_time(self._raw_model_bytes, upload_bytes=upload_bytes)
         return comp, comm, comp + comm
 
     @staticmethod
@@ -259,6 +299,9 @@ class BaseSimDriver:
 
         Uses the executor's census step count with the fixed or calibrated
         per-step time, through the same arithmetic as :meth:`_client_duration`.
+        The upload is timed at the declared size, as for an uncompressed update
+        in-process: a compressed payload's length is unknown before training,
+        and executors move plain tensor state dicts only.
         """
         steps = self.executor.expected_steps(cid)
         return self._client_duration(cid, profile, {"current_local_steps": steps})

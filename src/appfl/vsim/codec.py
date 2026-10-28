@@ -33,6 +33,12 @@ def pack_state(state) -> Tuple[List[SchemaEntry], Any]:
     """
     import torch
 
+    if not hasattr(state, "items"):
+        raise TypeError(
+            f"Cannot pack a {type(state).__name__}: the distributed simulator moves "
+            f"state dicts of dense tensors only. Disable model compression and "
+            f"return a plain state dict from the trainer."
+        )
     schema: List[SchemaEntry] = []
     tensors = []
     offset = 0

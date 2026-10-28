@@ -3,17 +3,17 @@ Adding new trainers
 
 .. note::
 
-    We always welcome you to contribute your increments to ``APPFL`` by creating a pull request.
+    We always welcome your contributions to ``APPFL`` via pull requests.
 
-To add new trainers to ``APPFL``, you can create you own trainer class by inheriting the ``appfl.algorithm.trainer.BaseTrainer`` and defining the following functions:
+To add new trainers to ``APPFL``, you can create your own trainer class by inheriting from ``appfl.algorithm.trainer.BaseTrainer`` and defining the following functions:
 
-- ``train``: Do local training using local sensitive dataset.
+- ``train``: Perform local training on the local (sensitive) dataset.
 - ``get_parameters``: Return the parameters to be sent to the server for aggregation.
 - ``load_parameters``: [Optional] Load the aggregated parameters from the server.
 
 .. note::
 
-    - If you find certain input parameters for ``BaseTrainer`` for your own trainer is not needed (e.g., you want to hardcode the loss function), then simply leave it as it is with a ``None`` default value.
+    - If your trainer does not need certain input parameters of ``BaseTrainer`` (e.g., you want to hardcode the loss function), simply leave them with their default value of ``None``.
     - If you need to add any other input parameters to the trainer, simply provide them in the ``**kwargs``.
 
 .. code-block:: python
@@ -58,10 +58,10 @@ To add new trainers to ``APPFL``, you can create you own trainer class by inheri
             pass
 
         def load_parameters(self, params: Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict], Any]):
-        """Load model parameters. You can define your own way to load the parameters by overriding this function."""
+            """Load model parameters. You can define your own way to load the parameters by overriding this function."""
             self.model.load_state_dict(params)
 
-You may add any configuration parameters into your trainer and access them using ``self.train_configs.your_config_param``. When you start the FL experiment, you can specify the trainer configuration parameter values in the server configuration file in the following way:
+You may add any configuration parameters to your trainer and access them using ``self.train_configs.your_config_param``. When you start the FL experiment, you can specify the trainer configuration parameter values in the server configuration file in the following way:
 
 .. code-block:: yaml
 

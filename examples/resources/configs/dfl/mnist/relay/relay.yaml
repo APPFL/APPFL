@@ -1,0 +1,24 @@
+# The relay for the mixed federation in this directory.
+#
+# It holds no model, no aggregator and no scheduler, it never deserializes a payload, and it
+# has no graph -- each publisher declares who may collect its payloads, so the relay enforces
+# exactly the edges it is told about. Sites 0 and 1 serve themselves and never involve it;
+# sites 2 and 3 publish here because they cannot be dialled.
+#
+#   python dfl/grpc/run_relay.py --config ./resources/configs/dfl/mnist/relay/relay.yaml
+
+comm_configs:
+  grpc_configs:
+    server_uri: "localhost:50050"
+
+    # What the relay chunks its replies to. Every collector also declares its own limit and
+    # the smaller of the two wins, so this need not agree with any node's setting.
+    max_message_size: 2097152
+
+    # A collector waiting on a round holds a servicer thread for as long as the wait lasts,
+    # so keep this above the number of nodes collecting through the relay at once.
+    max_workers: 64
+
+    use_ssl: False
+    # server_certificate: "/path/to/server.crt"
+    # server_certificate_key: "/path/to/server.key"

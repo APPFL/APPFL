@@ -11,10 +11,10 @@ Generate SSL Certificates and Keys
 .. note::
     You need to have ``openssl`` installed on your machine to generate the SSL certificates and keys.
 
-In this example, we show how to enable SSL encrypted gRPC communication between the FL server and the clients. APPFL provides a command line interface, ``appfl-setup-ssl``, to generate the SSL certificates and keys for the server and the clients in the user-specific directory. The following block of code shows what information is needed to generate the SSL certificates and keys:
+In this example, we show how to enable SSL encrypted gRPC communication between the FL server and the clients. APPFL provides a command line interface, ``appfl-setup-ssl``, to generate the SSL certificates and keys for the server and the clients in a user-specified directory. The following block shows the information needed to generate the SSL certificates and keys:
 
-- The absolute path of the directory where the SSL certificate and private key will be stored, by default they are stored in ``~/.appfl/ssl``.
-- Optional country code, state, organization. User can feel free to press Enter to use the default values.
+- The absolute path of the directory where the SSL certificate and private key will be stored (``~/.appfl/ssl`` by default).
+- Optional country code, state, and organization. Feel free to press Enter to use the default values.
 - The DNS and IP address of the server. By default, the DNS is set to ``localhost`` and the IP address is set to ``127.0.0.1``.
 
 .. code-block:: bash
@@ -37,21 +37,21 @@ In this example, we show how to enable SSL encrypted gRPC communication between 
     =============================================================================
 
 .. note::
-    When you create a server for distributed clients (i.e. not under the same network), you need to provide the DNS and public IP address of the server.
+    When you create a server for distributed clients (i.e., not on the same network), you need to provide the DNS name and public IP address of the server.
 
-``appfl-setup-ssl`` will generate three files needed for SSL encrypted gRPC communication in the specified directory (by default, ``~/.appfl/ssl``):
+``appfl-setup-ssl`` generates three files needed for SSL encrypted gRPC communication in the specified directory (``~/.appfl/ssl`` by default):
 
 - ``server.crt``: SSL certificate for the server.
 - ``server.key``: SSL private key for the server.
-- ``ca.crt``: CA certificate for the server.
+- ``ca.crt``: CA certificate used to verify the server certificate.
 
 .. note::
-    The server needs to provide the CA certificate to the clients. The clients need to copy the CA certificate to the client machines.
+    The server needs to share the CA certificate with the clients, which should copy it to their own machines.
 
 Server Configuration
 --------------------
 
-We use this `server configuration file <https://github.com/APPFL/APPFL/blob/main/examples/resources/configs/mnist/server_fedavg.yaml>`_ as an example to show how to modify the server configuration file to enable SSL encrypted gRPC communication. We need to modify the ``server_configs.comm_configs.grpc_configs`` field in the server configuration file to enable SSL encrypted gRPC communication as the following:
+We use this `server configuration file <https://github.com/APPFL/APPFL/blob/main/examples/resources/configs/mnist/server_fedavg.yaml>`_ as an example to show how to enable SSL encrypted gRPC communication. Modify the ``server_configs.comm_configs.grpc_configs`` field in the server configuration file as follows:
 
 .. code-block:: yaml
 
@@ -62,19 +62,19 @@ We use this `server configuration file <https://github.com/APPFL/APPFL/blob/main
             use_ssl: True # Enable SSL encrypted gRPC communication
             server_certificate_key: "/home/.appfl/ssl/server.key" # Path to the server SSL private key
             server_certificate: "/home/.appfl/ssl/server.crt" # Path to the server SSL certificate
-            ca_certificate: "/home.appfl/ssl/ca.crt" # Path to the CA certificate
+            ca_certificate: "/home/.appfl/ssl/ca.crt" # Path to the CA certificate
             # Additional authentication configurations
             use_authenticator: True
             authenticator: "NaiveAuthenticator"
             authenticator_args:
                 auth_token: "A_SECRET_DEMO_TOKEN"
 
-As shown in the example configuration above, we also provide additional token-based authentication configurations. APPFL provides a simple token-based authenticator, ``NaiveAuthenticator``, to authenticate the clients. The server will only accept the clients that provide the correct token. The token is set in the ``auth_token`` field in the ``authenticator_args`` field.
+As shown in the example configuration above, we also configure token-based authentication. APPFL provides a simple token-based authenticator, ``NaiveAuthenticator``, to authenticate the clients. The server only accepts clients that provide the correct token, which is set in the ``auth_token`` field of ``authenticator_args``.
 
 Client Configuration
 --------------------
 
-We use this `client configuration file <https://github.com/APPFL/APPFL/blob/main/examples/resources/configs/mnist/client_1.yaml>`_ as an example to show how to modify the client configuration file to enable SSL encrypted gRPC communication. We need to modify the ``comm_configs.grpc_configs`` field in the client configuration file to enable SSL encrypted gRPC communication as the following. It should be noted that the ``root_certificate`` field is the path to the ``ca.crt`` file shared by the server to verify the server's SSL certificate. As for the authenticator configurations, the client should provide the same token as the server.
+We use this `client configuration file <https://github.com/APPFL/APPFL/blob/main/examples/resources/configs/mnist/client_1.yaml>`_ as an example to show how to enable SSL encrypted gRPC communication on the client side. Modify the ``comm_configs.grpc_configs`` field in the client configuration file as follows. Note that the ``root_certificate`` field is the path to the ``ca.crt`` file shared by the server, which is used to verify the server's SSL certificate. For the authenticator configurations, the client should provide the same token as the server.
 
 .. code-block:: yaml
 
@@ -92,7 +92,7 @@ We use this `client configuration file <https://github.com/APPFL/APPFL/blob/main
 Run the Server and Clients
 --------------------------
 
-After modifying the server and client configuration files, we can run the server and clients as usual. The server and clients will establish SSL encrypted gRPC communication. The above examples use localhost, so you can run the server and two clients on the same machine within three separate terminals.
+After modifying the server and client configuration files, we can run the server and clients as usual, and they will communicate over SSL encrypted gRPC. The above examples use localhost, so you can run the server and two clients on the same machine in three separate terminals.
 
 .. code-block:: bash
 

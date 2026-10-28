@@ -1,0 +1,89 @@
+# Toy 1-D yield experiment, ADKO with the v2 "many-task" defaults -- node 0.
+#
+# One file per node, and that file is complete. On the `daisy/prototype` branch this was a
+# `federation_adko.yaml` that every agent had to share plus an `agent.yaml` that was local to
+# one; here the two are folded together, because a decentralized node has no server to split
+# configuration with. The simulation launchers derive nodes 1..n-1 from this one by changing
+# `node_id` and `space_configs.space_kwargs.agent_index`, exactly as the MNIST DFL examples
+# derive their nodes -- so a 4-agent run still needs only this file.
+
+node_id: "agent-0"
+
+num_epochs: 40                  # rounds of {act -> exchange tokens -> observe}
+seed: 0
+known_optimum: 100.0            # printed alongside the federation best, when known
+
+# Who this node exchanges tokens with. `id_prefix` keeps the agents named `agent-0..3`:
+# in the heterogeneous arm the index selects the agent's slice of the design space, so the
+# names are part of the experiment rather than labels.
+neighbors:
+  mode: from_topo               # simulation: derive the graph, assign ids to match
+  topology: fully_connected     # fully_connected | ring | star | random_geometric
+  topology_kwargs: {}
+  num_nodes: 4
+  id_prefix: "agent-"
+
+# No `aggregator`: this node publishes knowledge tokens, not model parameters, and merges
+# what it receives itself. See appfl.agent.DeOptNodeAgent.
+
+algorithm_configs:
+  # ADKO Algorithm 1
+  warmup_rounds: 5              # random proposals before the surrogate is trusted
+  token_budget: 40              # tokens an agent keeps in memory
+  alpha_tau: 0.01               # fidelity decay rate, exp(-alpha * age)
+  objective: "maximize"
+  emit_insight: false           # the z field; ignored unless an LLM is attached
+  total_proposals: null         # null -> unbounded; set for a fixed evaluation budget
+  n_local_candidates: 10
+
+  # Eq. (1): R = mu + beta*sigma + lam*G - gamma*Lambda.
+  # A preset fixes the whole configuration -- weights, distance, kernel, normalization --
+  # because those are not independent knobs. Any field listed below the preset overrides it.
+  weights:
+    preset: "many_task"
+    dim: 1                      # sets the similarity bandwidth for this many dimensions
+
+  baseline:                     # what counts as SUCCESS in the token's s field
+    baseline: "running_median"
+    baseline_kwargs: {}
+
+  pruner:                       # which token to drop when memory is full
+    pruner: "confidence"        # fidelity | confidence | fifo | random
+    pruner_kwargs: {}
+
+surrogate_configs:
+  surrogate_path: "./decentralized/resources/surrogate/kernel_surrogate.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs:
+    bandwidth: 0.05
+    prior_sigma: 1.0
+
+# The agent's slice of the design space -- its "data".
+space_configs:
+  space_path: "./decentralized/resources/space/toy1d_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 0              # set by the launcher for every other node
+    num_agents: 4
+    seed: 0
+    n_bins: 50                  # quantization applied before anything is shared
+
+# The oracle -- ADKO Algorithm 1 step 9, the only place ground truth is touched.
+evaluator_configs:
+  evaluator_path: "./decentralized/resources/evaluator/toy_yield.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
+  cost_seconds: 1.0             # price an instant stand-in as a real experiment
+
+train_configs:
+  logging_output_dirname: "./output"
+
+comm_configs:
+  budget_configs:
+    # ADKO Constraint 3.2: at most one token of at most B bits per neighbor per round.
+    # null means unlimited, which is the reference's own setting.
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:                 # used by grpc/run_site.py only
+    server_uri: "localhost:50051"
+    use_ssl: false

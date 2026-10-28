@@ -377,3 +377,123 @@ def test_unavailable_client_is_deferred_not_spun():
     assert all(r["dispatch_time"] >= 50.0 for r in c0)
     vts = [r["vtime"] for r in d.history]
     assert vts == sorted(vts)
+
+
+# ----------------------- compressed uploads ----------------------- #
+_RAW_BYTES = 1000  # size of the served global model
+_LINK_MBPS = 0.008  # 1000 bytes/s: the raw model takes exactly 1s each way
+
+
+class _FakeTensor:
+    """Just enough of a tensor for the driver to size it and move it to the CPU."""
+
+    def __init__(self, nbytes, device="cuda"):
+        self.nbytes, self.device = nbytes, device
+
+    def numel(self):
+        return self.nbytes
+
+    def element_size(self):
+        return 1
+
+    def cpu(self):
+        return _FakeTensor(self.nbytes, device="cpu")
+
+
+class _SizedServer(_FakeServer):
+    """Serves a model of known size and records every update it is given."""
+
+    def __init__(self, target_epochs):
+        super().__init__(target_epochs)
+        self.received = []
+
+    def get_parameters(self, **kw):
+        return {"w": _FakeTensor(_RAW_BYTES)}
+
+    def global_update(self, client_id, local_model, blocking=False, **kw):
+        self.received.append((client_id, local_model))
+        return super().global_update(client_id, local_model, blocking=blocking, **kw)
+
+
+class _CompressingClient(_FakeClient):
+    """Returns its update as bytes, as ClientAgent does with compression enabled."""
+
+    def __init__(self, cid, payload=b"\x00" * 250):
+        super().__init__(cid)
+        self.payload = payload
+
+    def get_parameters(self):
+        return self.payload, super().get_parameters()[1]
+
+
+class _TensorClient(_FakeClient):
+    """Returns an uncompressed update whose tensor is still on the accelerator."""
+
+    def get_parameters(self):
+        return {"w": _FakeTensor(_RAW_BYTES)}, super().get_parameters()[1]
+
+
+def _sized_driver(clients, compression_ratio=1.0, target=4):
+    """Async driver over a `_RAW_BYTES` model, with 1s of compute per update."""
+    return AsyncSimDriver(
+        _SizedServer(target),
+        clients,
+        {c.get_id(): ClientProfile(bandwidth=_LINK_MBPS) for c in clients},
+        max_in_flight=len(clients),
+        logger=_silent_logger(),
+        base_step_time=0.01,  # x 100 steps
+        compression_ratio=compression_ratio,
+    )
+
+
+def test_comm_time_with_a_smaller_upload():
+    """APPFL compresses only the upload, so the two legs can differ in size."""
+    p = ClientProfile(bandwidth=100.0)
+    mb = 12_500_000  # 1s each way at 100 Mbps
+    assert abs(p.comm_time(mb, upload_bytes=mb / 4) - 1.25) < 1e-12
+    assert abs(p.duration(0.01, 100, mb, upload_bytes=mb / 4) - 2.25) < 1e-12
+    assert p.comm_time(mb, upload_bytes=0) == 1.0  # 0 is a size, not "unset"
+
+
+def test_compressed_update_reaches_server_unchanged():
+    """A compressing client hands back bytes, which the server decompresses itself."""
+    clients = [_CompressingClient(f"C{i}") for i in range(3)]
+    d = _sized_driver(clients, target=6)
+    d.run()
+    payload = {c.get_id(): c.payload for c in clients}
+    assert len(d.server.received) == 6
+    assert all(m is payload[cid] for cid, m in d.server.received)
+
+
+@pytest.mark.parametrize("compression_ratio", [1.0, 0.25])
+def test_compressed_upload_is_timed_from_its_payload(compression_ratio):
+    """Download the raw model, upload the client's own payload; the ratio is moot."""
+    payload = {"C0": b"\x00" * 250, "C1": b"\x00" * 500}
+    d = _sized_driver(
+        [_CompressingClient(cid, p) for cid, p in payload.items()],
+        compression_ratio=compression_ratio,
+    )
+    d.run()
+    for r in d.history:
+        sent = len(payload[r["cid"]])
+        # 1s compute + 1s for the raw model down + the payload up at 1000 bytes/s
+        assert r["duration"] == pytest.approx(2.0 + sent / 1000)
+        assert r["comm_bytes"] == _RAW_BYTES + sent
+
+
+def test_compression_ratio_scales_the_upload_only():
+    """A declared ratio models a compressor that is not run: only the uplink shrinks."""
+    d = _sized_driver([_FakeClient("C0")], compression_ratio=0.25)
+    d.run()
+    for r in d.history:
+        # 1s compute + 1s for the raw model down + 0.25s for a quarter of it up
+        assert r["duration"] == pytest.approx(2.25)
+        assert r["comm_bytes"] == pytest.approx(1.25 * _RAW_BYTES)
+
+
+def test_uncompressed_update_still_moves_to_cpu():
+    """Only bytes skip the CPU move; a tensor update reaches the server on the CPU."""
+    d = _sized_driver([_TensorClient("C0")])
+    d.run()
+    assert d.server.received
+    assert all(m["w"].device == "cpu" for _, m in d.server.received)

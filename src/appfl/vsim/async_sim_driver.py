@@ -190,12 +190,14 @@ class AsyncSimDriver(BaseSimDriver):
         if self.executor is None:
             # --- ACTUAL TRAINING, in this process ---
             local_model, meta = self._train_in_process(cid, global_params, seed)
-            comp, comm, dur = self._client_duration(cid, profile, meta)
+            upload_bytes = self._upload_size(local_model)
+            comp, comm, dur = self._client_duration(cid, profile, meta, upload_bytes)
             pending = {"local_model": local_model, "meta": meta}
         else:
             # The duration is known now, so the completion event can be queued
             # before the client has trained; the worker trains it meanwhile and
             # `_handle_train_complete` blocks only if the result is not back yet.
+            upload_bytes = self._model_bytes  # timed at the declared size
             comp, comm, dur = self._apriori_duration(cid, profile)
             handle = self.executor.submit(
                 cid, epoch_dispatch, global_params, dispatch_time + dur, seed
@@ -204,7 +206,10 @@ class AsyncSimDriver(BaseSimDriver):
         completion = dispatch_time + dur
 
         pending.update(
-            dispatch_time=dispatch_time, epoch_dispatch=epoch_dispatch, duration=dur
+            dispatch_time=dispatch_time,
+            epoch_dispatch=epoch_dispatch,
+            duration=dur,
+            comm_bytes=self._raw_model_bytes + upload_bytes,
         )
         self._pending[cid] = pending
         self._push(completion, "train_complete", cid)
@@ -239,9 +244,7 @@ class AsyncSimDriver(BaseSimDriver):
         meta["virtual_time"] = completion_time
         meta["dispatch_time"] = p["dispatch_time"]
 
-        local_model = {
-            k: v.cpu() if hasattr(v, "cpu") else v for k, v in local_model.items()
-        }
+        local_model = self._to_cpu(local_model)
 
         # Captured before the update: `global_update` increments the epoch counter,
         # so reading it afterwards would make staleness 0 impossible.
@@ -259,7 +262,7 @@ class AsyncSimDriver(BaseSimDriver):
         staleness = epoch_before - p["epoch_dispatch"]
         self.active.discard(cid)
 
-        comm_bytes = self._model_bytes * 2
+        comm_bytes = p["comm_bytes"]
         self._total_comm_bytes += comm_bytes
         rec = {
             "vtime": completion_time,

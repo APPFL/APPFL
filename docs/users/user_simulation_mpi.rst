@@ -1,17 +1,17 @@
 Simulating PPFL (MPI)
 =====================
 
-In this section, we describe how to simulate PPFL on a single machine or cluster by having the server and each client run on different MPI processes. It can be used for simulating both synchronous and asynchronous FL algorithms.
+In this section, we describe how to simulate PPFL on a single machine or a cluster by running the server and each client in separate MPI processes. This approach can simulate both synchronous and asynchronous FL algorithms.
 
 .. note::
 
-    To run the MPI simulation, you need to use several MPI processes by using ``mpiexec`` command. For example, to run 4 MPI processes, you can use the following command:
+    The MPI simulation runs on several MPI processes launched with the ``mpiexec`` command. For example, to run 4 MPI processes, use the following command:
 
     .. code-block:: bash
 
         mpiexec -n 4 python mpi_code.py
 
-First, user needs to load configuration files for the client and server agents. The total number of clients is equal to the total number of MPI processes minus one (as one process is used for the server), and then make necessary changes to make the configurations compatible with ``num_clients``. With the configuration, we can create the server and client agents.
+First, load the configuration files for the client and server agents. The total number of clients equals the total number of MPI processes minus one (as one process is used for the server). Then make the necessary changes to make the configurations compatible with ``num_clients``, and create the server and client agents.
 
 .. code-block:: python
 
@@ -53,12 +53,12 @@ Then for the FL server, we can create an MPI communicator to serve the requests 
         )
         server_communicator.serve()
 
-For the clients, we can start the FL training process by doing the following process:
+Each client runs the FL training process as follows:
 
 - Create an MPI communicator for the client.
-- Get and load the shared client configurations from the server (such as trainer and model architecture).
+- Get and load the shared client configurations from the server (such as the trainer and model architecture).
 - Get and load the initial global model.
-- Start the training process by calling the ``client_agent.train()`` method, and then send the updated model (``client_agent.get_parameters``) to the server until the end of the training process.
+- Repeatedly train the model locally by calling the ``client_agent.train()`` method and send the updated model (``client_agent.get_parameters()``) to the server until the training process ends.
 
 .. code-block:: python
 

@@ -1,14 +1,14 @@
 Run FL over secure RPC
 ======================
 
-In this part, we describe the procedure to run federated learning experiment with authentication by running an FL server and an FL client. The following figure illustrates the gRPC communication with token-based authenticator:
+In this part, we describe how to run a federated learning experiment with authentication using an FL server and an FL client. The following figure illustrates gRPC communication with a token-based authenticator:
 
 .. image:: ../_static/grpc_auth.jpg
     :alt: GRPC Auth
 
-As access tokens are transferred from clients to server for authentication, a secure SSL channel is required for gRPC communication to encrypt the transmitted data. In each RPC from client to server, the client will attach its authentication token as call metadata and send to the server for validation. APPFL currently supports two types of authenticators `NaiveAuthenticator` for demonstration purposes and `GlobusAuthenticator` for real deployment. Please refer to the `authenticator documentation <https://github.com/APPFL/APPFL/tree/main/src/appfl/login_manager>`_ to learn more about the authenticators and how to define your own authenticator if needed.
+As access tokens are transferred from the clients to the server for authentication, a secure SSL channel is required for gRPC communication to encrypt the transmitted data. In each RPC from a client to the server, the client attaches its authentication token as call metadata, which the server validates. APPFL currently supports two types of authenticators: ``NaiveAuthenticator`` for demonstration purposes and ``GlobusAuthenticator`` for real deployments. Please refer to the `authenticator documentation <https://github.com/APPFL/APPFL/tree/main/src/appfl/login_manager>`_ to learn more about the authenticators and how to define your own authenticator if needed.
 
-In the following two notebooks, we will use the `NaiveAuthenticator` for easy demonstration, where the client simply uses hardcoded authentication tokens for validation.
+In the following two notebooks, we use the ``NaiveAuthenticator`` for easy demonstration, where the client simply uses a hardcoded authentication token for validation.
 
 .. toctree::
     :maxdepth: 1

@@ -10,6 +10,7 @@ from .fedqueue_aggregator import FedQueueAggregator
 from .fedcompass_aggregator import FedCompassAggregator
 from .iiadmm_aggregator import IIADMMAggregator
 from .iceadmm_aggregator import ICEADMMAggregator
+from .dfl_node_fedavg_aggregator import DFLNodeFedAvgAggregator
 
 try:
     from .fedsb_aggregator import FedSBAggregator
@@ -34,6 +35,7 @@ __all__ = [
     "FedCompassAggregator",
     "IIADMMAggregator",
     "ICEADMMAggregator",
+    "DFLNodeFedAvgAggregator",
     "FedSBAggregator",
     "DIMATaggregator",
 ]

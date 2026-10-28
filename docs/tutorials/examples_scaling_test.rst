@@ -6,7 +6,7 @@ In this tutorial, we describe how to run federated learning (FL) experiments usi
 MPI Simulation Scripts
 ----------------------
 
-We provide an MPI-simulation launching script for running large-scale FL experiments at ``examples/mpi/run_mpi_scaling.py``, which takes two important configuration parameters:
+We provide an MPI simulation launch script for running large-scale FL experiments at ``examples/mpi/run_mpi_scaling.py``, which takes two important configuration parameters:
 
 - ``gpu_per_node``: Number of GPUs available on each compute node (default is 4).
 - ``clients_per_gpu``: Number of clients sharing a single GPU (default is 1).
@@ -14,11 +14,11 @@ We provide an MPI-simulation launching script for running large-scale FL experim
 Example Script to Launch MPI Simulation
 ---------------------------------------
 
-Below shows an example PBS script to launch a scaling test with 512 clients, where each GPU is shared by 8 clients. The script assumes that you have a GPU cluster with 17 nodes, each having 4 GPUs, and you want to run the simulation using MPI. Specifically,
+Below is an example PBS script that launches a scaling test with 512 clients, where each GPU is shared by 8 clients. The script assumes that you have a GPU cluster with 17 nodes, each with 4 GPUs, and that you want to run the simulation using MPI. Specifically,
 
-- In line 5, we allocates 1 nodes with 1 MPI slots for FL server, and 16 nodes with 32 MPI slots for FL clients.
-- The nodes for FL clients allocates 32 MPI slots as each node has 4 GPUs and each GPU is shared by 8 clients, resulting in 32 clients per node.
-- In line 17, we launch the MPI simulation with 513 processes (1 server + 512 clients) using the `mpiexec` command, and the ``$PBS_NODEFILE`` environment variable to specify the nodes allocated for the job.
+- In line 5, we allocate 1 node with 1 MPI slot for the FL server, and 16 nodes with 32 MPI slots each for the FL clients.
+- Each client node is allocated 32 MPI slots because it has 4 GPUs and each GPU is shared by 8 clients, resulting in 32 clients per node.
+- In line 17, we launch the MPI simulation with 513 processes (1 server + 512 clients) using the ``mpiexec`` command, with the ``$PBS_NODEFILE`` environment variable specifying the nodes allocated to the job.
 
 
 .. code-block:: bash
@@ -32,8 +32,8 @@ Below shows an example PBS script to launch a scaling test with 512 clients, whe
 	#PBS -l filesystems=home:eagle:grand
 
 	module load conda
-	conda activate /eagle/tpc/zilinghan/conda_envs/appfl
-	cd /eagle/tpc/zilinghan/appfl/APPFL/examples
+	conda activate <path_to_your_conda_env>
+	cd <path_to_appfl>/APPFL/examples
 
 	export OMP_NUM_THREADS=1
 	export OPENBLAS_NUM_THREADS=1

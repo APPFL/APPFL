@@ -11,7 +11,7 @@ Currently, APPFL supports the following lossy compressors:
 Installation
 ------------
 
-Users need to first make sure that they have installed the required packages for the compressors when installing `appfl`.
+First, make sure that ``appfl`` is installed, which includes the packages required by the compressors.
 
 .. code-block:: bash
 
@@ -19,14 +19,14 @@ Users need to first make sure that they have installed the required packages for
     # OR: If installed from source code
     pip install -e .
 
-Users then can install the compressors by running the following command:
+Then install the compressors by running the following command:
 
 .. code-block:: bash
 
     appfl-install-compressor
 
 .. note::
-    SZx is not open source so we omit its installation here. Please install it manually by contacting the author.
+    SZx is not open source, so we omit its installation here. Please install it manually by contacting the author.
 
 ``ZFPCompressor`` additionally requires the ``zfpy`` package, which is **not** installed by default.
 The ``zfpy`` wheels are built against the numpy 1.x ABI and fail to import under ``numpy>=2.0.0``,
@@ -79,24 +79,24 @@ The APPFL compressor can be used to compress and decompress the model parameters
 
 Configuration
 -------------
-User can configure the compressor by setting it ``client_configs.comm_configs.compressor_configs`` in the server configuration file. The following is an example of the configuration:
+Users can configure the compressor by setting ``client_configs.comm_configs.compressor_configs`` in the server configuration file. The following is an example configuration:
 
-.. code-block:: python
+.. code-block:: yaml
 
     client_configs:
         comm_configs:
             compressor_configs:
-            enable_compression: True
-            lossy_compressor:  "SZ2Compressor"
-            lossless_compressor: "blosc"
-            error_bounding_mode: "REL"
-            error_bound: 1e-3
-            param_cutoff: 1024
+                enable_compression: True
+                lossy_compressor:  "SZ2Compressor"
+                lossless_compressor: "blosc"
+                error_bounding_mode: "REL"
+                error_bound: 1e-3
+                param_cutoff: 1024
 
 Usage in APPFL
 --------------
 
-The compressor is used in the ``ClientAgent.get_parameters`` method to compress the model parameters using ``compressor.compress_model`` before sending them to the server, as shown below
+The compressor is used in the ``ClientAgent.get_parameters`` method to compress the model parameters using ``compressor.compress_model`` before sending them to the server, as shown below:
 
 .. code-block:: python
 
@@ -111,13 +111,13 @@ The compressor is used in the ``ClientAgent.get_parameters`` method to compress 
             params = self.compressor.compress_model(params)
         return params if metadata is None else (params, metadata)
 
-On the server side, the model parameters are decompressed using ``compressor.decompress_model`` before updating the model by the ``ServerAgent.global_update``.
+On the server side, the model parameters are decompressed using ``compressor.decompress_model`` before the global model is updated by ``ServerAgent.global_update``.
 
 
 Stand-alone Usage
 -----------------
 
-In APPFL, the compressor is seamlessly integrated into the communication process for user's convenience. However, users can also use the compressor as a stand-alone tool. The following is an example of how to use the compressor to compress and decompress the model parameters.
+In APPFL, the compressor is seamlessly integrated into the communication process for users' convenience. However, users can also use the compressor as a stand-alone tool. The following is an example of how to use the compressor to compress and decompress the model parameters.
 
 .. code-block:: python
 

@@ -103,7 +103,7 @@ def build_profiles(client_ids, sim_cfg, seed):
     return profiles
 
 
-def estimate_durations(profiles, train_configs, step_time, model_bytes):
+def estimate_durations(profiles, train_configs, step_time, model_bytes, ratio):
     """
     Estimate every client's task duration before any client is built.
 
@@ -112,6 +112,8 @@ def estimate_durations(profiles, train_configs, step_time, model_bytes):
     the simulated durations. A calibrated step time is unknown until the workers
     start, so without `base_step_time` communication is left out.
 
+    :param model_bytes: Raw model size. As in the drivers, downloads are timed at
+        this size and uploads at `ratio` (simulator.compression_ratio) times it.
     :return: Dict mapping client_id to seconds, or None in epoch mode, where the
         step count depends on each client's data.
     """
@@ -121,7 +123,7 @@ def estimate_durations(profiles, train_configs, step_time, model_bytes):
     if step_time is None:
         return {cid: p.compute_time(1.0, steps) for cid, p in profiles.items()}
     return {
-        cid: p.duration(float(step_time), steps, model_bytes)
+        cid: p.duration(float(step_time), steps, model_bytes, ratio * model_bytes)
         for cid, p in profiles.items()
     }
 
@@ -366,6 +368,27 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
             }
         )
 
+    # Clients that compress return the payload itself, and the simulator times
+    # each upload from its length, so a declared ratio has nothing left to model.
+    compressor_cfg = server_config.client_configs.get("comm_configs", {}).get(
+        "compressor_configs", {}
+    )
+    compress = compressor_cfg.get("enable_compression", False)
+    if compress and comm is not None:
+        raise ValueError(
+            "--executor mpi moves local models as plain tensor state dicts and fixes "
+            "every duration before training, so clients cannot compress. Turn off "
+            "enable_compression in comm_configs and model the compressor with "
+            "simulator.compression_ratio instead."
+        )
+    if compress and compression_ratio != 1.0:
+        logger.warning(
+            "Compression is enabled in comm_configs, so uploads are timed from the "
+            "compressed payloads and simulator.compression_ratio="
+            f"{compression_ratio} is ignored. Set `compression_ratio` only to "
+            "model a compressor that is not run."
+        )
+
     executor, client_agents = None, None
     if comm is not None:
         from appfl.vsim.mpi import MPIExecutor
@@ -379,7 +402,7 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
         model = server_agent.model
         model_bytes = 0.0
         if model is not None:
-            model_bytes = compression_ratio * sum(
+            model_bytes = sum(
                 t.numel() * t.element_size() for t in model.state_dict().values()
             )
         mpi_cfg = sim_cfg.get("mpi", {}) if sim_cfg else {}
@@ -400,6 +423,7 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
                 client_cfg_from_server.train_configs,
                 base_step_time,
                 model_bytes,
+                compression_ratio,
             ),
             mode=mode,
             max_in_flight=max_in_flight,
@@ -409,19 +433,6 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
             make_client(args, i, client_cfg_from_server, args.device)
             for i in range(args.num_clients)
         ]
-
-    # The simulator times raw tensor bytes, so an enabled compressor has to be
-    # declared: it cannot know the achieved ratio without running the compressor.
-    compressor_cfg = server_config.client_configs.get("comm_configs", {}).get(
-        "compressor_configs", {}
-    )
-    if compressor_cfg.get("enable_compression", False) and compression_ratio == 1.0:
-        logger.warning(
-            "Compression is enabled in comm_configs, but simulator."
-            "compression_ratio is 1.0, so transfers are modelled uncompressed and "
-            "communication time is overstated. Set `compression_ratio` under "
-            "`server_configs.simulator` to the fraction of the model actually sent."
-        )
 
     common_kw = dict(
         server_agent=server_agent,
