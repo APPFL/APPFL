@@ -3,6 +3,10 @@ This directory contains the necessary files to load different datasets for diffe
 
 You can define your own loader files for your custom dataset by following the same manner.
 
+## Building the data once per process
+
+`ClientAgent` executes the loader file afresh for every client it creates. Loaders that split one dataset among the clients, such as `mnist_dataset.py` and `cifar10_dataset.py`, therefore build their test set and their partition with `appfl.misc.data.cache_per_process`: the first client created in a process builds them, and later clients in that process reuse them instead of partitioning the whole dataset again. You can do the same in your own loader, as long as the data depends only on the loader's arguments. A loader that draws unseeded random numbers while building the data, like the random crops and flips applied during the partition in `cifar10_dimat.py`, cannot cache that part.
+
 ## Download instructions for datasets
 
 For some of the datasets used in the `examples` folder, such as `MNIST` and `CIFAR10`, they are directly available from `torchvision` and will be automatically downloaded when you first use them. However, for other datasets, there are not available through the `torchvision` package, so you need to download them manually by following the instructions below.
