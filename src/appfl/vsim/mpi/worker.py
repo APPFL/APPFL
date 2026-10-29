@@ -1,10 +1,12 @@
 """Worker side of the vsim MPI runtime: :func:`run_worker`.
 
-Each worker rank hosts its share of the virtual clients and trains them on one
-device. The main thread makes every MPI call (receiving tasks and models, joining
-broadcasts, sending results on request), while a training thread runs local training
-in ``(deadline, tid)`` order. The task the coordinator is waiting for therefore
-trains next, and transfers overlap with training.
+Each worker rank trains whatever tasks the coordinator assigns it, on one device.
+It builds a client the first time one of its tasks arrives and keeps it, so with
+dynamic placement a worker can train any client. The main thread makes every MPI
+call (receiving tasks and models, joining broadcasts, sending results on request),
+while a training thread runs local training in ``(deadline, tid)`` order. The task
+the coordinator is waiting for therefore trains next, and transfers overlap with
+training.
 """
 
 import gc
@@ -22,7 +24,8 @@ from ..seeding import rng_guard, task_seed
 from . import protocol as P
 
 _MIN_BACKOFF = 5e-5
-_MAX_BACKOFF = 2e-3
+_MAX_BACKOFF = 2e-3  # while training: polling more often would contend for the GIL
+_IDLE_BACKOFF = 2e-4  # while not training: the next task or its model is due
 
 
 def expected_local_steps(client) -> int:
@@ -69,13 +72,22 @@ def run_worker(
     :param comm: Communicator spanning the coordinator and all workers.
     :param make_client: ``make_client(cid, context, device)`` returning a
         ready-to-train ClientAgent-like object (configuration already loaded).
-        ``context`` is what the coordinator passed to the executor.
+        ``context`` is what the coordinator passed to the executor. It is called
+        once per client this worker trains: at setup for the clients homed here,
+        whose step counts this worker reports, and otherwise when the client's first
+        task arrives. A client with ``set_round(n)`` is told before each task how
+        many earlier tasks it had, wherever they ran. With dynamic placement any
+        worker may build any client, so pass a
+        :class:`~appfl.vsim.light_client.SharedAgentPool`, whose clients share one
+        model and trainer per worker, rather than full ClientAgents.
     :param device: ``"cpu"`` or ``"cuda"``. With CUDA, the workers of a node are
         mapped to its visible GPUs round-robin. On CPU, a worker uses one torch
         thread unless ``OMP_NUM_THREADS`` is set, so the ranks sharing a node do
         not oversubscribe its cores.
     :param offload: Move a client's model back to the CPU after each task, so GPU
         memory holds one model at a time however many clients a worker hosts.
+        Clients without a ``trainer.model`` (such as a pool's shared clients, which
+        keep one model on the device) are left alone.
     :return: This worker's statistics (also reported to the coordinator).
     """
     worker = _Worker(comm, make_client, device, offload)
@@ -108,7 +120,8 @@ class _Worker:
         self.requested_device = device or "cpu"
         self.device = "cpu"
         self.offload = offload
-        self.clients: Dict = {}
+        self.context = None
+        self.clients: Dict = {}  # built so far; only the training thread adds more
 
         # Shared with the training thread, guarded by `cv`.
         self.cv = threading.Condition()
@@ -121,6 +134,7 @@ class _Worker:
         self.stopping = False
 
         self.outbox = queue.Queue()
+        self.wakeup = threading.Event()  # set with each outbox item
         self.results: Dict[int, object] = {}  # tid -> packed local model
         self.version_requests = []  # (version, request, buffer)
         self.sends = []  # (request, buffer)
@@ -130,8 +144,11 @@ class _Worker:
             "host": MPI.Get_processor_name(),
             "device": "cpu",
             "clients": 0,
+            "built": 0,
+            "build_seconds": 0.0,
             "tasks": 0,
             "dropped": 0,
+            "max_held": 0,
             "busy_seconds": 0.0,
             "bytes_in": 0,
             "bytes_out": 0,
@@ -161,11 +178,13 @@ class _Worker:
                 # torch would start one thread per core in every rank; with 8
                 # workers on one node that made a run 1.85x slower.
                 torch.set_num_threads(1)
-            homes, context = hello["homes"], hello["context"]
-            for cid in hello["client_ids"]:
-                if homes[cid] == self.rank:
-                    self.clients[cid] = self.make_client(cid, context, self.device)
-            census = {cid: expected_local_steps(c) for cid, c in self.clients.items()}
+            self.context = hello["context"]
+            homes = hello["homes"]
+            # This worker reports the step counts of the clients homed here; any
+            # other client is built when its first task arrives.
+            home = [cid for cid in hello["client_ids"] if homes[cid] == self.rank]
+            census = {cid: expected_local_steps(self._client(cid)) for cid in home}
+            self.stats["clients"] = len(home)
         except Exception:
             failure = traceback.format_exc()
 
@@ -179,7 +198,7 @@ class _Worker:
                         failure = traceback.format_exc()
                 self.node_comm.Barrier()
 
-        self.stats.update(device=self.device, clients=len(self.clients))
+        self.stats.update(device=self.device)
         if failure is None:
             reply = {
                 "kind": P.READY,
@@ -187,7 +206,7 @@ class _Worker:
                 "host": self.stats["host"],
                 "device": self.device,
                 "threads": torch.get_num_threads(),
-                "clients": len(self.clients),
+                "clients": self.stats["clients"],
                 "census": census,
                 "step_time": step_time,
             }
@@ -198,6 +217,17 @@ class _Worker:
         self.comm.gather(reply, root=0)
         gc.collect()
         gc.freeze()  # APPFL calls gc.collect() often; skip the long-lived objects
+
+    def _client(self, cid: str):
+        """Return client ``cid``, building it on first use."""
+        client = self.clients.get(cid)
+        if client is None:
+            started = time.perf_counter()
+            client = self.make_client(cid, self.context, self.device)
+            self.clients[cid] = client
+            self.stats["built"] += 1
+            self.stats["build_seconds"] += time.perf_counter() - started
+        return client
 
     def _pick_device(self) -> str:
         requested = str(self.requested_device)
@@ -278,8 +308,14 @@ class _Worker:
             if active:
                 backoff = _MIN_BACKOFF
             else:
-                time.sleep(backoff)
-                backoff = min(backoff * 2, _MAX_BACKOFF)
+                # A finished task wakes this thread at once, so its DONE goes out
+                # without waiting for the poll.
+                self.wakeup.wait(backoff)
+                self.wakeup.clear()
+                # While nothing trains, the next task or its model is due.
+                with self.cv:
+                    idle = self.running is None
+                backoff = min(backoff * 2, _IDLE_BACKOFF if idle else _MAX_BACKOFF)
 
     def _handle(self, message: Dict) -> None:
         import torch
@@ -304,7 +340,9 @@ class _Worker:
                 heapq.heappush(
                     self.heap, (message["deadline"], message["tid"], message)
                 )
+                held = len(self.heap) + (self.running is not None)
                 self.cv.notify()
+            self.stats["max_held"] = max(self.stats["max_held"], held)
         elif kind == P.BCAST:
             buf = torch.empty(message["nbytes"], dtype=torch.uint8)
             request = self.comm.Ibcast([buf.numpy(), self.MPI.BYTE], root=0)
@@ -346,21 +384,24 @@ class _Worker:
                 self.refs.pop(version, None)
 
     def _drop(self, tid: int) -> None:
+        self.stats["dropped"] += 1
+        if self.results.pop(tid, None) is not None:
+            return  # already trained: its DONE answered the TASK
         with self.cv:
+            queued = None
             for index, (_, queued_tid, task) in enumerate(self.heap):
                 if queued_tid == tid:
-                    self.heap.pop(index)
+                    queued = self.heap.pop(index)
                     heapq.heapify(self.heap)
                     self.refs[task["version"]] -= 1
                     self._evict_locked()
-                    self.stats["dropped"] += 1
-                    return
-            if self.running == tid:
+                    break
+            if queued is None:
+                # Training, or trained but not yet through the outbox: its GONE is
+                # sent from there, once the device is free.
                 self.dropped_running.add(tid)
-                self.stats["dropped"] += 1
-                return
-        if self.results.pop(tid, None) is not None:
-            self.stats["dropped"] += 1
+        if queued is not None:
+            self._send_ctrl({"kind": P.GONE, "tid": tid, "rank": self.rank})
 
     def _drain_outbox(self) -> bool:
         drained = False
@@ -386,12 +427,14 @@ class _Worker:
             self.stats["busy_seconds"] += payload["busy"]
             if tid in self.dropped_running:
                 self.dropped_running.discard(tid)
+                self._send_ctrl({"kind": P.GONE, "tid": tid, "rank": self.rank})
                 continue
             self.results[tid] = payload["buf"]
             self._send_ctrl(
                 {
                     "kind": P.DONE,
                     "tid": tid,
+                    "rank": self.rank,
                     "meta": payload["meta"],
                     "schema": payload["schema"],
                     "nbytes": int(payload["buf"].numel()),
@@ -479,6 +522,7 @@ class _Worker:
             with self.cv:
                 self.running = None
             self.outbox.put(item)
+            self.wakeup.set()
 
     def _pop_runnable_locked(self):
         """Pop the earliest-deadline task whose global model has arrived."""
@@ -495,7 +539,12 @@ class _Worker:
         return None
 
     def _train(self, task: Dict, schema, buf) -> Dict:
-        client = self.clients[task["cid"]]
+        # Building a client draws from the global RNGs (model initialization, data
+        # partitioning), so it must happen outside the task's rng_guard.
+        client = self._client(task["cid"])
+        set_round = getattr(client, "set_round", None)
+        if callable(set_round) and task.get("round") is not None:
+            set_round(task["round"])
         state = unpack_state(schema, buf)
         started = time.perf_counter()
         with rng_guard(task["seed"]):

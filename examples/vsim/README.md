@@ -87,6 +87,9 @@ server_configs:
     task_seeding: true          # seed each local-training task (see below)
     executor: inprocess         # inprocess | mpi (--executor overrides)
     mpi:                        # used with --executor mpi
+      placement: dynamic        # dynamic | static (--placement overrides)
+      queue_depth: 1            # dynamic: tasks a worker holds, the running one included
+      pinned: []                # dynamic: clients that always train on their home worker
       calibration_runs: 2       # train() calls per worker; the last one is timed
       prefetch_mb: 1024         # results fetched ahead of need, rank 0 budget
       stall_timeout: 1800       # seconds without progress before aborting
@@ -106,8 +109,8 @@ server_configs:
 
 Important command-line overrides are `--mode`, `--num_clients`, `--device`,
 `--seed`, `--max_in_flight`, `--base_step_time`, `--num_global_epochs`,
-`--num_local_steps`, `--eval_every`, `--executor`, `--save_history`, and
-`--verify`. Run `python vsim/run_vsim.py --help` for the complete list.
+`--num_local_steps`, `--eval_every`, `--executor`, `--placement`,
+`--save_history`, and `--verify`. Run `python vsim/run_vsim.py --help` for the complete list.
 
 `task_seeding` seeds the global RNGs around every local-training task from
 (seed, client, how many times the client was selected) and restores them
@@ -166,9 +169,9 @@ without it is rejected when the driver is constructed.
 
 With `--executor mpi` the runner splits into one coordinator and many workers.
 Rank 0 keeps the virtual clock, the event queue, the barrier logic, and the APPFL
-`ServerAgent`. Every other rank is a worker that hosts a share of the virtual
-clients and trains them on one device. Launch one worker rank per GPU, plus rank
-0, which needs no GPU:
+`ServerAgent`. Every other rank is a worker that trains virtual clients on one
+device, each task on whichever worker frees up first. Launch one worker rank per
+GPU, plus rank 0, which needs no GPU:
 
 ```bash
 cd examples
@@ -188,8 +191,36 @@ ranks than GPUs puts several workers on one GPU. On CPU, each worker uses one
 torch thread unless `OMP_NUM_THREADS` is set; torch would otherwise start one
 thread per core in every rank, which made an 8-worker run 1.85x slower. Worker
 output goes to `vsim_logs/run_<timestamp>/worker_<rank>.log`, and per-client log
-files are turned off on workers (each `ClientAgent` would otherwise hold four
-open files).
+files and partition plots are turned off on workers (each `ClientAgent` would
+otherwise hold four open files).
+
+**Where tasks train.** Each client has a home worker, chosen by expected load,
+which builds the client at startup and reports its step count. With
+`placement: dynamic` (the default) that is all a home does: submitted tasks wait
+on rank 0 in order of virtual completion time, and the next worker to become idle
+gets the earliest one, so no worker idles while another has a backlog. With
+`queue_depth: 2` or more, rank 0 also queues tasks on busy workers, on the one
+expected to free up first, so the next task and its model arrive while the
+current one trains. That helps only when tasks last tens of milliseconds or
+models are very large, and a queued task sometimes runs before a more urgent one
+submitted after it. A result does not depend on where its task ran, because every
+task is seeded from (seed, client, selection count) and starts from the global
+model. Clients listed in `pinned` train only on their home, and
+`placement: static` pins every client, as earlier releases did.
+
+**Lightweight clients.** A `ClientAgent` keeps its own model, trainer and copies
+of the model state, about 185 MB of host memory per ResNet-18 client, and APPFL's
+`gc.collect()` calls walk every one of them on each task. VanillaTrainer clients
+carry nothing between tasks but their data and a round counter, so each worker
+serves all of them from one `ClientAgent` through
+`appfl.vsim.SharedAgentPool`: the model, optimizer and trainer are reused, and a
+client costs only its datasets, loaded once per worker the first time one of its
+tasks arrives. Rank 0 sends each task the client's round count, so VanillaTrainer
+reports the same `round` wherever the task runs. Trainers other than
+VanillaTrainer, and Opacus privacy accounting, keep state per client; the runner
+then builds full `ClientAgent`s and defaults to static placement. With dynamic
+placement every worker may load any client's data, so data loaders should
+compute a partition once per process rather than once per client.
 
 **What moves, and how often.** The event loop never waits on physical training to
 order events, and model traffic stays off the critical path:
@@ -201,21 +232,23 @@ order events, and model traffic stays off the critical path:
   the value so `--base_step_time` can pin it. Per-task measured durations are not
   supported with MPI: they would serialize the async event loop and depend on
   which GPU ran the task.
-- Each client lives on one worker, so its state never moves. Every task costs a
-  worker about the same physical time, but fast virtual clients are dispatched
-  (async) or accepted (sync) more often, so the runner places clients by their
-  expected duration, estimated from the profiles and the configured step count.
-  Async runs pack each client's expected update rate onto the least-loaded worker,
-  largest first; sync runs deal clients round-robin in order of duration, so the
-  clients a barrier accepts spread evenly. In epoch mode, where step counts
-  depend on each client's data, client `i` lives on worker `1 + i % W`.
+- Homes balance the expected work, which matters for static placement and pinned
+  clients. Every task costs a worker about the same physical time, but fast
+  virtual clients are dispatched (async) or accepted (sync) more often, so the
+  runner places clients by their expected duration, estimated from the profiles
+  and the configured step count. Async runs pack each client's expected update
+  rate onto the least-loaded worker, largest first; sync runs deal clients
+  round-robin in order of duration. In epoch mode, where step counts depend on
+  each client's data, client `i` lives on worker `1 + i % W`. No static placement
+  can follow a sync round's random sample, though, so the busiest worker trains up
+  to twice its share; dynamic placement splits every round evenly.
 - Workers train in order of virtual completion time, so the result the event loop
   needs next is trained first. A training thread runs alongside a thread that
   serves transfers.
 - An async run ends at its `num_global_epochs`-th arrival. With `r` arrivals
   left, that arrival comes no later than the `r`-th earliest pending completion,
   because later dispatches can only add arrivals. Tasks due after it are never
-  consumed, so they are not sent, or are dropped on their workers.
+  consumed, so they are not sent, or are dropped on rank 0 or on their workers.
 - Models are sent as raw byte buffers, never pickled. A global model version goes
   to a worker at most once: sync rounds broadcast it once (`Ibcast`); async
   dispatches send it only to a worker that lacks it. Local models are fetched in
@@ -245,15 +278,18 @@ VanillaTrainer's round counter, which decides when first-round pre-validation
 runs, and differential-privacy accounting. Global models match exactly when there
 is no over-selection or `do_pre_validation` is off.
 
-**Sizing.** In async mode each in-flight client holds one model copy on its
-worker, about `ceil(max_in_flight / W)` copies per worker; the runner prints the
-estimate. Keep `max_in_flight` at four or more times the number of workers, or
-workers idle while their clients are not in flight. Rank 0 holds the global
-model, at most `prefetch_mb` of fetched local models, and in sync modes the
-round's accepted models, as APPFL's `SyncScheduler` always does. The run ends
-with an execution summary: setup and run time, worker utilization, time rank 0
-spent waiting, tasks trained, used and dropped, model sends and sends avoided,
-broadcasts, and megabytes moved.
+**Sizing.** With dynamic placement a worker holds at most `queue_depth + 1`
+global models and one shared model, whatever the client count, and rank 0 keeps
+the global model of every async task still waiting for a worker, at most
+`max_in_flight` of them; the runner prints both bounds. With static placement
+each in-flight client holds one model copy on its home worker, about
+`ceil(max_in_flight / W)` copies per worker, and `max_in_flight` should be at
+least four times the number of workers, or workers idle while their clients are
+not in flight. Rank 0 also holds the global model, at most `prefetch_mb` of
+fetched local models, and in sync modes the round's accepted models, as APPFL's
+`SyncScheduler` always does. The run ends with an execution summary: setup and
+run time, worker utilization, time rank 0 spent waiting, tasks trained, used and
+dropped, model sends and sends avoided, broadcasts, and megabytes moved.
 
 **Requirements and limits.**
 
@@ -266,10 +302,12 @@ broadcasts, and megabytes moved.
 - Each model must be smaller than 2 GiB.
 - Library use: build `appfl.vsim.mpi.MPIExecutor` on rank 0, pass it to a driver
   as `executor=`, and call `appfl.vsim.mpi.run_worker` on every other rank. Pass
-  the executor `durations`, `mode` and `max_in_flight` to balance homes, and the
+  the executor `durations`, `mode` and `max_in_flight` to balance homes,
+  `placement`, `pinned` and `queue_depth` to choose where tasks train, and the
   async driver `target_epochs` when its scheduler counts one epoch per arrival
-  (as `AsyncScheduler` does), so unconsumable tasks are dropped. See
-  `run_vsim.py`.
+  (as `AsyncScheduler` does), so unconsumable tasks are dropped. Give
+  `run_worker` an `appfl.vsim.SharedAgentPool` as `make_client` for lightweight
+  clients. See `run_vsim.py`.
 
 ## Scope
 
