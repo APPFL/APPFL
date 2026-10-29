@@ -1,11 +1,13 @@
 import uuid
+import time
 from enum import Enum
 from omegaconf import DictConfig
 from concurrent.futures import Future
-from globus_compute_sdk import Executor
+from globus_compute_sdk import Executor, MPIFunction
 from typing import Optional, Union, Dict, OrderedDict, Tuple
 from appfl.comm.globus_compute.globus_compute_client_communicator import (
     globus_compute_client_entry_point,
+    data_transfer,
 )
 
 
@@ -25,6 +27,7 @@ class GlobusComputeClientEndpoint:
         self,
         client_id: str,
         client_endpoint_id: str,
+        transfer_endpoint_id: str,
         client_config: DictConfig,
     ):
         """
@@ -34,6 +37,7 @@ class GlobusComputeClientEndpoint:
         """
         self.client_id = client_id
         self.client_endpoint_id = client_endpoint_id
+        self.transfer_endpoint_id = transfer_endpoint_id
         self.client_config = client_config
         self._set_no_runing_task()
 
@@ -62,6 +66,7 @@ class GlobusComputeClientEndpoint:
     def submit_task(
         self,
         gce: Executor,
+        transfer_gce: Executor,
         task_name: str,
         model: Optional[Union[Dict, OrderedDict, bytes]] = None,
         meta_data: Optional[Dict] = None,
@@ -78,13 +83,61 @@ class GlobusComputeClientEndpoint:
         if self.status != ClientEndpointStatus.AVAILABLE:
             return None, None
         gce.endpoint_id = self.client_endpoint_id
-        self.future = gce.submit(
-            globus_compute_client_entry_point,
-            task_name=task_name,
-            client_agent_config=self.client_config,
-            model=model,
-            meta_data=meta_data,
-        )
+        transfer_gce.endpoint_id = self.transfer_endpoint_id
+        self.client_config.start_time = time.time()
+        if task_name == "get_sample_size_ds" or task_name == "train_ds":
+            gce.resource_specification = {
+                "num_nodes": self.client_config.ds_configs.num_nodes,
+                "ranks_per_node": self.client_config.ds_configs.ranks_per_node,
+            }
+
+            # transfer data to client using the transfer_gce
+            future = transfer_gce.submit(
+                data_transfer,
+                self.client_config,
+                model,
+                meta_data,
+            )
+
+            client_config_path, model_path, meta_data_path = future.result()
+
+            total_ranks = (
+                self.client_config.ds_configs.num_nodes
+                * self.client_config.ds_configs.ranks_per_node
+            )
+            ranks_per_node = self.client_config.ds_configs.ranks_per_node
+
+            mpi_cmd = (
+                f"python -c 'from appfl.comm.globus_compute.globus_compute_client_communicator import globus_compute_client_entry_point_ds; "
+                f'globus_compute_client_entry_point_ds("{task_name}", "{client_config_path}", "{model_path}", "{meta_data_path}")\''
+            )
+
+            if self.client_config.scheduler == "PBS":
+                if self.client_config.client_id == "Aurora":
+                    MPI_globus_compute_client_entry_point = MPIFunction(
+                        f"true; mpiexec -n {total_ranks} -ppn {ranks_per_node} --cpu-bind=$CPU_BIND "
+                        + mpi_cmd
+                    )
+                else:
+                    MPI_globus_compute_client_entry_point = MPIFunction(
+                        f"true; mpiexec -n {total_ranks} -ppn {ranks_per_node} "
+                        + mpi_cmd
+                    )
+            elif self.client_config.scheduler == "SLURM":
+                MPI_globus_compute_client_entry_point = MPIFunction(
+                    f"true; srun --ntasks-per-node={ranks_per_node} --ntasks={total_ranks} --gpu-bind=none -l -u "
+                    + mpi_cmd
+                )
+
+            self.future = gce.submit(MPI_globus_compute_client_entry_point)
+        else:
+            self.future = gce.submit(
+                globus_compute_client_entry_point,
+                task_name=task_name,
+                client_agent_config=self.client_config,
+                model=model,
+                meta_data=meta_data,
+            )
         self._status = ClientEndpointStatus.RUNNING
         self.task_name = task_name
         self.executing_task_id = str(uuid.uuid4())
