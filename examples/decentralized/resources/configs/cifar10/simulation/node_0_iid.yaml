@@ -1,0 +1,107 @@
+# CIFAR-10 architecture search with ADKO, IID -- node 0 of five.
+#
+# The control arm for `node_0_noniid.yaml`: every agent trains on an independent uniform
+# sample of CIFAR-10, so a neighbour's token is a shortcut rather than information about data
+# the agent cannot see.
+#
+# Hyperparameters follow the reference ADKO study's `cifar10/results/iid/config.json`
+# (github.com/lucasrillo/adko): N=5, T=30, B=40, tau=0.5, beta=2, lam=2, gamma=64,
+# sigma_s=0.5, alpha_tau=0.05, a random geometric graph with r=0.6, 40 epochs per evaluation.
+# APPFL's `random_geometric` places nodes with the same RandomState draw as the reference, so
+# seed 42 gives the same graph.
+#
+#   python decentralized/serial/run_serial.py \
+#       --config ./decentralized/resources/configs/cifar10/simulation/node_0_iid.yaml
+#   mpirun -n 5 python decentralized/mpi/run_mpi.py \
+#       --config ./decentralized/resources/configs/cifar10/simulation/node_0_iid.yaml
+#
+# Needs torch, torchvision and scikit-learn.
+
+node_id: "agent-0"
+
+num_epochs: 30                  # T: rounds of {act -> exchange tokens -> observe}
+seed: 42                        # one of the reference's 42/49/56; shards, graph and
+                                # agent RNGs all follow it
+
+neighbors:
+  mode: from_topo
+  topology: random_geometric
+  topology_kwargs:
+    radius: 0.6                 # graph_r
+    seed: ${seed}               # the reference builds the graph with the run seed
+  num_nodes: 5                  # IID places no constraint on the count
+  id_prefix: "agent-"
+
+algorithm_configs:
+  warmup_rounds: 3              # n_initial
+  token_budget: 40              # B
+  alpha_tau: 0.05
+  objective: "maximize"         # validation accuracy in [0, 1]
+  emit_insight: false
+  total_proposals: null
+  n_local_candidates: 50        # n_candidates
+
+  # Eq. (1). No preset matches this study, so every field is set; see node_0_noniid.yaml.
+  weights:
+    beta: 2.0
+    lam: 2.0
+    gamma: 64.0                 # the IID arm avoids peer failures harder than non-IID's 32
+    sigma_s: 0.5
+    metric: "euclidean"
+    kernel: "sigma_sq"
+    weight_by_fidelity: true
+    peer_normalization: "mixing_weight"
+
+  baseline:
+    baseline: "fixed"
+    baseline_kwargs:
+      threshold: 0.5            # tau
+      scale: 0.5                # Y_SCALE
+
+  pruner:
+    pruner: "fidelity"
+    pruner_kwargs:
+      alpha_tau: 0.05
+
+surrogate_configs:
+  surrogate_path: "./decentralized/resources/surrogate/matern_gp_surrogate.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs:
+    dim: 7
+    alpha: 0.01
+    n_restarts: 2
+
+space_configs:
+  space_path: "./decentralized/resources/space/cifar10_nas_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 0              # set by the launcher for every other node
+    num_agents: 5
+    seed: ${seed}
+
+evaluator_configs:
+  evaluator_path: "./decentralized/resources/evaluator/cifar10_nas.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs:
+    agent_index: ${space_configs.space_kwargs.agent_index}
+    num_agents: ${space_configs.space_kwargs.num_agents}
+    distribution: "iid"
+    data_dir: "./datasets/RawData"
+    download: true
+    n_epochs: 40
+    shard_size: 10000           # per agent, drawn independently, so shards overlap
+    val_frac: 0.2
+    data_seed: ${seed}
+    device: "auto"
+  cost_seconds: 0.0
+
+train_configs:
+  logging_output_dirname: "./output"
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:
+    server_uri: "localhost:50051"
+    use_ssl: false
