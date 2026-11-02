@@ -1,12 +1,11 @@
-from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
-from google.protobuf import descriptor as _descriptor
-from google.protobuf import message as _message
+from collections.abc import Mapping as _Mapping
 from typing import (
     ClassVar as _ClassVar,
-    Mapping as _Mapping,
-    Optional as _Optional,
-    Union as _Union,
 )
+
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -26,16 +25,16 @@ class DataBuffer(_message.Message):
     __slots__ = ("data_bytes",)
     DATA_BYTES_FIELD_NUMBER: _ClassVar[int]
     data_bytes: bytes
-    def __init__(self, data_bytes: _Optional[bytes] = ...) -> None: ...
+    def __init__(self, data_bytes: bytes | None = ...) -> None: ...
 
 class ClientHeader(_message.Message):
     __slots__ = ("client_id",)
     CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
     client_id: str
-    def __init__(self, client_id: _Optional[str] = ...) -> None: ...
+    def __init__(self, client_id: str | None = ...) -> None: ...
 
 class ServerHeader(_message.Message):
-    __slots__ = ("status", "ticket", "poll_interval")
+    __slots__ = ("poll_interval", "status", "ticket")
     STATUS_FIELD_NUMBER: _ClassVar[int]
     TICKET_FIELD_NUMBER: _ClassVar[int]
     POLL_INTERVAL_FIELD_NUMBER: _ClassVar[int]
@@ -44,9 +43,9 @@ class ServerHeader(_message.Message):
     poll_interval: float
     def __init__(
         self,
-        status: _Optional[_Union[ServerStatus, str]] = ...,
-        ticket: _Optional[str] = ...,
-        poll_interval: _Optional[float] = ...,
+        status: ServerStatus | str | None = ...,
+        ticket: str | None = ...,
+        poll_interval: float | None = ...,
     ) -> None: ...
 
 class ConfigurationRequest(_message.Message):
@@ -57,20 +56,20 @@ class ConfigurationRequest(_message.Message):
     meta_data: str
     def __init__(
         self,
-        header: _Optional[_Union[ClientHeader, _Mapping]] = ...,
-        meta_data: _Optional[str] = ...,
+        header: ClientHeader | _Mapping | None = ...,
+        meta_data: str | None = ...,
     ) -> None: ...
 
 class ConfigurationResponse(_message.Message):
-    __slots__ = ("header", "configuration")
+    __slots__ = ("configuration", "header")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
     header: ServerHeader
     configuration: str
     def __init__(
         self,
-        header: _Optional[_Union[ServerHeader, _Mapping]] = ...,
-        configuration: _Optional[str] = ...,
+        header: ServerHeader | _Mapping | None = ...,
+        configuration: str | None = ...,
     ) -> None: ...
 
 class GetGlobalModelRequest(_message.Message):
@@ -81,12 +80,12 @@ class GetGlobalModelRequest(_message.Message):
     meta_data: str
     def __init__(
         self,
-        header: _Optional[_Union[ClientHeader, _Mapping]] = ...,
-        meta_data: _Optional[str] = ...,
+        header: ClientHeader | _Mapping | None = ...,
+        meta_data: str | None = ...,
     ) -> None: ...
 
 class GetGlobalModelResponse(_message.Message):
-    __slots__ = ("header", "global_model", "meta_data")
+    __slots__ = ("global_model", "header", "meta_data")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
     META_DATA_FIELD_NUMBER: _ClassVar[int]
@@ -95,9 +94,9 @@ class GetGlobalModelResponse(_message.Message):
     meta_data: str
     def __init__(
         self,
-        header: _Optional[_Union[ServerHeader, _Mapping]] = ...,
-        global_model: _Optional[bytes] = ...,
-        meta_data: _Optional[str] = ...,
+        header: ServerHeader | _Mapping | None = ...,
+        global_model: bytes | None = ...,
+        meta_data: str | None = ...,
     ) -> None: ...
 
 class UpdateGlobalModelRequest(_message.Message):
@@ -110,13 +109,13 @@ class UpdateGlobalModelRequest(_message.Message):
     meta_data: str
     def __init__(
         self,
-        header: _Optional[_Union[ClientHeader, _Mapping]] = ...,
-        local_model: _Optional[bytes] = ...,
-        meta_data: _Optional[str] = ...,
+        header: ClientHeader | _Mapping | None = ...,
+        local_model: bytes | None = ...,
+        meta_data: str | None = ...,
     ) -> None: ...
 
 class UpdateGlobalModelResponse(_message.Message):
-    __slots__ = ("header", "global_model", "meta_data")
+    __slots__ = ("global_model", "header", "meta_data")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
     META_DATA_FIELD_NUMBER: _ClassVar[int]
@@ -125,13 +124,13 @@ class UpdateGlobalModelResponse(_message.Message):
     meta_data: str
     def __init__(
         self,
-        header: _Optional[_Union[ServerHeader, _Mapping]] = ...,
-        global_model: _Optional[bytes] = ...,
-        meta_data: _Optional[str] = ...,
+        header: ServerHeader | _Mapping | None = ...,
+        global_model: bytes | None = ...,
+        meta_data: str | None = ...,
     ) -> None: ...
 
 class CustomActionRequest(_message.Message):
-    __slots__ = ("header", "action", "meta_data")
+    __slots__ = ("action", "header", "meta_data")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     ACTION_FIELD_NUMBER: _ClassVar[int]
     META_DATA_FIELD_NUMBER: _ClassVar[int]
@@ -140,9 +139,9 @@ class CustomActionRequest(_message.Message):
     meta_data: str
     def __init__(
         self,
-        header: _Optional[_Union[ClientHeader, _Mapping]] = ...,
-        action: _Optional[str] = ...,
-        meta_data: _Optional[str] = ...,
+        header: ClientHeader | _Mapping | None = ...,
+        action: str | None = ...,
+        meta_data: str | None = ...,
     ) -> None: ...
 
 class CustomActionResponse(_message.Message):
@@ -153,8 +152,8 @@ class CustomActionResponse(_message.Message):
     results: str
     def __init__(
         self,
-        header: _Optional[_Union[ServerHeader, _Mapping]] = ...,
-        results: _Optional[str] = ...,
+        header: ServerHeader | _Mapping | None = ...,
+        results: str | None = ...,
     ) -> None: ...
 
 class PollRequest(_message.Message):
@@ -165,6 +164,6 @@ class PollRequest(_message.Message):
     ticket: str
     def __init__(
         self,
-        header: _Optional[_Union[ClientHeader, _Mapping]] = ...,
-        ticket: _Optional[str] = ...,
+        header: ClientHeader | _Mapping | None = ...,
+        ticket: str | None = ...,
     ) -> None: ...

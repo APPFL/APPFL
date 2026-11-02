@@ -1,10 +1,13 @@
-import time
-import grpc
-import yaml
 import logging
 import threading
+import time
+from collections.abc import Mapping, Sequence
 from concurrent import futures
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any
+
+import grpc
+import yaml
+
 from appfl.comm.grpc.channel import create_grpc_channel
 from appfl.comm.grpc.grpc_communicator_pb2 import (
     ClientHeader,
@@ -24,8 +27,8 @@ from appfl.comm.grpc.grpc_communicator_pb2_grpc import (
 )
 from appfl.comm.grpc.payload_store import PayloadStore
 from appfl.comm.grpc.utils import (
-    deserialize_model,
     MAX_RECEIVE_MESSAGE_BYTES,
+    deserialize_model,
     proto_to_databuffer,
     response_chunk_size,
     serialize_model,
@@ -42,7 +45,7 @@ class GRPCPeerServicer(GRPCCommunicatorServicer):
         send_to: Sequence[str],
         max_message_size: int,
         wait_timeout: float,
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         self.node_id = node_id
         self.store = store
@@ -174,17 +177,17 @@ class GRPCPeerCommunicator:
         node_id: str,
         send_to: Sequence[str],
         recv_from: Mapping[str, str],
-        server_uri: Optional[str] = None,
-        relay_server_uri: Optional[str] = None,
+        server_uri: str | None = None,
+        relay_server_uri: str | None = None,
         use_ssl: bool = False,
-        server_certificate: Optional[str] = None,
-        server_certificate_key: Optional[str] = None,
-        root_certificate: Optional[str] = None,
+        server_certificate: str | None = None,
+        server_certificate_key: str | None = None,
+        root_certificate: str | None = None,
         max_message_size: int = 2 * 1024 * 1024,
-        max_workers: Optional[int] = None,
+        max_workers: int | None = None,
         connect_timeout: float = 3600.0,
         wait_timeout: float = 3600.0,
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ) -> None:
         self.node_id = str(node_id)
         # Exactly one of `server_uri` or `relay_server_uri`: a node either serves its own payloads or
@@ -235,10 +238,10 @@ class GRPCPeerCommunicator:
             self._server = None
         # Keyed by endpoint rather than by peer: several peers reached through one relay share
         # a single channel, and the relay this node publishes to is usually one of them.
-        self._channels: Dict[str, Any] = {}
-        self._stubs: Dict[str, GRPCCommunicatorStub] = {}
+        self._channels: dict[str, Any] = {}
+        self._stubs: dict[str, GRPCCommunicatorStub] = {}
 
-    def _resolve_max_workers(self, max_workers: Optional[int]) -> int:
+    def _resolve_max_workers(self, max_workers: int | None) -> int:
         """One thread per peer served, plus headroom, unless the caller insists otherwise.
 
         Sized automatically because getting it wrong starves rather than fails: a peer with
@@ -389,7 +392,7 @@ class GRPCPeerCommunicator:
 
     # -- the exchange ------------------------------------------------------------------
 
-    def exchange(self, round_id: int, payload: Any) -> Dict[str, Any]:
+    def exchange(self, round_id: int, payload: Any) -> dict[str, Any]:
         """Publish ``payload`` for this round and return the neighbors' payloads.
 
         Publishing goes wherever this node is reachable -- its own store if it serves, the
@@ -404,7 +407,7 @@ class GRPCPeerCommunicator:
         else:
             self.store.publish(int(round_id), data)
 
-        received: Dict[str, Any] = {}
+        received: dict[str, Any] = {}
         for peer_id, uri in self.recv_from.items():
             request = GetGlobalModelRequest(
                 header=ClientHeader(client_id=self.node_id),

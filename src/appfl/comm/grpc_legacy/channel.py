@@ -3,7 +3,7 @@ Auxiliary function to create a secure/insecure gRPC channel.
 """
 
 import grpc
-from typing import Optional
+
 from appfl.comm.grpc.auth import APPFLAuthMetadataProvider
 from appfl.login_manager import BaseAuthenticator
 
@@ -13,8 +13,8 @@ def create_grpc_channel(
     *,
     use_ssl: bool = False,
     use_authenticator: bool = False,
-    root_certificates: Optional[bytes] = None,
-    authenticator: Optional[BaseAuthenticator] = None,
+    root_certificates: bytes | None = None,
+    authenticator: BaseAuthenticator | None = None,
     max_message_size: int = 2 * 1024 * 1024,
 ) -> grpc.Channel:
     """

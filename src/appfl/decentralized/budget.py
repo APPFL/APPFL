@@ -7,8 +7,8 @@ separate -- one is part of the system, the other watches it.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from appfl.decentralized.protocol import TokenProtocol
 

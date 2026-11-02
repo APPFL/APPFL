@@ -5,15 +5,17 @@ python flamby_serial.py --num_clients 6 --num_epochs 5 --dataset ISIC2019 --num_
 python flamby_serial.py --num_clients 3 --num_epochs 5 --dataset IXI --num_local_steps 50 --server ServerFedAvg
 """
 
-import time
-import torch
 import argparse
-import appfl.run_serial as rs
+import time
+
+import torch
+from dataloader.flamby_dataloader import get_flamby
+from models.flamby import flamby_train
 from omegaconf import OmegaConf
+
+import appfl.run_serial as rs
 from appfl.config import Config
 from appfl.misc.utils import set_seed
-from models.flamby import flamby_train
-from dataloader.flamby_dataloader import get_flamby
 
 ## Read arguments
 parser = argparse.ArgumentParser()
@@ -132,12 +134,7 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_Flamby_{}_{}clients_{}_{}epochs_serial".format(
-        args.dataset,
-        args.num_clients,
-        args.server,
-        args.num_epochs,
-    )
+    cfg.output_dirname = f"./outputs_Flamby_{args.dataset}_{args.num_clients}clients_{args.server}_{args.num_epochs}epochs_serial"
     cfg.output_filename = "result"
 
     ## adaptive server

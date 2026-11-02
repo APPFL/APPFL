@@ -17,21 +17,23 @@ mpiexec -np 6 python ./mnist_grpc.py \
     --num_epochs 10
 """
 
-import time
-import torch
 import argparse
+import time
+
+import torch
+from dataloader.mnist_dataloader import get_mnist
+from losses.utils import get_loss
+from metric.utils import get_metric
+from models.utils import get_model
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from appfl.config import Config
-from appfl.misc.utils import set_seed
-from appfl.misc.data import data_sanity_check
-from losses.utils import get_loss
-from models.utils import get_model
-from metric.utils import get_metric
-import appfl.run_grpc_server as grpc_server
+
 import appfl.run_grpc_client as grpc_client
-from dataloader.mnist_dataloader import get_mnist
+import appfl.run_grpc_server as grpc_server
 from appfl.comm.grpc import load_credential_from_file
+from appfl.config import Config
+from appfl.misc.data import data_sanity_check
+from appfl.misc.utils import set_seed
 
 
 def _require_cert(arg_value, flag_name):

@@ -10,12 +10,15 @@ To add a mismatch rule, append a `CompatibilityRule` to `CLIENT_RULES` (checked 
 each client) or `SERVER_RULES` (checked by a client for the server).
 """
 
-import grpc
 import logging
 import threading
 from collections import namedtuple
-from typing import Any, Callable, List, NamedTuple, Optional, Tuple
+from collections.abc import Callable
+from typing import Any, NamedTuple
+
+import grpc
 from packaging.version import InvalidVersion, Version
+
 from appfl import __version__ as APPFL_VERSION
 
 APPFL_VERSION_HEADER = "appfl-version"
@@ -32,7 +35,7 @@ class CompatibilityRule(NamedTuple):
 
 
 # Rules the server checks against the version of each client
-CLIENT_RULES: List[CompatibilityRule] = [
+CLIENT_RULES: list[CompatibilityRule] = [
     CompatibilityRule(
         "1.12.0",
         lambda server: server.use_polling,
@@ -49,7 +52,7 @@ CLIENT_RULES: List[CompatibilityRule] = [
 ]
 
 # Rules a client checks against the version of the server
-SERVER_RULES: List[CompatibilityRule] = [
+SERVER_RULES: list[CompatibilityRule] = [
     CompatibilityRule(
         "1.12.0",
         lambda client: True,
@@ -64,17 +67,17 @@ class IncompatibleVersionError(Exception):
     """The APPFL version of the peer is too old for this side, so requests with it always fail."""
 
 
-def _release(version: str) -> Tuple[int, ...]:
+def _release(version: str) -> tuple[int, ...]:
     """Release numbers of a version, so that pre-releases such as 1.12.0.dev0 count as 1.12.0."""
     return Version(version).release
 
 
 def check_peer_version(
     peer: str,
-    peer_version: Optional[str],
-    rules: List[CompatibilityRule],
+    peer_version: str | None,
+    rules: list[CompatibilityRule],
     communicator: Any,
-) -> List[Tuple[str, str]]:
+) -> list[tuple[str, str]]:
     """
     Check the APPFL version of a peer against the rules and this side's version.
     :param peer: Name of the peer in messages, e.g. "client 1" or "the server"

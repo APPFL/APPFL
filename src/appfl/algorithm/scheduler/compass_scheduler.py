@@ -1,13 +1,15 @@
 import gc
-import time
 import math
 import threading
-from omegaconf import DictConfig
+import time
 from collections import OrderedDict
 from concurrent.futures import Future
-from typing import Any, Union, Dict, Tuple
-from appfl.algorithm.scheduler import BaseScheduler
+from typing import Any
+
+from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import BaseAggregator
+from appfl.algorithm.scheduler import BaseScheduler
 from appfl.misc.memory_utils import optimize_memory_cleanup
 
 
@@ -46,7 +48,7 @@ class CompassScheduler(BaseScheduler):
 
     def get_parameters(
         self, **kwargs
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Future | dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Get the global model parameters for the clients.
         The `Compass` scheduler requires all clients to get the initial model at the same
@@ -67,10 +69,10 @@ class CompassScheduler(BaseScheduler):
 
     def schedule(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict],
+        client_id: int | str,
+        local_model: dict | OrderedDict,
         **kwargs,
-    ) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Future | dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Schedule an asynchronous global aggregation for the local model from a client
         using the `Compass` algorithm. The method will either return the current global model
@@ -118,7 +120,7 @@ class CompassScheduler(BaseScheduler):
                 force_gc=True,
             )
 
-    def _record_info(self, client_id: Union[int, str]) -> None:
+    def _record_info(self, client_id: int | str) -> None:
         """
         Record/update the client information for the coming client, including the client's
         - `timestamp`: the timestamp of the local model
@@ -154,11 +156,11 @@ class CompassScheduler(BaseScheduler):
 
     def _single_update(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict],
+        client_id: int | str,
+        local_model: dict | OrderedDict,
         buffer: bool = True,
         **kwargs,
-    ) -> Tuple[Union[Dict, OrderedDict], Dict]:
+    ) -> tuple[dict | OrderedDict, dict]:
         """
         Perform global update for the local model from a single client.
         :param `client_id`: the id of the client
@@ -202,11 +204,11 @@ class CompassScheduler(BaseScheduler):
 
     def _group_update(
         self,
-        client_id: Union[int, str],
-        local_model: Union[Dict, OrderedDict],
+        client_id: int | str,
+        local_model: dict | OrderedDict,
         group_idx: int,
         **kwargs,
-    ) -> Union[Future, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> Future | tuple[dict | OrderedDict, dict]:
         """
         Perform global update using local models from a certain arrival group. The function
         may return the global model directly, or a `Future` object for the global model.
@@ -333,7 +335,7 @@ class CompassScheduler(BaseScheduler):
                 if self.optimize_memory:
                     optimize_memory_cleanup(force_gc=True)
 
-    def _assign_group(self, client_id: Union[int, str], **kwargs) -> None:
+    def _assign_group(self, client_id: int | str, **kwargs) -> None:
         """
         Assign the client to an arrival group based on the client estimated speed.
         :param `client_id`: the id of the client
@@ -378,7 +380,7 @@ class CompassScheduler(BaseScheduler):
             if not self._join_group(client_id):
                 self._create_group(client_id, **kwargs)
 
-    def _join_group(self, client_id: Union[int, str]) -> bool:
+    def _join_group(self, client_id: int | str) -> bool:
         """
         Try to join the client to an existing arrival group.
         :return: whether the client can join an existing group or not
@@ -411,7 +413,7 @@ class CompassScheduler(BaseScheduler):
             self.client_info[client_id]["start_time"] = curr_time
             return True
 
-    def _create_group(self, client_id: Union[int, str], **kwargs):
+    def _create_group(self, client_id: int | str, **kwargs):
         """
         Create a new group for the client.
         :param `client_id`: the id of the client

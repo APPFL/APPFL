@@ -18,7 +18,8 @@ second algorithm reuse the communicators, ``topology/`` and ``budget.py`` unchan
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Protocol, Sequence, runtime_checkable
+from collections.abc import Sequence
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable

@@ -1,6 +1,8 @@
 import argparse
+
 from mpi4py import MPI
 from omegaconf import OmegaConf
+
 from appfl.agent import ClientAgent, ServerAgent
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 

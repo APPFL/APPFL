@@ -1,8 +1,9 @@
 import math
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+
 import lightning.pytorch as pl
+import torch
+import torch.nn.functional as F
+from torch import nn
 
 
 class LightningCNN(pl.LightningModule):

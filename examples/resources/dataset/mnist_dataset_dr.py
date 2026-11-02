@@ -1,15 +1,17 @@
 import os
+
 import torch
 import torchvision
 from omegaconf import OmegaConf
-import torchvision.transforms as transforms
+from torchvision import transforms
+
 from appfl.misc.data import (
     Dataset,
-    iid_partition,
     class_noniid_partition_binary,
     dirichlet_noniid_partition,
+    iid_partition,
 )
-from appfl.misc.data_readiness.data_pollute import add_noise_to_subset, add_duplicates
+from appfl.misc.data_readiness.data_pollute import add_duplicates, add_noise_to_subset
 
 
 def get_mnist(
