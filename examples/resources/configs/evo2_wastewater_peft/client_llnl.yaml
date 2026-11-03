@@ -5,9 +5,9 @@ train_configs:
   trainer_path: "/home/<username>/APPFL/examples/resources/configs/evo2_wastewater_peft/evo2_trainer.py"
   site: "site_anl_3"
   method: "lora"
-  base_data: "/p/lustre/<username>/dbforge/evo2_metagenomics/db-forge-wastewater/data"
-  model_path: "/p/lustre/<username>/dbforge/evo2_metagenomics/models/evo2_7b/evo2_7b.pt"
-  evo2_dir: "/p/lustre/<username>/dbforge/evo2_metagenomics/evo2"
+  base_data: "/p/lustre1/<username>/dbforge/evo2_metagenomics/db-forge-wastewater/data"
+  model_path: "/p/lustre1/<username>/dbforge/evo2_metagenomics/models/evo2_7b/evo2_7b.pt"
+  evo2_dir: "/p/lustre1/<username>/dbforge/evo2_metagenomics/evo2"
   num_local_steps: 1
   chunk_size: 150
   max_files: 1
