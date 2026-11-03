@@ -52,6 +52,9 @@ jobs:
     - name: Test pytest with MPI
       run: |
         mpirun -n 2 python3 -m pytest --with-mpi
+    - name: Test the vsim MPI runtime with two workers
+      run: |
+        mpirun -n 3 --oversubscribe python3 -m pytest --with-mpi tests/test_vsim_mpi.py
 
   # polaris:
   #   runs-on: ubuntu-22.04
