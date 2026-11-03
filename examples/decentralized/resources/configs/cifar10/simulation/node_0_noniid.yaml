@@ -104,6 +104,7 @@ evaluator_configs:
     primary_frac: 0.8
     val_frac: 0.2
     data_seed: ${seed}          # the reference seeds the shards with the run seed
+    train_seed: ${seed}         # model init, shuffle and dropout of each training run
     device: "auto"              # cuda:(agent_index % visible GPUs), else cpu
   cost_seconds: 0.0             # real wall time is already spent training
 

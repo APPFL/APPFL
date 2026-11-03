@@ -255,12 +255,16 @@ def get_evaluator(
     primary_frac: float = 0.8,
     val_frac: float = 0.2,
     data_seed: int = 42,
+    train_seed: int | None = 42,
     device: str = "auto",
 ) -> Callable[[Sequence[float]], float]:
     """Entry point named by ``evaluator_configs.evaluator_name``.
 
     ``agent_index`` and ``num_agents`` select this agent's shard. The configs take them from
     ``space_configs.space_kwargs`` by interpolation, which is where every launcher writes them.
+
+    ``train_seed`` seeds each training run from ``(train_seed, agent_index, evaluation number)``,
+    so an agent's k-th run is the same under every launcher; ``null`` leaves torch unseeded.
     """
     if distribution not in ("non_iid", "iid"):
         raise ValueError(
@@ -280,8 +284,15 @@ def get_evaluator(
     X_train, y_train = _to_tensors(images, labels, train_idx)
     X_val, y_val = _to_tensors(images, labels, val_idx)
     dev = _resolve_device(device, agent_index)
+    n_evals = 0
 
     def evaluate(point: Sequence[float]) -> float:
+        nonlocal n_evals
+        if train_seed is not None:
+            # Model init, shuffle order and dropout masks all draw from torch's global RNG.
+            seq = np.random.SeedSequence([train_seed, agent_index, n_evals])
+            torch.manual_seed(int(seq.generate_state(1)[0]))
+        n_evals += 1
         params = decode_theta(point)
         try:
             model = CIFARResNet(

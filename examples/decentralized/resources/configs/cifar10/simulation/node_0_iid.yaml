@@ -92,6 +92,7 @@ evaluator_configs:
     shard_size: 10000           # per agent, drawn independently, so shards overlap
     val_frac: 0.2
     data_seed: ${seed}
+    train_seed: ${seed}         # model init, shuffle and dropout of each training run
     device: "auto"
   cost_seconds: 0.0
 

@@ -42,8 +42,6 @@ A third experiment, `cifar10`, reproduces the ADKO paper's CIFAR-10 architecture
 | extra dependencies | none beyond APPFL's `examples` extra; a GPU in practice |
 | what it is for | reproducing a published result |
 
-The simulation section below applies unchanged to `cifar10` as well; it has no deployed configs yet.
-
 ## Simulation: one file describes every node
 
 `neighbors.mode: from_topo`. A launcher that owns the whole federation derives the graph and assigns matching node ids, so nodes 1..n-1 come from node 0's config.
@@ -171,6 +169,20 @@ Shards are drawn from the training labels with the reference's own random draws,
 
 Every evaluation is a full training run, so a 30-round run is 150 of them: hours on one GPU, not minutes. The serial launcher trains the five agents one after another; MPI trains them side by side. For a smoke run, set `evaluator_kwargs.n_epochs` to 1 in a copy of the config and pass `--num_rounds 4` — a check of the machinery, not a reproduction.
 
+`evaluator_kwargs.train_seed` seeds every training run from `(train_seed, agent_index, evaluation number)`, so an agent's k-th run starts from the same weights and sees the same batches under every launcher. Set it to `null` to leave torch unseeded.
+
+The non-IID arm also has a deployed form, five sites on a fully connected graph. Each site replays the same global split and keeps its own shard, so `seed`, `num_agents` and the shard settings must match across the five files; only `node_id`, `node_index`, `neighbors`, `space_kwargs.agent_index` and `server_uri` differ:
+
+```bash
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_0.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_1.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_2.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_3.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_4.yaml
+```
+
+A round lasts as long as the slowest site's training run, and a site waits at most an hour for a peer's token, so run these on GPUs.
+
 Three things keep a run from matching the reference exactly, all on the algorithm side rather than in these files. The agent keeps its own tokens in memory and weights every source by 1/(|N|+1), where the reference's CIFAR-10 code keeps only neighbours' tokens at 1/|N|. The reference's published runs blur outgoing token locations with Gaussian noise (σ_φ = 0.05); `ADKOAgent` has an `embedding_privatizer` hook for it, but no config reaches it yet, so these configs send locations un-noised. And GPU training is not bit-for-bit repeatable, so two runs of the same seed agree closely rather than exactly.
 
 ## The equivalence this is anchored to
@@ -204,7 +216,8 @@ resources/configs/
 │   └── distributed/node_{0..3}.yaml  explicit; the HET arm as four deployed labs
 └── cifar10/
     ├── simulation/node_0_noniid.yaml from_topo; a disjoint class-skewed shard per agent, 2 or 5 agents
-    └── simulation/node_0_iid.yaml    from_topo; the control arm, at any size
+    ├── simulation/node_0_iid.yaml    from_topo; the control arm, at any size
+    └── distributed/node_{0..4}.yaml  explicit; the non-IID arm as five deployed sites
 ```
 
 The algorithm blocks are identical across all of them; only `node_id`, `node_index`, `neighbors` and `comm_configs` differ. `node_index` is a site's position in the federation: it sets the RNG seed offset, and in a heterogeneous experiment it also selects that site's slice of the design space — so the ids are part of the experiment, not labels.
