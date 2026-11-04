@@ -18,10 +18,10 @@ AIDRIN Python API is attempted first; falls back to pandas/numpy metrics
 """
 
 import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 # Defaults — override per-site via train_configs YAML
 DRISEE_THRESHOLD = 20.0
@@ -35,7 +35,7 @@ def _mgm_id_from_fasta(filename: str) -> str:
     return Path(filename).name.split("_")[0]
 
 
-def _aidrin_meta_metrics(csv_path: Path) -> Dict:
+def _aidrin_meta_metrics(csv_path: Path) -> dict:
     """Run AIDRIN (or fallback) on the site CSV and return a summary dict."""
     try:
         from aidrin import Inspector
@@ -75,12 +75,12 @@ def check_site_data(
     site: str,
     aidrin_csv: Path,
     fasta_dir: Path,
-    current_exclude: List[str],
-    max_files: Optional[int] = None,
+    current_exclude: list[str],
+    max_files: int | None = None,
     drisee_threshold: float = DRISEE_THRESHOLD,
-    report_dir: Optional[Path] = None,
+    report_dir: Path | None = None,
     logger=None,
-) -> Tuple[List[str], List[str], Dict]:
+) -> tuple[list[str], list[str], dict]:
     """
     Assess training data quality for one FL site.
 
@@ -143,10 +143,10 @@ def check_site_data(
         return [], [], {"site": site, "skipped": True, "reason": "missing_columns"}
 
     # --- Per-file contamination check ---
-    new_excludes: List[str] = []
-    contaminated_fnames: List[str] = []
-    clean_fnames: List[str] = []
-    per_file: Dict = {}
+    new_excludes: list[str] = []
+    contaminated_fnames: list[str] = []
+    clean_fnames: list[str] = []
+    per_file: dict = {}
 
     for fpath in candidates:
         fname = fpath.name

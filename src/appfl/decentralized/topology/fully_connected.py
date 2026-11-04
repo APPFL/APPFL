@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from appfl.decentralized.topology.base import Topology
 
 

@@ -1,14 +1,18 @@
 from __future__ import annotations
+
 import ast
 import importlib
 import logging
 import random
 import traceback
-from typing import Any, Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Any
+
 import numpy as np
 import torch
 from omegaconf import DictConfig
 from torch.utils.data import ConcatDataset, Dataset, Subset, random_split
+
 from appfl.logger import ServerAgentFileLogger
 
 
@@ -376,7 +380,7 @@ def _splits_have_nonempty_parts(splits, expected_parts: int) -> bool:
         return False
     for idx in range(int(expected_parts)):
         try:
-            if int(len(splits[idx])) <= 0:
+            if len(splits[idx]) <= 0:
                 return False
         except Exception:
             return False
@@ -405,7 +409,7 @@ def _dataset_targets(dataset) -> np.ndarray | None:
         return idx.reshape(-1).astype(np.int64, copy=False)
 
     try:
-        n = int(len(dataset))
+        n = len(dataset)
     except Exception:
         return None
     if n <= 0:
@@ -465,7 +469,7 @@ def _stratified_split_dataset(
     ratios: list[float],
     seed: int,
 ):
-    total = int(len(dataset))
+    total = len(dataset)
     labels = _dataset_targets(dataset)
     if labels is None or labels.size != total:
         return None
@@ -591,7 +595,7 @@ def _dataset_has_eval_split(dataset) -> bool:
         return False
     # Most map-style datasets implement __len__; trust it when available.
     try:
-        return int(len(dataset)) > 0
+        return len(dataset) > 0
     except Exception:
         # Iterable/streaming datasets may not expose length; if object exists, allow eval path.
         return True

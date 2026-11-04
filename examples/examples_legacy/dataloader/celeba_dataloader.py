@@ -1,10 +1,11 @@
-import os
 import json
+import os
+
 import numpy as np
 import torch
+from PIL import Image, ImageOps
+
 from appfl.misc.data import Dataset
-from PIL import Image
-from PIL import ImageOps
 
 # Please download and preprocess the CELEBA data before calling this dataloader
 # Reference: https://github.com/APPFL/APPFL/tree/main/examples/datasets/RawData

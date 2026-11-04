@@ -1,8 +1,11 @@
 import copy
+from collections import OrderedDict
+from typing import Any
+
 import torch
 from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import BaseAggregator
-from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Union
 
 
 class DFLNodeFedAvgAggregator(BaseAggregator):
@@ -26,15 +29,15 @@ class DFLNodeFedAvgAggregator(BaseAggregator):
 
     def __init__(
         self,
-        model: Optional[torch.nn.Module] = None,
+        model: torch.nn.Module | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         self.model = model
         self.logger = logger
         self.aggregator_configs = aggregator_configs
 
-    def get_parameters(self, **kwargs) -> Dict:
+    def get_parameters(self, **kwargs) -> dict:
         if self.model is None:
             raise ValueError(
                 "DFLNodeFedAvgAggregator was constructed without a model, so it has no "
@@ -44,15 +47,12 @@ class DFLNodeFedAvgAggregator(BaseAggregator):
 
     def aggregate(
         self,
-        local_model: Union[Dict, OrderedDict],
-        neighbor_models: Union[
-            Dict[Union[str, int], Union[Dict, OrderedDict]],
-            List[Union[Dict, OrderedDict]],
-        ],
+        local_model: dict | OrderedDict,
+        neighbor_models: dict[str | int, dict | OrderedDict] | list[dict | OrderedDict],
         local_id: str,
-        mixing_weights: Optional[Dict[str, float]] = None,
+        mixing_weights: dict[str, float] | None = None,
         **kwargs,
-    ) -> Dict:
+    ) -> dict:
         """Return the mixed model: this node's parameters averaged with its neighbors'.
 
         :param local_model: this node's own parameters after local training.
@@ -94,11 +94,11 @@ class DFLNodeFedAvgAggregator(BaseAggregator):
 
     def _resolve_weights(
         self,
-        neighbor_models: Optional[Dict[Union[str, int], Any]],
-        mixing_weights: Optional[Dict[str, float]],
+        neighbor_models: dict[str | int, Any] | None,
+        mixing_weights: dict[str, float] | None,
         local_id: str,
         n_neighbors: int,
-    ) -> Tuple[float, Dict[str, float]]:
+    ) -> tuple[float, dict[str, float]]:
         """Return ``(own_weight, {peer_key: weight})``, normalized to sum to one."""
         if mixing_weights is None or neighbor_models is None:
             uniform = 1.0 / (n_neighbors + 1)

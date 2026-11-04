@@ -7,7 +7,7 @@ config, instantiated once per agent, and never transmitted (ADKO Constraint 3.1)
 from __future__ import annotations
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 from appfl.decentralized.algorithm.adko import Surrogate
 

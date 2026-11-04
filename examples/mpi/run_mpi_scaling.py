@@ -1,9 +1,11 @@
-import time
-import socket
 import argparse
+import socket
+import time
+
 import numpy as np
 from mpi4py import MPI
 from omegaconf import OmegaConf
+
 from appfl.agent import ClientAgent, ServerAgent
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
 

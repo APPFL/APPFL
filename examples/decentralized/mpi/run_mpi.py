@@ -5,11 +5,13 @@ mpirun -n 4 python decentralized/mpi/run_mpi.py
 mpirun -n 8 python decentralized/mpi/run_mpi.py --num_rounds 10
 """
 
-import sys
-import copy
 import argparse
+import copy
+import sys
+
 from mpi4py import MPI
 from omegaconf import OmegaConf
+
 from appfl.agent import DeOptNodeAgent
 from appfl.comm.mpi import MPIPeerCommunicator
 from appfl.decentralized.algorithm.adko import create_agent
@@ -22,8 +24,8 @@ from appfl.decentralized.neighbor import (
 
 sys.path.insert(0, "./decentralized/resources")
 
-from llm_cli import add_llm_arguments, llm_config_from_args  # noqa: E402
-from reporting import (  # noqa: E402
+from llm_cli import add_llm_arguments, llm_config_from_args
+from reporting import (
     describe_slice,
     format_point,
     print_config,

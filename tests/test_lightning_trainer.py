@@ -1,4 +1,5 @@
 import math
+
 import pytest
 import torch
 import torch.nn.functional as F
@@ -7,7 +8,7 @@ from torch.utils.data import TensorDataset
 
 pl = pytest.importorskip("lightning.pytorch")
 
-from appfl.algorithm.trainer import LightningTrainer  # noqa: E402
+from appfl.algorithm.trainer import LightningTrainer
 
 
 class TinyModule(pl.LightningModule):

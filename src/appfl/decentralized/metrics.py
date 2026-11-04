@@ -13,8 +13,9 @@ across real institutions. Algorithm-specific traces subclass :class:`Meter` -- s
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from appfl.decentralized.protocol import TokenProtocol
 

@@ -13,18 +13,18 @@ becomes compute-aware without a line of its own changing. See ``budget.py``.
 from __future__ import annotations
 
 import random
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any
 
-from appfl.decentralized.protocol import AgentProtocol
 from appfl.decentralized.algorithm.adko.baseline import BaseBaseline
-from appfl.decentralized.algorithm.adko.knowledge_token import (
-    KnowledgeToken,
-    encode_token,
-)
 from appfl.decentralized.algorithm.adko.components import (
     DesignSpace,
     LanguageModel,
     Surrogate,
+)
+from appfl.decentralized.algorithm.adko.knowledge_token import (
+    KnowledgeToken,
+    encode_token,
 )
 from appfl.decentralized.algorithm.adko.pruning import (
     FidelityAwarePruner,
@@ -36,6 +36,7 @@ from appfl.decentralized.algorithm.adko.reasoning import (
     peer_terms,
     score_candidates,
 )
+from appfl.decentralized.protocol import AgentProtocol
 
 
 class ADKOAgent(AgentProtocol):

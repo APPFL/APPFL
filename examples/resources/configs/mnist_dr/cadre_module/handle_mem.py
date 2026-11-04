@@ -1,5 +1,7 @@
+from typing import Any
+
 import torch
-from typing import Any, Dict
+
 from appfl.misc.data_readiness import BaseCADREModule
 
 
@@ -18,7 +20,7 @@ class CADREModuleMem(BaseCADREModule):
         """
         super().__init__(train_dataset, **kwargs)
 
-    def metric(self, **kwargs: Any) -> Dict[str, float]:
+    def metric(self, **kwargs: Any) -> dict[str, float]:
         """
         Calculate memory usage of the training dataset.
 
@@ -38,7 +40,7 @@ class CADREModuleMem(BaseCADREModule):
         mem_usage = data_input.element_size() * data_input.nelement() / (1024**2)
         return {"mem_usage": round(mem_usage, 2)}
 
-    def rule(self, metric_result: Dict[str, float], threshold: float = 100.0) -> bool:
+    def rule(self, metric_result: dict[str, float], threshold: float = 100.0) -> bool:
         """
         Check if the memory usage exceeds the given threshold.
 
@@ -52,8 +54,8 @@ class CADREModuleMem(BaseCADREModule):
         return metric_result["mem_usage"] > threshold
 
     def remedy(
-        self, metric_result: Dict[str, float], logger: Any, **kwargs: Any
-    ) -> Dict[str, Any]:
+        self, metric_result: dict[str, float], logger: Any, **kwargs: Any
+    ) -> dict[str, Any]:
         """
         Remedy the dataset based on the metric result and rule.
         If the rule is met, remove duplicates from the dataset.

@@ -90,14 +90,13 @@ import math
 import os
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import List, Dict, Optional, Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 # ── CONFIG: training hyperparameters and architecture constants ─────────────
 # These are validated defaults / architecture properties, not
@@ -134,7 +133,7 @@ ALL_METHODS = ["lora", "qlora", "ia3"]
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def resolve_path(cli_value: Optional[str], env_var: str, label: str) -> Path:
+def resolve_path(cli_value: str | None, env_var: str, label: str) -> Path:
     """Resolve a required path from --cli-flag, then $ENV_VAR, else error."""
     if cli_value:
         return Path(cli_value)
@@ -166,9 +165,9 @@ class FastaChunkDataset(Dataset):
         self,
         fasta_dir: Path,
         chunk_size: int = CHUNK_SIZE,
-        max_chunks: Optional[int] = None,
-        exclude_files: Optional[List[str]] = None,
-        max_files: Optional[int] = None,
+        max_chunks: int | None = None,
+        exclude_files: list[str] | None = None,
+        max_files: int | None = None,
     ):
         self.chunk_size = chunk_size
         self.chunks = []
@@ -177,9 +176,9 @@ class FastaChunkDataset(Dataset):
     def _load_fastas(
         self,
         fasta_dir: Path,
-        max_chunks: Optional[int],
-        exclude_files: List[str],
-        max_files: Optional[int] = None,
+        max_chunks: int | None,
+        exclude_files: list[str],
+        max_files: int | None = None,
     ):
         fasta_files = sorted(
             list(fasta_dir.glob("*.fna")) + list(fasta_dir.glob("*.fastq"))
@@ -254,8 +253,8 @@ class FastaChunkDataset(Dataset):
 
 
 def load_eval_chunks(
-    fasta_paths: List[Path], chunk_size: int, n_chunks: int = EVAL_CHUNKS
-) -> List[str]:
+    fasta_paths: list[Path], chunk_size: int, n_chunks: int = EVAL_CHUNKS
+) -> list[str]:
     """Load eval chunks from held-out files. Handles FASTA and FASTQ."""
     valid = set("ACGTN")
     chunks = []
@@ -309,7 +308,7 @@ def load_eval_chunks(
     return chunks[:n_chunks]
 
 
-def collate_fn(batch: List[str], tokenizer) -> Dict[str, torch.Tensor]:
+def collate_fn(batch: list[str], tokenizer) -> dict[str, torch.Tensor]:
     tokenized = [
         torch.tensor(tokenizer.tokenize(seq), dtype=torch.long) for seq in batch
     ]
@@ -357,7 +356,7 @@ class LoRALinear(nn.Module):
         for param in self.base_layer.parameters():
             param.requires_grad = False
 
-    def _get_dims(self, layer) -> Tuple[int, int]:
+    def _get_dims(self, layer) -> tuple[int, int]:
         if hasattr(layer, "weight"):
             return layer.weight.shape[1], layer.weight.shape[0]
         elif hasattr(layer, "in_features") and hasattr(layer, "out_features"):
@@ -370,7 +369,7 @@ class LoRALinear(nn.Module):
         lora_out = self.lora_B(self.lora_A(self.dropout(x_cast))).to(base_out.dtype)
         return base_out + lora_out * self.scaling
 
-    def get_adapter_state_dict(self) -> Dict:
+    def get_adapter_state_dict(self) -> dict:
         return {
             "lora_A": self.lora_A.weight.detach().cpu(),
             "lora_B": self.lora_B.weight.detach().cpu(),
@@ -406,14 +405,14 @@ class IA3Linear(nn.Module):
         out = self.base_layer(x)
         return out * self.scale.to(out.dtype)
 
-    def get_adapter_state_dict(self) -> Dict:
+    def get_adapter_state_dict(self) -> dict:
         return {"scale": self.scale.detach().cpu()}
 
 
 # ── ADAPTER INJECTION ─────────────────────────────────────────────────────────
 
 
-def inject_lora(model: nn.Module, method: str) -> Tuple[nn.Module, int]:
+def inject_lora(model: nn.Module, method: str) -> tuple[nn.Module, int]:
     """Inject LoRA or IA3 into Evo2 attention blocks. Moves adapters to correct device."""
     base_model = model.model if hasattr(model, "model") else model
     n_injected = 0
@@ -530,8 +529,8 @@ def compute_loss(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
 
 @torch.no_grad()
 def evaluate(
-    model: nn.Module, eval_chunks: List[str], tokenizer, device: torch.device
-) -> Tuple[float, float]:
+    model: nn.Module, eval_chunks: list[str], tokenizer, device: torch.device
+) -> tuple[float, float]:
     """Evaluate on held-out chunks. Only scalar metrics leave the site."""
     base = model.model if hasattr(model, "model") else model
     base.eval()
@@ -560,7 +559,7 @@ def evaluate(
 
 def train_one_round(
     model, dataloader, optimizer, scheduler, device, round_num, max_steps, grad_accum
-) -> Dict:
+) -> dict:
     """Train for one federated round."""
     base = model.model if hasattr(model, "model") else model
     base.train()
@@ -647,7 +646,7 @@ def export_adapters(
             "site": site,
             "method": method,
             "round": round_num,
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "lora_rank": LORA_RANK if method in ("lora", "qlora") else None,
             "n_adapters": len(adapters),
             "metrics": train_metrics,
@@ -829,7 +828,7 @@ def run_one_method(
                 "val_loss": val_loss,
                 "val_ppl": val_ppl,
                 "n_eval_chunks": len(eval_chunks),
-                "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                "evaluated_at": datetime.now(UTC).isoformat(),
             }
             out_path = site_output / "fedavg_eval_result.json"
             out_path.write_text(json.dumps(result, indent=2))
@@ -936,8 +935,7 @@ def run_one_method(
             f"({'converging' if abs(delta) < args.min_delta else 'learning'})"
         )
 
-        if train_loss < best_val_loss:
-            best_val_loss = train_loss
+        best_val_loss = min(best_val_loss, train_loss)
 
         if abs(delta) < args.min_delta:
             patience_count += 1
@@ -989,7 +987,7 @@ def run_one_method(
         "eval_strategy": "within_site_held_out",
         "held_out_mgm_id": held_out_mgm_id,
         "best_val_loss": best_val_loss if eval_chunks else None,
-        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
         "round_metrics": all_metrics,
         "final_train_loss": all_metrics[-1]["avg_loss"] if all_metrics else None,
         "final_val_loss": None,

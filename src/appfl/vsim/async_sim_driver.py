@@ -12,7 +12,6 @@ Design facts verified against APPFL source (2026-06-12):
 """
 
 import heapq
-from typing import Dict, List, Optional
 
 from .base_sim_driver import BaseSimDriver
 
@@ -28,12 +27,12 @@ class AsyncSimDriver(BaseSimDriver):
     def __init__(
         self,
         server_agent,
-        client_agents: List,
-        profiles: Dict,
+        client_agents: list,
+        profiles: dict,
         max_in_flight: int,
         logger,
         seed: int = 42,
-        base_step_time: Optional[float] = None,
+        base_step_time: float | None = None,
         eval_every: int = 0,
         compression_ratio: float = 1.0,
     ):

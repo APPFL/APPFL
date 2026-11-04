@@ -5,17 +5,19 @@ mpiexec -np 7 python flamby_mpi_sync.py --num_epochs 5 --dataset ISIC2019 --num_
 mpiexec -np 4 python flamby_mpi_sync.py --num_epochs 5 --dataset IXI --num_local_steps 50 --server ServerFedAvg
 """
 
-import time
-import torch
 import argparse
-import appfl.run_mpi as rm
-import appfl.run_mpi_sync as rms
+import time
+
+import torch
+from dataloader.flamby_dataloader import get_flamby
+from models.flamby import flamby_train
 from mpi4py import MPI
 from omegaconf import OmegaConf
+
+import appfl.run_mpi as rm
+import appfl.run_mpi_sync as rms
 from appfl.config import Config
 from appfl.misc.utils import set_seed
-from models.flamby import flamby_train
-from dataloader.flamby_dataloader import get_flamby
 
 ## Read arguments
 parser = argparse.ArgumentParser()
@@ -141,12 +143,7 @@ def main():
     ## outputs
     cfg.use_tensorboard = False
     cfg.save_model_state_dict = False
-    cfg.output_dirname = "./outputs_Flamby_{}_{}clients_{}_{}epochs_mpi".format(
-        args.dataset,
-        args.num_clients,
-        args.server,
-        args.num_epochs,
-    )
+    cfg.output_dirname = f"./outputs_Flamby_{args.dataset}_{args.num_clients}clients_{args.server}_{args.num_epochs}epochs_mpi"
     cfg.output_filename = "result"
 
     ## adaptive server

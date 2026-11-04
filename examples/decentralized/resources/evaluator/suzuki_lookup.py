@@ -9,14 +9,14 @@ Requires Olympus (``pip install olymp``); see ``reference/README.md``.
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, Sequence
 
 _SPACE_DIR = Path(__file__).resolve().parents[1] / "space"
 if str(_SPACE_DIR) not in sys.path:
     sys.path.insert(0, str(_SPACE_DIR))
 
-from suzuki_space import build_lookup_table, make_evaluator  # noqa: E402
+from suzuki_space import build_lookup_table, make_evaluator
 
 #: Loading the Olympus dataset takes seconds and every agent in a serial run asks for the
 #: same table, so it is built once per process.

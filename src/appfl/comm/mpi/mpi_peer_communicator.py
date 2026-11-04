@@ -1,5 +1,8 @@
+from collections.abc import Sequence
+from typing import Any
+
 from mpi4py import MPI
-from typing import Any, Dict, Sequence
+
 from appfl.comm.mpi.serializer import byte_to_model_optimized, model_to_byte_optimized
 
 
@@ -78,7 +81,7 @@ class MPIPeerCommunicator:
     def rank(self) -> int:
         return self.comm.Get_rank()
 
-    def exchange(self, round_id: int, payload: Any) -> Dict[str, Any]:
+    def exchange(self, round_id: int, payload: Any) -> dict[str, Any]:
         """Send ``payload`` to this peer's out-neighbors and return its in-neighbors'.
 
         Sends are posted before any receive. That ordering is what keeps the exchange
@@ -100,7 +103,7 @@ class MPIPeerCommunicator:
             self.comm.Isend(data, dest=rank, tag=tag) for rank in self._send_ranks
         ]
 
-        received: Dict[str, Any] = {}
+        received: dict[str, Any] = {}
         for peer_id, rank in self._recv_ranks.items():
             status = MPI.Status()
             self.comm.probe(source=rank, tag=tag, status=status)

@@ -1,7 +1,9 @@
-import pprint
 import argparse
-from omegaconf import OmegaConf
+import pprint
 from concurrent.futures import Future
+
+from omegaconf import OmegaConf
+
 from appfl.agent import ServerAgent
 from appfl.comm.globus_compute import GlobusComputeServerCommunicator
 
