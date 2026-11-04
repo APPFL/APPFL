@@ -53,7 +53,7 @@ server_configs:
   aggregator: "FedAvgAggregator"
   aggregator_kwargs:
     # Weight each client proportionally to its number of training samples
-    client_weights_mode: "sample"
+    client_weights_mode: "sample_size"
   device: "cpu"
   num_global_epochs: 20
   logging_output_dirname: "./output"

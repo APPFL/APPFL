@@ -37,6 +37,11 @@ class FedAvgAggregator(BaseAggregator):
         self.client_weights_mode = aggregator_configs.get(
             "client_weights_mode", "equal"
         )
+        if self.client_weights_mode not in ("equal", "sample_size"):
+            raise ValueError(
+                f"Unsupported client_weights_mode {self.client_weights_mode!r} for "
+                f"{type(self).__name__}, expected 'equal' or 'sample_size'"
+            )
 
         # Check for optimize_memory in aggregator_configs, default to True
         self.optimize_memory = getattr(aggregator_configs, "optimize_memory", True)
