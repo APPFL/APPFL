@@ -14,7 +14,13 @@ from datetime import datetime
 
 from omegaconf import OmegaConf
 from appfl.agent import ServerAgent, ClientAgent
-from appfl.vsim import AsyncSimDriver, SyncSimDriver, ClientProfile, VsimLogger
+from appfl.vsim import (
+    AsyncSimDriver,
+    SyncSimDriver,
+    ClientProfile,
+    VsimLogger,
+    register_sample_sizes,
+)
 
 
 def build_profiles_from_json(client_ids, path):
@@ -242,6 +248,10 @@ def main():
     for c in client_agents:
         c.load_config(client_cfg_from_server)
 
+    # Without registered sizes the aggregators silently weight every client
+    # equally, even under `client_weights_mode: "sample_size"`.
+    sample_sizes = register_sample_sizes(server_agent, client_agents)
+
     # ---- profiles + driver ----
     client_ids = [c.get_id() for c in client_agents]
     if args.profiles_json:
@@ -249,13 +259,14 @@ def main():
     else:
         profiles = build_profiles(client_ids, sim_cfg, seed)
     logger.log_banner("Client system profiles")
-    logger.log_title(["client", "slowdown", "bw_Mbps"])
+    logger.log_title(["client", "slowdown", "bw_Mbps", "samples"])
     for cid, prof in profiles.items():
         logger.log_content(
             {
                 "client": cid,
                 "slowdown": prof.compute_factor,
                 "bw_Mbps": prof.bandwidth,
+                "samples": sample_sizes[cid],
             }
         )
 
