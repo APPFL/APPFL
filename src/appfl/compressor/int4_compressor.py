@@ -1,9 +1,10 @@
-from collections import OrderedDict
 import pickle
-from typing import List, Union
-from omegaconf import DictConfig
+from collections import OrderedDict
+
 import numpy as np
 import torch
+from omegaconf import DictConfig
+
 from .base_compressor import BaseCompressor
 
 
@@ -29,6 +30,23 @@ class Int4Compressor(BaseCompressor):
             if compressor_config
             else 128
         )
+        if (
+            isinstance(self.block_size, bool)
+            or not isinstance(self.block_size, int)
+            or self.block_size <= 0
+            or self.block_size % 2 != 0
+        ):
+            raise ValueError(
+                f"block_size must be a positive even integer, got {self.block_size}"
+            )
+        if (
+            isinstance(self.param_cutoff, bool)
+            or not isinstance(self.param_cutoff, int)
+            or self.param_cutoff < 0
+        ):
+            raise ValueError(
+                f"param_cutoff must be a non-negative integer, got {self.param_cutoff}"
+            )
 
     def _compress_tensor(self, tensor: torch.Tensor):
         if not tensor.is_floating_point() or tensor.numel() < self.param_cutoff:
@@ -36,6 +54,8 @@ class Int4Compressor(BaseCompressor):
 
         orig_shape = tensor.shape
         flat = tensor.detach().flatten().float().cpu()
+        if not torch.isfinite(flat).all():
+            raise ValueError("Cannot compress tensor containing NaN or Inf values")
         numel = flat.numel()
 
         pad_len = (self.block_size - (numel % self.block_size)) % self.block_size
@@ -49,9 +69,15 @@ class Int4Compressor(BaseCompressor):
         blocks = padded.view(m, self.block_size)
 
         max_abs = torch.max(torch.abs(blocks), dim=1, keepdim=True).values
-        scale = torch.clamp(max_abs / 7.0, min=1e-8)
+        zero_mask = max_abs == 0.0
+        scale = max_abs / 7.0
+        safe_scale = torch.where(zero_mask, torch.ones_like(scale), scale)
 
-        quantized = torch.clamp(torch.round(blocks / scale), -8, 7).to(torch.int32)
+        quantized = torch.where(
+            zero_mask,
+            torch.zeros_like(blocks, dtype=torch.int32),
+            torch.clamp(torch.round(blocks / safe_scale), -8, 7).to(torch.int32),
+        )
         nibbles = (quantized + 8).to(torch.uint8)
 
         paired = nibbles.view(m, self.block_size // 2, 2)
@@ -72,6 +98,10 @@ class Int4Compressor(BaseCompressor):
 
         _, packed_bytes, scale_arr, orig_shape, dtype = payload
         scale = torch.from_numpy(scale_arr).float()
+        if not torch.isfinite(scale).all():
+            raise ValueError(
+                "Cannot decompress payload containing non-finite scale values"
+            )
         m = scale.numel()
         block_bytes = self.block_size // 2
 
@@ -90,7 +120,7 @@ class Int4Compressor(BaseCompressor):
 
     def compress_model(
         self,
-        model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]],
+        model: dict | OrderedDict | list[dict | OrderedDict],
         batched: bool = False,
     ) -> bytes:
         if batched:
@@ -117,9 +147,9 @@ class Int4Compressor(BaseCompressor):
     def decompress_model(
         self,
         compressed_model: bytes,
-        model: Union[dict, OrderedDict] = None,
+        model: dict | OrderedDict | None = None,
         batched: bool = False,
-    ) -> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
+    ) -> OrderedDict | dict | list[OrderedDict | dict]:
         data = pickle.loads(compressed_model)
         if batched:
             if isinstance(data, list):

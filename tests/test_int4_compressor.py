@@ -1,6 +1,8 @@
-from collections import OrderedDict
 import pickle
+from collections import OrderedDict
+
 import torch
+
 from appfl.compressor import Int4Compressor
 
 
@@ -66,3 +68,40 @@ def test_compression_ratio():
     compressed_len = len(compressed)
 
     assert compressed_len < raw_pickle // 3
+
+
+def test_small_updates_fidelity():
+    compressor = Int4Compressor()
+    small_val = 1e-9
+    tensor = torch.full((256,), small_val, dtype=torch.float32)
+    model = OrderedDict([("grad", tensor)])
+
+    compressed = compressor.compress_model(model)
+    restored = compressor.decompress_model(compressed)
+
+    assert torch.allclose(restored["grad"], tensor, atol=1e-12)
+
+
+def test_non_finite_rejected():
+    import pytest
+
+    compressor = Int4Compressor()
+    nan_tensor = torch.tensor([float("nan")] * 256, dtype=torch.float32)
+    model = OrderedDict([("w", nan_tensor)])
+
+    with pytest.raises(ValueError):
+        compressor.compress_model(model)
+
+
+def test_invalid_parameters():
+    import pytest
+    from omegaconf import OmegaConf
+
+    with pytest.raises(ValueError):
+        Int4Compressor(OmegaConf.create({"block_size": 63}))
+    with pytest.raises(ValueError):
+        Int4Compressor(OmegaConf.create({"block_size": 0}))
+    with pytest.raises(ValueError):
+        Int4Compressor(OmegaConf.create({"block_size": 64.0}))
+    with pytest.raises(ValueError):
+        Int4Compressor(OmegaConf.create({"param_cutoff": -1}))
