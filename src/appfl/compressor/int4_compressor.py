@@ -21,8 +21,14 @@ class Int4Compressor(BaseCompressor):
     def __init__(self, compressor_config: DictConfig = None):
         super().__init__(compressor_config)
         self.cfg = compressor_config
-        self.block_size = getattr(compressor_config, "block_size", 64) if compressor_config else 64
-        self.param_cutoff = getattr(compressor_config, "param_cutoff", 128) if compressor_config else 128
+        self.block_size = (
+            getattr(compressor_config, "block_size", 64) if compressor_config else 64
+        )
+        self.param_cutoff = (
+            getattr(compressor_config, "param_cutoff", 128)
+            if compressor_config
+            else 128
+        )
 
     def _compress_tensor(self, tensor: torch.Tensor):
         if not tensor.is_floating_point() or tensor.numel() < self.param_cutoff:
@@ -33,7 +39,11 @@ class Int4Compressor(BaseCompressor):
         numel = flat.numel()
 
         pad_len = (self.block_size - (numel % self.block_size)) % self.block_size
-        padded = torch.nn.functional.pad(flat, (0, pad_len), value=0.0) if pad_len > 0 else flat
+        padded = (
+            torch.nn.functional.pad(flat, (0, pad_len), value=0.0)
+            if pad_len > 0
+            else flat
+        )
 
         m = padded.numel() // self.block_size
         blocks = padded.view(m, self.block_size)
@@ -47,7 +57,13 @@ class Int4Compressor(BaseCompressor):
         paired = nibbles.view(m, self.block_size // 2, 2)
         packed = ((paired[:, :, 0] << 4) | (paired[:, :, 1] & 0x0F)).flatten()
 
-        return ("int4", packed.numpy().tobytes(), scale.squeeze(-1).numpy(), orig_shape, tensor.dtype)
+        return (
+            "int4",
+            packed.numpy().tobytes(),
+            scale.squeeze(-1).numpy(),
+            orig_shape,
+            tensor.dtype,
+        )
 
     def _decompress_tensor(self, payload):
         tag = payload[0]
@@ -59,7 +75,9 @@ class Int4Compressor(BaseCompressor):
         m = scale.numel()
         block_bytes = self.block_size // 2
 
-        packed_t = torch.from_numpy(np.frombuffer(packed_bytes, dtype=np.uint8).copy()).view(m, block_bytes)
+        packed_t = torch.from_numpy(
+            np.frombuffer(packed_bytes, dtype=np.uint8).copy()
+        ).view(m, block_bytes)
         high = (packed_t >> 4) & 0x0F
         low = packed_t & 0x0F
 
@@ -80,7 +98,9 @@ class Int4Compressor(BaseCompressor):
                 compressed = [self.compress_model(m, batched=False) for m in model]
                 return pickle.dumps(compressed)
             if isinstance(model, (dict, OrderedDict)):
-                compressed = OrderedDict((k, self.compress_model(v, batched=False)) for k, v in model.items())
+                compressed = OrderedDict(
+                    (k, self.compress_model(v, batched=False)) for k, v in model.items()
+                )
                 return pickle.dumps(compressed)
 
         compressed_dict = OrderedDict()
@@ -105,7 +125,10 @@ class Int4Compressor(BaseCompressor):
             if isinstance(data, list):
                 return [self.decompress_model(d, model, batched=False) for d in data]
             if isinstance(data, (dict, OrderedDict)):
-                return OrderedDict((k, self.decompress_model(v, model, batched=False)) for k, v in data.items())
+                return OrderedDict(
+                    (k, self.decompress_model(v, model, batched=False))
+                    for k, v in data.items()
+                )
 
         decompressed = OrderedDict()
         for k, v in data.items():

@@ -1,6 +1,5 @@
 from collections import OrderedDict
 import pickle
-import pytest
 import torch
 from appfl.compressor import Int4Compressor
 
