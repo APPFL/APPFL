@@ -403,6 +403,11 @@ class FedAvgAggregator(BaseAggregator):
                             model[name] - self.global_state[name]
                         )
 
+        self._apply_optimizer()
+
+    def _apply_optimizer(self):
+        """Transform the current parameter steps using the server optimizer."""
+
     def _aggregate_chunk(
         self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs
     ) -> Dict:
@@ -418,12 +423,15 @@ class FedAvgAggregator(BaseAggregator):
 
         with torch.no_grad():
             first_model = list(local_models.values())[0]
+            model_state = self.model.state_dict() if self.model is not None else {}
             for key in chunk_keys:
                 if key not in self.global_state and key in first_model:
-                    self.global_state[key] = first_model[key].detach().clone()
+                    initial = model_state.get(key, first_model[key])
+                    self.global_state[key] = initial.detach().clone()
 
         # Compute and apply aggregation for chunk
         self._compute_chunk_steps(local_models, chunk_keys)
+        self._apply_optimizer()
 
         with torch.no_grad():
             for key in chunk_keys:
@@ -460,10 +468,15 @@ class FedAvgAggregator(BaseAggregator):
         chunk_keys: list,
     ):
         """Compute aggregation steps for chunk parameters."""
+        # Optimizer state persists across chunks, but steps belong to this chunk.
+        self.step.clear()
         with torch.no_grad():
             for key in chunk_keys:
                 if key in self.global_state:
                     if (
+                        self.named_parameters is not None
+                        and key not in self.named_parameters
+                    ) or (
                         self.global_state[key].dtype == torch.int64
                         or self.global_state[key].dtype == torch.int32
                     ):
