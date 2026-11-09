@@ -1,9 +1,9 @@
 try:
-    from flamby.datasets.fed_tcga_brca import FedTcgaBrca
     from flamby.datasets.fed_heart_disease import FedHeartDisease
-    from flamby.datasets.fed_ixi import FedIXITiny
     from flamby.datasets.fed_isic2019 import FedIsic2019
+    from flamby.datasets.fed_ixi import FedIXITiny
     from flamby.datasets.fed_kits19 import FedKits19
+    from flamby.datasets.fed_tcga_brca import FedTcgaBrca
 except:  # noqa E722
     pass
 

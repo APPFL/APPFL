@@ -14,7 +14,9 @@ holds no model and no tokens of its own, and never deserializes what passes thro
 
 import argparse
 import logging
+
 from omegaconf import OmegaConf
+
 from appfl.comm.grpc import GRPCRelayServicer, serve_relay
 
 argparser = argparse.ArgumentParser()

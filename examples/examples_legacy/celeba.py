@@ -1,14 +1,16 @@
-import time
-import torch
 import argparse
-import appfl.run_mpi as rm
-import appfl.run_serial as rs
+import time
+
+import torch
+from dataloader.celeba_dataloader import get_celeba
+from models.utils import get_model
 from mpi4py import MPI
 from omegaconf import OmegaConf
+
+import appfl.run_mpi as rm
+import appfl.run_serial as rs
 from appfl.config import Config
 from appfl.misc.data import data_sanity_check
-from models.utils import get_model
-from dataloader.celeba_dataloader import get_celeba
 
 parser = argparse.ArgumentParser()
 

@@ -4,26 +4,29 @@
 
 import abc
 import time
-import uuid
 import traceback
-import torch.nn as nn
-from typing import Any
-from .algorithm import SchedulerCompassGlobusCompute
-from omegaconf import DictConfig
+import uuid
 from collections import OrderedDict
+from typing import Any
+
 from globus_compute_sdk import Client
-from .comm.globus_compute import GlobusComputeCommunicator
-from .comm.utils.utils import get_dataloader
-from .comm.utils.s3_storage import LargeObjectWrapper
-from .comm.globus_compute.utils.logging import GlobusComputeServerLogger
+from omegaconf import DictConfig
+from torch import nn
+
+from appfl.misc.data import Dataset
+from appfl.misc.utils import get_appfl_algorithm, validation
+
+from .algorithm import SchedulerCompassGlobusCompute
 from .comm.globus_compute import (
-    client_validate_data,
+    GlobusComputeCommunicator,
+    client_model_saving,
     client_testing,
     client_training,
-    client_model_saving,
+    client_validate_data,
 )
-from appfl.misc.data import Dataset
-from appfl.misc.utils import validation, get_appfl_algorithm
+from .comm.globus_compute.utils.logging import GlobusComputeServerLogger
+from .comm.utils.s3_storage import LargeObjectWrapper
+from .comm.utils.utils import get_dataloader
 
 
 class APPFLGlobusComputeServer(abc.ABC):
@@ -148,8 +151,7 @@ class APPFLGlobusComputeServer(abc.ABC):
                 # Add them to tensorboard
                 self.writer.add_scalar("server_test_accuracy", val_accuracy, step)
                 self.writer.add_scalar("server_test_loss", val_loss, step)
-            if val_accuracy > self.best_accuracy:
-                self.best_accuracy = val_accuracy
+            self.best_accuracy = max(self.best_accuracy, val_accuracy)
             self.eval_logger.log_server_validation(
                 {"val_loss": val_loss, "val_acc": val_accuracy}, step
             )
@@ -192,7 +194,7 @@ class APPFLGlobusComputeServer(abc.ABC):
     def _send_final_model(self):
         """Send the final model to the clients for saving."""
         global_state = self.server.model.state_dict()
-        server_model_basename = f"final_model_{str(uuid.uuid4())}"
+        server_model_basename = f"final_model_{uuid.uuid4()!s}"
         self.communicator.send_task_to_all_clients(
             client_model_saving, LargeObjectWrapper(global_state, server_model_basename)
         )

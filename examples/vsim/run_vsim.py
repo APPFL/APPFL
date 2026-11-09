@@ -13,8 +13,9 @@ import random
 from datetime import datetime
 
 from omegaconf import OmegaConf
-from appfl.agent import ServerAgent, ClientAgent
-from appfl.vsim import AsyncSimDriver, SyncSimDriver, ClientProfile, VsimLogger
+
+from appfl.agent import ClientAgent, ServerAgent
+from appfl.vsim import AsyncSimDriver, ClientProfile, SyncSimDriver, VsimLogger
 
 
 def build_profiles_from_json(client_ids, path):

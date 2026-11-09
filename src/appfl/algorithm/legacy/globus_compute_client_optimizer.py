@@ -1,10 +1,13 @@
-import os
 import copy
+import os
 import time
+
 import torch
-from .fl_base import BaseClient
+
 from appfl.misc.deprecation import deprecated
 from appfl.misc.utils import compute_gradient, get_torch_optimizer
+
+from .fl_base import BaseClient
 
 
 @deprecated(

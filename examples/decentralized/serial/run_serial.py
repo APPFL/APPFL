@@ -14,10 +14,12 @@ Nodes 1..n-1 are derived from node 0's config by changing `node_id` and the agen
 same way the MNIST DFL examples derive theirs -- so one file configures the whole federation.
 """
 
-import sys
-import copy
 import argparse
+import copy
+import sys
+
 from omegaconf import OmegaConf
+
 from appfl.agent import DeOptNodeAgent
 from appfl.decentralized.algorithm.adko import create_agent
 from appfl.decentralized.algorithm.adko.metrics import ADKOMeter
@@ -29,8 +31,8 @@ from appfl.decentralized.neighbor import (
 
 sys.path.insert(0, "./decentralized/resources")
 
-from llm_cli import add_llm_arguments, llm_config_from_args  # noqa: E402
-from reporting import report  # noqa: E402
+from llm_cli import add_llm_arguments, llm_config_from_args
+from reporting import report
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(

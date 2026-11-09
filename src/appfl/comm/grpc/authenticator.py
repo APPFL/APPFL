@@ -1,4 +1,5 @@
 import grpc
+
 from appfl.login_manager import BaseAuthenticator
 
 

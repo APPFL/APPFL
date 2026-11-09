@@ -36,11 +36,12 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any
 
-from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken, Signal
 from appfl.decentralized.algorithm.adko.components import DesignSpace, LanguageModel
+from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken, Signal
 
 LOCAL_HOST_HINTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1", ".local", ".gov")
 
@@ -214,7 +215,7 @@ def _parse_json_object(text: str) -> Any | None:
     expected event, not an error.
     """
     text = text.strip()
-    fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
+    fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
     if fence:
         text = fence.group(1).strip()
     try:

@@ -1,10 +1,11 @@
-import numpy as np
-import torch
-import random
-import matplotlib
-import seaborn as sns
 import base64
 import io
+import random
+
+import matplotlib
+import numpy as np
+import seaborn as sns
+import torch
 from sklearn.decomposition import PCA
 
 matplotlib.use("Agg")

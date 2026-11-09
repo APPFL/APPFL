@@ -3,13 +3,14 @@
 Loggers for supporting Globus Compute-based federated learning experiments.
 """
 
-import os
 import csv
 import json
-import time
-import torch
 import logging
+import os
+import time
 from datetime import datetime
+
+import torch
 from omegaconf import DictConfig, OmegaConf
 
 TIME_STR = "%m%d%y_%H%M%S"

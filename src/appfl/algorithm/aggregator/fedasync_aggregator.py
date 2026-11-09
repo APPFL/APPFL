@@ -1,13 +1,16 @@
 import copy
 import gc
+from collections import OrderedDict
+from typing import Any
+
 import torch
 from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import BaseAggregator
-from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import (
     clone_state_dict_optimized,
-    safe_inplace_operation,
     optimize_memory_cleanup,
+    safe_inplace_operation,
 )
 
 
@@ -19,9 +22,9 @@ class FedAsyncAggregator(BaseAggregator):
 
     def __init__(
         self,
-        model: Optional[torch.nn.Module] = None,
+        model: torch.nn.Module | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         self.model = model
         self.logger = logger
@@ -51,9 +54,7 @@ class FedAsyncAggregator(BaseAggregator):
         self.client_step = {}
         self.step = {}
 
-    def get_parameters(
-        self, client_id: Optional[Union[str, int]] = None, **kwargs
-    ) -> Dict:
+    def get_parameters(self, client_id: str | int | None = None, **kwargs) -> dict:
         """
         Return the global model, optionally recording which global version the
         requesting client is about to train from.
@@ -102,10 +103,10 @@ class FedAsyncAggregator(BaseAggregator):
 
     def aggregate(
         self,
-        client_id: Union[str, int],
-        local_model: Union[Dict, OrderedDict],
+        client_id: str | int,
+        local_model: dict | OrderedDict,
         **kwargs,
-    ) -> Dict:
+    ) -> dict:
         # Memory optimization: Efficient global state initialization
         if self.global_state is None:
             if self.model is not None:
@@ -183,7 +184,7 @@ class FedAsyncAggregator(BaseAggregator):
         else:
             return {k: v.clone() for k, v in self.global_state.items()}
 
-    def _warn_unrecorded_download(self, client_id: Union[str, int]) -> None:
+    def _warn_unrecorded_download(self, client_id: str | int) -> None:
         """Warn once if no caller ever recorded this client's model download."""
         if getattr(self, "_download_warning_issued", False) or self.logger is None:
             return
@@ -198,8 +199,8 @@ class FedAsyncAggregator(BaseAggregator):
 
     def compute_steps(
         self,
-        client_id: Union[str, int],
-        local_model: Union[Dict, OrderedDict],
+        client_id: str | int,
+        local_model: dict | OrderedDict,
     ):
         """
         Compute changes to the global model after the aggregation.

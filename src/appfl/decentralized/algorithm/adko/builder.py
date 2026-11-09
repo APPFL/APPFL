@@ -22,27 +22,26 @@ Schema, under ``agent_configs.algorithm_configs`` in the federation config::
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from omegaconf import DictConfig
-
-from appfl.decentralized.config import as_kwargs, load_callable
-from appfl.decentralized.metrics import Meter, metered_evaluator
-from appfl.decentralized.neighbor import Neighbors
-from appfl.decentralized.topology import Topology
 
 from appfl.decentralized.algorithm.adko.agent import ADKOAgent
 from appfl.decentralized.algorithm.adko.baseline import build_baseline
 from appfl.decentralized.algorithm.adko.llm import LLMConfig, build_language_model
 from appfl.decentralized.algorithm.adko.pruning import (
     ConfidencePruner,
-    FIFOPruner,
     FidelityAwarePruner,
+    FIFOPruner,
     RandomPruner,
 )
 from appfl.decentralized.algorithm.adko.reasoning import ReasoningWeights
+from appfl.decentralized.config import as_kwargs, load_callable
+from appfl.decentralized.metrics import Meter, metered_evaluator
+from appfl.decentralized.neighbor import Neighbors
+from appfl.decentralized.topology import Topology
 
-__all__ = ["PRUNERS", "WEIGHT_PRESETS", "create_weights", "create_agent"]
+__all__ = ["PRUNERS", "WEIGHT_PRESETS", "create_agent", "create_weights"]
 
 PRUNERS: dict[str, Callable[..., object]] = {
     "fidelity": FidelityAwarePruner,

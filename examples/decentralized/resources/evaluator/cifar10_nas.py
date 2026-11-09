@@ -22,20 +22,20 @@ cluster whose compute nodes have no internet, run the download once on a login n
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, Sequence
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 _SPACE_DIR = Path(__file__).resolve().parents[1] / "space"
 if str(_SPACE_DIR) not in sys.path:
     sys.path.insert(0, str(_SPACE_DIR))
 
-from cifar10_nas_space import decode_theta, readable_theta  # noqa: E402
+from cifar10_nas_space import decode_theta, readable_theta
 
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR10_STD = (0.2470, 0.2435, 0.2616)

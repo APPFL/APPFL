@@ -10,8 +10,9 @@ excluded, it sends an `AIDRIN_SKIP_KEY` sentinel instead of adapter weights.
 
 import os
 import sys
+from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, Optional, OrderedDict, Union
+from typing import Any
 
 import torch
 from omegaconf import DictConfig
@@ -19,15 +20,14 @@ from torch.utils.data import DataLoader, Dataset
 
 from appfl.algorithm.trainer.base_trainer import BaseTrainer
 
-
 _evo2_demo_dir = os.environ.get("EVO2_PROJECT_DIR")
 if _evo2_demo_dir:
     sys.path.insert(0, _evo2_demo_dir)
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from aidrin_checker import AIDRIN_SKIP_KEY, check_site_data  # noqa: E402
-from peft_finetune import (  # noqa: E402
+from aidrin_checker import AIDRIN_SKIP_KEY, check_site_data
+from peft_finetune import (
     BATCH_SIZE,
     DEFAULT_MAX_ROUNDS,
     GRAD_ACCUM,
@@ -46,16 +46,16 @@ class Evo2PEFTTrainer(BaseTrainer):
         model=None,  # unused — Evo2 loaded internally
         loss_fn=None,
         metric=None,
-        train_dataset: Optional[Dataset] = None,
-        val_dataset: Optional[Dataset] = None,
+        train_dataset: Dataset | None = None,
+        val_dataset: Dataset | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         self.train_configs = train_configs
         self.logger = logger
         self.round = 0
-        self._last_metrics: Optional[Dict[str, Any]] = None
+        self._last_metrics: dict[str, Any] | None = None
 
         self.site = train_configs.site
         self.method = train_configs.method
@@ -91,7 +91,7 @@ class Evo2PEFTTrainer(BaseTrainer):
 
         # --- AIDRIN data-readiness gate (runs before dataset is built) ---
         self._site_ready = True
-        self._aidrin_report: Dict[str, Any] = {}
+        self._aidrin_report: dict[str, Any] = {}
         fasta_dir = self.base_data / self.site / "fasta"
         if self._aidrin_csv is not None:
             new_excludes, _contaminated, _report = check_site_data(
@@ -197,7 +197,7 @@ class Evo2PEFTTrainer(BaseTrainer):
                 f"loss={metrics['avg_loss']:.4f}"
             )
 
-    def get_parameters(self) -> "tuple[Dict[str, torch.Tensor], Dict[str, Any]]":
+    def get_parameters(self) -> "tuple[dict[str, torch.Tensor], dict[str, Any]]":
         """Return (adapter weights, round metadata), or a contamination sentinel
         instead of weights if site data failed AIDRIN."""
         metadata = dict(self._last_metrics or {})
@@ -214,7 +214,7 @@ class Evo2PEFTTrainer(BaseTrainer):
         }
         return params, metadata
 
-    def load_parameters(self, params: Union[Dict, OrderedDict, None]):
+    def load_parameters(self, params: dict | OrderedDict | None):
         """Apply FedAvg-merged adapter weights received from the server.
         An empty or None params means fresh start — clients keep their own init."""
         if not params:

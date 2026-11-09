@@ -1,7 +1,6 @@
-import os
 import json
+import os
 import random
-
 from collections import OrderedDict
 
 
@@ -50,11 +49,11 @@ def split_datasets(dataset_name, root, seed, test_size):
                     num_train_samples = 1
                 num_test_samples = curr_num_samples - num_train_samples
 
-                indices = [j for j in range(curr_num_samples)]
+                indices = [*range(curr_num_samples)]
                 if dataset_name == "shakespeare":
-                    train_indices = [i for i in range(num_train_samples)]
+                    train_indices = [*range(num_train_samples)]
                     test_indices = [
-                        i for i in range(num_train_samples + 80 - 1, curr_num_samples)
+                        *range(num_train_samples + 80 - 1, curr_num_samples)
                     ]
                 else:
                     train_indices = rng.sample(indices, num_train_samples)

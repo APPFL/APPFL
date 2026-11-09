@@ -3,14 +3,15 @@ Model merging orchestration for DIMAT algorithm.
 Ported from DIMAT/utils/model_merger.py.
 """
 
+from time import time
+
 import torch
 from torch import nn
-from time import time
 from tqdm.auto import tqdm
 
 from .base_graph import NodeType
-from .metric_calculators import CovarianceMetric, MeanMetric
 from .matching_functions import match_tensors_zipit
+from .metric_calculators import CovarianceMetric, MeanMetric
 
 
 class MergeHandler:
@@ -384,9 +385,9 @@ class ModelMerge(nn.Module):
 
 def _get_merging_fn(name):
     """Get alignment function from name."""
-    from . import matching_functions
-
     from inspect import getmembers, isfunction
+
+    from . import matching_functions
 
     matching_fns = {
         k: v

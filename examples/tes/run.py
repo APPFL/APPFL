@@ -5,10 +5,12 @@ APPFL TES Federated Learning Runner
 Similar to examples/globus_compute/run.py but for TES integration.
 """
 
-import pprint
 import argparse
-from omegaconf import OmegaConf
+import pprint
 from concurrent.futures import Future
+
+from omegaconf import OmegaConf
+
 from appfl.agent import ServerAgent
 from appfl.comm.tes import TESServerCommunicator
 
