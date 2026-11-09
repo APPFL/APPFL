@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from appfl.decentralized.algorithm.adko import DesignSpace
 

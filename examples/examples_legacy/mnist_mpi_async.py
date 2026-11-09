@@ -8,22 +8,23 @@ mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn loss
 mpiexec -np 6 python ./mnist_mpi_async.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 20 --server ServerFedCompass --enable_compression --validation
 """
 
-import time
-import torch
 import argparse
+import time
+
+import torch
+from dataloader.mnist_dataloader import get_mnist
+from losses.utils import get_loss
+from metric.utils import get_metric
+from models.utils import get_model
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from appfl.config import Config
-from appfl.config.fed import FedAsync
-from appfl.misc.utils import set_seed
-from appfl.misc.data import data_sanity_check
-from losses.utils import get_loss
-from models.utils import get_model
-from metric.utils import get_metric
+
 import appfl.run_mpi_async as rma
 import appfl.run_mpi_compass as rmc
-from dataloader.mnist_dataloader import get_mnist
-
+from appfl.config import Config
+from appfl.config.fed import FedAsync
+from appfl.misc.data import data_sanity_check
+from appfl.misc.utils import set_seed
 
 ## read arguments
 parser = argparse.ArgumentParser()

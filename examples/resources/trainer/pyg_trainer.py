@@ -4,12 +4,14 @@ Supports node classification tasks where the graph structure is shared across al
 but each client trains on different nodes.
 """
 
-import torch
-import torch.nn as nn
 from collections import OrderedDict
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
+
+import torch
 from omegaconf import DictConfig
-from torch.utils.data import Dataset, DataLoader
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
+
 from appfl.algorithm.trainer import BaseTrainer
 
 
@@ -25,13 +27,13 @@ class PyGTrainer(BaseTrainer):
 
     def __init__(
         self,
-        model: Optional[nn.Module] = None,
-        loss_fn: Optional[nn.Module] = None,
-        metric: Optional[Any] = None,
-        train_dataset: Optional[Dataset] = None,
-        val_dataset: Optional[Dataset] = None,
+        model: nn.Module | None = None,
+        loss_fn: nn.Module | None = None,
+        metric: Any | None = None,
+        train_dataset: Dataset | None = None,
+        val_dataset: Dataset | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         """
@@ -325,7 +327,7 @@ class PyGTrainer(BaseTrainer):
 
     def get_parameters(
         self,
-    ) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Return model parameters for communication to server.
 
@@ -339,7 +341,7 @@ class PyGTrainer(BaseTrainer):
             else model_state
         )
 
-    def load_parameters(self, params: Union[Dict, OrderedDict]) -> None:
+    def load_parameters(self, params: dict | OrderedDict) -> None:
         """
         Load parameters from the server.
 

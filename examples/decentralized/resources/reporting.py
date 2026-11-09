@@ -6,7 +6,8 @@ claim is only checkable if the three print the same thing. ``diff`` is the test.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 # `appfl.decentralized` has an empty __init__ on this branch -- import from the submodule
 from appfl.decentralized.metrics import Meter

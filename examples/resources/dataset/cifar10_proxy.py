@@ -5,9 +5,11 @@ during the server-side model merging process.
 """
 
 import os
+
 import torch
 import torchvision
-import torchvision.transforms as transforms
+from torchvision import transforms
+
 from appfl.misc.data import Dataset
 
 

@@ -34,8 +34,8 @@ a run that completes and quietly behaves like the no-communication arm.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Iterable, Sequence
 
 from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken, Signal
 

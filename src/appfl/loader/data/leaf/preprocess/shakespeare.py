@@ -1,8 +1,7 @@
-import os
-import re
 import json
 import logging
-
+import os
+import re
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
@@ -153,8 +152,7 @@ def preprocess(root):
         for character_name, sound_bites in examples.items():
             filename = os.path.join(output_dir, f"{character_name}.txt")
             with open(filename, "w") as outfile:
-                for sound_bite in sound_bites:
-                    outfile.write(sound_bite + "\n")
+                outfile.writelines(sound_bite + "\n" for sound_bite in sound_bites)
 
     def _convert_to_json(path):
         """Create meta-data of Shakespeare dataset.

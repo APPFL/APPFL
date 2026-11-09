@@ -10,7 +10,8 @@ only needs it to predict an expected value ``mu(theta)`` and uncertainty
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken
 

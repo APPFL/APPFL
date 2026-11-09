@@ -9,9 +9,10 @@ STATIC (NON TIME-VARYING FEATURES): these feature names should be passed in the 
 """
 
 import os
+
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import numpy as np
 
 
 class NRELDataDownloader:

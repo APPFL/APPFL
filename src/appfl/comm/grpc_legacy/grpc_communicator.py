@@ -1,12 +1,13 @@
 import logging
+
+from . import grpc_communicator_old_pb2_grpc
 from .grpc_communicator_old_pb2 import (
     Acknowledgment,
     JobResponse,
+    LearningResults,
     MessageStatus,
     WeightResponse,
-    LearningResults,
 )
-from . import grpc_communicator_old_pb2_grpc
 from .grpc_utils import construct_tensor_record, proto_to_databuffer
 
 

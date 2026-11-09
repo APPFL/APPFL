@@ -19,7 +19,6 @@ understates transfer time by ~4.6%.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 _BITS_PER_BYTE = 8
 _BITS_PER_MEGABIT = 1e6  # Mbps is decimal megabits per second, not mebibits
@@ -67,7 +66,7 @@ class ClientProfile:
         return model_bytes * _BITS_PER_BYTE / (self.bandwidth * _BITS_PER_MEGABIT)
 
     def comm_time(
-        self, model_bytes: float, upload_bytes: Optional[float] = None, **kwargs
+        self, model_bytes: float, upload_bytes: float | None = None, **kwargs
     ) -> float:
         """
         Compute total communication time (download + upload).
@@ -93,7 +92,7 @@ class ClientProfile:
         compute_second_per_step: float,
         num_steps: int,
         model_bytes: float,
-        upload_bytes: Optional[float] = None,
+        upload_bytes: float | None = None,
         **kwargs,
     ) -> float:
         """

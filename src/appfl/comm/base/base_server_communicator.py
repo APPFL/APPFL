@@ -1,26 +1,29 @@
-import os
-import time
 import logging
+import os
 import pathlib
-from datetime import datetime
+import time
 from abc import abstractmethod
+from collections import OrderedDict
+from datetime import datetime
+from typing import Any
+
 from omegaconf import OmegaConf
-from proxystore.store import Store
 from proxystore.proxy import Proxy, extract
+from proxystore.store import Store
+
 from appfl.comm.utils.config import ClientTask
-from appfl.logger import ServerAgentFileLogger
-from appfl.misc.utils import get_proxystore_connector
 from appfl.comm.utils.s3_storage import CloudStorage
 from appfl.config import ClientAgentConfig, ServerAgentConfig
-from typing import List, Optional, Union, Dict, OrderedDict, Tuple, Any
+from appfl.logger import ServerAgentFileLogger
+from appfl.misc.utils import get_proxystore_connector
 
 
 class BaseServerCommunicator:
     def __init__(
         self,
         server_agent_config: ServerAgentConfig,
-        client_agent_configs: List[ClientAgentConfig],
-        logger: Optional[ServerAgentFileLogger] = None,
+        client_agent_configs: list[ClientAgentConfig],
+        logger: ServerAgentFileLogger | None = None,
         **kwargs,
     ):
         self.server_agent_config = server_agent_config
@@ -33,16 +36,16 @@ class BaseServerCommunicator:
         assert not (self.use_proxystore and self.use_s3bucket), (
             "Proxystore and S3 bucket cannot be used together."
         )
-        self.executing_tasks: Dict[str, ClientTask] = {}
-        self.executing_task_futs: Dict[Any, str] = {}
+        self.executing_tasks: dict[str, ClientTask] = {}
+        self.executing_task_futs: dict[Any, str] = {}
 
     @abstractmethod
     def send_task_to_all_clients(
         self,
         task_name: str,
         *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Union[Dict, List[Dict]] = {},
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | list[dict] = {},
         need_model_response: bool = False,
     ):
         """
@@ -53,7 +56,6 @@ class BaseServerCommunicator:
         :param `need_model_response`: Whether the task requires a model response from the clients
             If so, the server will provide a pre-signed URL for the clients to upload the model if using S3.
         """
-        pass
 
     @abstractmethod
     def send_task_to_one_client(
@@ -61,8 +63,8 @@ class BaseServerCommunicator:
         client_id: str,
         task_name: str,
         *,
-        model: Optional[Union[Dict, OrderedDict, bytes]] = None,
-        metadata: Optional[Dict] = {},
+        model: dict | OrderedDict | bytes | None = None,
+        metadata: dict | None = {},
         need_model_response: bool = False,
     ):
         """
@@ -76,33 +78,29 @@ class BaseServerCommunicator:
         """
 
     @abstractmethod
-    def recv_result_from_all_clients(self) -> Tuple[Dict, Dict]:
+    def recv_result_from_all_clients(self) -> tuple[dict, dict]:
         """
         Receive task results from all clients that have running tasks.
         :return `client_results`: A dictionary containing the results from all clients - Dict[client_id, client_model]
         :return `client_metadata`: A dictionary containing the metadata from all clients - Dict[client_id, client_metadata]
         """
-        pass
 
     @abstractmethod
-    def recv_result_from_one_client(self) -> Tuple[str, Any, Dict]:
+    def recv_result_from_one_client(self) -> tuple[str, Any, dict]:
         """
         Receive task results from the first client that finishes the task.
         :return `client_id`: The client id from which the result is received.
         :return `client_model`: The model returned from the client
         :return `client_metadata`: The metadata returned from the client
         """
-        pass
 
     @abstractmethod
     def shutdown_all_clients(self):
         """Cancel all the running tasks on the clients and shutdown the globus compute executor."""
-        pass
 
     @abstractmethod
     def cancel_all_tasks(self):
         """Cancel all on-the-fly client tasks."""
-        pass
 
     def _default_logger(self):
         """Create a default logger for the gRPC server if no logger provided."""
@@ -268,7 +266,7 @@ class BaseServerCommunicator:
     def _check_deprecation(
         self,
         client_id: str,
-        client_metadata: Dict,
+        client_metadata: dict,
     ):
         """
         This function is used to check deprecation on the client site packages.

@@ -107,7 +107,9 @@ from appfl.decentralized.topology import build_topology
 
 topology = build_topology("ring", [f"Node{i}" for i in range(8)], k=2)
 topology.draw("ring.png")
-print(topology.to_ascii())   # adjacency matrix, row sends to column; summary only above 24 nodes
+print(
+    topology.to_ascii()
+)  # adjacency matrix, row sends to column; summary only above 24 nodes
 ```
 
 For the design behind all of this — round-tagged publication, access control, mixing weights, directed graphs — see [`appfl.decentralized`](../../src/appfl/decentralized) and [`DFLNodeAgent`](../../src/appfl/agent/dfl_node.py).

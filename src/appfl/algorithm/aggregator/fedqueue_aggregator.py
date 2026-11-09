@@ -1,12 +1,15 @@
 import gc
+from collections import OrderedDict
+from typing import Any
+
 import torch
 from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import BaseAggregator
-from typing import Optional, Any, Union, Dict, OrderedDict
 from appfl.misc.memory_utils import (
+    clone_state_dict_optimized,
     optimize_memory_cleanup,
     safe_inplace_operation,
-    clone_state_dict_optimized,
 )
 
 
@@ -17,9 +20,9 @@ class FedQueueAggregator(BaseAggregator):
 
     def __init__(
         self,
-        model: Optional[torch.nn.Module] = None,
+        model: torch.nn.Module | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         self.model = model
         self.aggregator_configs = aggregator_configs
@@ -38,10 +41,10 @@ class FedQueueAggregator(BaseAggregator):
 
     def aggregate(
         self,
-        local_models: Dict[Union[str, int], Union[Dict, OrderedDict]],
-        staleness: Dict[Union[str, int], int],
-        local_steps: Dict[Union[str, int], int],
-    ) -> Dict:
+        local_models: dict[str | int, dict | OrderedDict],
+        staleness: dict[str | int, int],
+        local_steps: dict[str | int, int],
+    ) -> dict:
         if self.global_state is None:
             first_model = list(local_models.values())[0]
             if self.model is not None:
@@ -137,9 +140,9 @@ class FedQueueAggregator(BaseAggregator):
 
     def _get_aggregation_factors(
         self,
-        local_models: Dict[Union[str, int], Union[Dict, OrderedDict]],
-        staleness: Dict[Union[str, int], int],
-    ) -> Dict[Union[str, int], float]:
+        local_models: dict[str | int, dict | OrderedDict],
+        staleness: dict[str | int, int],
+    ) -> dict[str | int, float]:
         """
         FedQueue uses data-size client weights and staleness decay. Local steps
         only affect client-side work and learning-rate scaling, not aggregation.
@@ -168,7 +171,7 @@ class FedQueueAggregator(BaseAggregator):
             for client_id in local_models
         }
 
-    def get_parameters(self, **kwargs) -> Dict:
+    def get_parameters(self, **kwargs) -> dict:
         if self.global_state is None:
             if self.model is not None:
                 return clone_state_dict_optimized(self.model.state_dict())

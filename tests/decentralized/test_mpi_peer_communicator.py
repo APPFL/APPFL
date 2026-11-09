@@ -10,9 +10,9 @@ import pytest
 import torch
 
 mpi4py = pytest.importorskip("mpi4py")
-from mpi4py import MPI  # noqa: E402
+from mpi4py import MPI
 
-from appfl.comm.mpi import MPIPeerCommunicator  # noqa: E402
+from appfl.comm.mpi import MPIPeerCommunicator
 
 pytestmark = pytest.mark.mpi
 
