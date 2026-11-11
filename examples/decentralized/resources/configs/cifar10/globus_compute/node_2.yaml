@@ -1,5 +1,5 @@
 # CIFAR-10 architecture search with ADKO -- site 2 of three, training on a GPU Globus Compute endpoint.
-# The sites run the agents and exchange tokens over gRPC; each evaluation (one 40-epoch ResNet
+# The sites run the agents and exchange tokens over gRPC; each evaluation (one ResNet
 # training run on this site's shard) is a task on the site's own endpoint. Three agents cannot
 # split CIFAR-10's ten classes evenly, so this uses the IID arm; `seed`, `num_agents` and the
 # shard settings must be identical on all three sites.
@@ -9,23 +9,23 @@
 node_id: "agent-2"
 seed: 42
 node_index: 2                   # this site's position; sets its RNG seed offset
-num_epochs: 30                  # T
+num_epochs: 10                  # T
 
 neighbors:
   mode: "explicit"
   send_to: ["agent-0", "agent-1"]
   recv_from:
     - node_id: "agent-0"
-      server_uri: "localhost:50051"
+      server_uri: "98.89.6.89:50051"
     - node_id: "agent-1"
-      server_uri: "localhost:50052"
+      server_uri: "13.222.159.42:50051"
 
 comm_configs:
   budget_configs:
     bits_per_neighbor_per_round: null
     tokens_per_neighbor_per_round: 1
   grpc_configs:
-    server_uri: "localhost:50053"
+    server_uri: "0.0.0.0:50051"            # listen on every interface; peers dial this site's public IP
     max_message_size: 1048576
     use_ssl: False
 
@@ -86,7 +86,7 @@ evaluator_configs:
       distribution: "iid"
       data_dir: "/eagle/tpc/zilinghan/appfl/APPFL/examples/datasets/RawData"
       download: true
-      n_epochs: 40              # training epochs per evaluation
+      n_epochs: 10              # training epochs per evaluation
       shard_size: 10000
       val_frac: 0.2
       data_seed: ${seed}
