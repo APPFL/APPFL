@@ -1,5 +1,4 @@
 # CIFAR-10 architecture search with ADKO, non-IID -- site 2 of five, deployed.
-#
 # The non-IID arm of `../simulation/node_0_noniid.yaml` as five sites, one process each.
 # Every site replays the same global split and keeps only its own shard, so `seed`,
 # `num_agents` and the evaluator's shard settings must be identical on all five.
@@ -8,16 +7,13 @@
 #       --config ./decentralized/resources/configs/cifar10/distributed/node_2.yaml
 
 node_id: "agent-2"
-node_index: 2                   # this site's position; sets its RNG seed offset
-
-num_epochs: 30                  # T
 seed: 42
+node_index: 2                   # this site's position; sets its RNG seed offset
+num_epochs: 30                  # T
 
 neighbors:
   mode: "explicit"
   send_to: ["agent-0", "agent-1", "agent-3", "agent-4"]
-  # A peer that cannot accept inbound connections publishes through grpc/run_relay.py;
-  # its entry here then names the relay's address instead.
   recv_from:
     - node_id: "agent-0"
       server_uri: "localhost:50051"
@@ -28,6 +24,15 @@ neighbors:
     - node_id: "agent-4"
       server_uri: "localhost:50055"
 
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:
+    server_uri: "localhost:50053"   # or relay_server_uri, never both
+    max_message_size: 1048576
+    use_ssl: False
+
 algorithm_configs:
   warmup_rounds: 3              # n_initial
   token_budget: 40              # B
@@ -36,7 +41,6 @@ algorithm_configs:
   emit_insight: false
   total_proposals: null
   n_local_candidates: 50        # n_candidates
-
   weights:
     beta: 2.0
     lam: 2.0
@@ -46,13 +50,11 @@ algorithm_configs:
     kernel: "sigma_sq"
     weight_by_fidelity: true
     peer_normalization: "mixing_weight"
-
   baseline:
     baseline: "fixed"
     baseline_kwargs:
       threshold: 0.7            # tau
       scale: 0.5                # Y_SCALE
-
   pruner:
     pruner: "fidelity"
     pruner_kwargs:
@@ -70,7 +72,7 @@ space_configs:
   space_path: "./decentralized/resources/space/cifar10_nas_space.py"
   space_name: "get_design_space"
   space_kwargs:
-    agent_index: 2              # selects this site's shard in the evaluator
+    agent_index: 2
     num_agents: 5
     seed: ${seed}
 
@@ -90,16 +92,3 @@ evaluator_configs:
     data_seed: ${seed}
     train_seed: ${seed}         # model init, shuffle and dropout of each training run
     device: "auto"
-  cost_seconds: 0.0
-
-train_configs:
-  logging_output_dirname: "./output"
-
-comm_configs:
-  budget_configs:
-    bits_per_neighbor_per_round: null
-    tokens_per_neighbor_per_round: 1
-  grpc_configs:
-    server_uri: "localhost:50053"   # or relay_server_uri, never both
-    max_message_size: 1048576
-    use_ssl: False
