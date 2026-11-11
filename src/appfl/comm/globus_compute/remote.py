@@ -2,11 +2,9 @@ import atexit
 import threading
 import concurrent.futures
 from typing import Any, Callable, Dict, Optional, Tuple
-from globus_sdk import AccessTokenAuthorizer
-from globus_sdk.scopes import AuthScopes, ComputeScopes
 from globus_compute_sdk import Client, Executor
 from globus_compute_sdk.serialize import CombinedCode
-from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
+from appfl.comm.globus_compute.utils.client import create_token_client
 
 _clients: Dict[Tuple[Optional[str], Optional[str]], Client] = {}
 _clients_lock = threading.Lock()
@@ -35,19 +33,9 @@ def get_compute_client(
             if compute_token is None:
                 client = Client(code_serialization_strategy=CombinedCode())
             else:
-                login_manager = AuthorizerLoginManager(
-                    authorizers={
-                        ComputeScopes.resource_server: AccessTokenAuthorizer(
-                            compute_token
-                        ),
-                        AuthScopes.resource_server: AccessTokenAuthorizer(
-                            openid_token
-                        ),
-                    }
-                )
-                login_manager.ensure_logged_in()
-                client = Client(
-                    login_manager=login_manager,
+                client = create_token_client(
+                    compute_token,
+                    openid_token,
                     code_serialization_strategy=CombinedCode(),
                 )
             _clients[key] = client

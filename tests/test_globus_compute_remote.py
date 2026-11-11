@@ -2,11 +2,14 @@
 executor is injected (or the SDK classes are monkeypatched), and the endpoint
 id is a placeholder."""
 
+import sys
 import time
+import types
 import pytest
 import concurrent.futures
 from appfl.comm.globus_compute import remote
 from appfl.comm.globus_compute.remote import GlobusComputeRemote, get_compute_client
+from appfl.comm.globus_compute.utils import client as client_utils
 
 
 _ENDPOINT_ID = "00000000-0000-0000-0000-000000000000"
@@ -128,15 +131,58 @@ def test_executor_is_bound_to_endpoint(monkeypatch):
     assert built["resource_specification"] is None
 
 
-@pytest.mark.parametrize(
-    "tokens", [{"compute_token": "c"}, {"openid_token": "o"}]
-)
+@pytest.mark.parametrize("tokens", [{"compute_token": "c"}, {"openid_token": "o"}])
 def test_tokens_must_come_in_pairs(tokens):
     with pytest.raises(ValueError):
         get_compute_client(**tokens)
 
 
-def test_tokens_build_authorizer_login_and_are_cached(monkeypatch):
+def test_tokens_build_token_client_and_are_cached(monkeypatch):
+    built = []
+
+    def fake_create_token_client(compute_token, openid_token, **kwargs):
+        built.append((compute_token, openid_token))
+        return {"tokens": (compute_token, openid_token), **kwargs}
+
+    monkeypatch.setattr(remote, "create_token_client", fake_create_token_client)
+
+    client = get_compute_client("compute-placeholder", "openid-placeholder")
+    assert client["tokens"] == ("compute-placeholder", "openid-placeholder")
+    assert "code_serialization_strategy" in client
+
+    assert get_compute_client("compute-placeholder", "openid-placeholder") is client
+    assert len(built) == 1
+    get_compute_client("compute-other", "openid-other")
+    assert len(built) == 2
+
+
+def test_no_tokens_uses_default_login(monkeypatch):
+    monkeypatch.setattr(
+        remote,
+        "create_token_client",
+        lambda *args, **kwargs: pytest.fail("no tokens should mean no token client"),
+    )
+    monkeypatch.setattr(remote, "Client", lambda **kwargs: kwargs)
+    client = get_compute_client()
+    assert "authorizer" not in client
+    assert get_compute_client() is client
+
+
+def test_token_client_uses_authorizer_when_the_sdk_accepts_it(monkeypatch):
+    class FakeClient:
+        def __init__(self, authorizer=None, code_serialization_strategy=None):
+            self.authorizer = authorizer
+            self.code_serialization_strategy = code_serialization_strategy
+
+    monkeypatch.setattr(client_utils, "Client", FakeClient)
+    client = client_utils.create_token_client(
+        "compute-placeholder", "openid-placeholder", code_serialization_strategy="code"
+    )
+    assert client.authorizer.access_token == "compute-placeholder"
+    assert client.code_serialization_strategy == "code"
+
+
+def test_token_client_falls_back_to_login_manager_on_old_sdks(monkeypatch):
     managers = []
 
     class FakeLoginManager:
@@ -148,23 +194,19 @@ def test_tokens_build_authorizer_login_and_are_cached(monkeypatch):
         def ensure_logged_in(self):
             self.logged_in = True
 
-    monkeypatch.setattr(remote, "AuthorizerLoginManager", FakeLoginManager)
-    monkeypatch.setattr(remote, "Client", lambda **kwargs: kwargs)
+    class FakeOldClient:
+        def __init__(self, login_manager=None, code_serialization_strategy=None):
+            self.login_manager = login_manager
 
-    client = get_compute_client("compute-placeholder", "openid-placeholder")
-    assert client["login_manager"] is managers[0]
+    module = types.ModuleType("globus_compute_sdk.sdk.login_manager")
+    module.AuthorizerLoginManager = FakeLoginManager
+    monkeypatch.setitem(sys.modules, "globus_compute_sdk.sdk.login_manager", module)
+    monkeypatch.setattr(client_utils, "Client", FakeOldClient)
+
+    client = client_utils.create_token_client(
+        "compute-placeholder", "openid-placeholder"
+    )
+    assert client.login_manager is managers[0]
     assert managers[0].logged_in
     tokens = {a.access_token for a in managers[0].authorizers.values()}
     assert tokens == {"compute-placeholder", "openid-placeholder"}
-
-    assert get_compute_client("compute-placeholder", "openid-placeholder") is client
-    assert len(managers) == 1
-    get_compute_client("compute-other", "openid-other")
-    assert len(managers) == 2
-
-
-def test_no_tokens_uses_default_login(monkeypatch):
-    monkeypatch.setattr(remote, "Client", lambda **kwargs: kwargs)
-    client = get_compute_client()
-    assert "login_manager" not in client
-    assert get_compute_client() is client
