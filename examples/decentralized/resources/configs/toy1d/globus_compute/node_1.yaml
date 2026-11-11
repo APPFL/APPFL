@@ -9,7 +9,7 @@
 node_id: "agent-1"
 seed: 0
 node_index: 1                   # this site's position; sets its RNG seed offset
-num_epochs: 40                  # rounds of {act -> exchange tokens -> observe}
+num_epochs: 10                  # rounds of {act -> exchange tokens -> observe}
 known_optimum: 100.0            # printed alongside the federation best, when known
 
 neighbors:

@@ -50,10 +50,16 @@ class DFLNodeAgent(ClientAgent):
 
     def __init__(
         self,
-        dfl_node_agent_config: DictConfig = DictConfig({}),
+        dfl_node_agent_config: Optional[DictConfig] = None,
         neighbors: Optional[Neighbors] = None,
         **kwargs,
     ) -> None:
+        if dfl_node_agent_config is None:
+            dfl_node_agent_config = OmegaConf.create({})
+        if "train_configs" not in dfl_node_agent_config:
+            # `ClientAgent` writes logging flags here, and a node with nothing to train has no
+            # reason to carry the block.
+            dfl_node_agent_config.train_configs = {}
         # Set before `super().__init__()`: it calls `_create_logger`, which calls `get_id`,
         # which reads the config -- so the alias has to exist before the base constructor runs.
         self.dfl_node_agent_config = dfl_node_agent_config
