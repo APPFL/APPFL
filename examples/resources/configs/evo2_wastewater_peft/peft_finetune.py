@@ -2,28 +2,7 @@
 """
 peft_finetune.py
 
-DB-FORGE -- Phase 4: Federated PEFT Fine-tuning
 
-Runs local PEFT fine-tuning of Evo2 7B on a single site's wastewater
-metagenomics FASTA/FASTQ data. Called independently per site -- raw
-sequences never leave the site. Only adapter weights are exported for
-aggregation.
-
-Three additions over the original pilot run:
-  1. Held-out split    -- within-site samples excluded from training,
-                          evaluated locally after every round
-  2. Convergence stop  -- training stops when training loss delta falls
-                          below --min-delta for --patience rounds, instead
-                          of running a fixed number of rounds
-  3. Federated eval     -- after FedAvg the merged adapter is sent back
-                          and evaluated on held-out data locally; only
-                          scalar metrics (loss, PPL) cross site boundaries
-
-Supported PEFT methods (one script invocation can run several in
-sequence -- see --method below):
-  lora   -- low-rank matrix pairs on attention + MLP linear layers
-  qlora  -- 4-bit quantized base + LoRA adapters (75% less GPU memory)
-  ia3    -- learned element-wise rescaling vectors (26x smaller adapters)
 
 Target layers (attention blocks; indices are an Evo2-7B architecture
 property, the same regardless of site or data -- not CLI-configurable):
@@ -34,7 +13,7 @@ property, the same regardless of site or data -- not CLI-configurable):
   mlp.l3                11264 -> 4096   (MLP down)
 
 IMPORTANT -- chunk size depends on your data's sequence length regime,
-and this script does NOT auto-detect it:
+
   --chunk-size       must match the actual sequence length regime of the
                       site being trained: 8192 for long assembled contigs,
                       150 (or your reads' actual length) for raw short
@@ -52,36 +31,7 @@ Configuring paths (environment-specific settings):
     --model-path /path/to/evo2_7b.pt    or  export DB_FORGE_MODEL_PATH=...
     --evo2-dir /path/to/evo2/repo       or  export DB_FORGE_EVO2_DIR=...
 
-Assumed environment (documentation only -- this script does not check for
-or set up the environment itself; see setup_polaris_environment.sh):
-    - GPU(s) required in practice (CPU will technically run but is
-      infeasible for a 7B model)
-    - PyTorch, and the Evo2 package importable from --evo2-dir
 
-Usage:
-  # Single method, run to convergence with held-out evaluation
-  python peft_finetune.py --site site_anl_1 --method qlora \\
-      --base-data /path/to/data --model-path /path/to/evo2_7b.pt \\
-      --evo2-dir /path/to/evo2
-
-  # Multiple methods in one invocation, run sequentially
-  python peft_finetune.py --site site_anl_1 --method lora qlora ... \\
-      --base-data /path/to/data --model-path /path/to/evo2_7b.pt --evo2-dir /path/to/evo2
-
-  # All three methods
-  python peft_finetune.py --site site_anl_1 --method all ...
-
-  # Cap rounds for testing
-  python peft_finetune.py --site site_anl_1 --method lora --max-rounds 5 ...
-
-
-  # Short-read site (raw Illumina reads, not assembled contigs)
-  python peft_finetune.py --site site_novel_1 --method qlora \\
-      --chunk-size 150 --eval-chunk-size 150 ...
-
-  # After FedAvg: evaluate merged adapter on held-out data
-  python peft_finetune.py --site site_anl_1 --method lora \\
-      --eval-only --merged-adapter path/to/merged.pt ...
 """
 
 import argparse
@@ -100,9 +50,7 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
 # ── CONFIG: training hyperparameters and architecture constants ─────────────
-# These are validated defaults / architecture properties, not
-# environment-specific paths -- all remain CLI-overridable where it makes
-# sense (chunk size, rank, lr, rounds, etc.) but keep their defaults here.
+
 
 CHUNK_SIZE = 8192
 BATCH_SIZE = 4  # 4 sequences in parallel (~12-15 GB/GPU, safe on 40GB A100)
@@ -128,7 +76,6 @@ ATTN_LAYER_IDXS = [3, 10, 17, 24, 31]
 
 EVAL_CHUNKS = 50  # chunks per eval round
 EVAL_CHUNK_SIZE = 8192  # default; override with --eval-chunk-size for
-# short-read sites -- see module docstring
 
 ALL_METHODS = ["lora", "qlora", "ia3"]
 # ─────────────────────────────────────────────────────────────────────────────
