@@ -10,6 +10,8 @@ node_id: "agent-1"
 seed: 42
 node_index: 1                   # this site's position; sets its RNG seed offset
 num_epochs: 10                  # T
+logging_output_dirname: "./output"   # log file: <dirname>/<filename>_<node_id>_<timestamp>.txt
+logging_output_filename: "result"
 
 neighbors:
   mode: "explicit"
