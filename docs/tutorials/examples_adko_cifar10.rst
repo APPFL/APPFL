@@ -492,7 +492,7 @@ Whatever the machine, the endpoint needs: APPFL and everything your evaluator im
              overrides: --depth=64 --ppn 1
 
            account: <PROJECT>
-           queue: debug                   # 1 h cap; use prod or preemptable for a full run
+           queue: debug
            cpus_per_node: 32
            select_options: ngpus=4
            scheduler_options: "#PBS -l filesystems=home:grand:eagle"
