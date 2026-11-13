@@ -1,5 +1,28 @@
+import numpy as np
 from .grpc_communicator_old_pb2 import DataBufferV0
 from .grpc_communicator_old_pb2 import TensorRecord
+
+
+def parse_tensor_dtype(data_dtype: str) -> np.dtype:
+    """
+    Safely resolve the ``data_dtype`` field of a `TensorRecord` into a NumPy
+    dtype.
+
+    The wire format produced by :func:`construct_tensor_record` prefixes the
+    dtype name with ``"np."`` (e.g. ``"np.float32"``). Historically this field
+    was resolved with ``eval()``, which let a malicious peer execute arbitrary
+    Python by sending a crafted ``data_dtype`` string. This helper instead
+    strips the optional ``"np."`` prefix and resolves the name through
+    ``numpy.dtype``, which only accepts valid dtype specifiers and never
+    executes code.
+    """
+    if not isinstance(data_dtype, str):
+        raise ValueError(f"data_dtype must be a string, got {type(data_dtype)!r}")
+    name = data_dtype[3:] if data_dtype.startswith("np.") else data_dtype
+    try:
+        return np.dtype(name)
+    except TypeError as e:
+        raise ValueError(f"Unsupported or invalid tensor dtype: {data_dtype!r}") from e
 
 
 def construct_tensor_record(name, nparray):
