@@ -325,6 +325,7 @@ class FedAvgAggregator(BaseAggregator):
         """
         Compute the changes to the global model after the aggregation.
         """
+        self._warn_missing_sample_sizes(local_models)
         # Memory optimization: More efficient step computation
         if self.optimize_memory:
             with torch.no_grad():
@@ -460,6 +461,7 @@ class FedAvgAggregator(BaseAggregator):
         chunk_keys: list,
     ):
         """Compute aggregation steps for chunk parameters."""
+        self._warn_missing_sample_sizes(local_models)
         with torch.no_grad():
             for key in chunk_keys:
                 if key in self.global_state:
