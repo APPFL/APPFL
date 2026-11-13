@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" role="img" aria-label="Map from each block of a node config to the component that reads it: the run loop and node agent, the gRPC communicator, the ADKO agent, or the Globus Compute endpoint.">
+  <style>
+    text { font-family: Helvetica, Arial, sans-serif; }
+    .mono { font-family: Menlo, Consolas, monospace; }
+  </style>
+  <rect x="0" y="0" width="960" height="500" rx="14" fill="#FFFFFF"/>
+  <text x="20" y="36" font-size="14" font-weight="bold" fill="#333333">node_k.yaml</text>
+  <text x="600" y="36" font-size="14" font-weight="bold" fill="#333333">what reads it</text>
+  <text x="940" y="36" font-size="12" fill="#5A6B70" text-anchor="end">teal: on the site · terracotta: on the endpoint</text>
+
+  <!-- config rows: y = 60 + 44 i, h = 36, center = y + 18 -->
+  <g font-size="13" class="mono">
+    <rect x="20" y="60" width="400" height="36" rx="6" fill="#EDF4F5"/>
+    <text x="34" y="83" fill="#0F6E7E">node_id · seed · node_index · num_epochs</text>
+    <rect x="20" y="104" width="400" height="36" rx="6" fill="#EDF4F5"/>
+    <text x="34" y="127" fill="#0F6E7E">logging_output_dirname / _filename</text>
+    <rect x="20" y="148" width="400" height="36" rx="6" fill="#EDF4F5"/>
+    <text x="34" y="171" fill="#0F6E7E">neighbors: send_to, recv_from</text>
+    <rect x="20" y="192" width="400" height="36" rx="6" fill="#EDF4F5"/>
+    <text x="34" y="215" fill="#0F6E7E">comm_configs.grpc_configs</text>
+    <rect x="20" y="236" width="400" height="36" rx="6" fill="#EDF4F5"/>
+    <text x="34" y="259" fill="#0F6E7E">comm_configs.budget_configs</text>
+    <rect x="20" y="280" width="400" height="36" rx="6" fill="#EDF4F5"/>
+    <text x="34" y="303" fill="#0F6E7E">algorithm_configs</text>
+    <rect x="20" y="324" width="400" height="36" rx="6" fill="#EDF4F5"/>
+    <text x="34" y="347" fill="#0F6E7E">surrogate_configs</text>
+    <rect x="20" y="368" width="400" height="36" rx="6" fill="#EDF4F5"/>
+    <text x="34" y="391" fill="#0F6E7E">space_configs</text>
+    <rect x="20" y="412" width="400" height="36" rx="6" fill="#F9EEEB"/>
+    <text x="34" y="435" fill="#C4553A">evaluator_configs.remote</text>
+  </g>
+
+  <!-- consumers -->
+  <rect x="600" y="60" width="340" height="90" rx="8" fill="#2E9CA8"/>
+  <text x="770" y="98" font-size="15" font-weight="bold" fill="#FFFFFF" text-anchor="middle">run_site.py + DeOptNodeAgent</text>
+  <text x="770" y="120" font-size="12" fill="#FFFFFF" text-anchor="middle">round loop, identity, log file, token budget</text>
+
+  <rect x="600" y="172" width="340" height="76" rx="8" fill="#2E9CA8"/>
+  <text x="770" y="205" font-size="15" font-weight="bold" fill="#FFFFFF" text-anchor="middle">GRPCPeerCommunicator</text>
+  <text x="770" y="227" font-size="12" fill="#FFFFFF" text-anchor="middle">serves this site's tokens, dials its peers</text>
+
+  <rect x="600" y="272" width="340" height="120" rx="8" fill="#2E9CA8"/>
+  <text x="770" y="322" font-size="15" font-weight="bold" fill="#FFFFFF" text-anchor="middle">ADKOAgent  (create_agent)</text>
+  <text x="770" y="344" font-size="12" fill="#FFFFFF" text-anchor="middle">scoring weights, baseline, pruner,</text>
+  <text x="770" y="362" font-size="12" fill="#FFFFFF" text-anchor="middle">private GP, design space, mixing weights</text>
+
+  <rect x="600" y="408" width="340" height="66" rx="8" fill="#C4553A"/>
+  <text x="770" y="437" font-size="15" font-weight="bold" fill="#FFFFFF" text-anchor="middle">Globus Compute endpoint</text>
+  <text x="770" y="457" font-size="12" fill="#FFFFFF" text-anchor="middle">get_evaluator(**evaluator_kwargs), once per worker</text>
+
+  <!-- edges -->
+  <g fill="none" stroke="#5A6B70" stroke-width="1.6">
+    <path d="M420 78 C 510 78, 510 85, 600 85"/>
+    <path d="M420 122 C 510 122, 510 105, 600 105"/>
+    <path d="M420 254 C 510 254, 510 125, 600 125"/>
+    <path d="M420 166 C 510 166, 510 198, 600 198"/>
+    <path d="M420 210 C 510 210, 510 222, 600 222"/>
+    <path d="M420 166 C 520 166, 500 296, 600 296"/>
+    <path d="M420 298 C 510 298, 510 318, 600 318"/>
+    <path d="M420 342 C 510 342, 510 340, 600 340"/>
+    <path d="M420 386 C 510 386, 510 362, 600 362"/>
+  </g>
+  <path d="M420 430 C 510 430, 510 441, 600 441" fill="none" stroke="#C4553A" stroke-width="1.6"/>
+</svg>
