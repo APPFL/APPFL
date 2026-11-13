@@ -4,7 +4,8 @@ This example runs APPFL clients one at a time on a single CPU or GPU while
 reconstructing asynchronous or synchronous target execution with a virtual
 clock. It reuses APPFL's `ClientAgent`, `ServerAgent`, scheduler, aggregator,
 and trainer; the simulator controls only dispatch, virtual completion, and
-aggregation order.
+aggregation order. The same engine also runs on many GPUs across nodes with MPI;
+see [Multi-GPU and multi-node runs](#multi-gpu-and-multi-node-runs-mpi).
 
 Physical training order and virtual arrival order are intentionally separate.
 The simulator never sleeps to reproduce a delay: it advances directly to the
@@ -80,8 +81,15 @@ server_configs:
     mode: async                 # async | sync_count | sync_window
     max_in_flight: 4            # async: dispatched but not yet arrived
     base_step_time: null        # seconds/step; null uses trainer measurement
+                                # (calibrated once at startup with --executor mpi)
     compression_ratio: 1.0      # modelled upload / model size (1.0 = raw)
     eval_every: 0               # 0 disables global validation
+    task_seeding: true          # seed each local-training task (see below)
+    executor: inprocess         # inprocess | mpi (--executor overrides)
+    mpi:                        # used with --executor mpi
+      calibration_runs: 2       # train() calls per worker; the last one is timed
+      prefetch_mb: 1024         # results fetched ahead of need, rank 0 budget
+      stall_timeout: 1800       # seconds without progress before aborting
     heterogeneity:
       compute:
         distribution: lognormal
@@ -98,8 +106,15 @@ server_configs:
 
 Important command-line overrides are `--mode`, `--num_clients`, `--device`,
 `--seed`, `--max_in_flight`, `--base_step_time`, `--num_global_epochs`,
-`--num_local_steps`, `--eval_every`, and `--verify`. Run
-`python vsim/run_vsim.py --help` for the complete list.
+`--num_local_steps`, `--eval_every`, `--executor`, `--save_history`, and
+`--verify`. Run `python vsim/run_vsim.py --help` for the complete list.
+
+`task_seeding` seeds the global RNGs around every local-training task from
+(seed, client, how many times the client was selected) and restores them
+afterwards. A client's batch order therefore does not depend on how many clients
+trained before it in the same process or on which GPU it ran, so the in-process
+engine and an MPI run produce the same trajectory. Set it to `false` to keep the
+unseeded behavior of earlier releases.
 
 To replay a fixed heterogeneity setup rather than sampling one, pass
 `--profiles_json` a file of explicit per-client values:
@@ -126,7 +141,8 @@ load.
 ## Outputs and verification
 
 The runner writes console output and `vsim_logs/run_<timestamp>/vsim.log`.
-`driver.history` contains one record per async completion or sync round.
+`driver.history` contains one record per async completion or sync round, and
+`--save_history out.json` writes it to a file.
 `plot_timeline.py` can visualize async history exported by a caller.
 
 `--verify` checks virtual-time monotonicity, completion arithmetic, requested
@@ -146,9 +162,117 @@ the dispatched clients each round, so the scheduler must accept a per-round
 response count via `set_num_clients()` — `SyncScheduler` does. A scheduler
 without it is rejected when the driver is constructed.
 
+## Multi-GPU and multi-node runs (MPI)
+
+With `--executor mpi` the runner splits into one coordinator and many workers.
+Rank 0 keeps the virtual clock, the event queue, the barrier logic, and the APPFL
+`ServerAgent`. Every other rank is a worker that hosts a share of the virtual
+clients and trains them on one device. Launch one worker rank per GPU, plus rank
+0, which needs no GPU:
+
+```bash
+cd examples
+# 1 coordinator + 4 workers on one machine
+mpiexec -n 5 python vsim/run_vsim.py --executor mpi --device cuda \
+  --server_config vsim/config_vsim_cifar_sync_fedavg.yaml \
+  --client_config resources/configs/cifar10/client_1.yaml --num_clients 100 --verify
+
+# PBS, 4 GPUs per node: rank 0 takes one slot, so one GPU on the first node idles
+mpiexec -n $((NNODES * 4)) --ppn 4 python vsim/run_vsim.py --executor mpi \
+  --device cuda --num_clients 1000 --max_in_flight 128 --save_history h.json
+```
+
+Workers on a node are mapped to its visible GPUs round-robin. If the launcher
+pins `CUDA_VISIBLE_DEVICES` to one GPU per rank, each worker uses `cuda:0`. More
+ranks than GPUs puts several workers on one GPU. On CPU, each worker uses one
+torch thread unless `OMP_NUM_THREADS` is set; torch would otherwise start one
+thread per core in every rank, which made an 8-worker run 1.85x slower. Worker
+output goes to `vsim_logs/run_<timestamp>/worker_<rank>.log`, and per-client log
+files are turned off on workers (each `ClientAgent` would otherwise hold four
+open files).
+
+**What moves, and how often.** The event loop never waits on physical training to
+order events, and model traffic stays off the critical path:
+
+- Every virtual duration is known at dispatch. Step counts come from a census the
+  workers take at startup. The per-step time is either `base_step_time` or
+  calibrated once: each worker times a throwaway client (workers on a node take
+  turns, so measurements are uncontended), rank 0 uses the median, and it prints
+  the value so `--base_step_time` can pin it. Per-task measured durations are not
+  supported with MPI: they would serialize the async event loop and depend on
+  which GPU ran the task.
+- Each client lives on one worker, so its state never moves. Every task costs a
+  worker about the same physical time, but fast virtual clients are dispatched
+  (async) or accepted (sync) more often, so the runner places clients by their
+  expected duration, estimated from the profiles and the configured step count.
+  Async runs pack each client's expected update rate onto the least-loaded worker,
+  largest first; sync runs deal clients round-robin in order of duration, so the
+  clients a barrier accepts spread evenly. In epoch mode, where step counts
+  depend on each client's data, client `i` lives on worker `1 + i % W`.
+- Workers train in order of virtual completion time, so the result the event loop
+  needs next is trained first. A training thread runs alongside a thread that
+  serves transfers.
+- An async run ends at its `num_global_epochs`-th arrival. With `r` arrivals
+  left, that arrival comes no later than the `r`-th earliest pending completion,
+  because later dispatches can only add arrivals. Tasks due after it are never
+  consumed, so they are not sent, or are dropped on their workers.
+- Models are sent as raw byte buffers, never pickled. A global model version goes
+  to a worker at most once: sync rounds broadcast it once (`Ibcast`); async
+  dispatches send it only to a worker that lacks it. Local models are fetched in
+  the order the event loop will consume them, up to `prefetch_mb` ahead.
+- In sync modes the barrier is decided before training, so clients the barrier
+  would discard are never trained or sent.
+- Datasets never move: each worker builds its own clients from the shared
+  configuration, and APPFL's partitions are deterministic.
+
+**Reproducibility.** With a fixed `base_step_time`, an MPI run produces the same
+schedule as the in-process engine: event order, staleness, epochs, and accepted
+clients. On CPU, with the same `OMP_NUM_THREADS`, the models are bit-identical
+too. To check a setup:
+
+```bash
+export OMP_NUM_THREADS=1
+A="--server_config vsim/config_vsim_fedasync.yaml --num_clients 8 --max_in_flight 4 \
+   --base_step_time 0.01 --num_global_epochs 30 --verify"
+python vsim/run_vsim.py $A --save_history a.json
+mpiexec -n 3 python vsim/run_vsim.py --executor mpi $A --save_history b.json
+python -c "import json; assert json.load(open('a.json')) == json.load(open('b.json'))"
+```
+
+Because discarded clients are not trained, their own bookkeeping can differ from
+the in-process engine, which trains every selected client. This affects
+VanillaTrainer's round counter, which decides when first-round pre-validation
+runs, and differential-privacy accounting. Global models match exactly when there
+is no over-selection or `do_pre_validation` is off.
+
+**Sizing.** In async mode each in-flight client holds one model copy on its
+worker, about `ceil(max_in_flight / W)` copies per worker; the runner prints the
+estimate. Keep `max_in_flight` at four or more times the number of workers, or
+workers idle while their clients are not in flight. Rank 0 holds the global
+model, at most `prefetch_mb` of fetched local models, and in sync modes the
+round's accepted models, as APPFL's `SyncScheduler` always does. The run ends
+with an execution summary: setup and run time, worker utilization, time rank 0
+spent waiting, tasks trained, used and dropped, model sends and sends avoided,
+broadcasts, and megabytes moved.
+
+**Requirements and limits.**
+
+- The trainer's step count must be known before training: VanillaTrainer in step
+  or epoch mode, or a client exposing `expected_local_steps()`. Poisson-sampled
+  differential-privacy batches are rejected.
+- Local models must be plain tensor state dicts, so clients cannot run a
+  compressor (`enable_compression`); model one with `compression_ratio` instead.
+  Every duration is fixed before training, so uploads are timed at that ratio.
+- Each model must be smaller than 2 GiB.
+- Library use: build `appfl.vsim.mpi.MPIExecutor` on rank 0, pass it to a driver
+  as `executor=`, and call `appfl.vsim.mpi.run_worker` on every other rank. Pass
+  the executor `durations`, `mode` and `max_in_flight` to balance homes, and the
+  async driver `target_epochs` when its scheduler counts one epoch per arrival
+  (as `AsyncScheduler` does), so unconsumable tasks are dropped. See
+  `run_vsim.py`.
+
 ## Scope
 
-This engine physically trains clients serially on one device. It does not model
-asymmetric or congested links, dynamic availability, timeout policies, or
-multi-GPU execution. Those capabilities should be added as separate extensions
+This engine does not model asymmetric or congested links, dynamic availability,
+or timeout policies. Those capabilities should be added as separate extensions
 without changing the virtual-time ordering contract defined here.
