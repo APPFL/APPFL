@@ -69,7 +69,8 @@ def accept_context(evaluator: Callable[..., float]) -> Callable[..., float]:
     named = {
         p.name
         for p in parameters[1:]
-        if p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+        if p.kind
+        in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
     }
     if not named:
         return lambda point, **context: evaluator(point)

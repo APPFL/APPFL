@@ -1,6 +1,6 @@
 """
-Evaluate an optimization agent's design points on a Globus Compute endpoint for 
-compute-heavy evaluation offloading. The endpoint must have a matching ``appfl`` 
+Evaluate an optimization agent's design points on a Globus Compute endpoint for
+compute-heavy evaluation offloading. The endpoint must have a matching ``appfl``
 installed, plus whatever the evaluator needs to import.
 
 The agent calls ``evaluator(point, **context)``. :class:`RemoteEvaluator` ships each call
@@ -77,7 +77,9 @@ def evaluate_on_endpoint(
 
             evaluator_name = get_last_function_name(evaluator_path)
             if evaluator_name is None:
-                raise ValueError(f"{evaluator_path} defines no function to evaluate with.")
+                raise ValueError(
+                    f"{evaluator_path} defines no function to evaluate with."
+                )
         _evaluators[key] = accept_context(
             load_callable(evaluator_path, evaluator_name)(**evaluator_kwargs)
         )

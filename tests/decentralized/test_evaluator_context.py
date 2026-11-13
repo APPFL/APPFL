@@ -15,7 +15,7 @@ from appfl.decentralized.neighbor import resolve_neighbors
 _EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 _TOY_CONFIG = "decentralized/resources/configs/toy1d/distributed/node_0.yaml"
 
-_RECORDING_EVALUATOR = '''
+_RECORDING_EVALUATOR = """
 import json
 
 
@@ -25,7 +25,7 @@ def get_evaluator(log_path):
             log.write(json.dumps(context) + "\\n")
         return 50.0
     return evaluate
-'''
+"""
 
 
 def test_plain_evaluator_drops_the_context():

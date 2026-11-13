@@ -19,7 +19,7 @@ from appfl.decentralized.metrics import Meter
 
 _ENDPOINT_ID = "00000000-0000-0000-0000-000000000000"
 
-_EVALUATOR_SOURCE = '''
+_EVALUATOR_SOURCE = """
 BUILT = []
 
 
@@ -30,7 +30,7 @@ def get_evaluator(offset=0.0):
 
 def get_kwargs_evaluator():
     return lambda x, **kwargs: kwargs["eval_idx"]
-'''
+"""
 
 
 class _FakeExecutor:
@@ -94,11 +94,20 @@ def _context(eval_idx):
 
 
 def test_endpoint_builds_evaluator_once_per_arguments(evaluator_file):
-    assert evaluate_on_endpoint(evaluator_file, "get_evaluator", {}, 1.0, _context(0))[0] == 1.0
-    assert evaluate_on_endpoint(evaluator_file, "get_evaluator", {}, 2.0, _context(1))[0] == 2.0
-    assert evaluate_on_endpoint(
-        evaluator_file, "get_evaluator", {"offset": 5.0}, 1.0, _context(0)
-    )[0] == 6.0
+    assert (
+        evaluate_on_endpoint(evaluator_file, "get_evaluator", {}, 1.0, _context(0))[0]
+        == 1.0
+    )
+    assert (
+        evaluate_on_endpoint(evaluator_file, "get_evaluator", {}, 2.0, _context(1))[0]
+        == 2.0
+    )
+    assert (
+        evaluate_on_endpoint(
+            evaluator_file, "get_evaluator", {"offset": 5.0}, 1.0, _context(0)
+        )[0]
+        == 6.0
+    )
     assert len(remote_evaluator._evaluators) == 2
 
 
@@ -108,7 +117,10 @@ def test_endpoint_forwards_context_only_to_kwargs_evaluators(evaluator_file):
     )
     assert value == 7.0 and seconds >= 0.0
     # A plain `f(x)` evaluator is not passed the context, so this does not raise.
-    assert evaluate_on_endpoint(evaluator_file, "get_evaluator", {}, 0.5, _context(7))[0] == 0.5
+    assert (
+        evaluate_on_endpoint(evaluator_file, "get_evaluator", {}, 0.5, _context(7))[0]
+        == 0.5
+    )
 
 
 def test_remote_evaluator_forwards_agent_context_and_meters_overhead(evaluator_file):
@@ -192,7 +204,9 @@ def test_interpolated_config_is_resolved(evaluator_file, built_remotes):
             "space_configs": {"space_kwargs": {"agent_index": 3}},
             "evaluator_configs": _configs(
                 evaluator_file,
-                evaluator_kwargs={"offset": "${space_configs.space_kwargs.agent_index}"},
+                evaluator_kwargs={
+                    "offset": "${space_configs.space_kwargs.agent_index}"
+                },
             ),
         }
     )
@@ -201,7 +215,9 @@ def test_interpolated_config_is_resolved(evaluator_file, built_remotes):
     assert evaluator(1.0) == 4.0
 
 
-def test_tokens_are_read_from_named_env_vars(evaluator_file, built_remotes, monkeypatch):
+def test_tokens_are_read_from_named_env_vars(
+    evaluator_file, built_remotes, monkeypatch
+):
     monkeypatch.setenv("TEST_GC_COMPUTE", "compute-placeholder")
     monkeypatch.setenv("TEST_GC_OPENID", "openid-placeholder")
     create_remote_evaluator(
