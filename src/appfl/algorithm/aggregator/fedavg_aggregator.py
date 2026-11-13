@@ -319,6 +319,30 @@ class FedAvgAggregator(BaseAggregator):
         else:
             return {k: v.clone() for k, v in self.global_state.items()}
 
+    def _get_client_weights(
+        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]
+    ) -> Dict[Union[str, int], float]:
+        """
+        Return the weight of each client in `local_models`; the weights sum to 1.
+        In "sample_size" mode, each client is weighted by its share of the round's
+        total sample size. If any client in the round has no registered sample size,
+        or the total is 0, the whole round falls back to equal weights, as in
+        "equal" mode, so such a client cannot overscale the step.
+        """
+        sample_sizes = getattr(self, "client_sample_size", {})
+        if self.client_weights_mode == "sample_size" and all(
+            client_id in sample_sizes for client_id in local_models
+        ):
+            total_sample_size = sum(
+                sample_sizes[client_id] for client_id in local_models
+            )
+            if total_sample_size > 0:
+                return {
+                    client_id: sample_sizes[client_id] / total_sample_size
+                    for client_id in local_models
+                }
+        return {client_id: 1.0 / len(local_models) for client_id in local_models}
+
     def compute_steps(
         self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]
     ):
@@ -340,23 +364,9 @@ class FedAvgAggregator(BaseAggregator):
                         continue
                     self.step[name] = torch.zeros_like(self.global_state[name])
 
-                total_sample_size = sum(
-                    self.client_sample_size[cid]
-                    for cid in local_models
-                    if hasattr(self, "client_sample_size")
-                    and cid in self.client_sample_size
-                )
+                client_weights = self._get_client_weights(local_models)
                 for client_id, model in local_models.items():
-                    if (
-                        self.client_weights_mode == "sample_size"
-                        and hasattr(self, "client_sample_size")
-                        and client_id in self.client_sample_size
-                        and total_sample_size > 0
-                    ):
-                        weight = self.client_sample_size[client_id] / total_sample_size
-                    else:
-                        weight = 1.0 / len(local_models)
-
+                    weight = client_weights[client_id]
                     for name in model:
                         if name in self.step:
                             # Safe in-place gradient accumulation
@@ -380,23 +390,9 @@ class FedAvgAggregator(BaseAggregator):
                     continue
                 self.step[name] = torch.zeros_like(self.global_state[name])
 
-            total_sample_size = sum(
-                self.client_sample_size[cid]
-                for cid in local_models
-                if hasattr(self, "client_sample_size")
-                and cid in self.client_sample_size
-            )
+            client_weights = self._get_client_weights(local_models)
             for client_id, model in local_models.items():
-                if (
-                    self.client_weights_mode == "sample_size"
-                    and hasattr(self, "client_sample_size")
-                    and client_id in self.client_sample_size
-                    and total_sample_size > 0
-                ):
-                    weight = self.client_sample_size[client_id] / total_sample_size
-                else:
-                    weight = 1.0 / len(local_models)
-
+                weight = client_weights[client_id]
                 for name in model:
                     if name in self.step:
                         self.step[name] += weight * (
@@ -470,23 +466,9 @@ class FedAvgAggregator(BaseAggregator):
                         continue
                     self.step[key] = torch.zeros_like(self.global_state[key])
 
-            total_sample_size = sum(
-                self.client_sample_size[cid]
-                for cid in local_models
-                if hasattr(self, "client_sample_size")
-                and cid in self.client_sample_size
-            )
+            client_weights = self._get_client_weights(local_models)
             for client_id, model in local_models.items():
-                if (
-                    self.client_weights_mode == "sample_size"
-                    and hasattr(self, "client_sample_size")
-                    and client_id in self.client_sample_size
-                    and total_sample_size > 0
-                ):
-                    weight = self.client_sample_size[client_id] / total_sample_size
-                else:
-                    weight = 1.0 / len(local_models)
-
+                weight = client_weights[client_id]
                 for key in chunk_keys:
                     if key in self.step and key in model:
                         diff = model[key] - self.global_state[key]
