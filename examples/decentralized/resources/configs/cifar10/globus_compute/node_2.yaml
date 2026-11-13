@@ -1,0 +1,98 @@
+# CIFAR-10 architecture search with ADKO -- site 2 of three, training on a GPU Globus Compute endpoint.
+# The sites run the agents and exchange tokens over gRPC; each evaluation (one ResNet
+# training run on this site's shard) is a task on the site's own endpoint. Three agents cannot
+# split CIFAR-10's ten classes evenly, so this uses the IID arm; `seed`, `num_agents` and the
+# shard settings must be identical on all three sites.
+#
+#   python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/globus_compute/node_2.yaml
+
+node_id: "agent-2"
+seed: 42
+node_index: 2                   # this site's position; sets its RNG seed offset
+num_epochs: 10                  # T
+logging_output_dirname: "./output"   # log file: <dirname>/<filename>_<node_id>_<timestamp>.txt
+logging_output_filename: "result"
+
+neighbors:
+  mode: "explicit"
+  send_to: ["agent-0", "agent-1"]
+  recv_from:
+    - node_id: "agent-0"
+      server_uri: "98.89.6.89:50051"
+    - node_id: "agent-1"
+      server_uri: "13.222.159.42:50051"
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:
+    server_uri: "0.0.0.0:50051"            # listen on every interface; peers dial this site's public IP
+    max_message_size: 1048576
+    use_ssl: False
+
+algorithm_configs:
+  warmup_rounds: 3              # n_initial
+  token_budget: 40              # B
+  alpha_tau: 0.05
+  objective: "maximize"
+  emit_insight: false
+  total_proposals: null
+  n_local_candidates: 50        # n_candidates
+  weights:
+    beta: 2.0
+    lam: 2.0
+    gamma: 32.0
+    sigma_s: 0.5
+    metric: "euclidean"
+    kernel: "sigma_sq"
+    weight_by_fidelity: true
+    peer_normalization: "mixing_weight"
+  baseline:
+    baseline: "fixed"
+    baseline_kwargs:
+      threshold: 0.7            # tau
+      scale: 0.5                # Y_SCALE
+  pruner:
+    pruner: "fidelity"
+    pruner_kwargs:
+      alpha_tau: 0.05
+
+surrogate_configs:
+  surrogate_path: "./decentralized/resources/surrogate/matern_gp_surrogate.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs:
+    dim: 7
+    alpha: 0.01
+    n_restarts: 2
+
+space_configs:
+  space_path: "./decentralized/resources/space/cifar10_nas_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 2
+    num_agents: 3
+    seed: ${seed}
+
+evaluator_configs:
+  remote:
+    backend: "globus_compute"
+    endpoint_id: "b19c92bf-b0a2-4970-b36d-870795e57e3c"
+    timeout: 3600                # seconds per evaluation, including a cold endpoint start
+    # Paths as the endpoint sees them: its APPFL checkout and a data directory on its machine.
+    evaluator_path: "/eagle/tpc/zilinghan/appfl/APPFL/examples/decentralized/resources/evaluator/cifar10_nas.py"
+    evaluator_name: "get_evaluator"
+    evaluator_kwargs:
+      agent_index: ${space_configs.space_kwargs.agent_index}
+      num_agents: ${space_configs.space_kwargs.num_agents}
+      distribution: "iid"
+      data_dir: "/eagle/tpc/zilinghan/appfl/APPFL/examples/datasets/RawData"
+      download: true
+      n_epochs: 10              # training epochs per evaluation
+      shard_size: 10000
+      val_frac: 0.2
+      data_seed: ${seed}
+      train_seed: ${seed}       # model init, shuffle and dropout of each training run
+      device: "auto"            # cuda:(agent_index % visible GPUs) on the endpoint
+    # compute_token_env: "APPFL_GC_COMPUTE_TOKEN"
+    # openid_token_env: "APPFL_GC_OPENID_TOKEN"

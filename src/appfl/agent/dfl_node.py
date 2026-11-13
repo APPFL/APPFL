@@ -35,7 +35,9 @@ class DFLNodeAgent(ClientAgent):
 
     :param dfl_node_agent_config: configurations for the DFL node agent. A superset of
         `ClientAgentConfig`: it additionally takes `neighbors`, `aggregator`,
-        `aggregator_kwargs` and `num_epochs`.
+        `aggregator_kwargs` and `num_epochs`, and accepts the log location
+        (`logging_output_dirname`, `logging_output_filename`) at the top level as well as
+        under `train_configs`; the top-level value wins.
     :param neighbors: this node's resolved neighbor view. **Normally omitted**, and read from the
         config's `neighbors` block instead. A simulation launcher passes it explicitly, having
         resolved `from_topo` against a topology it built over the whole federation --
@@ -50,10 +52,21 @@ class DFLNodeAgent(ClientAgent):
 
     def __init__(
         self,
-        dfl_node_agent_config: DictConfig = DictConfig({}),
+        dfl_node_agent_config: Optional[DictConfig] = None,
         neighbors: Optional[Neighbors] = None,
         **kwargs,
     ) -> None:
+        if dfl_node_agent_config is None:
+            dfl_node_agent_config = OmegaConf.create({})
+        if "train_configs" not in dfl_node_agent_config:
+            # `ClientAgent` writes logging flags here, and a node with nothing to train has no
+            # reason to carry the block.
+            dfl_node_agent_config.train_configs = {}
+        for key in ("logging_output_dirname", "logging_output_filename"):
+            # Accepted at the top level too, where a node with no `train_configs` would put
+            # them; `ClientAgent._create_logger` reads them from `train_configs`.
+            if key in dfl_node_agent_config:
+                dfl_node_agent_config.train_configs[key] = dfl_node_agent_config[key]
         # Set before `super().__init__()`: it calls `_create_logger`, which calls `get_id`,
         # which reads the config -- so the alias has to exist before the base constructor runs.
         self.dfl_node_agent_config = dfl_node_agent_config

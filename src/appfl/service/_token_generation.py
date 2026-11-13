@@ -1,10 +1,9 @@
 import argparse
 import platform
-import globus_sdk
 from globus_sdk import NativeAppAuthClient
 from globus_sdk.scopes import AuthScopes, ComputeScopes
-from globus_compute_sdk import Executor, Client
-from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
+from globus_compute_sdk import Executor
+from appfl.comm.globus_compute.utils.client import create_token_client
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--login", action="store_true")
@@ -56,16 +55,7 @@ if (
             "access_token"
         ]
     )
-    compute_auth = globus_sdk.AccessTokenAuthorizer(compute_token)
-    openid_auth = globus_sdk.AccessTokenAuthorizer(openid_token)
-    compute_login_manager = AuthorizerLoginManager(
-        authorizers={
-            ComputeScopes.resource_server: compute_auth,
-            AuthScopes.resource_server: openid_auth,
-        }
-    )
-    compute_login_manager.ensure_logged_in()
-    gc = Client(login_manager=compute_login_manager)
+    gc = create_token_client(compute_token, openid_token)
 
     def double(x):
         return x * 2

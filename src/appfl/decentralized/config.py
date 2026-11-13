@@ -8,6 +8,7 @@ own, so there is nothing to merge a shared file into.
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -48,6 +49,34 @@ def load_callable(path: str | Path, name: str) -> Callable[..., Any]:
     if not hasattr(module, name):
         raise AttributeError(f"{file_path} defines no {name!r}")
     return getattr(module, name)
+
+
+def accept_context(evaluator: Callable[..., float]) -> Callable[..., float]:
+    """An evaluator that may be called as ``evaluator(point, **context)``.
+
+    The agent passes its evaluation context (``agent_id``, ``round_idx``, ``eval_idx``) as
+    keywords. An evaluator that takes ``**kwargs`` receives all of it as is. Otherwise it
+    receives the context keys it names as parameters -- ``f(point, eval_idx)`` gets
+    ``eval_idx`` -- and a plain ``f(point)``, which most oracles are, gets only the point.
+    """
+    try:
+        parameters = list(inspect.signature(evaluator).parameters.values())
+    except (TypeError, ValueError):  # pragma: no cover -- builtins without a signature
+        parameters = []
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters):
+        return evaluator
+    # Everything after the point that can be passed by keyword.
+    named = {
+        p.name
+        for p in parameters[1:]
+        if p.kind
+        in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+    }
+    if not named:
+        return lambda point, **context: evaluator(point)
+    return lambda point, **context: evaluator(
+        point, **{key: value for key, value in context.items() if key in named}
+    )
 
 
 def agent_ids(federation_config: DictConfig) -> list[str]:

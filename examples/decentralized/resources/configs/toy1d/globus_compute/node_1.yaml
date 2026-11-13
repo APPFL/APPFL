@@ -1,0 +1,83 @@
+# Toy 1-D ADKO experiment -- site 1, one of four peer-to-peer sites, evaluating on Globus Compute.
+# The same site as `../distributed/node_1.yaml`, except for `evaluator_configs.remote`: each
+# evaluation runs as a task on a Globus Compute endpoint instead of in this process. Tokens
+# still travel over gRPC between the sites; only the evaluation call leaves the site.
+#
+#   export APPFL_GC_COMPUTE_TOKEN=... APPFL_GC_OPENID_TOKEN=...
+#   python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_1.yaml
+
+node_id: "agent-1"
+seed: 0
+node_index: 1                   # this site's position; sets its RNG seed offset
+num_epochs: 10                  # rounds of {act -> exchange tokens -> observe}
+known_optimum: 100.0            # printed alongside the federation best, when known
+
+neighbors:
+  mode: "explicit"
+  send_to: ["agent-0", "agent-2", "agent-3"]
+  recv_from:
+    - node_id: "agent-0"
+      server_uri: "localhost:50051"
+    - node_id: "agent-2"
+      server_uri: "localhost:50053"
+    - node_id: "agent-3"
+      server_uri: "localhost:50054"
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:
+    server_uri: "localhost:50052"
+    max_message_size: 1048576
+    use_ssl: False
+
+algorithm_configs:
+  warmup_rounds: 5              # random proposals before the surrogate is trusted
+  token_budget: 40              # tokens an agent keeps in memory
+  alpha_tau: 0.01               # fidelity decay rate, exp(-alpha * age)
+  objective: "maximize"
+  emit_insight: false           # the z field; ignored unless an LLM is attached
+  total_proposals: null         # null -> unbounded; set for a fixed evaluation budget
+  n_local_candidates: 10
+  weights:
+    preset: "many_task"
+    dim: 1                      # sets the similarity bandwidth for this many dimensions
+  baseline:                     # what counts as SUCCESS in the token's s field
+    baseline: "running_median"
+    baseline_kwargs: {}
+  pruner:                       # which token to drop when memory is full
+    pruner: "confidence"        # fidelity | confidence | fifo | random
+    pruner_kwargs: {}
+
+surrogate_configs:
+  surrogate_path: "./decentralized/resources/surrogate/kernel_surrogate.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs:
+    bandwidth: 0.05
+    prior_sigma: 1.0
+
+space_configs:
+  space_path: "./decentralized/resources/space/toy1d_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 1
+    num_agents: 4
+    seed: 0
+    n_bins: 50
+
+evaluator_configs:
+  # Run the oracle on a Globus Compute endpoint. The block names the evaluator itself: only
+  # evaluator_path is required; evaluator_name defaults to the last function in that file,
+  # evaluator_kwargs to {}. To evaluate locally instead, see ../distributed/node_N.yaml.
+  remote:
+    backend: "globus_compute"
+    endpoint_id: "8c9d7483-b65e-4dd4-a53e-34f93588706e"   # all four sites share it
+    timeout: 3600                # seconds per evaluation, including a cold endpoint start
+    # The evaluator file as the endpoint sees it. This endpoint runs on the same machine as the
+    # sites; for one elsewhere, point at that machine's APPFL checkout.
+    evaluator_path: "/Users/zilinghan/Documents/projects/appfl/appfl-release/examples/decentralized/resources/evaluator/toy_yield.py"
+    evaluator_name: "get_evaluator"
+    evaluator_kwargs: {}
+    # compute_token_env: "APPFL_GC_COMPUTE_TOKEN"
+    # openid_token_env: "APPFL_GC_OPENID_TOKEN"

@@ -3,8 +3,6 @@ import uuid
 import warnings
 from omegaconf import OmegaConf
 from collections import OrderedDict
-from globus_sdk.scopes import AuthScopes, ComputeScopes
-from globus_sdk import AccessTokenAuthorizer
 from globus_compute_sdk import Executor, Client
 from concurrent.futures import as_completed
 from typing import Optional, Dict, List, Union, Tuple, Any
@@ -15,7 +13,7 @@ from appfl.comm.utils.s3_storage import CloudStorage
 from appfl.config import ClientAgentConfig, ServerAgentConfig
 from .utils.endpoint import GlobusComputeClientEndpoint
 from globus_compute_sdk.serialize import CombinedCode
-from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
+from .utils.client import create_token_client
 
 
 class GlobusComputeServerCommunicator(BaseServerCommunicator):
@@ -289,19 +287,9 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         )
 
         if "compute_token" in kwargs and "openid_token" in kwargs:
-            compute_login_manager = AuthorizerLoginManager(
-                authorizers={
-                    ComputeScopes.resource_server: AccessTokenAuthorizer(
-                        kwargs["compute_token"]
-                    ),
-                    AuthScopes.resource_server: AccessTokenAuthorizer(
-                        kwargs["openid_token"]
-                    ),
-                }
-            )
-            compute_login_manager.ensure_logged_in()
-            gcc = Client(
-                login_manager=compute_login_manager,
+            gcc = create_token_client(
+                kwargs["compute_token"],
+                kwargs["openid_token"],
                 code_serialization_strategy=CombinedCode(),
             )
         else:
