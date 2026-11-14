@@ -104,7 +104,7 @@ class MPIClientCommunicator:
         else:
             model = byte_to_model(response.payload)
 
-        meta_data = yaml.unsafe_load(response.meta_data)
+        meta_data = yaml.safe_load(response.meta_data)
 
         # Memory optimization: Clean up response immediately
         if self.optimize_memory:
@@ -202,7 +202,7 @@ class MPIClientCommunicator:
         else:
             model = byte_to_model(response.payload)
 
-        meta_data = yaml.unsafe_load(response.meta_data)
+        meta_data = yaml.safe_load(response.meta_data)
 
         # Memory optimization: Clean up response immediately
         if self.optimize_memory:
@@ -266,7 +266,7 @@ class MPIClientCommunicator:
             return {}
         else:
             try:
-                results = yaml.unsafe_load(response.meta_data)
+                results = yaml.safe_load(response.meta_data)
                 # post-process the results if the client has multiple clients
                 if client_id is not None or (not self._default_batching):
                     results = results[kwargs["_client_ids"][0]]
