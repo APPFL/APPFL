@@ -26,12 +26,15 @@ The block is self-contained: nothing is read from the local ``evaluator_path``,
 The endpoint must have a matching ``appfl`` installed, plus whatever the evaluator needs to import.
 """
 
-import os
 import json
-import time
 import logging
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple
+import os
+import time
+from collections.abc import Callable, Mapping
+from typing import Any
+
 from omegaconf import DictConfig, OmegaConf
+
 from .remote import GlobusComputeRemote
 
 logger = logging.getLogger(__name__)
@@ -50,16 +53,16 @@ _REMOTE_KEYS = {
 }
 
 # Endpoint side: evaluators built in this worker process, keyed by how they were built.
-_evaluators: Dict[str, Callable[..., float]] = {}
+_evaluators: dict[str, Callable[..., float]] = {}
 
 
 def evaluate_on_endpoint(
     evaluator_path: str,
-    evaluator_name: Optional[str],
-    evaluator_kwargs: Dict[str, Any],
+    evaluator_name: str | None,
+    evaluator_kwargs: dict[str, Any],
     point: Any,
-    context: Dict[str, Any],
-) -> Tuple[float, float]:
+    context: dict[str, Any],
+) -> tuple[float, float]:
     """
     Runs on the endpoint: evaluate `point` with the agent's evaluation `context` and return
     `(value, seconds spent evaluating)`. The evaluator is built on the first call with these
@@ -115,9 +118,9 @@ class RemoteEvaluator:
         self,
         remote: GlobusComputeRemote,
         evaluator_path: str,
-        evaluator_name: Optional[str],
-        evaluator_kwargs: Optional[Dict[str, Any]] = None,
-        meter: Optional[Any] = None,
+        evaluator_name: str | None,
+        evaluator_kwargs: dict[str, Any] | None = None,
+        meter: Any | None = None,
     ):
         self.remote = remote
         self.evaluator_path = str(evaluator_path)
@@ -147,7 +150,7 @@ class RemoteEvaluator:
 
 
 def create_remote_evaluator(
-    evaluator_configs: Mapping, meter: Optional[Any] = None
+    evaluator_configs: Mapping, meter: Any | None = None
 ) -> RemoteEvaluator:
     """
     Build a :class:`RemoteEvaluator` from a node's `evaluator_configs`, which must have a `remote` block.

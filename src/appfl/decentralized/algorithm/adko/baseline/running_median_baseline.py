@@ -8,7 +8,6 @@ confidence.
 
 from __future__ import annotations
 
-
 from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseline
 
 

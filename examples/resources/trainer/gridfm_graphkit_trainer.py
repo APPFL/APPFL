@@ -1,31 +1,32 @@
-import time
-import torch
 import importlib
-from torch.nn import Module
-from omegaconf import DictConfig
-# import yaml
+import time
 
-from typing import Optional, Any
-from torch_geometric.loader import DataLoader
+# import yaml
+from typing import Any
+
+import torch
+from gridfm_graphkit.training.loss import PBELoss
+from omegaconf import DictConfig
+from torch.nn import Module
 
 # from torch.utils.data import Dataset
 from torch_geometric.data import Dataset
+from torch_geometric.loader import DataLoader
+
 from appfl.algorithm.trainer.vanilla_trainer import VanillaTrainer
 from appfl.misc.utils import apply_model_device
-
-from gridfm_graphkit.training.loss import PBELoss
 
 
 class GridFMTrainer(VanillaTrainer):
     def __init__(
         self,
-        model: Optional[Module] = None,
-        loss_fn: Optional[Module] = None,
-        metric: Optional[Any] = None,
-        train_dataset: Optional[Dataset] = None,
-        val_dataset: Optional[Dataset] = None,
+        model: Module | None = None,
+        loss_fn: Module | None = None,
+        metric: Any | None = None,
+        train_dataset: Dataset | None = None,
+        val_dataset: Dataset | None = None,
         train_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
         **kwargs,
     ):
         super().__init__(

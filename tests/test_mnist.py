@@ -1,13 +1,15 @@
 import os
+
+import numpy as np
 import pytest
 import torchvision
-import numpy as np
 from mpi4py import MPI
 from omegaconf import OmegaConf
 from torchvision.transforms import ToTensor
+
 from appfl.agent import ClientAgent, ServerAgent
+from appfl.comm.grpc import GRPCClientCommunicator, GRPCServerCommunicator, serve
 from appfl.comm.mpi import MPIClientCommunicator, MPIServerCommunicator
-from appfl.comm.grpc import GRPCServerCommunicator, GRPCClientCommunicator, serve
 
 
 # Prepare the MNIST data first for the tests

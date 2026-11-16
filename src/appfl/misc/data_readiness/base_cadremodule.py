@@ -1,5 +1,5 @@
 import abc
-from typing import Dict, Any
+from typing import Any
 
 
 class BaseCADREModule(abc.ABC):
@@ -15,12 +15,11 @@ class BaseCADREModule(abc.ABC):
         self.kwargs = kwargs  # Store kwargs for subclasses if needed
 
     @abc.abstractmethod
-    def metric(self) -> Dict[str, Any]:
+    def metric(self) -> dict[str, Any]:
         """Compute and return metric results."""
-        pass
 
     @abc.abstractmethod
-    def rule(self, metric_result: Dict[str, Any], **kwargs) -> bool:
+    def rule(self, metric_result: dict[str, Any], **kwargs) -> bool:
         """
         Check if the rule condition is met.
 
@@ -31,10 +30,9 @@ class BaseCADREModule(abc.ABC):
         Returns:
         - True if the rule condition is met, False otherwise.
         """
-        pass
 
     @abc.abstractmethod
-    def remedy(self, metric_result: Dict[str, Any], **kwargs) -> Any:
+    def remedy(self, metric_result: dict[str, Any], **kwargs) -> Any:
         """
         Apply a remedy based on metric results.
 
@@ -45,4 +43,3 @@ class BaseCADREModule(abc.ABC):
         Returns:
         - Modified dataset.
         """
-        pass

@@ -1,10 +1,12 @@
-import gc
 import copy
-import torch
-import torch.nn as nn
-from omegaconf import DictConfig
+import gc
 from collections import OrderedDict
-from typing import Any, Dict, Union
+from typing import Any
+
+import torch
+from omegaconf import DictConfig
+from torch import nn
+
 from appfl.algorithm.aggregator import BaseAggregator
 from appfl.misc.memory_utils import clone_state_dict_optimized, optimize_memory_cleanup
 
@@ -48,8 +50,8 @@ class ICEADMMAggregator(BaseAggregator):
         )
 
     def aggregate(
-        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]], **kwargs
-    ) -> Dict:
+        self, local_models: dict[str | int, dict | OrderedDict], **kwargs
+    ) -> dict:
         if len(self.primal_states) == 0:
             self.num_clients = len(local_models)
             for i in local_models:
@@ -168,7 +170,7 @@ class ICEADMMAggregator(BaseAggregator):
         self.model.load_state_dict(global_state)
         return global_state
 
-    def get_parameters(self, **kwargs) -> Dict:
+    def get_parameters(self, **kwargs) -> dict:
         if self.optimize_memory:
             return clone_state_dict_optimized(self.model.state_dict())
         else:

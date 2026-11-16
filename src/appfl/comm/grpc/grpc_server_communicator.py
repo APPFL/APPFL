@@ -1,44 +1,32 @@
+import copy
 import gc
 import io
-import copy
-import grpc
-import time
-import uuid
-import yaml
-import torch
+import logging
+import pprint
 import random
 import string
-import pprint
-import logging
 import threading
-from typing import Optional
-from datetime import datetime
-from omegaconf import OmegaConf
+import time
+import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
-from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_pre_signed_s3
-from .grpc_communicator_pb2 import (
-    UpdateGlobalModelRequest,
-    UpdateGlobalModelResponse,
-    ConfigurationResponse,
-    GetGlobalModelResponse,
-    CustomActionRequest,
-    CustomActionResponse,
-    ServerHeader,
-    ServerStatus,
-    DataBuffer,
-)
-from proxystore.store import Store
+from datetime import datetime
+
+import grpc
+import torch
+import yaml
+from omegaconf import OmegaConf
 from proxystore.proxy import extract
-from .grpc_communicator_pb2_grpc import GRPCCommunicatorServicer
+from proxystore.store import Store
+
 from appfl.agent import ServerAgent
+from appfl.comm.utils.s3_utils import extract_model_from_s3, send_model_by_pre_signed_s3
 from appfl.logger import ServerAgentFileLogger
-from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
-from .utils import (
-    proto_to_databuffer,
-    response_chunk_size,
-    serialize_model,
-    deserialize_model,
+from appfl.misc.memory_utils import (
+    efficient_bytearray_concatenation,
+    optimize_memory_cleanup,
 )
+from appfl.misc.utils import deserialize_yaml, get_proxystore_connector
+
 from .compatibility import (
     APPFL_VERSION,
     APPFL_VERSION_HEADER,
@@ -46,9 +34,23 @@ from .compatibility import (
     IncompatibleVersionError,
     check_peer_version,
 )
-from appfl.misc.memory_utils import (
-    efficient_bytearray_concatenation,
-    optimize_memory_cleanup,
+from .grpc_communicator_pb2 import (
+    ConfigurationResponse,
+    CustomActionRequest,
+    CustomActionResponse,
+    DataBuffer,
+    GetGlobalModelResponse,
+    ServerHeader,
+    ServerStatus,
+    UpdateGlobalModelRequest,
+    UpdateGlobalModelResponse,
+)
+from .grpc_communicator_pb2_grpc import GRPCCommunicatorServicer
+from .utils import (
+    deserialize_model,
+    proto_to_databuffer,
+    response_chunk_size,
+    serialize_model,
 )
 
 
@@ -56,7 +58,7 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
     def __init__(
         self,
         server_agent: ServerAgent,
-        logger: Optional[ServerAgentFileLogger] = None,
+        logger: ServerAgentFileLogger | None = None,
         max_message_size: int = 2 * 1024 * 1024,
         **kwargs,
     ) -> None:

@@ -3,23 +3,25 @@
 """
 
 import copy
-import time
 import logging
-import torch.nn as nn
-from mpi4py import MPI
+import time
 from typing import Any
+
+from mpi4py import MPI
+from omegaconf import DictConfig
+from torch import nn
+from torch.utils.data import DataLoader
+
 from appfl.comm.mpi import MpiCommunicator
+from appfl.compressor import Compressor
 from appfl.misc.data import Dataset
 from appfl.misc.utils import (
-    validation,
-    compute_gradient,
     client_log,
+    compute_gradient,
     create_custom_logger,
     get_appfl_algorithm,
+    validation,
 )
-from omegaconf import DictConfig
-from torch.utils.data import DataLoader
-from appfl.compressor import Compressor
 
 
 def run_server(
@@ -91,8 +93,8 @@ def run_server(
 
     start_time = time.time()
     iter = 0
-    client_model_step = {i: 0 for i in range(0, num_clients)}
-    client_start_time = {i: start_time for i in range(0, num_clients)}
+    client_model_step = {i: 0 for i in range(num_clients)}
+    client_start_time = {i: start_time for i in range(num_clients)}
 
     server.model.to("cpu")
     global_model = server.model.state_dict()
@@ -123,8 +125,7 @@ def run_server(
         validation_start = time.time()
         if cfg.validation:
             test_loss, test_accuracy = validation(server, test_dataloader, metric)
-            if test_accuracy > best_accuracy:
-                best_accuracy = test_accuracy
+            best_accuracy = max(best_accuracy, test_accuracy)
             if cfg.use_tensorboard:
                 ## Add them to tensorboard
                 writer.add_scalar("server_test_accuracy", test_accuracy, iter)

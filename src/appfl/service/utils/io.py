@@ -1,13 +1,15 @@
 import os
-import time
-import boto3
 import pathlib
+import time
+
+import boto3
 import requests
-from omegaconf import OmegaConf
-from appfl.misc.utils import get_last_function_name
 from globus_compute_sdk.errors import TaskPending
 from globus_compute_sdk.serialize import CombinedCode
+from omegaconf import OmegaConf
+
 from appfl.comm.globus_compute.utils.client import create_token_client
+from appfl.misc.utils import get_last_function_name
 
 
 def endpoint_test():

@@ -5,8 +5,8 @@ This module provides accuracy computation for evaluating GNN models
 on node classification tasks.
 """
 
-import torch
 import numpy as np
+import torch
 
 
 def accuracy(output, target):

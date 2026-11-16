@@ -1,52 +1,54 @@
-import os
 import gc
+import importlib
+import os
+import pathlib
 import uuid
+import warnings
+from collections import OrderedDict
+from datetime import datetime
+
 import torch
 import wandb
-import pathlib
-import warnings
-import importlib
-import torch.nn as nn
-from datetime import datetime
-from appfl.config import ClientAgentConfig
-from appfl.algorithm.trainer import BaseTrainer
 from omegaconf import DictConfig, OmegaConf
-from typing import Union, Dict, OrderedDict, Tuple, Optional
+from torch import nn
+
+from appfl.algorithm.trainer import BaseTrainer
+from appfl.config import ClientAgentConfig
 from appfl.logger import ClientAgentFileLogger
-from appfl.misc.utils import (
-    create_instance_from_file,
-    run_function_from_file,
-    get_function_from_file,
-    create_instance_from_file_source,
-    get_function_from_file_source,
-    run_function_from_file_source,
-    get_appfl_compressor,
-)
 from appfl.misc.data_readiness.metrics import (
-    imbalance_degree,
-    completeness,
-    get_data_range,
-    sparsity,
-    variance,
-    skewness,
-    entropy,
-    kurtosis,
-    class_distribution,
     brisque,
-    total_variation,
-    dataset_sharpness,
     calculate_outlier_proportion,
+    class_distribution,
+    completeness,
+    dataset_sharpness,
+    entropy,
+    get_data_range,
+    imbalance_degree,
+    kurtosis,
     quantify_time_to_event_imbalance,
+    skewness,
+    sparsity,
+    total_variation,
+    variance,
 )
 from appfl.misc.data_readiness.plots import (
+    get_feature_space_distribution,
     plot_class_distribution,
-    plot_data_sample,
-    plot_data_distribution,
     plot_class_variance,
-    plot_outliers,
+    plot_data_distribution,
+    plot_data_sample,
     plot_feature_correlations,
     plot_feature_statistics,
-    get_feature_space_distribution,
+    plot_outliers,
+)
+from appfl.misc.utils import (
+    create_instance_from_file,
+    create_instance_from_file_source,
+    get_appfl_compressor,
+    get_function_from_file,
+    get_function_from_file_source,
+    run_function_from_file,
+    run_function_from_file_source,
 )
 
 
@@ -131,7 +133,7 @@ class ClientAgent:
 
     def get_parameters(
         self,
-    ) -> Union[Dict, OrderedDict, bytes, Tuple[Union[Dict, OrderedDict, bytes], Dict]]:
+    ) -> dict | OrderedDict | bytes | tuple[dict | OrderedDict | bytes, dict]:
         """Return parameters for communication"""
         params = self.trainer.get_parameters()
         if isinstance(params, tuple):
@@ -158,7 +160,7 @@ class ClientAgent:
         if self.optimize_memory:
             gc.collect()
 
-    def save_checkpoint(self, checkpoint_path: Optional[str] = None) -> None:
+    def save_checkpoint(self, checkpoint_path: str | None = None) -> None:
         """Save the model to a checkpoint file."""
         if checkpoint_path is None:
             output_dir = self.client_agent_config.train_configs.get(

@@ -1,16 +1,18 @@
 import os
-from torch.utils.data import Dataset
+
+import numpy as np
+import pandas as pd
 import torchvision.transforms as T
 from PIL import Image
-from appfl.misc.data import (
-    iid_partition_df,
-    class_noniid_partition_df,
-    dirichlet_noniid_partition_df,
-    column_based_partition_df,
-)
-import pandas as pd
-import numpy as np
+from torch.utils.data import Dataset
 from tqdm import tqdm
+
+from appfl.misc.data import (
+    class_noniid_partition_df,
+    column_based_partition_df,
+    dirichlet_noniid_partition_df,
+    iid_partition_df,
+)
 
 
 class RetinopathyDataset(Dataset):
@@ -42,7 +44,7 @@ class RetinopathyDataset(Dataset):
             if os.path.isfile(npsavfn):
                 self.preload = np.load(npsavfn)
             else:
-                for i in tqdm(range(0, len(self.df))):
+                for i in tqdm(range(len(self.df))):
                     row = self.df.iloc[i]
                     img_path = f"{data_path}" + row["file_path"]
                     image = Image.open(img_path).convert("RGB").resize((224, 224))

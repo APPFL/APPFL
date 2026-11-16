@@ -67,17 +67,17 @@ node writes ``explicit`` and names only its own neighbors.
 from appfl.decentralized.neighbor.base import Neighbors
 from appfl.decentralized.neighbor.resolve import (
     build_topology_from_config,
-    resolve_all_neighbors_from_topology,
     generated_node_ids,
-    roster_from_config,
+    resolve_all_neighbors_from_topology,
     resolve_neighbors,
+    roster_from_config,
 )
 
 __all__ = [
     "Neighbors",
-    "resolve_neighbors",
-    "resolve_all_neighbors_from_topology",
     "build_topology_from_config",
     "generated_node_ids",
+    "resolve_all_neighbors_from_topology",
+    "resolve_neighbors",
     "roster_from_config",
 ]

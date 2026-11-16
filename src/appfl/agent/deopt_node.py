@@ -29,7 +29,8 @@ handed ``node.algorithm_agent`` directly, which keeps it working unchanged again
 :class:`~appfl.decentralized.protocol.AgentProtocol`.
 """
 
-from typing import Any, Dict, List, Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -68,10 +69,10 @@ class DeOptNodeAgent(DFLNodeAgent):
     def __init__(
         self,
         algorithm_agent: AgentProtocol,
-        dfl_node_agent_config: Optional[DictConfig] = None,
-        neighbors: Optional[Neighbors] = None,
-        budget: Optional[CommBudget] = None,
-        meter: Optional[Meter] = None,
+        dfl_node_agent_config: DictConfig | None = None,
+        neighbors: Neighbors | None = None,
+        budget: CommBudget | None = None,
+        meter: Meter | None = None,
         **kwargs,
     ) -> None:
         if dfl_node_agent_config is None:
@@ -84,7 +85,7 @@ class DeOptNodeAgent(DFLNodeAgent):
         )
         self.budget = budget
         self.meter = meter
-        self._emitted: List[Any] = []
+        self._emitted: list[Any] = []
         self._logged_title = False
 
     # -- the three steps ----------------------------------------------------------------
@@ -100,7 +101,7 @@ class DeOptNodeAgent(DFLNodeAgent):
             self.meter.record_emitted(self._emitted)
         self.publish_parameters()
 
-    def _payload_to_publish(self) -> List[Any]:
+    def _payload_to_publish(self) -> list[Any]:
         """The tokens this round produced, trimmed to the budget and counted on the way out."""
         tokens = list(self._emitted)
         if self.budget is not None:
@@ -114,7 +115,7 @@ class DeOptNodeAgent(DFLNodeAgent):
         return tokens
 
     def aggregate_parameters(
-        self, neighbor_models: Union[Dict[str, Any], Sequence[Any]], **kwargs
+        self, neighbor_models: dict[str, Any] | Sequence[Any], **kwargs
     ) -> None:
         """Hand the neighbors' tokens to the algorithm; it merges them at the top of `act`.
 
@@ -126,7 +127,7 @@ class DeOptNodeAgent(DFLNodeAgent):
             if isinstance(neighbor_models, dict)
             else neighbor_models
         )
-        tokens: List[Any] = []
+        tokens: list[Any] = []
         for payload in payloads:
             if payload:
                 tokens.extend(payload)

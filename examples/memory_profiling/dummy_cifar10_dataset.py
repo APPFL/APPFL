@@ -5,8 +5,8 @@ This creates very small random datasets with the same shape as CIFAR-10 to isola
 memory usage during training from memory usage during data loading/partitioning.
 """
 
-import torch
 import numpy as np
+import torch
 from torch.utils.data import Dataset
 
 

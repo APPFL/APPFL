@@ -2,15 +2,16 @@
 executor is injected (or the SDK classes are monkeypatched), and the endpoint
 id is a placeholder."""
 
+import concurrent.futures
 import sys
 import time
 import types
+
 import pytest
-import concurrent.futures
+
 from appfl.comm.globus_compute import remote
 from appfl.comm.globus_compute.remote import GlobusComputeRemote, get_compute_client
 from appfl.comm.globus_compute.utils import client as client_utils
-
 
 _ENDPOINT_ID = "00000000-0000-0000-0000-000000000000"
 

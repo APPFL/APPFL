@@ -6,21 +6,22 @@ To run MPI with 5 clients with compression:
 mpiexec -np 6 python ./mnist_mpi_sync.py --partition class_noiid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --enable_compression
 """
 
-import time
-import torch
 import argparse
+import time
+
+import torch
+from dataloader.mnist_dataloader import get_mnist
+from losses.utils import get_loss
+from metric.utils import get_metric
+from models.utils import get_model
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from appfl.config import Config
-from appfl.misc.utils import set_seed
-from appfl.misc.data import data_sanity_check
+
 import appfl.run_mpi as rm
 import appfl.run_mpi_sync as rms
-from losses.utils import get_loss
-from models.utils import get_model
-from metric.utils import get_metric
-from dataloader.mnist_dataloader import get_mnist
-
+from appfl.config import Config
+from appfl.misc.data import data_sanity_check
+from appfl.misc.utils import set_seed
 
 ## read arguments
 parser = argparse.ArgumentParser()

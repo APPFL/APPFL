@@ -3,22 +3,23 @@ To run MPI with 5 clients:
 mpiexec -np 6 python ./mnist_mpi_privacy.py --partition class_noiid --num_epochs 10 --server IIADMM
 """
 
-import time
-import torch
 import argparse
+import time
+
+import torch
+from dataloader.mnist_dataloader import get_mnist
+from losses.utils import get_loss
+from metric.utils import get_metric
+from models.utils import get_model
 from mpi4py import MPI
 from omegaconf import OmegaConf
-from appfl.config import Config
-from appfl.misc.utils import set_seed
-from appfl.misc.data import data_sanity_check
+
 import appfl.run_mpi as rm
 import appfl.run_mpi_sync as rms
+from appfl.config import Config
 from appfl.config.fed import ICEADMM, IIADMM  # noqa
-from losses.utils import get_loss
-from models.utils import get_model
-from metric.utils import get_metric
-from dataloader.mnist_dataloader import get_mnist
-
+from appfl.misc.data import data_sanity_check
+from appfl.misc.utils import set_seed
 
 ## read arguments
 parser = argparse.ArgumentParser()

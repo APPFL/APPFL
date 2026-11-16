@@ -36,9 +36,10 @@ from __future__ import annotations
 import json
 import math
 import uuid
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Sequence
+from typing import Any
 
 
 class Signal(str, Enum):

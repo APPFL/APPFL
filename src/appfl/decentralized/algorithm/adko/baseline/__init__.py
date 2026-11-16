@@ -20,24 +20,24 @@ from typing import Any, Dict, Optional
 
 from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseline
 from appfl.decentralized.algorithm.adko.baseline.fixed_baseline import FixedBaseline
+from appfl.decentralized.algorithm.adko.baseline.max_deviation_baseline import (
+    MaxDeviationBaseline,
+)
 from appfl.decentralized.algorithm.adko.baseline.running_median_baseline import (
     RunningMedianBaseline,
     median,
     standard_deviation,
 )
-from appfl.decentralized.algorithm.adko.baseline.max_deviation_baseline import (
-    MaxDeviationBaseline,
-)
 
 __all__ = [
     "BaseBaseline",
     "FixedBaseline",
-    "RunningMedianBaseline",
     "MaxDeviationBaseline",
+    "RunningMedianBaseline",
+    "build_baseline",
+    "get_appfl_baseline",
     "median",
     "standard_deviation",
-    "get_appfl_baseline",
-    "build_baseline",
 ]
 
 # Short aliases so a YAML config can say `baseline: running_median` rather than spelling the
@@ -51,8 +51,8 @@ _ALIASES = {
 
 def get_appfl_baseline(
     baseline_name: str,
-    baseline_kwargs: Optional[Dict[str, Any]] = None,
-    baseline_path: Optional[str] = None,
+    baseline_kwargs: dict[str, Any] | None = None,
+    baseline_path: str | None = None,
 ) -> BaseBaseline:
     """Resolve a baseline by name, or load a user-defined one from ``baseline_path``.
 

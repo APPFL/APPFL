@@ -24,7 +24,9 @@ import argparse
 import copy
 import warnings
 from pathlib import Path
+
 from omegaconf import OmegaConf
+
 from appfl.agent import DFLNodeAgent
 from appfl.decentralized.neighbor import (
     build_topology_from_config,

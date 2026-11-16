@@ -359,7 +359,7 @@ def partition_raw_dataset(
     else:
         client_indices = simulate_partition(
             labels=targets,
-            num_clients=int(getattr(config, "num_clients")),
+            num_clients=int(config.num_clients),
             partition_type=partition_type,
             seed=int(getattr(config, "data_seed", 42)),
             pathological_min_classes=int(

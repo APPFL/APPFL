@@ -1,6 +1,6 @@
-from typing import Dict, Optional
-import requests
 import jwt
+import requests
+
 from appfl.login_manager import BaseAuthenticator
 
 
@@ -29,10 +29,10 @@ class KeycloakAuthenticator(BaseAuthenticator):
         is_fl_server: bool = False,
         server_url: str,
         realm: str,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
         role: str = "fl_client",
-        role_client_id: Optional[str] = None,
+        role_client_id: str | None = None,
         leeway: int = 10,
     ) -> None:
         self.is_fl_server = is_fl_server
@@ -59,7 +59,7 @@ class KeycloakAuthenticator(BaseAuthenticator):
             self.client_id = client_id
             self.client_secret = client_secret
 
-    def get_auth_token(self) -> Dict[str, str]:
+    def get_auth_token(self) -> dict[str, str]:
         """
         Invoked by the FL client to obtain an access token from Keycloak via
         the client credentials grant.
@@ -77,7 +77,7 @@ class KeycloakAuthenticator(BaseAuthenticator):
         response.raise_for_status()
         return {"access_token": response.json()["access_token"]}
 
-    def validate_auth_token(self, token: Dict) -> bool:
+    def validate_auth_token(self, token: dict) -> bool:
         """
         Invoked by the FL server to validate a client's access token: verifies
         the JWT's signature, issuer, and expiry against Keycloak's JWKS, then
@@ -104,7 +104,7 @@ class KeycloakAuthenticator(BaseAuthenticator):
             return False
         return self._has_role(claims)
 
-    def _has_role(self, claims: Dict) -> bool:
+    def _has_role(self, claims: dict) -> bool:
         if self.role_client_id is not None:
             roles = (
                 claims.get("resource_access", {})

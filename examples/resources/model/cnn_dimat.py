@@ -5,8 +5,9 @@ so DIMAT's graph can register hooks on each one independently.
 """
 
 import math
+
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class CNN(nn.Module):

@@ -27,7 +27,7 @@ In code::
     topology.describe()              # n_nodes, n_edges, mean_degree, fiedler_value
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from appfl.decentralized.topology.base import Topology
 from appfl.decentralized.topology.custom import Custom
@@ -37,12 +37,12 @@ from appfl.decentralized.topology.ring import Ring
 from appfl.decentralized.topology.star import Star
 
 __all__ = [
-    "Topology",
+    "Custom",
     "FullyConnected",
+    "RandomGeometric",
     "Ring",
     "Star",
-    "RandomGeometric",
-    "Custom",
+    "Topology",
     "build_topology",
 ]
 

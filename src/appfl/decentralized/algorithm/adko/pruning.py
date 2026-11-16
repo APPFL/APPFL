@@ -9,7 +9,7 @@ fidelity ``eta_bar`` under the memory budget.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Sequence
+from collections.abc import Sequence
 
 from appfl.decentralized.algorithm.adko.knowledge_token import KnowledgeToken
 

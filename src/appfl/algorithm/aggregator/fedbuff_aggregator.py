@@ -1,8 +1,11 @@
 import gc
+from collections import OrderedDict
+from typing import Any
+
 import torch
 from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import FedAsyncAggregator
-from typing import Union, Dict, OrderedDict, Any, Optional
 from appfl.misc.memory_utils import clone_state_dict_optimized, optimize_memory_cleanup
 
 
@@ -14,9 +17,9 @@ class FedBuffAggregator(FedAsyncAggregator):
 
     def __init__(
         self,
-        model: Optional[torch.nn.Module] = None,
+        model: torch.nn.Module | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         super().__init__(model, aggregator_configs, logger)
         self.buff_size = 0
@@ -24,10 +27,10 @@ class FedBuffAggregator(FedAsyncAggregator):
 
     def aggregate(
         self,
-        client_id: Union[str, int],
-        local_model: Union[Dict, OrderedDict],
+        client_id: str | int,
+        local_model: dict | OrderedDict,
         **kwargs,
-    ) -> Dict:
+    ) -> dict:
         # Memory optimization: Efficient global state initialization
         if self.global_state is None:
             if self.model is not None:
@@ -106,8 +109,8 @@ class FedBuffAggregator(FedAsyncAggregator):
 
     def compute_steps(
         self,
-        client_id: Union[str, int],
-        local_model: Union[Dict, OrderedDict],
+        client_id: str | int,
+        local_model: dict | OrderedDict,
     ):
         """
         Compute changes to the global model after the aggregation.
@@ -143,11 +146,13 @@ class FedBuffAggregator(FedAsyncAggregator):
         )
 
         for name in self.global_state:
-            if self.named_parameters is not None and name not in self.named_parameters:
-                self.step[name] += local_model[name]
-            elif (
-                self.global_state[name].dtype == torch.int64
-                or self.global_state[name].dtype == torch.int32
+            if (
+                self.named_parameters is not None
+                and name not in self.named_parameters
+                or (
+                    self.global_state[name].dtype == torch.int64
+                    or self.global_state[name].dtype == torch.int32
+                )
             ):
                 self.step[name] += local_model[name]
             else:

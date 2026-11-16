@@ -1,4 +1,4 @@
-import torchvision.transforms as transforms
+from torchvision import transforms
 
 
 def test_transform(dataset):

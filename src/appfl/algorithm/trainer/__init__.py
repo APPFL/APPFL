@@ -1,9 +1,9 @@
 from .base_trainer import BaseTrainer
-from .vanilla_trainer import VanillaTrainer
 from .fedprox_trainer import FedProxTrainer
-from .iiadmm_trainer import IIADMMTrainer
 from .iceadmm_trainer import ICEADMMTrainer
+from .iiadmm_trainer import IIADMMTrainer
 from .llm_dummy_trainer import LLMDummyTrainer
+from .vanilla_trainer import VanillaTrainer
 
 try:
     from .monai_trainer import MonaiTrainer
@@ -32,14 +32,14 @@ except:  # noqa: E722
 
 __all__ = [
     "BaseTrainer",
-    "VanillaTrainer",
-    "FedProxTrainer",
-    "IIADMMTrainer",
-    "ICEADMMTrainer",
-    "MonaiTrainer",
-    "FedSBTrainer",
-    "LLMDummyTrainer",
     "DIMATTrainer",
-    "SklearnTrainer",
+    "FedProxTrainer",
+    "FedSBTrainer",
+    "ICEADMMTrainer",
+    "IIADMMTrainer",
+    "LLMDummyTrainer",
     "LightningTrainer",
+    "MonaiTrainer",
+    "SklearnTrainer",
+    "VanillaTrainer",
 ]

@@ -1,11 +1,10 @@
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from omegaconf import DictConfig
 
 from appfl.algorithm.aggregator import FedAvgAggregator
-
 
 AIDRIN_SKIP_KEY = "__aidrin_skip__"
 
@@ -16,9 +15,9 @@ class Evo2FedAvgAggregator(FedAvgAggregator):
 
     def __init__(
         self,
-        model: Optional[Any] = None,
+        model: Any | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         super().__init__(
             model=model, aggregator_configs=aggregator_configs, logger=logger
@@ -33,7 +32,7 @@ class Evo2FedAvgAggregator(FedAvgAggregator):
         else:
             print(msg)
 
-    def get_parameters(self, **kwargs) -> Union[Dict, OrderedDict]:
+    def get_parameters(self, **kwargs) -> dict | OrderedDict:
         """
         Return the last aggregated adapter state. Falls back to this instead
         of `self.model.state_dict()` (the usual `FedAvgAggregator` behavior)
@@ -47,9 +46,9 @@ class Evo2FedAvgAggregator(FedAvgAggregator):
 
     def aggregate(
         self,
-        local_models: Dict[Union[str, int], Union[Dict, OrderedDict]],
+        local_models: dict[str | int, dict | OrderedDict],
         **kwargs,
-    ) -> Dict:
+    ) -> dict:
         """Drop AIDRIN-contaminated clients for this round, then delegate to FedAvg."""
         contaminated = [
             client_id

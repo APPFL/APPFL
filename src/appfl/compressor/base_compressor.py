@@ -1,7 +1,7 @@
 import abc
-from typing import Union, List
-from omegaconf import DictConfig
 from collections import OrderedDict
+
+from omegaconf import DictConfig
 
 
 class BaseCompressor:
@@ -11,7 +11,7 @@ class BaseCompressor:
     @abc.abstractmethod
     def compress_model(
         self,
-        model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]],
+        model: dict | OrderedDict | list[dict | OrderedDict],
         batched: bool = False,
     ) -> bytes:
         """
@@ -20,14 +20,13 @@ class BaseCompressor:
         :param batched: whether the input is a batch of models
         :return: compressed model parameters as bytes
         """
-        pass
 
     def decompress_model(
         self,
         compressed_model: bytes,
-        model: Union[dict, OrderedDict],
+        model: dict | OrderedDict,
         batched: bool = False,
-    ) -> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
+    ) -> OrderedDict | dict | list[OrderedDict | dict]:
         """
         Decompress all the communicated model parameters. The local model can be batched as a list.
         :param compressed_model: compressed model parameters as bytes
@@ -35,4 +34,3 @@ class BaseCompressor:
         :param batched: whether the input is a batch of models
         :return decompressed_model: decompressed model parameters
         """
-        pass

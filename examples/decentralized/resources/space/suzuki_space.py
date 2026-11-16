@@ -12,8 +12,8 @@ means looking up its measured reaction yield, not running a synthetic objective.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from itertools import product
-from typing import Sequence
 
 import numpy as np
 
