@@ -59,6 +59,8 @@ def print_totals(meter: Meter, n_rounds: int, optimum: float | None = None) -> N
     print(f"bits sent           : {meter.bits_sent}")
     print(f"bits per round      : {meter.bits_per_round(n_rounds):.0f}")
     print(f"evaluations         : {meter.evaluations}")
+    if meter.remote_overhead_seconds:
+        print(f"remote overhead     : {meter.remote_overhead_seconds:.1f} s")
 
 
 def print_llm(stats: Sequence[dict]) -> None:

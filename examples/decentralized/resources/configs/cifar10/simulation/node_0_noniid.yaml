@@ -1,5 +1,4 @@
 # CIFAR-10 architecture search with ADKO, non-IID -- node 0 of five.
-#
 # Five agents search the same 7-D ResNet design space (width, depth, lr, weight decay,
 # dropout, batch size, schedule). What differs is the data: each agent trains on a shard that
 # is 80% its own pair of CIFAR-10 classes, so a configuration that works for one agent's
@@ -21,10 +20,8 @@
 # Needs torch, torchvision and scikit-learn.
 
 node_id: "agent-0"
-
+seed: 42                        # one of the reference's 42/49/56; shards, graph and agent RNGs follow it
 num_epochs: 30                  # T: rounds of {act -> exchange tokens -> observe}
-seed: 42                        # one of the reference's 42/49/56; shards, graph and
-                                # agent RNGs all follow it
 
 neighbors:
   mode: from_topo
@@ -32,6 +29,14 @@ neighbors:
   topology_kwargs: {}
   num_nodes: 5                  # 10 classes / 5 agents = 2 primary classes each
   id_prefix: "agent-"
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:                 # used by grpc/run_site.py only
+    server_uri: "localhost:50051"
+    use_ssl: false
 
 algorithm_configs:
   warmup_rounds: 3              # n_initial: random proposals before the GP is trusted
@@ -41,10 +46,6 @@ algorithm_configs:
   emit_insight: false           # the reference CIFAR-10 study uses no language model
   total_proposals: null
   n_local_candidates: 50        # n_candidates: uniform draws scored per round
-
-  # Eq. (1): R = mu + beta*sigma + lam*G - gamma*Lambda.
-  # Neither preset matches this study -- `suzuki` uses Hamming distance and a 2*sigma_s^2
-  # kernel, `many_task` skips fidelity weighting -- so every field is set here.
   weights:
     beta: 2.0
     lam: 2.0
@@ -54,20 +55,17 @@ algorithm_configs:
     kernel: "sigma_sq"          # exp(-d^2 / sigma_s^2), as CIFARAgent.similarity
     weight_by_fidelity: true    # tokens weighted by c * eta
     peer_normalization: "mixing_weight"
-
   baseline:                     # what counts as SUCCESS in a token
     baseline: "fixed"
     baseline_kwargs:
       threshold: 0.7            # tau, on validation accuracy
       scale: 0.5                # the reference's fixed Y_SCALE: c = min(|y - tau| / 0.5, 1)
-
   pruner:
     pruner: "fidelity"
     pruner_kwargs:
       alpha_tau: 0.05
 
 surrogate_configs:
-  # scikit-learn GP, ARD Matern-5/2, refit after every observation.
   surrogate_path: "./decentralized/resources/surrogate/matern_gp_surrogate.py"
   surrogate_name: "get_surrogate"
   surrogate_kwargs:
@@ -75,25 +73,18 @@ surrogate_configs:
     alpha: 0.01                 # gp_alpha
     n_restarts: 2               # gp_restarts
 
-# The design space, theta in [0, 1]^7 -- shared by every agent. Token locations are sent
-# un-noised (the reference's sigma_phi = 0). Its published runs used sigma_phi = 0.05, which
-# no config can express yet: ADKOAgent has an `embedding_privatizer` hook for exactly this,
-# but `create_agent` does not pass one. Noise must not go in `embed`, which also feeds the GP.
 space_configs:
   space_path: "./decentralized/resources/space/cifar10_nas_space.py"
   space_name: "get_design_space"
   space_kwargs:
-    agent_index: 0              # set by the launcher for every other node
+    agent_index: 0
     num_agents: 5
     seed: ${seed}
 
-# The oracle -- train the decoded ResNet on this agent's shard, return validation accuracy.
 evaluator_configs:
   evaluator_path: "./decentralized/resources/evaluator/cifar10_nas.py"
   evaluator_name: "get_evaluator"
   evaluator_kwargs:
-    # Interpolated from the space block, which is where every launcher writes the index and
-    # the federation size. This is how each agent ends up with its own shard.
     agent_index: ${space_configs.space_kwargs.agent_index}
     num_agents: ${space_configs.space_kwargs.num_agents}
     distribution: "non_iid"
@@ -106,15 +97,3 @@ evaluator_configs:
     data_seed: ${seed}          # the reference seeds the shards with the run seed
     train_seed: ${seed}         # model init, shuffle and dropout of each training run
     device: "auto"              # cuda:(agent_index % visible GPUs), else cpu
-  cost_seconds: 0.0             # real wall time is already spent training
-
-train_configs:
-  logging_output_dirname: "./output"
-
-comm_configs:
-  budget_configs:
-    bits_per_neighbor_per_round: null
-    tokens_per_neighbor_per_round: 1
-  grpc_configs:                 # used by grpc/run_site.py only
-    server_uri: "localhost:50051"
-    use_ssl: false

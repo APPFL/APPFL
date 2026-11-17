@@ -76,7 +76,7 @@ class DeOptNodeAgent(DFLNodeAgent):
     ) -> None:
         if dfl_node_agent_config is None:
             dfl_node_agent_config = OmegaConf.create(
-                {"node_id": str(algorithm_agent.agent_id), "train_configs": {}}
+                {"node_id": str(algorithm_agent.agent_id)}
             )
         self.algorithm_agent = algorithm_agent
         super().__init__(

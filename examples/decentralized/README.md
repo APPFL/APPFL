@@ -90,6 +90,47 @@ In `resources/configs/toy1d/relay/`, sites 0 and 1 serve and sites 2 and 3 are r
 
 The relay stops once every site it has heard from has finished, counting a site from its first publish *or* its first collect. Ctrl-C stops it at any point.
 
+## Evaluating on Globus Compute
+
+A site can run its oracle on a [Globus Compute](https://globus-compute.readthedocs.io) endpoint — an HPC allocation or a GPU box — while the site itself keeps proposing, exchanging tokens and observing where it runs. A `remote` block under `evaluator_configs` takes the place of the local `evaluator_path`, `evaluator_name` and `evaluator_kwargs`:
+
+```yaml
+evaluator_configs:
+  remote:
+    backend: "globus_compute"
+    endpoint_id: "<endpoint uuid>"
+    timeout: 300                                # seconds per evaluation; the run fails past it
+    evaluator_path: "/abs/path/on/endpoint.py"  # required: the evaluator file on the endpoint
+    evaluator_name: "get_evaluator"             # default: the last function in that file
+    evaluator_kwargs: {}                        # default: {}
+    compute_token_env: "APPFL_GC_COMPUTE_TOKEN"
+    openid_token_env: "APPFL_GC_OPENID_TOKEN"
+```
+
+The `remote` block is self-contained and names the evaluator as the endpoint sees it; any local `evaluator_path`, `evaluator_name` or `evaluator_kwargs` beside it is ignored, so leave them out.
+
+The endpoint's Python environment needs this repository's `appfl` installed (`pip install -e .`) plus whatever the evaluator imports, because only the evaluator's path, kwargs and the design point are sent; the evaluator is built on the endpoint once per worker process and reused.
+
+`compute_token_env` and `openid_token_env` name the environment variables holding the two Globus access tokens, so a site runs unattended and no token is written into a config. Omit both to use the SDK's own login instead: a cached `globus-compute` login, or a confidential client from `GLOBUS_COMPUTE_CLIENT_ID` and `GLOBUS_COMPUTE_CLIENT_SECRET`.
+
+`resources/configs/toy1d/globus_compute/` is the four-site gRPC example with every site evaluating on one shared endpoint:
+
+```bash
+export APPFL_GC_COMPUTE_TOKEN=... APPFL_GC_OPENID_TOKEN=...
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_0.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_1.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_2.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_3.yaml
+```
+
+It should find the same points as `toy1d/distributed`: evaluation is deterministic, so moving it changes where it runs, not what it returns. The report's `remote overhead` line is the wall time of remote calls not spent evaluating — queueing, transfer, dispatch.
+
+For a GPU workload on an HPC endpoint, with a working Polaris endpoint configuration, see [Training on a GPU endpoint](#training-on-a-gpu-endpoint-three-sites-polaris).
+
+Errors are not retried or substituted: a remote exception is raised in the site, and an evaluation that takes longer than `timeout` — an offline endpoint queues tasks indefinitely — stops the site with a `TimeoutError`.
+
+The agent calls its evaluator as `evaluator(point, agent_id=..., round_idx=..., eval_idx=...)`, where `eval_idx` counts that agent's evaluations from 0 and `round_idx` runs ahead of it whenever a round ends without evaluating. An evaluator receives the context keys it names as parameters — `f(point, eval_idx)` gets `eval_idx` — or all of them if it takes `**kwargs`, locally or on an endpoint; a plain `f(point)` gets only the point. `cifar10_nas.py` seeds from `eval_idx`, so the k-th training run is the same locally and remotely even though an endpoint worker serves several agents.
+
 ## The Suzuki–Miyaura study
 
 Four laboratories optimizing a Suzuki–Miyaura coupling over 3,696 measured reactions, trading one knowledge token per neighbour per round — the experiment from the ADKO paper's `scientific_discovery` study. Hyperparameters follow its LM-free arm (`b2 l4 g32 s0p5 t50 tb40 a0p01`), and the oracle is the real `suzuki_edbo` yield table rather than a synthetic objective, so a run is a reproduction rather than a demonstration.
@@ -182,6 +223,83 @@ python decentralized/grpc/run_site.py --config ./decentralized/resources/configs
 ```
 
 A round lasts as long as the slowest site's training run, and a site waits at most an hour for a peer's token, so run these on GPUs.
+
+### Training on a GPU endpoint: three sites, Polaris
+
+`resources/configs/cifar10/globus_compute/` keeps the agents and the token exchange on the sites and sends each training run to a Globus Compute endpoint, as in [Evaluating on Globus Compute](#evaluating-on-globus-compute). Three agents cannot split ten classes evenly, so these run the IID arm. All three point at one endpoint; give each its own `endpoint_id` to put each site's training on a different machine.
+
+```bash
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/globus_compute/node_0.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/globus_compute/node_1.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/globus_compute/node_2.yaml
+```
+
+`evaluator_path` and `data_dir` in those files are paths on the endpoint's machine. On ALCF Polaris, set the endpoint up from a login node, in a Python environment that has this repository installed (`pip install -e .`), a CUDA build of torch, and `globus-compute-endpoint` at the same version as the sites' `globus-compute-sdk`:
+
+```bash
+python -c "import torchvision; torchvision.datasets.CIFAR10('<data_dir>', train=True, download=True)"   # compute nodes are offline
+gce configure polaris-gpu
+```
+
+Then replace the generated `~/.globus_compute/polaris-gpu/user_config_template.yaml.j2` with the following. The default template builds a fresh `uv` environment per task, which has neither APPFL nor torch.
+
+```yaml
+idle_heartbeats_soft: 240
+idle_heartbeats_hard: 5760
+
+engine:
+  type: GlobusComputeEngine
+  max_workers_per_node: 4
+  available_accelerators: 4          # one A100 per worker; device "auto" -> cuda:0 in each
+  job_status_kwargs:
+    max_idletime: 3600               # keep an idle PBS job up to an hour instead of 120 s
+
+  address:
+    type: address_by_interface
+    ifname: hsn0
+
+  provider:
+    type: PBSProProvider
+
+    launcher:
+      type: MpiExecLauncher
+      bind_cmd: --cpu-bind
+      overrides: --depth=64 --ppn 1
+
+    account: <PROJECT>
+    queue: debug
+    cpus_per_node: 32
+    select_options: ngpus=4
+    scheduler_options: "#PBS -l filesystems=home:grand:eagle"
+
+    worker_init: |
+      module use /soft/modulefiles
+      module load conda
+      export PATH=<path/to/env>/bin:$PATH
+      export PATH=/opt/cray/pals/1.8/bin:$PATH
+      export TMPDIR=/tmp
+      which python mpiexec
+
+    walltime: 01:00:00
+    nodes_per_block: 1
+    init_blocks: 0
+    min_blocks: 0
+    max_blocks: 1
+```
+
+Each line of `worker_init` fixes a failure seen on Polaris, where a job that cannot start its workers is reported as `Job is marked as MISSING` and the cause is in `~/.globus_compute/polaris-gpu/submit_scripts/*.stderr`:
+
+- the environment goes on `PATH` rather than through `conda activate`, which fails in a batch job with `__conda_exe: command not found`;
+- Cray's `mpiexec` goes in front of it, because an environment with `mpi4py` carries MPICH's own `mpiexec`, which rejects `--cpu-bind`. `which -a mpiexec` on a login node shows the PALS version to use;
+- `TMPDIR=/tmp` replaces PBS's long per-job temporary directory, which overflows the length of the Unix socket the worker pool opens;
+- `which python mpiexec` prints both into the job's `.stdout`, so the next failure shows what ran.
+
+```bash
+gce start polaris-gpu --detach     # the first start prints a login link
+gce list                           # the endpoint id for the three configs
+```
+
+The endpoint loads APPFL once per worker, so after pulling new code run `gce stop polaris-gpu` and start it again. The first evaluation waits for PBS to start a node. `max_idletime` and `idle_heartbeats_soft` keep that node between rounds; without them it is released after two idle minutes and every round queues again. A full run of 30 rounds at 40 epochs per evaluation will not fit the `debug` queue's hour, and an evaluation running when the job's walltime ends fails the site — so set `queue` and `walltime` for the run, and smoke-test first with `num_epochs: 5` and `n_epochs: 10`.
 
 Three things keep a run from matching the reference exactly, all on the algorithm side rather than in these files. The agent keeps its own tokens in memory and weights every source by 1/(|N|+1), where the reference's CIFAR-10 code keeps only neighbours' tokens at 1/|N|. The reference's published runs blur outgoing token locations with Gaussian noise (σ_φ = 0.05); `ADKOAgent` has an `embedding_privatizer` hook for it, but no config reaches it yet, so these configs send locations un-noised. And GPU training is not bit-for-bit repeatable, so two runs of the same seed agree closely rather than exactly.
 
