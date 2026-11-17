@@ -1,5 +1,6 @@
 import pickle
 from collections import OrderedDict
+from typing import List, Optional, Union
 
 import numpy as np
 import torch
@@ -120,7 +121,7 @@ class Int4Compressor(BaseCompressor):
 
     def compress_model(
         self,
-        model: dict | OrderedDict | list[dict | OrderedDict],
+        model: Union[dict, OrderedDict, List[Union[dict, OrderedDict]]],
         batched: bool = False,
     ) -> bytes:
         if batched:
@@ -147,9 +148,9 @@ class Int4Compressor(BaseCompressor):
     def decompress_model(
         self,
         compressed_model: bytes,
-        model: dict | OrderedDict | None = None,
+        model: Optional[Union[dict, OrderedDict]] = None,
         batched: bool = False,
-    ) -> OrderedDict | dict | list[OrderedDict | dict]:
+    ) -> Union[OrderedDict, dict, List[Union[OrderedDict, dict]]]:
         data = pickle.loads(compressed_model)
         if batched:
             if isinstance(data, list):

@@ -1,9 +1,12 @@
 import pickle
 from collections import OrderedDict
 
+import pytest
 import torch
+from omegaconf import OmegaConf
 
 from appfl.compressor import Int4Compressor
+from appfl.misc.utils import get_appfl_compressor
 
 
 def test_compress_decompress_single_model():
@@ -83,8 +86,6 @@ def test_small_updates_fidelity():
 
 
 def test_non_finite_rejected():
-    import pytest
-
     compressor = Int4Compressor()
     nan_tensor = torch.tensor([float("nan")] * 256, dtype=torch.float32)
     model = OrderedDict([("w", nan_tensor)])
@@ -94,9 +95,6 @@ def test_non_finite_rejected():
 
 
 def test_invalid_parameters():
-    import pytest
-    from omegaconf import OmegaConf
-
     with pytest.raises(ValueError):
         Int4Compressor(OmegaConf.create({"block_size": 63}))
     with pytest.raises(ValueError):
@@ -105,3 +103,38 @@ def test_invalid_parameters():
         Int4Compressor(OmegaConf.create({"block_size": 64.0}))
     with pytest.raises(ValueError):
         Int4Compressor(OmegaConf.create({"param_cutoff": -1}))
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16, torch.float64])
+def test_dtype_preserved(dtype):
+    compressor = Int4Compressor()
+    model = OrderedDict([("w", torch.randn(256).to(dtype))])
+
+    restored = compressor.decompress_model(compressor.compress_model(model))
+
+    assert restored["w"].dtype == dtype
+    assert restored["w"].shape == model["w"].shape
+
+
+def test_load_by_name():
+    # Agents load compressors by the `lossy_compressor` name in comm_configs
+    compressor_config = OmegaConf.create(
+        {
+            "enable_compression": True,
+            "lossy_compressor": "Int4Compressor",
+            "block_size": 32,
+            "param_cutoff": 64,
+        }
+    )
+    compressor = get_appfl_compressor(
+        compressor_name=compressor_config.lossy_compressor,
+        compressor_config=compressor_config,
+    )
+
+    assert isinstance(compressor, Int4Compressor)
+    assert compressor.block_size == 32
+    assert compressor.param_cutoff == 64
+
+    model = OrderedDict([("w", torch.randn(100))])
+    restored = compressor.decompress_model(compressor.compress_model(model), model)
+    assert restored["w"].shape == model["w"].shape
