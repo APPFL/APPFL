@@ -464,6 +464,9 @@ class FedAvgAggregator(BaseAggregator):
             for key in chunk_keys:
                 if key in self.global_state:
                     if (
+                        self.named_parameters is not None
+                        and key not in self.named_parameters
+                    ) or (
                         self.global_state[key].dtype == torch.int64
                         or self.global_state[key].dtype == torch.int32
                     ):
