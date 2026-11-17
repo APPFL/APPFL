@@ -1,4 +1,5 @@
 from .base_aggregator import BaseAggregator
+from .tcs_aggregator import TCSAggregator
 from .fedavg_aggregator import FedAvgAggregator
 from .fedavgm_aggregator import FedAvgMAggregator
 from .fedadam_aggregator import FedAdamAggregator
@@ -24,6 +25,7 @@ except:  # noqa: E722
 
 __all__ = [
     "BaseAggregator",
+    "TCSAggregator",
     "FedAvgAggregator",
     "FedAvgMAggregator",
     "FedAdamAggregator",
