@@ -16,28 +16,29 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Sequence
 
+from appfl.decentralized.config import accept_context
 from appfl.decentralized.protocol import TokenProtocol
 
 
 def metered_evaluator(
-    evaluator: Callable[[Any], float],
+    evaluator: Callable[..., float],
     meter: Meter,
-    cost_seconds: float = 0.0,
-) -> Callable[[Any], float]:
-    """Wrap an agent's evaluation callable so every call is counted.
+) -> Callable[..., float]:
+    """Wrap an agent's evaluation callable so every call is counted and timed.
 
-    The agent still just calls ``self.evaluator(point)``; the accounting happens around it,
-    which is also where compute-budget awareness would attach without the agent changing.
-    ``cost_seconds`` overrides measured wall time, for benchmarks where the stand-in
-    evaluation is instant but should be priced as if it were a real experiment.
+    The agent calls ``self.evaluator(point, **context)``; the accounting happens around it,
+    and the context reaches ``evaluator`` as :func:`~appfl.decentralized.config.accept_context`
+    delivers it. This is also where compute-budget awareness would attach without the agent
+    changing.
     """
+    evaluator = accept_context(evaluator)
 
-    def wrapped(point: Any) -> float:
+    def wrapped(point: Any, **context: Any) -> float:
         import time
 
         start = time.time()
-        value = evaluator(point)
-        meter.compute_seconds += cost_seconds or (time.time() - start)
+        value = evaluator(point, **context)
+        meter.compute_seconds += time.time() - start
         meter.evaluations += 1
         return value
 
@@ -59,6 +60,8 @@ class Meter:
     tokens_dropped_budget: int = 0
     evaluations: int = 0
     compute_seconds: float = 0.0
+    #: Wall time of remote evaluations not spent evaluating: queueing, transfer, dispatch.
+    remote_overhead_seconds: float = 0.0
     best_by_round: list[float] = field(default_factory=list)
 
     def record_sent(self, tokens: Sequence[TokenProtocol]) -> None:
@@ -86,3 +89,4 @@ class Meter:
         self.tokens_dropped_budget += other.tokens_dropped_budget
         self.evaluations += other.evaluations
         self.compute_seconds += other.compute_seconds
+        self.remote_overhead_seconds += other.remote_overhead_seconds

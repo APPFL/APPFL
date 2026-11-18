@@ -271,6 +271,8 @@ class GRPCPeerCommunicator:
                     ("grpc.keepalive_time_ms", 60000),
                     ("grpc.keepalive_timeout_ms", 20000),
                     ("grpc.keepalive_permit_without_calls", 1),
+                    ("grpc.http2.max_pings_without_data", 0),
+                    ("grpc.http2.min_ping_interval_without_data_ms", 10000),
                 ],
             )
             add_GRPCCommunicatorServicer_to_server(self.servicer, self._server)

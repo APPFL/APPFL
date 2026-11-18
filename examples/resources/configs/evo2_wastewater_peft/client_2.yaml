@@ -1,0 +1,27 @@
+client_id: "perlmutter_site_anl_2"
+
+train_configs:
+  trainer: "Evo2PEFTTrainer"
+  trainer_path: "/global/homes/a/abhijit7/APPFL/examples/resources/configs/evo2_wastewater_peft/evo2_trainer.py"
+  site: "site_anl_2"
+  method: "lora"
+  base_data: "/global/cfs/projectdirs/m4994/common/db-forge-poc/wastewater-peft/data"
+  model_path: "/global/cfs/projectdirs/m4994/common/db-forge-poc/models/evo2_7b/evo2_7b.pt"
+  evo2_dir: "/global/cfs/projectdirs/m4994/common/db-forge-poc/evo2_repo"
+  num_local_steps: 100
+  chunk_size: 200
+  max_chunks: 360000
+  exclude_files:
+    - "mgm4611649"
+    - "mgm4804501"
+    - "mgm4804502"
+  lr: 0.0002
+  aidrin_csv: "/global/cfs/projectdirs/m4994/common/db-forge-poc/wastewater-peft/data/aidrin_results/site_anl_2_aidrin_inputs.csv"
+  drisee_threshold: 20.0
+
+comm_configs:
+  grpc_configs:
+    server_uri: "your-server-address:443"
+    max_message_size: 104857600
+    use_ssl: True
+    optimize_memory: True

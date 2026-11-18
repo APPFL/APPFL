@@ -15,6 +15,7 @@ from __future__ import annotations
 import random
 from typing import Any, Callable, Sequence
 
+from appfl.decentralized.config import accept_context
 from appfl.decentralized.protocol import AgentProtocol
 from appfl.decentralized.algorithm.adko.baseline import BaseBaseline
 from appfl.decentralized.algorithm.adko.knowledge_token import (
@@ -60,7 +61,7 @@ class ADKOAgent(AgentProtocol):
         agent_id: str,
         surrogate: Surrogate,
         space: DesignSpace,
-        evaluator: Callable[[Any], float],
+        evaluator: Callable[..., float],
         mixing_weight: Callable[[str], float],
         baseline: BaseBaseline,
         language_model: LanguageModel | None = None,
@@ -83,7 +84,7 @@ class ADKOAgent(AgentProtocol):
         self.agent_id = agent_id
         self.surrogate = surrogate
         self.space = space
-        self.evaluator = evaluator
+        self.evaluator = accept_context(evaluator)
         self.mixing_weight = mixing_weight
         self.baseline = baseline
         self.objective = objective
@@ -181,8 +182,15 @@ class ADKOAgent(AgentProtocol):
                 "n_tokens_in_memory": len(self.token_memory),
             }
 
-        # Step 9: execution. The only place the agent touches ground truth.
-        observation = self.evaluator(chosen)
+        # Step 9: execution. The only place the agent touches ground truth. The context is what
+        # only the agent knows: an evaluator seeding from it (or running remotely) then gives
+        # the same k-th evaluation under every launcher.
+        observation = self.evaluator(
+            chosen,
+            agent_id=self.agent_id,
+            round_idx=round_idx,
+            eval_idx=len(self._observations),
+        )
 
         # Step 10: token encoding. `observation` dies inside encode_token -- from here on,
         # only the sign and the normalized magnitude exist.

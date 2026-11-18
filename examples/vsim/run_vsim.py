@@ -47,8 +47,6 @@ def build_profiles_from_json(client_ids, path):
     :param path: Path to the JSON file.
     :return: Dict mapping client_id to ClientProfile.
     """
-    import json
-
     with open(path) as f:
         entries = json.load(f)
 
@@ -126,6 +124,32 @@ def estimate_durations(profiles, train_configs, step_time, model_bytes, ratio):
         cid: p.duration(float(step_time), steps, model_bytes, ratio * model_bytes)
         for cid, p in profiles.items()
     }
+
+
+def save_history(history, path):
+    """
+    Write the driver's history to a JSON file.
+
+    The file holds `driver.history` as is: one record per async completion or
+    sync round. `vsim/plot_timeline.py` draws the timeline of an async run from
+    it.
+
+    :param history: The driver's `history` list.
+    :param path: Output path; missing parent directories are created.
+    """
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w") as f:
+        # Trainer metadata such as `val_accuracy` may hold numpy or torch
+        # scalars, which json cannot encode. Convert them rather than fail at
+        # the end of a long run.
+        json.dump(
+            history,
+            f,
+            indent=2,
+            default=lambda o: o.tolist() if hasattr(o, "tolist") else str(o),
+        )
 
 
 def parse_args():
@@ -224,7 +248,8 @@ def parse_args():
         "--save_history",
         type=str,
         default=None,
-        help="write driver.history to this JSON file (e.g. to compare runs)",
+        help="write driver.history to this JSON file, e.g. to compare runs "
+        "(vsim/plot_timeline.py plots async runs from it)",
     )
     return parser.parse_args()
 
@@ -511,6 +536,9 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
                 "MB_in": f"{stats['bytes_from_workers'] / 1e6:.1f}",
             },
         )
+    if args.save_history:
+        save_history(driver.history, args.save_history)
+        logger.info(f"history saved to {args.save_history}")
 
     # ---- summary ----
     if mode == "async":
@@ -571,10 +599,6 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
             "ALL CHECKS PASSED" if all(bool_checks) else "SOME CHECKS FAILED",
             {"max_active": driver._max_active},
         )
-    if args.save_history:
-        with open(args.save_history, "w") as f:
-            json.dump(driver.history, f, indent=1)
-        logger.info(f"history written to {args.save_history}")
     logger.info(f"log dir: {log_dir}")
 
 
