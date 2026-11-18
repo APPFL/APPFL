@@ -4,6 +4,7 @@ import torch
 from mpi4py import MPI
 from omegaconf import DictConfig, OmegaConf
 from typing import Dict, Union, Tuple, OrderedDict, Optional, List
+from appfl.misc.utils import deserialize_yaml
 from .config import MPITaskRequest, MPITaskResponse, MPIServerStatus, MPITask
 from .serializer import request_to_byte, byte_to_response, byte_to_model, model_to_byte
 from appfl.misc.memory_utils import optimize_memory_cleanup, memory_efficient_model_io
@@ -18,6 +19,8 @@ class MPIClientCommunicator:
     :param client_id: [optional] an optional client ID for one client for logging purposes, mutually exclusive with client_ids
     :param client_ids: [optional] a list of client IDs for a batched clients,
         this is only required when the MPI process represents multiple clients
+    :param trusted: whether to load server metadata that is not plain YAML (e.g. numpy scalars, tuples)
+        with the unsafe loader; MPI ranks belong to one job, so this defaults to True
     """
 
     def __init__(
@@ -27,9 +30,11 @@ class MPIClientCommunicator:
         client_id: Optional[Union[str, int]] = None,
         client_ids: Optional[List[Union[str, int]]] = None,
         optimize_memory: bool = True,
+        trusted: bool = True,
         **kwargs,
     ):
         self.comm = comm
+        self.trusted = trusted
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
         self.server_rank = server_rank
@@ -49,6 +54,14 @@ class MPIClientCommunicator:
         else:
             self.client_ids = [self.comm_rank]
         self._default_batching = client_ids is not None
+
+    def _load_meta_data(self, meta_data: str):
+        """Deserialize YAML metadata from the server, falling back to the unsafe loader only if trusted."""
+        return deserialize_yaml(
+            meta_data,
+            trusted=self.trusted,
+            warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `MPIClientCommunicator`.",
+        )
 
     def get_configuration(self, **kwargs) -> DictConfig:
         """
@@ -104,7 +117,7 @@ class MPIClientCommunicator:
         else:
             model = byte_to_model(response.payload)
 
-        meta_data = yaml.safe_load(response.meta_data)
+        meta_data = self._load_meta_data(response.meta_data)
 
         # Memory optimization: Clean up response immediately
         if self.optimize_memory:
@@ -202,7 +215,7 @@ class MPIClientCommunicator:
         else:
             model = byte_to_model(response.payload)
 
-        meta_data = yaml.safe_load(response.meta_data)
+        meta_data = self._load_meta_data(response.meta_data)
 
         # Memory optimization: Clean up response immediately
         if self.optimize_memory:
@@ -266,7 +279,7 @@ class MPIClientCommunicator:
             return {}
         else:
             try:
-                results = yaml.safe_load(response.meta_data)
+                results = self._load_meta_data(response.meta_data)
                 # post-process the results if the client has multiple clients
                 if client_id is not None or (not self._default_batching):
                     results = results[kwargs["_client_ids"][0]]

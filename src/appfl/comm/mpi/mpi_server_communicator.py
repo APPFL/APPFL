@@ -11,6 +11,7 @@ from typing import Optional, Dict, OrderedDict
 from concurrent.futures import Future
 from appfl.agent import ServerAgent
 from appfl.logger import ServerAgentFileLogger
+from appfl.misc.utils import deserialize_yaml
 from .config import MPITask, MPITaskRequest, MPITaskResponse, MPIServerStatus
 from .serializer import byte_to_request, response_to_byte, model_to_byte, byte_to_model
 from appfl.misc.memory_utils import optimize_memory_cleanup, memory_efficient_model_io
@@ -23,9 +24,11 @@ class MPIServerCommunicator:
         server_agent: ServerAgent,
         logger: Optional[ServerAgentFileLogger] = None,
         optimize_memory: bool = True,
+        trusted: bool = True,
         **kwargs,
     ) -> None:
         self.comm = comm
+        self.trusted = trusted
         self.comm_rank = comm.Get_rank()
         self.comm_size = comm.Get_size()
         self.server_agent = server_agent
@@ -52,6 +55,14 @@ class MPIServerCommunicator:
         if self._benchmarking:
             self._communication_times = []
             self._training_times = []
+
+    def _load_meta_data(self, meta_data: str):
+        """Deserialize YAML metadata from a client, falling back to the unsafe loader only if trusted."""
+        return deserialize_yaml(
+            meta_data,
+            trusted=self.trusted,
+            warning_message="Loading metadata fails due to untrusted data in the metadata, you can fix this by setting `trusted=True` in `MPIServerCommunicator`.",
+        )
 
     def serve(self):
         """
@@ -125,7 +136,9 @@ class MPIServerCommunicator:
         :return `response.meta_data`: YAML serialized FL configurations
         """
         meta_data = (
-            yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+            self._load_meta_data(request.meta_data)
+            if len(request.meta_data) > 0
+            else {}
         )
         client_ids = meta_data.get("_client_ids", [client_rank])
         if len(client_ids) > 1:
@@ -162,7 +175,9 @@ class MPIServerCommunicator:
         :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
         """
         meta_data = (
-            yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+            self._load_meta_data(request.meta_data)
+            if len(request.meta_data) > 0
+            else {}
         )
         client_ids = meta_data.get("_client_ids", [client_rank])
         if len(client_ids) > 1:
@@ -220,7 +235,9 @@ class MPIServerCommunicator:
         """
         local_model = request.payload
         meta_data = (
-            yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+            self._load_meta_data(request.meta_data)
+            if len(request.meta_data) > 0
+            else {}
         )
         if meta_data.get("_torch_serialized", True):
             # Memory optimization: Use optimized deserialization
@@ -331,7 +348,9 @@ class MPIServerCommunicator:
         :return `response.meta_data`: YAML serialized metadata dictionary (if needed)
         """
         meta_data = (
-            yaml.safe_load(request.meta_data) if len(request.meta_data) > 0 else {}
+            self._load_meta_data(request.meta_data)
+            if len(request.meta_data) > 0
+            else {}
         )
         assert "action" in meta_data, "The action is not specified in the metadata"
         action = meta_data["action"]
