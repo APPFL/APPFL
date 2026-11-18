@@ -159,6 +159,8 @@ class AsyncSimDriver(BaseSimDriver):
             "dispatch_time": dispatch_time,
             "epoch_dispatch": epoch_dispatch,
             "duration": dur,
+            "compute_time": comp,
+            "comm_time": comm,
             "comm_bytes": self._raw_model_bytes + upload_bytes,
         }
         self._push(completion, "train_complete", cid)
@@ -213,6 +215,8 @@ class AsyncSimDriver(BaseSimDriver):
             "staleness": staleness,
             "val_accuracy": val_acc,
             "duration": p["duration"],
+            "compute_time": p["compute_time"],
+            "comm_time": p["comm_time"],
             "dispatch_time": p["dispatch_time"],
             "completion_ok": abs(p["dispatch_time"] + p["duration"] - completion_time)
             < 1e-9,
