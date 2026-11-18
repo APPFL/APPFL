@@ -9,21 +9,21 @@ Example: Running APPFL using MONAI Bundle
         </div>
     </div>
 
-This tutorial describes how to run federated learning experiments via APPFL using MONAI Bundles to leverage a collection of medical imaging models available in `MONAI model zoo <https://monai.io/model-zoo.html>`_. This examples shows how to use MONAI Bundle to do 3D spleen CT segmentation using gRPC with two clients.
+This tutorial describes how to run federated learning experiments with APPFL using MONAI Bundles, which give access to a collection of medical imaging models in the `MONAI Model Zoo <https://monai.io/model-zoo.html>`_. This example shows how to use a MONAI Bundle for 3D spleen CT segmentation using gRPC with two clients.
 
 .. note::
 
-    **Acknowledgement**: We extend our gratitude to the MONAI and NVFlare teams for their invaluable support and information throughout this tutorial. Specifically, this tutorial refers to the `NVFlare-MONAI integration tutorial <https://github.com/NVIDIA/NVFlare/tree/dev/integration/monai/examples/spleen_ct_segmentation_local>`_.
+    **Acknowledgement**: We extend our gratitude to the MONAI and NVFlare teams for their invaluable support and information for this tutorial. Specifically, this tutorial is based on the `NVFlare-MONAI integration tutorial <https://github.com/NVIDIA/NVFlare/tree/dev/integration/monai/examples/spleen_ct_segmentation_local>`_.
 
 .. note::
 
-    This tutorial is the beta version of the integration of MONAI Bundle with APPFL. The integration is still under active development.
+    This tutorial uses a beta version of the MONAI Bundle integration with APPFL. The integration is still under active development.
 
 
 Installation
 ------------
 
-User can install ``appfl`` and ``monai`` packages from ``appfl``'s source code by running the following commands:
+You can install the ``appfl`` and ``monai`` packages from the APPFL source code by running the following commands:
 
 .. code-block:: bash
 
@@ -34,14 +34,14 @@ User can install ``appfl`` and ``monai`` packages from ``appfl``'s source code b
 Download MONAI Bundle
 ---------------------
 
-We suggest user to download the bundle into the ``examples/resources/monai`` directory.
+We suggest downloading the bundle into the ``examples/resources/monai`` directory.
 
 .. code-block:: bash
 
     mkdir -p examples/resources/monai
     cd examples/resources/monai
 
-Then, download the spleen CT segmentation bundle from MONAI Bundle repository:
+Then, download the spleen CT segmentation bundle from the MONAI Bundle repository:
 
 .. code-block:: bash
 
@@ -51,7 +51,7 @@ Then, download the spleen CT segmentation bundle from MONAI Bundle repository:
 Download Data
 -------------
 
-User can create a ``download_spleen_data.py`` script within the ``examples/resources/monai`` directory with the following content to download spleen CT data:
+Create a ``download_spleen_data.py`` script in the ``examples/resources/monai`` directory with the following content to download spleen CT data:
 
 .. code-block:: python
 
@@ -80,18 +80,18 @@ User can create a ``download_spleen_data.py`` script within the ``examples/resou
         args = parser.parse_args()
         download_spleen_dataset(args.filepath, args.output_dir)
 
-Then, user can run the script to download the spleen CT data:
+Then, run the script to download the spleen CT data:
 
 .. code-block:: bash
 
     JOB_NAME=job
-    python download_spleen_dataset.py
+    python download_spleen_data.py
     sed -i "s|/workspace/data/Task09_Spleen|${PWD}/data/Task09_Spleen|g" ${JOB_NAME}/app/config/spleen_ct_segmentation/configs/train.json
 
 Launch the server
 -----------------
 
-User can launch the server in one terminal using the FedAvg algorithm by the following command:
+Launch the server with the FedAvg algorithm in one terminal using the following command:
 
 .. code-block:: bash
 
@@ -101,12 +101,12 @@ User can launch the server in one terminal using the FedAvg algorithm by the fol
 
 .. note::
 
-    User can change to other federated learning algorithms by using other server configuration files in the ``./resources/configs/monai`` directory.
+    You can switch to other federated learning algorithms by using other server configuration files in the ``./resources/configs/monai`` directory.
 
 Launch the clients
 ------------------
 
-In the server configuration file, we specify that the number of clients is two, so we open two separate terminals to launch the clients:
+The server configuration file specifies two clients, so open two separate terminals to launch the clients:
 
 .. code-block:: bash
 

@@ -24,6 +24,7 @@ class ServerAgentFileLogger:
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
 
         info_fmt = logging.Formatter(
             f"{Fore.BLUE}{Style.BRIGHT}appfl: ✅{Style.RESET_ALL}[%(asctime)s server]: %(message)s"

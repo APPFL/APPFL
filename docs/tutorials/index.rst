@@ -1,7 +1,7 @@
 Tutorials
 =========
 
-We present a collection of tutorials for APPFL framework.
+We present a collection of tutorials for the APPFL framework.
 
 .. toctree::
     :maxdepth: 1
@@ -14,6 +14,7 @@ We present a collection of tutorials for APPFL framework.
     examples_vit_finetuning
     examples_globus_compute
     examples_multi_user_gcep
+    examples_adko_cifar10
     examples_ray
     examples_wandb
     examples_custom_action

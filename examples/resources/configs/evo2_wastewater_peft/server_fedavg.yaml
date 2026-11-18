@@ -1,0 +1,34 @@
+client_configs:
+  train_configs:
+    trainer_path: ./resources/configs/evo2_wastewater_peft/evo2_trainer.py
+    trainer: Evo2PEFTTrainer
+    num_local_steps: 100
+    lr: 0.0002
+    drisee_threshold: 20.0
+
+  comm_configs:
+    compressor_configs:
+      enable_compression: False
+
+server_configs:
+  num_clients: 2
+  scheduler: SyncScheduler
+
+  aggregator_path: ./resources/configs/evo2_wastewater_peft/evo2_aggregator.py
+  aggregator: Evo2FedAvgAggregator
+  aggregator_kwargs:
+    client_weights_mode: equal
+
+  device: cpu
+  num_global_epochs: 20
+  logging_output_dirname: ./output
+  logging_output_filename: evo2_fedavg
+  comm_configs:
+    grpc_configs:
+      server_uri: "0.0.0.0:50051"
+      max_message_size: 104857600
+      use_ssl: False
+      optimize_memory: True
+      use_polling: True
+      poll_interval: 5.0
+      max_workers: 128

@@ -149,7 +149,8 @@ class AsyncSimDriver(BaseSimDriver):
         else:
             local_model, meta = res, {}
 
-        comp, comm, dur = self._client_duration(cid, profile, meta)
+        upload_bytes = self._upload_size(local_model)
+        comp, comm, dur = self._client_duration(cid, profile, meta, upload_bytes)
         completion = dispatch_time + dur
 
         self._pending[cid] = {
@@ -160,6 +161,7 @@ class AsyncSimDriver(BaseSimDriver):
             "duration": dur,
             "compute_time": comp,
             "comm_time": comm,
+            "comm_bytes": self._raw_model_bytes + upload_bytes,
         }
         self._push(completion, "train_complete", cid)
         self.logger.log_content(
@@ -188,9 +190,7 @@ class AsyncSimDriver(BaseSimDriver):
         meta["virtual_time"] = completion_time
         meta["dispatch_time"] = p["dispatch_time"]
 
-        local_model = {
-            k: v.cpu() if hasattr(v, "cpu") else v for k, v in p["local_model"].items()
-        }
+        local_model = self._to_cpu(p["local_model"])
 
         # Captured before the update: `global_update` increments the epoch counter,
         # so reading it afterwards would make staleness 0 impossible.
@@ -206,7 +206,7 @@ class AsyncSimDriver(BaseSimDriver):
         staleness = epoch_before - p["epoch_dispatch"]
         self.active.discard(cid)
 
-        comm_bytes = self._model_bytes * 2
+        comm_bytes = p["comm_bytes"]
         self._total_comm_bytes += comm_bytes
         rec = {
             "vtime": completion_time,

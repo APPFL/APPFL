@@ -1,0 +1,78 @@
+# Suzuki-Miyaura ADKO, heterogeneous (HET) -- site 0 of four, deployed.
+# One laboratory: it runs solvent 0 (MeCN) and nothing else, which is the whole reason
+# it has neighbours. The IID arm is a simulation control and has no deployed form here; this
+# one does, because four labs with four different solvents is the real experiment.
+#
+# A deployed site: this file names its own neighbours and where to reach each one, and holds
+# nothing about the federation beyond that -- no roster, no graph. That is what
+# `mode: explicit` means, and why it is the only mode a real deployment can use.
+#
+#   python decentralized/grpc/run_site.py \
+#       --config ./decentralized/resources/configs/suzuki/distributed/node_0.yaml
+#
+# Needs BoTorch, GPyTorch and Olympus; see ../../../../README.md.
+
+node_id: "agent-0"
+seed: 42                        # the reference's SEED_BASE
+node_index: 0                   # this site's position; sets its RNG seed offset
+num_epochs: 200                 # rounds of {act -> exchange tokens -> observe}
+
+neighbors:
+  mode: "explicit"
+  send_to: ["agent-1", "agent-2", "agent-3"]
+  recv_from:
+    - node_id: "agent-1"
+      server_uri: "localhost:50052"
+    - node_id: "agent-2"
+      server_uri: "localhost:50053"
+    - node_id: "agent-3"
+      server_uri: "localhost:50054"
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:
+    server_uri: "localhost:50051"
+    max_message_size: 1048576
+    use_ssl: False
+
+algorithm_configs:
+  warmup_rounds: 5              # random proposals before the surrogate is trusted
+  token_budget: 40              # tokens an agent keeps in memory (tb40)
+  alpha_tau: 0.01               # fidelity decay rate, exp(-alpha * age)  (a0p01)
+  objective: "maximize"         # the measurement is a reaction yield in [0, 100]
+  emit_insight: false           # the LM-free arm (the reference's use_llm: false)
+  total_proposals: null         # null -> unbounded; set for a fixed evaluation budget
+  n_local_candidates: 10
+  weights:
+    preset: "suzuki"            # beta 2, lam 4, gamma 32, Hamming, fidelity-weighted
+    sigma_s: 0.5                # similarity_bw in the reference config  (s0p5)
+  baseline:                     # what counts as SUCCESS in the token's s field
+    baseline: "fixed"           # a fixed yield threshold, not a running quantile
+    baseline_kwargs:
+      threshold: 50.0           # tau  (t50)
+      scale: 50.0               # max(tau, 100 - tau)
+  pruner:                       # which token to drop when memory is full
+    pruner: "fidelity"          # fidelity | confidence | fifo | random
+    pruner_kwargs:
+      alpha_tau: 0.01
+
+surrogate_configs:
+  surrogate_path: "./decentralized/resources/surrogate/categorical_gp_surrogate.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs: {}          # every knob the reference exposes is fixed by the kernel
+
+space_configs:
+  space_path: "./decentralized/resources/space/suzuki_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 0
+    num_agents: 4
+    iid_mode: false
+    seed: 42
+
+evaluator_configs:
+  evaluator_path: "./decentralized/resources/evaluator/suzuki_lookup.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
