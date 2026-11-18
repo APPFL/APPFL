@@ -105,9 +105,10 @@ server_configs:
 ```
 
 Important command-line overrides are `--mode`, `--num_clients`, `--device`,
-`--seed`, `--max_in_flight`, `--base_step_time`, `--num_global_epochs`,
-`--num_local_steps`, `--eval_every`, `--executor`, `--save_history`, and
-`--verify`. Run `python vsim/run_vsim.py --help` for the complete list.
+`--server_device`, `--seed`, `--max_in_flight`, `--base_step_time`,
+`--num_global_epochs`, `--num_local_steps`, `--eval_every`, `--executor`,
+`--save_history`, and `--verify`. Run `python vsim/run_vsim.py --help` for the
+complete list.
 
 `task_seeding` seeds the global RNGs around every local-training task from
 (seed, client, how many times the client was selected) and restores them
@@ -204,7 +205,11 @@ mpiexec -n $((NNODES * 4)) --ppn 4 python vsim/run_vsim.py --executor mpi \
 
 Workers on a node are mapped to its visible GPUs round-robin. If the launcher
 pins `CUDA_VISIBLE_DEVICES` to one GPU per rank, each worker uses `cuda:0`. More
-ranks than GPUs puts several workers on one GPU. On CPU, each worker uses one
+ranks than GPUs puts several workers on one GPU. A worker's device takes
+precedence over any `train_configs.device` in the server's client configuration.
+`--device` applies to the workers only: rank 0 runs the server's global
+validation on the CPU unless `--server_device` names another device, so it can
+run on a node without a GPU. On CPU, each worker uses one
 torch thread unless `OMP_NUM_THREADS` is set; torch would otherwise start one
 thread per core in every rank, which made an 8-worker run 1.85x slower. Worker
 output goes to `vsim_logs/run_<timestamp>/worker_<rank>.log`, and per-client log

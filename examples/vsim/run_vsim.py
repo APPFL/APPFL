@@ -166,6 +166,13 @@ def parse_args():
     )
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument(
+        "--server_device",
+        type=str,
+        default=None,
+        help="device for the server's global validation; defaults to --device "
+        "in-process and to cpu with --executor mpi, so rank 0 needs no GPU",
+    )
+    parser.add_argument(
         "--base_step_time",
         type=float,
         default=None,
@@ -278,11 +285,21 @@ def make_client_config(args, index, device, file_logging=True):
 
 
 def make_client(args, index, server_client_configs, device, file_logging=True):
-    """Create client ``index`` and load the configuration shared by the server."""
+    """
+    Create client ``index`` and load the configuration shared by the server.
+
+    ``load_config`` merges the shared configuration over the client's own and then
+    builds the trainer, so a ``train_configs.device`` in it would replace
+    ``device``, and every MPI worker would train on that one device (GPU 0 or the
+    CPU). The local ``device`` is applied to the shared configuration first.
+    """
     client = ClientAgent(
         client_agent_config=make_client_config(args, index, device, file_logging)
     )
-    client.load_config(server_client_configs)
+    shared = OmegaConf.merge(
+        server_client_configs, {"train_configs": {"device": device}}
+    )
+    client.load_config(shared)
     return client
 
 
@@ -334,7 +351,9 @@ def run_coordinator(args, server_config, sim_cfg, comm, log_dir, logger):
     """Build the server, clients (or MPI executor) and driver; run and report."""
     # ---- configs ----
     server_config.server_configs.num_clients = args.num_clients
-    server_config.server_configs.device = args.device
+    # With MPI, --device is the workers' device; rank 0 may have no GPU at all.
+    server_device = args.server_device or ("cpu" if comm is not None else args.device)
+    server_config.server_configs.device = server_device
     if args.num_global_epochs is not None:
         server_config.server_configs.num_global_epochs = args.num_global_epochs
     if args.num_local_steps is not None:
