@@ -159,14 +159,16 @@ def create_agent(
     )(**as_kwargs(surrogate_configs.get("surrogate_kwargs", None)))
 
     evaluator_configs = node_config.evaluator_configs
-    evaluator = load_callable(
-        evaluator_configs.evaluator_path, evaluator_configs.evaluator_name
-    )(**as_kwargs(evaluator_configs.get("evaluator_kwargs", None)))
-    # Priced as if it were a real experiment, so the meter's compute_seconds means something
-    # even when the stand-in objective is instant.
-    evaluator = metered_evaluator(
-        evaluator, meter, cost_seconds=float(evaluator_configs.get("cost_seconds", 0.0))
-    )
+    if evaluator_configs.get("remote", None) is not None:
+        # Evaluated on a Globus Compute endpoint; imported here so a local run never loads the SDK.
+        from appfl.comm.globus_compute.remote_evaluator import create_remote_evaluator
+
+        evaluator = create_remote_evaluator(evaluator_configs, meter)
+    else:
+        evaluator = load_callable(
+            evaluator_configs.evaluator_path, evaluator_configs.evaluator_name
+        )(**as_kwargs(evaluator_configs.get("evaluator_kwargs", None)))
+    evaluator = metered_evaluator(evaluator, meter)
 
     baseline_configs = as_kwargs(algorithm.get("baseline", None))
     pruner_configs = as_kwargs(algorithm.get("pruner", None))
