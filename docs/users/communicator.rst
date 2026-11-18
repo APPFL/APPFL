@@ -260,10 +260,11 @@ Models smaller than ``model_chunk_size`` are sent as a whole as usual. Model chu
 
 .. note::
 
-    - Use the same ``model_chunk_size`` on the server and all clients. The server aggregates each chunk by the parameter names of the first client, so the local models of all clients must be split the same way, and the server splits the global model by its own ``model_chunk_size``.
-    - Model chunking is supported with the ``FedAvgAggregator`` only, and the server fails at start with any other aggregator. It does not support secure aggregation.
-    - Each model chunk is still split into messages of ``max_message_size`` (see :ref:`gRPC Message Size`), and goes through S3, ProxyStore or Colab transfer if configured. In polling mode, each chunk is a separate request with its own ticket (see :ref:`gRPC Polling Mode`).
-    - The local model must be a state dictionary. Models sent as bytes are not chunked.
+    * Use the same ``model_chunk_size`` on the server and all clients. The server aggregates each chunk by the parameter names of the first client, so the local models of all clients must be split the same way, and the server splits the global model by its own ``model_chunk_size``.
+    * Model chunking supports ``FedAvgAggregator``, ``FedAvgMAggregator``, ``FedAdamAggregator``, ``FedYogiAggregator`` and ``FedAdagradAggregator``. Configure the server optimizer as for full-model aggregation. Secure aggregation does not support model chunking.
+    * Each model chunk is still split into messages of ``max_message_size`` (see :ref:`gRPC Message Size`), and goes through S3, ProxyStore or Colab transfer if configured. In polling mode, each chunk is a separate request with its own ticket (see :ref:`gRPC Polling Mode`).
+    * The local model must be a state dictionary. Models sent as bytes are not chunked.
+    * Chunking limits each transfer and aggregation request. The server still retains the global model and optimizer moment vectors across chunks and rounds.
 
 See `examples/memory_profiling <https://github.com/APPFL/APPFL/tree/main/examples/memory_profiling>`_ for the memory savings on ResNet and LLM models.
 
