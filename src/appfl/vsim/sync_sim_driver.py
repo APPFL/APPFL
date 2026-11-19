@@ -130,7 +130,8 @@ class SyncSimDriver(BaseSimDriver):
                 local_model, meta = result[0], dict(result[1])
             else:
                 local_model, meta = result, {}
-            _, _, duration = self._client_duration(cid, profile, meta)
+            upload_bytes = self._upload_size(local_model)
+            _, _, duration = self._client_duration(cid, profile, meta, upload_bytes)
             completions.append(
                 {
                     "cid": cid,
@@ -138,6 +139,7 @@ class SyncSimDriver(BaseSimDriver):
                     "completion_time": t_start + duration,
                     "local_model": local_model,
                     "meta": meta,
+                    "comm_bytes": self._raw_model_bytes + upload_bytes,
                 }
             )
 
@@ -239,10 +241,7 @@ class SyncSimDriver(BaseSimDriver):
         scheduler.set_num_clients(len(accepted))
         try:
             for i, c in enumerate(accepted):
-                local_model = {
-                    k: v.cpu() if hasattr(v, "cpu") else v
-                    for k, v in c["local_model"].items()
-                }
+                local_model = self._to_cpu(c["local_model"])
                 meta = dict(c["meta"])
                 meta["virtual_time"] = self.virtual_time
                 blocking = i == len(accepted) - 1
@@ -258,7 +257,7 @@ class SyncSimDriver(BaseSimDriver):
     # ---------- recording ----------
     def _record_round(self, t_start, t_barrier, accepted, discarded, skipped):
         """Append a round record to ``self.history``."""
-        round_comm = self._model_bytes * 2 * len(accepted)
+        round_comm = sum(c["comm_bytes"] for c in accepted)
         self._total_comm_bytes += round_comm
         self.history.append(
             {

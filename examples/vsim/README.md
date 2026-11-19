@@ -32,12 +32,15 @@ For each client, the basic duration is
 
 ```text
 compute = seconds_per_step * local_steps * compute_factor
-communication = 2 * wire_bytes * 8 / (bandwidth * 1e6)
+communication = (model_bytes + upload_bytes) * 8 / (bandwidth * 1e6)
 duration = compute + communication
 ```
 
 `bandwidth` is Mbps in the standard networking sense — 10^6 bits per second.
-`wire_bytes` is the raw model size scaled by `compression_ratio`.
+`model_bytes` is the raw model size: as in APPFL, the server always sends the
+model uncompressed. `upload_bytes` is the client's update as sent: the length
+of the compressed payload when `enable_compression` is set, and otherwise the
+raw model size scaled by `compression_ratio`.
 
 By default, `seconds_per_step` comes from APPFL trainer metadata for the actual
 local training task. Set `base_step_time` to supply a fixed seconds-per-step
@@ -77,7 +80,7 @@ server_configs:
     mode: async                 # async | sync_count | sync_window
     max_in_flight: 4            # async: dispatched but not yet arrived
     base_step_time: null        # seconds/step; null uses trainer measurement
-    compression_ratio: 1.0      # fraction of the model actually sent (1.0 = raw)
+    compression_ratio: 1.0      # modelled upload / model size (1.0 = raw)
     eval_every: 0               # 0 disables global validation
     heterogeneity:
       compute:
@@ -110,19 +113,42 @@ Clients may be keyed by id or by position, and `delay` is accepted as a synonym
 for `compute_factor`.
 
 `compute_factor` is a multiplicative slowdown. `bandwidth` is symmetric Mbps
-and communication includes one model download and one upload. The simulator
-measures raw tensor bytes and cannot know what a compressor would achieve
-without running it, so if `enable_compression` is set in `comm_configs`, declare
-the expected ratio via `compression_ratio`; otherwise transfers are modelled
-uncompressed and the runner warns. A fixed seed and
-fixed `base_step_time` make the virtual schedule reproducible; measured trainer
-time can vary with hardware load.
+and communication includes one model download and one upload. APPFL compresses
+only what clients send, so downloads are always timed at the raw model size.
+If `enable_compression` is set in `comm_configs`, clients run the compressor
+and each upload is timed from the actual length of its payload. To model a
+compressor without running it, leave compression off and set
+`compression_ratio` instead. The ratio is ignored when clients compress, and
+the runner warns if both are set. A fixed seed and fixed `base_step_time` make
+the virtual schedule reproducible; measured trainer time can vary with hardware
+load.
 
 ## Outputs and verification
 
 The runner writes console output and `vsim_logs/run_<timestamp>/vsim.log`.
-`driver.history` contains one record per async completion or sync round.
-`plot_timeline.py` can visualize async history exported by a caller.
+`driver.history` contains one record per async completion or sync round, and
+`--save_history PATH` writes it to a JSON file. An async record holds the
+arrival time `vtime`, the client `cid`, the global `epoch` after aggregation,
+`staleness`, `dispatch_time`, and `duration`, split into `compute_time` and
+`comm_time`. It also carries the client's `val_accuracy`, `comm_bytes`, and
+`completion_ok`. Global evaluation runs when `eval_every` is positive and
+`server_configs` has a `val_data_configs` block; records at evaluated epochs
+then also hold `global_val_accuracy` and `global_val_loss`.
+
+`plot_timeline.py` draws an async history as a per-client timeline: compute and
+communication bars, aggregation marks, global-eval lines, and the global
+accuracy curve underneath. Next to the main figure it writes a `_zoom` view of
+the first 5 virtual seconds. Pass `--max_vt T` to plot only the first `T`
+seconds instead.
+
+```bash
+python vsim/run_vsim.py --num_clients 4 --base_step_time 0.01 --save_history h.json
+python vsim/plot_timeline.py h.json --out t.png   # writes t.png and t_zoom.png
+```
+
+For a run made without `--save_history`, pass its `vsim.log` instead. The event
+table in the log is parsed on a best-effort basis, and its values are rounded to
+four decimals.
 
 `--verify` checks virtual-time monotonicity, completion arithmetic, requested
 completion/round counts, concurrency bounds, nonnegative async staleness, and
@@ -144,6 +170,6 @@ without it is rejected when the driver is constructed.
 ## Scope
 
 This engine physically trains clients serially on one device. It does not model
-directional or congested links, dynamic availability, timeout policies, or
+asymmetric or congested links, dynamic availability, timeout policies, or
 multi-GPU execution. Those capabilities should be added as separate extensions
 without changing the virtual-time ordering contract defined here.

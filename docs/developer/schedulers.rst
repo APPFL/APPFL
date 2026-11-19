@@ -3,11 +3,11 @@ Adding new schedulers
 
 .. note::
 
-    We always welcome you to contribute your increments to ``APPFL`` by creating a pull request.
+    We always welcome your contributions to ``APPFL`` via pull requests.
 
-To add new schedulers to ``APPFL``, you can create you own scheduler class by inheriting the ``appfl.algorithm.scheduler.BaseScheduler`` and defining the following functions:
+To add new schedulers to ``APPFL``, you can create your own scheduler class by inheriting from ``appfl.algorithm.scheduler.BaseScheduler`` and defining the following functions:
 
-- ``schedule``: Take **one** ``client_id`` and **one** ``local_model`` from the certain client, and schedule a global aggregation with the aggregator for the client model. Return either the global model if the aggregation happens immediately, or a ``Future`` object otherwise.
+- ``schedule``: Take **one** ``client_id`` and **one** ``local_model`` from that client, and schedule a global aggregation of the client model with the aggregator. Return either the global model if the aggregation happens immediately, or a ``Future`` object otherwise.
 - ``get_num_global_epochs``: Return the total number of global epochs (global updates) for the server to know when to stop the FL process.
 
 .. code-block:: python
@@ -27,8 +27,8 @@ To add new schedulers to ``APPFL``, you can create you own scheduler class by in
         def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
             Schedule the global aggregation for the local model from a client.
+            :param client_id: the id of the client
             :param local_model: the local model from a client
-            :param client_idx: the index of the client
             :param kwargs: additional keyword arguments for the scheduler
             :return: the aggregated model or a future object for the aggregated model
             """
@@ -38,7 +38,7 @@ To add new schedulers to ``APPFL``, you can create you own scheduler class by in
             """Return the total number of global epochs for federated learning."""
             pass
 
-You may add any configuration parameters into your scheduler and access them using ``self.scheduler_configs.your_config_param``. When you start the FL experiment, you can specify the scheduler configuration parameter values in the server configuration file in the following way:
+You may add any configuration parameters to your scheduler and access them using ``self.scheduler_configs.your_config_param``. When you start the FL experiment, you can specify the scheduler configuration parameter values in the server configuration file in the following way:
 
 .. code-block:: yaml
 

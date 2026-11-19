@@ -1,7 +1,7 @@
 Example: Simulation on GPU cluster
 ==================================
 
-This describes how to set up the environment to run APPFL using either gRPC or MPI in a GPU cluster for simulation, which is useful for benchmarking the performance of different FL algorithms on various datasets. In this example, we partition the CIFAR10 in an non-independent and identically distributed (non-IID) manner and train a Resnet-18 model using the federated learning.
+This page describes how to set up the environment to run APPFL simulations using either gRPC or MPI on a GPU cluster, which is useful for benchmarking the performance of different FL algorithms on various datasets. In this example, we partition the CIFAR-10 dataset in a non-independent and identically distributed (non-IID) manner and train a ResNet-18 model using federated learning.
 
 
 gRPC Simulation on Polaris Cluster
@@ -9,12 +9,12 @@ gRPC Simulation on Polaris Cluster
 
 .. note::
 
-	This section is generated based on the `Polaris supercomputer <https://docs.alcf.anl.gov/polaris/getting-started/>`_ at the Argonne Leadership Computing Facility (ALCF), which uses Portable Batch System (PBS) as it job scheduler.
+	This section is generated based on the `Polaris supercomputer <https://docs.alcf.anl.gov/polaris/getting-started/>`_ at the Argonne Leadership Computing Facility (ALCF), which uses the Portable Batch System (PBS) as its job scheduler.
 
 Loading Modules
 ~~~~~~~~~~~~~~~
 
-Most HPC clusters use `modules <https://hpc-wiki.info/hpc/Modules>`_ to manage the environment, and the module configuration may vary depending on the clusters you use. On the Polaris supercomputer, load necessary module via the following commands:
+Most HPC clusters use `modules <https://hpc-wiki.info/hpc/Modules>`_ to manage the environment, and the module configuration may vary depending on the clusters you use. On the Polaris supercomputer, load the necessary modules via the following commands:
 
 .. code-block:: bash
 
@@ -38,7 +38,7 @@ Now, we can create a conda environment and install APPFL.
 
 Creating Batch Script
 ~~~~~~~~~~~~~~~~~~~~~
-The Polaris supercomputer uses PBS workload manager for job management. Below is an example of a batch script to run the gRPC simulation on the Polaris cluster which launch one server and two clients. Please replace ``<your_project>`` with your project name, ``<your_env>`` with the name of the conda environment, and ``<your_appfl_path>`` with the path to the APPFL repository.
+The Polaris supercomputer uses the PBS workload manager for job management. Below is an example batch script that runs the gRPC simulation on the Polaris cluster with one server and two clients. Please replace ``<your_project>`` with your project name, ``<your_env>`` with the name of the conda environment, and ``<your_appfl_path>`` with the path to the APPFL repository.
 
 .. code-block:: bash
 	:caption: submit.sh
@@ -80,13 +80,13 @@ The Polaris supercomputer uses PBS workload manager for job management. Below is
 
 	On Polaris, it is important to set the proxy environment variables to access the internet from the cluster.
 
-You can submit the script to run via the following command.
+You can submit the script via the following command.
 
 .. code-block:: bash
 
 	qsub submit.sh
 
-Two output files, ``submit.sh.o{job_id}`` and ``submit.sh.e{job_id}``, are generated when the script starts to run. You can check the output in real-time by running the following command.
+Two output files, ``submit.sh.o{job_id}`` and ``submit.sh.e{job_id}``, are generated when the script starts to run. You can check the output in real time by running the following command.
 
 .. code-block:: bash
 
@@ -100,7 +100,7 @@ MPI Simulation on Delta Cluster
 
 .. note::
 
-	This tutorial is generated based on the `Delta supercomputer <https://docs.ncsa.illinois.edu/systems/delta/en/latest>`_ at the National Center for Supercomputing Applications (NCSA), which uses Slurm as it job scheduler.
+	This tutorial is generated based on the `Delta supercomputer <https://docs.ncsa.illinois.edu/systems/delta/en/latest>`_ at the National Center for Supercomputing Applications (NCSA), which uses Slurm as its job scheduler.
 
 Loading Modules
 ~~~~~~~~~~~~~~~
@@ -133,13 +133,13 @@ Now, we can create a conda environment and install APPFL.
 
 Creating Batch Script
 ~~~~~~~~~~~~~~~~~~~~~
-The Delta supercomputer uses Slurm workload manager for job management.
+The Delta supercomputer uses the Slurm workload manager for job management.
 
 .. code-block:: bash
 	:caption: submit.sh
 
 	#!/bin/bash
-	#SBATCH --mem=150g                              # required number of memory
+	#SBATCH --mem=150g                              # required amount of memory
 	#SBATCH --nodes=1                               # number of required nodes
 	#SBATCH --ntasks-per-node=6                    	# number of tasks per node [SHOULD BE EQUAL TO THE NUMBER OF CLIENTS+1]
 	#SBATCH --cpus-per-task=1                       # <- match to OMP_NUM_THREADS
@@ -162,13 +162,13 @@ The script can be submitted to the cluster using the following command.
 
 	sbatch submit.sh
 
-You may see the output.
+You should see output like the following.
 
 .. code-block:: bash
 
 	Submitted batch job {job_id}
 
-The output file ``slurm-{job_id}.out`` is generated when the script starts to run, and you can check the output in real-time by running the following command.
+The output file ``slurm-{job_id}.out`` is generated when the script starts to run, and you can check the output in real time by running the following command.
 
 .. code-block:: bash
 
@@ -178,26 +178,27 @@ The output file ``slurm-{job_id}.out`` is generated when the script starts to ru
 Multi-GPU Training
 ------------------
 
-APPFL supports distributed data parallelism (DDP) for multi-GPU training. To enable DDP, users only need to specify the device as a list of cuda devices in the client configuration file, for example (``examples/resources/configs/cifar10/client_1_multigpu.yaml``):
+APPFL supports distributed data parallelism (DDP) for multi-GPU training. To enable DDP, users only need to specify the device as a comma-separated list of CUDA devices in the client configuration file, for example (``examples/resources/configs/cifar10/client_1_multigpu.yaml``):
 
 .. code-block:: yaml
+
 	client_id: "Client1"
 	train_configs:
-		# Device
-		device: "cuda:0,cuda:1,cuda:2,cuda:3"
-		...
+	  # Device
+	  device: "cuda:0,cuda:1,cuda:2,cuda:3"
+	  ...
 
 .. note::
 
-	When you are using multi-GPU training, please make sure the training and validation batch size are divisible by the number of GPUs.
+	When using multi-GPU training, make sure that the training and validation batch sizes are divisible by the number of GPUs.
 
-Below provides the batch script to run the multi-GPU training on Delta cluster using MPI.
+Below is a batch script to run multi-GPU training on the Delta cluster using MPI.
 
 .. code-block:: bash
 	:caption: submit.sh
 
 	#!/bin/bash
-	#SBATCH --mem=150g                              # required number of memory
+	#SBATCH --mem=150g                              # required amount of memory
 	#SBATCH --nodes=1                               # number of required nodes
 	#SBATCH --ntasks-per-node=6                     # number of tasks per node [SHOULD BE EQUAL TO THE NUMBER OF CLIENTS+1]
 	#SBATCH --cpus-per-task=1                       # <- match to OMP_NUM_THREADS
@@ -215,9 +216,9 @@ Below provides the batch script to run the multi-GPU training on Delta cluster u
 
 	# Launch the experiment
 	mpiexec -np 6 python ./mpi/run_mpi.py --server_config ./resources/configs/cifar10/server_fedcompass.yaml \
-			--client_config ./resources/configs/cifar10/client_1_multigpus.yaml
+			--client_config ./resources/configs/cifar10/client_1_multigpu.yaml
 
-Below provides the batch script to run the multi-GPU training on Polaris cluster using MPI.
+Below is a batch script to run multi-GPU training on the Polaris cluster using MPI.
 
 .. code-block:: bash
 	:caption: submit.sh
@@ -238,4 +239,4 @@ Below provides the batch script to run the multi-GPU training on Polaris cluster
 
 	# Launch the experiment
 	mpiexec -np 6 python ./mpi/run_mpi.py --server_config ./resources/configs/cifar10/server_fedcompass.yaml \
-			--client_config ./resources/configs/cifar10/client_1_multigpus.yaml
+			--client_config ./resources/configs/cifar10/client_1_multigpu.yaml
