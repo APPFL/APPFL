@@ -9,12 +9,12 @@ Example: Using Weights & Biases
         </div>
     </div>
 
-`Weights & Biases (wandb) <https://wandb.ai>`_ is a tool that helps you track your experiments. It's a great tool to use with APPFL. In this example, we'll show you how to use Weights & Biases with APPFL.
+`Weights & Biases (wandb) <https://wandb.ai>`_ is a tool that helps you track your experiments, and it works well with APPFL. In this example, we show how to use Weights & Biases with APPFL.
 
 wandb Login
 -----------
 
-First, make sure you have a wandb account and login using the following command. For more information on how to login to wandb, please refer to the `wandb documentation <https://docs.wandb.ai/quickstart/>`_.
+First, make sure you have a wandb account and log in using the following command. For more information on how to log in to wandb, please refer to the `wandb documentation <https://docs.wandb.ai/quickstart/>`_.
 
 .. code-block:: bash
 
@@ -23,7 +23,7 @@ First, make sure you have a wandb account and login using the following command.
 Client Configurations for wandb
 -------------------------------
 
-Each client and specify configurations for wandb in their client configuration yaml files. Here is an example of a client configuration file with wandb configurations.
+Each client can specify wandb configurations in its client configuration YAML file. Here is an example of a client configuration file with wandb configurations.
 
 .. code-block:: yaml
 
@@ -49,7 +49,7 @@ The explanation of each configuration is as follows:
 Example Run
 -----------
 
-To run a serial example with wandb, you can use the following command. Make sure to change the corresponding ``wandb_configs`` in the client configuration yaml files for your wandb account.s
+To run a serial example with wandb, you can use the following command. Make sure to update the ``wandb_configs`` in the client configuration YAML files for your wandb account.
 
 .. code-block:: bash
 
@@ -57,7 +57,7 @@ To run a serial example with wandb, you can use the following command. Make sure
         --server_config ./resources/configs/mnist/server_fedavg.yaml \
         --client_config ./resources/configs/mnist/client_1_wandb.yaml
 
-To run an MPI example with wandb, you can use the following command. Make sure to change the corresponding ``wandb_configs`` in the client configuration yaml files for your wandb account.
+To run an MPI example with wandb, you can use the following command. Make sure to update the ``wandb_configs`` in the client configuration YAML files for your wandb account.
 
 .. code-block:: bash
 

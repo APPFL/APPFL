@@ -33,6 +33,7 @@ class ClientAgentFileLogger:
             __name__ + "_" + logging_id if logging_id != "" else str(uuid.uuid4())
         )
         self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
         info_fmt = (
             logging.Formatter(
                 f"{Fore.BLUE}{Style.BRIGHT}appfl: ✅{Style.RESET_ALL}[%(asctime)s]: %(message)s"

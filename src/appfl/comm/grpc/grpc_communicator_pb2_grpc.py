@@ -44,6 +44,11 @@ class GRPCCommunicatorStub(object):
                 request_serializer=grpc__communicator__pb2.ConfigurationRequest.SerializeToString,
                 response_deserializer=grpc__communicator__pb2.ConfigurationResponse.FromString,
                 _registered_method=True)
+        self.GetConfigurationStream = channel.unary_stream(
+                '/GRPCCommunicator/GetConfigurationStream',
+                request_serializer=grpc__communicator__pb2.ConfigurationRequest.SerializeToString,
+                response_deserializer=grpc__communicator__pb2.DataBuffer.FromString,
+                _registered_method=True)
         self.GetGlobalModel = channel.unary_stream(
                 '/GRPCCommunicator/GetGlobalModel',
                 request_serializer=grpc__communicator__pb2.GetGlobalModelRequest.SerializeToString,
@@ -59,12 +64,23 @@ class GRPCCommunicatorStub(object):
                 request_serializer=grpc__communicator__pb2.DataBuffer.SerializeToString,
                 response_deserializer=grpc__communicator__pb2.DataBuffer.FromString,
                 _registered_method=True)
+        self.PollResult = channel.unary_stream(
+                '/GRPCCommunicator/PollResult',
+                request_serializer=grpc__communicator__pb2.PollRequest.SerializeToString,
+                response_deserializer=grpc__communicator__pb2.DataBuffer.FromString,
+                _registered_method=True)
 
 
 class GRPCCommunicatorServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def GetConfiguration(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetConfigurationStream(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -88,6 +104,12 @@ class GRPCCommunicatorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def PollResult(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GRPCCommunicatorServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -95,6 +117,11 @@ def add_GRPCCommunicatorServicer_to_server(servicer, server):
                     servicer.GetConfiguration,
                     request_deserializer=grpc__communicator__pb2.ConfigurationRequest.FromString,
                     response_serializer=grpc__communicator__pb2.ConfigurationResponse.SerializeToString,
+            ),
+            'GetConfigurationStream': grpc.unary_stream_rpc_method_handler(
+                    servicer.GetConfigurationStream,
+                    request_deserializer=grpc__communicator__pb2.ConfigurationRequest.FromString,
+                    response_serializer=grpc__communicator__pb2.DataBuffer.SerializeToString,
             ),
             'GetGlobalModel': grpc.unary_stream_rpc_method_handler(
                     servicer.GetGlobalModel,
@@ -109,6 +136,11 @@ def add_GRPCCommunicatorServicer_to_server(servicer, server):
             'InvokeCustomAction': grpc.stream_stream_rpc_method_handler(
                     servicer.InvokeCustomAction,
                     request_deserializer=grpc__communicator__pb2.DataBuffer.FromString,
+                    response_serializer=grpc__communicator__pb2.DataBuffer.SerializeToString,
+            ),
+            'PollResult': grpc.unary_stream_rpc_method_handler(
+                    servicer.PollResult,
+                    request_deserializer=grpc__communicator__pb2.PollRequest.FromString,
                     response_serializer=grpc__communicator__pb2.DataBuffer.SerializeToString,
             ),
     }
@@ -139,6 +171,33 @@ class GRPCCommunicator(object):
             '/GRPCCommunicator/GetConfiguration',
             grpc__communicator__pb2.ConfigurationRequest.SerializeToString,
             grpc__communicator__pb2.ConfigurationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetConfigurationStream(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/GRPCCommunicator/GetConfigurationStream',
+            grpc__communicator__pb2.ConfigurationRequest.SerializeToString,
+            grpc__communicator__pb2.DataBuffer.FromString,
             options,
             channel_credentials,
             insecure,
@@ -219,6 +278,33 @@ class GRPCCommunicator(object):
             target,
             '/GRPCCommunicator/InvokeCustomAction',
             grpc__communicator__pb2.DataBuffer.SerializeToString,
+            grpc__communicator__pb2.DataBuffer.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PollResult(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/GRPCCommunicator/PollResult',
+            grpc__communicator__pb2.PollRequest.SerializeToString,
             grpc__communicator__pb2.DataBuffer.FromString,
             options,
             channel_credentials,

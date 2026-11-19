@@ -1,12 +1,12 @@
 Installation
 ============
 
-This page describes how to install APPFL on a machine independent of operating systems.
+This page describes how to install APPFL. The instructions apply regardless of your operating system.
 
 Conda environment
 -----------------
 
-We highly recommend to create new conda environment and install the required packages for APPFL.
+We highly recommend creating a new conda environment in which to install APPFL and its dependencies.
 
 .. code-block:: bash
 
@@ -25,9 +25,9 @@ For most users, including data scientists, this simple installation is sufficien
 
 .. note::
 
-    If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install "appfl[examples]""``.
+    If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install "appfl[examples]"``.
 
-If you want to even minimize the installation of package dependencies, you can use:
+To install only the minimal set of dependencies, use:
 
 .. code-block:: bash
 
@@ -35,13 +35,13 @@ If you want to even minimize the installation of package dependencies, you can u
 
 .. note::
 
-    ``torch`` may need to be updated manually to support CUDA. Please check GPU support in `PyTorch <pytorch.org>`_.
+    ``torch`` may need to be updated manually to support CUDA. Please check GPU support in `PyTorch <https://pytorch.org>`_.
 
 Developer installation
 ----------------------
 
 Code developers and contributors may want to work on the local repository.
-To set up the development environment,
+To set up the development environment, run:
 
 .. code-block:: bash
 
@@ -54,8 +54,8 @@ To set up the development environment,
     If you do not need to use MPI for simulations, then you can install the package without the ``mpi`` option: ``pip install -e ".[dev,examples]"``.
 
 
-On Ubuntu, if the installation process failed, you can try:
+On Ubuntu, if the installation fails (typically while building ``mpi4py``), install the OpenMPI system packages first and try again:
 
 .. code-block:: bash
 
-    sudo apt install libopenmpi-dev,libopenmpi-bin,libopenmpi-doc
+    sudo apt install libopenmpi-dev openmpi-bin openmpi-doc

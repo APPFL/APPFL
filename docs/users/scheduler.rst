@@ -1,17 +1,17 @@
 APPFL Scheduler
 ===============
 
-APPFL scheduler is the interface between the communicator and the aggregator. Whenever the communicator receives the local model from a single client, it directly hands the local model to the scheduler, and the scheduler will decide when to aggregate the local model. Currently, APPFL supports three scheduler:
+The APPFL scheduler is the interface between the communicator and the aggregator. Whenever the communicator receives a local model from a client, it hands the model directly to the scheduler, which decides when to aggregate it. Currently, APPFL supports the following schedulers:
 
 - :ref:`Synchronous Scheduler`
 - :ref:`Vanilla Asynchronous Scheduler`
 - :ref:`Compass Asynchronous Scheduler`
 
-All schedulers are inherited from the base class ``BaseScheduler``. If user wants to implement a new scheduler, the user needs to inherit the ``BaseScheduler`` and implement the ``schedule`` and ``get_num_global_epochs`` methods.
+All schedulers inherit from the base class ``BaseScheduler``. To implement a new scheduler, inherit from ``BaseScheduler`` and implement the ``schedule`` and ``get_num_global_epochs`` methods.
 
 .. note::
 
-    The ``scheduler_configs`` should be passed in the server configuration YAML file under the key: ``server_configs.scheduler_kwargs``, and the type of scheduler to use should be passed under the key: ``server_configs.scheduler``.
+    The ``scheduler_configs`` should be specified in the server configuration YAML file under the key ``server_configs.scheduler_kwargs``, and the type of scheduler should be specified under the key ``server_configs.scheduler``.
 
 .. code:: python
 
@@ -33,8 +33,8 @@ All schedulers are inherited from the base class ``BaseScheduler``. If user want
         def schedule(self, client_id: Union[int, str], local_model: Union[Dict, OrderedDict], **kwargs) -> Union[Future, Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
             """
             Schedule the global aggregation for the local model from a client.
+            :param client_id: the id of the client
             :param local_model: the local model from a client
-            :param client_idx: the index of the client
             :param kwargs: additional keyword arguments for the scheduler
             :return: the aggregated model or a future object for the aggregated model
             """
@@ -58,7 +58,7 @@ All schedulers are inherited from the base class ``BaseScheduler``. If user want
 Synchronous Scheduler
 ---------------------
 
-Synchronous scheduler waits for all clients to submit their local models before aggregating the local models.
+The synchronous scheduler waits for all clients to submit their local models before aggregating the local models.
 
 .. code:: python
 
@@ -96,7 +96,7 @@ Synchronous scheduler waits for all clients to submit their local models before 
 Vanilla Asynchronous Scheduler
 ------------------------------
 
-Vanilla asynchronous scheduler aggregates the local models from the clients as soon as the local model is received.
+The vanilla asynchronous scheduler aggregates each client's local model as soon as it is received.
 
 .. code:: python
 
@@ -118,8 +118,8 @@ Vanilla asynchronous scheduler aggregates the local models from the clients as s
             """
             Schedule an asynchronous global aggregation for the local model from a client.
             The method will return the aggregated model immediately after the local model is submitted.
+            :param client_id: the id of the client
             :param local_model: the local model from a client
-            :param client_id: the index of the client
             :param kwargs: additional keyword arguments for the scheduler
             :return: global_model: the aggregated model
             """
@@ -132,11 +132,11 @@ Vanilla asynchronous scheduler aggregates the local models from the clients as s
 Compass Asynchronous Scheduler
 ------------------------------
 
-Compass is COMputing Power Aware Scheduler, which is an asynchronous scheduler, which
+Compass (COMputing Power Aware Scheduler) is an asynchronous scheduler that
 
-- estimates and updates the computing power of each client on-the-fly;
-- synchronizes the arrival of a group of client models by assigning different number of tasks according to estimated computing power;
-- interacts with the server aggregator to update global model using one or a group of synchronized client local models.
+- estimates and updates the computing power of each client on the fly;
+- synchronizes the arrival of a group of client models by assigning different numbers of local steps to clients according to their estimated computing power;
+- interacts with the server aggregator to update the global model using one client local model or a group of synchronized client local models.
 
 .. code:: python
 

@@ -1,26 +1,26 @@
 Example: Add a Custom Action
 ============================
 
-In ``APPFL``, the server supports several actions such as getting general client configurations, getting the global model parameters, and updating the global model parameters (i.e., federated training). However, in some cases, you may want to add a custom action to the server, such as fedearated evaluation. In this example, we show how to add a custom action to the server to generate a data readiness report for all the clients local datasets.
+In ``APPFL``, the server supports several actions such as getting general client configurations, getting the global model parameters, and updating the global model parameters (i.e., federated training). However, in some cases, you may want to add a custom action to the server, such as federated evaluation. In this example, we show how to add a custom action to the server that generates a data readiness report for the local datasets of all clients.
 
 .. _client-side-implementation:
 
 Client Side Implementation
 --------------------------
 
-In this example, we focus on the client-driven communication pattern (MPI and gRPC), where the clients sends requests to the server for any actions they want to perform. In this case, the client-side can simply define a function to generate the data readiness report for its local dataset, and then send a request to the server to generate the report for all the clients. The server handles the action synchronously, meaning it waits to receive requests from all clients before proceeding with the generation of the aggregated readiness report.
+In this example, we focus on the client-driven communication pattern (MPI and gRPC), where the clients send requests to the server for any actions they want to perform. In this case, the client side can simply define a function to generate the data readiness report for its local dataset, and then send a request to the server to generate the report for all the clients. The server handles the action synchronously, meaning it waits to receive requests from all clients before proceeding with the generation of the aggregated readiness report.
 
-However, as the ``APPFL`` defines client agent ``appfl.agent.ClientAgent`` to act on behalf of the client, we highly recommend to define the custom action within the client agent either by extending the ``appfl.agent.ClientAgent`` or by adding a new method to the existing ``appfl.agent.ClientAgent``. In this example, we create a new method for the existing client to generate the data readiness report.
+However, as ``APPFL`` defines the client agent ``appfl.agent.ClientAgent`` to act on behalf of the client, we highly recommend defining the custom action within the client agent either by extending the ``appfl.agent.ClientAgent`` or by adding a new method to the existing ``appfl.agent.ClientAgent``. In this example, we add a new method to the existing client agent to generate the data readiness report.
 
 .. note::
-    If you think your custom action is useful for the community, please consider define it within the ``appfl.client.ClientAgent`` directly and contribute it to the ``APPFL`` framework by creating a pull request.
+    If you think your custom action is useful for the community, please consider defining it directly within ``appfl.agent.ClientAgent`` and contribute it to the ``APPFL`` framework by creating a pull request.
 
 .. _new-method-client-agent:
 
 New Method in Client Agent
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the ``ClientAgent``, we define a new function ``generate_readiness_report`` to generate the data readiness report for the local dataset. The function will be called by the client to generate the readiness report for its local dataset. The function returns a dictionary containing the readiness metrics and plots. Below is the implementation of the function ``generate_readiness_report`` in the client agent.
+In the ``ClientAgent``, we define a new method, ``generate_readiness_report``, which the client calls to generate the data readiness report for its local dataset. The method returns a dictionary containing the readiness metrics and plots. Below is the implementation of ``generate_readiness_report`` in the client agent.
 
 .. literalinclude:: ../../src/appfl/agent/client.py
     :start-after: torch.save(self.model.state_dict(), checkpoint_path)
@@ -28,18 +28,18 @@ In the ``ClientAgent``, we define a new function ``generate_readiness_report`` t
     :language: python
     :caption: generate_readiness_report - A function in ``ClientAgent`` which can generate data readiness evaluations and plots for the dataset.
 
-The corresponding computation functions for the metrics and plots are defined in the ``src.appfl.misc.data_readiness.metrics.py`` and ``src.appfl.misc.data_readiness.plots.py`` files respectively.
+The corresponding computation functions for the metrics and plots are defined in ``src/appfl/misc/data_readiness/metrics.py`` and ``src/appfl/misc/data_readiness/plots.py``, respectively.
 
 .. _send-request-to-server:
 
 Send Request to the Server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Whether it is MPI or gRPC communicator, ``APPFL`` provides an interface function, ``invoke_custom_action``, for user to send any custom request to the server, as shown below. The handler for the custom action should be defined on the server side, as shown in the next section.
+For both the MPI and gRPC communicators, ``APPFL`` provides an interface function, ``invoke_custom_action``, for users to send any custom request to the server, as shown below. The handler for the custom action should be defined on the server side, as shown in the next section.
 
 .. note::
 
-    See the sections :ref:`launch experiments` for details on how to create the communicator.
+    See the section :ref:`launch experiments` for details on how to create the communicator.
 
 
 .. code-block:: python
@@ -53,14 +53,14 @@ Whether it is MPI or gRPC communicator, ``APPFL`` provides an interface function
 Server Side Implementation
 --------------------------
 
-On the server side, the server should update a handler for processing the custom action request from the client. In this example, we will show how to update the custom action handler for both the MPI and gRPC communicator.
+On the server side, a handler must be added to process the custom action request from the client. In this example, we show how to update the custom action handler for both the MPI and gRPC communicators.
 
 .. _mpi-communicator:
 
 MPI Communicator
 ~~~~~~~~~~~~~~~~
 
-User needs to update the ``APPFL`` source code's MPI server communicator at ``appfl.comm.mpi.mpi_server_communicator.MPIServerCommunicator``. You need to update its ``_invoke_custom_action`` method to handle the custom action request from the client. Here is an example implementation for action ``get_data_readiness_report`` which synchronously waits for all clients to send their readiness evaluations and metadata. Once all clients have submitted their data, it aggregates the results and sends them to the server agent to generate and output the readiness report.
+You need to update the MPI server communicator in the ``APPFL`` source code at ``appfl.comm.mpi.mpi_server_communicator.MPIServerCommunicator``. You need to update its ``_invoke_custom_action`` method to handle the custom action request from the client. Here is an example implementation of the ``get_data_readiness_report`` action, which synchronously waits for all clients to send their readiness evaluations and metadata. Once all clients have submitted their data, it aggregates the results and sends them to the server agent to generate and output the readiness report.
 
 .. code-block:: python
 
@@ -105,7 +105,7 @@ User needs to update the ``APPFL`` source code's MPI server communicator at ``ap
 gRPC Communicator
 ~~~~~~~~~~~~~~~~~
 
-Similar to the MPI communicator, user needs to update the ``APPFL`` source code's gRPC server communicator at ``appfl.comm.grpc.grpc_server_communicator.GRPCServerCommunicator``. You need to update its ``InvokeCustomAction`` method to handle the custom action request from the client. Here is an example implementation for action ``get_data_readiness_report`` which synchronously waits for all clients to send their readiness evaluations and metadata. Once all clients have submitted their data, it aggregates the results and sends them to the server to generate and output the readiness report.
+Similar to the MPI communicator, you need to update the gRPC server communicator in the ``APPFL`` source code at ``appfl.comm.grpc.grpc_server_communicator.GRPCServerCommunicator``. You need to update its ``InvokeCustomAction`` method to handle the custom action request from the client. Here is an example implementation of the ``get_data_readiness_report`` action, which synchronously waits for all clients to send their readiness evaluations and metadata. Once all clients have submitted their data, it aggregates the results and sends them to the server to generate and output the readiness report.
 
 .. code-block:: python
 
@@ -117,39 +117,39 @@ Similar to the MPI communicator, user needs to update the ``APPFL`` source code'
         elif action == "close_connection":
             ...
         elif action == "get_data_readiness_report":
-                num_clients = self.server_agent.get_num_clients()
-                if not hasattr(self, "_dr_metrics_lock"):
+            num_clients = self.server_agent.get_num_clients()
+            if not hasattr(self, "_dr_metrics_lock"):
+                self._dr_metrics = {}
+                self._dr_metrics_futures = {}
+                self._dr_metrics_lock = threading.Lock()
+            with self._dr_metrics_lock:
+                for k, v in meta_data.items():
+                    if k not in self._dr_metrics:
+                        self._dr_metrics[k] = {}
+                    self._dr_metrics[k][client_id] = v
+                _dr_metric_future = Future()
+                self._dr_metrics_futures[client_id] = _dr_metric_future
+                if len(self._dr_metrics_futures) == num_clients:
+                    self.server_agent.data_readiness_report(self._dr_metrics)
+                    for client_id, future in self._dr_metrics_futures.items():
+                        future.set_result(None)
                     self._dr_metrics = {}
                     self._dr_metrics_futures = {}
-                    self._dr_metrics_lock = threading.Lock()
-                with self._dr_metrics_lock:
-                    for k, v in meta_data.items():
-                        if k not in self._dr_metrics:
-                            self._dr_metrics[k] = {}
-                        self._dr_metrics[k][client_id] = v
-                    _dr_metric_future = Future()
-                    self._dr_metrics_futures[client_id] = _dr_metric_future
-                    if len(self._dr_metrics_futures) == num_clients:
-                        self.server_agent.data_readiness_report(self._dr_metrics)
-                        for client_id, future in self._dr_metrics_futures.items():
-                            future.set_result(None)
-                        self._dr_metrics = {}
-                        self._dr_metrics_futures = {}
-                # waiting for the data readiness report to be generated for synchronization
-                _dr_metric_future.result()
-                response = CustomActionResponse(
-                    header=ServerHeader(status=ServerStatus.DONE),
-                )
-                return response
-            else:
-                raise NotImplementedError(f"Custom action {action} is not implemented.")
+            # waiting for the data readiness report to be generated for synchronization
+            _dr_metric_future.result()
+            response = CustomActionResponse(
+                header=ServerHeader(status=ServerStatus.DONE),
+            )
+            return response
+        else:
+            raise NotImplementedError(f"Custom action {action} is not implemented.")
 
 
 .. _server-agent-report-generation:
 
 Server Agent Report Generation
 ------------------------------
-The ``ServerAgent`` should have a method to generate the readiness report for all the clients. The method should take the readiness evaluations and metadata from all the clients and generate the aggregated readiness report. Here the server generates an HTML and JSON report and outputs it to ``.output`` directory. Shown below is the implementation of the method ``data_readiness_report`` in the ``ServerAgent``.
+The ``ServerAgent`` should have a method to generate the readiness report for all the clients. The method should take the readiness evaluations and metadata from all the clients and generate the aggregated readiness report. Here, the server generates HTML and JSON reports and writes them to the ``./output`` directory. Shown below is the implementation of the method ``data_readiness_report`` in the ``ServerAgent``.
 
 .. literalinclude:: ../../src/appfl/agent/server.py
     :start-after: self.closed_clients.add(client_id)
@@ -157,14 +157,14 @@ The ``ServerAgent`` should have a method to generate the readiness report for al
     :language: python
     :caption: data_readiness_report - A method in the ``ServerAgent`` that generates a single aggregated readiness report, outputting the results in both HTML and JSON formats for all clients.
 
-The helper functions for generating the HTML and JSON readiness report are defined in the ``src.appfl.misc.data_readiness.report.py`` file.
+The helper functions for generating the HTML and JSON readiness report are defined in ``src/appfl/misc/data_readiness/report.py``.
 
 .. _launch-experiments:
 
 Launch Experiments
 ------------------
 
-Data readiness report generation is integrated into the standard workflow. The report will be generated before the local training and global model update iterations. To generate the report, you must set ``generate_dr_report: True`` in the server configuration, along with specifying which metrics and plots to include in the evaluation. These settings should be defined in the ``client_configs`` section of the server configuration file. Below is an example of how to set the configurations for the data readiness report generation.
+Data readiness report generation is integrated into the standard workflow. The report is generated before the local training and global model update iterations. To generate the report, you must set ``generate_dr_report: True`` in the server configuration, and specify which metrics and plots to include in the evaluation. These settings should be defined in the ``client_configs`` section of the server configuration file. Below is an example of how to set the configurations for the data readiness report generation.
 
 .. code-block:: yaml
 
@@ -211,7 +211,7 @@ Then, you can run the clients using the following command:
     python grpc/run_client.py --config resources/configs/mnist/client_1.yaml
     python grpc/run_client.py --config resources/configs/mnist/client_2.yaml # run this in a separate terminal
 
-The server will generate the data readiness report for all the clients and save it in the ``output`` directory with the name as specified in the configuration file.
+The server generates the data readiness report for all the clients and saves it in the ``output`` directory under the name specified in the configuration file.
 
 .. code-block:: bash
 

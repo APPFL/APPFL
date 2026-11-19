@@ -15,10 +15,12 @@ class ServerStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     RUN: _ClassVar[ServerStatus]
     DONE: _ClassVar[ServerStatus]
     ERROR: _ClassVar[ServerStatus]
+    PENDING: _ClassVar[ServerStatus]
 
 RUN: ServerStatus
 DONE: ServerStatus
 ERROR: ServerStatus
+PENDING: ServerStatus
 
 class DataBuffer(_message.Message):
     __slots__ = ("data_bytes",)
@@ -33,10 +35,19 @@ class ClientHeader(_message.Message):
     def __init__(self, client_id: _Optional[str] = ...) -> None: ...
 
 class ServerHeader(_message.Message):
-    __slots__ = ("status",)
+    __slots__ = ("status", "ticket", "poll_interval")
     STATUS_FIELD_NUMBER: _ClassVar[int]
+    TICKET_FIELD_NUMBER: _ClassVar[int]
+    POLL_INTERVAL_FIELD_NUMBER: _ClassVar[int]
     status: ServerStatus
-    def __init__(self, status: _Optional[_Union[ServerStatus, str]] = ...) -> None: ...
+    ticket: str
+    poll_interval: float
+    def __init__(
+        self,
+        status: _Optional[_Union[ServerStatus, str]] = ...,
+        ticket: _Optional[str] = ...,
+        poll_interval: _Optional[float] = ...,
+    ) -> None: ...
 
 class ConfigurationRequest(_message.Message):
     __slots__ = ("header", "meta_data")
@@ -74,7 +85,7 @@ class GetGlobalModelRequest(_message.Message):
         meta_data: _Optional[str] = ...,
     ) -> None: ...
 
-class GetGlobalModelRespone(_message.Message):
+class GetGlobalModelResponse(_message.Message):
     __slots__ = ("header", "global_model", "meta_data")
     HEADER_FIELD_NUMBER: _ClassVar[int]
     GLOBAL_MODEL_FIELD_NUMBER: _ClassVar[int]
@@ -144,4 +155,16 @@ class CustomActionResponse(_message.Message):
         self,
         header: _Optional[_Union[ServerHeader, _Mapping]] = ...,
         results: _Optional[str] = ...,
+    ) -> None: ...
+
+class PollRequest(_message.Message):
+    __slots__ = ("header", "ticket")
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    TICKET_FIELD_NUMBER: _ClassVar[int]
+    header: ClientHeader
+    ticket: str
+    def __init__(
+        self,
+        header: _Optional[_Union[ClientHeader, _Mapping]] = ...,
+        ticket: _Optional[str] = ...,
     ) -> None: ...

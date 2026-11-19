@@ -5,12 +5,9 @@ import pathlib
 import requests
 from omegaconf import OmegaConf
 from appfl.misc.utils import get_last_function_name
-from globus_sdk import AccessTokenAuthorizer
-from globus_sdk.scopes import AuthScopes, ComputeScopes
-from globus_compute_sdk import Client
 from globus_compute_sdk.errors import TaskPending
 from globus_compute_sdk.serialize import CombinedCode
-from globus_compute_sdk.sdk.login_manager import AuthorizerLoginManager
+from appfl.comm.globus_compute.utils.client import create_token_client
 
 
 def endpoint_test():
@@ -40,15 +37,9 @@ class APPFLxDataExchanger:
 
     def _get_gcc(self, compute_token, openid_token):
         """Get the Globus Compute Client objects."""
-        compute_login_manager = AuthorizerLoginManager(
-            authorizers={
-                ComputeScopes.resource_server: AccessTokenAuthorizer(compute_token),
-                AuthScopes.resource_server: AccessTokenAuthorizer(openid_token),
-            }
-        )
-        compute_login_manager.ensure_logged_in()
-        gcc = Client(
-            login_manager=compute_login_manager,
+        gcc = create_token_client(
+            compute_token,
+            openid_token,
             code_serialization_strategy=CombinedCode(),
         )
         return gcc

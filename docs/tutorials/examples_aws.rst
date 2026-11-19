@@ -5,7 +5,7 @@ Example: Launch server on AWS EC2
 
     <iframe width="560" height="315" src="https://www.youtube.com/embed/ihPofoQwUMs?si=GQ_plzyxv58FkLAZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-In this page, we describe the processes to set up a gRPC server for FL on an `AWS EC2 <https://aws.amazon.com/ec2/>`_ instance, which waits for clients to connect and participate in FL experiments.
+On this page, we describe how to set up a gRPC server for FL on an `AWS EC2 <https://aws.amazon.com/ec2/>`_ instance, which waits for clients to connect and participate in FL experiments.
 
 Create an EC2 instance
 ----------------------
@@ -22,13 +22,13 @@ Create an EC2 instance
 
     c. In this example, we select `Ubuntu Server 22.04 LTS (HVM), SSD Volume Type` as the Amazon Machine Image (AMI); the AMI determines your instance's operating system and pre-installed software.
 
-    d. Select your instance type. The instance type determines the CPU, memory, storage, and network capacity of the virtual machine. We recommend choosing one that is at least as good as or better than `t2.medium`.
+    d. Select your instance type. The instance type determines the CPU, memory, storage, and network capacity of the virtual machine. We recommend choosing ``t2.medium`` or a more powerful instance type.
 
-    e. Generate key pair for connecting for your instance later.
+    e. Generate a key pair for connecting to your instance later.
 
-    f. Configure storage. We recommend allocating at least 45GB of disk space for the EC2.
+    f. Configure storage. We recommend allocating at least 45 GB of disk space for the instance.
 
-    g. The rest of the configuration can be left as default. And click `Launch Instance` to launch.
+    g. Leave the rest of the configuration as default, and click "Launch Instance".
 
 4. Set Up Security Groups
 
@@ -40,14 +40,14 @@ Create an EC2 instance
 
     c. In the security group details, select the "Inbound Rules" tab and click "Edit Inbound Rule".
 
-    d. Add a new rule, select "Custom TCP" as the protocol type, set the port range to the port used by your gRPC service (e.g. 50051), and set the source to the allowed IP range (e.g. 0.0.0.0/0 means anywhere, but should be limited as much as possible for security reasons).
+    d. Add a new rule, select "Custom TCP" as the protocol type, set the port range to the port used by your gRPC service (e.g., 50051), and set the source to the allowed IP range (e.g., 0.0.0.0/0 means anywhere, but the range should be restricted as much as possible for security reasons).
 
     e. Click "Save Rule".
 
 Connect to EC2 instance and launch the server
 ---------------------------------------------
 
-There are several methods to connect EC2 instance. You can select EC2 instance and click connect to connect using EC2 instance connect provided by AWS. If you want to connect with SSH client. Follow the steps below.
+There are several ways to connect to an EC2 instance. You can select the instance and click "Connect" to use EC2 Instance Connect provided by AWS. If you want to connect with an SSH client, follow the steps below.
 
 .. code-block:: shell
 
@@ -57,7 +57,7 @@ There are several methods to connect EC2 instance. You can select EC2 instance a
 
 .. note::
 
-    In order to successfully ssh into the EC2 instance, you also need to allow the IP address of the machine you are using to connect to the EC2 instance for ssh connection.
+    To SSH into the EC2 instance, the security group must also allow inbound SSH connections (port 22) from the IP address of your machine.
 
 After successfully connecting to the EC2 instance, install conda.
 
@@ -77,7 +77,7 @@ Install APPFL from source in a conda environment:
 
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
-    conda create -n appfl python=3.10 --y
+    conda create -n appfl python=3.10 -y
     conda activate appfl
     pip install -e ".[examples]"
 
@@ -93,7 +93,7 @@ An FL server running the `FedCompass <https://arxiv.org/pdf/2309.14675.pdf>`_ al
 
 .. note::
 
-  You may need to change path of the configuration file of grpc server to select different FL algorithms.
+  You can change the path to the gRPC server configuration file to select a different FL algorithm.
 
 Launching SSL Secured Server
 ----------------------------

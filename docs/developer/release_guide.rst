@@ -1,7 +1,7 @@
 Release Guide
 =============
 
-This describes how to release the package. We basically follow the steps in `Packaging Python Projects <https://packaging.python.org/en/latest/tutorials/packaging-projects/>`_.
+This page describes how to release the package. We basically follow the steps in `Packaging Python Projects <https://packaging.python.org/en/latest/tutorials/packaging-projects/>`_.
 
 
 TestPyPI
@@ -26,7 +26,7 @@ To this end, find the following lines in ``setup.py`` and change the project nam
 Generating distribution archives
 ++++++++++++++++++++++++++++++++
 
-Let's make sure that ``dist`` directory is empty or does not exist at the root of the repository, where ``pyproject.toml`` is located. Then, running the following command should generate a build distribution ``.whl`` and source archive ``.tar.gz`` files in the ``dist`` directory.
+Make sure that the ``dist`` directory at the root of the repository (where ``pyproject.toml`` is located) is empty or does not exist. Then, running the following command should generate a built distribution (``.whl``) and a source archive (``.tar.gz``) in the ``dist`` directory.
 
 .. code-block:: shell
 
@@ -36,7 +36,7 @@ Let's make sure that ``dist`` directory is empty or does not exist at the root o
 Uploading the distribution archives
 +++++++++++++++++++++++++++++++++++
 
-We upload the distribution archives to the test server by the following command. This requires to have an account for `TestPyPI <https://test.pypi.org>`_.
+Upload the distribution archives to the test server with the following command. This requires an account on `TestPyPI <https://test.pypi.org>`_.
 
 .. code-block:: shell
 
@@ -46,7 +46,7 @@ We upload the distribution archives to the test server by the following command.
 Installing the new test package
 +++++++++++++++++++++++++++++++
 
-Once the distribution archives are uploaded, anyone can install the new test package by the following command:
+Once the distribution archives are uploaded, anyone can install the new test package with the following command:
 
 .. code-block:: shell
 
@@ -56,9 +56,9 @@ Once the distribution archives are uploaded, anyone can install the new test pac
 Release
 -------
 
-If the testing above is successfully, we are ready to release the new package to the PyPI server.
-These are key steps to follow:
+If the testing above is successful, we are ready to release the new package to the PyPI server.
+The key steps are:
 
-- Let's not forget to change the project name and set the version properly.
+- Change the project name back and set the version properly.
 - Generate the distribution archives as above.
 - Use ``twine upload dist/*`` to upload the distribution archives.
