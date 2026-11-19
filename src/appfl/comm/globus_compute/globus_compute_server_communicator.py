@@ -1,4 +1,7 @@
 import time
+import json
+import pickle
+import os
 import uuid
 import warnings
 from omegaconf import OmegaConf
@@ -75,6 +78,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             )
             _client_id_check_set.add(client_id)
             client_endpoint_id = client_config.endpoint_id
+            transfer_endpoint_id = client_config.transfer_endpoint_id
             client_config.experiment_id = self.experiment_id
             client_config.comm_type = self.comm_type
             # Raise deprecation warning for logging_id
@@ -92,9 +96,14 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             self.client_endpoints[client_id] = GlobusComputeClientEndpoint(
                 client_id=client_id,
                 client_endpoint_id=client_endpoint_id,
+                transfer_endpoint_id=transfer_endpoint_id,
                 client_config=OmegaConf.merge(
                     server_agent_config.client_configs, client_config
                 ),
+            )
+
+            self.deepspeed = getattr(
+                server_agent_config.server_configs, "deepspeed", False
             )
 
     def send_task_to_all_clients(
@@ -128,6 +137,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
                 client_metadata["local_model_url"] = local_model_url
             task_id, task_future = self.client_endpoints[client_id].submit_task(
                 self.gce,
+                self.transfer_gce,
                 task_name,
                 model,
                 client_metadata,
@@ -166,6 +176,7 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             metadata["local_model_url"] = local_model_url
         task_id, task_future = self.client_endpoints[client_id].submit_task(
             self.gce,
+            self.transfer_gce,
             task_name,
             model,
             metadata,
@@ -185,7 +196,20 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
             task_id = self.executing_task_futs[fut]
             client_id = self.executing_tasks[task_id].client_id
             try:
-                result = fut.result()
+                if self.deepspeed:
+                    fut.result()
+                    home = os.environ.get("HOME")
+                    model_path = os.path.join(home, f"model_{client_id}.pkl")
+                    with open(model_path, "rb") as f:
+                        model = pickle.load(f)
+
+                    meta_data_path = os.path.join(home, f"meta_data_{client_id}.json")
+                    with open(meta_data_path) as f:
+                        meta_data = json.load(f)
+
+                    result = (model, meta_data)
+                else:
+                    result = fut.result()
                 client_model, client_metadata_local = self._parse_result(result)
                 client_metadata_local = self._check_deprecation(
                     client_id, client_metadata_local
@@ -224,8 +248,21 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
         try:
             fut = next(as_completed(list(self.executing_task_futs)))
             task_id = self.executing_task_futs[fut]
-            result = fut.result()
             client_id = self.executing_tasks[task_id].client_id
+            if self.deepspeed:
+                fut.result()
+                home = os.environ.get("HOME")
+                model_path = os.path.join(home, f"model_{client_id}.pkl")
+                with open(model_path, "rb") as f:
+                    model = pickle.load(f)
+
+                meta_data_path = os.path.join(home, f"meta_data_{client_id}.json")
+                with open(meta_data_path) as f:
+                    meta_data = json.load(f)
+
+                result = (model, meta_data)
+            else:
+                result = fut.result()
             client_model, client_metadata = self._parse_result(result)
             client_metadata = self._check_deprecation(client_id, client_metadata)
             # Set the status of the finished task
@@ -297,3 +334,24 @@ class GlobusComputeServerCommunicator(BaseServerCommunicator):
                 code_serialization_strategy=CombinedCode(),
             )
         self.gce = Executor(client=gcc)  # Globus Compute Executor
+        self.transfer_gce = Executor(client=gcc)
+
+
+def data_transfer(model, meta_data, client_id):
+    import os
+    import json
+    import pickle
+
+    home = os.environ.get("HOME")
+
+    model_path = os.path.join(home, f"model_{client_id}.pkl")
+    with open(model_path, "wb") as f:
+        pickle.dump(model, f)
+        f.flush()
+        os.fsync(f.fileno())
+
+    meta_data_path = os.path.join(home, f"meta_data_{client_id}.json")
+    with open(meta_data_path, "w") as f:
+        json.dump(meta_data, f)
+        f.flush()
+        os.fsync(f.fileno())
