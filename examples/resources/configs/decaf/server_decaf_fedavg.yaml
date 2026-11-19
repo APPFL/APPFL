@@ -1,0 +1,68 @@
+client_configs:
+  train_configs:
+    # CLIP + LoRA trainer (handles dual-encoder forward pass and LoRA freezing)
+    trainer: "DeCaFTrainer"
+    # Step-based training: each FL round runs num_local_steps gradient steps
+    mode: "step"
+    num_local_steps: 25         # steps per round (~1 epoch over 816 samples / batch 32)
+    # CLIP-specific training hyperparameters
+    encoder: "both"             # "vision" | "text" | "both"
+    freeze_a: False             # freeze w_lora_A matrices
+    lr: 2.0e-4                  # AdamW learning rate
+    weight_decay: 1.0e-2        # AdamW weight decay
+    logit_scale: 100.0          # CLIP cosine-similarity temperature scaling
+    # Data loader
+    train_batch_size: 32
+    val_batch_size: 64
+    train_data_shuffle: True
+    val_data_shuffle: False
+    # Logging
+    do_validation: True
+    do_pre_validation: False
+    # Device
+    device: "cuda"
+
+  model_configs:
+    # CLIP + LoRA model (loads CLIP backbone and injects LoRA layers)
+    model_path: "./resources/model/decaf_model.py"
+    model_name: "DeCaFModel"
+    model_kwargs:
+      backbone: "ViT-B/16"
+      encoder: "both"
+      position: "all"
+      params: ["q", "k", "v"]
+      r: 2
+      alpha: 1
+      dropout_rate: 0.25
+
+  comm_configs:
+    compressor_configs:
+      enable_compression: False
+      lossy_compressor: "SZ2Compressor"
+      lossless_compressor: "blosc"
+      error_bounding_mode: "REL"
+      error_bound: 1.0e-3
+      param_cutoff: 1024
+
+server_configs:
+  num_clients: 5
+  scheduler: "SyncScheduler"
+  scheduler_kwargs:
+    same_init_model: True
+  # Federated LoRA SVD aggregator: SVD-based LoRA aggregation (single global model)
+  aggregator: "FederatedLoRASVDAggregator"
+  aggregator_kwargs:
+    # SVD truncation rank — must match the LoRA rank r used by all clients
+    lora_rank: 2
+    # Weighting: "sample_size" uses per-client dataset sizes (recommended)
+    client_weights_mode: "sample_size"
+    # Device for SVD computation (cpu avoids GPU OOM when clients share the same GPU)
+    device: "cpu"
+  num_global_epochs: 2     # total FL communication rounds
+  logging_output_dirname: "./output"
+  logging_output_filename: "result_decaf_fedavg"
+  comm_configs:
+    grpc_configs:
+      server_uri: localhost:50051
+      max_message_size: 268435456
+      use_ssl: False

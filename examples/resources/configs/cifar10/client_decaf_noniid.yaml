@@ -1,0 +1,24 @@
+client_id: "Client1"
+train_configs:
+  device: "cuda"
+  logging_output_dirname: "./output"
+  logging_output_filename: "result_decaf_cifar10"
+
+data_configs:
+  dataset_path: "./resources/dataset/decaf_dataset.py"
+  dataset_name: "get_decaf_dataset"
+  dataset_kwargs:
+    dataset_name: "cifar10"
+    root_path: "./datasets"      # torchvision downloads here automatically
+    shots: 50                   # few-shot per class (0 = full dataset)
+    backbone: "ViT-B/16"         # must match server model_kwargs.backbone
+    data_dist: "non-iid"
+    num_clients: 5               # overridden by MPI script
+    client_id: 0                 # overridden by MPI script
+    seed: 1
+
+comm_configs:
+  grpc_configs:
+    server_uri: localhost:50051
+    max_message_size: 1048576
+    use_ssl: False
