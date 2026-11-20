@@ -8,7 +8,8 @@ import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils import data
-from typing import List, Optional
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable, Hashable, List, Optional
 from .deprecation import deprecated
 import pandas as pd
 import random
@@ -488,6 +489,93 @@ def dirichlet_noniid_partition(
             )
         )
     return train_datasets
+
+
+# Values built by `cache_per_process`, at most one per key
+_process_cache = {}
+
+# Partition arguments that only control the data distribution figure
+_FIGURE_KWARGS = ("visualization", "output_dirname", "output_filename")
+
+
+def cache_per_process(key: Hashable, build: Callable[..., Any], /, **kwargs) -> Any:
+    """
+    Return ``build(**kwargs)``, reusing the value of an earlier call in this process
+    with the same ``key`` and arguments.
+
+    The dataset loaders in ``examples/resources/dataset`` are executed afresh for
+    every client (see ``appfl.misc.utils.run_function_from_file``), so a cache of
+    their own would not outlive one client. They use this one to convert their test
+    set and partition their training set once per process instead of once per
+    client. The value is shared, not copied, so callers must not modify it.
+
+    ``build`` must return equal values for equal arguments. The partition functions
+    do: those that draw random numbers reseed NumPy's global RNG first. A hit puts
+    that RNG back in the state ``build`` left it in, so code that draws from it
+    afterwards gets the same numbers as if ``build`` had run again.
+
+    ``visualization``, ``output_dirname`` and ``output_filename`` only control the
+    data distribution figure, so they are not compared. A hit that asks for a
+    figure that has not been drawn yet runs ``build`` again to draw it.
+
+    Only the latest value is kept for each ``key``: a call with other arguments
+    replaces it, so the cache holds at most one partition of each dataset.
+
+    :param key: name of the value, e.g. ``"mnist_dataset.train"``
+    :param build: function computing the value from ``kwargs``
+    :param kwargs: keyword arguments for ``build``; dicts and lists, including
+        OmegaConf containers, are compared by value
+    :return: the value of ``build(**kwargs)``
+    """
+    args = _snapshot({k: v for k, v in kwargs.items() if k not in _FIGURE_KWARGS})
+    figure = (
+        (kwargs.get("output_dirname"), kwargs.get("output_filename"))
+        if kwargs.get("visualization")
+        else None
+    )
+    entry = _process_cache.get(key)
+    try:
+        hit = entry is not None and entry["args"] == args
+    except Exception:  # e.g. arrays, which have no single truth value
+        hit = False
+
+    if hit:
+        if figure is not None and figure not in entry["figures"]:
+            build(**kwargs)  # only to draw the figure; the value is the same
+        if entry["rng_state"] is not None:
+            np.random.set_state(entry["rng_state"])
+    else:
+        # Release the old value before building its replacement
+        _process_cache.pop(key, None)
+        rng_before = np.random.get_state()
+        value = build(**kwargs)
+        rng_after = np.random.get_state()
+        entry = {
+            "args": args,
+            "value": value,
+            "rng_state": (
+                None if _same_rng_state(rng_before, rng_after) else rng_after
+            ),
+            "figures": set(),
+        }
+        _process_cache[key] = entry
+    if figure is not None:
+        entry["figures"].add(figure)
+    return entry["value"]
+
+
+def _snapshot(value):
+    """Copy dicts and lists, including OmegaConf containers, into plain ones."""
+    if isinstance(value, Mapping):
+        return {k: _snapshot(v) for k, v in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return [_snapshot(v) for v in value]
+    return value
+
+
+def _same_rng_state(a, b) -> bool:
+    """Compare two states returned by ``np.random.get_state()``."""
+    return a[0] == b[0] and np.array_equal(a[1], b[1]) and a[2:] == b[2:]
 
 
 def iid_partition_df(
