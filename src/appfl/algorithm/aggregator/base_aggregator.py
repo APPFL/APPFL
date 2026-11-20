@@ -12,8 +12,10 @@ class BaseAggregator:
     def _warn_missing_sample_sizes(self, client_ids: Iterable[Union[str, int]]) -> None:
         """
         Warn once per aggregator if `client_weights_mode` is "sample_size" but some of
-        `client_ids` have no registered sample size, so they are weighted as in "equal"
-        mode. A no-op unless the subclass defines `client_weights_mode` and `logger`.
+        `client_ids` have no registered sample size. FedAvg-based aggregators then
+        weight the whole round equally, and FedAsync/FedBuff give those clients an
+        equal weight. A no-op unless the subclass defines `client_weights_mode` and
+        `logger`.
         """
         if (
             getattr(self, "client_weights_mode", None) != "sample_size"
@@ -32,9 +34,11 @@ class BaseAggregator:
             shown += f" and {len(missing) - 5} more"
         self.logger.warning(
             f"{type(self).__name__}: client_weights_mode is 'sample_size', but no "
-            f"sample size is registered for client(s) {shown}, so they are weighted "
-            "as in 'equal' mode instead. Register every client's sample size with "
-            "`ServerAgent.set_sample_size` (or `appfl.vsim.register_sample_sizes` "
+            f"sample size is registered for client(s) {shown}. FedAvg-based "
+            "aggregators then weight the whole round equally, and FedAsync/FedBuff "
+            "give those clients an equal weight. Register every client's sample "
+            "size with `ServerAgent.set_sample_size` (or "
+            "`appfl.vsim.register_sample_sizes` "
             "for the virtual-time simulator). (Logged once; later clients without a "
             "sample size are not reported.)"
         )
