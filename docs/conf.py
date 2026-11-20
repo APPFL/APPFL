@@ -88,6 +88,15 @@ html_last_updated_fmt = r"%Y-%m-%dT%H:%M:%S%z (" + git_describe_version + ")"
 pygments_style = "friendly"
 pygments_dark_style = "monokai"  # this is a furo-specific option
 html_theme_options = {
+    # Match Furo's accent colors to the APPFL logo blue
+    "light_css_variables": {
+        "color-brand-primary": "#005F9E",
+        "color-brand-content": "#005F9E",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#5AB0F0",
+        "color-brand-content": "#5AB0F0",
+    },
     # "content_footer_items": ["last-updated"],
     "footer_items": ["copyright", "sphinx-version", "last-updated"],
     "show_toc_level": 2,

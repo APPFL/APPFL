@@ -3,7 +3,7 @@ Community
 
 APPFL is developed as an open-source package. Requests, questions, and contributions are welcome.
 
-Join us with the following ways:
+Join us in any of the following ways:
 
 .. raw:: html
 
@@ -36,7 +36,7 @@ Code Contributors
     :order: ASC
     :limit: 20
 
-Collaboration Institutions
+Collaborating Institutions
 --------------------------
 
 .. raw:: html

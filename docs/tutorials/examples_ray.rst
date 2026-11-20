@@ -1,7 +1,7 @@
 Example: Run FL Experiment using Ray
-===============================================
+====================================
 
-This tutorial describes how to run federated learning experiments with APPFL using Ray on cloud platforms such as AWS, GCP, and Azure. All the code snippets needed for this tutorial is available at the ``examples`` directory of the APPFL repository at `here <https://github.com/APPFL/APPFL/tree/main/examples>`_.
+This tutorial describes how to run federated learning experiments with APPFL using Ray on cloud platforms such as AWS, GCP, and Azure. All the code needed for this tutorial is available in the `examples <https://github.com/APPFL/APPFL/tree/main/examples>`_ directory of the APPFL repository.
 
 .. note::
 
@@ -10,20 +10,20 @@ This tutorial describes how to run federated learning experiments with APPFL usi
 Installation
 ------------
 
-First, we should install the APPFL package on the local machines. Below shows how to install the APPFL package from its source code. For more information, please refer to the `APPFL installation guide <https://appfl.ai/en/latest/install/index.html>`_.
+First, install the APPFL package on your local machine. The following shows how to install the APPFL package from source. For more information, please refer to the `APPFL installation guide <https://appfl.ai/en/latest/install/index.html>`_.
 
 .. code-block:: bash
 
     git clone --single-branch --branch main https://github.com/APPFL/APPFL.git
     cd APPFL
-    conda create -n appfl python=3.10 --y
+    conda create -n appfl python=3.10 -y
     conda activate appfl
     pip install -e ".[examples]"
 
 Client Configurations
 ---------------------
 
-The server needs to collect certain information from the client to run the federated learning experiment. Below is an example of a client configuration file. It is available at ``examples/resources/config_ray/mnist/clients.yaml`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_ray/mnist/clients.yaml>`_.
+The server needs to collect certain information from the client to run the federated learning experiment. Below is an example of a client configuration file. It is available at ``examples/resources/config_ray/mnist/clients.yaml`` in the APPFL repository (`link <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_ray/mnist/clients.yaml>`_).
 
 .. code-block:: yaml
 
@@ -65,21 +65,21 @@ The server needs to collect certain information from the client to run the feder
             visualization: False
 
 
-It should be noted that the client configuration file actually resides on the server machine, and the contents of the file are shared by the clients. Specifically, there are three main parts in the client configuration file:
+Note that the client configuration file actually resides on the server machine, and its contents are provided by the clients. Specifically, the client configuration file has three main parts:
 
-- ``client_id``: It is the unique ID defined for the client machine.
-- ``train_configs``: It contains the training configurations for the client, including the device to run the training, logging configurations, etc.
-- ``data_configs``: It contains the information of a dataloader python file defined and shared by the clients to the server (located at ``dataset_path`` on the server machine). The dataloader file should contain a function (specified by ``dataset_name``) which can load the client's local private dataset when it is executing on the client's machine.
+- ``client_id``: The unique ID defined for the client machine.
+- ``train_configs``: The training configurations for the client, including the device for training, logging configurations, etc.
+- ``data_configs``: Information about a dataloader Python file written by the client and shared with the server (located at ``dataset_path`` on the server machine). The dataloader file should contain a function (specified by ``dataset_name``) that loads the client's local private dataset when executed on the client's machine.
 
 
 Server Configurations
 ---------------------
 
-We have provide three sample server configuration files available at ``examples/resources/config_ray`` at the APPFL repository at `here <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_ray/>`_. The detailed description of the server configuration file can be found in the `APPFL documentation <https://appfl.ai/en/latest/users/server_agent.html#configurations>`_.
+We provide several sample server configuration files in ``examples/resources/config_ray/mnist`` of the APPFL repository (`link <https://github.com/APPFL/APPFL/blob/main/examples/resources/config_ray/>`_). A detailed description of the server configuration file can be found in the `APPFL documentation <https://appfl.ai/en/latest/users/server_agent.html#configurations>`_.
 
-It should be noted that ``client_configs.comm_configs.ray_configs`` is optional and only needed be set if the user wants to assign a job to randomly, instead to a particular AWS instance, by setting ``assign_random`` as ``True`` (by default it is ``False``). You need to configure the same in ``ray_cluster_config.yaml`` as well.
+Note that ``client_configs.comm_configs.ray_configs`` is optional and only needs to be set if you want to assign client tasks to random worker nodes instead of particular AWS instances, by setting ``assign_random`` to ``True`` (``False`` by default). In that case, you need to configure ``ray_cluster_config.yaml`` accordingly as well.
 
-To use AWS S3 for model parameter transmission, add a configuration under ``comm_configs`` as ``s3_configs``. Set ``enable_s3`` to True, and specify the ``s3_bucket`` field with the name of the S3 bucket that you want to use. Additionally, set ``s3_creds_file`` to the path of a CSV file containing AWS credentials.
+To use AWS S3 for model parameter transmission, add a configuration under ``comm_configs`` as ``s3_configs``. Set ``enable_s3`` to ``True``, and specify the ``s3_bucket`` field with the name of the S3 bucket that you want to use. Additionally, set ``s3_creds_file`` to the path of a CSV file containing AWS credentials.
 
 .. code-block:: csv
 
@@ -87,16 +87,16 @@ To use AWS S3 for model parameter transmission, add a configuration under ``comm
 
 .. note::
 
-    The server can also set these information before running the experiment via the ``aws configure`` command.
+    The server can also set this information via the ``aws configure`` command before running the experiment.
 
 Ray Cluster Configurations
 --------------------------
 
-Below is the cluster configuration file for running the experiment on AWS cloud environment.
+Below is the cluster configuration file for running the experiment on AWS.
 
 .. code-block:: yaml
 
-    # An unique identifier for the head node and workers of this cluster.
+    # A unique identifier for the head node and workers of this cluster.
     cluster_name: appfl-ray
 
     # Cloud-provider specific configuration.
@@ -114,7 +114,7 @@ Below is the cluster configuration file for running the experiment on AWS cloud 
                       # Allow traffic only from your local IP address.
                       - CidrIp: 0.0.0.0/0
 
-    # The maximum number of workers nodes to launch in addition to the head node.
+    # The maximum number of worker nodes to launch in addition to the head node.
     max_workers: 2
 
     available_node_types:
@@ -168,11 +168,11 @@ Below is the cluster configuration file for running the experiment on AWS cloud 
          'conda activate APPFL && pip install ray["default"] && pip install confluent-kafka --prefer-binary && cd APPFL && pip install -e ".[examples]"',
          "(stat $HOME/anaconda3/envs/APPFL/ &> /dev/null && echo 'export PATH=\"$HOME/anaconda3/envs/APPFL/bin:$PATH\"' >> ~/.bashrc) || true"]
 
-You can set the desired aws region under ``provider.region``
+You can set the desired AWS region under ``provider.region``.
 
-All the EC2 instance related configuration for head node or worker nodes goes in ``node_config`` which has ``InstanceType``, ``ImageId`` (AMI image id), spot vs on demand etc. For more documentation on available fields, `see <http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances>`_.
+All EC2 instance-related configurations for the head node or worker nodes go in ``node_config``, which includes ``InstanceType``, ``ImageId`` (AMI image ID), spot vs. on-demand, etc. For more documentation on the available fields, see `here <http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances>`_.
 
-For other field description you can follow inline comments in ``examples/ray/ray_cluster_config.yaml``. Further you can check it out `here <https://docs.ray.io/en/latest/cluster/vms/getting-started.html#launch-a-cluster-on-a-cloud-provider>`_.
+For descriptions of the other fields, see the inline comments in ``examples/ray/ray_cluster_config.yaml``, or check out the Ray documentation `here <https://docs.ray.io/en/latest/cluster/vms/getting-started.html#launch-a-cluster-on-a-cloud-provider>`_.
 
 
 Running Experiment
@@ -181,18 +181,18 @@ Running Experiment
 Environment setup
 ~~~~~~~~~~~~~~~~~
 
-Configure AWS credentials - IAM having ``AmazonEC2FullAccess`` and ``AmazonEC2RoleforSSM``
+Configure AWS credentials for an IAM user with the ``AmazonEC2FullAccess`` and ``AmazonEC2RoleforSSM`` policies.
 
 Cluster Creation
 ~~~~~~~~~~~~~~~~
 
-Go inside ray example
+Go to the Ray example directory:
 
 .. code-block:: bash
 
     cd examples/ray/
 
-Run below command, which brings up whole cluster that is described in ``examples/ray/ray_cluster_config.yaml``.
+Run the following command, which brings up the whole cluster described in ``examples/ray/ray_cluster_config.yaml``.
 
 .. code-block:: bash
 
@@ -200,14 +200,14 @@ Run below command, which brings up whole cluster that is described in ``examples
 
 .. note::
 
-    For lower cluster spin up time create a custom AMI image by running setup command on given image id in ray_cluster_config.yaml. After creating custom AMI you can provide it in ray_cluster_config.yaml under ImageId attribute of each node
+    To reduce the cluster spin-up time, create a custom AMI by running the setup commands on the image specified in ``ray_cluster_config.yaml``. After creating the custom AMI, set it as the ``ImageId`` attribute of each node in ``ray_cluster_config.yaml``.
 
 Checking cluster status
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-**From Local machine**
+**From Local Machine**
 
-1. You can check cluster status by running
+1. Check the cluster status by running:
 
 .. code-block:: bash
 
@@ -215,19 +215,19 @@ Checking cluster status
 
 **From Head Node**
 
-1. Go into head node using
+1. Attach to the head node using:
 
 .. code-block:: bash
 
     ray attach ray_cluster_config.yaml
 
-2. Check cluster status after attaching to head node using
+2. After attaching to the head node, check the cluster status using:
 
 .. code-block:: bash
 
     ray status
 
-Output of ray status would look like below
+The output of ``ray status`` should look like the following:
 
 .. code-block:: bash
 
@@ -259,15 +259,15 @@ Output of ray status would look like below
 Job Submission
 ~~~~~~~~~~~~~~
 
-**From Local machine**
+**From Local Machine**
 
-1. Do port forwarding using
+1. Set up port forwarding using:
 
 .. code-block:: bash
 
     ray dashboard ray_cluster_config.yaml
 
-2. Now on another terminal you can submit job request using:
+2. In another terminal, submit the job using:
 
 .. code-block:: bash
 
@@ -275,13 +275,13 @@ Job Submission
 
 **From Head Node**
 
-1. Connect to head node
+1. Connect to the head node:
 
 .. code-block:: bash
 
     ray attach ray_cluster_config.yaml
 
-2. Run job using:
+2. Run the job using:
 
 .. code-block:: bash
 
@@ -289,7 +289,7 @@ Job Submission
 
 Stopping Cluster
 ~~~~~~~~~~~~~~~~
-1. To stop cluster run
+1. To stop the cluster, run:
 
 .. code-block:: bash
 

@@ -1,0 +1,66 @@
+# Toy 1-D yield experiment, ADKO with the v2 "many-task" defaults -- node 0.
+# One file per node, and that file is complete. On the `daisy/prototype` branch this was a
+# `federation_adko.yaml` that every agent had to share plus an `agent.yaml` that was local to
+# one; here the two are folded together, because a decentralized node has no server to split
+# configuration with. The simulation launchers derive nodes 1..n-1 from this one by changing
+# `node_id` and `space_configs.space_kwargs.agent_index`, exactly as the MNIST DFL examples
+# derive their nodes -- so a 4-agent run still needs only this file.
+
+node_id: "agent-0"
+seed: 0
+num_epochs: 40                  # rounds of {act -> exchange tokens -> observe}
+known_optimum: 100.0            # printed alongside the federation best, when known
+
+neighbors:
+  mode: from_topo               # simulation: derive the graph, assign ids to match
+  topology: fully_connected     # fully_connected | ring | star | random_geometric
+  topology_kwargs: {}
+  num_nodes: 4
+  id_prefix: "agent-"
+
+comm_configs:
+  budget_configs:
+    bits_per_neighbor_per_round: null
+    tokens_per_neighbor_per_round: 1
+  grpc_configs:                 # used by grpc/run_site.py only
+    server_uri: "localhost:50051"
+    use_ssl: false
+
+algorithm_configs:
+  warmup_rounds: 5              # random proposals before the surrogate is trusted
+  token_budget: 40              # tokens an agent keeps in memory
+  alpha_tau: 0.01               # fidelity decay rate, exp(-alpha * age)
+  objective: "maximize"
+  emit_insight: false           # the z field; ignored unless an LLM is attached
+  total_proposals: null         # null -> unbounded; set for a fixed evaluation budget
+  n_local_candidates: 10
+  weights:
+    preset: "many_task"
+    dim: 1                      # sets the similarity bandwidth for this many dimensions
+  baseline:                     # what counts as SUCCESS in the token's s field
+    baseline: "running_median"
+    baseline_kwargs: {}
+  pruner:                       # which token to drop when memory is full
+    pruner: "confidence"        # fidelity | confidence | fifo | random
+    pruner_kwargs: {}
+
+surrogate_configs:
+  surrogate_path: "./decentralized/resources/surrogate/kernel_surrogate.py"
+  surrogate_name: "get_surrogate"
+  surrogate_kwargs:
+    bandwidth: 0.05
+    prior_sigma: 1.0
+
+space_configs:
+  space_path: "./decentralized/resources/space/toy1d_space.py"
+  space_name: "get_design_space"
+  space_kwargs:
+    agent_index: 0
+    num_agents: 4
+    seed: 0
+    n_bins: 50
+
+evaluator_configs:
+  evaluator_path: "./decentralized/resources/evaluator/toy_yield.py"
+  evaluator_name: "get_evaluator"
+  evaluator_kwargs: {}
