@@ -126,6 +126,7 @@ class FedBuffAggregator(FedAsyncAggregator):
         if client_id not in self.client_step:
             self.client_step[client_id] = 0
         gradient_based = self.aggregator_configs.get("gradient_based", False)
+        self._warn_missing_sample_sizes([client_id])
         if (
             self.client_weights_mode == "sample_size"
             and hasattr(self, "client_sample_size")
