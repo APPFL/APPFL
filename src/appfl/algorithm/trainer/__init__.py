@@ -1,4 +1,5 @@
 from .base_trainer import BaseTrainer
+from .tcs_trainer import TCSTrainer
 from .vanilla_trainer import VanillaTrainer
 from .fedprox_trainer import FedProxTrainer
 from .iiadmm_trainer import IIADMMTrainer
@@ -32,6 +33,7 @@ except:  # noqa: E722
 
 __all__ = [
     "BaseTrainer",
+    "TCSTrainer",
     "VanillaTrainer",
     "FedProxTrainer",
     "IIADMMTrainer",

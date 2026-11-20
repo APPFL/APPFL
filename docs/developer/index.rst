@@ -8,6 +8,7 @@ Developer Guide
    algorithms
    schedulers
    trainers
+   tcs
    server_agent
    ../README
    release_guide
