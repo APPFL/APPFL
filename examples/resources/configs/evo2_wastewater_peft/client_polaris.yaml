@@ -10,7 +10,8 @@ train_configs:
   # Shared data/model/evo2 paths — same for every colleague running this
   # config on Polaris, regardless of where their own APPFL checkout lives.
   base_data: "/lus/grand/projects/GeomicVar/schunduru/evo2_metagenomics/db-forge-wastewater/data"
-  model_path: "/lus/grand/projects/GeomicVar/schunduru/evo2_metagenomics/models/evo2_7b/hub/models--arcinstitute--evo2_7b/snapshots/bda0089f92582d5baabf0f22d9fc85f3588f6b58/evo2_7b.pt"
+  model_name: "evo2_7b_base"
+  model_path: "/lus/grand/projects/GeomicVar/schunduru/evo2_metagenomics/models/evo2_7b_base/evo2_7b_base.pt"
   evo2_dir: "/lus/grand/projects/GeomicVar/schunduru/evo2_metagenomics/evo2"
   # Training hyperparameters
   num_local_steps: 1

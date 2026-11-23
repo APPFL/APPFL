@@ -27,9 +27,11 @@ else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from aidrin_checker import AIDRIN_SKIP_KEY, check_site_data  # noqa: E402
+from lora_canonical import evo2_to_canonical  # noqa: E402
 from peft_finetune import (  # noqa: E402
     BATCH_SIZE,
     DEFAULT_MAX_ROUNDS,
+    DEFAULT_MODEL_NAME,
     GRAD_ACCUM,
     WEIGHT_DECAY,
     FastaChunkDataset,
@@ -62,6 +64,7 @@ class Evo2PEFTTrainer(BaseTrainer):
         self.base_data = Path(train_configs.base_data)
         self.model_path = Path(train_configs.model_path)
         self.evo2_dir = Path(train_configs.evo2_dir)
+        self.model_name = str(getattr(train_configs, "model_name", DEFAULT_MODEL_NAME))
         self.num_steps = int(getattr(train_configs, "num_local_steps", 100))
         self.chunk_size = int(getattr(train_configs, "chunk_size", 8192))
         self.max_chunks = int(getattr(train_configs, "max_chunks", 0)) or None
@@ -77,15 +80,20 @@ class Evo2PEFTTrainer(BaseTrainer):
         self._debug_payload = bool(getattr(train_configs, "debug_payload", False))
 
         if self.logger:
-            self.logger.info(f"[{self.site}] Loading Evo2 7B ...")
+            self.logger.info(f"[{self.site}] Loading Evo2 7B ({self.model_name}) ...")
         self.evo2_model, self.tokenizer = load_evo2_model(
-            self.model_path, self.evo2_dir
+            self.model_path, self.evo2_dir, self.model_name
         )
         if self.logger:
             self.logger.info(
                 f"[{self.site}] Injecting {self.method.upper()} adapters ..."
             )
         self.evo2_model, _ = inject_lora(self.evo2_model, method=self.method)
+        self._canonical_params = {
+            evo2_to_canonical(name): param
+            for name, param in self.evo2_model.model.named_parameters()
+            if param.requires_grad
+        }
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -208,9 +216,8 @@ class Evo2PEFTTrainer(BaseTrainer):
         if self._debug_payload:
             return {"debug": torch.tensor([1.0])}, metadata
         params = {
-            name: param.detach().cpu().clone()
-            for name, param in self.evo2_model.model.named_parameters()
-            if param.requires_grad
+            key: param.detach().cpu().clone()
+            for key, param in self._canonical_params.items()
         }
         return params, metadata
 
@@ -225,9 +232,9 @@ class Evo2PEFTTrainer(BaseTrainer):
                 )
             return
         with torch.no_grad():
-            for name, param in self.evo2_model.model.named_parameters():
-                if name in params:
-                    param.copy_(params[name].to(param.device))
+            for key, param in self._canonical_params.items():
+                if key in params:
+                    param.copy_(params[key].to(param.device))
         if self.logger:
             self.logger.info(
                 f"[{self.site}/{self.method}] loaded merged adapter "

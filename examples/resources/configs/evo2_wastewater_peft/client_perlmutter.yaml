@@ -6,7 +6,8 @@ train_configs:
   site: "site_anl_2"
   method: "lora"
   base_data: "/global/cfs/projectdirs/m4994/common/db-forge-poc/wastewater-peft/data"
-  model_path: "/global/cfs/projectdirs/m4994/common/db-forge-poc/models/evo2_7b/evo2_7b.pt"
+  model_name: "evo2_7b_base"
+  model_path: "/global/cfs/projectdirs/m4994/common/db-forge-poc/models/evo2_7b_base/evo2_7b_base.pt"
   evo2_dir: "/global/cfs/projectdirs/m4994/common/db-forge-poc/evo2_repo"
   num_local_steps: 100
   chunk_size: 200

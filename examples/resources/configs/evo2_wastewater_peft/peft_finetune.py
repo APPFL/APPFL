@@ -8,7 +8,7 @@ Target layers (attention blocks; indices are an Evo2-7B architecture
 property, the same regardless of site or data -- not CLI-configurable):
   inner_mha_cls.Wqkv     4096 -> 12288  (combined QKV projection)
   inner_mha_cls.out_proj 4096 -> 4096   (output projection)
-  mlp.l1                 4096 -> 11264  (MLP gate)
+  mlp.l1                 4096 -> 11264  (MLP gate; 11008 on evo2_7b_base)
   mlp.l2                 4096 -> 11264  (MLP up)
   mlp.l3                11264 -> 4096   (MLP down)
 
@@ -51,6 +51,10 @@ from torch.utils.data import Dataset, DataLoader
 
 # ── CONFIG: training hyperparameters and architecture constants ─────────────
 
+# Evo2 model name, must match the checkpoint. The FL clients set
+# evo2_7b_base (8K, MLP 11008) in their yaml to match the LLNL Savanna
+# checkpoint; evo2_7b is the 1M context model (MLP 11264).
+DEFAULT_MODEL_NAME = "evo2_7b"
 
 CHUNK_SIZE = 8192
 BATCH_SIZE = 4  # 4 sequences in parallel (~12-15 GB/GPU, safe on 40GB A100)
@@ -612,13 +616,17 @@ def export_adapters(
 # ── MODEL LOADING ─────────────────────────────────────────────────────────────
 
 
-def load_evo2_model(model_path: Path, evo2_dir: Path):
-    """Load Evo2 7B and return (model, tokenizer). Caller must chdir first."""
+def load_evo2_model(model_path: Path, evo2_dir: Path, model_name: str = DEFAULT_MODEL_NAME):
+    """Load Evo2 7B and return (model, tokenizer). Caller must chdir first.
+
+    model_name picks the architecture config and must match the checkpoint
+    at model_path (evo2_7b_base -> 8K config, evo2_7b -> 1M config).
+    """
     sys.path.insert(0, str(evo2_dir))
     os.chdir(evo2_dir / "evo2")
     from evo2 import Evo2
 
-    model = Evo2(model_name="evo2_7b", local_path=str(model_path))
+    model = Evo2(model_name=model_name, local_path=str(model_path))
     tokenizer = model.tokenizer
     # vortex's load_checkpoint calls to_bfloat16_except_pr_lc() inside
     # torch.inference_mode(), so p.data becomes an inference tensor for every
@@ -716,7 +724,7 @@ def run_one_method(
 
     # ── Load Evo2 ──────────────────────────────────────────────────────────
     print("\nLoading Evo2 7B ...")
-    evo2_model, tokenizer = load_evo2_model(model_path, evo2_dir)
+    evo2_model, tokenizer = load_evo2_model(model_path, evo2_dir, args.model_name)
 
     # ── Inject adapters ────────────────────────────────────────────────────
     print(f"\nInjecting {method.upper()} adapters ...")
@@ -976,7 +984,13 @@ def main():
         "--model-path",
         type=str,
         default=None,
-        help="Path to evo2_7b.pt (overrides DB_FORGE_MODEL_PATH).",
+        help="Path to the Evo2 checkpoint .pt (overrides DB_FORGE_MODEL_PATH).",
+    )
+    ap.add_argument(
+        "--model-name",
+        type=str,
+        default=DEFAULT_MODEL_NAME,
+        help="Evo2 model name matching the checkpoint (default: %(default)s).",
     )
     ap.add_argument(
         "--evo2-dir",
