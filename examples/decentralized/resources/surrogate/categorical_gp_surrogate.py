@@ -14,7 +14,7 @@ as the normalized peer terms ``G`` and ``Lambda``.
 from __future__ import annotations
 
 import warnings
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import torch
@@ -49,7 +49,7 @@ class CategoricalSingleTaskGP(ExactGP, GPyTorchModel):
         )
         self.to(train_X)
 
-    def forward(self, x):  # noqa: D102 -- gpytorch interface
+    def forward(self, x):
         return MultivariateNormal(self.mean_module(x), self.covar_module(x))
 
 

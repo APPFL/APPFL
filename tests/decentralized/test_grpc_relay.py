@@ -156,6 +156,7 @@ def test_the_relay_needs_to_be_told_whose_payload_is_wanted():
     node.start()
     try:
         import yaml
+
         from appfl.comm.grpc.grpc_communicator_pb2 import (
             ClientHeader,
             GetGlobalModelRequest,

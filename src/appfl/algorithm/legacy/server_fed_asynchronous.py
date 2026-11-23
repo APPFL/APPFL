@@ -1,7 +1,9 @@
 import copy
 import logging
-from .server_federated import FedServer
+
 from appfl.misc.deprecation import deprecated
+
+from .server_federated import FedServer
 
 logger = logging.getLogger(__name__)
 

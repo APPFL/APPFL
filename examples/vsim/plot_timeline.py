@@ -11,16 +11,16 @@ Usage:
     python vsim/plot_timeline.py <history.json | vsim.log> [--out <output.png>] [--max_vt <seconds>]
 """
 
+import argparse
+import json
 import os
 import re
-import json
-import argparse
 
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 
 # Rows of the event table that AsyncSimDriver logs, e.g.
 #   12.3456      START    Client3     1.2345     1.1000     0.1345

@@ -1,10 +1,12 @@
-import time
-import grpc
-import yaml
 import logging
 import threading
+import time
 from concurrent import futures
-from typing import Any, Optional
+from typing import Any
+
+import grpc
+import yaml
+
 from appfl.comm.grpc.grpc_communicator_pb2 import (
     CustomActionRequest,
     CustomActionResponse,
@@ -45,8 +47,8 @@ class GRPCRelayServicer(GRPCCommunicatorServicer):
         max_message_size: int = 2 * 1024 * 1024,
         wait_timeout: float = 3600.0,
         history: int = 2,
-        expected_nodes: Optional[int] = None,
-        logger: Optional[Any] = None,
+        expected_nodes: int | None = None,
+        logger: Any | None = None,
     ):
         self.max_message_size = max_message_size
         self.wait_timeout = wait_timeout
@@ -198,8 +200,8 @@ def serve_relay(
     servicer: GRPCRelayServicer,
     server_uri: str,
     use_ssl: bool = False,
-    server_certificate: Optional[str] = None,
-    server_certificate_key: Optional[str] = None,
+    server_certificate: str | None = None,
+    server_certificate_key: str | None = None,
     max_workers: int = 64,
     poll_seconds: float = 5.0,
     max_receive_message_size: int = MAX_RECEIVE_MESSAGE_BYTES,

@@ -10,8 +10,9 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from omegaconf import Container, DictConfig, OmegaConf
 

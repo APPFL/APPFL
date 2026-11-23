@@ -1,12 +1,13 @@
 import abc
 import copy
 import math
+import threading
 import time
 import uuid
-import threading
+from collections import OrderedDict
 from logging import Logger
 from typing import Any
-from collections import OrderedDict
+
 from appfl.misc.deprecation import deprecated
 
 

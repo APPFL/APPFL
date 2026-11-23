@@ -7,7 +7,6 @@ event-handling methods specific to their scheduling model.
 
 import heapq
 import random
-from typing import Dict, List, Optional
 
 from .logger import ensure_table_logger
 
@@ -23,11 +22,11 @@ class BaseSimDriver:
     def __init__(
         self,
         server_agent,
-        client_agents: List,
-        profiles: Dict,
+        client_agents: list,
+        profiles: dict,
         logger,
         seed: int = 42,
-        base_step_time: Optional[float] = None,
+        base_step_time: float | None = None,
         eval_every: int = 0,
         compression_ratio: float = 1.0,
     ):
@@ -66,11 +65,11 @@ class BaseSimDriver:
         self.eval_every = int(eval_every) if eval_every else 0
 
         self.virtual_time = 0.0
-        self.queue: List = []
+        self.queue: list = []
         self._seq = 0
         self.active = set()
-        self._pending: Dict = {}
-        self.history: List[Dict] = []
+        self._pending: dict = {}
+        self.history: list[dict] = []
 
         self._max_active = 0
         self._mono_violations = 0
@@ -152,7 +151,7 @@ class BaseSimDriver:
         return {k: v.cpu() if hasattr(v, "cpu") else v for k, v in local_model.items()}
 
     def _client_duration(
-        self, cid: str, profile, meta: Dict, upload_bytes: Optional[float] = None
+        self, cid: str, profile, meta: dict, upload_bytes: float | None = None
     ):
         """
         Derive a client's virtual duration from its training metadata.

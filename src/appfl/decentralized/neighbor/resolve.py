@@ -7,11 +7,11 @@ See the package docstring for what each is for.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from appfl.decentralized.neighbor.base import Neighbors
 from appfl.decentralized.topology import Topology, build_topology
-
 
 #: Derive this node's neighbors from a named graph over generated node ids. Simulation only.
 FROM_TOPOLOGY = "from_topo"

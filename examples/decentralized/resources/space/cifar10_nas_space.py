@@ -24,7 +24,7 @@ uniform draw, which is exactly what the reference does: ``CIFARAgent.select`` sc
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 

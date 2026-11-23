@@ -14,7 +14,7 @@ would quietly change how much the peer terms count.
 from __future__ import annotations
 
 import warnings
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 from sklearn.exceptions import ConvergenceWarning

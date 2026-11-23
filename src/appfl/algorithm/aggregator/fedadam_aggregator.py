@@ -1,9 +1,12 @@
 import gc
+from collections import OrderedDict
+from typing import Any
+
 import torch
 from omegaconf import DictConfig
+
 from appfl.algorithm.aggregator import FedAvgAggregator
-from typing import Union, Dict, OrderedDict, Any, Optional
-from appfl.misc.memory_utils import safe_inplace_operation, optimize_memory_cleanup
+from appfl.misc.memory_utils import optimize_memory_cleanup, safe_inplace_operation
 
 
 class FedAdamAggregator(FedAvgAggregator):
@@ -21,17 +24,15 @@ class FedAdamAggregator(FedAvgAggregator):
 
     def __init__(
         self,
-        model: Optional[torch.nn.Module] = None,
+        model: torch.nn.Module | None = None,
         aggregator_configs: DictConfig = DictConfig({}),
-        logger: Optional[Any] = None,
+        logger: Any | None = None,
     ):
         super().__init__(model, aggregator_configs, logger)
         self.m_vector = {}
         self.v_vector = {}
 
-    def compute_steps(
-        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]
-    ):
+    def compute_steps(self, local_models: dict[str | int, dict | OrderedDict]):
         """
         Compute the changes to the global model after the aggregation.
         """

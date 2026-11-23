@@ -1,8 +1,9 @@
 import importlib
 import threading
+from collections import OrderedDict
 from collections import OrderedDict as OrderedDictType
 from concurrent.futures import Future
-from typing import Any, Dict, List, Optional, OrderedDict, Union
+from typing import Any
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -52,8 +53,8 @@ class DFLNodeAgent(ClientAgent):
 
     def __init__(
         self,
-        dfl_node_agent_config: Optional[DictConfig] = None,
-        neighbors: Optional[Neighbors] = None,
+        dfl_node_agent_config: DictConfig | None = None,
+        neighbors: Neighbors | None = None,
         **kwargs,
     ) -> None:
         if dfl_node_agent_config is None:
@@ -81,8 +82,8 @@ class DFLNodeAgent(ClientAgent):
         self._load_aggregator()
 
         self._round = -1  # no round has been published yet
-        self._published: "OrderedDictType[int, Any]" = OrderedDictType()
-        self._pending: Dict[int, List[Future]] = {}
+        self._published: OrderedDictType[int, Any] = OrderedDictType()
+        self._pending: dict[int, list[Future]] = {}
         self._model_params_lock = threading.Lock()
 
         self._closed_neighbors = set()
@@ -119,7 +120,7 @@ class DFLNodeAgent(ClientAgent):
         super().train(**kwargs)
         self.publish_parameters()
 
-    def publish_parameters(self, round_id: Optional[int] = None) -> None:
+    def publish_parameters(self, round_id: int | None = None) -> None:
         """Make this round's payload available to neighbors as round ``round_id``.
 
         The round tagging, the two-round retention and the futures are the same whatever is
@@ -156,11 +157,11 @@ class DFLNodeAgent(ClientAgent):
 
     def get_parameters(
         self,
-        round_id: Optional[int] = None,
+        round_id: int | None = None,
         blocking: bool = True,
-        requester_id: Optional[Union[str, int]] = None,
+        requester_id: str | int | None = None,
         **kwargs,
-    ) -> Union[Dict, OrderedDict, Future]:
+    ) -> dict | OrderedDict | Future:
         """Return this node's local model parameters for a given round.
 
         :param round_id: which round's model is wanted. `None` means "whatever is current",
@@ -185,7 +186,7 @@ class DFLNodeAgent(ClientAgent):
         with self._model_params_lock:
             wanted = round_id
             if wanted is None:
-                wanted = self._round if self._round >= 0 else 0
+                wanted = max(self._round, 0)
 
             if wanted in self._published:
                 return self._published[wanted]
@@ -205,11 +206,9 @@ class DFLNodeAgent(ClientAgent):
 
     def aggregate_parameters(
         self,
-        neighbor_models: Union[
-            Dict[str, Union[Dict, OrderedDict]], List[Union[Dict, OrderedDict]]
-        ],
+        neighbor_models: dict[str, dict | OrderedDict] | list[dict | OrderedDict],
         **kwargs,
-    ) -> Union[Dict, OrderedDict]:
+    ) -> dict | OrderedDict:
         """Mix this node's model with its neighbors' and load the result into the trainer.
 
         This is the step a centralized run performs on the server. Here it happens on every
@@ -230,7 +229,7 @@ class DFLNodeAgent(ClientAgent):
             self.trainer.load_parameters(new_model)
         return new_model
 
-    def _mixing_weights(self, neighbor_models) -> Optional[Dict[str, float]]:
+    def _mixing_weights(self, neighbor_models) -> dict[str, float] | None:
         """``pi_ij`` for this node and each neighbor, or `None` to let the aggregator average.
 
         Available whenever the neighbor models are keyed by node id. On a regular graph the
@@ -244,7 +243,7 @@ class DFLNodeAgent(ClientAgent):
 
     # -- connection bookkeeping --------------------------------------------------------
 
-    def close_connection(self, neighbor_id: Union[str, int]) -> None:
+    def close_connection(self, neighbor_id: str | int) -> None:
         """Record that ``neighbor_id`` is finished and will not request anything further."""
         with self._close_connection_lock:
             self._closed_neighbors.add(str(neighbor_id))
@@ -282,7 +281,7 @@ class DFLNodeAgent(ClientAgent):
         """Instantiate the aggregator named in the config, the way the server agent does."""
         aggregator_name = self.dfl_node_agent_config.get("aggregator", None)
         if aggregator_name is None:
-            self.aggregator: Optional[BaseAggregator] = None
+            self.aggregator: BaseAggregator | None = None
             return
         aggregator_module = importlib.import_module("appfl.algorithm.aggregator")
         if not hasattr(aggregator_module, aggregator_name):
@@ -293,7 +292,7 @@ class DFLNodeAgent(ClientAgent):
             self.logger,
         )
 
-    def _resolve_num_neighbors(self) -> Optional[int]:
+    def _resolve_num_neighbors(self) -> int | None:
         """How many peers will pull from this node, so it knows when it may stop serving.
 
         That is `send_to`, not `recv_from`: the nodes this one *serves* are the ones whose

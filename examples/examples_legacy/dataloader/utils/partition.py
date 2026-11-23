@@ -1,7 +1,9 @@
-import torch
 import numpy as np
-from .plot import plot_distribution
+import torch
+
 from appfl.misc.data import Dataset
+
+from .plot import plot_distribution
 
 
 def iid_partition(train_data_raw, num_clients, visualization, output=None):

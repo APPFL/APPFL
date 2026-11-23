@@ -3,19 +3,20 @@ To run MPI with 2 clients:
 python ./cifar10_serial.py --num_clients 2 --partition iid --loss_fn losses/celoss.py --loss_fn_name CELoss --num_epochs 10 --train_data_batch_size 8
 """
 
-import time
-import torch
 import argparse
-import appfl.run_serial as rs
-from omegaconf import OmegaConf
-from appfl.config import Config
-from appfl.misc.utils import set_seed
-from appfl.misc.data import data_sanity_check
-from models.utils import get_model
+import time
+
+import torch
+from dataloader.cifar10_dataloader import get_cifar10
 from losses.utils import get_loss
 from metric.utils import get_metric
-from dataloader.cifar10_dataloader import get_cifar10
+from models.utils import get_model
+from omegaconf import OmegaConf
 
+import appfl.run_serial as rs
+from appfl.config import Config
+from appfl.misc.data import data_sanity_check
+from appfl.misc.utils import set_seed
 
 ## read arguments
 parser = argparse.ArgumentParser()

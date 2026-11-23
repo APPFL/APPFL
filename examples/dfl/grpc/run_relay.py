@@ -12,7 +12,9 @@ never involve this process, so a federation can mix both kinds freely.
 
 import argparse
 import logging
+
 from omegaconf import OmegaConf
+
 from appfl.comm.grpc import GRPCRelayServicer, serve_relay
 
 argparser = argparse.ArgumentParser()

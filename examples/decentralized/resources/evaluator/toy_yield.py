@@ -8,7 +8,7 @@ apparatus; here all four happen to call the same closed form.
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 #: ADKO's tau and the advantage-score normalizer, on the 0-100 yield scale.
 THRESHOLD = 50.0

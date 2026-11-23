@@ -20,7 +20,6 @@ in early rounds or flat histories.
 
 from __future__ import annotations
 
-
 from appfl.decentralized.algorithm.adko.baseline.base_baseline import BaseBaseline
 from appfl.decentralized.algorithm.adko.baseline.running_median_baseline import median
 
@@ -63,8 +62,7 @@ class MaxDeviationBaseline(BaseBaseline):
         if self.mode == "per_obs":
             b = self._baseline()
             dev = abs(observation - b)
-            if dev > self._running_max:
-                self._running_max = dev
+            self._running_max = max(self._running_max, dev)
 
     def current(self) -> tuple[float, float]:
         """

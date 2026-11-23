@@ -1,7 +1,8 @@
 import inspect
+
+from globus_compute_sdk import Client
 from globus_sdk import AccessTokenAuthorizer
 from globus_sdk.scopes import AuthScopes, ComputeScopes
-from globus_compute_sdk import Client
 
 
 def create_token_client(

@@ -8,8 +8,8 @@ def client_validate_data(cfg, client_idx, mode="train"):
     client_validate_data:
         Validate the dataloader provided by the clients, and return the statistics of the dataset of different `mode` (train, val, test).
     """
-    from appfl.comm.utils.client_utils import get_dataset
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
+    from appfl.comm.utils.client_utils import get_dataset
 
     modes = [mode] if type(mode) is str else mode
     client_logger = GlobusComputeClientLogger()
@@ -49,17 +49,18 @@ def client_training(
     """
     import importlib
     import os.path as osp
-    from appfl.misc.utils import client_log
-    from appfl.comm.utils.utils import get_dataloader
+
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
     from appfl.comm.utils.client_utils import (
         get_dataset,
-        get_model,
         get_loss,
+        get_model,
         get_val_metric,
         load_global_state,
         send_client_state,
     )
+    from appfl.comm.utils.utils import get_dataloader
+    from appfl.misc.utils import client_log
 
     ## Create logger
     cli_logger = GlobusComputeClientLogger()
@@ -145,16 +146,17 @@ def client_testing(cfg, client_idx, weights, global_state):
     """
     import importlib
     import os.path as osp
-    from appfl.misc.utils import client_log
-    from appfl.comm.utils.utils import get_dataloader
+
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
     from appfl.comm.utils.client_utils import (
         get_dataset,
-        load_global_state,
-        get_model,
         get_loss,
+        get_model,
         get_val_metric,
+        load_global_state,
     )
+    from appfl.comm.utils.utils import get_dataloader
+    from appfl.misc.utils import client_log
 
     ## Create logger
     cli_logger = GlobusComputeClientLogger()
@@ -233,6 +235,7 @@ def client_model_saving(cfg, client_idx, global_state):
         - global_state: state dictionary for the global model
     """
     import os.path as osp
+
     from appfl.comm.globus_compute.utils.logging import GlobusComputeClientLogger
     from appfl.comm.utils.client_utils import save_global_model
 

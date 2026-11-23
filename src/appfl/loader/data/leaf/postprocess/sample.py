@@ -1,7 +1,6 @@
-import os
 import json
+import os
 import random
-
 from collections import OrderedDict
 
 
@@ -52,7 +51,7 @@ def sample_clients(dataset_name, root, seed, used_raw_data_fraction):
 
             if (ctot_num_samples + cnum_samples) > num_new_samples:
                 cnum_samples = num_new_samples - ctot_num_samples
-                indices = [i for i in range(cnum_samples)]
+                indices = [*range(cnum_samples)]
                 new_indices = rng.sample(indices, cnum_samples)
                 x, y = [], []
                 for i in new_indices:

@@ -1,15 +1,16 @@
 import abc
-from typing import Dict, Iterable, Union, OrderedDict, Tuple
+from collections import OrderedDict
+from collections.abc import Iterable
 
 
 class BaseAggregator:
-    def set_client_sample_size(self, client_id: Union[str, int], sample_size: int):
+    def set_client_sample_size(self, client_id: str | int, sample_size: int):
         """Set the sample size of a client"""
         if not hasattr(self, "client_sample_size"):
             self.client_sample_size = {}
         self.client_sample_size[client_id] = sample_size
 
-    def _warn_missing_sample_sizes(self, client_ids: Iterable[Union[str, int]]) -> None:
+    def _warn_missing_sample_sizes(self, client_ids: Iterable[str | int]) -> None:
         """
         Warn once per aggregator if `client_weights_mode` is "sample_size" but some of
         `client_ids` have no registered sample size. FedAvg-based aggregators then
@@ -46,15 +47,13 @@ class BaseAggregator:
     @abc.abstractmethod
     def aggregate(
         self, *args, **kwargs
-    ) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """
         Aggregate local model(s) from clients and return the global model
         """
-        pass
 
     @abc.abstractmethod
     def get_parameters(
         self, **kwargs
-    ) -> Union[Dict, OrderedDict, Tuple[Union[Dict, OrderedDict], Dict]]:
+    ) -> dict | OrderedDict | tuple[dict | OrderedDict, dict]:
         """Return global model parameters"""
-        pass

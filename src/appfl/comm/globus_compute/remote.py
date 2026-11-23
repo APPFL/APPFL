@@ -1,18 +1,21 @@
 import atexit
-import threading
 import concurrent.futures
-from typing import Any, Callable, Dict, Optional, Tuple
+import threading
+from collections.abc import Callable
+from typing import Any
+
 from globus_compute_sdk import Client, Executor
 from globus_compute_sdk.serialize import CombinedCode
+
 from appfl.comm.globus_compute.utils.client import create_token_client
 
-_clients: Dict[Tuple[Optional[str], Optional[str]], Client] = {}
+_clients: dict[tuple[str | None, str | None], Client] = {}
 _clients_lock = threading.Lock()
 
 
 def get_compute_client(
-    compute_token: Optional[str] = None,
-    openid_token: Optional[str] = None,
+    compute_token: str | None = None,
+    openid_token: str | None = None,
 ) -> Client:
     """
     Return a Globus Compute client, cached per process and per token pair, so that
@@ -65,12 +68,12 @@ class GlobusComputeRemote:
     def __init__(
         self,
         endpoint_id: str,
-        timeout: Optional[float] = None,
-        compute_token: Optional[str] = None,
-        openid_token: Optional[str] = None,
-        user_endpoint_config: Optional[Dict[str, Any]] = None,
-        resource_specification: Optional[Dict[str, Any]] = None,
-        executor: Optional[concurrent.futures.Executor] = None,
+        timeout: float | None = None,
+        compute_token: str | None = None,
+        openid_token: str | None = None,
+        user_endpoint_config: dict[str, Any] | None = None,
+        resource_specification: dict[str, Any] | None = None,
+        executor: concurrent.futures.Executor | None = None,
     ):
         if timeout is not None and timeout <= 0:
             raise ValueError(f"timeout must be positive, got {timeout}.")

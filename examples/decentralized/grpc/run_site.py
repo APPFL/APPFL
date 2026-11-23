@@ -25,9 +25,11 @@ deployed site names its neighbors and never holds a roster, which is exactly wha
 distinguishes this from the simulation launchers.
 """
 
-import sys
 import argparse
+import sys
+
 from omegaconf import OmegaConf
+
 from appfl.agent import DeOptNodeAgent
 from appfl.comm.grpc import GRPCPeerCommunicator
 from appfl.decentralized.algorithm.adko import create_agent
@@ -37,8 +39,8 @@ from appfl.decentralized.neighbor import resolve_neighbors
 
 sys.path.insert(0, "./decentralized/resources")
 
-from llm_cli import add_llm_arguments, llm_config_from_args  # noqa: E402
-from reporting import describe_slice, format_point, print_totals  # noqa: E402
+from llm_cli import add_llm_arguments, llm_config_from_args
+from reporting import describe_slice, format_point, print_totals
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument(

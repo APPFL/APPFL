@@ -18,7 +18,7 @@ Usage in server data_readiness_configs:
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from appfl.misc.data_readiness import BaseCADREModule
 
@@ -40,10 +40,10 @@ class CADREModuleDRISEE(BaseCADREModule):
         aidrin_csv: str = "",
         fasta_dir: str = "",
         drisee_threshold: float = 20.0,
-        max_files: Optional[int] = None,
-        current_exclude: Optional[List[str]] = None,
+        max_files: int | None = None,
+        current_exclude: list[str] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         from aidrin_checker import check_site_data
 
         if not aidrin_csv or not fasta_dir:
@@ -64,11 +64,11 @@ class CADREModuleDRISEE(BaseCADREModule):
             "drisee_threshold": drisee_threshold,
         }
 
-    def rule(self, metric_result: Dict[str, Any], **kwargs) -> bool:
+    def rule(self, metric_result: dict[str, Any], **kwargs) -> bool:
         """True when any contamination was found."""
         return metric_result.get("n_contaminated", 0) > 0
 
-    def remedy(self, metric_result: Dict[str, Any], logger, **kwargs) -> Dict[str, Any]:
+    def remedy(self, metric_result: dict[str, Any], logger, **kwargs) -> dict[str, Any]:
         """No active remedy — contaminated files are excluded by the trainer."""
         if self.rule(metric_result) and logger:
             logger.info(

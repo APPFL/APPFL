@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 from appfl.decentralized.topology.base import Topology
 

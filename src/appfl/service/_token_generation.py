@@ -1,8 +1,10 @@
 import argparse
 import platform
+
+from globus_compute_sdk import Executor
 from globus_sdk import NativeAppAuthClient
 from globus_sdk.scopes import AuthScopes, ComputeScopes
-from globus_compute_sdk import Executor
+
 from appfl.comm.globus_compute.utils.client import create_token_client
 
 argparser = argparse.ArgumentParser()

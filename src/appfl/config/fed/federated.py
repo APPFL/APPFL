@@ -23,6 +23,7 @@ See the following paper for more details on the above global update techniques:
 """
 
 from dataclasses import dataclass, field
+
 from omegaconf import DictConfig, OmegaConf
 
 

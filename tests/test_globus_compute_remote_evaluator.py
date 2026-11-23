@@ -16,7 +16,6 @@ from appfl.comm.globus_compute.remote_evaluator import (
 )
 from appfl.decentralized.metrics import Meter
 
-
 _ENDPOINT_ID = "00000000-0000-0000-0000-000000000000"
 
 _EVALUATOR_SOURCE = """

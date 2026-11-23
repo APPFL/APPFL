@@ -7,9 +7,9 @@ Channels: 128 -> 256 -> 512
 Uses 3x3 shortcut convolutions (matching the paper exactly).
 """
 
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.nn.init as init
+from torch import nn
+from torch.nn import init
 
 
 def _weights_init(m):

@@ -4,15 +4,17 @@ Memory profiling wrapper for gRPC client using memray
 """
 
 import argparse
-import sys
 import os
-import memray
+import sys
 from pathlib import Path
+
+import memray
 
 # Add parent directories to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from omegaconf import OmegaConf
+
 from appfl.agent import ClientAgent
 from appfl.comm.grpc import GRPCClientCommunicator
 

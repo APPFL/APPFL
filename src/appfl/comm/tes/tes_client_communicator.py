@@ -1,10 +1,11 @@
+import argparse
 import json
 import os
 import pickle
-import argparse
 import tempfile
+from typing import Any
+
 from omegaconf import OmegaConf
-from typing import Dict, Any, Optional, Tuple
 
 
 def _mkstemp_path(suffix: str) -> str:
@@ -47,7 +48,7 @@ class TESClientCommunicator:
         except Exception as e:
             raise RuntimeError(f"Failed to load model from {model_path}: {e}")
 
-    def load_metadata_from_path(self, metadata_path: str) -> Dict:
+    def load_metadata_from_path(self, metadata_path: str) -> dict:
         """Load metadata from JSON file path."""
         if not metadata_path:
             return {}
@@ -66,7 +67,7 @@ class TESClientCommunicator:
         except Exception as e:
             raise RuntimeError(f"Failed to save model to {output_path}: {e}")
 
-    def save_logs_to_path(self, logs: Dict, logs_path: str):
+    def save_logs_to_path(self, logs: dict, logs_path: str):
         """Save training logs to JSON file path."""
         try:
             with _safe_open_for_write(logs_path, binary=False) as f:
@@ -74,13 +75,14 @@ class TESClientCommunicator:
         except Exception as e:
             raise RuntimeError(f"Failed to save logs to {logs_path}: {e}")
 
-    def upload_results_to_s3(self, model: Any, logs: Dict, s3_upload_info: Dict):
+    def upload_results_to_s3(self, model: Any, logs: dict, s3_upload_info: dict):
         """Upload results directly to S3 using presigned URLs."""
         try:
-            import requests
-            import tempfile
-            import torch
             import os
+            import tempfile
+
+            import requests
+            import torch
 
             # Extract presigned URLs
             model_upload_url = s3_upload_info["model_upload_url"]
@@ -125,9 +127,9 @@ class TESClientCommunicator:
         task_name: str,
         model_path: str = None,
         metadata_path: str = None,
-        output_path: Optional[str] = None,
-        logs_path: Optional[str] = None,
-    ) -> Tuple[str, str]:
+        output_path: str | None = None,
+        logs_path: str | None = None,
+    ) -> tuple[str, str]:
         """
         Execute a federated learning task within the TES container.
 
@@ -151,9 +153,10 @@ class TESClientCommunicator:
 
         try:
             import time
+
             from appfl.comm.utils.executor import (
-                get_sample_size_executor,
                 data_readiness_report_executor,
+                get_sample_size_executor,
                 train_executor,
             )
 

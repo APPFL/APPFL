@@ -1,6 +1,5 @@
 import torch
 from opacus import PrivacyEngine
-from typing import Tuple
 
 
 def make_private_with_opacus(
@@ -11,7 +10,7 @@ def make_private_with_opacus(
     noise_multiplier: float = 1.0,
     max_grad_norm: float = 1.0,
     device: str = "cpu",
-) -> Tuple[
+) -> tuple[
     torch.nn.Module, torch.optim.Optimizer, torch.utils.data.DataLoader, PrivacyEngine
 ]:
     """

@@ -1,11 +1,12 @@
 import abc
 import copy
-import torch
-import numpy as np
-import torch.nn as nn
-from omegaconf import DictConfig
 from collections import OrderedDict
-from typing import Dict, Any, Optional
+from typing import Any
+
+import numpy as np
+import torch
+from omegaconf import DictConfig
+from torch import nn
 from torch.utils.data import DataLoader
 
 
@@ -180,13 +181,13 @@ class PPFLClient:
     def __init__(
         self,
         id: int,
-        weight: Dict,
+        weight: dict,
         model: nn.Module,
         loss_fn: nn.Module,
         dataloader: DataLoader,
         cfg: DictConfig,
         outfile: str,
-        test_dataloader: Optional[DataLoader] = None,
+        test_dataloader: DataLoader | None = None,
         metric: Any = None,
     ):
         self.round = 0
@@ -208,7 +209,6 @@ class PPFLClient:
     @abc.abstractmethod
     def update(self):
         """Update local model parameters"""
-        pass
 
     def get_model(self):
         return self.model.state_dict()
