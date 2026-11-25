@@ -31,6 +31,17 @@ All commands are run from `examples`. **Which launcher you run decides the trans
 
 `toy1d` is the default everywhere, because it runs in seconds and is what the cross-transport equivalence below is measured on. The next three sections apply unchanged to `suzuki` — pass its config instead.
 
+
+A third experiment, `cifar10`, reproduces the ADKO paper's CIFAR-10 architecture search:
+
+| | `cifar10` |
+| --- | --- |
+| what it is | the CIFAR-10 architecture search study from the ADKO paper |
+| a design point | seven floats in `[0, 1]` — a ResNet and its training recipe |
+| the oracle | training that ResNet on the agent's own CIFAR-10 shard |
+| extra dependencies | none beyond APPFL's `examples` extra; a GPU in practice |
+| what it is for | reproducing a published result |
+
 ## Simulation: one file describes every node
 
 `neighbors.mode: from_topo`. A launcher that owns the whole federation derives the graph and assigns matching node ids, so nodes 1..n-1 come from node 0's config.
@@ -79,6 +90,47 @@ In `resources/configs/toy1d/relay/`, sites 0 and 1 serve and sites 2 and 3 are r
 
 The relay stops once every site it has heard from has finished, counting a site from its first publish *or* its first collect. Ctrl-C stops it at any point.
 
+## Evaluating on Globus Compute
+
+A site can run its oracle on a [Globus Compute](https://globus-compute.readthedocs.io) endpoint — an HPC allocation or a GPU box — while the site itself keeps proposing, exchanging tokens and observing where it runs. A `remote` block under `evaluator_configs` takes the place of the local `evaluator_path`, `evaluator_name` and `evaluator_kwargs`:
+
+```yaml
+evaluator_configs:
+  remote:
+    backend: "globus_compute"
+    endpoint_id: "<endpoint uuid>"
+    timeout: 300                                # seconds per evaluation; the run fails past it
+    evaluator_path: "/abs/path/on/endpoint.py"  # required: the evaluator file on the endpoint
+    evaluator_name: "get_evaluator"             # default: the last function in that file
+    evaluator_kwargs: {}                        # default: {}
+    compute_token_env: "APPFL_GC_COMPUTE_TOKEN"
+    openid_token_env: "APPFL_GC_OPENID_TOKEN"
+```
+
+The `remote` block is self-contained and names the evaluator as the endpoint sees it; any local `evaluator_path`, `evaluator_name` or `evaluator_kwargs` beside it is ignored, so leave them out.
+
+The endpoint's Python environment needs this repository's `appfl` installed (`pip install -e .`) plus whatever the evaluator imports, because only the evaluator's path, kwargs and the design point are sent; the evaluator is built on the endpoint once per worker process and reused.
+
+`compute_token_env` and `openid_token_env` name the environment variables holding the two Globus access tokens, so a site runs unattended and no token is written into a config. Omit both to use the SDK's own login instead: a cached `globus-compute` login, or a confidential client from `GLOBUS_COMPUTE_CLIENT_ID` and `GLOBUS_COMPUTE_CLIENT_SECRET`.
+
+`resources/configs/toy1d/globus_compute/` is the four-site gRPC example with every site evaluating on one shared endpoint:
+
+```bash
+export APPFL_GC_COMPUTE_TOKEN=... APPFL_GC_OPENID_TOKEN=...
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_0.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_1.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_2.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/toy1d/globus_compute/node_3.yaml
+```
+
+It should find the same points as `toy1d/distributed`: evaluation is deterministic, so moving it changes where it runs, not what it returns. The report's `remote overhead` line is the wall time of remote calls not spent evaluating — queueing, transfer, dispatch.
+
+For a GPU workload on an HPC endpoint, with a working Polaris endpoint configuration, see [Training on a GPU endpoint](#training-on-a-gpu-endpoint-three-sites-polaris).
+
+Errors are not retried or substituted: a remote exception is raised in the site, and an evaluation that takes longer than `timeout` — an offline endpoint queues tasks indefinitely — stops the site with a `TimeoutError`.
+
+The agent calls its evaluator as `evaluator(point, agent_id=..., round_idx=..., eval_idx=...)`, where `eval_idx` counts that agent's evaluations from 0 and `round_idx` runs ahead of it whenever a round ends without evaluating. An evaluator receives the context keys it names as parameters — `f(point, eval_idx)` gets `eval_idx` — or all of them if it takes `**kwargs`, locally or on an endpoint; a plain `f(point)` gets only the point. `cifar10_nas.py` seeds from `eval_idx`, so the k-th training run is the same locally and remotely even though an endpoint worker serves several agents.
+
 ## The Suzuki–Miyaura study
 
 Four laboratories optimizing a Suzuki–Miyaura coupling over 3,696 measured reactions, trading one knowledge token per neighbour per round — the experiment from the ADKO paper's `scientific_discovery` study. Hyperparameters follow its LM-free arm (`b2 l4 g32 s0p5 t50 tb40 a0p01`), and the oracle is the real `suzuki_edbo` yield table rather than a synthetic objective, so a run is a reproduction rather than a demonstration.
@@ -125,6 +177,132 @@ python decentralized/grpc/run_site.py --config ./decentralized/resources/configs
 
 A lab that cannot accept inbound connections publishes through `run_relay.py` exactly as in the mixed toy example — point its `grpc_configs` at the relay instead of giving it a `server_uri`, and its peers' `recv_from` entries at the relay for it. Nothing about the experiment changes.
 
+## The CIFAR-10 architecture search
+
+Five agents searching a ResNet design space for CIFAR-10, each training candidates on its own data shard and trading one knowledge token per neighbour per round — the experiment from the ADKO paper's `cifar10` study. Hyperparameters follow its stored run configs (`cifar10/results/{noniid,iid}/config.json`: T=30, B=40, β=2, λ=2, σ_s=0.5, α_τ=0.05, 50 candidates per round), and the oracle is real training rather than a lookup, so a run is a reproduction rather than a demonstration.
+
+A design point θ ∈ `[0, 1]^7` decodes to a CIFAR-adapted ResNet — base width, blocks per group — and its training recipe — learning rate, weight decay, dropout, batch size, cosine schedule. Evaluating it trains that network from scratch for 40 epochs with Adam on the agent's 8,000 training images and returns accuracy on its 2,000 validation images. Every agent searches the same space; what each one owns is its data, so the split lives in `resources/evaluator/cifar10_nas.py` rather than in the space — the reverse of Suzuki.
+
+Nothing beyond APPFL's own install is needed: torch, scikit-learn and OmegaConf are core dependencies, torchvision comes with the `examples` extra. CIFAR-10 is downloaded by torchvision into `datasets/RawData` on first use. On a cluster whose compute nodes are offline, fetch it once from a login node:
+
+```bash
+python -c "import torchvision; torchvision.datasets.CIFAR10('./datasets/RawData', train=True, download=True)"
+```
+
+Two arms, separated by `evaluator_kwargs.distribution`:
+
+- **non-IID** (`distribution: non_iid`) — each agent's shard is 80% its own block of `10 / num_agents` classes and 20% the rest, and the shards are disjoint. A neighbour's token is then evidence about data the agent never sees. This is the arm the study's claim rests on, with τ=0.7 and γ=32 on a fully connected graph. The class split needs a federation size that divides 10 and fits the shard size, so 2 or 5 agents.
+- **IID** (`distribution: iid`) — every agent draws an independent uniform sample. The control arm; the reference runs it with τ=0.5, γ=64, on a random geometric graph of radius 0.6.
+
+```bash
+# non-IID, in one process and then one agent per rank
+python decentralized/serial/run_serial.py \
+    --config ./decentralized/resources/configs/cifar10/simulation/node_0_noniid.yaml
+mpirun -n 5 python decentralized/mpi/run_mpi.py \
+    --config ./decentralized/resources/configs/cifar10/simulation/node_0_noniid.yaml
+
+# the IID control
+mpirun -n 5 python decentralized/mpi/run_mpi.py \
+    --config ./decentralized/resources/configs/cifar10/simulation/node_0_iid.yaml
+```
+
+Shards are drawn from the training labels with the reference's own random draws, so for the same `seed` each agent trains on exactly the images it does in the reference. The evaluator takes its agent index from `space_kwargs` by interpolation, which is where every launcher writes it. `device: auto` places agent `i` on GPU `i mod (visible GPUs)`, so an MPI run with one GPU per rank uses each rank's own.
+
+Every evaluation is a full training run, so a 30-round run is 150 of them: hours on one GPU, not minutes. The serial launcher trains the five agents one after another; MPI trains them side by side. For a smoke run, set `evaluator_kwargs.n_epochs` to 1 in a copy of the config and pass `--num_rounds 4` — a check of the machinery, not a reproduction.
+
+`evaluator_kwargs.train_seed` seeds every training run from `(train_seed, agent_index, evaluation number)`, so an agent's k-th run starts from the same weights and sees the same batches under every launcher. Set it to `null` to leave torch unseeded.
+
+The non-IID arm also has a deployed form, five sites on a fully connected graph. Each site replays the same global split and keeps its own shard, so `seed`, `num_agents` and the shard settings must match across the five files; only `node_id`, `node_index`, `neighbors`, `space_kwargs.agent_index` and `server_uri` differ:
+
+```bash
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_0.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_1.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_2.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_3.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/distributed/node_4.yaml
+```
+
+A round lasts as long as the slowest site's training run, and a site waits at most an hour for a peer's token, so run these on GPUs.
+
+### Training on a GPU endpoint: three sites, Polaris
+
+`resources/configs/cifar10/globus_compute/` keeps the agents and the token exchange on the sites and sends each training run to a Globus Compute endpoint, as in [Evaluating on Globus Compute](#evaluating-on-globus-compute). Three agents cannot split ten classes evenly, so these run the IID arm. All three point at one endpoint; give each its own `endpoint_id` to put each site's training on a different machine.
+
+```bash
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/globus_compute/node_0.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/globus_compute/node_1.yaml
+python decentralized/grpc/run_site.py --config ./decentralized/resources/configs/cifar10/globus_compute/node_2.yaml
+```
+
+`evaluator_path` and `data_dir` in those files are paths on the endpoint's machine. On ALCF Polaris, set the endpoint up from a login node, in a Python environment that has this repository installed (`pip install -e .`), a CUDA build of torch, and `globus-compute-endpoint` at the same version as the sites' `globus-compute-sdk`:
+
+```bash
+python -c "import torchvision; torchvision.datasets.CIFAR10('<data_dir>', train=True, download=True)"   # compute nodes are offline
+gce configure polaris-gpu
+```
+
+Then replace the generated `~/.globus_compute/polaris-gpu/user_config_template.yaml.j2` with the following. The default template builds a fresh `uv` environment per task, which has neither APPFL nor torch.
+
+```yaml
+idle_heartbeats_soft: 240
+idle_heartbeats_hard: 5760
+
+engine:
+  type: GlobusComputeEngine
+  max_workers_per_node: 4
+  available_accelerators: 4          # one A100 per worker; device "auto" -> cuda:0 in each
+  job_status_kwargs:
+    max_idletime: 3600               # keep an idle PBS job up to an hour instead of 120 s
+
+  address:
+    type: address_by_interface
+    ifname: hsn0
+
+  provider:
+    type: PBSProProvider
+
+    launcher:
+      type: MpiExecLauncher
+      bind_cmd: --cpu-bind
+      overrides: --depth=64 --ppn 1
+
+    account: <PROJECT>
+    queue: debug
+    cpus_per_node: 32
+    select_options: ngpus=4
+    scheduler_options: "#PBS -l filesystems=home:grand:eagle"
+
+    worker_init: |
+      module use /soft/modulefiles
+      module load conda
+      export PATH=<path/to/env>/bin:$PATH
+      export PATH=/opt/cray/pals/1.8/bin:$PATH
+      export TMPDIR=/tmp
+      which python mpiexec
+
+    walltime: 01:00:00
+    nodes_per_block: 1
+    init_blocks: 0
+    min_blocks: 0
+    max_blocks: 1
+```
+
+Each line of `worker_init` fixes a failure seen on Polaris, where a job that cannot start its workers is reported as `Job is marked as MISSING` and the cause is in `~/.globus_compute/polaris-gpu/submit_scripts/*.stderr`:
+
+- the environment goes on `PATH` rather than through `conda activate`, which fails in a batch job with `__conda_exe: command not found`;
+- Cray's `mpiexec` goes in front of it, because an environment with `mpi4py` carries MPICH's own `mpiexec`, which rejects `--cpu-bind`. `which -a mpiexec` on a login node shows the PALS version to use;
+- `TMPDIR=/tmp` replaces PBS's long per-job temporary directory, which overflows the length of the Unix socket the worker pool opens;
+- `which python mpiexec` prints both into the job's `.stdout`, so the next failure shows what ran.
+
+```bash
+gce start polaris-gpu --detach     # the first start prints a login link
+gce list                           # the endpoint id for the three configs
+```
+
+The endpoint loads APPFL once per worker, so after pulling new code run `gce stop polaris-gpu` and start it again. The first evaluation waits for PBS to start a node. `max_idletime` and `idle_heartbeats_soft` keep that node between rounds; without them it is released after two idle minutes and every round queues again. A full run of 30 rounds at 40 epochs per evaluation will not fit the `debug` queue's hour, and an evaluation running when the job's walltime ends fails the site — so set `queue` and `walltime` for the run, and smoke-test first with `num_epochs: 5` and `n_epochs: 10`.
+
+Three things keep a run from matching the reference exactly, all on the algorithm side rather than in these files. The agent keeps its own tokens in memory and weights every source by 1/(|N|+1), where the reference's CIFAR-10 code keeps only neighbours' tokens at 1/|N|. The reference's published runs blur outgoing token locations with Gaussian noise (σ_φ = 0.05); `ADKOAgent` has an `embedding_privatizer` hook for it, but no config reaches it yet, so these configs send locations un-noised. And GPU training is not bit-for-bit repeatable, so two runs of the same seed agree closely rather than exactly.
+
 ## The equivalence this is anchored to
 
 Serial is the control run. The toy 1-D experiment produces the same results under all four paths, and the same results as the original `daisy/prototype` implementation:
@@ -150,10 +328,14 @@ resources/configs/
 │   └── relay/
 │       ├── node_{0..3}.yaml          explicit; sites 0,1 serve, sites 2,3 publish to the relay
 │       └── relay.yaml                the relay's own endpoint and limits
-└── suzuki/
-    ├── simulation/node_0_het.yaml    from_topo; one solvent per agent, exactly four agents
+├── suzuki/
+│   ├── simulation/node_0_het.yaml    from_topo; one solvent per agent, exactly four agents
+│   ├── simulation/node_0_iid.yaml    from_topo; the control arm, at any size
+│   └── distributed/node_{0..3}.yaml  explicit; the HET arm as four deployed labs
+└── cifar10/
+    ├── simulation/node_0_noniid.yaml from_topo; a disjoint class-skewed shard per agent, 2 or 5 agents
     ├── simulation/node_0_iid.yaml    from_topo; the control arm, at any size
-    └── distributed/node_{0..3}.yaml  explicit; the HET arm as four deployed labs
+    └── distributed/node_{0..4}.yaml  explicit; the non-IID arm as five deployed sites
 ```
 
 The algorithm blocks are identical across all of them; only `node_id`, `node_index`, `neighbors` and `comm_configs` differ. `node_index` is a site's position in the federation: it sets the RNG seed offset, and in a heterogeneous experiment it also selects that site's slice of the design space — so the ids are part of the experiment, not labels.
@@ -166,13 +348,16 @@ The algorithm blocks are identical across all of them; only `node_id`, `node_ind
 resources/
 ├── space/                              the agent's slice of the design space -- its "data"
 │   ├── toy1d_space.py                  an interval of the real line
-│   └── suzuki_space.py                 the 3,696-reaction grid, and the solvent split
+│   ├── suzuki_space.py                 the 3,696-reaction grid, and the solvent split
+│   └── cifar10_nas_space.py            [0, 1]^7, decoded to a ResNet and its training recipe
 ├── surrogate/                          the model the agent fits to its own measurements
 │   ├── kernel_surrogate.py             a kernel-weighted estimator
-│   └── categorical_gp_surrogate.py     a BoTorch GP over categorical inputs
+│   ├── categorical_gp_surrogate.py     a BoTorch GP over categorical inputs
+│   └── matern_gp_surrogate.py          a scikit-learn Matern-5/2 GP over continuous inputs
 ├── evaluator/                          the oracle; ADKO Algorithm 1 step 9
 │   ├── toy_yield.py                    a closed-form yield curve
-│   └── suzuki_lookup.py                the measured `suzuki_edbo` yield table
+│   ├── suzuki_lookup.py                the measured `suzuki_edbo` yield table
+│   └── cifar10_nas.py                  train the decoded ResNet on this agent's CIFAR-10 shard
 ├── llm_cli.py                          optional LM flags, shared by every launcher
 └── reporting.py                        the summary block each launcher prints
 ```

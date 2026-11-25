@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" aria-label="One ADKO round on one site: merge and prune tokens, propose a design point, evaluate it on the endpoint, encode the result as a token, and exchange tokens with peers before the next round.">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5A6B70"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Helvetica, Arial, sans-serif; }
+    .mono { font-family: Menlo, Consolas, monospace; }
+  </style>
+  <rect x="0" y="0" width="960" height="320" rx="14" fill="#FFFFFF"/>
+
+  <!-- which APPFL call runs which steps -->
+  <path d="M24 66 V58 H754 V66" fill="none" stroke="#0F6E7E" stroke-width="1.5"/>
+  <text x="389" y="48" font-size="13" fill="#0F6E7E" text-anchor="middle" class="mono">agent.train()  →  ADKOAgent.act(t)</text>
+  <path d="M784 66 V58 H944 V66" fill="none" stroke="#0F6E7E" stroke-width="1.5"/>
+  <text x="864" y="48" font-size="13" fill="#0F6E7E" text-anchor="middle" class="mono">exchange()</text>
+
+  <!-- 1 -->
+  <rect x="20" y="74" width="168" height="150" rx="10" fill="#EDF4F5"/>
+  <circle cx="44" cy="100" r="14" fill="#2E9CA8"/>
+  <text x="44" y="105" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">1</text>
+  <text x="66" y="105" font-size="15" font-weight="bold" fill="#0F6E7E">Merge &amp; prune</text>
+  <text x="34" y="140" font-size="12" fill="#333333">add last round's</text>
+  <text x="34" y="158" font-size="12" fill="#333333">peer tokens; keep the</text>
+  <text x="34" y="176" font-size="12" fill="#333333">best B = 40 by</text>
+  <text x="34" y="194" font-size="12" fill="#333333">fidelity × recency</text>
+
+  <!-- 2 -->
+  <rect x="210" y="74" width="168" height="150" rx="10" fill="#EDF4F5"/>
+  <circle cx="234" cy="100" r="14" fill="#2E9CA8"/>
+  <text x="234" y="105" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">2</text>
+  <text x="256" y="105" font-size="15" font-weight="bold" fill="#0F6E7E">Propose θ</text>
+  <text x="224" y="140" font-size="12" fill="#333333">warmup: uniform draw</text>
+  <text x="224" y="158" font-size="12" fill="#333333">then: score 50 random</text>
+  <text x="224" y="176" font-size="12" fill="#333333">candidates, keep argmax</text>
+  <text x="224" y="198" font-size="13" fill="#0F6E7E" class="mono">μ+βσ+λG−γΛ</text>
+
+  <!-- 3 -->
+  <rect x="400" y="74" width="168" height="150" rx="10" fill="#F9EEEB"/>
+  <circle cx="424" cy="100" r="14" fill="#C4553A"/>
+  <text x="424" y="105" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">3</text>
+  <text x="446" y="105" font-size="15" font-weight="bold" fill="#C4553A">Evaluate</text>
+  <text x="414" y="140" font-size="12" fill="#333333">one Globus Compute</text>
+  <text x="414" y="158" font-size="12" fill="#333333">task: decode θ, train</text>
+  <text x="414" y="176" font-size="12" fill="#333333">the ResNet n_epochs,</text>
+  <text x="414" y="194" font-size="12" fill="#333333">return val. accuracy y</text>
+
+  <!-- 4 -->
+  <rect x="590" y="74" width="168" height="150" rx="10" fill="#EDF4F5"/>
+  <circle cx="614" cy="100" r="14" fill="#2E9CA8"/>
+  <text x="614" y="105" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">4</text>
+  <text x="636" y="105" font-size="15" font-weight="bold" fill="#0F6E7E">Encode token</text>
+  <text x="604" y="140" font-size="12" fill="#333333" class="mono">s = y ≥ τ</text>
+  <text x="604" y="158" font-size="12" fill="#333333" class="mono">c = |y−τ| / scale</text>
+  <text x="604" y="176" font-size="12" fill="#333333" class="mono">φ(θ)</text>
+  <text x="604" y="198" font-size="12" fill="#333333">y and the GP stay local</text>
+
+  <!-- 5 -->
+  <rect x="780" y="74" width="168" height="150" rx="10" fill="#EDF4F5"/>
+  <circle cx="804" cy="100" r="14" fill="#2E9CA8"/>
+  <text x="804" y="105" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">5</text>
+  <text x="826" y="105" font-size="15" font-weight="bold" fill="#0F6E7E">Exchange</text>
+  <text x="794" y="140" font-size="12" fill="#333333">gRPC: publish the</text>
+  <text x="794" y="158" font-size="12" fill="#333333">token for round t,</text>
+  <text x="794" y="176" font-size="12" fill="#333333">collect each peer's,</text>
+  <text x="794" y="194" font-size="12" fill="#333333">stage them (observe)</text>
+
+  <line x1="188" y1="149" x2="208" y2="149" stroke="#5A6B70" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="378" y1="149" x2="398" y2="149" stroke="#5A6B70" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="568" y1="149" x2="588" y2="149" stroke="#5A6B70" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="758" y1="149" x2="778" y2="149" stroke="#5A6B70" stroke-width="2" marker-end="url(#ah)"/>
+
+  <path d="M864 224 V272 H104 V228" fill="none" stroke="#5A6B70" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah)"/>
+  <text x="484" y="296" font-size="12" font-style="italic" fill="#5A6B70" text-anchor="middle">round t + 1 · repeated num_epochs times · the slowest site's training run sets the pace</text>
+</svg>

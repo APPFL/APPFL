@@ -9,6 +9,8 @@ Run from the examples/ directory (relative ./resources paths in the config):
 """
 
 import argparse
+import json
+import os
 import random
 from datetime import datetime
 
@@ -34,8 +36,6 @@ def build_profiles_from_json(client_ids, path):
     :param path: Path to the JSON file.
     :return: Dict mapping client_id to ClientProfile.
     """
-    import json
-
     with open(path) as f:
         entries = json.load(f)
 
@@ -88,6 +88,32 @@ def build_profiles(client_ids, sim_cfg, seed):
             band = 300.0
         profiles[cid] = ClientProfile(compute_factor=cf, bandwidth=band)
     return profiles
+
+
+def save_history(history, path):
+    """
+    Write the driver's history to a JSON file.
+
+    The file holds `driver.history` as is: one record per async completion or
+    sync round. `vsim/plot_timeline.py` draws the timeline of an async run from
+    it.
+
+    :param history: The driver's `history` list.
+    :param path: Output path; missing parent directories are created.
+    """
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w") as f:
+        # Trainer metadata such as `val_accuracy` may hold numpy or torch
+        # scalars, which json cannot encode. Convert them rather than fail at
+        # the end of a long run.
+        json.dump(
+            history,
+            f,
+            indent=2,
+            default=lambda o: o.tolist() if hasattr(o, "tolist") else str(o),
+        )
 
 
 def main():
@@ -172,6 +198,13 @@ def main():
         default="async",
         choices=["async", "sync_count", "sync_window"],
         help="simulation mode: async | sync_count | sync_window",
+    )
+    parser.add_argument(
+        "--save_history",
+        type=str,
+        default=None,
+        help="write driver.history to this JSON file "
+        "(vsim/plot_timeline.py plots async runs from it)",
     )
     args = parser.parse_args()
 
@@ -312,6 +345,9 @@ def main():
         )
 
     driver.run()
+    if args.save_history:
+        save_history(driver.history, args.save_history)
+        logger.info(f"history saved to {args.save_history}")
 
     # ---- summary ----
     if mode == "async":

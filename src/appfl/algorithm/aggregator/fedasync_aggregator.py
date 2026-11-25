@@ -29,6 +29,11 @@ class FedAsyncAggregator(BaseAggregator):
         self.client_weights_mode = aggregator_configs.get(
             "client_weights_mode", "equal"
         )
+        if self.client_weights_mode not in ("equal", "sample_size"):
+            raise ValueError(
+                f"Unsupported client_weights_mode {self.client_weights_mode!r} for "
+                f"{type(self).__name__}, expected 'equal' or 'sample_size'"
+            )
 
         # Check for optimize_memory in aggregator_configs, default to True
         self.optimize_memory = getattr(aggregator_configs, "optimize_memory", True)
@@ -212,10 +217,12 @@ class FedAsyncAggregator(BaseAggregator):
             self._warn_unrecorded_download(client_id)
             self.client_step[client_id] = 0
         gradient_based = self.aggregator_configs.get("gradient_based", False)
+        self._warn_missing_sample_sizes([client_id])
         if (
             self.client_weights_mode == "sample_size"
             and hasattr(self, "client_sample_size")
             and client_id in self.client_sample_size
+            and sum(self.client_sample_size.values()) > 0
         ):
             weight = self.client_sample_size[client_id] / sum(
                 self.client_sample_size.values()
