@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils import data
 from collections.abc import Mapping, Sequence
-from typing import Any, Callable, Hashable, List, Optional
+from typing import Any, Callable, Hashable, Iterable, List, Optional
 from .deprecation import deprecated
 import pandas as pd
 import random
@@ -498,7 +498,13 @@ _process_cache = {}
 _FIGURE_KWARGS = ("visualization", "output_dirname", "output_filename")
 
 
-def cache_per_process(key: Hashable, build: Callable[..., Any], /, **kwargs) -> Any:
+def cache_per_process(
+    key: Hashable,
+    build: Callable[..., Any],
+    ignore: Iterable[str] = (),
+    /,
+    **kwargs,
+) -> Any:
     """
     Return ``build(**kwargs)``, reusing the value of an earlier call in this process
     with the same ``key`` and arguments.
@@ -516,18 +522,28 @@ def cache_per_process(key: Hashable, build: Callable[..., Any], /, **kwargs) -> 
 
     ``visualization``, ``output_dirname`` and ``output_filename`` only control the
     data distribution figure, so they are not compared. A hit that asks for a
-    figure that has not been drawn yet runs ``build`` again to draw it.
+    figure that has not been drawn yet runs ``build`` again to draw it. Name any
+    other arguments that do not change the value, such as a logger or a verbosity
+    flag, in ``ignore``; they are passed to ``build`` but never compared.
 
     Only the latest value is kept for each ``key``: a call with other arguments
-    replaces it, so the cache holds at most one partition of each dataset.
+    replaces it, so the cache holds at most one partition of each dataset. Values
+    stay alive until the process exits; call ``clear_process_cache`` to release
+    them earlier.
 
     :param key: name of the value, e.g. ``"mnist_dataset.train"``
     :param build: function computing the value from ``kwargs``
+    :param ignore: names of further arguments that do not change the value, in
+        addition to the figure arguments above; positional-only, so ``build`` may
+        take an argument named ``ignore``
     :param kwargs: keyword arguments for ``build``; dicts and lists, including
         OmegaConf containers, are compared by value
     :return: the value of ``build(**kwargs)``
     """
-    args = _snapshot({k: v for k, v in kwargs.items() if k not in _FIGURE_KWARGS})
+    if isinstance(ignore, str):
+        ignore = (ignore,)
+    ignored = set(_FIGURE_KWARGS).union(ignore)
+    args = _snapshot({k: v for k, v in kwargs.items() if k not in ignored})
     figure = (
         (kwargs.get("output_dirname"), kwargs.get("output_filename"))
         if kwargs.get("visualization")
@@ -562,6 +578,25 @@ def cache_per_process(key: Hashable, build: Callable[..., Any], /, **kwargs) -> 
     if figure is not None:
         entry["figures"].add(figure)
     return entry["value"]
+
+
+def clear_process_cache(key: Optional[Hashable] = None) -> None:
+    """
+    Release values kept by ``cache_per_process``: the one stored under ``key``, or
+    all of them if ``key`` is None.
+
+    A partition of a large dataset stays in memory for as long as the process
+    lives, which matters in long-lived processes such as a Globus Compute worker or
+    a notebook kernel. Call this once every client in the process has loaded its
+    data. Memory is freed only for the parts nothing else references; each client
+    keeps its own share of the partition.
+
+    :param key: the ``key`` passed to ``cache_per_process``, or None for all keys
+    """
+    if key is None:
+        _process_cache.clear()
+    else:
+        _process_cache.pop(key, None)
 
 
 def _snapshot(value):

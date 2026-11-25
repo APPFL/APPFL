@@ -5,7 +5,30 @@ You can define your own loader files for your custom dataset by following the sa
 
 ## Building the data once per process
 
-`ClientAgent` executes the loader file afresh for every client it creates. Loaders that split one dataset among the clients, such as `mnist_dataset.py` and `cifar10_dataset.py`, therefore build their test set and their partition with `appfl.misc.data.cache_per_process`: the first client created in a process builds them, and later clients in that process reuse them instead of partitioning the whole dataset again. You can do the same in your own loader, as long as the data depends only on the loader's arguments. A loader that draws unseeded random numbers while building the data, like the random crops and flips applied during the partition in `cifar10_dimat.py`, cannot cache that part.
+For `ClientAgent`'s running in a single process, it executes the loader file afresh for every client it creates. Loaders that split one dataset among the clients, such as `mnist_dataset.py` and `cifar10_dataset.py`, therefore build their test set and their partition with `appfl.misc.data.cache_per_process`: the first client created in a process builds them, and later clients in that process reuse them instead of partitioning the whole dataset again. You can do the same in your own loader, as long as the data depends only on the loader's arguments. A loader that draws unseeded random numbers while building the data, like the random crops and flips applied during the partition in `cifar10_dimat.py`, cannot cache that part.
+
+The cache compares every argument except `visualization`, `output_dirname` and `output_filename`, which only control the data distribution figure. If your build function takes other arguments that do not change the data, such as a logger or a verbosity flag, list them as the third argument (`ignore`) so they do not cause a rebuild:
+
+```python
+from appfl.misc.data import cache_per_process
+
+train_datasets = cache_per_process(
+    "my_dataset.train",
+    partition_train_dataset,
+    ignore=("logger", "verbose"),  # passed to partition_train_dataset, never compared
+    num_clients=num_clients,
+    logger=logger,
+    verbose=True,
+)
+```
+
+Cached values stay in memory until the process exits. For a large dataset in a long-lived process, such as a Globus Compute worker or a notebook kernel, release them once every client in the process has loaded its data:
+
+```python
+from appfl.misc.data import clear_process_cache
+
+clear_process_cache("my_dataset.train")  # or clear_process_cache() for every key
+```
 
 ## Download instructions for datasets
 

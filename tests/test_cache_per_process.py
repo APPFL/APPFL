@@ -18,6 +18,7 @@ from torch.utils.data import Dataset
 
 from appfl.misc.data import (
     cache_per_process,
+    clear_process_cache,
     class_noniid_partition,
     dirichlet_noniid_partition,
     iid_partition,
@@ -166,6 +167,81 @@ def test_hit_draws_a_requested_figure_once():
         "figure-draw", build, visualization=True, output_filename="b.pdf", **kwargs
     )
     assert len(build.calls) == 3
+
+
+def test_ignored_arguments_do_not_cause_a_rebuild():
+    # A logger differs per client and cannot be compared, yet changes nothing.
+    build = RecordingBuild()
+    first = cache_per_process(
+        "ignored-args", build, ("logger", "verbose"), num_clients=4, logger=object()
+    )
+    again = cache_per_process(
+        "ignored-args",
+        build,
+        ("logger", "verbose"),
+        num_clients=4,
+        logger=object(),
+        verbose=True,
+    )
+    assert again is first
+    assert len(build.calls) == 1
+    assert "logger" in build.calls[0]  # still passed to the build
+
+
+def test_ignored_arguments_keep_the_figure_arguments_ignored():
+    build = RecordingBuild()
+    first = cache_per_process(
+        "ignored-and-figure", build, ("logger",), num_clients=4, logger=object()
+    )
+    again = cache_per_process(
+        "ignored-and-figure",
+        build,
+        ("logger",),
+        num_clients=4,
+        logger=object(),
+        output_dirname="elsewhere",
+    )
+    assert again is first
+    assert len(build.calls) == 1
+
+
+def test_ignore_given_as_a_string_names_one_argument():
+    # Not split into characters, which would ignore arguments named "l", "o", ...
+    build = RecordingBuild()
+    cache_per_process("ignored-str", build, "logger", num_clients=4, logger=1)
+    cache_per_process("ignored-str", build, "logger", num_clients=4, logger=2)
+    assert len(build.calls) == 1
+
+
+def test_build_arguments_may_be_named_ignore():
+    build = RecordingBuild()
+    cache_per_process("named-ignore", build, (), ignore="x")
+    assert build.calls == [{"ignore": "x"}]
+
+
+def test_clear_process_cache_for_one_key_rebuilds_only_that_key():
+    build_a, build_b = RecordingBuild(), RecordingBuild()
+    cache_per_process("clear-a", build_a, num_clients=4)
+    cache_per_process("clear-b", build_b, num_clients=4)
+
+    clear_process_cache("clear-a")
+    cache_per_process("clear-a", build_a, num_clients=4)
+    cache_per_process("clear-b", build_b, num_clients=4)
+    assert len(build_a.calls) == 2
+    assert len(build_b.calls) == 1
+    clear_process_cache("never-cached")  # an unknown key is not an error
+
+
+def test_clear_process_cache_releases_every_value():
+    class Value:
+        pass
+
+    first = cache_per_process("clear-all", lambda **kwargs: Value(), num_clients=4)
+    first_ref = weakref.ref(first)
+    del first
+    clear_process_cache()
+    gc.collect()
+    assert first_ref() is None
 
 
 def test_changing_arguments_releases_the_previous_value():
