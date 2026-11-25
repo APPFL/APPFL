@@ -2,7 +2,7 @@ import gc
 import torch
 from omegaconf import DictConfig
 from appfl.algorithm.aggregator import FedAvgAggregator
-from typing import Union, Dict, OrderedDict, Any, Optional
+from typing import Any, Optional
 from appfl.misc.memory_utils import safe_inplace_operation, optimize_memory_cleanup
 
 
@@ -25,23 +25,19 @@ class FedAvgMAggregator(FedAvgAggregator):
         super().__init__(model, aggregator_configs, logger)
         self.v_vector = {}
 
-    def compute_steps(
-        self, local_models: Dict[Union[str, int], Union[Dict, OrderedDict]]
-    ):
-        """
-        Compute the changes to the global model after the aggregation.
-        """
-        super().compute_steps(local_models)
+    def _apply_optimizer(self):
+        """Apply the server optimizer to the current full-model or chunk steps."""
 
         # Memory optimization: Initialize vectors efficiently
-        if len(self.v_vector) == 0:
+        uninitialized = [name for name in self.step if name not in self.v_vector]
+        if uninitialized:
             if self.optimize_memory:
                 with torch.no_grad():
-                    for name in self.step:
+                    for name in uninitialized:
                         self.v_vector[name] = torch.zeros_like(self.step[name])
                     gc.collect()
             else:
-                for name in self.step:
+                for name in uninitialized:
                     self.v_vector[name] = torch.zeros_like(self.step[name])
 
         # Memory optimization: Use safe in-place operations
