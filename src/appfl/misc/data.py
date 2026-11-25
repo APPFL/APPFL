@@ -8,7 +8,8 @@ import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils import data
-from typing import List, Optional
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable, Hashable, Iterable, List, Optional
 from .deprecation import deprecated
 import pandas as pd
 import random
@@ -488,6 +489,128 @@ def dirichlet_noniid_partition(
             )
         )
     return train_datasets
+
+
+# Values built by `cache_per_process`, at most one per key
+_process_cache = {}
+
+# Partition arguments that only control the data distribution figure
+_FIGURE_KWARGS = ("visualization", "output_dirname", "output_filename")
+
+
+def cache_per_process(
+    key: Hashable,
+    build: Callable[..., Any],
+    ignore: Iterable[str] = (),
+    /,
+    **kwargs,
+) -> Any:
+    """
+    Return ``build(**kwargs)``, reusing the value of an earlier call in this process
+    with the same ``key`` and arguments.
+
+    The dataset loaders in ``examples/resources/dataset`` are executed afresh for
+    every client (see ``appfl.misc.utils.run_function_from_file``), so a cache of
+    their own would not outlive one client. They use this one to convert their test
+    set and partition their training set once per process instead of once per
+    client. The value is shared, not copied, so callers must not modify it.
+
+    ``build`` must return equal values for equal arguments. The partition functions
+    do: those that draw random numbers reseed NumPy's global RNG first. A hit puts
+    that RNG back in the state ``build`` left it in, so code that draws from it
+    afterwards gets the same numbers as if ``build`` had run again.
+
+    ``visualization``, ``output_dirname`` and ``output_filename`` only control the
+    data distribution figure, so they are not compared. A hit that asks for a
+    figure that has not been drawn yet runs ``build`` again to draw it. Name any
+    other arguments that do not change the value, such as a logger or a verbosity
+    flag, in ``ignore``; they are passed to ``build`` but never compared.
+
+    Only the latest value is kept for each ``key``: a call with other arguments
+    replaces it, so the cache holds at most one partition of each dataset. Values
+    stay alive until the process exits; call ``clear_process_cache`` to release
+    them earlier.
+
+    :param key: name of the value, e.g. ``"mnist_dataset.train"``
+    :param build: function computing the value from ``kwargs``
+    :param ignore: names of further arguments that do not change the value, in
+        addition to the figure arguments above; positional-only, so ``build`` may
+        take an argument named ``ignore``
+    :param kwargs: keyword arguments for ``build``; dicts and lists, including
+        OmegaConf containers, are compared by value
+    :return: the value of ``build(**kwargs)``
+    """
+    if isinstance(ignore, str):
+        ignore = (ignore,)
+    ignored = set(_FIGURE_KWARGS).union(ignore)
+    args = _snapshot({k: v for k, v in kwargs.items() if k not in ignored})
+    figure = (
+        (kwargs.get("output_dirname"), kwargs.get("output_filename"))
+        if kwargs.get("visualization")
+        else None
+    )
+    entry = _process_cache.get(key)
+    try:
+        hit = entry is not None and entry["args"] == args
+    except Exception:  # e.g. arrays, which have no single truth value
+        hit = False
+
+    if hit:
+        if figure is not None and figure not in entry["figures"]:
+            build(**kwargs)  # only to draw the figure; the value is the same
+        if entry["rng_state"] is not None:
+            np.random.set_state(entry["rng_state"])
+    else:
+        # Release the old value before building its replacement
+        _process_cache.pop(key, None)
+        rng_before = np.random.get_state()
+        value = build(**kwargs)
+        rng_after = np.random.get_state()
+        entry = {
+            "args": args,
+            "value": value,
+            "rng_state": (
+                None if _same_rng_state(rng_before, rng_after) else rng_after
+            ),
+            "figures": set(),
+        }
+        _process_cache[key] = entry
+    if figure is not None:
+        entry["figures"].add(figure)
+    return entry["value"]
+
+
+def clear_process_cache(key: Optional[Hashable] = None) -> None:
+    """
+    Release values kept by ``cache_per_process``: the one stored under ``key``, or
+    all of them if ``key`` is None.
+
+    A partition of a large dataset stays in memory for as long as the process
+    lives, which matters in long-lived processes such as a Globus Compute worker or
+    a notebook kernel. Call this once every client in the process has loaded its
+    data. Memory is freed only for the parts nothing else references; each client
+    keeps its own share of the partition.
+
+    :param key: the ``key`` passed to ``cache_per_process``, or None for all keys
+    """
+    if key is None:
+        _process_cache.clear()
+    else:
+        _process_cache.pop(key, None)
+
+
+def _snapshot(value):
+    """Copy dicts and lists, including OmegaConf containers, into plain ones."""
+    if isinstance(value, Mapping):
+        return {k: _snapshot(v) for k, v in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return [_snapshot(v) for v in value]
+    return value
+
+
+def _same_rng_state(a, b) -> bool:
+    """Compare two states returned by ``np.random.get_state()``."""
+    return a[0] == b[0] and np.array_equal(a[1], b[1]) and a[2:] == b[2:]
 
 
 def iid_partition_df(
