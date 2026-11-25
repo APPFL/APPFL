@@ -98,9 +98,21 @@ class GRPCServerCommunicator(GRPCCommunicatorServicer):
         self.model_chunk_size = kwargs.get("model_chunk_size", 1 * 1024 * 1024 * 1024)
         if self.use_model_chunking:
             # Verify aggregator supports streamed aggregation
-            from appfl.algorithm.aggregator import FedAvgAggregator
+            from appfl.algorithm.aggregator import (
+                FedAvgAggregator,
+                FedAvgMAggregator,
+                FedAdamAggregator,
+                FedYogiAggregator,
+                FedAdagradAggregator,
+            )
 
-            supported_aggregators = [FedAvgAggregator]
+            supported_aggregators = [
+                FedAvgAggregator,
+                FedAvgMAggregator,
+                FedAdamAggregator,
+                FedYogiAggregator,
+                FedAdagradAggregator,
+            ]
             aggregator = server_agent.aggregator
 
             if not any(
