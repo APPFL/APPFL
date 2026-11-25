@@ -40,7 +40,10 @@ class BaseSimDriver:
         names and verifies its own.
 
         :param server_agent: APPFL ServerAgent instance.
-        :param client_agents: List of APPFL ClientAgent instances.
+        :param client_agents: List of APPFL ClientAgent instances. Their dataset
+            sizes are not reported to the server here; call
+            :func:`~appfl.vsim.register_sample_sizes` first if the aggregator
+            weights clients by sample size.
         :param profiles: Dict mapping client_id to ClientProfile.
         :param logger: Python logger for simulation output.
         :param seed: RNG seed for reproducibility.
